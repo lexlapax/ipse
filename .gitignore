@@ -1,0 +1,10 @@
+/_build/
+/deps/
+/runespell
+/native/target/
+/priv/runespell-runner
+/.runespell/
+*.ez
+*.tar.gz
+.env
+/dist/
