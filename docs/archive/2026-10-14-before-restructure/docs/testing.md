@@ -1,3 +1,6 @@
+> Historical snapshot, archived 2026-10-14 from commit `27fbf6d`. Original path: `docs/testing.md`.
+> Superseded guidance; use the [current documentation map](../../../index.md).
+
 # Verification and local handoff
 
 ## Checks that require no account

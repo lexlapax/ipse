@@ -7,7 +7,7 @@ process groups and advisory session locks. There is no JavaScript or Python
 runtime dependency, and no required workflow framework.
 
 The project's name reflects continuity and feedback; its philosophical origin
-and limits are explained in [naming.md](naming.md).
+and limits are explained in [naming.md](../naming.md).
 
 ## Current shape
 

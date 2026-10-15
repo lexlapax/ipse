@@ -24,13 +24,20 @@ an actionable error instead of silently dropping history.
 
 ## P0: verify the current release path
 
+Next live acceptance check: subscription refresh after natural access-token expiry.
+Use the same protected account registration, confirm a subsequent request renews
+successfully, then log out. Do not mark refresh verified from fixture tests or
+by merely changing a local expiry timestamp. Arch release packaging is the next
+source-independent validation task. See [testing and evidence](developer/testing.md)
+for procedures and outstanding checks.
+
 ### Local build and demo
 
 Initial Debian Linux validation passed: build, formatting, 49 tests, source demo,
 interactive resume, and extracted release demo. On 2026-10-14 the local Arch
 source build, formatting, warnings-as-errors compilation, 51 tests, source demo,
 and scripted interactive resume passed after fixing Elixir 1.20 bitstring-size
-pin warnings. See [testing.md](testing.md) for the toolchain and outstanding checks.
+pin warnings. See [verification results](developer/testing.md) for the toolchain and outstanding checks.
 
 Acceptance: on a clean checkout, formatting, warnings-as-errors compilation,
 and `mix test` pass; `./scripts/build.sh` works without Node or Python;

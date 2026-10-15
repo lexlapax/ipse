@@ -10,6 +10,16 @@ Ipse is an MIT-licensed, local coding agent. Keep the agent loop, provider
 adapters, skills, approvals, persistence, and orchestration in Elixir/OTP. Rust
 is for small OS helpers. Do not add JavaScript or Python runtime dependencies.
 Prefer ordinary modules, processes, and messages over a workflow framework.
+Use Elixir for scripts created for development, staging, helpers, and tests
+wherever possible. If Elixir is unsuitable, use Bash or portable shell; use
+Ipse's Rust helper binary for the OS facilities it owns. Do not introduce Python
+or JavaScript scripts or tooling when these supported options can do the work.
+Document every project dependency in
+[the dependency inventory](docs/developer/dependencies.md), including its purpose,
+scope, version/source, and license. Before adding any dependency outside Elixir
+packages or Rust packages, obtain explicit developer approval and record that
+approval and the reasons it is necessary. This includes development, staging,
+helper, test, CI, and packaging dependencies, not just runtime dependencies.
 The project name is **Ipse**, executable/application `ipse`, Elixir
 namespace `Ipse`, environment prefix `IPSE_`.
 
@@ -21,11 +31,15 @@ improvements rather than turning the plan into a mandatory execution pipeline.
 ## Start here
 
 - [README.md](README.md): current behavior and usage.
-- [docs/arch-linux.md](docs/arch-linux.md): Arch setup and local Codex workflow.
+- [docs/index.md](docs/index.md): documentation map and audience ownership.
+- [docs/operator/arch-linux.md](docs/operator/arch-linux.md): Arch setup and local Codex workflow.
+- [docs/operator/usage.md](docs/operator/usage.md): providers, approvals, and sessions.
+- [docs/operator/troubleshooting.md](docs/operator/troubleshooting.md): diagnosis and recovery.
 - [docs/plan.md](docs/plan.md): priorities and acceptance criteria.
-- [docs/architecture.md](docs/architecture.md): ownership and trust boundaries.
+- [docs/developer/architecture.md](docs/developer/architecture.md): ownership and trust boundaries.
+- [docs/developer/dependencies.md](docs/developer/dependencies.md): dependency inventory and approval policy.
 - [docs/naming.md](docs/naming.md): name, sources, and the Hofstadter connection.
-- [docs/testing.md](docs/testing.md): verification and unverified integrations.
+- [docs/developer/testing.md](docs/developer/testing.md): verification and unverified integrations.
 
 Treat the plan as direction, not authorization to implement every milestone.
 For an unspecified next task, start with the first incomplete P0 acceptance
@@ -100,6 +114,21 @@ status when behavior changes. Distinguish fixture tests from live account tests.
 Report what changed, checks actually run, and remaining limitations. Do not
 claim Arch, browser sign-in, paid inference, or a release was verified unless
 the corresponding check really ran.
+
+Before declaring any sub-goal or milestone complete, always review and update
+the developer and operator documentation. Validate content against the current
+implementation and actual verification results, including commands, examples,
+limitations, and status claims. Rewrite stale or incorrect guidance and check
+links and cross-references to other documents, repairing broken targets and
+inconsistent descriptions. Documentation review and repair are required
+completion checks, not optional follow-up work.
+Maintain the audience structure and authoritative topic ownership in
+[docs/index.md](docs/index.md): operator procedures under `docs/operator/`,
+developer guidance under `docs/developer/`, and shared context under `docs/`.
+Update the map and entry points when adding or moving documents. Verify file
+targets and heading anchors. Preserve superseded documents under `docs/archive/`
+with their date, provenance, historical-only status, and replacement links;
+follow the [archive policy](docs/archive/index.md#archive-policy).
 
 Once satisfied that a sub-goal or sub-milestone is complete and its relevant
 checks pass, always commit the focused changes and push to `origin`. Do not add

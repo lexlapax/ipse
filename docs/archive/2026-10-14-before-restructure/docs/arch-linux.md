@@ -1,3 +1,6 @@
+> Historical snapshot, archived 2026-10-14 from commit `27fbf6d`. Original path: `docs/arch-linux.md`.
+> Superseded guidance; use the [current documentation map](../../../index.md).
+
 # Arch Linux: run and develop Ipse
 
 Ipse is developed with Elixir/OTP and a small Rust helper. Codex CLI is a
