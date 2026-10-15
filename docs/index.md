@@ -24,7 +24,6 @@ start. Use the guides below for operation, development, and project context.
 | [Protocol proposal](developer/protocol-proposal.md) | Proposed MCP, delegation, and remote-execution trust/recovery contracts |
 | [Dependencies](developer/dependencies.md) | Runtime/build/CI inventory, script policy, approval requirements |
 | [Testing and evidence](developer/testing.md) | Source/release checks, live acceptance, actual results |
-| [Serenity handoff](developer/serenity-handoff.md) | Resume Linux development after the native macOS implementation |
 
 ## Project context
 

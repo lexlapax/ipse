@@ -14,6 +14,8 @@ defmodule Ipse.Auth do
   @token_endpoint @issuer <> "/api/accounts/oauth/token"
   @scope "openid profile email offline_access resource.invoke chatgpt.tokens.use.direct"
   @usage_scope "chatgpt.tokens.use.direct"
+  @terminal_refresh_errors ~w(invalid_grant invalid_refresh_token token_expired refresh_token_expired refresh_token_invalidated refresh_token_reused)
+  @token_fields ~w(access_token refresh_token id_token expires_at expires_in scopes token_type saved_at pending_refresh)
 
   @doc "Print a browser sign-in URL and await its loopback callback for five minutes."
   def login(auth_dir, opts \\ []) do
@@ -70,7 +72,13 @@ defmodule Ipse.Auth do
                  ),
                {:ok, record} <-
                  token_record(
-                   Map.drop(existing, ["scopes", "access_token", "refresh_token", "id_token"]),
+                   Map.drop(existing, [
+                     "scopes",
+                     "access_token",
+                     "refresh_token",
+                     "id_token",
+                     "pending_refresh"
+                   ]),
                    response,
                    callback["client_id"],
                    claims
@@ -78,6 +86,15 @@ defmodule Ipse.Auth do
                :ok <- Store.write(auth_dir, record),
                :ok <- permitted(record) do
             :ok
+          else
+            {:error, {:oauth, "invalid_client"}} ->
+              invalid_client()
+
+            {:error, {:oauth, _}} ->
+              {:error, "ChatGPT sign-in grant was rejected or expired. Run `ipse login`."}
+
+            error ->
+              error
           end
         after
           :gen_tcp.close(listener)
@@ -95,6 +112,7 @@ defmodule Ipse.Auth do
   def token(auth_dir) do
     Store.with_lock(auth_dir, fn ->
       with {:ok, record} <- Store.read(auth_dir),
+           {:ok, record} <- resolve_pending(auth_dir, record),
            :ok <- signed_in(record),
            :ok <- permitted(record) do
         expires_at = record["expires_at"]
@@ -130,19 +148,9 @@ defmodule Ipse.Auth do
   def logout(auth_dir) do
     Store.with_lock(auth_dir, fn ->
       with {:ok, record} <- Store.read(auth_dir) do
-        remote = revoke(record)
+        remote = revoke(revocation_record(record))
 
-        clean =
-          Map.drop(record, [
-            "access_token",
-            "refresh_token",
-            "id_token",
-            "expires_at",
-            "expires_in",
-            "scopes",
-            "token_type",
-            "saved_at"
-          ])
+        clean = Map.drop(record, @token_fields)
 
         with :ok <- Store.write(auth_dir, clean) do
           case remote do
@@ -180,23 +188,103 @@ defmodule Ipse.Auth do
 
   defp refresh(auth_dir, record) do
     if nonempty?(record["refresh_token"]) do
-      with {:ok, response} <-
-             HTTP.request(:post, @token_endpoint, %{
-               "grant_type" => "refresh_token",
-               "client_id" => record["client_id"],
-               "refresh_token" => record["refresh_token"],
-               "resource" => @resource
-             }),
-           {:ok, claims} <- refresh_identity(response, record),
-           {:ok, next} <- token_record(record, response, record["client_id"], claims),
-           :ok <- Store.write(auth_dir, next),
-           :ok <- permitted(next) do
-        {:ok, next["access_token"]}
+      case HTTP.request(:post, @token_endpoint, %{
+             "grant_type" => "refresh_token",
+             "client_id" => record["client_id"],
+             "refresh_token" => record["refresh_token"],
+             "resource" => @resource
+           }) do
+        {:ok, response} ->
+          with {:ok, pending} <- persist_pending(auth_dir, record, response),
+               {:ok, next} <- resolve_pending(auth_dir, pending),
+               :ok <- permitted(next) do
+            {:ok, next["access_token"]}
+          end
+
+        {:error, {:oauth, code}} when code in @terminal_refresh_errors ->
+          with :ok <- Store.write(auth_dir, Map.drop(record, @token_fields)) do
+            {:error, "ChatGPT session expired or was revoked. Run `ipse login`."}
+          end
+
+        {:error, {:oauth, "invalid_client"}} ->
+          invalid_client()
+
+        error ->
+          error
       end
     else
       {:error, "ChatGPT session cannot refresh. Run `ipse login`."}
     end
   end
+
+  defp persist_pending(auth_dir, record, response) do
+    # Validate the token response shape without activating its unverified ID
+    # token. Durably retain rotation before discovery/JWKS network operations.
+    identity = %{
+      "iss" => record["issuer"],
+      "sub" => record["subject"],
+      "email" => record["email"]
+    }
+
+    received = System.system_time(:second)
+
+    with {:ok, candidate} <- token_record(record, response, record["client_id"], identity) do
+      pending = %{
+        "response" =>
+          Map.take(response, ~w(access_token refresh_token id_token expires_in token_type scope)),
+        "received_at" => received,
+        "expires_at" => received + candidate["expires_in"]
+      }
+
+      next = Map.put(record, "pending_refresh", pending)
+      with :ok <- Store.write(auth_dir, next), do: {:ok, next}
+    end
+  end
+
+  defp resolve_pending(auth_dir, %{"pending_refresh" => pending} = record) when is_map(pending) do
+    with %{"response" => response, "received_at" => received, "expires_at" => expires} <- pending,
+         true <-
+           is_map(response) and is_integer(received) and is_integer(expires) and
+             expires > received,
+         {:ok, _candidate} <-
+           token_record(record, response, record["client_id"], %{}),
+         true <- expires == received + response["expires_in"],
+         {:ok, claims} <- refresh_identity(response, record),
+         {:ok, next} <-
+           token_record(
+             Map.delete(record, "pending_refresh"),
+             response,
+             record["client_id"],
+             claims
+           ) do
+      # Retry time must never extend the access token lifetime granted earlier.
+      next = Map.put(next, "expires_at", expires)
+      with :ok <- Store.write(auth_dir, next), do: {:ok, next}
+    else
+      {:error, _} = error -> error
+      _ -> {:error, "ChatGPT pending refresh is invalid. Run `ipse login`."}
+    end
+  end
+
+  defp resolve_pending(_auth_dir, record) do
+    if Map.has_key?(record, "pending_refresh"),
+      do: {:error, "ChatGPT pending refresh is invalid. Run `ipse login`."},
+      else: {:ok, record}
+  end
+
+  defp revocation_record(%{"pending_refresh" => %{"response" => response}} = record)
+       when is_map(response) do
+    if nonempty?(response["refresh_token"]),
+      do: Map.put(record, "refresh_token", response["refresh_token"]),
+      else: record
+  end
+
+  defp revocation_record(record), do: record
+
+  defp invalid_client,
+    do:
+      {:error,
+       "ChatGPT client registration was rejected. Check the client configuration before retrying."}
 
   defp refresh_identity(response, record) do
     if nonempty?(response["id_token"]) do
@@ -211,7 +299,9 @@ defmodule Ipse.Auth do
     type = response["token_type"]
 
     if nonempty?(response["access_token"]) and is_integer(expires) and expires > 0 and
-         is_binary(type) and String.downcase(type) == "bearer" do
+         is_binary(type) and String.downcase(type) == "bearer" and
+         (is_nil(response["id_token"]) or nonempty?(response["id_token"])) and
+         (is_nil(response["refresh_token"]) or nonempty?(response["refresh_token"])) do
       # RFC 6749 permits omission of unchanged refresh_token and scope on renewal.
       scopes =
         case response["scope"] do

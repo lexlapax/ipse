@@ -41,8 +41,17 @@ revokes the renewable session where possible and clears local tokens.
 Live browser sign-in, subscription inference, approved coding tools, resume, and
 logout passed on Arch with one account; see [verification results](../developer/testing.md).
 Live natural-expiry refresh and token rotation also passed on 2026-10-15.
-Broader eligibility and usage-limit behavior remain unverified. Automated
+An approved temporary permission-off check returned the live usage-limit error;
+Ipse's permission was restored. Exhausted allowance and ineligible accounts remain
+unverified; see the [P0 evidence](../developer/testing.md#p0-closure-on-serenity-2026-10-15). Automated
 tests cover OAuth validation/refresh and streaming using local fixtures.
+
+Subscription requests follow the current preview format: developer instructions
+and an `additional_tools` input item describe local functions. API-provider
+requests retain their own wire format. Eligibility and usage-limit failures stop
+the turn without retries or a billing change. Errors show bounded status, code,
+parameter, body shape, and request ID where available, while provider prose is
+omitted to avoid exposing secrets. See [recovery](troubleshooting.md#account-model-and-provider-errors).
 
 ## 2. OpenAI API
 
@@ -148,6 +157,9 @@ Chat commands:
 
 The CLI reports running, waiting for approval, finished, failed, and cancelled
 states. New messages entered during a turn are queued for the next turn.
+An error clears queued input with a visible message, preventing further queued
+requests after an account or usage-limit failure. Review the error and send a
+fresh task when ready.
 `/cancel` clears that queue; input received while cancellation is pending is
 explicitly discarded. Send a fresh task after cancellation finishes. Repeated
 cancellation requests do not start more work. Inspect the workspace before
@@ -155,7 +167,8 @@ retrying an interrupted mutation, because started effects may already have happe
 
 EOF exits immediately while idle. During work it finishes accepted turns,
 including queued input, then exits. Pending and subsequent approvals are denied
-after EOF; EOF never authorizes a mutation. `/exit` cancels and leaves immediately.
+after EOF. An error stops further queued work and exits with a failure status;
+EOF never authorizes a mutation. `/exit` cancels and leaves immediately.
 The UI is a line-oriented terminal client, not a full-screen TUI.
 
 

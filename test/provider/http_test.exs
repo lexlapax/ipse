@@ -30,11 +30,25 @@ defmodule Ipse.Provider.HTTPTest do
       timeout_ms: 5000
     }
 
+    tools = [
+      %{
+        "type" => "function",
+        "function" => %{
+          "name" => "read",
+          "description" => "Read a file",
+          "parameters" => %{
+            "type" => "object",
+            "properties" => %{"path" => %{"type" => "string"}}
+          }
+        }
+      }
+    ]
+
     assert {:ok, message, %{"output_tokens" => 1}} =
              Provider.complete(
                config,
                [runtime_message(config), %{"role" => "user", "content" => "hi"}],
-               [],
+               tools,
                &send(owner, &1)
              )
 
@@ -47,9 +61,17 @@ defmodule Ipse.Provider.HTTPTest do
     assert String.downcase(headers) =~ "authorization: bearer test-secret"
     assert request["store"] == false
     assert request["stream"] == true
+    refute Map.has_key?(request, "tools")
+    assert Enum.any?(request["input"], &(&1["role"] == "developer"))
 
     assert Enum.any?(request["input"], fn item ->
-             item["content"] =~ "Ipse version:" and item["content"] =~ "Requested model: test"
+             item["type"] == "additional_tools" and item["role"] == "developer" and
+               item["tools"] == [Map.put(hd(tools)["function"], "type", "function")]
+           end)
+
+    assert Enum.any?(request["input"], fn item ->
+             is_binary(item["content"]) and item["content"] =~ "Ipse version:" and
+               item["content"] =~ "Requested model: test"
            end)
   end
 
@@ -93,6 +115,73 @@ defmodule Ipse.Provider.HTTPTest do
              )
 
     Task.await(server)
+  end
+
+  test "ChatGPT subscription failures stop with safe recovery details and no billing fallback" do
+    for {status, code, hint} <- [
+          {403, "subscription_sharing_user_not_eligible", "Check eligibility"},
+          {429, "subscription_sharing_usage_limit_exceeded", "blocked by a limit or app setting"},
+          {503, "subscription_sharing_usage_unavailable", "Preserve sign-in"}
+        ] do
+      body = Jason.encode!(%{"error" => %{"code" => code, "message" => "secret response prose"}})
+      request_id = "req-chatgpt-#{status}"
+      {base, server} = fixture(body, status, "x-request-id: #{request_id}\r\n")
+
+      assert {:error, message} =
+               Provider.complete(
+                 %{
+                   provider: :chatgpt,
+                   model: "test",
+                   base_url: base,
+                   api_key: "test-secret",
+                   timeout_ms: 5000
+                 },
+                 [],
+                 [],
+                 fn _ -> :ok end
+               )
+
+      assert message =~ "HTTP #{status}"
+      assert message =~ "code=#{code}"
+      assert message =~ "request_id=#{request_id}"
+      assert message =~ hint
+      refute message =~ "secret response prose"
+      Task.await(server)
+    end
+  end
+
+  test "ChatGPT direct 401 detail and generic 500 preserve safe HTTP metadata" do
+    cases = [
+      {401, %{"detail" => "private direct-route text"}, "body=detail",
+       "selected account and granted scopes"},
+      {500, %{"error" => %{"param" => "model", "message" => "private server text"}},
+       "body=error; param=model", "Check ChatGPT plan access"}
+    ]
+
+    for {status, payload, metadata, hint} <- cases do
+      request_id = "req-direct-#{status}"
+      {base, server} = fixture(Jason.encode!(payload), status, "x-request-id: #{request_id}\r\n")
+
+      assert {:error, message} =
+               Provider.complete(
+                 %{
+                   provider: :chatgpt,
+                   model: "test",
+                   base_url: base,
+                   api_key: "test-secret",
+                   timeout_ms: 5000
+                 },
+                 [],
+                 [],
+                 fn _ -> :ok end
+               )
+
+      assert message =~ "HTTP #{status}; #{metadata}"
+      assert message =~ "request_id=#{request_id}"
+      assert message =~ hint
+      refute message =~ "private"
+      Task.await(server)
+    end
   end
 
   test "Ollama requires done and converts native tool arguments" do
@@ -212,7 +301,7 @@ defmodule Ipse.Provider.HTTPTest do
         do: assert(Provider.HTTP.bypass_proxy?(host))
   end
 
-  defp fixture(body, status \\ 200) do
+  defp fixture(body, status \\ 200, response_headers \\ "") do
     {:ok, listener} =
       :gen_tcp.listen(0, [:binary, active: false, reuseaddr: true, ip: {127, 0, 0, 1}])
 
@@ -224,7 +313,7 @@ defmodule Ipse.Provider.HTTPTest do
         {headers, payload} = request(socket, "")
 
         response =
-          "HTTP/1.1 #{status} Fixture\r\ncontent-type: text/event-stream\r\ncontent-length: #{byte_size(body)}\r\nconnection: close\r\n\r\n"
+          "HTTP/1.1 #{status} Fixture\r\ncontent-type: text/event-stream\r\n#{response_headers}content-length: #{byte_size(body)}\r\nconnection: close\r\n\r\n"
 
         :ok = :gen_tcp.send(socket, response)
         for <<byte <- body>>, do: :ok = :gen_tcp.send(socket, <<byte>>)

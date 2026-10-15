@@ -296,6 +296,29 @@ defmodule Ipse.CLITest do
     end)
   end
 
+  test "provider errors stop queued inference until the user sends a fresh task" do
+    with_fixture_and_cli(fn fixture, cli ->
+      await_input(cli.stdio)
+      Ipse.CLITest.IOFixture.feed(cli.stdio, "first task")
+      {server, 1, _} = await_request(fixture)
+      Ipse.CLITest.IOFixture.feed(cli.stdio, "queued task")
+      await_text(cli.stderr, "Queued for the next turn")
+      Ipse.CLITest.HTTPFixture.reply(server, 1, Ipse.CLITest.HTTPFixture.error_body())
+      await_text(cli.stderr, "Queued input was discarded after the error")
+      refute_receive {:ollama_request, _, _, _}, 100
+
+      Ipse.CLITest.IOFixture.feed(cli.stdio, "fresh task after reviewing failure")
+      {^server, 2, request} = await_request(fixture)
+      contents = Enum.map(request["messages"], & &1["content"])
+      refute "queued task" in contents
+      assert "fresh task after reviewing failure" in contents
+      Ipse.CLITest.HTTPFixture.reply(server, 2, Ipse.CLITest.HTTPFixture.final_body("recovered"))
+      await_text(cli.stderr, "Finished.")
+      Ipse.CLITest.IOFixture.feed(cli.stdio, :eof)
+      assert 0 == Task.await(cli.task, 3_000)
+    end)
+  end
+
   test "running and finished are visible; EOF during work drains queued input" do
     with_fixture_and_cli(fn fixture, cli ->
       await_input(cli.stdio)

@@ -1,5 +1,30 @@
 defmodule Ipse.Auth.HTTP do
   @moduledoc false
+  @oauth_errors ~w(invalid_grant invalid_refresh_token token_expired refresh_token_expired refresh_token_invalidated refresh_token_reused invalid_client)
+
+  @doc false
+  def decode_response(status, body) when status in 200..299 and is_binary(body) do
+    if body == "", do: {:ok, %{}}, else: decode(body)
+  end
+
+  def decode_response(status, body) when is_integer(status) do
+    code =
+      if status in 400..499 and status != 429 and is_binary(body) and
+           byte_size(body) <= 1_048_576 do
+        case Jason.decode(body) do
+          {:ok, %{"error" => error}} when is_binary(error) -> error
+          {:ok, %{"error" => %{"code" => error}}} when is_binary(error) -> error
+          _ -> nil
+        end
+      end
+
+    if code in @oauth_errors do
+      {:error, {:oauth, code}}
+    else
+      {:error,
+       "ChatGPT authorization returned HTTP #{status}. Sign in again if the session expired."}
+    end
+  end
 
   if Code.ensure_loaded?(Mix) and Mix.env() == :test do
     def with_transport(transport, fun) do
@@ -61,12 +86,8 @@ defmodule Ipse.Auth.HTTP do
                [body_format: :binary],
                profile
              ) do
-          {:ok, {{_, status, _}, _, body}} when status in 200..299 ->
-            if body == "", do: {:ok, %{}}, else: decode(body)
-
-          {:ok, {{_, status, _}, _, _}} ->
-            {:error,
-             "ChatGPT authorization returned HTTP #{status}. Sign in again if the session expired."}
+          {:ok, {{_, status, _}, _, body}} ->
+            decode_response(status, body)
 
           _ ->
             {:error, "Could not reach ChatGPT authorization. Check your network and retry."}

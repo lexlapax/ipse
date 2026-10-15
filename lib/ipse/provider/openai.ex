@@ -19,7 +19,7 @@ defmodule Ipse.Provider.OpenAI do
                headers,
                request_body(config, messages, tools),
                config,
-               new(),
+               new(config[:provider]),
                fn state, chunk -> consume(state, chunk, emit) end
              ) do
         finish(state)
@@ -28,17 +28,44 @@ defmodule Ipse.Provider.OpenAI do
   end
 
   def request_body(config, messages, tools) do
-    %{
+    input = Enum.flat_map(messages, &input(&1, config[:provider]))
+
+    input =
+      if config[:provider] == :chatgpt and tools != [] do
+        additional_tools = %{
+          "type" => "additional_tools",
+          "role" => "developer",
+          "tools" => Enum.map(tools, &function_definition/1)
+        }
+
+        [additional_tools | input]
+      else
+        input
+      end
+
+    body = %{
       "model" => config[:model],
       "store" => false,
       "stream" => true,
       "include" => ["reasoning.encrypted_content"],
-      "input" => Enum.flat_map(messages, &input/1),
-      "tools" => Enum.map(tools, fn tool -> Map.put(tool["function"], "type", "function") end)
+      "input" => input
     }
+
+    if config[:provider] == :chatgpt,
+      do: body,
+      else: Map.put(body, "tools", Enum.map(tools, &function_definition/1))
   end
 
-  defp input(%{"role" => "tool"} = message),
+  defp function_definition(tool), do: Map.put(tool["function"], "type", "function")
+
+  defp input(message, :chatgpt) do
+    message =
+      if message["role"] == "system", do: Map.put(message, "role", "developer"), else: message
+
+    input(message, :openai)
+  end
+
+  defp input(%{"role" => "tool"} = message, _provider),
     do: [
       %{
         "type" => "function_call_output",
@@ -47,14 +74,17 @@ defmodule Ipse.Provider.OpenAI do
       }
     ]
 
-  defp input(%{
-         "role" => "assistant",
-         "provider_data" => %{"provider" => "openai", "output" => output}
-       })
+  defp input(
+         %{
+           "role" => "assistant",
+           "provider_data" => %{"provider" => "openai", "output" => output}
+         },
+         _provider
+       )
        when is_list(output),
        do: output
 
-  defp input(%{"role" => "assistant"} = message) do
+  defp input(%{"role" => "assistant"} = message, _provider) do
     text =
       if message["content"] in [nil, ""],
         do: [],
@@ -71,11 +101,14 @@ defmodule Ipse.Provider.OpenAI do
       end)
   end
 
-  defp input(message), do: [Map.take(message, ["role", "content"])]
+  defp input(message, _provider), do: [Map.take(message, ["role", "content"])]
   defp content(value) when is_binary(value), do: value
   defp content(value), do: Jason.encode!(value)
 
-  def new, do: %{sse: SSE.new(), response: nil, items: %{}, terminal: false}
+  def new, do: new(:openai)
+
+  def new(provider),
+    do: %{sse: SSE.new(), response: nil, items: %{}, terminal: false, provider: provider}
 
   def consume(state, chunk, emit) do
     {events, parser} = SSE.feed(state.sse, chunk)
@@ -137,11 +170,15 @@ defmodule Ipse.Provider.OpenAI do
     end
   end
 
-  defp event(_, %{"type" => type}, _)
-       when type in ["error", "response.failed", "response.incomplete"],
-       do:
-         {:error,
-          "OpenAI response failed or was incomplete. Check model access, account limits, and request settings."}
+  defp event(state, %{"type" => type} = data, _)
+       when type in ["error", "response.failed"] do
+    Ipse.Provider.Error.stream(data, state.provider, state[:request_id])
+  end
+
+  defp event(_, %{"type" => "response.incomplete"}, _),
+    do:
+      {:error,
+       "OpenAI response failed or was incomplete. Check model access, account limits, and request settings."}
 
   defp event(state, _, _), do: {:ok, state}
 

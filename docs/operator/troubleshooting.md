@@ -47,9 +47,35 @@ Run `./bin/ipse status` locally. For a missing session or failed renewal, run
 `./bin/ipse login` and complete fresh authorization. If plan usage was declined,
 authorize it through ChatGPT Settings and sign in again.
 
+| Failure | Recovery |
+| --- | --- |
+| Terminal refresh-token error | Ipse clears unusable tokens and retains the app registration. Run `ipse login`; later requests do not retry the rejected token. |
+| Client registration rejected | Verify the saved client configuration; credentials are retained. Repeating requests or changing billing does not repair the registration. |
+| Subscription account/workspace not eligible | Stop and check the selected account or workspace policy. Repeating OAuth is not an eligibility fix. |
+| Subscription usage limit reached | Pause requests and check ChatGPT Settings → Usage. The error does not establish a reset time or whether an app-specific limit caused it. |
+| Temporary routing/usage-check failure | Credentials remain intact. Retry later after reviewing the service/network state. |
+
+If a refresh rotates tokens but removes permission to use your plan, Ipse saves
+the replacement token set and refuses inference. `ipse status` reports plan usage
+disabled; reauthorize plan usage explicitly. Raw server messages are not printed.
+Keep the displayed request ID and error code for diagnosis, without sharing tokens
+or private journals. These recovery rules follow the official
+[ChatGPT plan guidance](https://developers.openai.com/siwc/token-sharing-open-source/errors-and-recovery).
+
 Choose an available model with `--model`; check your plan and usage limits for
 rejected requests. Subscription errors never authorize switching to API billing.
 See [provider setup](usage.md#1-chatgpt-subscription).
+
+A usage-limit error can also mean Ipse's plan permission is disabled. Check
+ChatGPT Settings > Usage > App limits; do not assume your allowance is exhausted
+or infer a reset time from the error code alone.
+
+If identity discovery or key fetching fails after renewal, Ipse retains the
+rotated tokens in protected pending storage and retries validation on your next
+request. It does not use the unverified identity or resend the consumed refresh
+token. If that identity expires before validation succeeds, run `ipse login`.
+Logout revokes the newest pending token too. A response lost before durable
+storage may require fresh login.
 
 If logout reports unconfirmed remote revocation, local tokens have been cleared.
 Disconnect Ipse in ChatGPT Settings to end remote access. Never borrow another

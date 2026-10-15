@@ -152,5 +152,52 @@ defmodule Ipse.Provider.OpenAITest do
              OpenAI.request_body(%{model: "m"}, [], [tool])["tools"]
   end
 
+  test "API billing keeps flat tools and system role unchanged" do
+    tool = %{
+      "type" => "function",
+      "function" => %{
+        "name" => "read",
+        "description" => "Read",
+        "parameters" => %{"type" => "object"}
+      }
+    }
+
+    body =
+      OpenAI.request_body(
+        %{provider: :openai, model: "m"},
+        [%{"role" => "system", "content" => "rules"}],
+        [tool]
+      )
+
+    assert body["tools"] == [Map.put(tool["function"], "type", "function")]
+    assert body["input"] == [%{"role" => "system", "content" => "rules"}]
+    refute Enum.any?(body["input"], &(&1["type"] == "additional_tools"))
+  end
+
+  test "ChatGPT billing omits empty tool injection and preserves continuation items" do
+    output = [%{"type" => "reasoning", "encrypted_content" => "opaque"}]
+
+    body =
+      OpenAI.request_body(
+        %{provider: :chatgpt, model: "m"},
+        [
+          %{
+            "role" => "assistant",
+            "content" => "",
+            "provider_data" => %{"provider" => "openai", "output" => output}
+          },
+          %{"role" => "tool", "tool_call_id" => "call-1", "content" => "done"}
+        ],
+        []
+      )
+
+    refute Map.has_key?(body, "tools")
+    refute Enum.any?(body["input"], &(&1["type"] == "additional_tools"))
+
+    assert body["input"] ==
+             output ++
+               [%{"type" => "function_call_output", "call_id" => "call-1", "output" => "done"}]
+  end
+
   defp sse(data), do: "data: " <> Jason.encode!(data) <> "\n\n"
 end

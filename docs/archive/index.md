@@ -6,6 +6,7 @@ Use the [current documentation map](../index.md) for supported guidance.
 | Snapshot | Provenance | Current replacements |
 | --- | --- | --- |
 | [2026-10-14 documentation before restructuring](2026-10-14-before-restructure/index.md) | Repository commit `27fbf6d`; archived on 2026-10-14 | [Setup](../operator/arch-linux.md), [usage](../operator/usage.md), [architecture](../developer/architecture.md), [testing](../developer/testing.md) |
+| [2026-10-15 Serenity return handoff](2026-10-15-serenity-handoff/index.md) | Repository commit `ec5fb85`; archived after Linux return verification | [Testing](../developer/testing.md#p0-closure-on-serenity-2026-10-15), [sandbox policy](../developer/sandbox.md), [plan](../plan.md) |
 
 ## Archive policy
 

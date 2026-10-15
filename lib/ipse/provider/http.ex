@@ -48,6 +48,7 @@ defmodule Ipse.Provider.HTTP do
               profile,
               state,
               consume,
+              config[:provider],
               System.monotonic_time(:millisecond) + timeout
             )
 
@@ -58,17 +59,18 @@ defmodule Ipse.Provider.HTTP do
     end
   end
 
-  defp receive_stream(id, profile, state, consume, deadline) do
+  defp receive_stream(id, profile, state, consume, provider, deadline) do
     remaining = max(deadline - System.monotonic_time(:millisecond), 0)
 
     receive do
-      {:http, {^id, :stream_start, _headers}} ->
-        receive_stream(id, profile, state, consume, deadline)
+      {:http, {^id, :stream_start, headers}} ->
+        state = put_request_id(state, Ipse.Provider.Error.request_id(headers))
+        receive_stream(id, profile, state, consume, provider, deadline)
 
       {:http, {^id, :stream, bytes}} ->
         case consume.(state, IO.iodata_to_binary(bytes)) do
           {:ok, next} ->
-            receive_stream(id, profile, next, consume, deadline)
+            receive_stream(id, profile, next, consume, provider, deadline)
 
           {:error, _} = error ->
             :httpc.cancel_request(id, profile)
@@ -81,8 +83,8 @@ defmodule Ipse.Provider.HTTP do
       {:http, {^id, {{_, status, _}, _headers, body}}} when status in 200..299 ->
         consume.(state, IO.iodata_to_binary(body))
 
-      {:http, {^id, {{_, status, _}, _headers, _body}}} ->
-        {:error, "Provider returned HTTP #{status}."}
+      {:http, {^id, {{_, status, _}, headers, body}}} ->
+        Ipse.Provider.Error.http(status, IO.iodata_to_binary(body), headers, provider)
 
       {:http, {^id, {:error, _reason}}} ->
         {:error, "Provider connection failed or timed out."}
@@ -92,6 +94,11 @@ defmodule Ipse.Provider.HTTP do
         {:error, "Provider request timed out."}
     end
   end
+
+  defp put_request_id(state, request_id) when is_map(state) and is_binary(request_id),
+    do: Map.put(state, :request_id, request_id)
+
+  defp put_request_id(state, _), do: state
 
   defp configure_proxy(profile, uri) do
     if bypass_proxy?(uri.host) do

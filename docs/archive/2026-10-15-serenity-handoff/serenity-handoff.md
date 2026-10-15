@@ -1,3 +1,6 @@
+> Historical handoff archived on 2026-10-15 after the Serenity return checks.
+> Use [current testing and evidence](../../developer/testing.md#p0-closure-on-serenity-2026-10-15) and [the plan](../../plan.md).
+
 # Resume development on Serenity
 
 This handoff returns Ipse development from the Mac to Serenity after implementing
@@ -18,8 +21,8 @@ git fetch origin
 git pull --ff-only origin main
 ```
 
-Read `AGENTS.md`, [the plan](../plan.md), [architecture](architecture.md),
-[native policy](sandbox.md), and [verification evidence](testing.md).
+Read `AGENTS.md`, [the plan](../../../docs/plan.md), [architecture](../../../docs/developer/architecture.md),
+[native policy](../../../docs/developer/sandbox.md), and [verification evidence](../../../docs/developer/testing.md).
 Rebuild the helper on Serenity; a Mac helper or archive cannot run on Linux.
 
 ```sh
@@ -35,7 +38,7 @@ IPSE_HOME=$(mktemp -d) ./bin/ipse demo
 Run `elixir scripts/verify-package.exs` with the exact Linux archive path printed
 by packaging. If multiple archives exist, do not pass a wildcard selecting all
 of them. Record Serenity's actual kernel, architecture, Elixir/OTP, Rust, test
-counts, and native-enforcement results in [testing](testing.md). Linux native
+counts, and native-enforcement results in [testing](../../../docs/developer/testing.md). Linux native
 enforcement needs Landlock ABI 6+ and permitted unprivileged namespaces; an
 included enforcement test that cannot activate is a failure, not a pass.
 
@@ -94,7 +97,7 @@ and the experimental signed-helper file/network probe. Compilation from the
 local Homebrew tool root passed; CI verified denial of its working toolchain
 outside the fixed readable roots. CI does not run Linux native enforcement;
 repeat that check on Serenity using the command above.
-See [the detailed evidence](testing.md#macos-native-backend-2026-10-15).
+See [the detailed evidence](../../../docs/developer/testing.md#macos-native-backend-2026-10-15).
 
 ## Continue from Serenity
 

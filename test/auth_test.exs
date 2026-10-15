@@ -158,6 +158,36 @@ defmodule Ipse.AuthTest do
     assert {:ok, ^saved} = Store.read(ctx.dir)
   end
 
+  test "login maps terminal grants to a fixed safe error and preserves the saved session", ctx do
+    saved = record()
+    save(ctx.dir, saved)
+
+    output = fn message ->
+      [_, url | _] = String.split(message, "\n")
+      params = URI.parse(url).query |> URI.decode_query()
+
+      spawn_link(fn ->
+        callback(params, %{
+          "state" => params["state"],
+          "code" => "fixture-code",
+          "client_id" => saved["client_id"]
+        })
+      end)
+    end
+
+    transport = fn :post, "https://auth.openai.com/api/accounts/oauth/token", _fields ->
+      {:error, {:oauth, "invalid_grant"}}
+    end
+
+    assert {:error, error} =
+             HTTP.with_transport(transport, fn -> Auth.login(ctx.dir, output: output) end)
+
+    assert error =~ "grant was rejected or expired"
+    refute error =~ "invalid_grant"
+    refute error =~ "fixture-code"
+    assert {:ok, ^saved} = Store.read(ctx.dir)
+  end
+
   test "rotating refresh is serialized and atomically replaces the entire token set", ctx do
     save(ctx.dir, Map.put(record(), "expires_at", 0))
     {:ok, counter} = Agent.start_link(fn -> 0 end)
@@ -201,6 +231,93 @@ defmodule Ipse.AuthTest do
     end
 
     assert {:error, error} = HTTP.with_transport(transport, fn -> Auth.token(ctx.dir) end)
+    refute error =~ "refresh-secret"
+    assert {:ok, ^saved} = Store.read(ctx.dir)
+  end
+
+  test "a refresh that removes plan usage persists rotation and refuses later use", ctx do
+    save(ctx.dir, Map.put(record(), "expires_at", 0))
+    {:ok, counter} = Agent.start_link(fn -> 0 end)
+    on_exit(fn -> if Process.alive?(counter), do: Agent.stop(counter) end)
+
+    transport = fn :post, "https://auth.openai.com/api/accounts/oauth/token", _fields ->
+      Agent.update(counter, &(&1 + 1))
+
+      {:ok,
+       %{
+         "access_token" => "rotated-access-secret",
+         "refresh_token" => "rotated-refresh-secret",
+         "expires_in" => 3600,
+         "token_type" => "Bearer",
+         "scope" => "openid profile email offline_access resource.invoke"
+       }}
+    end
+
+    assert {:error, error} = HTTP.with_transport(transport, fn -> Auth.token(ctx.dir) end)
+    assert error =~ "not authorized"
+    refute error =~ "rotated-access-secret"
+    refute error =~ "rotated-refresh-secret"
+    assert {:ok, saved} = Store.read(ctx.dir)
+    assert saved["access_token"] == "rotated-access-secret"
+    assert saved["refresh_token"] == "rotated-refresh-secret"
+    assert {:ok, info} = Auth.status(ctx.dir)
+    refute info.plan_usage
+
+    assert {:error, later_error} = HTTP.with_transport(transport, fn -> Auth.token(ctx.dir) end)
+    assert later_error =~ "not authorized"
+    assert Agent.get(counter, & &1) == 1
+  end
+
+  test "terminal refresh errors clear only session tokens and do not retry", ctx do
+    codes = [
+      "invalid_grant",
+      "invalid_refresh_token",
+      "token_expired",
+      "refresh_token_expired",
+      "refresh_token_invalidated",
+      "refresh_token_reused"
+    ]
+
+    for code <- codes do
+      dir = Path.join(ctx.dir, code)
+      saved = record()
+      save(dir, Map.put(saved, "expires_at", 0))
+      {:ok, counter} = Agent.start_link(fn -> 0 end)
+
+      transport = fn :post, "https://auth.openai.com/api/accounts/oauth/token", _fields ->
+        Agent.update(counter, &(&1 + 1))
+        {:error, {:oauth, code}}
+      end
+
+      assert {:error, error} = HTTP.with_transport(transport, fn -> Auth.token(dir) end)
+      assert error =~ "login"
+      refute error =~ code
+      refute error =~ "refresh-secret"
+      assert {:ok, clean} = Store.read(dir)
+      assert clean["client_id"] == saved["client_id"]
+      assert clean["ext_agent_host_id"] == saved["ext_agent_host_id"]
+      assert clean["subject"] == saved["subject"]
+      assert clean["email"] == saved["email"]
+
+      for key <- ["access_token", "refresh_token", "id_token", "expires_at", "scopes"] do
+        refute Map.has_key?(clean, key)
+      end
+
+      assert {:error, _} = HTTP.with_transport(transport, fn -> Auth.token(dir) end)
+      assert Agent.get(counter, & &1) == 1
+      Agent.stop(counter)
+    end
+  end
+
+  test "invalid client refresh preserves the session with a safe configuration error", ctx do
+    saved = Map.put(record(), "expires_at", 0)
+    save(ctx.dir, saved)
+
+    transport = fn _, _, _ -> {:error, {:oauth, "invalid_client"}} end
+
+    assert {:error, error} = HTTP.with_transport(transport, fn -> Auth.token(ctx.dir) end)
+    assert error =~ "registration"
+    refute error =~ "invalid_client"
     refute error =~ "refresh-secret"
     assert {:ok, ^saved} = Store.read(ctx.dir)
   end

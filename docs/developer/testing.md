@@ -33,8 +33,10 @@ The suite exercises real filesystem and process behavior, local HTTP streaming,
 OAuth validation with generated test keys, refresh serialization, skills,
 journal recovery, approvals, and cancellation. HTTP fixtures bind to loopback;
 Mix can also need local sockets. Initial dependency fetching needs network.
-No real API keys or subscription are required. Auth transport injection is
-compiled only for the test environment.
+No real API keys or subscription are required. Auth transport injection and
+subscription loopback endpoint overrides are compiled only for the test
+environment. OAuth recovery and session-level subscription error fixtures are
+separate from live account checks.
 
 Ordinary `mix test` excludes `:native_sandbox` and `:macos_sandbox` enforcement checks. On a supported
 Linux host, run `mix test --include native_sandbox`; included checks fail when
@@ -253,10 +255,11 @@ not all models or hardware.
 An intentionally unavailable ChatGPT model returned HTTP 400 under explicit
 `chatgpt` selection; the failure surfaced without API provider fallback.
 
-Natural-expiry refresh subsequently passed (see below). Broader plan eligibility,
-live usage-limit errors, revoked-session
-recovery, paid API calls, and live provider use on macOS remain unverified. Successful fixture tests
-do not establish live-service compatibility.
+Natural-expiry refresh subsequently passed (see below). The later
+[P0 closure check](#p0-closure-on-serenity-2026-10-15) observed a live usage-limit
+error with Ipse's permission disabled. Broader plan eligibility, exhausted
+allowance, live revoked-session recovery, paid API calls, and live provider use
+on macOS remain unverified. Successful fixtures do not establish live-service compatibility.
 
 ### HTTP lifecycle regression checks, 2026-10-14
 
@@ -289,8 +292,10 @@ in four streamed chunks. Logout succeeded and access/refresh/ID token fields
 were cleared. The check used the normal protected account registration, kept
 all secrets in memory/protected storage, and retained only sanitized booleans
 and timestamps as evidence. This is live renewal evidence, separate from fixtures.
-No API-billing fallback was enabled. Broader eligibility/usage-limit errors,
-revoked-session recovery, paid API calls, and other platforms remain unverified.
+No API-billing fallback was enabled. The later
+[P0 closure check](#p0-closure-on-serenity-2026-10-15) adds one live usage-limit
+error response. Broader eligibility, exhausted allowance, live revoked-session
+recovery, paid API calls, and other platforms remain unverified.
 
 ### P1 CLI behavior, 2026-10-15
 
@@ -656,5 +661,85 @@ probe. Its installed compiler positive control succeeded and native execution
 outside the readable tool roots was denied without a compiled artifact.
 The final local full suite passed **122 tests with 7 Linux enforcement tests
 excluded**. Developer/operator docs were reviewed for the transfer back to
-Serenity; see [the handoff](serenity-handoff.md). Linux native enforcement must
-be rerun on Serenity rather than inferred from ordinary CI tests.
+Serenity. The subsequent [Linux return checks](#p0-closure-on-serenity-2026-10-15)
+ran native enforcement on Serenity rather than inferring it from ordinary CI.
+
+## P0 closure on Serenity, 2026-10-15
+
+Pulled clean `main` from `origin` through `ec5fb85`, preserving the Mac native
+backend and its accepted detached-descendant lifetime limit. This closes P0 for
+the available Arch host and account; unavailable live branches stay explicitly
+unverified below. It does not claim every subscription plan or platform works.
+
+### Recovery and protocol fixtures
+
+Reviewed current official OpenAI [errors and recovery](https://developers.openai.com/siwc/token-sharing-open-source/errors-and-recovery),
+[profiles and sessions](https://developers.openai.com/siwc/token-sharing-open-source/profiles-and-sessions),
+[preview limitations](https://developers.openai.com/siwc/token-sharing-open-source/preview-limitations),
+and [models and inference](https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference).
+The subscription request uses developer messages and `additional_tools` input
+items instead of top-level function tools; OpenAI API requests keep their
+separate format. Subscription URLs are pinned to the public OpenAI endpoint,
+with test-only loopback overrides.
+
+Fixtures cover terminal refresh errors clearing only unusable tokens, retained
+registration/account identity, invalid-client and transient failures preserving
+credentials, and rotated tokens with reduced scopes being saved before denial.
+A discovered post-rotation discovery outage could previously lose the new refresh
+token. Renewal now saves protected pending rotation before fetching identity keys.
+Tests verify retry and owner-death recovery without a second token exchange,
+original expiry retention and consistency checks, malformed/mismatched/expired identity rejection,
+fresh-login replacement, and logout revoking the newest pending refresh token.
+Unverified identity is never activated. Loss before durable storage still
+requires fresh login; expired unvalidated identity requires fresh login too.
+
+Structured HTTP and SSE failure fixtures preserve bounded status, body shape,
+code, parameter, and request ID without provider prose or credentials. Real
+session/loopback fixtures simulate ineligible-account and usage-limit failures,
+prove one request with no retry or API-key fallback, retain credentials, and
+resume without replay. CLI fixtures verify queued input is discarded visibly
+after errors and only fresh input starts another turn.
+
+### Live account checks
+
+The normal protected ChatGPT registration passed the updated request shape with
+`gpt-6.1-sol`: **43 streamed chunks and two individually approved effects** in a
+scratch workspace. It wrote `hello.exs`, then ran exactly `elixir hello.exs` under
+the actual Linux native profile, with the expected output and exit code zero.
+No API billing path was selected. Earlier browser sign-in, approved edit,
+session resume, natural-expiry rotating refresh, and logout evidence above
+remains valid; those lifecycle actions were not repeated for this patch.
+
+With the owner's specific approval, temporarily disabled only “Allow Ipse to use
+plan limits,” saved it, and made one tiny request. The live SSE stream returned
+`subscription_sharing_usage_limit_exceeded`; Ipse stopped and surfaced recovery
+guidance. Restored the saved permission to enabled at its original 100% app limit;
+credit use remained disabled. This proves handling of the live code, **not actual
+allowance exhaustion**. Automatic approval review rejected an extra post-restore
+request as outside that permission-test scope; restoration was verified in the UI.
+
+No already ineligible or exhausted account was available. Broader plan/workspace
+eligibility, genuine allowance exhaustion/reset behavior, live revocation
+recovery, and the pending-renewal outage path remain unverified against OpenAI.
+Those negative branches have fixture coverage only. No allowance was deliberately
+exhausted, no credits were enabled, and no API billing fallback was used.
+
+### Local and release checks
+
+Serenity: Arch Linux x86_64, kernel `7.2.9-arch1-1`, glibc 2.44,
+Elixir 1.20.4 / OTP 29 (ERTS 17.0.6), Rust 1.99.0. Source build, both Elixir 1.20
+and 1.18 formatter checks, warnings-as-errors compilation, and isolated
+credential-free demo passed. Ordinary tests: **142 passed, 16 enforcement tests
+excluded**. With actual Linux native enforcement included: **149 passed,
+9 Mac enforcement tests excluded**. Historical Mac evidence remains separate.
+
+Rebuilt `ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz` with the same version-matched
+official runtime notices described above. `scripts/verify-package.exs` passed:
+fresh isolated HOME/IPSE_HOME, utility-only PATH without Elixir/Erlang/Mix/Rust,
+help, demo, default/explicit workspaces with spaces, and bundled helper lifecycle
+and lock checks. This is a local archive check, not publication or another Linux ABI.
+
+Developer/operator commands and content were reviewed; the fulfilled Serenity
+handoff is preserved in the documentation archive. All 221 local links and
+heading anchors across 30 Markdown documents passed validation. No new
+dependency was added.

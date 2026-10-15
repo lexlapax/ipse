@@ -139,9 +139,31 @@ and keeps the original journal.
 ChatGPT subscription sign-in follows the documented open-source app flow.
 Browser sign-in, inference, coding tools, resume, and logout passed with one
 account on Arch; natural-expiry refresh and rotation also passed on 2026-10-15.
-See [testing.md](testing.md). Broader account/model eligibility and usage-limit
-behavior remain unverified. Fixture tests do not
-establish those live-service properties.
+See [testing.md](testing.md#p0-closure-on-serenity-2026-10-15). A permission-off
+request returned the live usage-limit error. Exhausted allowance and broader
+account/model eligibility remain unverified; fixtures do not establish those
+live-service properties.
+
+Subscription recovery follows the official
+[error contract](https://developers.openai.com/siwc/token-sharing-open-source/errors-and-recovery).
+`Auth.HTTP` recognizes a fixed allowlist of terminal OAuth errors on client-error
+responses. Under the credential lock, `Auth` clears the unusable token fields
+and retains the host/client/account mapping for reauthorization. Rate limits,
+service errors, malformed errors, and invalid-client configuration do not erase
+credentials. Successful rotation is saved as owner-only pending renewal before
+identity discovery/key fetching. Retry validates that saved response without
+reusing the consumed refresh token; unverified identities never become active.
+Activation preserves the original receipt-time expiry. Reduced scopes are
+committed before permission denial. Fresh login replaces pending renewal, and
+logout revokes its newest refresh token. Loss before durable storage still
+requires fresh login; an expired unvalidated identity also requires fresh login.
+
+`Provider.Error` formats bounded machine metadata and fixed recovery guidance,
+without echoing server prose. The subscription adapter uses developer messages
+and an `additional_tools` item, preserving native continuation data; the API route
+keeps its existing wire shape. Subscription endpoints are pinned below the CLI;
+only test-compiled code permits loopback fixtures. Provider errors redact the
+active credential and stop the turn; the CLI clears queued requests visibly.
 
 ## Extension guidance
 

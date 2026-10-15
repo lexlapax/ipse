@@ -28,8 +28,9 @@ Uncompactable context stops with recovery guidance.
 
 Live subscription renewal after natural access-token expiry passed on 2026-10-15,
 including rotating refresh tokens, subsequent streamed inference, and logout.
-The focused P0 lifecycle and host release checks are complete; broader account
-eligibility and usage-limit error cases remain open. Arch release packaging and the
+P0 is complete for the available Arch host and account, with explicitly bounded
+live coverage: a permission-off request returned the usage-limit error, while
+allowance exhaustion and ineligible accounts remain unverified. Arch packaging and the
 installed local Ollama tool round trip passed; see [testing and evidence](developer/testing.md)
 for procedures and outstanding checks.
 
@@ -65,8 +66,14 @@ Official authentication and inference documentation was reviewed.
 
 On 2026-10-15, natural-expiry refresh, token rotation, subsequent streamed
 inference, and logout passed with the same account registration on Arch.
-Broader eligibility/usage-limit error behavior remains unverified; fixture
-coverage is separate.
+The Serenity return check also passed the current documented subscription request
+shape, streaming, and approved scratch write/shell execution. A temporarily
+disabled Ipse plan permission returned `subscription_sharing_usage_limit_exceeded`;
+the permission was restored, with credits still disabled. This verifies the live
+error code, not exhausted allowance. No ineligible account was available.
+Terminal renewal errors, reduced scopes, eligibility failures, and usage failures
+have fixture coverage; see the [P0 closure record](developer/testing.md#p0-closure-on-serenity-2026-10-15)
+for exact evidence and remaining live checks.
 
 ### Arch Linux validation
 
@@ -259,8 +266,8 @@ See [the exact boundary](developer/sandbox.md#macos-production-boundary) and
 
 The final implementation CI passed Linux and macOS 14 source/package checks,
 including actual Mac enforcement. Local Mac checks passed 122 tests with seven
-Linux enforcement tests excluded. Development returns to Serenity with a
-[handoff and Linux baseline procedure](developer/serenity-handoff.md).
+Linux enforcement tests excluded. Development then returned to Serenity;
+[Linux return verification is complete](developer/testing.md#p0-closure-on-serenity-2026-10-15).
 
 Windows, MCP implementation, subagents, remote execution, broader account
 eligibility, and other architectures remain future work. Reliable adversarial

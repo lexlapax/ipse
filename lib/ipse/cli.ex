@@ -30,7 +30,7 @@ defmodule Ipse.CLI do
   Native enforcement fails closed when unavailable; approvals remain required.
   Chat commands: /help /skills /session /info /context /context refresh /cancel /exit.
   Invoke skills with $name.
-  EOF finishes accepted work; /cancel clears queued input.
+  EOF finishes accepted work; errors and /cancel clear queued input.
   """
 
   def main(args) do
@@ -394,13 +394,25 @@ defmodule Ipse.CLI do
           not s.interactive ->
             if status == :error, do: 1, else: 0
 
+          status == :error ->
+            if s.queued != [],
+              do:
+                IO.puts(
+                  :stderr,
+                  "Queued input was discarded after the error. Review the failure and send it again."
+                )
+
+            if s.exit,
+              do: 1,
+              else: client_loop(%{s | busy: false, cancelling: false, approval: nil, queued: []})
+
           s.queued != [] ->
             [next | rest] = s.queued
             Ipse.Session.prompt(s.pid, next)
             client_loop(%{s | busy: true, cancelling: false, approval: nil, queued: rest})
 
           s.exit ->
-            if status == :error, do: 1, else: 0
+            0
 
           true ->
             client_loop(%{s | busy: false, cancelling: false, approval: nil, queued: []})
