@@ -1,10 +1,10 @@
-defmodule Runespell.JournalTest do
+defmodule Ipse.JournalTest do
   use ExUnit.Case, async: true
 
-  alias Runespell.Journal
+  alias Ipse.Journal
 
   setup do
-    dir = Path.join(System.tmp_dir!(), "runespell-journal-#{System.unique_integer([:positive])}")
+    dir = Path.join(System.tmp_dir!(), "ipse-journal-#{System.unique_integer([:positive])}")
     on_exit(fn -> File.rm_rf!(dir) end)
     %{dir: dir}
   end

@@ -1,6 +1,6 @@
-defmodule Runespell.Provider.OpenAITest do
+defmodule Ipse.Provider.OpenAITest do
   use ExUnit.Case, async: true
-  alias Runespell.Provider.OpenAI
+  alias Ipse.Provider.OpenAI
 
   test "native output including opaque reasoning survives the next request" do
     output = [

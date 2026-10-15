@@ -1,4 +1,4 @@
-defmodule Runespell.Auth.Store do
+defmodule Ipse.Auth.Store do
   @moduledoc false
   @filename "chatgpt.json"
 
@@ -72,13 +72,13 @@ defmodule Runespell.Auth.Store do
   end
 
   defp acquire(lock, deadline, fun) do
-    case Runespell.Runner.lock(lock) do
+    case Ipse.Runner.lock(lock) do
       {:ok, owner} ->
         try do
           File.chmod(lock, 0o600)
           fun.()
         after
-          Runespell.Runner.unlock(owner)
+          Ipse.Runner.unlock(owner)
         end
 
       {:error, reason} when is_binary(reason) ->

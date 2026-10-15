@@ -15,4 +15,4 @@ jobs:
       - run: ./scripts/build.sh
       - run: mix format --check-formatted
       - run: mix test
-      - run: ./bin/runespell demo
+      - run: ./bin/ipse demo

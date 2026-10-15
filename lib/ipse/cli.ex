@@ -1,17 +1,17 @@
-defmodule Runespell.CLI do
-  @moduledoc "Terminal client for the Runespell session API."
+defmodule Ipse.CLI do
+  @moduledoc "Terminal client for the Ipse session API."
 
   @help """
-  Runespell 0.1 — an Elixir coding agent
+  Ipse 0.1 — an Elixir coding agent
 
-  runespell login                      Continue with ChatGPT
-  runespell status                     Show subscription sign-in status
-  runespell logout                     Sign out of ChatGPT
-  runespell chat [options]              Interactive conversation
-  runespell run [options] "task"         Run one task
-  runespell demo                        Scripted demo in a temporary directory
-  runespell sessions                    List saved sessions
-  runespell skills [--cwd PATH]         List available skills
+  ipse login                      Continue with ChatGPT
+  ipse status                     Show subscription sign-in status
+  ipse logout                     Sign out of ChatGPT
+  ipse chat [options]              Interactive conversation
+  ipse run [options] "task"         Run one task
+  ipse demo                        Scripted demo in a temporary directory
+  ipse sessions                    List saved sessions
+  ipse skills [--cwd PATH]         List available skills
 
   --provider chatgpt|openai|ollama|anthropic|demo  (default: chatgpt)
   --model NAME                         Override the provider default
@@ -28,7 +28,7 @@ defmodule Runespell.CLI do
   """
 
   def main(args) do
-    Application.ensure_all_started(:runespell)
+    Application.ensure_all_started(:ipse)
     code = run(args)
     if code != 0, do: System.halt(code)
   rescue
@@ -69,11 +69,11 @@ defmodule Runespell.CLI do
     end
   end
 
-  defp dispatch(["login"], _opts), do: report(Runespell.Auth.login(auth_dir()))
-  defp dispatch(["logout"], _opts), do: report(Runespell.Auth.logout(auth_dir()))
+  defp dispatch(["login"], _opts), do: report(Ipse.Auth.login(auth_dir()))
+  defp dispatch(["logout"], _opts), do: report(Ipse.Auth.logout(auth_dir()))
 
   defp dispatch(["status"], _opts) do
-    case Runespell.Auth.status(auth_dir()) do
+    case Ipse.Auth.status(auth_dir()) do
       {:ok, status} ->
         IO.puts(inspect(status))
         0
@@ -85,7 +85,7 @@ defmodule Runespell.CLI do
   end
 
   defp dispatch(["sessions"], opts) do
-    for %{"id" => id, "metadata" => meta} <- Runespell.Journal.list(state_dir(opts)) do
+    for %{"id" => id, "metadata" => meta} <- Ipse.Journal.list(state_dir(opts)) do
       IO.puts("#{id}  #{meta["provider"]}/#{meta["model"]}  #{meta["cwd"]}")
     end
 
@@ -102,14 +102,12 @@ defmodule Runespell.CLI do
       opts[:cwd] ||
         Path.join(
           System.tmp_dir!(),
-          "runespell-demo-" <> Base.encode16(:crypto.strong_rand_bytes(4), case: :lower)
+          "ipse-demo-" <> Base.encode16(:crypto.strong_rand_bytes(4), case: :lower)
         )
 
     File.mkdir_p!(cwd)
 
-    IO.puts(
-      "Scripted demo workspace: #{cwd}\nThis demo creates runespell-demo.txt and runs printf."
-    )
+    IO.puts("Scripted demo workspace: #{cwd}\nThis demo creates ipse-demo.txt and runs printf.")
 
     start(
       Keyword.merge(opts, cwd: cwd, provider: "demo", yes: true),
@@ -145,8 +143,8 @@ defmodule Runespell.CLI do
          {:ok, config} <- config(opts, interactive),
          {:ok, pid} <-
            DynamicSupervisor.start_child(
-             Runespell.Sessions,
-             {Runespell.Session,
+             Ipse.Sessions,
+             {Ipse.Session,
               config: config,
               cwd: opts[:cwd] || default_cwd(),
               state_dir: state_dir(opts),
@@ -154,11 +152,11 @@ defmodule Runespell.CLI do
               subscriber: self()}
            ) do
       ref = Process.monitor(pid)
-      info = Runespell.Session.info(pid)
+      info = Ipse.Session.info(pid)
 
       IO.puts(
         :stderr,
-        "Runespell · #{config.provider}/#{config.model}\nSession: #{info.id}\nWorkspace: #{info.cwd}"
+        "Ipse · #{config.provider}/#{config.model}\nSession: #{info.id}\nWorkspace: #{info.cwd}"
       )
 
       if config.approval == :allow,
@@ -166,7 +164,7 @@ defmodule Runespell.CLI do
 
       client = self()
       reader = if interactive, do: spawn(fn -> read_input(client) end), else: nil
-      if prompt, do: Runespell.Session.prompt(pid, prompt)
+      if prompt, do: Ipse.Session.prompt(pid, prompt)
 
       if interactive,
         do: IO.puts("Type a task, $review, or /help. Use /cancel while work is running.")
@@ -184,7 +182,7 @@ defmodule Runespell.CLI do
         })
 
       if reader && Process.alive?(reader), do: Process.exit(reader, :kill)
-      if Process.alive?(pid), do: DynamicSupervisor.terminate_child(Runespell.Sessions, pid)
+      if Process.alive?(pid), do: DynamicSupervisor.terminate_child(Ipse.Sessions, pid)
       Process.demonitor(ref, [:flush])
       result
     else
@@ -214,18 +212,18 @@ defmodule Runespell.CLI do
     receive do
       {:input, :eof} ->
         if s.busy do
-          if s.approval, do: Runespell.Session.approve(s.pid, s.approval, false)
+          if s.approval, do: Ipse.Session.approve(s.pid, s.approval, false)
           client_loop(%{s | exit: true, approval: nil})
         else
           0
         end
 
       {:input, "/exit"} ->
-        Runespell.Session.cancel(s.pid)
+        Ipse.Session.cancel(s.pid)
         0
 
       {:input, "/cancel"} ->
-        Runespell.Session.cancel(s.pid)
+        Ipse.Session.cancel(s.pid)
         client_loop(%{s | approval: nil, queued: []})
 
       {:input, "/help"} ->
@@ -237,14 +235,14 @@ defmodule Runespell.CLI do
         client_loop(s)
 
       {:input, "/session"} ->
-        IO.puts(inspect(Runespell.Session.info(s.pid)))
+        IO.puts(inspect(Ipse.Session.info(s.pid)))
         client_loop(s)
 
       {:input, ""} ->
         client_loop(s)
 
       {:input, text} when s.approval != nil ->
-        Runespell.Session.approve(s.pid, s.approval, String.downcase(text) in ["y", "yes"])
+        Ipse.Session.approve(s.pid, s.approval, String.downcase(text) in ["y", "yes"])
         client_loop(%{s | approval: nil})
 
       {:input, text} when s.busy ->
@@ -252,32 +250,32 @@ defmodule Runespell.CLI do
         client_loop(%{s | queued: s.queued ++ [text]})
 
       {:input, text} ->
-        Runespell.Session.prompt(s.pid, text)
+        Ipse.Session.prompt(s.pid, text)
         client_loop(%{s | busy: true})
 
-      {:runespell, ^pid, {:text, delta}} ->
+      {:ipse, ^pid, {:text, delta}} ->
         IO.write(delta)
         client_loop(s)
 
-      {:runespell, ^pid, {:tool_output, delta}} ->
+      {:ipse, ^pid, {:tool_output, delta}} ->
         IO.write(:stderr, delta)
         client_loop(s)
 
-      {:runespell, ^pid, {:tool, name, args}} ->
+      {:ipse, ^pid, {:tool, name, args}} ->
         IO.puts(:stderr, "\n→ #{name} #{preview(args)}")
         client_loop(s)
 
-      {:runespell, ^pid, {:tool_result, name, text}} ->
+      {:ipse, ^pid, {:tool_result, name, text}} ->
         IO.puts(:stderr, "← #{name}: #{String.slice(text, 0, 800)}")
         client_loop(s)
 
-      {:runespell, ^pid, {:skill, name}} ->
+      {:ipse, ^pid, {:skill, name}} ->
         IO.puts(:stderr, "Skill: #{name}")
         client_loop(s)
 
-      {:runespell, ^pid, {:approval, ref, name, args}} ->
+      {:ipse, ^pid, {:approval, ref, name, args}} ->
         if s.exit do
-          Runespell.Session.approve(s.pid, ref, false)
+          Ipse.Session.approve(s.pid, ref, false)
           client_loop(s)
         else
           IO.puts(
@@ -288,11 +286,11 @@ defmodule Runespell.CLI do
           client_loop(%{s | approval: ref})
         end
 
-      {:runespell, ^pid, {:error, error}} ->
+      {:ipse, ^pid, {:error, error}} ->
         IO.puts(:stderr, "\nError: #{error}")
         client_loop(s)
 
-      {:runespell, ^pid, {:done, status}} ->
+      {:ipse, ^pid, {:done, status}} ->
         IO.puts("")
 
         cond do
@@ -301,14 +299,14 @@ defmodule Runespell.CLI do
 
           s.queued != [] ->
             [next | rest] = s.queued
-            Runespell.Session.prompt(s.pid, next)
+            Ipse.Session.prompt(s.pid, next)
             client_loop(%{s | busy: true, approval: nil, queued: rest})
 
           true ->
             client_loop(%{s | busy: false, approval: nil})
         end
 
-      {:runespell, _, _} ->
+      {:ipse, _, _} ->
         client_loop(s)
 
       {:DOWN, ref, _, _, _reason} when ref == s.ref ->
@@ -322,7 +320,7 @@ defmodule Runespell.CLI do
   end
 
   defp config(opts, interactive) do
-    name = opts[:provider] || System.get_env("RUNESPELL_PROVIDER") || "chatgpt"
+    name = opts[:provider] || System.get_env("IPSE_PROVIDER") || "chatgpt"
 
     provider =
       %{
@@ -334,7 +332,7 @@ defmodule Runespell.CLI do
       }[name]
 
     model =
-      opts[:model] || System.get_env("RUNESPELL_MODEL") ||
+      opts[:model] || System.get_env("IPSE_MODEL") ||
         %{
           chatgpt: "gpt-6.1-sol",
           openai: "gpt-6.1-sol",
@@ -368,7 +366,7 @@ defmodule Runespell.CLI do
     end
   end
 
-  defp credential(:chatgpt), do: Runespell.Auth.token(auth_dir())
+  defp credential(:chatgpt), do: Ipse.Auth.token(auth_dir())
   defp credential(:openai), do: env_key("OPENAI_API_KEY")
   defp credential(:anthropic), do: env_key("ANTHROPIC_API_KEY")
   defp credential(_), do: {:ok, nil}
@@ -383,7 +381,7 @@ defmodule Runespell.CLI do
   defp resume_options(opts) do
     if opts[:resume] do
       with {:ok, [%{"metadata" => meta} | _]} <-
-             Runespell.Journal.load(state_dir(opts), opts[:resume]) do
+             Ipse.Journal.load(state_dir(opts), opts[:resume]) do
         {:ok,
          opts
          |> Keyword.put_new(:cwd, meta["cwd"])
@@ -399,9 +397,9 @@ defmodule Runespell.CLI do
 
   defp state_dir(opts), do: opts[:state_dir] || Path.join(home(), "sessions")
   defp auth_dir, do: Path.join(home(), "auth")
-  defp default_cwd, do: System.get_env("RUNESPELL_WORKSPACE") || File.cwd!()
-  defp home, do: System.get_env("RUNESPELL_HOME") || Path.expand("~/.runespell")
-  defp print_skills(cwd), do: IO.puts(Runespell.Skills.catalog(Runespell.Skills.discover(cwd)))
+  defp default_cwd, do: System.get_env("IPSE_WORKSPACE") || File.cwd!()
+  defp home, do: System.get_env("IPSE_HOME") || Path.expand("~/.ipse")
+  defp print_skills(cwd), do: IO.puts(Ipse.Skills.catalog(Ipse.Skills.discover(cwd)))
   defp preview(args), do: args |> Jason.encode!() |> String.slice(0, 600)
   defp report(:ok), do: 0
 

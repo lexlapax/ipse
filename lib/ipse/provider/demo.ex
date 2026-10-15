@@ -1,4 +1,4 @@
-defmodule Runespell.Provider.Demo do
+defmodule Ipse.Provider.Demo do
   @moduledoc "Deterministic fixture provider; never represents itself as a real model."
 
   def complete(_config, messages, _tools, emit) do
@@ -13,19 +13,19 @@ defmodule Runespell.Provider.Demo do
 
       1 ->
         call("demo-write", "write", %{
-          "path" => "runespell-demo.txt",
-          "content" => "Hello from Runespell!\n"
+          "path" => "ipse-demo.txt",
+          "content" => "Hello from Ipse!\n"
         })
 
       2 ->
-        call("demo-read", "read", %{"path" => "runespell-demo.txt"})
+        call("demo-read", "read", %{"path" => "ipse-demo.txt"})
 
       3 ->
         call("demo-shell", "shell", %{"command" => "printf 'Runner works\\n'"})
 
       _ ->
         text =
-          "Demo finished. I requested a skill, wrote and read runespell-demo.txt, and ran a command. Inspect the tool results for approvals or failures. This is a scripted demo, not an AI response."
+          "Demo finished. I requested a skill, wrote and read ipse-demo.txt, and ran a command. Inspect the tool results for approvals or failures. This is a scripted demo, not an AI response."
 
         emit.({:text, text})
         {:ok, %{"role" => "assistant", "content" => text}, %{}}

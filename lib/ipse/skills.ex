@@ -1,11 +1,11 @@
-defmodule Runespell.Skills do
-  @moduledoc "Discovers and loads local Runespell skill documents."
+defmodule Ipse.Skills do
+  @moduledoc "Discovers and loads local Ipse skill documents."
 
   @max_skill_bytes 64 * 1024
 
   @doc "Find project, user, and bundled skills, keeping the highest priority copy."
   def discover(cwd, user_dir \\ nil) do
-    home = System.get_env("RUNESPELL_HOME") || Path.expand("~/.runespell")
+    home = System.get_env("IPSE_HOME") || Path.expand("~/.ipse")
     user_dir = user_dir || Path.join(Path.expand(home), "skills")
 
     [
@@ -63,7 +63,7 @@ defmodule Runespell.Skills do
   end
 
   defp bundled_dir do
-    case :code.priv_dir(:runespell) do
+    case :code.priv_dir(:ipse) do
       path when is_list(path) -> Path.join(List.to_string(path), "skills")
       _ -> Path.expand("../../priv/skills", __DIR__)
     end

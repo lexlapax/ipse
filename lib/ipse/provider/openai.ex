@@ -1,12 +1,12 @@
-defmodule Runespell.Provider.OpenAI do
+defmodule Ipse.Provider.OpenAI do
   @moduledoc "Stateless Responses API adapter; retains native reasoning and function call items."
-  alias Runespell.Provider.{HTTP, SSE}
+  alias Ipse.Provider.{HTTP, SSE}
 
   def complete(config, messages, tools, emit) do
     if config[:api_key] in [nil, ""] do
       {:error, "OpenAI credentials are missing. Sign in or configure an API key."}
     else
-      url = Runespell.Provider.endpoint(config, "https://api.openai.com/v1", "/responses")
+      url = Ipse.Provider.endpoint(config, "https://api.openai.com/v1", "/responses")
 
       headers = [
         {"authorization", "Bearer " <> config[:api_key]},

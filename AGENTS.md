@@ -1,4 +1,4 @@
-# Working on Runespell
+# Working on Ipse
 
 This is the repository handoff for Codex CLI and other coding agents. Read it
 before changing code, then read the relevant implementation and tests. These
@@ -6,12 +6,12 @@ instructions apply throughout this repository.
 
 ## Product and scope
 
-Runespell is an MIT-licensed, local coding agent. Keep the agent loop, provider
+Ipse is an MIT-licensed, local coding agent. Keep the agent loop, provider
 adapters, skills, approvals, persistence, and orchestration in Elixir/OTP. Rust
 is for small OS helpers. Do not add JavaScript or Python runtime dependencies.
 Prefer ordinary modules, processes, and messages over a workflow framework.
-The project name is **Runespell**, executable/application `runespell`, Elixir
-namespace `Runespell`, environment prefix `RUNESPELL_`.
+The project name is **Ipse**, executable/application `ipse`, Elixir
+namespace `Ipse`, environment prefix `IPSE_`.
 
 Provider priority is ChatGPT subscription, OpenAI API, local Ollama, then
 Anthropic API. Never switch providers or billing modes silently. Keep a
@@ -24,6 +24,7 @@ improvements rather than turning the plan into a mandatory execution pipeline.
 - [docs/arch-linux.md](docs/arch-linux.md): Arch setup and local Codex workflow.
 - [docs/plan.md](docs/plan.md): priorities and acceptance criteria.
 - [docs/architecture.md](docs/architecture.md): ownership and trust boundaries.
+- [docs/naming.md](docs/naming.md): name, sources, and the Hofstadter connection.
 - [docs/testing.md](docs/testing.md): verification and unverified integrations.
 
 Treat the plan as direction, not authorization to implement every milestone.
@@ -40,7 +41,7 @@ Run from the repository root after installing the toolchain:
 mix format --check-formatted
 mix compile --warnings-as-errors
 mix test
-./bin/runespell demo
+./bin/ipse demo
 ```
 
 Use `mix format` after Elixir edits and focused tests while iterating. The full
@@ -56,14 +57,14 @@ are needed for tests or the demo.
 
 | Area | Location |
 | --- | --- |
-| Application supervision | `lib/runespell/application.ex` |
-| Session state, turn loop, approval, cancellation | `lib/runespell/session.ex` |
-| Terminal client and option parsing | `lib/runespell/cli.ex` |
-| Provider selection and wire formats | `lib/runespell/provider.ex`, `lib/runespell/provider/` |
-| Authentication and protected storage | `lib/runespell/auth.ex`, `lib/runespell/auth/` |
-| Context, skills, JSONL persistence | `lib/runespell/context.ex`, `skills.ex`, `journal.ex` |
-| File tools and native Port protocol | `lib/runespell/tools.ex`, `runner.ex` |
-| Unix process groups and advisory locks | `native/runespell-runner.rs` |
+| Application supervision | `lib/ipse/application.ex` |
+| Session state, turn loop, approval, cancellation | `lib/ipse/session.ex` |
+| Terminal client and option parsing | `lib/ipse/cli.ex` |
+| Provider selection and wire formats | `lib/ipse/provider.ex`, `lib/ipse/provider/` |
+| Authentication and protected storage | `lib/ipse/auth.ex`, `lib/ipse/auth/` |
+| Context, skills, JSONL persistence | `lib/ipse/context.ex`, `skills.ex`, `journal.ex` |
+| File tools and native Port protocol | `lib/ipse/tools.ex`, `runner.ex` |
+| Unix process groups and advisory locks | `native/ipse-runner.rs` |
 | Bundled skill instructions | `priv/skills/` |
 | Behavior and local protocol fixtures | `test/` |
 

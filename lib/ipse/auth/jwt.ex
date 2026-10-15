@@ -1,4 +1,4 @@
-defmodule Runespell.Auth.JWT do
+defmodule Ipse.Auth.JWT do
   @moduledoc false
   @issuer "https://auth.openai.com"
 

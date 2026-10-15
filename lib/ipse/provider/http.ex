@@ -1,4 +1,4 @@
-defmodule Runespell.Provider.HTTP do
+defmodule Ipse.Provider.HTTP do
   @moduledoc false
 
   def stream(url, headers, payload, config, state, consume) do
@@ -9,7 +9,7 @@ defmodule Runespell.Provider.HTTP do
     if uri.scheme not in ["http", "https"] or is_nil(uri.host) or uri.userinfo do
       {:error, "Invalid provider URL."}
     else
-      with {:ok, profile} <- :inets.start(:httpc, [profile: :runespell_provider], :stand_alone) do
+      with {:ok, profile} <- :inets.start(:httpc, [profile: :ipse_provider], :stand_alone) do
         owner = self()
 
         # A killed streaming worker cannot run its after block. The guardian

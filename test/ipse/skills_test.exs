@@ -1,10 +1,10 @@
-defmodule Runespell.SkillsTest do
+defmodule Ipse.SkillsTest do
   use ExUnit.Case, async: true
 
-  alias Runespell.Skills
+  alias Ipse.Skills
 
   setup do
-    root = Path.join(System.tmp_dir!(), "runespell-skills-#{System.unique_integer([:positive])}")
+    root = Path.join(System.tmp_dir!(), "ipse-skills-#{System.unique_integer([:positive])}")
     project = Path.join(root, "project")
     user = Path.join(root, "user")
     File.mkdir_p!(Path.join(project, ".agents/skills/review"))

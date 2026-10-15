@@ -1,4 +1,4 @@
-defmodule Runespell.Runner do
+defmodule Ipse.Runner do
   @moduledoc """
   Streams trusted local shell commands through the Unix Rust supervisor.
 
@@ -198,8 +198,8 @@ defmodule Runespell.Runner do
   end
 
   defp helper_path do
-    configured = System.get_env("RUNESPELL_RUNNER_PATH")
-    paths = [configured, app_helper(), Path.join(@root, "priv/runespell-runner")]
+    configured = System.get_env("IPSE_RUNNER_PATH")
+    paths = [configured, app_helper(), Path.join(@root, "priv/ipse-runner")]
 
     case Enum.find(paths, &(is_binary(&1) and File.regular?(&1))) do
       nil -> build_helper()
@@ -208,19 +208,19 @@ defmodule Runespell.Runner do
   end
 
   defp app_helper do
-    case :code.priv_dir(:runespell) do
-      path when is_list(path) -> Path.join(List.to_string(path), "runespell-runner")
+    case :code.priv_dir(:ipse) do
+      path when is_list(path) -> Path.join(List.to_string(path), "ipse-runner")
       _ -> nil
     end
   end
 
   defp build_helper do
-    source = Path.join(@root, "native/runespell-runner.rs")
+    source = Path.join(@root, "native/ipse-runner.rs")
     rustc = System.find_executable("rustc")
 
     if rustc && File.regular?(source) do
       :global.trans({{__MODULE__, :build}, self()}, fn ->
-        target = Path.join(@root, "priv/runespell-runner")
+        target = Path.join(@root, "priv/ipse-runner")
 
         if File.regular?(target) do
           {:ok, target}

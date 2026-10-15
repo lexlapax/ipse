@@ -1,6 +1,6 @@
 # Third-party notices
 
-Runespell's own source is MIT licensed. No Loopex or rs-llmspell source was copied
+Ipse's own source is MIT licensed. No Loopex or rs-llmspell source was copied
 into this prototype. Those projects informed the design.
 
 The source build fetches [Jason](https://github.com/michalmuskala/jason), Copyright

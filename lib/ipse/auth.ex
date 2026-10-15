@@ -1,6 +1,6 @@
-defmodule Runespell.Auth do
+defmodule Ipse.Auth do
   @moduledoc """
-  Sign in with ChatGPT for an open-source, locally hosted Runespell instance.
+  Sign in with ChatGPT for an open-source, locally hosted Ipse instance.
 
   This version retains one selected ChatGPT registration. Reauthorization must
   match its verified account identity; logout retains the registration and host.
@@ -8,7 +8,7 @@ defmodule Runespell.Auth do
   Protocol: https://developers.openai.com/siwc/token-sharing-open-source/sign-in
   Sessions: https://developers.openai.com/siwc/token-sharing-open-source/profiles-and-sessions
   """
-  alias Runespell.Auth.{HTTP, JWT, Store}
+  alias Ipse.Auth.{HTTP, JWT, Store}
   @issuer "https://auth.openai.com"
   @resource "https://api.openai.com/v1"
   @token_endpoint @issuer <> "/api/accounts/oauth/token"
@@ -151,7 +151,7 @@ defmodule Runespell.Auth do
 
             _ ->
               {:error,
-               "Signed out locally; remote revocation could not be confirmed. Disconnect Runespell in ChatGPT Settings to end remote access."}
+               "Signed out locally; remote revocation could not be confirmed. Disconnect Ipse in ChatGPT Settings to end remote access."}
           end
         end
       end
@@ -165,7 +165,7 @@ defmodule Runespell.Auth do
          record["client_id"] != "dynamic_agent_client" and nonempty?(record["subject"]) do
       :ok
     else
-      {:error, "No ChatGPT session. Run `runespell login`."}
+      {:error, "No ChatGPT session. Run `ipse login`."}
     end
   end
 
@@ -194,7 +194,7 @@ defmodule Runespell.Auth do
         {:ok, next["access_token"]}
       end
     else
-      {:error, "ChatGPT session cannot refresh. Run `runespell login`."}
+      {:error, "ChatGPT session cannot refresh. Run `ipse login`."}
     end
   end
 
@@ -337,7 +337,7 @@ defmodule Runespell.Auth do
     }
 
     params =
-      if pending.client_id, do: params, else: Map.put(params, "agent_name_hint", "Runespell")
+      if pending.client_id, do: params, else: Map.put(params, "agent_name_hint", "Ipse")
 
     params =
       if nonempty?(existing["email"]),
@@ -386,11 +386,11 @@ defmodule Runespell.Auth do
           respond(
             socket,
             200,
-            "Authorization received. Return to Runespell; it will validate your account."
+            "Authorization received. Return to Ipse; it will validate your account."
           )
 
         _ ->
-          respond(socket, 400, "Authorization was declined or invalid. Return to Runespell.")
+          respond(socket, 400, "Authorization was declined or invalid. Return to Ipse.")
       end
 
       result

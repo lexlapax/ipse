@@ -1,4 +1,4 @@
-# Runespell
+# Ipse
 
 An Elixir-native coding agent with local skills, resumable conversations, and
 a small Rust process supervisor. MIT licensed. No JavaScript or Python runtime.
@@ -9,6 +9,10 @@ shell process groups and advisory file locks. This is an independent implementat
 informed by lessons from [Loopex](https://github.com/lexlapax/loopex) and
 [rs-llmspell](https://github.com/lexlapax/rs-llmspell).
 
+The name comes from Latin *ipse* (the emphatic “self”), inspired by Douglas
+Hofstadter's *I Am a Strange Loop*. See [why Ipse](docs/naming.md) for the
+sources and the connection to continuity and feedback.
+
 ## Build and try it
 
 Source prerequisites: Elixir 1.18+ on Erlang/OTP 27+, Rust 1.85+, a C linker, and
@@ -16,33 +20,33 @@ Git. Linux and macOS are targeted; Linux is tested in the development environmen
 No Cargo packages are required. Jason is pinned to a Git tag and commit in mix.lock.
 
 ```sh
-git clone https://github.com/lexlapax/runespell.git
-cd runespell
+git clone https://github.com/lexlapax/ipse.git
+cd ipse
 mix local.hex --force
 ./scripts/build.sh
-./bin/runespell demo
+./bin/ipse demo
 ```
 
 If you received a source archive, extract it and start at `./scripts/build.sh`.
 The demo needs no credentials. It loads the review skill, creates and reads
-`runespell-demo.txt` in a new temporary directory, and runs `printf`. It is a
+`ipse-demo.txt` in a new temporary directory, and runs `printf`. It is a
 deterministic fixture, **not a model**. The printed session ID can be resumed.
 
-For a bundled platform release, extract the archive and run `./runespell demo`.
+For a bundled platform release, extract the archive and run `./ipse demo`.
 It includes Erlang, Elixir application code, and the native helper; no toolchain is
 needed. Match the OS/architecture and libc requirements in the release filename.
 
 ## 1. ChatGPT subscription
 
 ```sh
-./bin/runespell login
-./bin/runespell chat --cwd /path/to/your/repository
+./bin/ipse login
+./bin/ipse chat --cwd /path/to/your/repository
 ```
 
 Open the printed **Continue with ChatGPT** URL in a browser on the same machine.
-Authorize Runespell and ChatGPT plan usage. The app listens on a temporary
+Authorize Ipse and ChatGPT plan usage. The app listens on a temporary
 `127.0.0.1` callback port. On a remote machine, use a browser/port-forward arrangement
-that reaches that loopback listener, or run Runespell locally.
+that reaches that loopback listener, or run Ipse locally.
 
 This uses OpenAI's documented [Sign in with ChatGPT for open-source apps](https://developers.openai.com/siwc/token-sharing-open-source),
 with dynamic registration, PKCE, state/nonce checking, signed ID-token validation,
@@ -53,7 +57,7 @@ private ChatGPT backend endpoints.
 The default OpenAI model is `gpt-6.1-sol`; use `--model NAME` for a model available
 to your account. Plan eligibility, model access, and usage limits apply. Provider
 failures never silently switch to paid API billing. This preview retains one
-selected account registration. `runespell status` shows it; `runespell logout`
+selected account registration. `ipse status` shows it; `ipse logout`
 revokes the renewable session where possible and clears local tokens.
 
 The complete live browser sign-in and paid inference need your account to verify.
@@ -65,8 +69,8 @@ using local fixtures, not a live subscription.
 Set `OPENAI_API_KEY` through your normal secret-management method, then:
 
 ```sh
-./bin/runespell chat --provider openai --cwd /path/to/repo
-./bin/runespell run --provider openai --yes 'Fix the failing test and run it'
+./bin/ipse chat --provider openai --cwd /path/to/repo
+./bin/ipse run --provider openai --yes 'Fix the failing test and run it'
 ```
 
 API requests use API billing, separately from your ChatGPT subscription.
@@ -77,7 +81,7 @@ Start Ollama and pull a model that supports tool calls, for example:
 
 ```sh
 ollama pull qwen3:8b
-./bin/runespell chat --provider ollama --model qwen3:8b
+./bin/ipse chat --provider ollama --model qwen3:8b
 ```
 
 Uses `http://localhost:11434/api/chat`. Override its root with
@@ -89,7 +93,7 @@ model and local hardware.
 Set `ANTHROPIC_API_KEY`, then:
 
 ```sh
-./bin/runespell chat --provider anthropic --model claude-sonnet-4-5
+./bin/ipse chat --provider anthropic --model claude-sonnet-4-5
 ```
 
 ## Working with the agent
@@ -120,9 +124,9 @@ New messages entered during a turn are queued for the next turn. `/cancel` inter
 the current turn. The UI is a line-oriented terminal client, not a full-screen TUI.
 
 ```sh
-./bin/runespell sessions
-./bin/runespell chat --resume SESSION_ID
-./bin/runespell run --resume SESSION_ID --yes 'Continue and check the result'
+./bin/ipse sessions
+./bin/ipse chat --resume SESSION_ID
+./bin/ipse run --resume SESSION_ID --yes 'Continue and check the result'
 ```
 
 Resume keeps the original workspace, provider, and model. It reconstructs history
@@ -133,7 +137,7 @@ session lock. Full transcripts remain on disk, including tool output.
 ## Skills
 
 Put local skills under `.agents/skills/<name>/SKILL.md` or
-`~/.runespell/skills/<name>/SKILL.md`. Project definitions override user and bundled
+`~/.ipse/skills/<name>/SKILL.md`. Project definitions override user and bundled
 definitions with the same name. `review` is bundled as an example.
 
 ```markdown
@@ -162,7 +166,7 @@ or lost parent connection and provides cross-process session locks. Independent
 sessions can run concurrently; tools within a turn execute sequentially.
 
 Credentials are stored separately from journals in owner-only files. Default
-application data is under `~/.runespell`; override with `RUNESPELL_HOME`.
+application data is under `~/.ipse`; override with `IPSE_HOME`.
 Use `--state-dir` to override only journal storage. Session events contain no
 injected provider credentials, but user prompts and tool output may contain secrets
 and are retained locally. Native continuation/reasoning data is preserved when
@@ -173,7 +177,7 @@ shell output, and a conservative conversation byte ceiling. **Automatic compacti
 full-screen TUI, MCP, subagents, OS sandboxing, Windows, and remote execution are
 not implemented.** The context ceiling stops with an actionable message rather
 than silently dropping history. Skills with scripts requiring Node/Python do not
-make those runtimes dependencies of Runespell.
+make those runtimes dependencies of Ipse.
 
 ## Development
 
@@ -187,7 +191,7 @@ describe the next work and current limits.
 mix format --check-formatted
 mix compile --warnings-as-errors
 mix test
-./bin/runespell demo
+./bin/ipse demo
 ./scripts/package.sh
 ```
 

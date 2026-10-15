@@ -1,6 +1,6 @@
-defmodule Runespell.Provider.SSETest do
+defmodule Ipse.Provider.SSETest do
   use ExUnit.Case, async: true
-  alias Runespell.Provider.SSE
+  alias Ipse.Provider.SSE
 
   test "arbitrary byte boundaries preserve UTF-8, CRLF, comments and multiline data" do
     wire = ": ping\r\nevent: message\r\ndata: héllo\r\ndata: second\r\n\r\ndata: last\n\n"

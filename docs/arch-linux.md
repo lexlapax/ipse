@@ -1,8 +1,8 @@
-# Arch Linux: run and develop Runespell
+# Arch Linux: run and develop Ipse
 
-Runespell is developed with Elixir/OTP and a small Rust helper. Codex CLI is a
-development tool you can use in the checkout; it is not a Runespell dependency.
-Runespell's ChatGPT login is separate from your Codex login.
+Ipse is developed with Elixir/OTP and a small Rust helper. Codex CLI is a
+development tool you can use in the checkout; it is not a Ipse dependency.
+Ipse's ChatGPT login is separate from your Codex login.
 
 ## Install the toolchain
 
@@ -22,20 +22,20 @@ See [Arch's Elixir guide](https://wiki.archlinux.org/title/Elixir) and the
 [Erlang](https://archlinux.org/packages/extra/x86_64/erlang/) packages.
 
 ```sh
-git clone https://github.com/lexlapax/runespell.git
-cd runespell
+git clone https://github.com/lexlapax/ipse.git
+cd ipse
 mix local.hex --force
 ./scripts/build.sh
 mix format --check-formatted
 mix compile --warnings-as-errors
 mix test
-./bin/runespell demo
+./bin/ipse demo
 ```
 
 Hex bootstraps Mix dependency handling; the sole direct dependency, Jason,
 is fetched from its pinned Git revision. Rust uses only the standard library.
-Do not run Mix or Runespell with sudo. The demo is scripted, requires no account,
-and prints a session ID and temporary workspace. It writes `runespell-demo.txt`,
+Do not run Mix or Ipse with sudo. The demo is scripted, requires no account,
+and prints a session ID and temporary workspace. It writes `ipse-demo.txt`,
 reads it back, and runs a short shell command.
 
 ## Continue development with Codex CLI
@@ -67,8 +67,8 @@ No project-specific Codex config is required.
 ## Use your ChatGPT subscription first
 
 ```sh
-./bin/runespell login
-./bin/runespell status
+./bin/ipse login
+./bin/ipse status
 ```
 
 Open the printed URL in a browser on this same machine and complete consent.
@@ -79,15 +79,15 @@ cannot establish them. There is no silent fallback to API billing.
 Try a real turn in a scratch workspace, reviewing proposed mutations:
 
 ```sh
-RUNESPELL_TRY_DIR=$(mktemp -d)
-./bin/runespell chat --cwd "$RUNESPELL_TRY_DIR"
+IPSE_TRY_DIR=$(mktemp -d)
+./bin/ipse chat --cwd "$IPSE_TRY_DIR"
 ```
 
 Ask: `Create hello.exs that prints hello, run it, and summarize the result.`
 Approve the file and shell calls if they match your request. The default model
 is `gpt-6.1-sol`; use `--model NAME` for one available to your account. Shell
 execution has your OS permissions; it is not sandboxed. `/cancel` stops active
-work and `/exit` leaves. Use `./bin/runespell logout` to clear the saved login.
+work and `/exit` leaves. Use `./bin/ipse logout` to clear the saved login.
 
 ## Other providers and state
 
@@ -96,19 +96,19 @@ local Ollama service, or `--provider anthropic` with `ANTHROPIC_API_KEY`.
 See the [README](../README.md) for commands. Supply secrets through your normal
 secret manager; never put them in tracked files or a Codex prompt.
 
-Data defaults to `~/.runespell`. `RUNESPELL_HOME` changes the whole application
+Data defaults to `~/.ipse`. `IPSE_HOME` changes the whole application
 home; `--state-dir` changes journals only. Keep the same home when resuming:
 
 ```sh
-./bin/runespell sessions
-./bin/runespell chat --resume SESSION_ID
-./bin/runespell skills --cwd /path/to/project
+./bin/ipse sessions
+./bin/ipse chat --resume SESSION_ID
+./bin/ipse skills --cwd /path/to/project
 ```
 
 For an isolated smoke test that cannot touch your account's saved login:
 
 ```sh
-RUNESPELL_HOME=$(mktemp -d) ./bin/runespell demo
+IPSE_HOME=$(mktemp -d) ./bin/ipse demo
 ```
 
 ## Troubleshooting and packaging
@@ -118,14 +118,14 @@ RUNESPELL_HOME=$(mktemp -d) ./bin/runespell demo
 - `:eperm` while Mix starts or tests bind sockets: check sandbox permissions.
 - Provider rejects a model: select an available model explicitly; check your
   account's plan and limits. Do not change to API billing unintentionally.
-- Session already open: close its other Runespell process. Do not delete the
+- Session already open: close its other Ipse process. Do not delete the
   lock file; OS locks release when their process exits.
 - Inspect errors locally; redact credentials and transcript content before
-  sharing logs. Never share `~/.runespell/auth/`.
+  sharing logs. Never share `~/.ipse/auth/`.
 
 `./scripts/package.sh` builds a release for the current machine. Extract its
-archive elsewhere and run `./runespell demo`. The bundled runtime still depends
+archive elsewhere and run `./ipse demo`. The bundled runtime still depends
 on compatible OS libraries; an archive built on another Linux distribution is
 not universally portable. Building from source is the first Arch validation path.
-When distributing a release, set `RUNESPELL_NOTICES_DIR` to a directory containing
+When distributing a release, set `IPSE_NOTICES_DIR` to a directory containing
 the bundled toolchain's license notices; the packager copies these into `licenses/`.

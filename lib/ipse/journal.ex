@@ -1,5 +1,5 @@
-defmodule Runespell.Journal do
-  @moduledoc "Durable JSONL event journals for Runespell sessions."
+defmodule Ipse.Journal do
+  @moduledoc "Durable JSONL event journals for Ipse sessions."
 
   @id_re ~r/\A[0-9a-f]{32}\z/
 

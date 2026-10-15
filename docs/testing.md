@@ -7,7 +7,7 @@
 mix format --check-formatted
 mix compile --warnings-as-errors
 mix test
-RUNESPELL_HOME=$(mktemp -d) ./bin/runespell demo
+IPSE_HOME=$(mktemp -d) ./bin/ipse demo
 ```
 
 Use focused tests during changes, then run the suite for a runtime handoff.
@@ -20,8 +20,8 @@ compiled only for the test environment.
 
 The demo is deterministic and does not call a model. It checks that the CLI,
 session loop, skill loading, file tools, and native command helper work together.
-Use its printed ID with `./bin/runespell chat --resume SESSION_ID` under the
-same `RUNESPELL_HOME`; `/session` should show the session without replaying tools.
+Use its printed ID with `./bin/ipse chat --resume SESSION_ID` under the
+same `IPSE_HOME`; `/session` should show the session without replaying tools.
 
 ## Release check
 
@@ -29,8 +29,8 @@ same `RUNESPELL_HOME`; `/session` should show the session without replaying tool
 ./scripts/package.sh
 ```
 
-Extract the printed archive into an empty directory. Run `./runespell --help`
-and `RUNESPELL_HOME=$(mktemp -d) ./runespell demo` there. Do not rely on a source
+Extract the printed archive into an empty directory. Run `./ipse --help`
+and `IPSE_HOME=$(mktemp -d) ./ipse demo` there. Do not rely on a source
 checkout's `priv/` directory or build artifacts. Record OS, architecture, libc,
 Elixir/OTP, and Rust versions with results. A release includes ERTS and the
 native helper, but needs compatible system libraries.

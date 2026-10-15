@@ -1,7 +1,7 @@
-defmodule Runespell.AuthTest do
+defmodule Ipse.AuthTest do
   use ExUnit.Case, async: false
-  alias Runespell.Auth
-  alias Runespell.Auth.{HTTP, JWT, Store}
+  alias Ipse.Auth
+  alias Ipse.Auth.{HTTP, JWT, Store}
 
   setup_all do
     private = :public_key.generate_key({:rsa, 2048, 65_537})
@@ -19,7 +19,7 @@ defmodule Runespell.AuthTest do
   end
 
   setup do
-    dir = Path.join(System.tmp_dir!(), "runespell-auth-#{System.unique_integer([:positive])}")
+    dir = Path.join(System.tmp_dir!(), "ipse-auth-#{System.unique_integer([:positive])}")
     on_exit(fn -> File.rm_rf!(dir) end)
     %{dir: dir}
   end
@@ -65,7 +65,7 @@ defmodule Runespell.AuthTest do
       [_, url | _] = String.split(message, "\n")
       params = URI.parse(url).query |> URI.decode_query()
       assert params["client_id"] == "dynamic_agent_client"
-      assert params["agent_name_hint"] == "Runespell"
+      assert params["agent_name_hint"] == "Ipse"
       assert params["code_challenge_method"] == "S256"
       assert params["resource"] == "https://api.openai.com/v1"
 
@@ -119,8 +119,8 @@ defmodule Runespell.AuthTest do
     # flock files remain in place so every process locks the same inode.
     lock_path = Path.join(ctx.dir, ".chatgpt.lock")
     assert File.regular?(lock_path)
-    assert {:ok, lock} = Runespell.Runner.lock(lock_path)
-    assert :ok = Runespell.Runner.unlock(lock)
+    assert {:ok, lock} = Ipse.Runner.lock(lock_path)
+    assert :ok = Ipse.Runner.unlock(lock)
   end
 
   test "returning login preserves host and registration and rejects replacement client", ctx do

@@ -74,12 +74,12 @@ fn lock_file(path: &str) -> Result<(), String> {
 fn run() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
     if args.len() == 3 && args[1] == "--lock" { return lock_file(&args[2]); }
-    if args.len() != 4 { return Err("usage: runespell-runner CWD TIMEOUT_MS COMMAND".into()); }
+    if args.len() != 4 { return Err("usage: ipse-runner CWD TIMEOUT_MS COMMAND".into()); }
     let timeout: u64 = args[2].parse().map_err(|_| "invalid timeout")?;
     let mut command = Command::new("/bin/sh");
     command.arg("-c").arg(&args[3]).current_dir(&args[1])
         .stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
-    for key in ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "RUNESPELL_CHATGPT_ACCESS_TOKEN"] {
+    for key in ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "IPSE_CHATGPT_ACCESS_TOKEN"] {
         command.env_remove(key);
     }
     unsafe {

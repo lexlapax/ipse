@@ -1,6 +1,6 @@
 # Development plan
 
-Runespell is an MIT-licensed local coding agent. Keep its core in Elixir/OTP,
+Ipse is an MIT-licensed local coding agent. Keep its core in Elixir/OTP,
 with Rust limited to OS helpers. There is no JavaScript or Python runtime and
 no mandatory workflow framework. Validate changes with focused tests and the
 credential-free demo.
@@ -32,7 +32,7 @@ see [testing.md](testing.md) for the recorded toolchain and outstanding checks.
 
 Acceptance: on a clean checkout, formatting, warnings-as-errors compilation,
 and `mix test` pass; `./scripts/build.sh` works without Node or Python;
-`./bin/runespell demo` runs without credentials, creates and reads its fixture,
+`./bin/ipse demo` runs without credentials, creates and reads its fixture,
 and executes the sample command. Resuming its session restores history without
 replaying tools.
 

@@ -1,9 +1,9 @@
 /_build/
 /deps/
-/runespell
+/ipse
 /native/target/
-/priv/runespell-runner
-/.runespell/
+/priv/ipse-runner
+/.ipse/
 *.ez
 *.tar.gz
 .env

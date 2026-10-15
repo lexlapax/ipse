@@ -1,6 +1,6 @@
-defmodule Runespell.Tools do
+defmodule Ipse.Tools do
   @moduledoc "Workspace file tools and trusted local shell execution."
-  alias Runespell.Runner
+  alias Ipse.Runner
   @output_limit 65_536
   @file_limit 1_048_576
   @scan_limit 8_388_608

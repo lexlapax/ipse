@@ -1,13 +1,13 @@
-defmodule Runespell.Provider.Anthropic do
+defmodule Ipse.Provider.Anthropic do
   @moduledoc "Anthropic Messages streaming adapter with native content replay."
-  alias Runespell.Provider.{HTTP, SSE}
+  alias Ipse.Provider.{HTTP, SSE}
 
   def complete(config, messages, tools, emit) do
     if config[:api_key] in [nil, ""] do
       {:error, "Anthropic API key is missing."}
     else
       body = request_body(config, messages, tools)
-      url = Runespell.Provider.endpoint(config, "https://api.anthropic.com", "/v1/messages")
+      url = Ipse.Provider.endpoint(config, "https://api.anthropic.com", "/v1/messages")
 
       headers = [
         {"x-api-key", config[:api_key]},

@@ -1,4 +1,4 @@
-defmodule Runespell.Auth.HTTP do
+defmodule Ipse.Auth.HTTP do
   @moduledoc false
 
   if Code.ensure_loaded?(Mix) and Mix.env() == :test do
@@ -29,7 +29,7 @@ defmodule Runespell.Auth.HTTP do
     uri = URI.parse(url)
 
     if uri.scheme == "https" and uri.host == "auth.openai.com" and not uri.userinfo do
-      with {:ok, profile} <- :inets.start(:httpc, [profile: :runespell_auth], :stand_alone) do
+      with {:ok, profile} <- :inets.start(:httpc, [profile: :ipse_auth], :stand_alone) do
         Process.unlink(profile)
         owner = self()
 
@@ -111,7 +111,7 @@ defmodule Runespell.Auth.HTTP do
   defp configure_proxy(profile) do
     proxy = System.get_env("HTTPS_PROXY") || System.get_env("https_proxy")
 
-    if proxy && proxy != "" && not Runespell.Provider.HTTP.bypass_proxy?("auth.openai.com") do
+    if proxy && proxy != "" && not Ipse.Provider.HTTP.bypass_proxy?("auth.openai.com") do
       uri = URI.parse(proxy)
 
       if uri.scheme == "http" and is_binary(uri.host) do

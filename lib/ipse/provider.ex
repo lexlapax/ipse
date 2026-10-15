@@ -1,12 +1,12 @@
-defmodule Runespell.Provider do
+defmodule Ipse.Provider do
   @moduledoc "Streaming model adapters. Messages and tool schemas use OpenAI chat keys."
 
   def complete(config, messages, tools, emit) when is_function(emit, 1) do
     adapter =
       case config[:provider] do
-        provider when provider in [:openai, :chatgpt] -> Runespell.Provider.OpenAI
-        :ollama -> Runespell.Provider.Ollama
-        :anthropic -> Runespell.Provider.Anthropic
+        provider when provider in [:openai, :chatgpt] -> Ipse.Provider.OpenAI
+        :ollama -> Ipse.Provider.Ollama
+        :anthropic -> Ipse.Provider.Anthropic
         _ -> nil
       end
 

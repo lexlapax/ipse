@@ -1,9 +1,9 @@
-defmodule Runespell.Provider.Ollama do
+defmodule Ipse.Provider.Ollama do
   @moduledoc "Ollama native streaming chat adapter."
-  alias Runespell.Provider.HTTP
+  alias Ipse.Provider.HTTP
 
   def complete(config, messages, tools, emit) do
-    url = Runespell.Provider.endpoint(config, "http://127.0.0.1:11434", "/api/chat")
+    url = Ipse.Provider.endpoint(config, "http://127.0.0.1:11434", "/api/chat")
 
     {messages, _} =
       Enum.map_reduce(messages, %{}, fn message, names ->

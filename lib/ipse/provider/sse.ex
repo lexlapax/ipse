@@ -1,4 +1,4 @@
-defmodule Runespell.Provider.SSE do
+defmodule Ipse.Provider.SSE do
   @moduledoc "Incremental SSE parser; chunk boundaries may split lines or UTF-8 bytes."
   defstruct buffer: "", data: [], event: nil, skip_lf: false
 

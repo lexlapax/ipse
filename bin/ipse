@@ -1,0 +1,7 @@
+#!/bin/sh
+set -eu
+IPSE_SOURCE=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+IPSE_WORKSPACE=$PWD
+export IPSE_WORKSPACE
+cd "$IPSE_SOURCE"
+exec mix run --no-start -e 'Ipse.CLI.main(System.argv())' -- "$@"

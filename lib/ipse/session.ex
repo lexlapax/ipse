@@ -1,7 +1,7 @@
-defmodule Runespell.Session do
+defmodule Ipse.Session do
   @moduledoc "One supervised owner per coding conversation. I/O runs in monitored tasks."
   use GenServer
-  alias Runespell.{Journal, Skills, Tools}
+  alias Ipse.{Journal, Skills, Tools}
 
   def start_link(opts), do: GenServer.start_link(__MODULE__, opts)
 
@@ -22,7 +22,7 @@ defmodule Runespell.Session do
 
     with true <- File.dir?(cwd),
          {:ok, id, _events} <- open(dir, id, cwd, config),
-         {:ok, _} <- Registry.register(Runespell.Registry, {dir, id}, nil),
+         {:ok, _} <- Registry.register(Ipse.Registry, {dir, id}, nil),
          {:ok, lock} <- acquire_lock(Path.join(dir, id <> ".lock"), 10),
          :ok <- Journal.repair_tail(dir, id),
          {:ok, events} <- Journal.load(dir, id) do
@@ -152,7 +152,7 @@ defmodule Runespell.Session do
   @impl true
   def terminate(_reason, s) do
     if s.task, do: Task.shutdown(s.task, :brutal_kill)
-    Runespell.Runner.unlock(s.lock)
+    Ipse.Runner.unlock(s.lock)
     :ok
   end
 
@@ -168,7 +168,7 @@ defmodule Runespell.Session do
       fail(s, "Reached the #{max}-step limit. Send another message to continue.")
     else
       messages = [
-        %{"role" => "system", "content" => Runespell.Context.system(s.cwd, s.skills)} | s.messages
+        %{"role" => "system", "content" => Ipse.Context.system(s.cwd, s.skills)} | s.messages
       ]
 
       if byte_size(Jason.encode!(messages)) > Map.get(s.config, :context_bytes, 400_000) do
@@ -184,14 +184,14 @@ defmodule Runespell.Session do
           Map.get(
             s.config,
             :provider_module,
-            if(s.config.provider == :demo, do: Runespell.Provider.Demo, else: Runespell.Provider)
+            if(s.config.provider == :demo, do: Ipse.Provider.Demo, else: Ipse.Provider)
           )
 
         task =
           owned_task(fn ->
             config =
               if s.config.provider == :chatgpt do
-                case Runespell.Auth.token(s.config.auth_dir) do
+                case Ipse.Auth.token(s.config.auth_dir) do
                   {:ok, token} -> {:ok, Map.put(s.config, :api_key, token)}
                   error -> error
                 end
@@ -308,7 +308,7 @@ defmodule Runespell.Session do
     end
   end
 
-  defp notify(s, event), do: send(s.subscriber, {:runespell, self(), event})
+  defp notify(s, event), do: send(s.subscriber, {:ipse, self(), event})
 
   defp open(dir, nil, cwd, config) do
     with {:ok, id} <-
@@ -363,7 +363,7 @@ defmodule Runespell.Session do
   defp owned_task(fun) do
     owner = self()
 
-    Task.Supervisor.async_nolink(Runespell.Tasks, fn ->
+    Task.Supervisor.async_nolink(Ipse.Tasks, fn ->
       worker = self()
 
       spawn(fn ->
@@ -387,7 +387,7 @@ defmodule Runespell.Session do
   end
 
   defp acquire_lock(path, retries) do
-    case Runespell.Runner.lock(path) do
+    case Ipse.Runner.lock(path) do
       {:ok, port} ->
         {:ok, port}
 

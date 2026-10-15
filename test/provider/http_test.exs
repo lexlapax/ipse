@@ -1,6 +1,6 @@
-defmodule Runespell.Provider.HTTPTest do
+defmodule Ipse.Provider.HTTPTest do
   use ExUnit.Case, async: false
-  alias Runespell.Provider
+  alias Ipse.Provider
 
   test "Responses API streams locally and posts canonical tools and bearer credentials" do
     output = [

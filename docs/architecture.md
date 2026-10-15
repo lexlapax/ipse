@@ -1,10 +1,13 @@
 # Architecture
 
-Runespell is an MIT-licensed, local coding agent built around Elixir and OTP.
+Ipse is an MIT-licensed, local coding agent built around Elixir and OTP.
 The core agent loop, provider adapters, tool policy, skills, authentication, and
 session journal are Elixir. A small Rust standard-library helper owns shell
 process groups and advisory session locks. There is no JavaScript or Python
 runtime dependency, and no required workflow framework.
+
+The project's name reflects continuity and feedback; its philosophical origin
+and limits are explained in [naming.md](naming.md).
 
 ## Current shape
 
@@ -27,7 +30,7 @@ CLI ──prompt / approval / cancel──> Session GenServer
                                       └── append events ──> private JSONL journal
 ```
 
-`Runespell.Provider` selects a provider adapter. Adapters stream text and
+`Ipse.Provider` selects a provider adapter. Adapters stream text and
 normalized tool calls into the session; provider-specific continuation data is
 kept where needed to resume a provider exchange. The session enforces a
 per-turn model-call limit and runs tools sequentially. It does not use a fixed
@@ -57,8 +60,8 @@ when that isolation is required.
 
 ## Persistence and recovery
 
-The default application home is `~/.runespell` and can be changed with
-`RUNESPELL_HOME`. Owner-only credential files are kept separately from session
+The default application home is `~/.ipse` and can be changed with
+`IPSE_HOME`. Owner-only credential files are kept separately from session
 journals; journals contain prompts, tool arguments, and results, so those may
 include user secrets. A state directory can be overridden with `--state-dir`.
 
@@ -85,7 +88,7 @@ or subscription usage limits.
 ## Extension guidance
 
 Keep provider-specific wire formats inside provider adapters and keep session
-state transitions in `Runespell.Session`. Put ordinary filesystem and shell
+state transitions in `Ipse.Session`. Put ordinary filesystem and shell
 operations behind the tool boundary. Add new capabilities only with clear
 permission and recovery behavior; do not imply that process supervision is an
 OS security boundary. Keep Rust limited to OS facilities that OTP cannot

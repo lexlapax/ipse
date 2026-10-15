@@ -1,10 +1,10 @@
-defmodule Runespell.RunnerTest do
+defmodule Ipse.RunnerTest do
   use ExUnit.Case, async: false
-  alias Runespell.Runner
+  alias Ipse.Runner
 
   setup do
     cwd =
-      Path.join(System.tmp_dir!(), "runespell-runner-test-#{System.unique_integer([:positive])}")
+      Path.join(System.tmp_dir!(), "ipse-runner-test-#{System.unique_integer([:positive])}")
 
     File.mkdir_p!(cwd)
     on_exit(fn -> File.rm_rf!(cwd) end)
@@ -123,7 +123,7 @@ defmodule Runespell.RunnerTest do
   end
 
   test "provider credentials do not reach the shell", %{cwd: cwd} do
-    keys = ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "RUNESPELL_CHATGPT_ACCESS_TOKEN"]
+    keys = ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "IPSE_CHATGPT_ACCESS_TOKEN"]
     previous = Map.new(keys, &{&1, System.get_env(&1)})
     Enum.each(keys, &System.put_env(&1, "must-not-leak"))
 
@@ -135,7 +135,7 @@ defmodule Runespell.RunnerTest do
 
     assert {:ok, result} =
              Runner.run(
-               "printf '%s%s%s' \"$OPENAI_API_KEY\" \"$ANTHROPIC_API_KEY\" \"$RUNESPELL_CHATGPT_ACCESS_TOKEN\"",
+               "printf '%s%s%s' \"$OPENAI_API_KEY\" \"$ANTHROPIC_API_KEY\" \"$IPSE_CHATGPT_ACCESS_TOKEN\"",
                cwd
              )
 

@@ -1,9 +1,9 @@
-defmodule Runespell.ToolsTest do
+defmodule Ipse.ToolsTest do
   use ExUnit.Case, async: true
-  alias Runespell.Tools
+  alias Ipse.Tools
 
   setup do
-    cwd = Path.join(System.tmp_dir!(), "runespell-tools-#{System.unique_integer([:positive])}")
+    cwd = Path.join(System.tmp_dir!(), "ipse-tools-#{System.unique_integer([:positive])}")
     File.mkdir_p!(cwd)
     on_exit(fn -> File.rm_rf!(cwd) end)
     %{cwd: cwd, context: %{cwd: cwd}}
