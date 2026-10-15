@@ -909,7 +909,9 @@ The extracted Arch package also passed the bundled delegation demo under a
 utility-only PATH without a development toolchain, alongside its original
 help/demo/workspace/helper/lock and MCP round-trip checks. The final runtime
 notice-complete rebuild and fresh-package verification passed. Hosted Linux/macOS
-CI is pending; local Arch checks do not establish Mac behavior.
+[CI passed Linux x86_64 and macOS 14 arm64](https://github.com/lexlapax/ipse/actions/runs/38795554992), including source,
+bundled MCP/delegation checks, and actual Mac native enforcement. Local Arch
+checks alone do not establish Mac behavior.
 
 ### Live subscription check
 

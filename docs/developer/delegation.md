@@ -1,6 +1,7 @@
 # Local delegation contract
 
-Status: P6 local implementation and Arch checks passed; hosted CI is pending.
+Status: P6 is complete within this scope. Arch source, package, and live checks
+passed; Linux/macOS hosted source/package checks also passed.
 The developer selected local subagent
 delegation with parent-controlled approvals, followed by expanded MCP in P7.
 See the [plan](../plan.md), [architecture](architecture.md), and prior

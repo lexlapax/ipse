@@ -324,7 +324,8 @@ for policy/lifetime/recovery, a bounded live subscription scratch check, support
 Linux/macOS source/package checks, reviewed operator/developer guidance, and a
 focused commit/push. The local implementation, focused fixtures, source baseline,
 and live subscription scratch check passed on Arch. Final package verification
-also passed; supported-host CI is pending; see [actual results](developer/testing.md#p6-local-delegation-2026-10-15).
+also passed, and [Linux/macOS source/package CI](https://github.com/lexlapax/ipse/actions/runs/38795554992) passed. P6 is complete
+within this scope; see [actual results](developer/testing.md#p6-local-delegation-2026-10-15).
 
 ## P7: expanded MCP capability
 
