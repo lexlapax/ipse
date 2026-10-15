@@ -124,12 +124,15 @@ After building the source checkout:
 mix run scripts/demo-mcp.exs
 ```
 
-The scripted model approves one exact scratch write using `priv/mcp-notes.exs`
-and verifies the result without contacting a model service. The demo requires
-the Elixir toolchain. Ipse does not bundle or install arbitrary server runtimes.
+A scripted model requests three calls using `priv/mcp-notes.exs`: one scratch
+write, the fixed guide resource, and a summary prompt. The host demo prints and
+approves only those exact proposals, then verifies file bytes and journaled
+results without contacting a model service. The demo requires the Elixir
+toolchain. Ipse does not bundle or install arbitrary server runtimes.
 
 P5 fixture, package, and live tool checks are recorded in the
 [verification record](../developer/testing.md#p5-local-mcp-2026-10-15). They do
 not establish P7 resource/prompt or cross-platform sandbox coverage; consult the
-current testing record for those results. See [usage](usage.md) and
+current [P7 record](../developer/testing.md#p7-expanded-local-mcp-2026-10-15)
+for those results. See [usage](usage.md) and
 [troubleshooting](troubleshooting.md).

@@ -183,7 +183,8 @@ values go only to the final server process, not the supervisor. The server gets
 private `HOME`/`TMPDIR` in native mode. Linux native stdio tests verify
 workspace writes, outside-workspace denial, network denial, and supervisor
 protection. The macOS stdio route uses the signed worker and exact entitlements;
-its platform-specific MCP enforcement still requires macOS CI verification.
+its four native stdio enforcement cases passed on macOS 14 arm64 CI. See
+[actual evidence and the unreproduced cleanup failure](../docs/developer/testing.md#p7-expanded-local-mcp-2026-10-15).
 Native launch or capability failures fail closed and do not retry in trusted
 mode. See [the sandbox policy](../docs/developer/sandbox.md) for the common
 profiles and their limits.

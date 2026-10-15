@@ -970,15 +970,19 @@ and the original credential-free demo passed. Ordinary suite: **222 passed,
 13 Mac checks excluded**. Native stdio fixtures prove workspace writes, denied
 outside/symlink/network access and process-group escape, child-only loader
 environment with a positive control, setup cancellation, owner death, and
-confirmed ordinary-descendant cleanup. Mac-tagged stdio fixtures are wired into
-hosted macOS CI; actual Mac execution of this new route remains pending.
+confirmed ordinary-descendant cleanup. Hosted macOS CI also passed the four new
+stdio enforcement cases: direct args/environment with outside-file denial,
+loader injection with a positive control, setup cancellation, and owner death
+with ordinary-descendant cleanup.
 
 `mix run scripts/demo-mcp.exs` passed three exact approved SDK-to-SDK calls:
 scratch write, fixed resource read, and prompt retrieval. This uses a scripted
 model and contacts no model service. The notice-complete Arch archive and final
 fresh-extraction verifier passed, including bundled tool/resource/prompt calls,
 delegation, fresh-home workspace behavior, and helper/lock checks with a utility-only
-PATH. Supported-host CI remains pending.
+PATH. [Supported-host CI passed Linux x86_64 and macOS 14 arm64](https://github.com/lexlapax/ipse/actions/runs/38799753085),
+including source, native Mac enforcement, bundled tool/resource/prompt and
+delegation round trips, and the independent Mac sandbox probe.
 
 The [first P7 CI run](https://github.com/lexlapax/ipse/actions/runs/38798892424)
 passed Linux source/package checks and the Mac ordinary suite. The Mac enforcement
@@ -987,7 +991,11 @@ exit cleanup fixture: stdout was retained, yet the helper's final `X` record was
 missing. Its log did not reveal which fixed error frame was sent. Added twenty
 bounded real cleanup iterations with exact status/frame diagnostics and explicit
 error-frame rejection, preserving the cleanup and completion requirements. All
-twenty iterations passed locally on Linux; Mac diagnosis/reverification is pending.
+twenty iterations passed locally on Linux. The replacement CI passed both Mac
+invocations of this stricter fixture (forty helper runs), alongside all other
+checks. The original missing completion record was not reproduced and its cause
+remains unknown; no runtime policy was relaxed or root-cause fix claimed. Fixed
+error frames still fail closed. Keep this diagnostic for future Mac load checks.
 
 ### Pinned independent interoperability
 

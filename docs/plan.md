@@ -346,5 +346,10 @@ and pinned independent Rust server interoperability passed. A separate live
 ChatGPT session passed three individually approved MCP requests and idle resume
 without replay. Added canonical schema metadata/nullable/default compatibility
 and per-server native enforcement without new runtime dependencies. Final bundled
-verification passed; supported-host CI remains pending. See
+verification and [Linux/macOS source/package CI](https://github.com/lexlapax/ipse/actions/runs/38799753085)
+passed, including actual Mac native stdio enforcement. P7 is complete within
+this local scope. An initial Mac cleanup completion failure was not reproduced
+by forty stricter CI repetitions; its unknown cause remains recorded for follow-up.
+Broader independent-server coverage and Mac load diagnostics are recommended
+before designing authenticated network transports. See
 [actual P7 results and limits](developer/testing.md#p7-expanded-local-mcp-2026-10-15).
