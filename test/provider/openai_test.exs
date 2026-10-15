@@ -105,6 +105,36 @@ defmodule Ipse.Provider.OpenAITest do
              OpenAI.consume(state, sse(%{"type" => "response.incomplete"}), fn _ -> :ok end)
   end
 
+  test "empty terminal output retains completed streamed text, tools and continuation" do
+    output = [
+      %{"type" => "reasoning", "encrypted_content" => "opaque", "summary" => []},
+      %{"type" => "message", "content" => [%{"type" => "output_text", "text" => "Ready"}]},
+      %{
+        "type" => "function_call",
+        "call_id" => "call_a",
+        "name" => "write",
+        "arguments" => "{\"path\":\"check.txt\",\"content\":\"before\\n\"}"
+      }
+    ]
+
+    events =
+      Enum.with_index(output, fn item, index ->
+        %{"type" => "response.output_item.done", "output_index" => index, "item" => item}
+      end) ++
+        [
+          %{
+            "type" => "response.completed",
+            "response" => %{"status" => "completed", "output" => []}
+          }
+        ]
+
+    {:ok, state} = OpenAI.consume(OpenAI.new(), Enum.map_join(events, &sse/1), fn _ -> :ok end)
+    assert {:ok, message, %{}} = OpenAI.finish(state)
+    assert message["content"] == "Ready"
+    assert [%{"id" => "call_a", "function" => %{"name" => "write"}}] = message["tool_calls"]
+    assert OpenAI.request_body(%{model: "m"}, [message], [])["input"] == output
+  end
+
   test "tool definitions use Responses function schema" do
     tool = %{
       "type" => "function",

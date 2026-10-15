@@ -80,10 +80,11 @@ Windows support, or OS sandbox integration. When the context byte ceiling is
 reached, the current version stops with an actionable error rather than
 silently dropping conversation history.
 
-ChatGPT subscription sign-in follows the documented open-source app flow, but
-the browser sign-in and inference path still needs a live account verification.
-Fixture tests do not establish live account eligibility, model availability,
-or subscription usage limits.
+ChatGPT subscription sign-in follows the documented open-source app flow.
+Browser sign-in, inference, coding tools, resume, and logout passed with one
+account on Arch; see [testing.md](testing.md). Live refresh, broader account/model
+eligibility, and usage-limit behavior remain unverified. Fixture tests do not
+establish those live-service properties.
 
 ## Extension guidance
 

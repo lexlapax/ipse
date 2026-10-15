@@ -146,7 +146,14 @@ defmodule Ipse.Provider.OpenAI do
   defp event(state, _, _), do: {:ok, state}
 
   def finish(%{terminal: true, response: response, items: items}) do
-    output = response["output"] || items |> Enum.sort_by(&elem(&1, 0)) |> Enum.map(&elem(&1, 1))
+    output =
+      case response["output"] do
+        value when value in [nil, []] ->
+          items |> Enum.sort_by(&elem(&1, 0)) |> Enum.map(&elem(&1, 1))
+
+        value ->
+          value
+      end
 
     text =
       output

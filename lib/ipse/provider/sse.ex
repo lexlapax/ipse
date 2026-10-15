@@ -24,7 +24,7 @@ defmodule Ipse.Provider.SSE do
         {Enum.reverse(events), state}
 
       {index, 1} ->
-        <<line::binary-size(index), separator, rest::binary>> = state.buffer
+        <<line::binary-size(^index), separator, rest::binary>> = state.buffer
         {state, events} = line(%{state | buffer: rest, skip_lf: separator == ?\r}, line, events)
         parse(state, events)
     end

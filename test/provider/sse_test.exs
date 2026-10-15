@@ -29,7 +29,7 @@ defmodule Ipse.Provider.SSETest do
   defp chunks(binary, size) when byte_size(binary) <= size, do: [binary]
 
   defp chunks(binary, size) do
-    <<head::binary-size(size), rest::binary>> = binary
+    <<head::binary-size(^size), rest::binary>> = binary
     [head | chunks(rest, size)]
   end
 end

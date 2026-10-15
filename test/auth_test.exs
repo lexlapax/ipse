@@ -24,6 +24,11 @@ defmodule Ipse.AuthTest do
     %{dir: dir}
   end
 
+  test "real auth transport rejects credentials embedded in endpoint URLs" do
+    assert {:error, "ChatGPT authorization endpoint is not trusted."} =
+             HTTP.request(:get, "https://fixture:secret@auth.openai.com/example")
+  end
+
   test "validates signatures, pinned algorithm, issuer, audience, expiry, nonce and subject",
        ctx do
     claims = claims("nonce")

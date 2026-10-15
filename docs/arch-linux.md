@@ -118,6 +118,13 @@ IPSE_HOME=$(mktemp -d) ./bin/ipse demo
 - `:eperm` while Mix starts or tests bind sockets: check sandbox permissions.
 - Provider rejects a model: select an available model explicitly; check your
   account's plan and limits. Do not change to API billing unintentionally.
+- Browser reports `127.0.0.1` connection refused after authorization: keep the
+  login terminal open and check its error. The listener expires after five
+  minutes. Start a fresh `./bin/ipse login` attempt and use its new URL; do not
+  reuse the old callback URL or share its authorization code. The browser and
+  login process must reach the same loopback listener; SSH and containers may
+  require explicit port forwarding. Check that the browser bypasses its proxy
+  for `127.0.0.1`.
 - Session already open: close its other Ipse process. Do not delete the
   lock file; OS locks release when their process exits.
 - Inspect errors locally; redact credentials and transcript content before

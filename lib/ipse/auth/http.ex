@@ -28,7 +28,7 @@ defmodule Ipse.Auth.HTTP do
     Application.ensure_all_started(:ssl)
     uri = URI.parse(url)
 
-    if uri.scheme == "https" and uri.host == "auth.openai.com" and not uri.userinfo do
+    if uri.scheme == "https" and uri.host == "auth.openai.com" and is_nil(uri.userinfo) do
       with {:ok, profile} <- :inets.start(:httpc, [profile: :ipse_auth], :stand_alone) do
         Process.unlink(profile)
         owner = self()

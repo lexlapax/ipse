@@ -27,8 +27,10 @@ an actionable error instead of silently dropping history.
 ### Local build and demo
 
 Initial Debian Linux validation passed: build, formatting, 49 tests, source demo,
-interactive resume, and extracted release demo. Repeat on the local Arch checkout;
-see [testing.md](testing.md) for the recorded toolchain and outstanding checks.
+interactive resume, and extracted release demo. On 2026-10-14 the local Arch
+source build, formatting, warnings-as-errors compilation, 51 tests, source demo,
+and scripted interactive resume passed after fixing Elixir 1.20 bitstring-size
+pin warnings. See [testing.md](testing.md) for the toolchain and outstanding checks.
 
 Acceptance: on a clean checkout, formatting, warnings-as-errors compilation,
 and `mix test` pass; `./scripts/build.sh` works without Node or Python;
@@ -42,8 +44,18 @@ Fixture tests do not verify live account use. With an eligible test account,
 confirm loopback browser authorization, owner-only token storage, streamed
 Responses API inference with storage disabled, status, refresh, and logout.
 Record plan eligibility, model access, and usage-limit behavior. Provider
-failures must never switch silently to API billing. Until then, live sign-in
-and inference remain unverified.
+failures must never switch silently to API billing.
+
+On 2026-10-14, live browser sign-in, protected storage, streamed inference with
+`gpt-6.1-sol`, individually approved write/edit/shell calls in a scratch workspace,
+resume with retained context and no tool replay, and logout passed on Arch.
+Fixed a real auth transport nil check and retention of streamed items when the
+terminal response has empty output. Requests used the public Responses endpoint
+with `store: false`, `stream: true`, and explicit subscription provider selection.
+Official authentication and inference documentation was reviewed.
+
+Live refresh after expiry and eligibility/usage-limit error behavior remain
+unverified. Keep those lifecycle checks open; fixture coverage is separate.
 
 ### Arch Linux validation
 

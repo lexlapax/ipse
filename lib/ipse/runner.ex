@@ -141,7 +141,7 @@ defmodule Ipse.Runner do
         {:ok, state}
 
       true ->
-        <<payload::binary-size(size), tail::binary>> = rest
+        <<payload::binary-size(^size), tail::binary>> = rest
 
         case accept_frame(kind, payload, %{state | buffer: tail}) do
           {:ok, next} -> frames(next)

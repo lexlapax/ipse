@@ -60,9 +60,10 @@ failures never silently switch to paid API billing. This preview retains one
 selected account registration. `ipse status` shows it; `ipse logout`
 revokes the renewable session where possible and clears local tokens.
 
-The complete live browser sign-in and paid inference need your account to verify.
-Automated tests cover the OAuth validation/refresh paths and streaming protocol
-using local fixtures, not a live subscription.
+Live browser sign-in, subscription inference, approved coding tools, resume, and
+logout passed on Arch with one account; see [verification results](docs/testing.md).
+Live refresh after expiry and usage-limit behavior remain unverified. Automated
+tests cover OAuth validation/refresh and streaming using local fixtures.
 
 ## 2. OpenAI API
 
