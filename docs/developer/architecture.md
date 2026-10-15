@@ -43,6 +43,10 @@ Project skills override user and bundled skills. A skill is plain instruction
 text: loading it never executes scripts and does not grant tool permission.
 `AGENTS.md` is also included when present. Explicit `$skill-name` references
 load the matching skill into the user turn.
+Current context loading reads only the selected workspace's direct `AGENTS.md`,
+bounded to 32 KiB. Automatic ancestor/nested instruction resolution and a global
+configuration precedence scheme are future work; see
+[P3 workspace context](../plan.md#p3-workspace-context-from-any-directory).
 
 Reads and mutations use workspace-relative tools. Path checks reject symlinks,
 workspace escapes, and writes under `.git`; these checks are not race-proof

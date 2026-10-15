@@ -53,10 +53,27 @@ checkout's `priv/` directory or build artifacts. Record OS, architecture, libc,
 Elixir/OTP, and Rust versions with results. A release includes ERTS and the
 native helper, but needs compatible system libraries.
 
+From that extracted directory, also run the bundled helper checks:
+
+```sh
+./bin/ipse eval 'Code.require_file("verify-release.exs")'
+```
+
+This Elixir script verifies that runtime and application paths belong to the
+extraction, exercises timeout and owner-death cleanup, and checks lock exclusion,
+release on owner death, and inode preservation. `./bin/ipse eval` is the bundled
+OTP launcher; the root `./ipse` wrapper accepts Ipse CLI commands instead.
+To prove independence from development tools, repeat help, demo, and helper
+checks with Elixir, Erlang, Mix, and Rust executables absent from `PATH` while
+retaining ordinary host shell utilities, including `sleep` for the helper check.
+
 The packaging script copies the documentation tree recursively. When distributing
 a release, set `IPSE_NOTICES_DIR` to a directory containing the bundled toolchain's
 license notices; the packager copies these into `licenses/`. Building on one Linux
 distribution does not establish compatibility with another distribution.
+Inspect that directory in the extracted archive and record the supplied notice
+sources and versions. Repackaging replaces the generated docs and licenses trees
+so deleted material from an earlier build cannot survive there.
 
 ## Live provider acceptance
 
@@ -152,11 +169,42 @@ Verified with the account owner authorizing in Chrome on the same Arch machine:
   Status then reported no session. Checked that access, refresh, and ID token
   fields were removed while client registration and host ID remained.
 
-Live refresh after expiry remains **unverified**; it was not forced or observed.
-Plan-tier eligibility beyond this account, unavailable models, usage limits,
-and revoked-session recovery remain unverified against the live service.
-Arch release packaging, paid API calls, local Ollama, and macOS also remain
-unverified. Successful fixture tests do not establish live-service compatibility.
+### Arch release and local provider checks, 2026-10-14
+
+Built `ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz` on the Arch toolchain recorded
+above. Fresh extraction under `/tmp` passed CLI help, credential-free demo, and
+the bundled `verify-release.exs` checks. These ran with a utility-only `PATH`
+containing no Elixir, Erlang, Mix, or Rust executables. The runtime and helper
+resolved inside the extraction. This validates this host, not another Linux ABI.
+
+An initial archive had only the generic Apache and Jason license texts. Rebuilt
+with `IPSE_NOTICES_DIR` containing official upstream Elixir v1.20.4 and OTP
+29.0.6 license trees, OTP/app authors, ERTS vendor license texts, and source
+header/provenance inventories. Sources were tag commits
+`759443e724f55bf58e71c0603644e99058918d52` (Elixir) and
+`e07fd07837e5aa845657f5fa340637121e451d47` (OTP). Verified those files inside the
+extracted archive. The header inventory includes upstream tests/examples;
+it records provenance rather than certifying exactly which source files were
+linked. No new build dependency was added.
+
+Rebuilding initially retained stale documentation and notice files. After fixing
+the packager to replace those generated directories, both sentinel checks passed.
+Formatting, warnings-as-errors compilation, and all 51 fixture tests passed.
+
+The installed Ollama-compatible service/client reported 0.40.1. A live
+`qwen3.5:9b` read-tool round trip read the scratch file and returned its contents.
+No model was downloaded. `ollama ps` reported the `llamacpp` runner, 4096 context,
+and mixed CPU/GPU execution (28%/72%) on this host (Intel Core i7-12700K; NVIDIA
+PCI vendor/device `10de:2486`). This is evidence for that local configuration,
+not all models or hardware.
+
+An intentionally unavailable ChatGPT model returned HTTP 400 under explicit
+`chatgpt` selection; the failure surfaced without API provider fallback.
+
+Live refresh after expiry remains **unverified** while its natural-expiry check
+is pending. Broader plan eligibility, live usage-limit errors, revoked-session
+recovery, paid API calls, and macOS remain unverified. Successful fixture tests
+do not establish live-service compatibility.
 
 Priorities and completion criteria are in [plan.md](../plan.md). When reporting a
 failure, include the command, toolchain, sanitized error, and whether it ran in

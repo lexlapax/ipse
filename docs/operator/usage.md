@@ -133,6 +133,11 @@ Only metadata enters the initial context. The model can call `load_skill`; `$rev
 explicitly loads a skill into the next user turn. Loaded content includes its path
 and SHA-256. No script is executed by loading a skill, and skills grant no permissions.
 Repository root `AGENTS.md` is also loaded (up to 32 KiB).
+Currently this means the `AGENTS.md` directly in the selected workspace. Launching
+from a subdirectory does not automatically load ancestor or nested instruction
+files. Read applicable guidance explicitly for now; broader discovery and global
+configuration precedence are planned in the
+[workspace-context milestone](../plan.md#p3-workspace-context-from-any-directory).
 Version 0.1 loads `SKILL.md` text only. Referenced resources do not load
 automatically; the model can read workspace files through ordinary file tools.
 Resources outside the workspace and broader skill packaging need further support.

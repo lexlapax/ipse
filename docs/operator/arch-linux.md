@@ -76,6 +76,8 @@ coding session, approvals, other providers, and state management. Use
 
 A release includes Erlang, Elixir application code, and the native helper.
 Extract the archive and run `./ipse demo`; match its OS, architecture, and libc
-requirements. Arch release packaging remains unverified. Developers building
+requirements. The Arch archive passed help, demo, and bundled helper checks on
+the recorded host; this does not establish portability to another Linux ABI.
+Developers building
 and validating an archive should follow the
 [release verification procedure](../developer/testing.md#release-check).

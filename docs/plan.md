@@ -27,8 +27,8 @@ an actionable error instead of silently dropping history.
 Next live acceptance check: subscription refresh after natural access-token expiry.
 Use the same protected account registration, confirm a subsequent request renews
 successfully, then log out. Do not mark refresh verified from fixture tests or
-by merely changing a local expiry timestamp. Arch release packaging is the next
-source-independent validation task. See [testing and evidence](developer/testing.md)
+by merely changing a local expiry timestamp. Arch release packaging and the
+installed local Ollama tool round trip passed; see [testing and evidence](developer/testing.md)
 for procedures and outstanding checks.
 
 ### Local build and demo
@@ -72,6 +72,14 @@ exit; smoke-test the matching release archive and bundled helper/runtime. Try
 one Ollama tool-call round trip when compatible hardware/model is available and
 record it as model-dependent.
 
+On 2026-10-14, the Arch archive built and passed help, demo, and bundled helper
+timeout/owner-death/lock checks from a fresh extraction with no development
+toolchain on `PATH`. Supplied version-matched upstream runtime notices were
+verified in the archive. Fixed stale docs/notices surviving repeated packaging.
+The installed Ollama-compatible service passed a `qwen3.5:9b` read-tool round
+trip without installing or downloading a model. Cross-machine portability and
+other hardware/model combinations remain unverified.
+
 ## P1: make everyday use clearer
 
 Polish the line-oriented CLI before considering a full-screen interface.
@@ -103,7 +111,38 @@ process helper. Acceptance: adversarial tests prove denied access is blocked by
 the OS, including access to credential files by default. Until then, describe
 shell execution as trusted local execution, not a sandbox.
 
-## P3: packaging and protocols
+## P3: workspace context from any directory
+
+Ipse should run as a coding agent or another action agent from any directory or
+subdirectory, using the launch directory as its working context while retaining
+Ipse-wide preferences, skills, and state under `~/.ipse` (or `IPSE_HOME`).
+The source launcher already preserves the launch directory, and `--cwd` chooses
+a workspace explicitly. Current automatic instruction loading covers only
+`AGENTS.md` directly in that workspace; ancestor and nested scope resolution
+are not implemented.
+
+Define workspace boundaries and instruction precedence before extending loading.
+Discover applicable ancestor `AGENTS.md` files within the chosen boundary and
+apply nested instructions to the files/actions they govern, with nearer scopes
+overriding broader project guidance. Separate these from Ipse-wide defaults and
+explicit user requests. Load relevant README/context files and explicit resource
+references through bounded, provenance-bearing reads, rather than importing every
+file recursively. Never load unrelated parent directories or secrets implicitly;
+report missing, invalid, or oversized instruction sources clearly. Instructions
+and configurations remain separate from permission to execute tools.
+
+Acceptance: source and bundled launchers work from arbitrary directories and
+repository subdirectories without using the install/source directory as context.
+Tests cover default launch directory and `--cwd`, ancestor/nested precedence,
+non-repository workspaces, conflicting global/project guidance, relevant resource
+loads, UTF-8/size/symlink boundaries, and deterministic resume after instruction
+files change. Show which instruction sources apply and preserve their provenance.
+Demonstrate both a coding task and a non-coding file/action task in scratch
+workspaces, retaining approvals and unknown-outcome recovery. Any new global
+configuration schema must be documented without silently changing provider,
+billing, or approval policy.
+
+## P4: packaging and protocols
 
 Make Arch and supported Linux release builds repeatable before broadening
 packaging. Acceptance: archives identify OS/architecture/libc, include license

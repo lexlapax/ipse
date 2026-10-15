@@ -8,6 +8,8 @@ IPSE_RELEASE=_build/prod/rel/ipse
 cp scripts/release-launcher.sh "$IPSE_RELEASE/ipse"
 chmod +x "$IPSE_RELEASE/ipse"
 cp LICENSE README.md AGENTS.md CONTRIBUTING.md THIRD_PARTY_NOTICES.md "$IPSE_RELEASE/"
+cp scripts/verify-release.exs "$IPSE_RELEASE/"
+rm -rf "$IPSE_RELEASE/docs" "$IPSE_RELEASE/licenses"
 cp -R docs "$IPSE_RELEASE/"
 mkdir -p "$IPSE_RELEASE/licenses"
 cp deps/jason/LICENSE "$IPSE_RELEASE/licenses/Jason-MIT.txt"
