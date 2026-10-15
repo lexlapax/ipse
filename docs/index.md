@@ -21,6 +21,7 @@ start. Use the guides below for operation, development, and project context.
 | [Context compaction](developer/context-compaction.md) | Preserved context, bounds, checkpoint and recovery contract |
 | [Workspace context](developer/workspace-context.md) | Instruction scope, source bounds, snapshots, and refresh |
 | [Native shell sandbox](developer/sandbox.md) | OS capabilities, fail-closed selection, and platform limits |
+| [Protocol proposal](developer/protocol-proposal.md) | Proposed MCP, delegation, and remote-execution trust/recovery contracts |
 | [Dependencies](developer/dependencies.md) | Runtime/build/CI inventory, script policy, approval requirements |
 | [Testing and evidence](developer/testing.md) | Source/release checks, live acceptance, actual results |
 

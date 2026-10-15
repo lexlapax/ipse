@@ -71,6 +71,9 @@ No project-specific Codex config is required.
 Continue with the [operator guide](usage.md) for subscription sign-in, a scratch
 coding session, approvals, other providers, and state management. Use
 [troubleshooting](troubleshooting.md) for build, login, model, and session errors.
+The optional `--sandbox native` profile needs Linux 6.12+/Landlock ABI 6 and
+permitted unprivileged namespaces. See [shell policy](usage.md#shell-policy);
+an unavailable profile fails closed instead of running with broader permissions.
 
 ## Bundled releases
 

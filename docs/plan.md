@@ -232,3 +232,11 @@ Consider MCP after session, approval, and recovery behavior stabilizes. An MCP
 proposal must define schemas, approvals, cancellation, journal events, and
 in-flight recovery. Subagents and remote execution need separate trust and
 unknown-outcome designs plus focused tests before implementation.
+
+The [protocol proposal](developer/protocol-proposal.md) defines these contracts
+and separate implementation gates; MCP, subagents, and remote execution remain
+unimplemented. Linux/macOS CI now includes source checks and fresh-home bundled
+release verification. The macOS App Sandbox probe signs an isolated helper with
+approved built-in `codesign`; its enforcement result must be recorded after the
+actual macOS CI run. Fresh-home checks do not substitute for every target OS,
+architecture, signing/notarization, or account-eligibility check.

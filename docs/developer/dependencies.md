@@ -70,7 +70,7 @@ See [the fixed profile](sandbox.md).
 ## Existing CI dependencies
 
 The [checks workflow](../../.github/workflows/ci.yml) uses GitHub Actions on
-`ubuntu-latest`, [actions/checkout@v4](https://github.com/actions/checkout),
+`ubuntu-latest` and `macos-14`, [actions/checkout@v4](https://github.com/actions/checkout),
 [erlef/setup-beam@v1](https://github.com/erlef/setup-beam) (Elixir 1.18 / OTP 27),
 and [dtolnay/rust-toolchain@stable](https://github.com/dtolnay/rust-toolchain).
 These are CI-only hosted services/actions,
@@ -79,6 +79,10 @@ checkout, setup-beam, and the rust-toolchain action use MIT. The Rust compiler
 and standard library have separate MIT OR Apache-2.0 licensing.
 The runner image and action tags are rolling inputs; record changes and obtain
 developer approval before introducing additional actions or external CI tools.
+The macOS runner extends the existing workflow/actions to the native platform
+selected by the developer on 2026-10-15; the separately approved built-in
+`codesign` is used only for the experimental App Sandbox probe. No container,
+VM runtime, new CI action, or downloaded testing utility is introduced.
 
 ## Optional integrations
 

@@ -4,6 +4,11 @@ Run `./scripts/build.sh`, then `mix test`. A small change with a clear problem,
 observable behavior, and relevant verification is welcome. Open an issue for
 larger changes before expanding the architecture.
 
+Ordinary tests exclude host-dependent native sandbox enforcement. On a supported
+Linux host, also run `mix test --include native_sandbox` for OS-boundary changes;
+included checks fail when enforcement is unavailable. See the
+[fixed profile](docs/developer/sandbox.md#verification).
+
 Read [AGENTS.md](AGENTS.md) for repository conventions and the code map. Start
 with [docs/operator/arch-linux.md](docs/operator/arch-linux.md) for a local Codex CLI setup;
 [docs/plan.md](docs/plan.md) describes priorities and acceptance criteria.

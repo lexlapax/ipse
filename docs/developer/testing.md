@@ -410,3 +410,30 @@ protected-workspace refusal, demo, and existing timeout/owner-death/lock checks
 with no development toolchain on `PATH`. Linux aarch64 and other kernel policies
 remain unverified. macOS enforcement and Windows remain separate work; selecting
 native on unsupported platforms fails closed. See [scope and limits](sandbox.md).
+
+## P4 release verification and protocol proposal (2026-10-15)
+
+The local Arch source baseline and all **104 tests with native enforcement
+included** passed again after the cross-platform fixture setup change. Both
+Elixir formatter versions passed. Rebuilding the archive with version-matched
+runtime notices and running
+`elixir scripts/verify-package.exs dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz`
+passed: fresh extraction, empty isolated HOME/IPSE_HOME, no development toolchain
+on `PATH`, help, default launch cwd containing spaces, explicit `--cwd`, exact
+demo output file, and bundled OTP/helper lifecycle checks. This is a fresh-home
+check on the existing account, not a newly created OS account or another host.
+
+The CI matrix now schedules these source/package checks on Linux and macOS.
+The experimental macOS script uses the approved built-in `codesign`, an ad-hoc
+helper app, and Rust standard-library TCP probe. It requires successful execution
+and a reachable network control before claiming network denial; it checks outside
+file/symlink/metadata denial and allowed workspace/private-temp writes. Syntax
+and the Rust probe were checked locally; actual macOS enforcement remains
+unverified until the hosted job completes. The supported CLI still fails closed
+for native mode on macOS; this probe alone does not implement resource/process
+containment for a production backend.
+
+The [protocol proposal](protocol-proposal.md) defines schemas, explicit trust and
+configuration, approvals, cancellation/ownership, durable intent/results, and
+unknown-outcome recovery. It does not implement MCP, delegated agents, or remote
+execution. Those require their own focused implementation and tests.
