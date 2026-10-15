@@ -24,10 +24,10 @@ an actionable error instead of silently dropping history.
 
 ## P0: verify the current release path
 
-Next live acceptance check: subscription refresh after natural access-token expiry.
-Use the same protected account registration, confirm a subsequent request renews
-successfully, then log out. Do not mark refresh verified from fixture tests or
-by merely changing a local expiry timestamp. Arch release packaging and the
+Live subscription renewal after natural access-token expiry passed on 2026-10-15,
+including rotating refresh tokens, subsequent streamed inference, and logout.
+The focused P0 lifecycle and host release checks are complete; broader account
+eligibility and usage-limit error cases remain open. Arch release packaging and the
 installed local Ollama tool round trip passed; see [testing and evidence](developer/testing.md)
 for procedures and outstanding checks.
 
@@ -61,8 +61,10 @@ terminal response has empty output. Requests used the public Responses endpoint
 with `store: false`, `stream: true`, and explicit subscription provider selection.
 Official authentication and inference documentation was reviewed.
 
-Live refresh after expiry and eligibility/usage-limit error behavior remain
-unverified. Keep those lifecycle checks open; fixture coverage is separate.
+On 2026-10-15, natural-expiry refresh, token rotation, subsequent streamed
+inference, and logout passed with the same account registration on Arch.
+Broader eligibility/usage-limit error behavior remains unverified; fixture
+coverage is separate.
 
 ### Arch Linux validation
 

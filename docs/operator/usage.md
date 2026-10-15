@@ -40,7 +40,8 @@ revokes the renewable session where possible and clears local tokens.
 
 Live browser sign-in, subscription inference, approved coding tools, resume, and
 logout passed on Arch with one account; see [verification results](../developer/testing.md).
-Live refresh after expiry and usage-limit behavior remain unverified. Automated
+Live natural-expiry refresh and token rotation also passed on 2026-10-15.
+Broader eligibility and usage-limit behavior remain unverified. Automated
 tests cover OAuth validation/refresh and streaming using local fixtures.
 
 ## 2. OpenAI API

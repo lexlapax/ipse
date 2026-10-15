@@ -203,8 +203,8 @@ not all models or hardware.
 An intentionally unavailable ChatGPT model returned HTTP 400 under explicit
 `chatgpt` selection; the failure surfaced without API provider fallback.
 
-Live refresh after expiry remains **unverified** while its natural-expiry check
-is pending. Broader plan eligibility, live usage-limit errors, revoked-session
+Natural-expiry refresh subsequently passed (see below). Broader plan eligibility,
+live usage-limit errors, revoked-session
 recovery, paid API calls, and macOS remain unverified. Successful fixture tests
 do not establish live-service compatibility.
 
@@ -227,3 +227,17 @@ Priorities and completion criteria are in [plan.md](../plan.md). When reporting 
 failure, include the command, toolchain, sanitized error, and whether it ran in
 a sandbox. Avoid calling permission failures application regressions until
 the same command has been checked with the required access.
+
+### Live natural-expiry renewal, 2026-10-15
+
+Waited for the original access-token expiry without changing its timestamp or
+re-authorizing. After expiry, `Ipse.Auth.token/1` renewed the session: both access
+and refresh tokens changed and expiry advanced. Registration, host, identity,
+and plan permission were preserved; credential mode remained `600`.
+A subsequent explicit ChatGPT `gpt-6.1-sol` request returned the expected text
+in four streamed chunks. Logout succeeded and access/refresh/ID token fields
+were cleared. The check used the normal protected account registration, kept
+all secrets in memory/protected storage, and retained only sanitized booleans
+and timestamps as evidence. This is live renewal evidence, separate from fixtures.
+No API-billing fallback was enabled. Broader eligibility/usage-limit errors,
+revoked-session recovery, paid API calls, and other platforms remain unverified.

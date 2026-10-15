@@ -94,8 +94,9 @@ silently dropping conversation history.
 
 ChatGPT subscription sign-in follows the documented open-source app flow.
 Browser sign-in, inference, coding tools, resume, and logout passed with one
-account on Arch; see [testing.md](testing.md). Live refresh, broader account/model
-eligibility, and usage-limit behavior remain unverified. Fixture tests do not
+account on Arch; natural-expiry refresh and rotation also passed on 2026-10-15.
+See [testing.md](testing.md). Broader account/model eligibility and usage-limit
+behavior remain unverified. Fixture tests do not
 establish those live-service properties.
 
 ## Extension guidance
