@@ -877,3 +877,60 @@ Unix/IPv4/IPv6 sockets return permission denial. The previously failing locked
 Cargo build then passed with networking disabled and writes confined to its
 temporary native workspace. This is local Arch enforcement evidence, not a
 new protocol-compatibility or macOS claim.
+
+## P6 local delegation, 2026-10-15
+
+Implemented opt-in serial local children using the existing OTP session, task,
+approval, and journal boundaries; no new package was added. The child gets the
+same provider/model/workspace, saved instructions, and selected task/context,
+with a separate journal and no parent transcript, MCP, or recursive delegation.
+See the [contract](delegation.md) and [operator guide](../operator/subagents.md).
+
+Fifteen focused policy/session fixtures passed. They cover explicit enablement,
+headless denial, exact parent/child approval references, individual child denial,
+intent ordering and separate journals, context minimization and saved-instruction
+drift, normal close, completed/unknown resume without replay, standalone child
+resume refusal, abrupt parent death, real child-shell cancellation, timeout,
+recursion rejection, two-child budgets, and oversized results. Human approval
+waiting pauses the active child budget. Completed child closure records no
+spurious cancellation. The real shell fixture stopped the child session before
+parent cancellation returned, and its delayed file effect did not occur.
+
+### Source and bundled checks
+
+On Serenity's Arch toolchain recorded above, source build, both Elixir 1.20/1.18
+formatters, warnings-as-errors compilation, and the original credential-free
+demo passed. Ordinary suite: **197 passed, 17 enforcement checks excluded**.
+With actual Linux enforcement included: **205 passed, 9 Mac checks excluded**.
+`mix run scripts/demo-subagents.exs` passed two exact scripted approvals and
+verified the file and both journals, without contacting a model service.
+
+The extracted Arch package also passed the bundled delegation demo under a
+utility-only PATH without a development toolchain, alongside its original
+help/demo/workspace/helper/lock and MCP round-trip checks. The final runtime
+notice-complete rebuild and fresh-package verification passed. Hosted Linux/macOS
+CI is pending; local Arch checks do not establish Mac behavior.
+
+### Live subscription check
+
+A separate interactive source CLI check explicitly selected
+`chatgpt/gpt-6.1-sol`, `--subagents`, `--sandbox native`, and `--max-steps 4`,
+with a fresh scratch workspace and separate journals. Reviewed and approved one
+exact delegation task. The child then requested two distinct parent approvals:
+write `hello.exs` with `IO.puts("LIVE_CHILD_OK")` plus one newline, then run
+`elixir --erl '+S 2:2' hello.exs` with a ten-second timeout. Approved each exact
+proposal through the parent UI.
+
+Verified exact file bytes, one approved parent delegation intent, two approved
+child effects, and the child journal's native shell result: exit 0 and
+`LIVE_CHILD_OK`. The parent consumed the bounded child result and completed its
+stream with `DELEGATION_OK`. Idle CLI resume restored the saved delegation flag
+and native policy without explicit flags. Parent/child journal event counts and
+file modification/change timestamps remained unchanged; no child or effect was
+replayed. No API provider, billing fallback, account-permission change, or
+independent refresh/logout test was involved. Private transcripts are not committed.
+
+Live evidence covers one successful child path on Arch. Cancellation, owner
+death, denial, timeout, and unknown recovery remain fixture evidence. Parallel,
+recursive, cross-provider/model, remote, and child-MCP execution remain outside
+P6. Documentation was reconciled with the implementation and actual results.

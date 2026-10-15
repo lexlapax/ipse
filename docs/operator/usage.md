@@ -142,6 +142,20 @@ macOS enforcement passed locally on macOS 26.7.2 arm64 and in macOS 14 arm64 CI;
 subscription checks were on Arch. See [evidence](../developer/testing.md#p4-release-verification-and-protocol-proposal-2026-10-15).
 Windows is future work.
 
+### Local delegation
+
+Local child delegation is disabled by default. Enable it explicitly with
+`--subagents`; the parent asks before starting a child and forwards each child
+mutation proposal for a separate approval. A child uses the same provider,
+requested model, workspace, and saved workspace-instruction snapshot, but has a
+separate private journal and does not receive the parent's conversation or MCP
+servers. It cannot delegate recursively. A stopped or interrupted child is
+recorded as unknown and is never replayed on resume. Child model calls have
+their own bounded budgets, additional to the parent's `--max-steps`. See the
+[local subagent guide](subagents.md) for limits, examples, and recovery.
+
+### Chat commands
+
 Chat commands:
 
 | Command | Behavior |
@@ -289,8 +303,9 @@ required by the provider; raw hidden reasoning is not exposed in the UI.
 Current limits: 30 model calls per turn by default (`--max-steps`), bounded file and
 shell output, and a conservative conversation byte ceiling with bounded
 [automatic compaction](#context-compaction). Explicit local stdio MCP tools use
-[separate configuration and trust boundaries](mcp.md). **Full-screen TUI, network MCP, subagents,
-Windows and remote execution are not implemented.** Uncompactable
+[separate configuration and trust boundaries](mcp.md). **Full-screen TUI,
+network MCP, parallel or remote agents, and Windows are not implemented.** Local
+serial delegation is opt-in; see [local subagents](subagents.md). Uncompactable
 context stops with an actionable message rather than silently dropping history. Skills with scripts requiring Node/Python do not
 make those runtimes dependencies of Ipse.
 

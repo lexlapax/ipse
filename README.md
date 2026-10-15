@@ -58,8 +58,11 @@ instructions and `/context refresh` reloads them while idle. See
 [workspace instructions](docs/operator/usage.md#workspace-instructions).
 Explicit local stdio MCP tools are available through `--mcp-config`; see
 [configuration and trust boundaries](docs/operator/mcp.md).
-Current limits include no full-screen TUI, network MCP, subagents,
-Windows, or remote execution. See [runtime limits](docs/operator/usage.md#runtime-and-limits)
+Opt-in local delegation is available with `--subagents`; it runs serial children
+with the same provider/model and workspace, separate journals, and parent-mediated
+approvals. See [local subagents](docs/operator/subagents.md) for limits and
+recovery behavior. There is no full-screen TUI, network MCP, parallel or remote
+agents, or Windows support. See [runtime limits](docs/operator/usage.md#runtime-and-limits)
 and [architecture](docs/developer/architecture.md) for details.
 
 Find setup, operation, development, and verification guidance in the

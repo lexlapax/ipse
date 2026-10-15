@@ -1,8 +1,10 @@
 # Protocol and delegation proposal
 
-**Status:** P4 design proposal. P5 implements the focused
-[local stdio MCP client](mcp.md); other protocol/delegation capabilities remain
-proposals. This document does not enable tools by default or authorize dependencies.
+**Status:** This document preserves the P4 protocol design. P5 implements the
+focused [local stdio MCP client](mcp.md). P6 implements opt-in serial local
+delegation; supported behavior and trust boundaries are in the
+[delegation contract](delegation.md). Cross-platform CI remains pending for P6.
+This document does not enable tools by default or authorize dependencies.
 
 Ipse's current session, approval, and journal behavior is the baseline. A
 protocol adapter must not create a second permission system or weaken the host's
@@ -14,11 +16,12 @@ the others. See [architecture](architecture.md) and the [development plan](../pl
 
 Keep the agent loop, tool policy, approvals, ownership, and persistence in
 Elixir/OTP. Protocols may describe or transport requests, but they do not own
-session state. The initial MCP scope, if approved for implementation, should be
-an explicitly configured client for local stdio servers and a small allowlist
-of tools. Network transports, server-side MCP, MCP resources/prompts, sampling,
-extensions, subagents, and remote command execution stay out of that first
-scope unless separately designed and approved.
+session state. The P5 MCP client uses explicit configuration for local stdio
+servers and a small allowlist of tools. Network transports, server-side MCP,
+MCP resources/prompts, sampling,
+extensions, and remote command execution stay out of that MCP scope. Local
+delegation is a separate capability with its own design and implementation;
+it does not rely on MCP and does not imply parallel or remote agents.
 
 The MCP specification defines wire messages such as `tools/list`,
 `tools/call`, `Tool.inputSchema`, and `CallToolResult`. Ipse should normalize
@@ -153,12 +156,13 @@ request was never dispatched.
 
 ## Subagents and remote execution
 
-Do not treat MCP as a delegation design. A future subagent proposal must define
-whether a child shares or gets a separate session/journal, which context and
-credentials it receives, how its tool intentions enter the parent's approval
-boundary, how cancellation propagates, how results are bounded and attributed,
-and how interrupted child work becomes unknown without replay. Parent death
-must stop children or explicitly report that it could not.
+Local delegation is implemented as an opt-in serial child session. It uses the
+same provider/model and workspace, saved workspace instructions, separate
+private journals, parent-forwarded approvals, bounded results, and unknown
+outcomes without replay. Children do not inherit parent transcript or MCP
+servers, and cannot delegate recursively. See the
+[operator guide](../operator/subagents.md) and [developer contract](delegation.md).
+Parallel child execution remains unimplemented.
 
 Remote execution needs its own endpoint identity, authentication, data
 minimization, authorization, transport-loss, cancellation, and outcome
@@ -167,19 +171,17 @@ not claim isolation unless a separately verified remote OS boundary provides
 it. Keep remote code execution disabled until threat modeling and adversarial
 tests show what the remote host can read, change, and retain.
 
-## Deferred implementation gates
+## MCP implementation gates (historical)
 
-Before implementing an MCP client, require a focused design review and tests
+The P5 MCP client was implemented against a focused design review and tests
 for schema validation/bounds, duplicate or changed discovery, explicit
 configuration, credential isolation, full-argument approval, headless denial,
 session ownership, cancellation cleanup, concurrent calls, journal ordering,
-unknown-outcome resume, secret redaction, and a credential-free demo. Exercise
-malformed and adversarial local fixtures; do not need paid credentials. Record
-the exact MCP revision and transport behavior. Update the dependency inventory
-and obtain any approvals required by repository policy before adding a package.
+unknown-outcome resume, secret redaction, and a credential-free demo. Malformed
+and adversarial local fixtures do not require paid credentials. The current MCP
+revision, transport behavior, package inventory, and evidence are recorded in
+[the MCP contract](mcp.md) and [dependency inventory](dependencies.md).
 
-Subagent and remote-execution implementation each require a separate proposal,
-threat review, recovery contract, and focused tests. They remain deferred even
-if further MCP support is accepted. Revisit this proposal only after P4 packaging
-is repeatable and session, approval, cancellation, and journal recovery
-acceptance checks remain green.
+Remote execution still requires a separate proposal, threat review, recovery
+contract, and focused tests. It remains deferred. This historical protocol
+proposal does not authorize expanding the implemented local delegation boundary.

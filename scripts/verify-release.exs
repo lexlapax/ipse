@@ -123,6 +123,10 @@ try do
   "bundled MCP verified" = File.read!(Path.join(mcp_workspace, "mcp-note.txt"))
   IO.puts("Bundled local MCP SDK round trip passed without a development toolchain.")
 
+  Code.require_file(Path.join(app_root, "priv/subagent-demo.exs"))
+  :ok = Ipse.SubagentDemo.run()
+  IO.puts("Bundled local delegation approvals and child journal verification passed.")
+
   if :os.type() == {:unix, :darwin} do
     workspace = Path.join(scratch, "native workspace")
     File.mkdir!(workspace)

@@ -19,8 +19,8 @@ credential-free demo.
   than replaying them.
 
 Automatic context compaction is available with a retained original journal.
-Explicit local stdio MCP tools are available; network MCP, full-screen TUI,
-subagents, remote execution, and Windows are not implemented.
+Explicit local stdio MCP tools and opt-in serial local delegation are available;
+network MCP, full-screen TUI, parallel/remote agents, and Windows are not implemented.
 The optional Linux and macOS native shell profiles are separate from trusted
 execution. macOS detached-descendant cleanup is best effort.
 Uncompactable context stops with recovery guidance.
@@ -243,8 +243,8 @@ in-flight recovery. Subagents and remote execution need separate trust and
 unknown-outcome designs plus focused tests before implementation.
 
 The [protocol proposal](developer/protocol-proposal.md) defines these contracts
-and separate implementation gates. P5 adds the local MCP client; subagents and
-remote execution remain unimplemented. Linux/macOS CI includes source checks and fresh-home bundled
+and separate implementation gates. P5 adds the local MCP client; P6 adds serial
+local delegation. Remote execution remains unimplemented. Linux/macOS CI includes source checks and fresh-home bundled
 release verification. The macOS App Sandbox probe signs an isolated helper with
 approved built-in `codesign`; its file/network enforcement passed on the macOS
 14 arm64 runner. Fresh-home checks do not substitute for every target OS,
@@ -270,7 +270,7 @@ including actual Mac enforcement. Local Mac checks passed 122 tests with seven
 Linux enforcement tests excluded. Development then returned to Serenity;
 [Linux return verification is complete](developer/testing.md#p0-closure-on-serenity-2026-10-15).
 
-Windows, broader MCP features, subagents, remote execution, broader account
+Windows, broader MCP features, parallel/remote agents, broader account
 eligibility, and other architectures remain future work. Reliable adversarial
 descendant termination on macOS also remains unimplemented. No private API,
 deprecated sandbox utility, privileged service, or VM was adopted.
@@ -309,3 +309,34 @@ The corrected implementation also passed
 including bundled MCP verification and existing Mac native enforcement.
 See [operator setup](operator/mcp.md), [developer contract](developer/mcp.md),
 and [actual verification](developer/testing.md#p5-local-mcp-2026-10-15).
+
+## P6: local subagent delegation
+
+Selected by the developer after P5: explicitly enabled local child sessions with
+parent-controlled approvals. Reuse ordinary OTP sessions, tasks, monitors, and
+private journals. Define context transfer, provider/billing identity, exact tool
+approval forwarding, ownership/cancellation, bounded results and model budgets,
+and unknown-outcome recovery before exposing the tool. Children must not approve
+themselves, spawn recursive children, or inherit MCP by default.
+
+Acceptance: the [delegation contract](developer/delegation.md), focused fixtures
+for policy/lifetime/recovery, a bounded live subscription scratch check, supported
+Linux/macOS source/package checks, reviewed operator/developer guidance, and a
+focused commit/push. The local implementation, focused fixtures, source baseline,
+and live subscription scratch check passed on Arch. Final package verification
+also passed; supported-host CI is pending; see [actual results](developer/testing.md#p6-local-delegation-2026-10-15).
+
+## P7: expanded MCP capability
+
+Selected by the developer to follow P6. Start with independently implemented
+local servers and concrete compatibility gaps, then bounded explicit local MCP
+resources/prompts. Preserve exact host approvals, configuration allowlists,
+credential isolation, descriptor binding, cancellation, and unknown outcomes.
+Reuse the existing SDK/schema packages rather than adding a framework. Network
+transports and their endpoint/authentication/privacy policies need a separate
+design; they are not enabled by this planning entry.
+
+Acceptance: pinned independent interoperability evidence, focused compatibility
+and resource/prompt fixtures, truthful source/live verification, updated trust and
+operator guidance, supported-host checks, and focused commits/pushes. P7 remains
+planned; no new capability is claimed here.

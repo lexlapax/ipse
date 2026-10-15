@@ -30,6 +30,13 @@ CLI ──prompt / approval / cancel──> Session GenServer
                                       └── append events ──> private JSONL journal
 ```
 
+When explicitly enabled, `Ipse.Delegation.Worker` starts one child `Session`
+at a time. Each child has a separate journal and receives only the selected task,
+context, and saved workspace snapshot. Required child mutation approvals return
+through the parent session. The child uses the same provider/model and shared
+workspace; it does not inherit MCP servers or parent conversation history. See
+the [delegation contract](delegation.md).
+
 `Ipse.Provider` selects a provider adapter. Adapters stream text and
 normalized tool calls into the session; provider-specific continuation data is
 kept where needed to resume a provider exchange. The session enforces a
@@ -126,9 +133,10 @@ repaired while holding the session lock. The full transcript remains on disk.
 
 ## Boundaries and current limits
 
-The line-oriented terminal client is not a full-screen TUI. There is no
-network MCP, subagent execution, remote execution,
-or Windows support. Native Linux and macOS sandbox profiles are optional. macOS
+The line-oriented terminal client is not a full-screen TUI. Explicit opt-in
+serial local delegation is implemented with bounded child sessions; parallel,
+recursive, and remote agents are not implemented. Network MCP and Windows are
+also unsupported. Native Linux and macOS sandbox profiles are optional. macOS
 does not provide reliable cleanup for descendants that detach from the process
 group; its filesystem and network enforcement do not make those descendants
 short-lived. See [native policy](sandbox.md).

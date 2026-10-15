@@ -84,6 +84,7 @@ are needed for tests or the demo.
 | Isolated HTTP profile ownership | `lib/ipse/http_profile.ex` |
 | Authentication and protected storage | `lib/ipse/auth.ex`, `lib/ipse/auth/` |
 | Context, skills, JSONL persistence | `lib/ipse/context.ex`, `skills.ex`, `journal.ex` |
+| Opt-in local delegation | `lib/ipse/delegation.ex`, `lib/ipse/delegation/worker.ex` |
 | File tools and native Port protocol | `lib/ipse/tools.ex`, `runner.ex` |
 | Unix process groups and advisory locks | `native/ipse-runner.rs` |
 | Bundled skill instructions | `priv/skills/` |
@@ -99,6 +100,8 @@ are needed for tests or the demo.
   files remain in place to preserve inode identity; release the OS lock instead.
 - Interactive mutations require approval unless explicitly enabled. Headless
   mutation is denied without `--yes`. Display full proposed approval arguments.
+- Local child delegation is opt-in with `--subagents`; parent and child approval
+  and journaling remain separate. Children cannot use MCP or delegate recursively.
 - Skills and repository text are instructions, never permission grants. Loading
   a skill must not automatically execute its scripts or install dependencies.
 - Process supervision, approval, and OS sandboxing are different boundaries.

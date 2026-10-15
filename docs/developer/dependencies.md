@@ -22,7 +22,8 @@ the need adequately. Record alternatives and operational impact. A mention in a
 third-party document or skill is not approval.
 
 The inventory below records the existing repository baseline, not newly granted
-approval. No new dependency was introduced by the documentation restructure.
+approval. P6 local delegation uses existing Elixir/OTP and Rust facilities and
+adds no package or external runtime dependency.
 See [agent rules](../../AGENTS.md), [setup](../operator/arch-linux.md), and
 [third-party notices](../../THIRD_PARTY_NOTICES.md).
 
@@ -141,3 +142,25 @@ installation or a switch in billing. See [usage](../operator/usage.md).
 A browser is needed for subscription sign-in. Codex CLI is optional development
 tooling, with its own account and terms; it is not an Ipse dependency. Optional
 tools must not silently become prerequisites for builds, tests, or operation.
+
+### Isolated independent MCP investigation
+
+For an optional one-off P7 compatibility investigation, inspected and built
+[13thx-mcp/filesystem](https://github.com/13thx-mcp/filesystem/tree/df98dc38c969c92f25c778d37691e7a3f1914367),
+package `rust-mcp-filesystem` 0.2.0, MIT, at that exact commit. Its complete Rust
+dependency graph is pinned in the upstream
+[Cargo.lock](https://github.com/13thx-mcp/filesystem/blob/df98dc38c969c92f25c778d37691e7a3f1914367/Cargo.lock),
+including rmcp 3.4.0, Tokio, cap-std, Serde, Clap, and their Rust dependencies.
+The existing Rust 1.99/C linker built it; no new system runtime was installed.
+It is not part of Ipse's Mix dependencies, Rust helper, default tests, CI, or
+bundled release. No upstream server source or binary is redistributed here.
+
+Automatic review rejected an unconfined Cargo build. On 2026-10-15 the developer
+explicitly approved downloading locked Rust dependencies and an offline native
+sandbox build/test in a temporary workspace. The build passed with network and
+credential isolation. An isolated SDK diagnostic negotiated 2025-11-25 and read
+synthetic text. This did not pass the full Ipse transport: nesting that helper
+inside the sandbox conflicts with intentional process-group escape denial.
+The server's generated `$schema` also exposes a concrete P7 schema compatibility
+gap. Full Ipse interoperability remains pending; this investigation adds no
+mandatory build/test dependency or general compatibility claim.

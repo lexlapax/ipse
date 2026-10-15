@@ -111,8 +111,15 @@ defmodule Ipse.PackageVerifier do
       raise "release MCP verification did not print its completion marker"
     end
 
+    unless String.contains?(
+             output,
+             "Bundled local delegation approvals and child journal verification passed."
+           ) do
+      raise "release delegation verification did not print its completion marker"
+    end
+
     IO.puts(
-      "PASS: extracted package help, demo from isolated fresh HOME/IPSE_HOME, default cwd, explicit --cwd, bundled MCP round trip, and OTP/helper checks."
+      "PASS: extracted package help, demo from isolated fresh HOME/IPSE_HOME, default cwd, explicit --cwd, bundled MCP and delegation checks, and OTP/helper checks."
     )
 
     IO.puts("Verified default workspace: #{default_workspace}")

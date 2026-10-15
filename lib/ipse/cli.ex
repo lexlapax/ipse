@@ -17,7 +17,7 @@ defmodule Ipse.CLI do
   --model NAME                         Override the provider default
   --cwd PATH                           Workspace (default: current directory)
   --resume ID                          Resume a saved session
-  --yes                                Allow mutations, shell, and configured MCP calls
+  --yes                                Allow mutations, shell, configured MCP, and enabled delegation
   --base-url URL                       API endpoint root (API/Ollama only)
   --state-dir PATH                     Session directory
   --max-steps N                        Model calls per turn (default: 30)
@@ -25,8 +25,9 @@ defmodule Ipse.CLI do
   --no-compact                         Stop at the ceiling without summarizing
   --sandbox off|native                 Shell OS policy (default: off)
   --mcp-config PATH                    Explicit local stdio servers and tool allowlist
+  --subagents                          Enable bounded local delegation with parent approvals
 
-  Chat asks before writes, shell commands, and MCP calls. Headless run denies them without --yes.
+  Chat asks before writes, shell, MCP, and delegation. Headless run denies them without --yes.
   Shell execution uses your user permissions unless --sandbox native is selected.
   Native enforcement fails closed when unavailable; approvals remain required.
   Chat commands: /help /skills /session /info /context /context refresh /cancel /exit.
@@ -60,6 +61,7 @@ defmodule Ipse.CLI do
           compact: :boolean,
           sandbox: :string,
           mcp_config: :string,
+          subagents: :boolean,
           help: :boolean,
           demo: :boolean
         ],
@@ -172,6 +174,14 @@ defmodule Ipse.CLI do
 
       IO.puts(:stderr, "Shell policy requested: #{config.sandbox}.")
 
+      if config.subagents,
+        do:
+          IO.puts(
+            :stderr,
+            "Local subagents enabled: same provider/model/workspace; parent approvals apply. " <>
+              "Up to two children per turn and six model steps per child, additional to the parent budget."
+          )
+
       for server <- config.mcp_servers do
         IO.puts(:stderr, "MCP local server (trusted user permissions; outside shell sandbox):")
         IO.puts(:stderr, Jason.encode!(Ipse.MCP.Config.manifest(server), pretty: true))
@@ -188,7 +198,7 @@ defmodule Ipse.CLI do
         do:
           IO.puts(
             :stderr,
-            "Mutations, shell, and configured MCP calls are allowed for this session (--yes)."
+            "Mutations, shell, configured MCP, and enabled delegation are allowed for this session (--yes)."
           )
 
       client = self()
@@ -342,6 +352,10 @@ defmodule Ipse.CLI do
 
       {:ipse, ^pid, {:status, _status}} ->
         unless s.cancelling, do: IO.puts(:stderr, "Running…")
+        client_loop(s)
+
+      {:ipse, ^pid, {:subagent, id, status}} ->
+        unless s.cancelling, do: IO.puts(:stderr, "Subagent #{id}: #{status}")
         client_loop(s)
 
       {:ipse, ^pid, {:text, delta}} ->
@@ -499,6 +513,7 @@ defmodule Ipse.CLI do
              context_bytes: opts[:context_bytes] || 400_000,
              compact: opts[:compact] != false,
              mcp_servers: servers,
+             subagents: opts[:subagents] == true,
              approval: if(opts[:yes], do: :allow, else: if(interactive, do: :ask, else: :deny))
            }}
         end
@@ -526,7 +541,8 @@ defmodule Ipse.CLI do
          |> Keyword.put_new(:cwd, meta["cwd"])
          |> Keyword.put_new(:provider, meta["provider"])
          |> Keyword.put_new(:model, meta["model"])
-         |> Keyword.put_new(:sandbox, Map.get(meta, "sandbox", "off"))}
+         |> Keyword.put_new(:sandbox, Map.get(meta, "sandbox", "off"))
+         |> Keyword.put_new(:subagents, Map.get(meta, "subagents", false))}
       else
         _ -> {:error, "Session could not be loaded."}
       end
