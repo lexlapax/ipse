@@ -118,6 +118,12 @@ external command dependency, or runtime service. This diagnostic is separate
 from OS file/network enforcement. Detached children can survive cancellation
 or timeout; their cleanup is best effort.
 
+The optional `scripts/diagnose-stdio-cleanup.exs` uses the existing Elixir/OTP,
+Jason, `/bin/sh`, `sleep`, and Rust helper to generate synthetic local load.
+It adds no package, service, or external testing tool. Native mode uses the
+already approved macOS signing path. See the
+[diagnostic bounds](testing.md#stdio-cleanup-load-diagnostic).
+
 ## Optional integrations
 
 The developer approved macOS's built-in `/usr/bin/codesign` on 2026-10-15

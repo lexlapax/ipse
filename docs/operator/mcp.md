@@ -97,6 +97,14 @@ the remaining batch stops and resume never retries it. Inspect the affected
 service or files before explicitly requesting another call. If process cleanup
 cannot be confirmed, the session stops with recovery guidance.
 
+The helper also treats an output-read error or a pipe that remains open past
+its 500 ms post-exit drain deadline as a transport failure. Stdout alone is not
+successful completion. Ordinary group cleanup retries within that deadline;
+detached children can still retain pipes and workspace access. Inspect effects
+before requesting another call. Developers can use the credential-free
+[stdio load diagnostic](../developer/testing.md#stdio-cleanup-load-diagnostic)
+to distinguish these failures without connecting to a model or real MCP server.
+
 Resume with the same `--mcp-config` file. Public configuration changes—including
 allowlists or sandbox mode—refuse resume. Private environment values are not
 stored in the fingerprint; each new process uses values from the supplied file.

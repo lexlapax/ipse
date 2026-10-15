@@ -3,9 +3,20 @@ defmodule Ipse.StdioRunnerTest do
   alias Ipse.Runner
 
   setup do
-    cwd = Path.join(System.tmp_dir!(), "ipse-stdio-#{System.unique_integer([:positive])}")
+    root = Path.join(System.tmp_dir!(), "ipse-stdio-#{System.unique_integer([:positive])}")
+    cwd = Path.join(root, "workspace")
+    home = Path.join(root, "state")
     File.mkdir_p!(cwd)
-    on_exit(fn -> File.rm_rf!(cwd) end)
+    File.mkdir!(home)
+    File.chmod!(home, 0o700)
+    previous = System.get_env("IPSE_HOME")
+    System.put_env("IPSE_HOME", home)
+
+    on_exit(fn ->
+      if previous, do: System.put_env("IPSE_HOME", previous), else: System.delete_env("IPSE_HOME")
+      File.rm_rf!(root)
+    end)
+
     %{cwd: cwd}
   end
 
@@ -177,6 +188,75 @@ defmodule Ipse.StdioRunnerTest do
     assert {:error, _} = Runner.open_stdio("/bin/sh", [], cwd, %{"BAD=KEY" => "value"}, 1_000)
     assert {:error, _} = Runner.open_stdio("/bin/sh", [], cwd, %{}, 0)
     assert {:error, _} = Runner.open_stdio("/bin/sh", [], cwd, %{}, 1_000, sandbox: :unknown)
+  end
+
+  test "concurrent initial exits finish after cleaning up descendants", %{cwd: cwd} do
+    effects =
+      1..200
+      |> Task.async_stream(
+        fn iteration ->
+          effect = "concurrent-child-#{iteration}"
+          script = ~S[(sleep 0.7; printf escaped > "$1") & printf done]
+
+          {:ok, port} =
+            Runner.open_stdio("/bin/sh", ["-c", script, "fixture", effect], cwd, %{}, 2_000)
+
+          {frames, status} = collect(port)
+          diagnostic = "iteration #{iteration}: #{inspect({status, frames})}"
+          assert status == 0, diagnostic
+          assert stream(frames, ?O) == "done", diagnostic
+          refute Enum.any?(frames, &(elem(&1, 0) == ?E)), diagnostic
+          assert completion(frames) == %{"exit_code" => 0, "timed_out" => false}, diagnostic
+          effect
+        end,
+        max_concurrency: 16,
+        timeout: 5_000
+      )
+      |> Enum.map(fn {:ok, effect} -> effect end)
+
+    Process.sleep(850)
+    Enum.each(effects, fn effect -> refute File.exists?(Path.join(cwd, effect)) end)
+  end
+
+  @tag :macos_sandbox
+  test "macOS detached stdio pipe holder fails the bounded drain without completion", %{cwd: cwd} do
+    probe = Path.join(cwd, "probe")
+    secret = Path.join(Path.dirname(cwd), "outside-fixture")
+    File.write!(secret, "outside-sentinel")
+
+    assert {_, 0} =
+             System.cmd(
+               "rustc",
+               ["--edition=2021", "test/support/macos_native_probe.rs", "-o", probe],
+               stderr_to_stdout: true
+             )
+
+    {:ok, port} = Runner.open_stdio(probe, ["detach", secret], cwd, %{}, 5_000, sandbox: :native)
+    started = System.monotonic_time(:millisecond)
+
+    try do
+      {frames, status} = collect(port)
+      assert status == 0
+      assert stream(frames, ?E) == "stdio output did not drain"
+      assert completion(frames) == nil
+      assert System.monotonic_time(:millisecond) - started < 2_000
+      assert File.exists?(Path.join(cwd, "detached-ready"))
+      refute File.exists?(Path.join(cwd, "detached-confined"))
+    after
+      File.write!(Path.join(cwd, "release-detached"), "go")
+      if Port.info(port), do: Port.close(port)
+    end
+
+    assert Enum.any?(1..100, fn _ ->
+             if File.exists?(Path.join(cwd, "detached-confined")) do
+               true
+             else
+               Process.sleep(10)
+               false
+             end
+           end)
+
+    assert File.read!(secret) == "outside-sentinel"
   end
 
   test "malformed launch environment never starts the executable", %{cwd: cwd} do

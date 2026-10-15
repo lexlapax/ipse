@@ -127,6 +127,12 @@ Errors before dispatch do not imply the external effect started. A confirmed
 ordinary process-group shutdown does not prove effects were rolled back;
 detached processes remain an OS-specific limitation.
 
+After initial server exit, the helper retries ordinary group cleanup during idle
+drain polls within the fixed 500 ms deadline. A pipe retained beyond that limit
+still yields an error frame without successful completion. See the
+[Mac load investigation](testing.md#macos-stdio-cleanup-load-2026-10-15)
+and [repeatable diagnostic](testing.md#stdio-cleanup-load-diagnostic).
+
 ## Bounds and evidence
 
 | Boundary | Limit |

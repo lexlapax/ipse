@@ -184,7 +184,8 @@ private `HOME`/`TMPDIR` in native mode. Linux native stdio tests verify
 workspace writes, outside-workspace denial, network denial, and supervisor
 protection. The macOS stdio route uses the signed worker and exact entitlements;
 its four native stdio enforcement cases passed on macOS 14 arm64 CI. See
-[actual evidence and the unreproduced cleanup failure](../docs/developer/testing.md#p7-expanded-local-mcp-2026-10-15).
+[P7 evidence](../docs/developer/testing.md#p7-expanded-local-mcp-2026-10-15)
+and the subsequent [local cleanup investigation](../docs/developer/testing.md#macos-stdio-cleanup-load-2026-10-15).
 Native launch or capability failures fail closed and do not retry in trusted
 mode. See [the sandbox policy](../docs/developer/sandbox.md) for the common
 profiles and their limits.
@@ -221,8 +222,11 @@ The lifetime timeout accepts 1–86400000 milliseconds. Owner pipe EOF, timeout,
 failed output delivery, input overflow, and initial server exit kill its ordinary
 process group. An independent watchdog enforces the deadline even when output
 is blocked and allows at most one additional second before forcing supervisor
-exit. After server exit, output drains for at most 500 milliseconds; retained
-pipes that exceed this bound produce a transport failure. Input relay buffering
+exit. After server exit, output drains for at most 500 milliseconds. Idle
+five-millisecond polls repeat group SIGKILL to catch ordinary children created
+during the first signal's delivery, stopping after a failed signal or pipe EOF.
+Retained pipes that exceed the original bound still produce a transport failure
+without an `X` completion; this includes detached pipe holders. Input relay buffering
 is bounded to one MiB plus the current chunks and OS pipe buffers. Overload fails
 closed instead of blocking the owner-death reader. An oversized in-flight Port
 write may surface as a linked `:epipe` exit before the final error frame, so the

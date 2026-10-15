@@ -351,13 +351,14 @@ pub fn run(args: &[String]) -> Result<(), String> {
     let mut status = None;
     let mut drain_deadline = None;
     let mut disconnected = false;
+    let mut cleanup_pending = false;
     loop {
         if status.is_none() {
             status = child
                 .try_wait()
                 .map_err(|_| "cannot wait for stdio server")?;
             if status.is_some() {
-                kill_group(pid);
+                cleanup_pending = unsafe { super::kill(-pid, 9) } == 0;
                 drain_deadline = Some(Instant::now() + DRAIN);
             }
         }
@@ -389,7 +390,14 @@ pub fn run(args: &[String]) -> Result<(), String> {
                     thread::sleep(Duration::from_millis(5));
                 }
             }
-            Err(mpsc::RecvTimeoutError::Timeout) => (),
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                // A descendant can fork while the first group signal is being
+                // delivered. Retry only during the original bounded drain and
+                // stop once the group is gone; detached children remain outside it.
+                if cleanup_pending {
+                    cleanup_pending = unsafe { super::kill(-pid, 9) } == 0;
+                }
+            }
         }
     }
     match failure.load(Ordering::Acquire) {

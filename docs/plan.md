@@ -349,7 +349,11 @@ and per-server native enforcement without new runtime dependencies. Final bundle
 verification and [Linux/macOS source/package CI](https://github.com/lexlapax/ipse/actions/runs/38799753085)
 passed, including actual Mac native stdio enforcement. P7 is complete within
 this local scope. An initial Mac cleanup completion failure was not reproduced
-by forty stricter CI repetitions; its unknown cause remains recorded for follow-up.
-Broader independent-server coverage and Mac load diagnostics are recommended
-before designing authenticated network transports. See
+by forty stricter CI repetitions. Subsequent [local Mac load checks](developer/testing.md#macos-stdio-cleanup-load-2026-10-15)
+reproduced a drain failure with an ordinary pipe-holding descendant still alive
+after the first group signal. Bounded cleanup retries and strict regressions
+address that local reproduction without changing sandbox policy or the detached-
+descendant limit. The initial CI failure's cause remains unconfirmed.
+Broader independent-server coverage remains recommended before designing
+authenticated network transports. See
 [actual P7 results and limits](developer/testing.md#p7-expanded-local-mcp-2026-10-15).

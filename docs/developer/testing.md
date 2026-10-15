@@ -42,6 +42,8 @@ Ordinary `mix test` excludes `:native_sandbox` and `:macos_sandbox` enforcement 
 Linux host, run `mix test --include native_sandbox`; included checks fail when
 unavailable. On macOS, run `mix test test/macos_sandbox_test.exs --include macos_sandbox`.
 Report the exclusion count and actual OS enforcement separately.
+Stdio fixtures create an isolated owner-only `IPSE_HOME`; they do not use or
+change the operator's signed cache or its permissions.
 
 The demo is deterministic and does not call a model. It checks that the CLI,
 session loop, skill loading, file tools, and native command helper work together.
@@ -78,6 +80,33 @@ and both source/package platforms. The stronger process diagnostic remains opt-i
 The script removes its scratch files and bundle, but macOS retains each generated
 `org.ipse.sandbox.<random-id>` app container under `~/Library/Containers`.
 See [production gates and container lifecycle](sandbox.md#signing-and-integration-gates).
+
+### Stdio cleanup load diagnostic
+
+After building, capture synthetic decoded frames with the Elixir diagnostic:
+
+```sh
+mix run scripts/diagnose-stdio-cleanup.exs --iterations 1000 --concurrency 16 > /tmp/ipse-stdio-cleanup.jsonl
+mix run scripts/diagnose-stdio-cleanup.exs --iterations 100 --concurrency 4 --sandbox native > /tmp/ipse-stdio-native.jsonl
+```
+
+The script alternates the original initial-exit fixture, 64 KiB on each output
+stream, and the same burst with collection delayed by 100 ms. It records every
+decoded frame, helper exit status, elapsed time, and incomplete frame bytes.
+The summary separates output-read errors, drain deadlines, other helper errors,
+transport failures, and missing completion. Any unexpected status, output,
+error frame, missing completion, or delayed child write makes the run fail.
+Bounds are 1,000 trials, sixteen concurrent owners, 256 KiB captured per trial,
+a five-second helper lifetime, and a seven-second collection deadline.
+
+Native setup is serialized because signed-cache preparation uses a nonblocking
+cross-process lock; launched servers and cleanup still overlap. Setup failures
+remain failures and are never retried in trusted mode. State and workspaces are
+temporary, and the previous `IPSE_HOME` is restored. Native Mac runs can leave
+OS-managed app containers, as described above. Logs contain only synthetic
+fixture output and can be large. No MCP or provider service is contacted.
+The collector's delayed receive does not guarantee backpressure on the OS pipe.
+See [local investigation evidence](#macos-stdio-cleanup-load-2026-10-15).
 
 ## Release check
 
@@ -994,8 +1023,10 @@ error-frame rejection, preserving the cleanup and completion requirements. All
 twenty iterations passed locally on Linux. The replacement CI passed both Mac
 invocations of this stricter fixture (forty helper runs), alongside all other
 checks. The original missing completion record was not reproduced and its cause
-remains unknown; no runtime policy was relaxed or root-cause fix claimed. Fixed
-error frames still fail closed. Keep this diagnostic for future Mac load checks.
+remained unknown at P7 closure; no runtime policy was relaxed or root-cause fix
+claimed. The later [local load investigation](#macos-stdio-cleanup-load-2026-10-15)
+reproduced the symptom with a decoded drain error. The original CI log still
+does not establish whether it failed through that same path.
 
 ### Pinned independent interoperability
 
@@ -1039,3 +1070,68 @@ addition was verified by fixtures; the live run used the preceding display.
 Other independent servers, live providers, Mac independent/live MCP, network
 transports, templates/subscriptions, and persistent connections remain unverified
 or unimplemented. The existing macOS detached-descendant limitation remains.
+
+## macOS stdio cleanup load, 2026-10-15
+
+Local host: macOS 26.7.2 arm64, Elixir 1.20.3, OTP 29 / ERTS 17.0.5,
+Rust 1.97.1. The checkout started clean at `8a97b3a`; origin fetch succeeded
+after an initial connection timeout and confirmed it was current.
+
+The original helper passed 300 synthetic trials at concurrency eight. At
+concurrency sixteen, one of 1,000 trials returned stdout `done`, helper status
+zero, and `E: stdio output did not drain`, without `X`, after 519 ms. No delayed
+write occurred. A second 1,000-trial run with temporary process-group tracing
+reproduced this once. At the deadline, `/bin/ps` showed a live `sleep` in the
+original group, reparented to PID 1, after the first group-wide SIGKILL.
+Tracing inspected only that fixture group and was removed from the helper.
+
+This supports a fork during group-signal delivery as the cause of the local
+reproduction. Apple's published [group iteration](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/kern/kern_proc.c)
+collects member PIDs before signaling them through the
+[group-kill callback](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/kern/kern_sig.c).
+That source review is supporting evidence, not a trace of the host kernel's
+exact fork timing. The earlier CI failure's error frame remains unavailable;
+its cause is still unconfirmed.
+
+The stdio supervisor now repeats group SIGKILL on idle five-millisecond drain
+polls, stopping after a failed signal or pipe EOF. The original 500 ms drain
+deadline, output/error frames, watchdog, and sandbox policy remain in force.
+An ordinary descendant left by the first signal can therefore release its pipe
+before the drain expires. This is best-effort group cleanup, not a new process
+containment boundary.
+
+The diagnostic passed two 1,000-trial trusted-mode runs at concurrency sixteen
+and 100 actual native trials at concurrency four after this change. Each required
+exact output, one successful completion, no error frame, and no delayed write.
+A new 200-run concurrent regression preserves those strict completion checks.
+A separate native test deliberately detaches a pipe holder: it must still emit
+the drain error without completion within two seconds. After release, the
+surviving child proves outside-file denial, preserving the documented lifetime
+limitation.
+
+Initial macOS stdio enforcement failed before launch because fixtures used the
+host's `0755` state home. The suite now uses isolated `0700` homes without
+changing host permissions or weakening cache checks. All eighteen focused
+stdio tests then passed with five Linux tests excluded. An initial concurrent
+native diagnostic also exposed expected cache-lock contention; the diagnostic
+serializes preparation rather than changing runtime locking or retry policy.
+
+Final source build, formatting, warnings-as-errors compilation, and isolated
+credential-free demo passed. Ordinary tests: **223 passed, 27 excluded**.
+The full suite with actual macOS enforcement included: **237 passed,
+13 Linux enforcement tests excluded**. The focused stdio suite above includes
+the new concurrent regression and detached-pipe negative control.
+
+Built `dist/ipse-0.1.0-darwin-arm64.tar.gz` and verified that exact archive with
+`elixir scripts/verify-package.exs dist/ipse-0.1.0-darwin-arm64.tar.gz`.
+Fresh isolated HOME/IPSE_HOME and a utility-only PATH passed help, demo,
+default and explicit workspaces with spaces, bundled MCP tool/resource/prompt
+and delegation checks, and OTP/helper lifecycle and lock checks. Bundled Mac
+native file denials and ordinary-child timeout cleanup passed. No archive was
+published. The documentation check passed all 295 local links and heading
+anchors across 36 tracked Markdown files.
+
+These are synthetic local lifecycle and actual Mac file-enforcement checks.
+No live provider, independent MCP server, Linux enforcement, or updated hosted
+CI result is implied. Detached descendants can still survive with workspace
+access, and OS-managed sandbox containers persist.

@@ -82,6 +82,11 @@ After the initial child exits, output draining ends within 500 ms even if an
 escaped child retains a pipe. See [the diagnostic](testing.md#macos-process-boundary-2026-10-15)
 and [native verification](testing.md#macos-native-backend-2026-10-15).
 
+The direct stdio supervisor retries ordinary group cleanup during idle drain
+polls without extending that deadline. Detached pipe holders still fail the
+stdio transport's drain and do not receive a successful completion record.
+See [the local load investigation](testing.md#macos-stdio-cleanup-load-2026-10-15).
+
 ### Public interfaces and remaining limits
 
 Apple documents [App Sandbox entitlements](https://developer.apple.com/library/archive/documentation/Miscellaneous/Reference/EntitlementKeyReference/Chapters/EnablingAppSandbox.html)
