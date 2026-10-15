@@ -64,3 +64,12 @@ with the necessary context supplied explicitly.
 Report the command, toolchain, sanitized error, and whether it ran in a sandbox.
 Redact credentials, authorization URLs/codes, account identity, and private
 transcripts. Never share `~/.ipse/auth/` or environment dumps.
+
+## Model answers about its own version
+
+The startup banner shows the configured provider and requested model, not a
+verified backend revision. The current model instructions do not include those
+runtime facts, so a conversational answer about its own version can be incomplete
+or incorrect. Use the banner and your explicit `--model` selection as configuration
+evidence. A deterministic runtime-info command and bounded identity context are
+[planned](../plan.md#runtime-identity-and-extension-boundaries), not implemented.

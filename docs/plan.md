@@ -94,6 +94,50 @@ malformed metadata, precedence, size limits, changed files, and explicit loads.
 Executable-looking content stays inert unless a separately approved tool runs
 it.
 
+### Runtime identity and extension boundaries
+
+Observed on 2026-10-15: the CLI displayed `chatgpt/gpt-6.1-sol`, but a
+natural-language version question produced a claim that the model name was
+unavailable. `Ipse.Context.system/2` currently supplies the agent name and
+workspace, not the application version or configured provider/model. The
+OpenAI adapter currently retains usage and continuation items, not reported
+model identity. This is a runtime-context gap; model self-description is not
+an authoritative version source.
+
+Prioritize a small follow-up within P1 before P2/P3: one core Elixir module
+builds an allowlisted runtime description from application/session state.
+Distinguish Ipse's application version, configured provider and requested model,
+and any provider-reported model identifier. An alias is not proof of an exact
+backend revision; unknown revision stays unknown. Feed these facts into the
+host-owned instruction section on every turn and offer a deterministic `/info`
+command using the same source. Do not intercept natural-language questions with
+keyword matching or rewrite model answers after streaming them. Keep credentials,
+authorization headers, account identity, and private configuration out of this
+surface. Resume must describe the active runtime and clearly separate any saved
+session metadata.
+
+Acceptance: fixture tests cover application version, provider/model overrides,
+resume, missing or differing provider-reported identifiers, and secret exclusion;
+request fixtures prove the facts reach each adapter. Live natural-language checks
+are recorded separately and do not replace deterministic `/info` checks. Operator
+docs must explain configured versus reported identity and unresolved aliases.
+
+Research favors code-managed prompt builders with explicit identity/context,
+not a plugin framework for this example; see official OpenAI
+[prompt engineering](https://developers.openai.com/api/docs/guides/prompt-engineering).
+Keep the design provider-neutral and use ordinary Elixir modules.
+If concrete independent extensions later justify hooks, first specify typed
+input/context, tool-intent/result, and final-output boundaries; ordering, timeouts,
+cancellation, failure behavior, provenance, and journal/resume semantics. Validate
+side effects at the tool boundary, preserving host approvals. Final-output checks
+cannot retract text already streamed: choose and document buffering or a visibly
+limited validation contract before enabling them. Never silently alter user
+intent, provider, billing, approval policy, or tool arguments. Repository text
+must not load executable plugins automatically. The official
+[guardrail boundary guidance](https://developers.openai.com/api/docs/guides/agents/guardrails-approvals)
+distinguishes input/output validation from checks around individual tools; it is
+design evidence, not a proposal to add its SDK or runtime dependencies.
+
 ## P2: automatic context compaction
 
 Define preserved intent, decisions, recent exchanges, tool results, approvals,
