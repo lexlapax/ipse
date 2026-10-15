@@ -302,5 +302,8 @@ Source and fresh-package verification passed on Arch: 182 ordinary tests and
 SDK-to-SDK MCP round trip without the development toolchain. The initial local
 MCP scope is complete; live-model/third-party-server interoperability and the
 broader protocol capabilities remain separate checks.
+The corrected implementation also passed
+[Linux and macOS source/package CI](https://github.com/lexlapax/ipse/actions/runs/38773218000),
+including bundled MCP verification and existing Mac native enforcement.
 See [operator setup](operator/mcp.md), [developer contract](developer/mcp.md),
 and [actual verification](developer/testing.md#p5-local-mcp-2026-10-15).

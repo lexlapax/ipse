@@ -813,3 +813,9 @@ the deliberately cleared environment but did not select the CI installation's
 Erlang path. Arch's system Erlang masked that test setup error. Source fixtures
 and the SDK demo now explicitly select the running OTP installation's `bin`
 directory; the runtime environment isolation policy is unchanged.
+
+The corrected implementation at `b7522dd` passed
+[Linux x86_64 and macOS 14 arm64 CI](https://github.com/lexlapax/ipse/actions/runs/38773218000):
+source checks, ordinary tests, credential-free demo, packaging, and fresh-home
+bundled MCP verification. Mac native enforcement and the signed App Sandbox
+probe also passed. These hosted checks are separate from the local Arch results.
