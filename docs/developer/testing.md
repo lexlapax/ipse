@@ -221,7 +221,7 @@ An intentionally unavailable ChatGPT model returned HTTP 400 under explicit
 
 Natural-expiry refresh subsequently passed (see below). Broader plan eligibility,
 live usage-limit errors, revoked-session
-recovery, paid API calls, and macOS remain unverified. Successful fixture tests
+recovery, paid API calls, and live provider use on macOS remain unverified. Successful fixture tests
 do not establish live-service compatibility.
 
 ### HTTP lifecycle regression checks, 2026-10-14
@@ -444,8 +444,8 @@ The experimental macOS script uses the approved built-in `codesign`, an ad-hoc
 helper app, and Rust standard-library TCP probe. It requires successful execution
 and a reachable network control before claiming network denial; it checks outside
 file/symlink/metadata denial and allowed workspace/private-temp writes. Syntax
-and the Rust probe were checked locally; actual macOS enforcement remains
-unverified until a hosted probe passes. The supported CLI still fails closed
+and the Rust probe were checked locally; the hosted probe result is recorded
+below. The supported CLI still fails closed
 for native mode on macOS; this probe alone does not implement resource/process
 containment for a production backend.
 
@@ -462,7 +462,7 @@ source filename produced an invalid inferred crate name. An explicit crate name
 fixes this reproduced build issue. Review also tightened network checks to accept
 only a connect permission denial, rejecting refusal, timeout, and successful
 connections. The revised Rust probe passed those controls under Linux native
-enforcement; macOS enforcement still requires its own successful run.
+enforcement before the successful macOS run below.
 
 The [second hosted run](https://github.com/lexlapax/ipse/actions/runs/38710166415)
 again passed both platforms' core/package checks, then stopped at code signing:
@@ -470,3 +470,21 @@ the auxiliary entitlement input had been placed in `Contents`, a nested-code
 location. It now stays outside the app bundle, following Apple's documented
 [bundle structure](https://developer.apple.com/documentation/bundleresources/placing-content-in-a-bundle).
 This is a signing-layout fix, not a passing enforcement result.
+
+The [corrected hosted run](https://github.com/lexlapax/ipse/actions/runs/38710566686)
+passed on both platforms, configured with Elixir 1.18/OTP 27. Each passed build,
+format, warnings-as-errors compile, ordinary tests, demo, packaging, and fresh-home
+bundle verification. Archives were `ipse-0.1.0-linux-x86_64-glibc-2.39.tar.gz` and
+`ipse-0.1.0-darwin-arm64.tar.gz` (macOS 14 runner). This establishes those hosted
+source/bundle paths, not that the Arch/glibc-2.44 archive runs on Ubuntu.
+
+The actual macOS signed-helper probe also passed: strict code-signature and
+entitlement checks; denied outside fake-credential/symlink reads, outside writes
+and chmod; permitted workspace chmod/write and private-temp write; same Rust
+binary successfully executed inside the sandbox; reachable loopback connection
+became a connect permission denial; nested shell inherited the restrictions.
+Resource ceilings, adversarial process escape/cleanup, runtime signing/cache
+lifecycle, and a production CLI backend remain unimplemented/unverified on macOS.
+No Windows execution or paid API checks were performed. Final live-test logout
+completed successfully; local subscription tokens were cleared while retaining
+the app registration for the next sign-in.

@@ -114,7 +114,11 @@ The saved mode is restored on CLI resume; a conflicting mode is refused. Start
 a new session to choose a different shell policy.
 
 macOS sandbox enforcement is experimental and not exposed as a supported native
-backend yet; `--sandbox native` fails closed there. Windows is future work.
+backend yet; `--sandbox native` fails closed there. Its file/network probe passed
+on macOS 14 arm64, but resource/process containment still needs implementation.
+Core/source and fresh-bundle CI passed on Linux x86_64 and macOS arm64; live
+subscription checks were on Arch. See [evidence](../developer/testing.md#p4-release-verification-and-protocol-proposal-2026-10-15).
+Windows is future work.
 
 Chat commands:
 

@@ -237,12 +237,16 @@ The [protocol proposal](developer/protocol-proposal.md) defines these contracts
 and separate implementation gates; MCP, subagents, and remote execution remain
 unimplemented. Linux/macOS CI now includes source checks and fresh-home bundled
 release verification. The macOS App Sandbox probe signs an isolated helper with
-approved built-in `codesign`; its enforcement result must be recorded after the
-actual macOS CI run. Fresh-home checks do not substitute for every target OS,
+approved built-in `codesign`; its file/network enforcement passed on the macOS
+14 arm64 runner. Fresh-home checks do not substitute for every target OS,
 architecture, signing/notarization, or account-eligibility check.
 
-Hosted matrix runs passed Linux and macOS core/source/package checks.
-The experimental macOS probe's crate-name and signing-layout issues are fixed;
-network assertions require permission denial rather than any failed connection.
-Enforcement remains pending a passing macOS probe; see
+Hosted matrix runs passed Linux x86_64 and macOS arm64 core/source/package checks.
+The corrected experimental macOS probe also passed its actual file/network and
+child-inheritance checks; network assertions require connect permission denial.
+P4's packaging verification and protocol-design scope is complete; see
 [actual results](developer/testing.md#p4-release-verification-and-protocol-proposal-2026-10-15).
+The next proposed scope is a production macOS native backend with verified
+resource/process containment and signing lifecycle. Windows, MCP implementation,
+subagents, remote execution, broader account eligibility, and other architectures
+remain future work rather than implied completed integrations.

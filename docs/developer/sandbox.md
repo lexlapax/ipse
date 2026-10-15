@@ -52,8 +52,9 @@ The developer selected native backends rather than Linux containers on every OS.
 macOS core/runtime checks and an experimental signed App Sandbox helper probe
 are separate from a supported production sandbox backend. Built-in `codesign`
 was explicitly approved; see [dependency approval](dependencies.md#optional-integrations).
-No macOS enforcement claim is valid before an actual probe passes, and filesystem
-and network access checks alone do not prove resource/process containment.
+The experimental file/network and child-inheritance probe passed on macOS 14
+arm64 CI; see [actual evidence](testing.md#p4-release-verification-and-protocol-proposal-2026-10-15).
+Those checks do not prove resource/process containment or a production CLI backend.
 Deprecated `sandbox-exec` is not used.
 
 Windows needs an eventual native backend based on AppContainer/LPAC, workspace
