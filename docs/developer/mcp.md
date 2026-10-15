@@ -130,6 +130,9 @@ or restrict a trusted server's ambient filesystem/network permissions.
 
 See [actual tests and demos](testing.md#p5-local-mcp-2026-10-15). Fixtures exercise
 real OS pipes and local servers; they do not prove interoperability with arbitrary
-third-party servers or live models. The SDK-to-SDK source demo is credential-free.
+third-party servers. One live ChatGPT subscription session also passed the local
+SDK notes-server write, streamed completion, and resume without replay on Arch;
+other live provider/server combinations remain unverified. The SDK-to-SDK source
+demo is credential-free.
 Network transports, persistent server sessions, resources/prompts, sampling,
 elicitation, tasks, delegation, and Windows stay outside this milestone.

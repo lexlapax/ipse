@@ -109,5 +109,11 @@ no model service. The example server is `priv/mcp-notes.exs`. This source demo
 requires the Elixir toolchain; arbitrary third-party server runtimes are not
 bundled or installed by Ipse.
 
+A separate live ChatGPT subscription check passed one individually approved
+scratch write through this SDK example server, streamed completion, and resume
+without replay on Arch. This does not establish compatibility with arbitrary
+servers or other live providers; see the
+[live evidence](../developer/testing.md#live-chatgpt-mcp-follow-up).
+
 See [usage](usage.md), [troubleshooting](troubleshooting.md), and
 [actual verification](../developer/testing.md#p5-local-mcp-2026-10-15).

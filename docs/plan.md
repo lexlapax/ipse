@@ -300,8 +300,10 @@ demo passed one exact approved scratch write without a model service.
 Source and fresh-package verification passed on Arch: 182 ordinary tests and
 189 with Linux enforcement included. The extracted runtime passed an actual
 SDK-to-SDK MCP round trip without the development toolchain. The initial local
-MCP scope is complete; live-model/third-party-server interoperability and the
-broader protocol capabilities remain separate checks.
+MCP scope is complete. A live ChatGPT subscription session subsequently passed
+one exact approved MCP write, streamed completion, and resume without replay on
+Arch. This verifies the example SDK server path; arbitrary third-party servers,
+other live providers, and broader protocol capabilities remain separate checks.
 The corrected implementation also passed
 [Linux and macOS source/package CI](https://github.com/lexlapax/ipse/actions/runs/38773218000),
 including bundled MCP verification and existing Mac native enforcement.

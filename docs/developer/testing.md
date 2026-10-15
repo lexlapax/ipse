@@ -801,8 +801,9 @@ help/demo/workspace/helper/lock checks and a **real bundled MCP SDK round trip**
 both peers used the extracted runtime without Elixir/Erlang/Mix/Rust on PATH.
 The matching Elixir/OTP notice set from P0 was supplied. No archive was published.
 
-These are fixture and local SDK interoperability checks. Live ChatGPT/Ollama/API
-use with MCP, arbitrary third-party servers, persistent server sessions,
+The checks above are fixture and local SDK interoperability checks. The live
+ChatGPT follow-up below is separate. Live Ollama/API use with MCP, arbitrary
+third-party servers, persistent server sessions,
 network transports, resources/prompts, sampling/elicitation/tasks, delegation,
 remote execution, and Windows remain unverified or unimplemented. The P0 live
 subscription evidence is separate; no account setting or billing path changed
@@ -819,3 +820,40 @@ The corrected implementation at `b7522dd` passed
 source checks, ordinary tests, credential-free demo, packaging, and fresh-home
 bundled MCP verification. Mac native enforcement and the signed App Sandbox
 probe also passed. These hosted checks are separate from the local Arch results.
+
+### Live ChatGPT MCP follow-up
+
+On 2026-10-15, the source CLI at `6b324b1` passed a live MCP session on Serenity's
+Arch toolchain recorded above. Reused Ipse's existing protected sign-in and
+explicitly selected `chatgpt/gpt-6.1-sol`; there was no API-provider fallback,
+account-permission change, or new dependency. Reviewed the current official
+[subscription inference](https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference)
+and [preview limits](https://developers.openai.com/siwc/token-sharing-open-source/preview-limitations).
+Local MCP functions went through the existing `additional_tools` subscription
+route, rather than hosted MCP/connectors.
+
+Configured only `priv/mcp-notes.exs`, using the existing SDK server, a fresh `/tmp`
+workspace, separate scratch journals, an explicitly selected OTP path, and
+`--max-steps 4`. The live model requested `mcp__live_notes__write_note` exactly
+once. Reviewed the full arguments and individually approved the proposed content
+`Live ChatGPT MCP verified.` followed by one newline. The server returned success;
+exact file bytes matched, the streamed assistant reply completed with
+`MCP_WRITE_OK`, and the journal retained one approved intent and one tool result.
+
+Exited and resumed with the same explicit MCP configuration. Before any new
+prompt, all ten journal events and the file's modification/change timestamps
+were unchanged: startup did not replay the tool. A second live prompt requested
+recall without tools; its streamed reply recalled the saved text and completed
+with `RESUME_OK`. Final assertions found two finished turns, still one MCP
+intent/result, unchanged file timestamps, and the same exact bytes. Scratch
+transcripts and account details are not committed.
+
+This is live-model evidence for one local SDK example server on Arch, separate
+from scripted demos and protocol fixtures. Arbitrary third-party servers and
+other live providers remain unverified. This follow-up did not independently
+test refresh, logout, cancellation, or unknown-outcome recovery. Refresh/logout
+retain their earlier P0 live evidence; MCP cancellation and unknown-outcome
+recovery retain their P5 fixture evidence.
+
+Reviewed developer/operator guidance against the live result. All 245 local
+documentation links and heading anchors across 32 Markdown files passed.
