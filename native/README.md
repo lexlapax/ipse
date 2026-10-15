@@ -165,15 +165,39 @@ or owner termination. Loopback access is required for Mix and the TCP fixture.
 `ipse-runner --stdio CWD TIMEOUT_MS EXECUTABLE ARGS...` directly executes a
 configured local server, with no shell construction or interpretation of its
 arguments. The application entry point is
-`Ipse.Runner.open_stdio(executable, args, cwd, selected_env, timeout_ms)`, which
+`Ipse.Runner.open_stdio(executable, args, cwd, selected_env, timeout_ms, opts)`, which
 returns an owned Port. It removes the inherited environment before starting the
-helper and supplies only `PATH=/usr/bin:/bin`, `LANG=C.UTF-8`, and the explicitly
-selected environment map. The Rust child clears its environment and copies this
-already selected helper environment. The native CLI itself trusts its launcher's
-environment; applications must use the scrubbed entry point. Credentials belong
+helper and supplies only `PATH=/usr/bin:/bin` and `LANG=C.UTF-8` to that supervisor.
+A private initial `L` frame delivers the selected environment to the final server;
+the helper never loads selected `LD_PRELOAD`/`DYLD_*` values into itself. The native
+CLI itself trusts its launcher's environment; applications must use the scrubbed
+entry point. Credentials belong
 in explicitly selected environment values, never executable arguments or logs.
 
-The helper's input is OS transport framing, not MCP framing: `I` followed by an
+For MCP, the config's per-server `sandbox` value independently chooses `off`
+(the default) or `native`; the CLI shell `--sandbox` option does not set it.
+`Ipse.Runner.open_stdio/6` resolves `native` to the fixed Linux or macOS
+workspace profile and passes a bounded launch frame so selected environment
+values go only to the final server process, not the supervisor. The server gets
+`PATH=/usr/bin:/bin`, `LANG=C.UTF-8`, its selected environment, and a fresh
+private `HOME`/`TMPDIR` in native mode. Linux native stdio tests verify
+workspace writes, outside-workspace denial, network denial, and supervisor
+protection. The macOS stdio route uses the signed worker and exact entitlements;
+its platform-specific MCP enforcement still requires macOS CI verification.
+Native launch or capability failures fail closed and do not retry in trusted
+mode. See [the sandbox policy](../docs/developer/sandbox.md) for the common
+profiles and their limits.
+
+The helper requires an initial private `L` frame: a big-endian u32 payload size,
+then a big-endian u32 entry count and length-prefixed UTF-8 key/value strings.
+The payload is at most 134,144 bytes and 130 unique valid environment names;
+missing/invalid input fails before launch, with a five-second read deadline.
+MCP configuration applies the stricter 16-variable bounds above this helper API.
+Selected values are installed only in the final executable environment. On Mac,
+an owner-only temporary file is read/unlinked by the sandboxed worker before exec;
+an abrupt supervisor crash can leave private temporary data until manual cleanup.
+
+The remaining input is OS transport framing, not MCP framing: `I` followed by an
 unsigned big-endian four-byte length and that many raw server bytes forwards
 stdin; `C` followed by a zero length cancels the child. Input payloads are at
 most one MiB. Use `Ipse.Runner.send_stdio(port, bytes)` to construct input frames

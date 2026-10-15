@@ -107,6 +107,8 @@ try do
           "command" => Path.join(release_root, "bin/ipse"),
           "args" => ["eval", "Code.require_file(#{inspect(server_script)})"],
           "tools" => ["write_note"],
+          "resources" => ["notes://guide"],
+          "prompts" => ["summarize"],
           "env" => %{"ELIXIR_ERL_OPTIONS" => "+S 2:2"},
           "timeout_ms" => 15_000
         }
@@ -115,13 +117,23 @@ try do
   )
 
   {:ok, [server]} = Ipse.MCP.Config.load(config_path)
-  {:ok, [descriptor]} = Ipse.MCP.Client.discover(server, mcp_workspace)
+  {:ok, descriptors} = Ipse.MCP.Client.discover(server, mcp_workspace)
+  3 = length(descriptors)
+  descriptor = Enum.find(descriptors, &(&1.name == "write_note"))
 
   {:ok, "Wrote mcp-note.txt."} =
     Ipse.MCP.Client.call(descriptor, %{"content" => "bundled MCP verified"}, mcp_workspace)
 
   "bundled MCP verified" = File.read!(Path.join(mcp_workspace, "mcp-note.txt"))
   IO.puts("Bundled local MCP SDK round trip passed without a development toolchain.")
+
+  resource = Enum.find(descriptors, &(Map.get(&1, :kind) == :resource))
+  prompt = Enum.find(descriptors, &(Map.get(&1, :kind) == :prompt))
+  {:ok, resource_text} = Ipse.MCP.Client.call(resource, %{}, mcp_workspace)
+  true = String.contains?(resource_text, "Example notes are plain UTF-8 text.")
+  {:ok, prompt_text} = Ipse.MCP.Client.call(prompt, %{"topic" => "bundled notes"}, mcp_workspace)
+  true = String.contains?(prompt_text, "Summarize this topic: bundled notes")
+  IO.puts("Bundled MCP resource and prompt round trips passed.")
 
   Code.require_file(Path.join(app_root, "priv/subagent-demo.exs"))
   :ok = Ipse.SubagentDemo.run()

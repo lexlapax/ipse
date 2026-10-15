@@ -15,7 +15,9 @@ defmodule Ipse.MCP do
 
           definitions = Enum.map(all, &Client.definition/1)
 
-          if byte_size(public) <= 131_072 and not Config.contains_private?(definitions, server),
+          private? = Enum.any?(servers, &Config.contains_private?(definitions, &1))
+
+          if byte_size(public) <= 131_072 and not private?,
             do: {:cont, {:ok, all}},
             else:
               {:halt, {:error, "MCP catalog is oversized or contains configured private values."}}

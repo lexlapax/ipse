@@ -57,6 +57,85 @@ defmodule Ipse.MCP.SchemaTest do
     assert :ok = Schema.validate_arguments(enum_schema, %{"amount" => 1.0})
   end
 
+  test "accepts only the canonical root dialect and bounded inert defaults" do
+    schema = %{
+      "$schema" => "https://json-schema.org/draft/2020-12/schema",
+      "type" => "object",
+      "properties" => %{
+        "name" => %{
+          "type" => "string",
+          "default" => "not inserted",
+          "description" => "An inert schema annotation"
+        }
+      }
+    }
+
+    assert :ok = Schema.validate_schema(schema)
+    assert :ok = Schema.validate_arguments(schema, %{})
+
+    assert {:error, _} =
+             Schema.validate_schema(%{schema | "$schema" => "http://example.test/schema"})
+
+    assert {:error, _} =
+             Schema.validate_schema(%{
+               "type" => "object",
+               "properties" => %{
+                 "x" => %{
+                   "type" => "string",
+                   "$schema" => "https://json-schema.org/draft/2020-12/schema"
+                 }
+               }
+             })
+
+    assert {:error, _} =
+             Schema.validate_schema(%{
+               "type" => "string",
+               "default" => String.duplicate("x", 8 * 1024 + 1)
+             })
+  end
+
+  test "supports only narrow nullable type pairs with base-type constraints" do
+    schema = %{
+      "type" => "object",
+      "properties" => %{
+        "label" => %{
+          "type" => ["string", "null"],
+          "minLength" => 2,
+          "enum" => ["ok", nil]
+        },
+        "count" => %{"type" => ["null", "integer"], "minimum" => 0}
+      }
+    }
+
+    assert :ok = Schema.validate_schema(schema)
+    assert :ok = Schema.validate_arguments(schema, %{"label" => nil, "count" => 1})
+    assert :ok = Schema.validate_arguments(schema, %{"label" => "ok", "count" => nil})
+    assert {:error, _} = Schema.validate_arguments(schema, %{"label" => "x"})
+    assert {:error, _} = Schema.validate_arguments(schema, %{"label" => false})
+
+    invalid_types = [
+      ["string"],
+      ["string", "integer"],
+      ["null", "null"],
+      ["mystery", "null"],
+      ["string", "null", "integer"]
+    ]
+
+    for types <- invalid_types do
+      assert {:error, _} =
+               Schema.validate_schema(%{
+                 "type" => "object",
+                 "properties" => %{"x" => %{"type" => types}}
+               })
+    end
+
+    assert {:error, _} =
+             Schema.validate_schema(%{
+               "type" => "object",
+               "properties" => %{"x" => %{"type" => ["number", "null"], "minLength" => 1}}
+             })
+  end
+
   test "rejects unknown keywords, unsupported constructs, invalid shapes and conflicting bounds" do
     invalid = [
       %{"type" => "object", "$ref" => "#/definitions/x"},

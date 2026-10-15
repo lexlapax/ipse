@@ -302,10 +302,13 @@ required by the provider; raw hidden reasoning is not exposed in the UI.
 
 Current limits: 30 model calls per turn by default (`--max-steps`), bounded file and
 shell output, and a conservative conversation byte ceiling with bounded
-[automatic compaction](#context-compaction). Explicit local stdio MCP tools use
-[separate configuration and trust boundaries](mcp.md). **Full-screen TUI,
-network MCP, parallel or remote agents, and Windows are not implemented.** Local
-serial delegation is opt-in; see [local subagents](subagents.md). Uncompactable
+[automatic compaction](#context-compaction). Explicit local stdio MCP can expose
+allowlisted tools, exact-URI text resources, and named prompts. Each MCP server
+has its own `off` or `native` sandbox setting, separate from shell `--sandbox`;
+see the [MCP guide](mcp.md) for allowlist, schema, and platform limits. **Full-screen
+TUI, network MCP, parallel or remote agents, and Windows are not implemented.** Local
+serial delegation is opt-in; children do not inherit MCP servers. See
+[local subagents](subagents.md). Uncompactable
 context stops with an actionable message rather than silently dropping history. Skills with scripts requiring Node/Python do not
 make those runtimes dependencies of Ipse.
 

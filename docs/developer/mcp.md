@@ -1,138 +1,153 @@
 # Local MCP client contract
 
-The initial client uses explicitly configured local stdio servers and allowlisted
-tools. It is an adapter around the existing session, approval, and journal, not
-a second agent loop. See [operator setup](../operator/mcp.md),
-[protocol proposal](protocol-proposal.md), and [P5](../plan.md#p5-local-mcp-tools).
+Ipse connects only to explicitly configured local stdio MCP servers. Its MCP
+client is an adapter around the existing session, approval, and journal, not a
+second agent loop. See [operator setup](../operator/mcp.md), the
+[protocol proposal](protocol-proposal.md), and [P7](../plan.md#p7-expanded-mcp-capability).
 
 ## Package decision
 
-Evaluate OTP facilities and existing Mix packages before implementing common
-protocol machinery. This client reuses the third-party MIT-licensed
-[MCP Elixir SDK 1.1.0](https://hex.pm/packages/mcp_elixir_sdk/1.1.0) for handshake,
-protocol types, request matching, and client operations. It targets MCP
-2025-11-25. [JSONSchex 0.10.0](https://hex.pm/packages/jsonschex/0.10.0) evaluates
-Draft 2020-12 schemas after Ipse enforces its keyword and resource policy.
-Neither package is represented as an official OpenAI or MCP SDK.
+The client reuses the MIT-licensed [MCP Elixir SDK 1.1.0](https://hex.pm/packages/mcp_elixir_sdk/1.1.0)
+for protocol types, request matching, and client operations. It targets MCP
+2025-11-25. [JSONSchex 0.10.0](https://hex.pm/packages/jsonschex/0.10.0)
+validates the supported JSON Schema subset after Ipse applies its own strict
+keyword and resource policy. Neither package is an official OpenAI or MCP SDK.
+The choice reuses the selected SDK's small client interface and replaceable
+transport; broader alternatives added server/HTTP surface or had different
+license/revision tradeoffs. Its stdio adapter did not provide the lifecycle and
+bounds Ipse requires, so the transport uses the existing Rust OS helper rather
+than copying or patching vendor code. Package scope and licenses are listed in
+the [dependency inventory](dependencies.md).
 
-Compared SDK sources and published contracts: ExMCP has broader client/server/ACP
-and HTTP dependencies and documented VM-global stdio logging changes; Hermes'
-older release did not establish the selected revision; Anubis has a different
-LGPL license and broader stack. The selected SDK has a smaller client interface
-and replaceable transport. Its advertised optional Req/Plug dependencies are
-unconditionally referenced by source and required to compile on Elixir 1.20.
-They are included and documented, with patched Req 0.7.5. No HTTP server or MCP
-network transport is enabled. See [all dependencies and approvals](dependencies.md).
+## Protocol and implementation
 
-The SDK's shipped stdio adapter has no demonstrated process-group cleanup,
-clean environment, output limits, or bounded backpressure. `Ipse.MCP.Transport`
-implements its public behaviour using the existing Rust helper for those OS
-facilities. Rust never parses MCP JSON or owns approvals. This is the concrete
-reason for custom transport code; protocol and schema evaluation are reused.
-No vendor source is copied or patched.
+`Ipse.MCP.Config` accepts only an explicitly selected JSON configuration file;
+there is no workspace or `~/.ipse` discovery. `MCP.Client` performs bounded
+handshake and tool discovery, `MCP.Catalog` discovers the configured resource
+and prompt metadata, `MCP.Transport` owns bounded message framing, and
+`Ipse.Session` owns approvals, intent journaling, cancellation, and recovery.
+Rust owns only OS pipe/process facilities. Elixir owns MCP and JSON-RPC parsing.
 
-## Module and trust boundaries
+The official [2025-11-25 transport specification](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports)
+defines stdio as newline-delimited JSON-RPC with protocol output on stdout and
+optional diagnostics on stderr. Ipse uses that protocol over local pipes, with
+its own bounded native-helper framing beneath it. It does not enable Streamable
+HTTP or another network transport. See the official
+[resources](https://modelcontextprotocol.io/specification/2025-11-25/server/resources)
+and [prompts](https://modelcontextprotocol.io/specification/2025-11-25/server/prompts)
+specifications for the protocol surfaces Ipse selectively exposes.
 
-- `MCP.Config`: explicit file validation, launch identity, environment policy,
-  private-value detection/redaction, and public manifest.
-- `MCP.Schema`: JSON keyword/shape/size/depth policy, then JSONSchex compilation
-  and validation with no remote loader.
-- `MCP.Client`: SDK adapter, bounded discovery, descriptor binding, result policy.
-- `MCP.Transport`: strict message admission, byte framing/bounds, and lifecycle.
-- `Ipse.MCP`: catalog bounds and session-facing definitions/validation.
-- `Ipse.Session`: owns tasks, approvals, tool intent, cancellation, and recovery.
-- `Ipse.Runner` and `native/ipse-stdio.rs`: directly executed OS pipes, bounded
-  queues, process groups, watchdogs, and confirmed cancellation.
+## Configuration and capability policy
 
-No default config is discovered from a workspace or `~/.ipse`; the CLI must pass
-an explicit file. Embedded callers supply validated `mcp_servers` from
-`MCP.Config.load/1`. Server executables/args/env are immutable configuration;
-model output only selects a namespaced allowlisted tool and JSON arguments.
-All external calls use the existing approval policy. Server instructions,
-annotations, unknown capabilities, and notifications cannot enable features.
-Client sampling/elicitation/roots/task capabilities are not advertised.
-Remote tool names keep their original identity at dispatch. Dots become
-underscores in provider-facing names; all resulting collisions are rejected,
-and the 63-character maximum fits the existing provider function-name limit.
+Every server entry must select one or more exact tools, resource URIs, or prompt
+names. The combined allowlist is limited to 16 entries per server. The server's
+advertised capabilities do not expand that selection. Discovery fails closed
+if an allowed item is missing, duplicated, malformed, or changes between
+review and dispatch. Resources are addressed by their exact configured URI;
+prompts by exact configured name. Provider-facing IDs are generated from the
+server ID plus item identity: resources/prompts use stable SHA-256-derived
+suffixes, and all flattened IDs are collision-checked across the full config.
+Resource identifiers fit the provider's 64-byte function-name limit.
+The client requests only the tools, resources, or prompts capabilities needed
+by that server's nonempty allowlists; an empty capability category is not
+implicitly enabled.
 
-Configuration fingerprints include server ID, executable, redacted public args,
-enabled tool names, environment names, and timeout. Private values are excluded,
-avoiding an offline guessing oracle in manifests/journals. Environment changes
-between processes are explicit through the supplied file; a running approved
-call uses its existing snapshot. Fingerprints identify configuration, not
-executable code authenticity or a server's honesty.
+Resource metadata (URI, name, title, MIME type, size) and prompt
+names/descriptions/argument schemas are validated and bound to descriptor
+identity. Descriptions, supported schemas, and the exact configured URI/name
+are passed to the model; the public config and approval manifests also identify
+those targets.
+All of this remains untrusted server data. The resource path exposes only
+bounded text content for the configured URI; invalid/non-text resource or prompt
+results stop as unknown. Ordinary tool results report unsupported blocks as omitted.
+Prompt results are bounded messages whose `user`/`assistant` roles are preserved
+as data. Neither resource text nor prompt messages become system/developer
+instructions, grant permissions, enable a tool, or change billing. Ipse does
+not implement resource templates, subscriptions, sampling, elicitation, MCP
+tasks, or server mode. The [official resources spec](https://modelcontextprotocol.io/specification/2025-11-25/server/resources)
+describes templates and subscriptions separately; they are not implied by
+fixed-URI resource support.
 
-## Connection and effect lifecycle
+Tools, resource reads, and prompt retrieval all pass through the existing
+external-call approval policy. Every call displays the exact server/item and
+arguments. A resource's or prompt's read-like semantics do not waive approval.
+Headless mutations still require `--yes`; MCP data never supplies that flag.
+MCP tool descriptions, server instructions, annotations, resource metadata,
+prompt text, and results are untrusted. None can grant permissions or select a
+new capability.
 
-Each discovery/call runs in a session-owned task and a short-lived SDK client.
-Before launching an OS process, the transport synchronously registers with the
-session using the active job reference. Cancelled/stale registrations fail before
-launch. Owner death tears down the linked client/transport and closes the helper.
-Transport crash status hides buffers and private environment values.
+Provider-facing tool names remain bounded and collision checked. Tool remote
+names allow 1–32 ASCII characters. Resource and prompt IDs are `mcp__<server>__r_<digest>`
+and `mcp__<server>__p_<digest>`; their suffixes are derived from the configured
+URI/name and do not reveal long identifiers. Configuration fingerprints cover
+the exact public allowlists and sandbox mode. Secret environment values are
+excluded from fingerprints and manifests and are rejected if they overlap
+public identifiers or metadata.
 
-Discovery initializes revision 2025-11-25, negotiates only tools, and follows
-bounded pagination. Duplicate names, missing allowlisted tools, unsupported
-schemas, changed-list notifications, required MCP tasks, and oversized catalogs
-fail closed. Only configured descriptors are exposed. Before each approved call,
-a fresh connection rediscovers and compares the reviewed schema/description digest.
-Approval remains bound to the exact descriptor, server config, and full arguments.
+## Schema subset
 
-Session `tool_started` is synced before the worker can send `tools/call`; external
-intents include validated arguments, descriptor identity/digest, and approval.
-Complete tool results enter the existing tool-result message/outcome format.
-Connection loss, timeout, or invalid response after dispatch returns `unknown`:
-the session stops the batch, marks remaining calls not started, and never replays
-an unknown call during resume. Nominal read-only labels do not alter this rule.
-Loss before dispatch may conservatively remain unknown after owner death.
+Tool input and prompt argument schemas are bounded to 32 KiB, depth 8, and 256
+nodes. The root may omit `$schema` or use exactly
+`https://json-schema.org/draft/2020-12/schema`; other dialect identifiers are
+rejected. Supported types are object, string, integer, number, boolean, null,
+and array. A two-element type array is accepted only when it pairs one supported
+non-null type with `null`. Supported keywords are `properties`, `required`,
+boolean `additionalProperties`, `items`, scalar `enum`, string and array length
+bounds, numeric bounds, and bounded title/description/default data. Defaults
+are validated as bounded JSON data and are never filled into arguments.
+References, regex/format, combinators, remote loading, and every other keyword
+are rejected before compilation. JSONSchex's broader feature set is not
+implicitly enabled.
 
-Normal close sends the helper's cancel control and awaits actual exit status.
-Only an unsent cancel control can retry under Port backpressure; tool bytes never
-retry. A linked Port EXIT alone is not exit-status confirmation. Cleanup failure
-stops the session and reports uncertainty. The server is unsandboxed; detached
-processes may escape group cleanup on Linux and macOS. An acknowledged group
-shutdown does not prove external effects were rolled back.
+## Process boundary and sandbox
 
-## Bounds and supported schema subset
+Servers inherit only `PATH=/usr/bin:/bin`, `LANG=C.UTF-8`, and explicitly
+selected environment variables. The helper itself receives only the fixed
+PATH/LANG. A per-server `sandbox` setting defaults to `off`; `native` requests
+the fixed `linux-workspace-v1` or `macos-workspace-v1` profile for that MCP
+server process, independently of the shell's `--sandbox` option. Unsupported
+profiles and setup failures fail closed with no trusted-mode retry. Native
+launch uses a bounded private launch frame, keeps selected loader variables out
+of the supervisor's environment, and provides a fresh private HOME/TMPDIR.
+On macOS the already sandboxed worker reads and removes an owner-only environment
+file in its private run directory before executing the server. Normal cleanup
+removes that directory; abrupt supervisor termination can leave private temporary
+data behind. The native profile is not
+a general per-server permission system: see the
+[native policy](sandbox.md) for OS-specific roots and limitations.
+
+Discovery and each call use a short-lived SDK client. Before launching, the
+session registers the transport against the active job reference. Before an
+approved dispatch, the client rediscovers the descriptor and checks its
+reviewed digest. The synced `tool_started` event precedes a write-capable tool
+request. Once a request may have been dispatched, connection loss, timeout,
+malformed response, or RPC error yields `unknown`; the session stops the batch,
+marks later calls not started, and resume never replays the uncertain call.
+Errors before dispatch do not imply the external effect started. A confirmed
+ordinary process-group shutdown does not prove effects were rolled back;
+detached processes remain an OS-specific limitation.
+
+## Bounds and evidence
 
 | Boundary | Limit |
 | --- | --- |
 | Explicit config file | 64 KiB, regular non-symlink file |
-| Servers / enabled tools | 4 / 16 per server |
-| Server ID / remote tool name | 24 / 32 ASCII characters; flattened IDs collision checked |
+| Servers / combined allowlist | 4 / 16 tools, resources, and prompts per server |
+| Server ID / tool name | 24 / 32 ASCII characters; all model IDs collision checked |
+| Resource URI / prompt name | 2048 bytes / 32 ASCII characters |
 | Launch args / selected env | 16 args, 16 KiB aggregate; 16 variables, 4096 bytes each |
 | Server lifetime | Configured 1–120,000 ms, fixed across handshake and call |
 | Native queues | Input 128 × 8192 bytes; output 32 × 8192 bytes |
 | Protocol data | 256 KiB per JSON line; 1 MiB aggregate traffic; 256 messages |
-| Discovery | 8 pages, 64 discovered tools per server; 128 KiB exposed catalog |
-| Schema | 32 KiB, depth 8, 256 nodes |
-| Arguments | 16 KiB JSON, depth 12, 8 KiB strings, 128 items/properties |
+| Discovery | 8 pages, 64 items per catalog; 128 KiB exposed catalog |
+| Resource/prompt data | 64 KiB text; 128 content blocks |
+| Schema / arguments | 32 KiB schema, depth 8, 256 nodes; 16 KiB JSON arguments |
 | Approval display | 32 KiB pretty JSON; oversized calls denied |
-| Retained result | 64 KiB UTF-8 text, 128 content blocks |
 | Cancellation confirmation | One two-second helper-close deadline |
 
-Schema types are object, string, integer, number, boolean, null, array. Supported
-keywords: `properties`, `required`, boolean `additionalProperties`, `items`,
-scalar `enum`, `minLength`/`maxLength`, `minItems`/`maxItems`, `minimum`/`maximum`,
-and bounded `description`/`title`. Every schema node has an explicit type; array
-items must be schemas. Numeric equivalence follows JSON Schema, so `1.0` satisfies
-integer type and numeric enum `[1]`. References, regex/format, combinators,
-dialects, and other keywords are rejected before compilation. JSONSchex's wider
-feature set is not implicitly enabled; no loader is supplied.
-
-Server stderr is drained and discarded; protocol error prose/data is replaced by
-fixed errors before reaching SDK logs. Strict JSON-RPC envelope and ID admission
-prevents mixed request/response payloads from crashing the SDK with raw data.
-Known configured environment values are detected on decoded structures before
-JSON escaping and redacted in text results. This cannot identify unknown secrets
-or restrict a trusted server's ambient filesystem/network permissions.
-
-## Evidence and remaining scope
-
-See [actual tests and demos](testing.md#p5-local-mcp-2026-10-15). Fixtures exercise
-real OS pipes and local servers; they do not prove interoperability with arbitrary
-third-party servers. One live ChatGPT subscription session also passed the local
-SDK notes-server write, streamed completion, and resume without replay on Arch;
-other live provider/server combinations remain unverified. The SDK-to-SDK source
-demo is credential-free.
-Network transports, persistent server sessions, resources/prompts, sampling,
-elicitation, tasks, delegation, and Windows stay outside this milestone.
+The [P5 evidence](testing.md#p5-local-mcp-2026-10-15) records earlier tool-only
+fixture, bundle, and live subscription checks. P7 adds resource/prompt catalog
+and MCP-native sandbox behavior; do not infer verification of arbitrary server
+interoperability, all platforms, or other live providers from P5 evidence.
+Consult the current [testing record](testing.md) for P7 checks and remaining
+platform gates. The SDK-to-SDK demo is credential-free.

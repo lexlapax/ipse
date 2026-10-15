@@ -8,6 +8,14 @@ defmodule Ipse.Examples.MCPDemoModel do
     else
       true = Enum.any?(tools, &(get_in(&1, ["function", "name"]) == "mcp__demo__write_note"))
 
+      resource_id = Ipse.MCP.Config.resource_id("demo", "notes://guide")
+      prompt_id = Ipse.MCP.Config.prompt_id("demo", "summarize")
+
+      true =
+        Enum.all?([resource_id, prompt_id], fn name ->
+          Enum.any?(tools, &(get_in(&1, ["function", "name"]) == name))
+        end)
+
       {:ok,
        %{
          "role" => "assistant",
@@ -19,6 +27,19 @@ defmodule Ipse.Examples.MCPDemoModel do
              "function" => %{
                "name" => "mcp__demo__write_note",
                "arguments" => Jason.encode!(%{"content" => "Hello through MCP!\n"})
+             }
+           },
+           %{
+             "id" => "demo-resource",
+             "type" => "function",
+             "function" => %{"name" => resource_id, "arguments" => "{}"}
+           },
+           %{
+             "id" => "demo-prompt",
+             "type" => "function",
+             "function" => %{
+               "name" => prompt_id,
+               "arguments" => Jason.encode!(%{"topic" => "scratch notes"})
              }
            }
          ]
@@ -53,6 +74,8 @@ File.write!(
         "command" => System.find_executable("elixir"),
         "args" => args,
         "tools" => ["write_note"],
+        "resources" => ["notes://guide"],
+        "prompts" => ["summarize"],
         "env" => %{"PATH" => Path.join(to_string(:code.root_dir()), "bin") <> ":/usr/bin:/bin"},
         "timeout_ms" => 10_000
       }
@@ -89,6 +112,17 @@ await = fn await ->
       :ok = Ipse.Session.approve(pid, ref, true)
       await.(await)
 
+    {:ipse, ^pid, {:approval, ref, name, args}} ->
+      true =
+        {name, args} in [
+          {Ipse.MCP.Config.resource_id("demo", "notes://guide"), %{}},
+          {Ipse.MCP.Config.prompt_id("demo", "summarize"), %{"topic" => "scratch notes"}}
+        ]
+
+      IO.puts("Approving this one scripted #{name} call:\n" <> Jason.encode!(args, pretty: true))
+      :ok = Ipse.Session.approve(pid, ref, true)
+      await.(await)
+
     {:ipse, ^pid, {:error, message}} ->
       raise message
 
@@ -107,7 +141,15 @@ end
 try do
   await.(await)
   "Hello through MCP!\n" = File.read!(Path.join(root, "mcp-note.txt"))
-  IO.puts("PASS: approved MCP write and result verified. Session: #{Ipse.Session.info(pid).id}")
+  {:ok, events} = Ipse.Journal.load(Path.join(root, "sessions"), Ipse.Session.info(pid).id)
+  results = for e <- events, get_in(e, ["message", "role"]) == "tool", do: e["message"]["content"]
+  3 = length(results)
+  true = Enum.any?(results, &String.contains?(&1, "plain UTF-8 text"))
+  true = Enum.any?(results, &String.contains?(&1, "Summarize this topic: scratch notes"))
+
+  IO.puts(
+    "PASS: approved MCP write, resource and prompt results verified. Session: #{Ipse.Session.info(pid).id}"
+  )
 after
   DynamicSupervisor.terminate_child(Ipse.Sessions, pid)
 end

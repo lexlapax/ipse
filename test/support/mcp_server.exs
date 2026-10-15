@@ -107,8 +107,13 @@ loop = fn loop, changed ->
 
           loop.(loop, changed)
 
-        {:ok, %{"method" => "tools/call", "id" => id, "params" => %{"arguments" => args}}} ->
-          File.write!("calls.log", "write_note\n", [:append])
+        {:ok,
+         %{
+           "method" => "tools/call",
+           "id" => id,
+           "params" => %{"name" => name, "arguments" => args}
+         }} ->
+          File.write!("calls.log", name <> "\n", [:append])
 
           if scenario == "hang" do
             File.write!("hang-ready", System.pid())

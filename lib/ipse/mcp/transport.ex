@@ -26,7 +26,9 @@ defmodule Ipse.MCP.Transport do
 
     with :ok <- register(resource),
          {:ok, port} <-
-           Ipse.Runner.open_stdio(server.command, server.args, cwd, server.env, server.timeout_ms) do
+           Ipse.Runner.open_stdio(server.command, server.args, cwd, server.env, server.timeout_ms,
+             sandbox: Map.get(server, :sandbox, :off)
+           ) do
       {:ok,
        %{
          owner: owner,
@@ -34,7 +36,7 @@ defmodule Ipse.MCP.Transport do
          port: port,
          resource: resource,
          cleanup_owner: Keyword.fetch!(opts, :cleanup_owner),
-         private_env: server.env,
+         private_config: Map.take(server, [:env, :redactions]),
          buffer: <<>>,
          line: <<>>,
          bytes: 0,
@@ -167,7 +169,7 @@ defmodule Ipse.MCP.Transport do
              {:ok, message} when is_map(message) <- Jason.decode(line),
              true <- bounded?(message, 0),
              {:ok, message, pending} <- admit(message, acc.pending) do
-          message = sanitize_identity(message, acc.private_env)
+          message = sanitize_identity(message, acc.private_config)
           send(acc.owner, {:mcp_message, message})
           {:cont, {:ok, %{acc | messages: acc.messages + 1, pending: pending}}}
         else
@@ -214,7 +216,11 @@ defmodule Ipse.MCP.Transport do
 
   defp admit(%{"jsonrpc" => "2.0", "method" => method} = message, pending)
        when is_binary(method) and not is_map_key(message, "id") do
-    if method == "notifications/tools/list_changed" or is_map_key(message, "result") or
+    if method in [
+         "notifications/tools/list_changed",
+         "notifications/resources/list_changed",
+         "notifications/prompts/list_changed"
+       ] or is_map_key(message, "result") or
          is_map_key(message, "error"),
        do: :error,
        else: if(byte_size(method) <= 128, do: {:ok, message, pending}, else: :error)
@@ -233,13 +239,15 @@ defmodule Ipse.MCP.Transport do
     with %{
            "protocolVersion" => "2025-11-25",
            "serverInfo" => %{"name" => name, "version" => version},
-           "capabilities" => %{"tools" => tools}
+           "capabilities" => capabilities
          } <- result,
-         true <- is_binary(name) and is_binary(version) and is_map(tools) do
+         true <- is_binary(name) and is_binary(version) and is_map(capabilities),
+         supported = Map.take(capabilities, ["tools", "resources", "prompts"]),
+         true <- Enum.all?(supported, fn {_, value} -> is_map(value) end) do
       # Ignore server instructions and all capabilities outside this client slice.
       safe =
         Map.take(result, ["protocolVersion", "serverInfo"])
-        |> Map.put("capabilities", %{"tools" => %{}})
+        |> Map.put("capabilities", Map.new(supported, fn {key, _} -> {key, %{}} end))
 
       {:ok, %{message | "result" => safe}, Map.delete(pending, id)}
     else
@@ -261,13 +269,13 @@ defmodule Ipse.MCP.Transport do
   defp sanitize_identity(
          %{"result" => %{"serverInfo" => %{"name" => name, "version" => version} = info}} =
            message,
-         env
+         config
        )
        when is_binary(name) and is_binary(version) do
     info =
       info
       |> Map.take(["name", "version"])
-      |> Map.new(fn {key, value} -> {key, Ipse.MCP.Config.redact(value, %{env: env})} end)
+      |> Map.new(fn {key, value} -> {key, Ipse.MCP.Config.redact(value, config)} end)
 
     put_in(message, ["result", "serverInfo"], info)
   end

@@ -1,7 +1,7 @@
 //! Fixed App Sandbox worker policy. The supervisor stays outside the sandbox.
 use std::fs::{self, DirBuilder};
-use std::io::{self, Read};
-use std::os::unix::fs::DirBuilderExt;
+use std::io::{self, Read, Write};
+use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
 use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -9,6 +9,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
+
+#[path = "ipse-environment.rs"]
+mod child_environment;
 
 pub const PROFILE: &str = "macos-workspace-v1";
 #[repr(C)]
@@ -221,13 +224,49 @@ fn limit(resource: i32, requested: u64) -> io::Result<()> {
     Ok(())
 }
 
+pub fn prepare_stdio(worker: &str, workspace: &str, data: &str, timeout: u64,
+                     argv: &[String], environment: &[(String,String)],
+                     cancelled: &AtomicBool) -> Result<Invocation,String> {
+    if argv.is_empty() {return Err("missing stdio executable".into());}
+    let mut invocation=prepare(worker,workspace,data,timeout,"",cancelled)?;
+    let mut bytes=Vec::new();
+    bytes.extend_from_slice(&(environment.len() as u32).to_be_bytes());
+    for (key,value) in environment {
+        for text in [key,value] {
+            bytes.extend_from_slice(&(text.len() as u32).to_be_bytes());
+            bytes.extend_from_slice(text.as_bytes());
+        }
+    }
+    let path=invocation.temp.join("launch-environment");
+    fs::OpenOptions::new().write(true).create_new(true).mode(0o600).open(path)
+        .and_then(|mut file|file.write_all(&bytes)).map_err(|_|"cannot save stdio launch environment")?;
+    let mut command=Command::new(worker);
+    command.args(["--macos-worker-stdio",workspace,invocation.temp.to_str().unwrap(),&timeout.to_string()])
+        .args(argv).env_clear().env("PATH","/usr/bin:/bin").env("LANG","C")
+        .env("HOME",&invocation.temp).env("TMPDIR",&invocation.temp);
+    invocation.command=command;
+    Ok(invocation)
+}
+
 pub fn worker(args: &[String]) -> Result<(), String> {
-    if args.len() != 6 { return Err("invalid macOS sandbox worker arguments".into()); }
+    let direct=args.get(1).is_some_and(|arg|arg=="--macos-worker-stdio");
+    if (direct && args.len()<6) || (!direct && args.len()!=6) { return Err("invalid macOS sandbox worker arguments".into()); }
     let timeout: u64 = args[4].parse().map_err(|_| "invalid worker timeout")?;
     // Darwin resource numbers come from the public sys/resource.h contract.
     for (resource, ceiling) in [(4, 0), (8, 256), (1, 64 * 1024 * 1024),
         (0, timeout.saturating_add(999) / 1000 + 1)] {
         limit(resource, ceiling).map_err(|e| format!("cannot apply macOS resource limit: {e}"))?;
+    }
+    if direct {
+        let path=Path::new(&args[3]).join("launch-environment");
+        let mut bytes=Vec::new();
+        fs::File::open(&path).and_then(|file|file.take(134_145).read_to_end(&mut bytes))
+            .map_err(|_|"cannot read stdio launch environment")?;
+        let selected=child_environment::decode_environment(&bytes)?;
+        fs::remove_file(path).map_err(|_|"cannot remove stdio launch environment")?;
+        let error=Command::new(&args[5]).args(&args[6..]).current_dir(&args[2])
+            .env_clear().envs(selected).env("HOME",&args[3]).env("TMPDIR",&args[3]).exec();
+        return Err(format!("cannot execute sandboxed stdio server: {error}"));
     }
     let error = Command::new("/bin/sh").args(["-c", &args[5]])
         .current_dir(&args[2]).env_clear()

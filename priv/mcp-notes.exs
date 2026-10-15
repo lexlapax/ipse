@@ -33,6 +33,52 @@ defmodule Ipse.Examples.MCPNotes do
 
   def handle_call_tool(_, _, state),
     do: {:error, -32_602, "Invalid example tool arguments.", state}
+
+  @impl true
+  def handle_list_resources(_, state) do
+    {:ok,
+     [
+       %{
+         "uri" => "notes://guide",
+         "name" => "Notes guide",
+         "description" => "Read the example notes guide."
+       }
+     ], nil, state}
+  end
+
+  @impl true
+  def handle_read_resource("notes://guide", state),
+    do:
+      {:ok, [%{"uri" => "notes://guide", "text" => "Example notes are plain UTF-8 text."}], state}
+
+  def handle_read_resource(_, state), do: {:error, -32_002, "Unknown example resource.", state}
+
+  @impl true
+  def handle_list_prompts(_, state) do
+    {:ok,
+     [
+       %{
+         "name" => "summarize",
+         "description" => "Get an example summary request.",
+         "arguments" => [%{"name" => "topic", "required" => true}]
+       }
+     ], nil, state}
+  end
+
+  @impl true
+  def handle_get_prompt("summarize", %{"topic" => topic}, state) when is_binary(topic) do
+    {:ok,
+     %{
+       "messages" => [
+         %{
+           "role" => "user",
+           "content" => %{"type" => "text", "text" => "Summarize this topic: " <> topic}
+         }
+       ]
+     }, state}
+  end
+
+  def handle_get_prompt(_, _, state), do: {:error, -32_602, "Invalid example prompt.", state}
 end
 
 {:ok, _} = Application.ensure_all_started(:mcp_elixir_sdk)

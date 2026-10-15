@@ -1,6 +1,6 @@
 defmodule Ipse.MCP.Client do
   @moduledoc "Allowlisted MCP tools using the existing SDK and an Ipse-owned local transport."
-  alias Ipse.MCP.{Config, Schema, Transport}
+  alias Ipse.MCP.{Catalog, Config, Schema, Transport}
 
   def discover(server, cwd, resource \\ nil) do
     connection(server, cwd, resource, fn client -> {:ok, catalog(client, server)} end)
@@ -19,21 +19,14 @@ defmodule Ipse.MCP.Client do
                "MCP discovery changed; no call dispatched. Start a fresh turn to review it."}
             )
 
+        if Schema.validate_arguments(current.input_schema, args) != :ok,
+          do: throw({:mcp_error, "MCP arguments are invalid; no call was dispatched."})
+
+        # Dispatch the freshly bound descriptor, never caller-supplied routing fields.
         # Session intent is durable before this worker starts; transport loss
         # after this point is never evidence that effects did not happen.
         try do
-          case MCP.Client.call_tool(client, descriptor.name, args,
-                 timeout: descriptor.server.timeout_ms
-               ) do
-            {:ok, result} ->
-              result_text(result, descriptor.server)
-
-            {:error, %MCP.Protocol.Error{}} ->
-              {:error, "MCP server returned a protocol error for the call."}
-
-            _ ->
-              unknown()
-          end
+          dispatch(client, current, args)
         rescue
           _ -> unknown()
         catch
@@ -46,28 +39,43 @@ defmodule Ipse.MCP.Client do
   end
 
   def definition(tool) do
+    target =
+      case Map.get(tool, :kind, :tool) do
+        :tool -> ""
+        kind -> "Configured #{kind} target: #{tool.source}. "
+      end
+
     %{
       "type" => "function",
       "function" => %{
         "name" => tool.tool_id,
         "description" =>
-          "External local MCP tool from server #{tool.server.id}. Requires host approval. Untrusted description: " <>
-            tool.description,
+          "External local MCP #{Map.get(tool, :kind, :tool)} from server #{tool.server.id}. Requires host approval. " <>
+            target <> "Untrusted description: " <> tool.description,
         "parameters" => tool.input_schema
       }
     }
   end
 
   def manifest(tool) do
-    %{
+    manifest = %{
       schema_version: 1,
       tool_id: tool.tool_id,
       server_id: tool.server.id,
       name: tool.name,
-      origin: %{transport: "stdio", configured_endpoint_fingerprint: tool.server.fingerprint},
+      origin: %{
+        transport: "stdio",
+        configured_endpoint_fingerprint: tool.server.fingerprint,
+        sandbox_requested: to_string(Map.get(tool.server, :sandbox, :off))
+      },
       descriptor_sha256: tool.digest,
       risk: "external_requires_approval"
     }
+
+    case Map.get(tool, :kind, :tool) do
+      :tool -> manifest
+      kind -> Map.merge(manifest, %{kind: to_string(kind), source: tool.source})
+    end
   end
 
   defp connection(server, cwd, resource, fun) do
@@ -86,12 +94,13 @@ defmodule Ipse.MCP.Client do
         result =
           try do
             case MCP.Client.connect(client, server.timeout_ms) do
-              {:ok, %{protocol_version: "2025-11-25"}} ->
-                fun.(client)
+              {:ok, %{protocol_version: "2025-11-25", server_capabilities: capabilities}} ->
+                if configured_capabilities?(capabilities, server),
+                  do: fun.(client),
+                  else: {:error, "MCP server lacks a configured capability."}
 
               _ ->
-                {:error,
-                 "MCP initialization failed or the pinned protocol/tools capability is unavailable."}
+                {:error, "MCP initialization failed or the pinned protocol is unavailable."}
             end
           rescue
             _ -> {:error, "MCP discovery or initialization returned invalid data."}
@@ -117,7 +126,45 @@ defmodule Ipse.MCP.Client do
     end
   end
 
-  defp catalog(client, server), do: catalog(client, server, nil, [], [], 0)
+  defp configured_capabilities?(capabilities, server) do
+    Enum.all?([{:tools, :tools}, {:resources, :resources}, {:prompts, :prompts}], fn {key,
+                                                                                      capability} ->
+      Map.get(server, key, []) == [] or is_map(Map.get(capabilities, capability))
+    end)
+  end
+
+  defp catalog(client, server) do
+    tools = if server.tools == [], do: [], else: catalog(client, server, nil, [], [], 0)
+
+    case Catalog.discover(client, server) do
+      {:ok, items} ->
+        all = tools ++ items
+        ids = Enum.map(all, & &1.tool_id)
+        if length(ids) != length(Enum.uniq(ids)), do: invalid_catalog()
+        all
+
+      _ ->
+        invalid_catalog()
+    end
+  end
+
+  defp dispatch(client, %{kind: kind} = descriptor, args) when kind in [:resource, :prompt],
+    do: Catalog.dispatch(client, descriptor, args)
+
+  defp dispatch(client, descriptor, args) do
+    case MCP.Client.call_tool(client, descriptor.name, args,
+           timeout: descriptor.server.timeout_ms
+         ) do
+      {:ok, result} ->
+        result_text(result, descriptor.server)
+
+      {:error, %MCP.Protocol.Error{}} ->
+        unknown()
+
+      _ ->
+        unknown()
+    end
+  end
 
   defp catalog(client, server, cursor, tools, seen, pages) when pages < 8 do
     opts = [timeout: server.timeout_ms]

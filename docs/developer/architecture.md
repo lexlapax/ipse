@@ -2,8 +2,8 @@
 
 Ipse is an MIT-licensed, local coding agent built around Elixir and OTP.
 The core agent loop, provider adapters, tool policy, skills, authentication, and
-session journal are Elixir. A small Rust standard-library helper owns shell
-process groups and advisory session locks. There is no JavaScript or Python
+session journal are Elixir. A small Rust standard-library helper owns shell and
+configured MCP process groups and advisory session locks. There is no JavaScript or Python
 runtime dependency, and no required workflow framework.
 
 The project's name reflects continuity and feedback; its philosophical origin
@@ -176,13 +176,15 @@ active credential and stop the turn; the CLI clears queued requests visibly.
 ## Extension guidance
 
 Local stdio MCP uses an existing SDK behind the session's approval/journal
-boundary. Servers are explicitly configured and allowlisted; discovery and
-results grant no permissions. Every external call requires approval. A
-registered, session-owned transport uses the Rust helper for bounded pipes and
-ordinary process-group cleanup; it is unsandboxed even when the shell uses native
-mode. Loss after dispatch stops the batch with an unknown outcome, never an
-automatic retry. See the [MCP contract](mcp.md) for ownership, package decisions,
-schema limits, and detached-descendant limitations.
+boundary. Servers are explicitly configured and allowlisted for exact tools,
+resource URIs, and prompt names. Discovery and results grant no permissions;
+every external call requires approval. Resource text and role-tagged prompt
+messages remain untrusted data. A session-owned transport uses the Rust helper
+for bounded pipes and ordinary process-group cleanup. Per-server MCP sandboxing
+is independently selected and fails closed; shell `--sandbox` does not change
+the server policy. Loss or RPC failure after dispatch stops the batch with an
+unknown outcome, never an automatic retry. See the [MCP contract](mcp.md) for
+catalog/schema limits, protocol scope, and platform boundaries.
 
 Keep provider-specific wire formats inside provider adapters and keep session
 state transitions in `Ipse.Session`. Put ordinary filesystem and shell

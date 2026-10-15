@@ -7,7 +7,7 @@ defmodule Ipse.MixProject do
       version: "0.1.0",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
-      test_ignore_filters: [~r/^test\/support\/mcp_server\.exs$/],
+      test_ignore_filters: [~r/^test\/support\/mcp_(catalog_)?server\.exs$/],
       escript: [main_module: Ipse.CLI],
       deps: [
         {:jason, github: "michalmuskala/jason", tag: "v1.4.4", override: true},

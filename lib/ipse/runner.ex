@@ -107,10 +107,10 @@ defmodule Ipse.Runner do
   Use send_stdio/2 for server stdin and close_stdio/1 for confirmed cancellation.
   The returned Port emits native O/S/X/E frames; its owner must handle Port exits.
   Closing it or killing its owner stops the server's ordinary process group.
-  This trusted local transport does not provide an OS sandbox. Only PATH, LANG,
-  and explicitly selected environment values reach the helper and server.
+  The :sandbox option selects :off (default) or the fixed native workspace policy.
+  Selected environment values reach only the server, never the OS supervisor.
   """
-  def open_stdio(executable, args, cwd, selected_env \\ %{}, timeout_ms \\ 120_000) do
+  def open_stdio(executable, args, cwd, selected_env \\ %{}, timeout_ms \\ 120_000, opts \\ []) do
     valid_text = fn value ->
       is_binary(value) and String.valid?(value) and not String.contains?(value, <<0>>)
     end
@@ -146,19 +146,23 @@ defmodule Ipse.Runner do
         {:error, "stdio timeout must be between 1 and 86400000 ms"}
 
       true ->
-        with {:ok, helper} <- helper_path() do
+        with {:ok, policy} <- Ipse.Sandbox.resolve(Keyword.get(opts, :sandbox, :off), cwd),
+             {:ok, helper} <- helper_path(policy.profile != "macos-workspace-v1"),
+             {:ok, launch} <- stdio_launch_args(helper, policy, timeout_ms, executable, args) do
           selected = Map.merge(%{"PATH" => "/usr/bin:/bin", "LANG" => "C.UTF-8"}, selected_env)
+          supervisor = %{"PATH" => "/usr/bin:/bin", "LANG" => "C.UTF-8"}
           # Port env uses false to unset inherited values. No values are logged
-          # or copied into process arguments, the journal, or protocol frames.
+          # or copied into process arguments or the journal. Selected values
+          # travel only in the private binary launch frame on the helper pipe.
           removed =
             System.get_env()
             |> Map.keys()
-            |> Enum.reject(&Map.has_key?(selected, &1))
+            |> Enum.reject(&Map.has_key?(supervisor, &1))
             |> Enum.map(&{String.to_charlist(&1), false})
 
           environment =
             removed ++
-              Enum.map(selected, fn {key, value} ->
+              Enum.map(supervisor, fn {key, value} ->
                 {String.to_charlist(key), String.to_charlist(value)}
               end)
 
@@ -170,19 +174,62 @@ defmodule Ipse.Runner do
               :hide,
               cd: String.to_charlist(Path.expand(cwd)),
               env: environment,
-              args: [
-                "--stdio",
-                Path.expand(cwd),
-                Integer.to_string(timeout_ms),
-                executable | args
-              ]
+              args: launch
             ])
 
-          {:ok, port}
+          payload =
+            [
+              <<map_size(selected)::unsigned-big-32>>
+              | Enum.map(selected, fn {key, value} ->
+                  [
+                    <<byte_size(key)::unsigned-big-32>>,
+                    key,
+                    <<byte_size(value)::unsigned-big-32>>,
+                    value
+                  ]
+                end)
+            ]
+            |> IO.iodata_to_binary()
+
+          if Port.command(port, <<?L, byte_size(payload)::unsigned-big-32, payload::binary>>, [
+               :nosuspend
+             ]) do
+            {:ok, port}
+          else
+            Port.close(port)
+            {:error, "could not send stdio launch environment"}
+          end
         end
     end
   rescue
     _ -> {:error, "could not open stdio server"}
+  end
+
+  defp stdio_launch_args(
+         helper,
+         %{profile: "macos-workspace-v1", cwd: cwd},
+         timeout,
+         executable,
+         args
+       ) do
+    with {:ok, policy} <- Ipse.MacOSSandbox.prepare(helper, cwd) do
+      {:ok,
+       [
+         "--stdio",
+         cwd,
+         Integer.to_string(timeout),
+         "--sandbox",
+         "macos-workspace-v1",
+         policy.worker,
+         policy.data,
+         executable | args
+       ]}
+    end
+  end
+
+  defp stdio_launch_args(_helper, %{profile: profile, cwd: cwd}, timeout, executable, args) do
+    prefix = if profile, do: ["--sandbox", profile], else: []
+    {:ok, ["--stdio", cwd, Integer.to_string(timeout)] ++ prefix ++ [executable | args]}
   end
 
   @doc "Send at most one MiB of server bytes without suspending on a busy Port."

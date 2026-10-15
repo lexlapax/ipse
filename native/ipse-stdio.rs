@@ -1,6 +1,5 @@
 //! Bidirectional pipes and process-group lifetime for directly executed servers.
 use super::{frame, kill_group, setpgid, GroupGuard};
-use std::env;
 use std::io::{self, Read, Write};
 use std::os::unix::process::{CommandExt, ExitStatusExt};
 use std::process::{Command, Stdio};
@@ -13,6 +12,65 @@ const CHUNK: usize = 8192;
 const INPUT_CHUNKS: usize = 128;
 const OUTPUT_CHUNKS: usize = 32;
 const DRAIN: Duration = Duration::from_millis(500);
+
+#[path = "ipse-environment.rs"]
+mod child_environment;
+
+fn launch_environment() -> Result<Vec<(String, String)>, String> {
+    #[repr(C)]
+    struct PollFd {
+        fd: i32,
+        events: i16,
+        revents: i16,
+    }
+    #[cfg(target_os = "macos")]
+    type Nfds = u32;
+    #[cfg(not(target_os = "macos"))]
+    type Nfds = usize;
+    extern "C" {
+        fn poll(fds: *mut PollFd, count: Nfds, timeout: i32) -> i32;
+        fn read(fd: i32, bytes: *mut std::ffi::c_void, count: usize) -> isize;
+    }
+    let deadline = Instant::now() + Duration::from_secs(5);
+    let exact = |mut bytes: &mut [u8]| -> Result<(), String> {
+        while !bytes.is_empty() {
+            let remaining = deadline.saturating_duration_since(Instant::now());
+            if remaining.is_zero() {
+                return Err("stdio launch timed out".into());
+            }
+            let mut fd = PollFd {
+                fd: 0,
+                events: 1,
+                revents: 0,
+            };
+            let ready = unsafe { poll(&mut fd, 1, remaining.as_millis().min(5000) as i32) };
+            if ready < 0 && io::Error::last_os_error().kind() == io::ErrorKind::Interrupted {
+                continue;
+            }
+            if ready <= 0 {
+                return Err("stdio launch unavailable".into());
+            }
+            let size = unsafe { read(0, bytes.as_mut_ptr().cast(), bytes.len()) };
+            if size < 0 && io::Error::last_os_error().kind() == io::ErrorKind::Interrupted {
+                continue;
+            }
+            if size <= 0 {
+                return Err("stdio launch unavailable".into());
+            }
+            bytes = &mut bytes[size as usize..];
+        }
+        Ok(())
+    };
+    let mut header = [0u8; 5];
+    exact(&mut header)?;
+    let size = u32::from_be_bytes(header[1..].try_into().unwrap()) as usize;
+    if header[0] != b'L' || size > 134_144 {
+        return Err("invalid launch environment".into());
+    }
+    let mut bytes = vec![0u8; size];
+    exact(&mut bytes)?;
+    child_environment::decode_environment(&bytes)
+}
 
 fn output_reader<R: Read + Send + 'static>(
     mut input: R,
@@ -39,6 +97,103 @@ fn output_reader<R: Read + Send + 'static>(
     });
 }
 
+fn input_reader() -> (
+    mpsc::Receiver<Vec<u8>>,
+    Arc<AtomicU8>,
+    Arc<AtomicBool>,
+    Arc<std::sync::Mutex<Option<i32>>>,
+) {
+    let failure = Arc::new(AtomicU8::new(0));
+    let (input_tx, input_rx) = mpsc::sync_channel::<Vec<u8>>(INPUT_CHUNKS);
+    let input_failure = failure.clone();
+    let cancelled = Arc::new(AtomicBool::new(false));
+    let slot = Arc::new(std::sync::Mutex::new(None::<i32>));
+    let reader_slot = slot.clone();
+    let reader_cancelled = cancelled.clone();
+    thread::spawn(move || {
+        let mut owner = io::stdin();
+        let mut bytes = [0u8; CHUNK];
+        'frames: loop {
+            let mut header = [0u8; 5];
+            match owner.read(&mut header[..1]) {
+                Ok(0) => {
+                    reader_cancelled.store(true, Ordering::SeqCst);
+                    if let Some(pid) = *reader_slot.lock().unwrap() {
+                        kill_group(pid);
+                    }
+                    break;
+                }
+                Ok(_) => (),
+                Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
+                Err(_) => {
+                    input_failure.store(2, Ordering::Release);
+                    reader_cancelled.store(true, Ordering::SeqCst);
+                    if let Some(pid) = *reader_slot.lock().unwrap() {
+                        kill_group(pid);
+                    }
+                    break;
+                }
+            }
+            if owner.read_exact(&mut header[1..]).is_err() {
+                input_failure.store(2, Ordering::Release);
+                reader_cancelled.store(true, Ordering::SeqCst);
+                if let Some(pid) = *reader_slot.lock().unwrap() {
+                    kill_group(pid);
+                }
+                break;
+            }
+            let mut remaining =
+                u32::from_be_bytes([header[1], header[2], header[3], header[4]]) as usize;
+            if header[0] == b'C' && remaining == 0 {
+                reader_cancelled.store(true, Ordering::SeqCst);
+                if let Some(pid) = *reader_slot.lock().unwrap() {
+                    kill_group(pid);
+                }
+                break;
+            }
+            if header[0] != b'I' || remaining > 1_048_576 {
+                input_failure.store(2, Ordering::Release);
+                reader_cancelled.store(true, Ordering::SeqCst);
+                if let Some(pid) = *reader_slot.lock().unwrap() {
+                    kill_group(pid);
+                }
+                break;
+            }
+            while remaining > 0 {
+                let count = remaining.min(CHUNK);
+                if owner.read_exact(&mut bytes[..count]).is_err() {
+                    input_failure.store(2, Ordering::Release);
+                    reader_cancelled.store(true, Ordering::SeqCst);
+                    if let Some(pid) = *reader_slot.lock().unwrap() {
+                        kill_group(pid);
+                    }
+                    break 'frames;
+                }
+                match input_tx.try_send(bytes[..count].to_vec()) {
+                    Ok(()) => (),
+                    Err(mpsc::TrySendError::Full(_)) => {
+                        input_failure.store(1, Ordering::Release);
+                        reader_cancelled.store(true, Ordering::SeqCst);
+                        if let Some(pid) = *reader_slot.lock().unwrap() {
+                            kill_group(pid);
+                        }
+                        break 'frames;
+                    }
+                    Err(mpsc::TrySendError::Disconnected(_)) => {
+                        reader_cancelled.store(true, Ordering::SeqCst);
+                        if let Some(pid) = *reader_slot.lock().unwrap() {
+                            kill_group(pid);
+                        }
+                        break 'frames;
+                    }
+                }
+                remaining -= count;
+            }
+        }
+    });
+    (input_rx, failure, cancelled, slot)
+}
+
 pub fn run(args: &[String]) -> Result<(), String> {
     if args.len() < 5 {
         return Err("usage: ipse-runner --stdio CWD TIMEOUT_MS EXECUTABLE [ARGS...]".into());
@@ -50,25 +205,93 @@ pub fn run(args: &[String]) -> Result<(), String> {
     if args.len() > 261 || args.iter().map(String::len).sum::<usize>() > 131072 {
         return Err("stdio launch arguments exceed limit".into());
     }
-    let mut command = Command::new(&args[4]);
-    command
-        .args(&args[5..])
-        .current_dir(&args[2])
+    let selected = launch_environment()?;
+    let (input_rx, failure, cancelled, slot) = input_reader();
+    let sandboxed = args[4] == "--sandbox";
+    let mut executable = 4;
+    if sandboxed {
+        if args.len() < 7 {
+            return Err("invalid stdio sandbox arguments".into());
+        }
+        match args[5].as_str() {
+            #[cfg(target_os = "linux")]
+            "linux-workspace-v1" => executable = 6,
+            #[cfg(target_os = "macos")]
+            "macos-workspace-v1" => executable = 8,
+            _ => return Err("unsupported stdio sandbox profile".into()),
+        }
+        if args.len() <= executable {
+            return Err("invalid stdio sandbox arguments".into());
+        }
+    }
+    #[cfg(target_os = "linux")]
+    let sandbox = if sandboxed {
+        Some(Arc::new(super::ipse_linux_sandbox::prepare(
+            std::path::Path::new(&args[2]),
+            Duration::from_millis(timeout),
+        )?))
+    } else {
+        None
+    };
+    #[cfg(target_os = "macos")]
+    let mut macos = if sandboxed {
+        Some(super::ipse_macos_sandbox::prepare_stdio(
+            &args[6],
+            &args[2],
+            &args[7],
+            timeout,
+            &args[executable..],
+            &selected,
+            &cancelled,
+        )?)
+    } else {
+        None
+    };
+    let mut plain_command = Command::new(&args[executable]);
+    plain_command
+        .args(&args[executable + 1..])
         .env_clear()
-        .envs(env::vars_os())
+        .envs(selected);
+    #[cfg(target_os = "linux")]
+    if let Some(policy) = &sandbox {
+        plain_command
+            .env("HOME", policy.temp_dir())
+            .env("TMPDIR", policy.temp_dir());
+    }
+    #[cfg(target_os = "macos")]
+    let command = match &mut macos {
+        Some(policy) => &mut policy.command,
+        None => &mut plain_command,
+    };
+    #[cfg(not(target_os = "macos"))]
+    let command = &mut plain_command;
+    command
+        .current_dir(&args[2])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+    #[cfg(target_os = "linux")]
+    let child_sandbox = sandbox.clone();
     unsafe {
-        command.pre_exec(|| {
+        command.pre_exec(move || {
             if setpgid(0, 0) < 0 {
                 return Err(io::Error::last_os_error());
+            }
+            #[cfg(target_os = "linux")]
+            if let Some(policy) = &child_sandbox {
+                policy.apply()?;
             }
             Ok(())
         });
     }
+    let mut child_slot = slot.lock().unwrap();
+    if cancelled.load(Ordering::SeqCst) {
+        return Err("stdio owner disconnected before launch".into());
+    }
     let mut child = command.spawn().map_err(|_| "cannot start stdio server")?;
     let pid = child.id() as i32;
+    *child_slot = Some(pid);
+    drop(child_slot);
     let _cleanup = GroupGuard(pid);
     let finished = Arc::new(AtomicBool::new(false));
     let timed_out = Arc::new(AtomicBool::new(false));
@@ -95,66 +318,6 @@ pub fn run(args: &[String]) -> Result<(), String> {
         if !watchdog_finished.load(Ordering::Acquire) {
             kill_group(pid);
             std::process::exit(1);
-        }
-    });
-    let failure = Arc::new(AtomicU8::new(0));
-    let (input_tx, input_rx) = mpsc::sync_channel::<Vec<u8>>(INPUT_CHUNKS);
-    let input_failure = failure.clone();
-    thread::spawn(move || {
-        let mut owner = io::stdin();
-        let mut bytes = [0u8; CHUNK];
-        'frames: loop {
-            let mut header = [0u8; 5];
-            match owner.read(&mut header[..1]) {
-                Ok(0) => {
-                    kill_group(pid);
-                    break;
-                }
-                Ok(_) => (),
-                Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
-                Err(_) => {
-                    input_failure.store(2, Ordering::Release);
-                    kill_group(pid);
-                    break;
-                }
-            }
-            if owner.read_exact(&mut header[1..]).is_err() {
-                input_failure.store(2, Ordering::Release);
-                kill_group(pid);
-                break;
-            }
-            let mut remaining =
-                u32::from_be_bytes([header[1], header[2], header[3], header[4]]) as usize;
-            if header[0] == b'C' && remaining == 0 {
-                kill_group(pid);
-                break;
-            }
-            if header[0] != b'I' || remaining > 1_048_576 {
-                input_failure.store(2, Ordering::Release);
-                kill_group(pid);
-                break;
-            }
-            while remaining > 0 {
-                let count = remaining.min(CHUNK);
-                if owner.read_exact(&mut bytes[..count]).is_err() {
-                    input_failure.store(2, Ordering::Release);
-                    kill_group(pid);
-                    break 'frames;
-                }
-                match input_tx.try_send(bytes[..count].to_vec()) {
-                    Ok(()) => (),
-                    Err(mpsc::TrySendError::Full(_)) => {
-                        input_failure.store(1, Ordering::Release);
-                        kill_group(pid);
-                        break 'frames;
-                    }
-                    Err(mpsc::TrySendError::Disconnected(_)) => {
-                        kill_group(pid);
-                        break 'frames;
-                    }
-                }
-                remaining -= count;
-            }
         }
     });
     let mut child_input = child.stdin.take().ok_or("stdio server input unavailable")?;

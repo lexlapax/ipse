@@ -24,7 +24,7 @@ defmodule Ipse.CLI do
   --context-bytes N                    Context byte ceiling (default: 400000)
   --no-compact                         Stop at the ceiling without summarizing
   --sandbox off|native                 Shell OS policy (default: off)
-  --mcp-config PATH                    Explicit local stdio servers and tool allowlist
+  --mcp-config PATH                    Explicit local stdio servers and capability allowlists
   --subagents                          Enable bounded local delegation with parent approvals
 
   Chat asks before writes, shell, MCP, and delegation. Headless run denies them without --yes.
@@ -183,7 +183,12 @@ defmodule Ipse.CLI do
           )
 
       for server <- config.mcp_servers do
-        IO.puts(:stderr, "MCP local server (trusted user permissions; outside shell sandbox):")
+        policy =
+          if Map.get(server, :sandbox, :off) == :native,
+            do: "native workspace sandbox requested; fails closed",
+            else: "trusted user permissions; outside shell sandbox"
+
+        IO.puts(:stderr, "MCP local server (#{policy}):")
         IO.puts(:stderr, Jason.encode!(Ipse.MCP.Config.manifest(server), pretty: true))
       end
 
@@ -376,6 +381,10 @@ defmodule Ipse.CLI do
 
       {:ipse, ^pid, {:skill, name}} ->
         IO.puts(:stderr, "Skill: #{name}")
+        client_loop(s)
+
+      {:ipse, ^pid, {:mcp_approval_context, manifest}} ->
+        IO.puts(:stderr, "External MCP target:\n" <> Jason.encode!(manifest, pretty: true))
         client_loop(s)
 
       {:ipse, ^pid, {:approval, ref, name, args}} ->

@@ -109,16 +109,26 @@ diagnosis rather than deleting checkpoint records blindly.
 ## Local MCP failures
 
 MCP is disabled without an explicit `--mcp-config` file. Invalid configuration,
-unsupported schema keywords, missing allowlisted tools, duplicate names, or the
-wrong protocol version stop discovery before a tool call. Check your server's
-installed executable and the [supported subset](mcp.md#recovery-and-limits).
+unsupported schema keywords, missing allowlisted tools/resources/prompts,
+duplicate names, or the wrong protocol version stop discovery before dispatch.
+Check the selected executable, exact URI/name allowlists, and the
+[supported subset](mcp.md#recovery-and-limits). Resources and prompts are
+untrusted data; they do not authorize a call or become privileged instructions.
 
-A changed descriptor requires a fresh turn and approval. An unknown outcome
-after dispatch is never retried automatically; inspect the affected files or
-service before asking for a new call. If cleanup cannot be confirmed, the session
-stops. Resume requires the same public server configuration and never replays
-interrupted calls. MCP processes use trusted user permissions outside the shell
-sandbox; a successful transport shutdown does not reverse effects.
+A changed descriptor requires rediscovery and fresh approval. A malformed
+response or RPC error after a request may have been dispatched is an unknown
+outcome; inspect the affected files or service before asking for a new call.
+Resume never replays it. If cleanup cannot be confirmed, the session stops.
+Resume requires the same public server configuration, including resource/prompt
+allowlists and per-server sandbox mode.
+
+MCP servers default to trusted user permissions outside the shell sandbox.
+Setting that server's `sandbox` to `native` requests its independent fixed OS
+profile and fails closed if unavailable; it does not inherit the CLI shell mode.
+Provider executable setup errors can occur after a transport Port exists, so
+check the call result rather than inferring activation from startup alone. A
+successful shutdown does not reverse prior effects. See the
+[MCP guide](mcp.md#server-permissions-and-sandbox).
 
 ## Sharing diagnostics
 

@@ -93,7 +93,7 @@ fn run() -> Result<(), String> {
         if args.len() >= 3 && args[1] == "--codesign" {
             return Err(format!("cannot execute codesign: {}", ipse_macos_sandbox::codesign_exec(&args[2..])));
         }
-        if args.len() >= 2 && args[1] == "--macos-worker" {
+        if args.len() >= 2 && (args[1] == "--macos-worker" || args[1] == "--macos-worker-stdio") {
             if let Err(error) = ipse_macos_sandbox::worker(&args) {
                 eprintln!("macOS sandbox worker: {error}");
                 std::process::exit(1);

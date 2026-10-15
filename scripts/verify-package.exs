@@ -113,6 +113,13 @@ defmodule Ipse.PackageVerifier do
 
     unless String.contains?(
              output,
+             "Bundled MCP resource and prompt round trips passed."
+           ) do
+      raise "release MCP resource/prompt verification did not print its completion marker"
+    end
+
+    unless String.contains?(
+             output,
              "Bundled local delegation approvals and child journal verification passed."
            ) do
       raise "release delegation verification did not print its completion marker"

@@ -65,7 +65,7 @@ No Node, JavaScript, or Python runtime is required.
 | Unix OS and C library | Runtime process groups, advisory locks, filesystem, native runtime ABI | Host distribution; libc varies by platform. Match release OS/architecture/libc |
 | OpenSSL and system CA trust | OTP TLS and verified HTTPS provider/auth connections | Host/toolchain distribution; preserve its version-specific notices |
 | `/bin/sh` | Runtime shell tool and source/release launchers | Host shell implementation and license vary; POSIX shell syntax is used |
-| C linker/toolchain | Link the Rust helper during source builds | Arch `base-devel`; versions/licenses supplied by distribution |
+| C linker/toolchain | Link the Rust helper; compile synthetic loader probes for native enforcement tests (`/usr/bin/cc` on Linux, `/usr/bin/clang` on macOS) | Arch `base-devel` or macOS build toolchain; versions/licenses supplied by distribution |
 | Git | Fetch the pinned Jason dependency and repository work | Host Git package, GPL-2.0 |
 | Standard filesystem/text utilities | Scripts use `dirname`, `mkdir`, `cp`, `chmod`, `rm`, `uname`, and `tr`; setup examples use `mktemp`; helper verification uses `sleep`, and tests use `head`/`tr`. Existing bundled OTP launchers/fresh-release checks also need `basename`, `cut`, `sed`, `cat`, `grep`, `readlink`, `expr`, `awk`, and `id`; the package verifier makes that utility-only PATH explicit | Existing host utility implementation/licenses vary, commonly GNU coreutils plus GNU sed/grep and awk on Linux; OS-supplied equivalents on macOS |
 | `tar`, gzip support, `getconf` | Packaging archive and Linux libc identification | Host distribution; `getconf` is a libc utility. `getconf` failure falls back to `system-libc` naming |
@@ -161,6 +161,12 @@ sandbox build/test in a temporary workspace. The build passed with network and
 credential isolation. An isolated SDK diagnostic negotiated 2025-11-25 and read
 synthetic text. This did not pass the full Ipse transport: nesting that helper
 inside the sandbox conflicts with intentional process-group escape denial.
-The server's generated `$schema` also exposes a concrete P7 schema compatibility
-gap. Full Ipse interoperability remains pending; this investigation adds no
-mandatory build/test dependency or general compatibility claim.
+The server's generated `$schema` also exposed a concrete P7 schema compatibility
+gap. P7 now runs the full Ipse client outside that profile and confines only the
+server, retaining provider access and process-group supervision. The optional
+`mix run scripts/verify-independent-mcp.exs /path/to/reviewed/filesystem-server`
+passed native stdio discovery, exact individually approved synthetic read/list/
+write calls, nullable/default/dialect compatibility, and idle resume. It never
+downloads or builds the server. A separate live ChatGPT read also passed on Arch;
+see [P7 evidence](testing.md#p7-expanded-local-mcp-2026-10-15). This investigation
+adds no mandatory build/test dependency or general compatibility claim.

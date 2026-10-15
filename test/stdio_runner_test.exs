@@ -161,6 +161,279 @@ defmodule Ipse.StdioRunnerTest do
     assert {:error, _} = Runner.open_stdio("/bin/sh", [17], cwd, %{}, 1_000)
     assert {:error, _} = Runner.open_stdio("/bin/sh", [], cwd, %{"BAD=KEY" => "value"}, 1_000)
     assert {:error, _} = Runner.open_stdio("/bin/sh", [], cwd, %{}, 0)
+    assert {:error, _} = Runner.open_stdio("/bin/sh", [], cwd, %{}, 1_000, sandbox: :unknown)
+  end
+
+  test "malformed launch environment never starts the executable", %{cwd: cwd} do
+    helper = Application.app_dir(:ipse, "priv/ipse-runner")
+    duplicate = <<2::32, 1::32, "A", 1::32, "x", 1::32, "A", 1::32, "y">>
+
+    for bytes <- [<<?I, 0::32>>, <<?L, byte_size(duplicate)::32, duplicate::binary>>] do
+      port =
+        Port.open({:spawn_executable, String.to_charlist(helper)}, [
+          :binary,
+          :exit_status,
+          args: ["--stdio", cwd, "1000", "/bin/sh", "-c", "printf escaped > malformed-launch"]
+        ])
+
+      assert Port.command(port, bytes)
+      {frames, 1} = collect(port)
+      assert stream(frames, ?E) == "invalid launch environment"
+      refute File.exists?(Path.join(cwd, "malformed-launch"))
+    end
+  end
+
+  for tag <- [:native_sandbox, :macos_sandbox] do
+    @tag tag
+    test "#{tag} stdio policy preserves direct arguments and child env while denying outside files",
+         %{cwd: cwd} do
+      workspace = Path.join(cwd, "workspace")
+      File.mkdir!(workspace)
+      secret = Path.join(cwd, "outside/.ssh/fake-private-key")
+      File.mkdir_p!(Path.dirname(secret))
+      File.write!(secret, "private-fixture")
+      File.chmod!(secret, 0o600)
+      File.ln_s!(secret, Path.join(workspace, "outside-link"))
+
+      script =
+        ~S[set -e; test "$SELECTED_FIXTURE" = child-only; test "$HOME" != /fake-home; test "$TMPDIR" != /fake-temp; if cat "$1"; then exit 11; fi; if printf changed > "$1"; then exit 12; fi; if chmod 777 "$1"; then exit 13; fi; if cat outside-link; then exit 14; fi; printf writable > workspace-file; chmod 700 workspace-file; IFS= read -r line; printf '%s:%s' "$line" "$2"]
+
+      argument = "literal; $(touch escaped)"
+
+      {:ok, port} =
+        Runner.open_stdio(
+          "/bin/sh",
+          ["-c", script, "fixture", secret, argument],
+          workspace,
+          %{"SELECTED_FIXTURE" => "child-only", "HOME" => "/fake-home", "TMPDIR" => "/fake-temp"},
+          5_000,
+          sandbox: :native
+        )
+
+      assert :ok = Runner.send_stdio(port, "hello\n")
+      {frames, 0} = collect(port)
+      assert completion(frames)["exit_code"] == 0
+      assert stream(frames, ?O) == "hello:" <> argument
+      assert File.read!(secret) == "private-fixture"
+      assert Bitwise.band(File.stat!(secret).mode, 0o777) == 0o600
+      assert File.read!(Path.join(workspace, "workspace-file")) == "writable"
+      refute File.exists?(Path.join(workspace, "escaped"))
+    end
+  end
+
+  @tag :native_sandbox
+  test "selected loader environment cannot execute in the unsandboxed supervisor", %{cwd: cwd} do
+    workspace = Path.join(cwd, "workspace")
+    File.mkdir!(workspace)
+    outside = Path.join(cwd, "loader-escaped")
+
+    File.write!(Path.join(workspace, "loader.c"), ~S"""
+    #include <fcntl.h>
+    #include <stdlib.h>
+    #include <unistd.h>
+    __attribute__((constructor)) static void fixture(void) {
+      int fd=open(getenv("FIXTURE_OUTSIDE"),O_WRONLY|O_CREAT,0600);
+      if(fd>=0){write(fd,"escaped",7);close(fd);}
+    }
+    """)
+
+    assert {:ok, %{exit_code: 0}} =
+             Runner.run("/usr/bin/cc -shared -fPIC loader.c -o loader.so", workspace,
+               sandbox: :native
+             )
+
+    inside = Path.join(workspace, "loader-positive-control")
+
+    {:ok, control} =
+      Runner.open_stdio(
+        "/bin/sh",
+        ["-c", "true"],
+        workspace,
+        %{"LD_PRELOAD" => Path.join(workspace, "loader.so"), "FIXTURE_OUTSIDE" => inside},
+        5_000,
+        sandbox: :native
+      )
+
+    {control_frames, 0} = collect(control)
+    assert completion(control_frames)["exit_code"] == 0
+    assert File.read!(inside) == "escaped"
+
+    {:ok, port} =
+      Runner.open_stdio(
+        "/bin/sh",
+        ["-c", "printf confined"],
+        workspace,
+        %{"LD_PRELOAD" => Path.join(workspace, "loader.so"), "FIXTURE_OUTSIDE" => outside},
+        5_000,
+        sandbox: :native
+      )
+
+    {frames, 0} = collect(port)
+    assert completion(frames)["exit_code"] == 0
+    assert stream(frames, ?O) == "confined"
+    refute File.exists?(outside)
+  end
+
+  @tag :macos_sandbox
+  test "macOS selected loader environment reaches only the sandboxed direct executable", %{
+    cwd: cwd
+  } do
+    workspace = Path.join(cwd, "workspace")
+    File.mkdir!(workspace)
+    source = Path.join(workspace, "loader.c")
+    library = Path.join(workspace, "loader.dylib")
+    executable = Path.join(workspace, "server")
+
+    File.write!(source, ~S"""
+    #include <fcntl.h>
+    #include <stdlib.h>
+    #include <unistd.h>
+    __attribute__((constructor)) static void fixture(void) {
+      int fd=open(getenv("FIXTURE_OUTSIDE"),O_WRONLY|O_CREAT,0600);
+      if(fd>=0){write(fd,"fixture",7);close(fd);}
+    }
+    """)
+
+    File.write!(
+      Path.join(workspace, "server.c"),
+      "#include <stdio.h>\nint main(void){puts(\"confined\");return 0;}\n"
+    )
+
+    assert {_, 0} =
+             System.cmd("/usr/bin/clang", ["-dynamiclib", source, "-o", library],
+               stderr_to_stdout: true
+             )
+
+    assert {_, 0} =
+             System.cmd("/usr/bin/clang", [Path.join(workspace, "server.c"), "-o", executable],
+               stderr_to_stdout: true
+             )
+
+    inside = Path.join(workspace, "loader-positive-control")
+
+    {:ok, control} =
+      Runner.open_stdio(
+        executable,
+        [],
+        workspace,
+        %{"DYLD_INSERT_LIBRARIES" => library, "FIXTURE_OUTSIDE" => inside},
+        5_000,
+        sandbox: :native
+      )
+
+    {control_frames, 0} = collect(control)
+    assert completion(control_frames)["exit_code"] == 0
+    assert File.read!(inside) == "fixture"
+    outside = Path.join(cwd, "loader-escaped")
+
+    {:ok, port} =
+      Runner.open_stdio(
+        executable,
+        [],
+        workspace,
+        %{"DYLD_INSERT_LIBRARIES" => library, "FIXTURE_OUTSIDE" => outside},
+        5_000,
+        sandbox: :native
+      )
+
+    {frames, 0} = collect(port)
+    assert completion(frames)["exit_code"] == 0
+    assert stream(frames, ?O) == "confined\n"
+    refute File.exists?(outside)
+  end
+
+  for tag <- [:native_sandbox, :macos_sandbox] do
+    @tag tag
+    test "#{tag} cancellation during setup cannot leave deferred server effects", %{cwd: cwd} do
+      {:ok, port} =
+        Runner.open_stdio(
+          "/bin/sh",
+          ["-c", "IFS= read -r line && printf escaped > setup-effect"],
+          cwd,
+          %{},
+          5_000,
+          sandbox: :native
+        )
+
+      assert :ok = Runner.close_stdio(port)
+      assert Port.info(port) == nil
+      refute File.exists?(Path.join(cwd, "setup-effect"))
+    end
+
+    @tag tag
+    test "#{tag} owner death and confirmed cancellation stop ordinary stdio descendants", %{
+      cwd: cwd
+    } do
+      script = "(printf ready; sleep 0.7; printf escaped > owned-child) & wait"
+      parent = self()
+
+      owner =
+        spawn(fn ->
+          {:ok, port} =
+            Runner.open_stdio("/bin/sh", ["-c", script], cwd, %{}, 5_000, sandbox: :native)
+
+          wait_ready(port, parent)
+
+          receive do
+            :finish -> :ok
+          end
+        end)
+
+      on_exit(fn -> if Process.alive?(owner), do: Process.exit(owner, :kill) end)
+      assert_receive :ready, 30_000
+      Process.exit(owner, :kill)
+      Process.sleep(850)
+      refute File.exists?(Path.join(cwd, "owned-child"))
+
+      {:ok, port} =
+        Runner.open_stdio("/bin/sh", ["-c", script], cwd, %{}, 5_000, sandbox: :native)
+
+      wait_ready(port, self())
+      assert_receive :ready
+      assert :ok = Runner.close_stdio(port)
+      Process.sleep(850)
+      refute File.exists?(Path.join(cwd, "owned-child"))
+    end
+  end
+
+  @tag :native_sandbox
+  test "native stdio denies networking and process-group escape and confirms descendant cleanup",
+       %{cwd: cwd} do
+    File.write!(Path.join(cwd, "probe.rs"), ~S"""
+    extern "C" {fn setpgid(pid:i32,group:i32)->i32;}
+    fn main(){
+      assert_eq!(std::net::TcpStream::connect("127.0.0.1:9").unwrap_err().raw_os_error(),Some(1));
+      assert_eq!(unsafe{setpgid(0,0)},-1);
+      assert_eq!(std::io::Error::last_os_error().raw_os_error(),Some(1));
+      println!("confined");
+    }
+    """)
+
+    assert {:ok, %{exit_code: 0}} =
+             Runner.run("/usr/bin/rustc --edition=2021 probe.rs -o probe", cwd, sandbox: :native)
+
+    {:ok, probe} =
+      Runner.open_stdio(Path.join(cwd, "probe"), [], cwd, %{}, 5_000, sandbox: :native)
+
+    {frames, 0} = collect(probe)
+    assert completion(frames)["exit_code"] == 0
+    assert stream(frames, ?O) == "confined\n"
+
+    {:ok, port} =
+      Runner.open_stdio(
+        "/bin/sh",
+        ["-c", "(printf ready; sleep 0.7; printf escaped > native-closed-child) & wait"],
+        cwd,
+        %{},
+        5_000,
+        sandbox: :native
+      )
+
+    assert_receive {^port, {:data, bytes}}, 3_000
+    assert bytes =~ "ready"
+    assert :ok = Runner.close_stdio(port)
+    Process.sleep(800)
+    refute File.exists?(Path.join(cwd, "native-closed-child"))
   end
 
   test "confirmed cancellation waits for supervisor exit and stops ordinary descendants", %{
@@ -199,17 +472,17 @@ defmodule Ipse.StdioRunnerTest do
           do: send(parent, :ready),
           else: wait_ready(port, parent, text)
     after
-      3_000 -> raise "stdio fixture did not become ready"
+      30_000 -> raise "stdio fixture did not become ready"
     end
   end
 
-  defp collect(port, initial \\ <<>>) do
+  defp collect(port, initial \\ <<>>, deadline \\ System.monotonic_time(:millisecond) + 30_000) do
     receive do
-      {^port, {:data, bytes}} -> collect(port, initial <> bytes)
+      {^port, {:data, bytes}} -> collect(port, initial <> bytes, deadline)
       {^port, {:exit_status, status}} -> {decode(initial, []), status}
       {:EXIT, ^port, reason} -> {[], {:transport_exit, reason}}
     after
-      7_000 ->
+      max(deadline - System.monotonic_time(:millisecond), 0) ->
         Port.close(port)
         flunk("stdio helper did not finish")
     end

@@ -936,3 +936,89 @@ Live evidence covers one successful child path on Arch. Cancellation, owner
 death, denial, timeout, and unknown recovery remain fixture evidence. Parallel,
 recursive, cross-provider/model, remote, and child-MCP execution remain outside
 P6. Documentation was reconciled with the implementation and actual results.
+
+## P7 expanded local MCP, 2026-10-15
+
+Implemented exact configured resource URIs and prompt names through the existing
+SDK, host approval, descriptor binding, intent journal, and unknown-outcome
+boundary. Discovery fetches metadata only. Resource text and prompt messages
+remain bounded untrusted tool data, with no automatic prompt execution or linked
+resource loading. Added optional per-server native enforcement, independently
+of the shell setting. Reused existing packages; no new runtime dependency.
+See the [developer contract](mcp.md) and [operator guide](../operator/mcp.md).
+
+### Fixtures and source baseline
+
+Focused fixtures cover resource-only/prompt-only capability negotiation, no
+automatic content fetch, exact approval targets/arguments, headless denial,
+durable provenance, descriptor drift, duplicate/missing metadata, malformed
+prompt arguments, cursor/page ceilings, URI mismatch, binary/embedded content,
+oversized results, and unknown recovery without replay. Generic protocol errors
+after dispatch now stop as unknown, since an effect may have happened before
+the server reported an RPC failure. Valid ordinary tool error results remain
+reported errors. Schema fixtures cover the exact built-in Draft 2020-12 marker,
+narrow nullable pairs, bounded inert defaults, and continued rejection of
+references/combinators/remote loaders. Config fixtures cover default fingerprint
+compatibility and rejection of selected secrets in public fields across every
+configured server. Child environments remain server-specific; known private
+values are checked/redacted across the host catalog, arguments, identity, and
+retained text.
+
+Arch source build, both Elixir 1.20/1.18 formatters, warnings-as-errors compilation,
+and the original credential-free demo passed. Ordinary suite: **222 passed,
+26 enforcement checks excluded**. Actual Linux enforcement included: **235 passed,
+13 Mac checks excluded**. Native stdio fixtures prove workspace writes, denied
+outside/symlink/network access and process-group escape, child-only loader
+environment with a positive control, setup cancellation, owner death, and
+confirmed ordinary-descendant cleanup. Mac-tagged stdio fixtures are wired into
+hosted macOS CI; actual Mac execution of this new route remains pending.
+
+`mix run scripts/demo-mcp.exs` passed three exact approved SDK-to-SDK calls:
+scratch write, fixed resource read, and prompt retrieval. This uses a scripted
+model and contacts no model service. The notice-complete Arch archive and final
+fresh-extraction verifier passed, including bundled tool/resource/prompt calls,
+delegation, fresh-home workspace behavior, and helper/lock checks with a utility-only
+PATH. Supported-host CI remains pending.
+
+### Pinned independent interoperability
+
+The separately reviewed MIT `rust-mcp-filesystem` 0.2.0 at
+[commit df98dc38](https://github.com/13thx-mcp/filesystem/tree/df98dc38c969c92f25c778d37691e7a3f1914367)
+uses rmcp 3.4.0. Its locked dependencies were downloaded, then built offline
+inside the Linux native sandbox under the developer's explicit approval.
+An initial SDK-only diagnostic exposed the canonical `$schema` marker and
+negotiated revision 2025-11-25. Nesting Ipse's process-group supervisor inside
+an outer sandbox failed by design; the group-escape denial was retained.
+
+The full Ipse adapter subsequently passed with the client outside and only the
+server inside the native profile. The optional
+`mix run scripts/verify-independent-mcp.exs /path/to/reviewed/filesystem-server`
+copied the reviewed executable into a fresh scratch workspace, discovered three
+allowlisted tools, approved exact read/list/write calls separately, verified
+synthetic file/result bytes and journal intents, and resumed idle without journal
+changes. The actual generated schemas exercised the canonical dialect, nullable
+`Option<String>` path and inert false overwrite default. This is real independent
+protocol interoperability with a scripted model, not live model evidence. The
+server is not installed, bundled, added to default tests, or required by CI.
+
+### Live ChatGPT subscription check
+
+A separate interactive source session explicitly selected
+`chatgpt/gpt-6.1-sol` and two configured servers. The independent Rust server
+ran read-only inside its per-server native profile; the bundled SDK catalog
+example ran in the explicitly displayed trusted mode. Individually approved
+`read_text_file` with `path: fixture.txt`, the fixed `notes://guide` resource,
+and `summarize` with `topic: scratch verification`. Verified the exact synthetic
+independent marker `LIVE_INDEPENDENT_MCP_OK`, guide text, role-delimited prompt
+text, three approved durable intents/results, and streamed `LIVE_MCP_P7_OK`.
+No retrieved prompt was executed. Idle CLI resume followed by EOF preserved
+journal event count and fixture timestamps; no model request or MCP call replayed.
+Explicit `/exit` records cancellation separately; it is not a replay event.
+
+This live check used the existing Ipse subscription sign-in, with no API billing,
+provider fallback, permission change, or new refresh/logout check. Private
+transcripts and credentials are not committed. The final approval target-display
+addition was verified by fixtures; the live run used the preceding display.
+Other independent servers, live providers, Mac independent/live MCP, network
+transports, templates/subscriptions, and persistent connections remain unverified
+or unimplemented. The existing macOS detached-descendant limitation remains.

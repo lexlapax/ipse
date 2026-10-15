@@ -339,5 +339,12 @@ design; they are not enabled by this planning entry.
 
 Acceptance: pinned independent interoperability evidence, focused compatibility
 and resource/prompt fixtures, truthful source/live verification, updated trust and
-operator guidance, supported-host checks, and focused commits/pushes. P7 remains
-planned; no new capability is claimed here.
+operator guidance, supported-host checks, and focused commits/pushes.
+
+Local implementation, Arch source/enforcement checks, SDK resource/prompt demo,
+and pinned independent Rust server interoperability passed. A separate live
+ChatGPT session passed three individually approved MCP requests and idle resume
+without replay. Added canonical schema metadata/nullable/default compatibility
+and per-server native enforcement without new runtime dependencies. Final bundled
+verification passed; supported-host CI remains pending. See
+[actual P7 results and limits](developer/testing.md#p7-expanded-local-mcp-2026-10-15).

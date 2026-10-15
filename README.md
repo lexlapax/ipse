@@ -5,7 +5,7 @@ a small Rust process supervisor. MIT licensed. No JavaScript or Python runtime.
 
 **Prototype 0.1:** a terminal application and an embeddable OTP session API.
 The agent loop, providers, skills, approvals, and journal are Elixir. Rust owns
-shell process groups and advisory file locks. This is an independent implementation
+shell and configured MCP process groups and advisory file locks. This is an independent implementation
 informed by lessons from [Loopex](https://github.com/lexlapax/loopex) and
 [rs-llmspell](https://github.com/lexlapax/rs-llmspell).
 
@@ -58,6 +58,11 @@ instructions and `/context refresh` reloads them while idle. See
 [workspace instructions](docs/operator/usage.md#workspace-instructions).
 Explicit local stdio MCP tools are available through `--mcp-config`; see
 [configuration and trust boundaries](docs/operator/mcp.md).
+MCP servers default to trusted execution; a per-server `"sandbox": "native"`
+requests the fixed native workspace policy independently of shell `--sandbox`.
+The MCP allowlist can include exact tools, resource URIs, and prompt names;
+review their metadata and approval requests as untrusted data. See the
+[MCP operator guide](docs/operator/mcp.md) for limits and platform evidence.
 Opt-in local delegation is available with `--subagents`; it runs serial children
 with the same provider/model and workspace, separate journals, and parent-mediated
 approvals. See [local subagents](docs/operator/subagents.md) for limits and

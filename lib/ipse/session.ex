@@ -751,6 +751,14 @@ defmodule Ipse.Session do
 
       requires_approval and mode == :ask ->
         ref = make_ref()
+
+        if external do
+          notify(
+            s,
+            {:mcp_approval_context, Ipse.MCP.Client.manifest(Ipse.MCP.tool(s.mcp_tools, name))}
+          )
+        end
+
         notify(s, {:approval, ref, name, args})
         %{s | phase: :approval, approval: {ref, call, args}}
 

@@ -42,13 +42,27 @@ defmodule Ipse.MCP.ClientTest do
     refute File.exists?(Path.join(ctx.cwd, "note.txt"))
   end
 
-  test "MCP tool errors are returned as errors while server RPC details stay hidden", ctx do
+  test "dispatch uses the rediscovered identity and schema, not caller routing fields", ctx do
+    descriptor = discover!(server(ctx.cwd), ctx.cwd)
+    forged_schema = %{descriptor | input_schema: %{"type" => "object"}}
+    assert {:error, _} = Client.call(forged_schema, %{"path" => 17, "content" => "x"}, ctx.cwd)
+    refute File.exists?(Path.join(ctx.cwd, "calls.log"))
+    forged_name = %{descriptor | name: "unconfigured_tool"}
+
+    assert {:ok, "wrote note"} =
+             Client.call(forged_name, %{"path" => "note.txt", "content" => "bound"}, ctx.cwd)
+
+    assert File.read!(Path.join(ctx.cwd, "calls.log")) == "write_note\n"
+    assert File.read!(Path.join(ctx.cwd, "note.txt")) == "bound"
+  end
+
+  test "post-dispatch RPC failure stays unknown while server details stay hidden", ctx do
     descriptor = discover!(server(ctx.cwd, "rpc_error"), ctx.cwd)
 
-    assert {:error, message} =
+    assert {:unknown, message} =
              Client.call(descriptor, %{"path" => "note.txt", "content" => "hello"}, ctx.cwd)
 
-    assert message =~ "protocol error"
+    assert message =~ "outcome unknown"
     refute message =~ "private fixture detail"
     assert File.read!(Path.join(ctx.cwd, "calls.log")) == "write_note\n"
   end

@@ -11,8 +11,9 @@ defmodule Ipse.MCP.Schema do
 
   @schema_error "Invalid or unsupported tool schema."
   @argument_error "Tool arguments do not match the declared schema."
-  @schema_keys ~w(type properties required additionalProperties items enum minLength maxLength minItems maxItems minimum maximum title description)
+  @schema_keys ~w($schema type properties required additionalProperties items enum minLength maxLength minItems maxItems minimum maximum title description default)
   @types ~w(object string integer number boolean null array)
+  @dialect "https://json-schema.org/draft/2020-12/schema"
 
   @doc "Validate one bounded schema from the documented JSON Schema subset."
   def validate_schema(schema) when is_map(schema) do
@@ -59,13 +60,14 @@ defmodule Ipse.MCP.Schema do
 
     with true <- string_keyed?(schema),
          true <- Enum.all?(Map.keys(schema), &(&1 in @schema_keys)),
-         type when type in @types <- Map.get(schema, "type"),
+         :ok <- dialect(schema, depth),
+         {:ok, type, nullable} <- type_spec(Map.get(schema, "type")),
          :ok <- metadata(schema),
          :ok <- properties(schema, type),
          :ok <- required(schema, type),
          :ok <- additional_properties(schema, type),
          :ok <- items(schema, type),
-         :ok <- enum(schema, type),
+         :ok <- enum(schema, type, nullable),
          :ok <- constraints(schema, type) do
       schema_children(schema, type, depth + 1, count)
     else
@@ -136,13 +138,16 @@ defmodule Ipse.MCP.Schema do
   defp items(schema, "array"), do: if(is_map(schema["items"]), do: :ok, else: {:error, :invalid})
   defp items(schema, _type), do: absent?(schema, "items")
 
-  defp enum(schema, type) do
+  defp enum(schema, type, nullable) do
     case Map.fetch(schema, "enum") do
       :error ->
         :ok
 
       {:ok, values} when is_list(values) and values != [] ->
-        if Enum.all?(values, &(scalar?(&1) and value_matches_type?(type, &1))) and
+        if Enum.all?(values, fn value ->
+             scalar?(value) and
+               (value_matches_type?(type, value) or (nullable and is_nil(value)))
+           end) and
              length(values) == length(Enum.uniq(values)),
            do: :ok,
            else: {:error, :invalid}
@@ -199,10 +204,34 @@ defmodule Ipse.MCP.Schema do
 
   defp metadata(schema) do
     valid? =
-      Enum.all?(~w(title description), &(not Map.has_key?(schema, &1) or is_binary(schema[&1])))
+      Enum.all?(~w(title description), &(not Map.has_key?(schema, &1) or is_binary(schema[&1]))) and
+        (not Map.has_key?(schema, "default") or json_value(schema["default"], 1) == :ok)
 
     if valid?, do: :ok, else: {:error, :invalid}
   end
+
+  defp dialect(schema, 1) do
+    case Map.fetch(schema, "$schema") do
+      :error -> :ok
+      {:ok, @dialect} -> :ok
+      _ -> {:error, :unsupported_dialect}
+    end
+  end
+
+  defp dialect(schema, _depth), do: absent?(schema, "$schema")
+
+  defp type_spec(type) when is_binary(type) and type in @types,
+    do: {:ok, type, false}
+
+  defp type_spec([first, second] = types) when length(types) == 2 do
+    cond do
+      first == "null" and second in @types and second != "null" -> {:ok, second, true}
+      second == "null" and first in @types and first != "null" -> {:ok, first, true}
+      true -> {:error, :invalid_type}
+    end
+  end
+
+  defp type_spec(_), do: {:error, :invalid_type}
 
   defp absent?(schema, key), do: if(Map.has_key?(schema, key), do: {:error, :invalid}, else: :ok)
 

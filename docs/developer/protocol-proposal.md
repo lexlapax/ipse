@@ -3,7 +3,9 @@
 **Status:** This document preserves the P4 protocol design. P5 implements the
 focused [local stdio MCP client](mcp.md). P6 implements opt-in serial local
 delegation; supported behavior and trust boundaries are in the
-[delegation contract](delegation.md). Cross-platform CI remains pending for P6.
+[delegation contract](delegation.md). P6 passed Linux/macOS source/package CI.
+P7 extends the local client with explicit resources/prompts and a per-server
+native sandbox choice; the current [MCP contract](mcp.md) owns that behavior.
 This document does not enable tools by default or authorize dependencies.
 
 Ipse's current session, approval, and journal behavior is the baseline. A
@@ -19,7 +21,8 @@ Elixir/OTP. Protocols may describe or transport requests, but they do not own
 session state. The P5 MCP client uses explicit configuration for local stdio
 servers and a small allowlist of tools. Network transports, server-side MCP,
 MCP resources/prompts, sampling,
-extensions, and remote command execution stay out of that MCP scope. Local
+extensions, and remote command execution stayed out of P5's original scope.
+P7 adds bounded local resources/prompts separately. Local
 delegation is a separate capability with its own design and implementation;
 it does not rely on MCP and does not imply parallel or remote agents.
 
