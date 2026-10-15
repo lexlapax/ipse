@@ -42,6 +42,9 @@ reads it back, and runs a short shell command.
 
 ## Continue development with Codex CLI
 
+When returning from the Mac, use the [Serenity handoff](../developer/serenity-handoff.md)
+for the implementation state, accepted Mac limits, and Linux verification commands.
+
 From this checkout, start your installed Codex CLI:
 
 ```sh

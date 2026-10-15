@@ -47,7 +47,7 @@ Shell commands use trusted local execution by default. `--sandbox native` reques
 the opt-in Linux or macOS workspace sandbox and fails closed when unavailable; see
 [shell policy](docs/operator/usage.md#shell-policy).
 Core and bundled-release checks passed on Linux x86_64 and macOS arm64;
-native macOS enforcement also passed locally on macOS 26.7.2 arm64. Detached
+native macOS enforcement also passed on macOS 26.7.2 locally and macOS 14 CI, both arm64. Detached
 children may survive cancellation with workspace access. Windows is future work.
 
 Automatic context compaction retains the original journal and uses the selected

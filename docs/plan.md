@@ -20,7 +20,8 @@ credential-free demo.
 
 Automatic context compaction is available with a retained original journal.
 Full-screen TUI, MCP, subagents, remote execution, and Windows are not implemented.
-The optional Linux native shell profile is separate from trusted execution.
+The optional Linux and macOS native shell profiles are separate from trusted
+execution. macOS detached-descendant cleanup is best effort.
 Uncompactable context stops with recovery guidance.
 
 ## P0: verify the current release path
@@ -255,6 +256,11 @@ per-workspace signed workers through a bounded protected cache. Ordinary child
 cleanup remains active; detached children may survive and keep workspace access.
 See [the exact boundary](developer/sandbox.md#macos-production-boundary) and
 [current verification](developer/testing.md#macos-native-backend-2026-10-15).
+
+The final implementation CI passed Linux and macOS 14 source/package checks,
+including actual Mac enforcement. Local Mac checks passed 122 tests with seven
+Linux enforcement tests excluded. Development returns to Serenity with a
+[handoff and Linux baseline procedure](developer/serenity-handoff.md).
 
 Windows, MCP implementation, subagents, remote execution, broader account
 eligibility, and other architectures remain future work. Reliable adversarial

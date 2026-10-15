@@ -648,4 +648,13 @@ All nine corrected Mac enforcement tests passed locally with Homebrew Elixir.
 Formatting passed with both supported Elixir versions. A local attempt to use
 the isolated older toolchain could not start tests because its fresh Mix home
 lacked Hex; no dependency was installed and that attempt is not a test pass.
-The next CI result will establish the outside-tool-root denial on the hosted Mac.
+The [final CI run for `3c349f5`](https://github.com/lexlapax/ipse/actions/runs/38758452442)
+passed both Linux x86_64 and macOS 14 arm64 jobs, including source checks, demo,
+packaging, and fresh-home verification. The Mac passed all nine corrected native
+enforcement tests, the Rust policy-parser test, and the experimental file/network
+probe. Its installed compiler positive control succeeded and native execution
+outside the readable tool roots was denied without a compiled artifact.
+The final local full suite passed **122 tests with 7 Linux enforcement tests
+excluded**. Developer/operator docs were reviewed for the transfer back to
+Serenity; see [the handoff](serenity-handoff.md). Linux native enforcement must
+be rerun on Serenity rather than inferred from ordinary CI tests.

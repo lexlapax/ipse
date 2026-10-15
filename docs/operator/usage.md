@@ -128,7 +128,7 @@ access, but process cleanup is best effort. Sandbox data and its container are
 shared by commands for the same workspace; there is no per-command data isolation
 or aggregate memory/disk quota. See [native policy and limits](../developer/sandbox.md).
 Core/source and fresh-bundle CI passed on Linux x86_64 and macOS arm64. Native
-macOS enforcement passed locally on macOS 26.7.2 arm64; see
+macOS enforcement passed locally on macOS 26.7.2 arm64 and in macOS 14 arm64 CI; see
 [native results](../developer/testing.md#macos-native-backend-2026-10-15). Live
 subscription checks were on Arch. See [evidence](../developer/testing.md#p4-release-verification-and-protocol-proposal-2026-10-15).
 Windows is future work.
