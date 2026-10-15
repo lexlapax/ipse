@@ -208,6 +208,21 @@ is pending. Broader plan eligibility, live usage-limit errors, revoked-session
 recovery, paid API calls, and macOS remain unverified. Successful fixture tests
 do not establish live-service compatibility.
 
+### HTTP lifecycle regression checks, 2026-10-14
+
+Controlled CLI fixtures exposed a transport lifetime defect: standalone profiles
+reused fixed names, and asynchronous shutdown could leave the old profile alive
+or collide with the next request. Replaced the duplicate auth/provider lifecycle
+code with guardian-owned leases from a fixed 64-name pool. Each guardian starts
+its own linked profile, monitors the borrower, and waits for profile exit before
+releasing the name. This adds no package dependency.
+
+Four behavior tests verify completed-request cleanup, borrower-death cleanup,
+overlapping requests with isolated options, and repeated active cancellation
+closing both linked processes and actual loopback sockets before immediate reuse.
+All **55 fixture tests passed**. The isolated five-test P1 CLI draft also passed
+against this transport; that is preparation, not a claim that P1 UI work is done.
+
 Priorities and completion criteria are in [plan.md](../plan.md). When reporting a
 failure, include the command, toolchain, sanitized error, and whether it ran in
 a sandbox. Avoid calling permission failures application regressions until

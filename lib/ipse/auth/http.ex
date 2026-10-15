@@ -29,69 +29,49 @@ defmodule Ipse.Auth.HTTP do
     uri = URI.parse(url)
 
     if uri.scheme == "https" and uri.host == "auth.openai.com" and is_nil(uri.userinfo) do
-      with {:ok, profile} <- :inets.start(:httpc, [profile: :ipse_auth], :stand_alone) do
-        Process.unlink(profile)
-        owner = self()
+      Ipse.HTTPProfile.with_profile(fn profile ->
+        proxy_options = configure_proxy(profile)
 
-        guardian =
-          spawn(fn ->
-            reference = Process.monitor(owner)
-
-            receive do
-              :finished -> Process.demonitor(reference, [:flush])
-              {:DOWN, ^reference, :process, ^owner, _} -> :inets.stop(:stand_alone, profile)
-            end
-          end)
-
-        try do
-          proxy_options = configure_proxy(profile)
-
-          options = [
-            timeout: 15_000,
-            connect_timeout: 10_000,
-            autoredirect: false,
-            ssl: [
-              verify: :verify_peer,
-              cacerts: :public_key.cacerts_get(),
-              server_name_indication: ~c"auth.openai.com",
-              customize_hostname_check: [
-                match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
-              ]
+        options = [
+          timeout: 15_000,
+          connect_timeout: 10_000,
+          autoredirect: false,
+          ssl: [
+            verify: :verify_peer,
+            cacerts: :public_key.cacerts_get(),
+            server_name_indication: ~c"auth.openai.com",
+            customize_hostname_check: [
+              match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
             ]
           ]
+        ]
 
-          request =
-            if method == :get do
-              {String.to_charlist(url), []}
-            else
-              {String.to_charlist(url), [], ~c"application/x-www-form-urlencoded",
-               URI.encode_query(fields)}
-            end
-
-          case :httpc.request(
-                 method,
-                 request,
-                 options ++ proxy_options,
-                 [body_format: :binary],
-                 profile
-               ) do
-            {:ok, {{_, status, _}, _, body}} when status in 200..299 ->
-              if body == "", do: {:ok, %{}}, else: decode(body)
-
-            {:ok, {{_, status, _}, _, _}} ->
-              {:error,
-               "ChatGPT authorization returned HTTP #{status}. Sign in again if the session expired."}
-
-            _ ->
-              {:error, "Could not reach ChatGPT authorization. Check your network and retry."}
+        request =
+          if method == :get do
+            {String.to_charlist(url), []}
+          else
+            {String.to_charlist(url), [], ~c"application/x-www-form-urlencoded",
+             URI.encode_query(fields)}
           end
-        after
-          :inets.stop(:stand_alone, profile)
-          send(guardian, :finished)
+
+        case :httpc.request(
+               method,
+               request,
+               options ++ proxy_options,
+               [body_format: :binary],
+               profile
+             ) do
+          {:ok, {{_, status, _}, _, body}} when status in 200..299 ->
+            if body == "", do: {:ok, %{}}, else: decode(body)
+
+          {:ok, {{_, status, _}, _, _}} ->
+            {:error,
+             "ChatGPT authorization returned HTTP #{status}. Sign in again if the session expired."}
+
+          _ ->
+            {:error, "Could not reach ChatGPT authorization. Check your network and retry."}
         end
-      else
-        _ -> {:error, "Could not start ChatGPT authorization HTTP client."}
-      end
+      end)
     else
       {:error, "ChatGPT authorization endpoint is not trusted."}
     end

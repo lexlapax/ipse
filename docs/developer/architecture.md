@@ -36,6 +36,14 @@ kept where needed to resume a provider exchange. The session enforces a
 per-turn model-call limit and runs tools sequentially. It does not use a fixed
 plan/execute workflow or require a graph framework.
 
+`Ipse.HTTPProfile` owns per-request HTTP lifetimes for authentication and
+providers. A monitored guardian starts each standalone OTP profile and retains
+its lease until the profile exits. Borrower death closes its profile and sockets;
+another request cannot reuse the name during shutdown. A fixed pool of 64 names
+bounds atom usage and keeps proxy settings and connection state isolated between
+concurrent requests. Exhaustion returns a retryable error instead of creating
+unbounded profile names.
+
 ## Trust and side effects
 
 The system message describes the workspace and available skill metadata.

@@ -9,78 +9,52 @@ defmodule Ipse.Provider.HTTP do
     if uri.scheme not in ["http", "https"] or is_nil(uri.host) or uri.userinfo do
       {:error, "Invalid provider URL."}
     else
-      with {:ok, profile} <- :inets.start(:httpc, [profile: :ipse_provider], :stand_alone) do
-        owner = self()
+      Ipse.HTTPProfile.with_profile(fn profile ->
+        proxy_options = configure_proxy(profile, uri)
+        timeout = config[:timeout_ms] || 120_000
 
-        # A killed streaming worker cannot run its after block. The guardian
-        # survives it and closes the profile, cancelling all in-flight traffic.
-        guardian =
-          spawn(fn ->
-            reference = Process.monitor(owner)
-
-            receive do
-              {:DOWN, ^reference, :process, ^owner, _reason} ->
-                :inets.stop(:stand_alone, profile)
-
-              :finished ->
-                :ok
-            end
-          end)
-
-        Process.unlink(profile)
-
-        try do
-          proxy_options = configure_proxy(profile, uri)
-          timeout = config[:timeout_ms] || 120_000
-
-          ssl = [
-            verify: :verify_peer,
-            cacerts: :public_key.cacerts_get(),
-            server_name_indication: String.to_charlist(uri.host),
-            customize_hostname_check: [
-              match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
-            ]
+        ssl = [
+          verify: :verify_peer,
+          cacerts: :public_key.cacerts_get(),
+          server_name_indication: String.to_charlist(uri.host),
+          customize_hostname_check: [
+            match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
           ]
+        ]
 
-          request =
-            {String.to_charlist(url),
-             Enum.map(headers, fn {k, v} -> {String.to_charlist(k), String.to_charlist(v)} end),
-             String.to_charlist("application/json"), Jason.encode!(payload)}
+        request =
+          {String.to_charlist(url),
+           Enum.map(headers, fn {k, v} -> {String.to_charlist(k), String.to_charlist(v)} end),
+           String.to_charlist("application/json"), Jason.encode!(payload)}
 
-          options =
-            [
-              timeout: timeout,
-              connect_timeout: min(timeout, 30_000),
-              ssl: ssl,
-              autoredirect: false
-            ] ++ proxy_options
+        options =
+          [
+            timeout: timeout,
+            connect_timeout: min(timeout, 30_000),
+            ssl: ssl,
+            autoredirect: false
+          ] ++ proxy_options
 
-          case :httpc.request(
-                 :post,
-                 request,
-                 options,
-                 [sync: false, stream: :self, body_format: :binary],
-                 profile
-               ) do
-            {:ok, id} ->
-              receive_stream(
-                id,
-                profile,
-                state,
-                consume,
-                System.monotonic_time(:millisecond) + timeout
-              )
+        case :httpc.request(
+               :post,
+               request,
+               options,
+               [sync: false, stream: :self, body_format: :binary],
+               profile
+             ) do
+          {:ok, id} ->
+            receive_stream(
+              id,
+              profile,
+              state,
+              consume,
+              System.monotonic_time(:millisecond) + timeout
+            )
 
-            {:error, _} ->
-              {:error, "Could not connect to provider."}
-          end
-        after
-          :inets.stop(:stand_alone, profile)
-          send(guardian, :finished)
+          {:error, _} ->
+            {:error, "Could not connect to provider."}
         end
-      else
-        _ -> {:error, "Could not start HTTP client."}
-      end
+      end)
     end
   end
 

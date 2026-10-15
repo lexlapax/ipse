@@ -29,6 +29,10 @@ finish or interrupt it before starting another attempt.
 
 ## Account, model, and provider errors
 
+If HTTP clients are busy, retry after another request finishes. The application
+limits simultaneous clients to 64; cancelled requests release their client
+resources without stopping another session's request.
+
 Run `./bin/ipse status` locally. For a missing session or failed renewal, run
 `./bin/ipse login` and complete fresh authorization. If plan usage was declined,
 authorize it through ChatGPT Settings and sign in again.

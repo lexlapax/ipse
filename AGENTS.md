@@ -75,6 +75,7 @@ are needed for tests or the demo.
 | Session state, turn loop, approval, cancellation | `lib/ipse/session.ex` |
 | Terminal client and option parsing | `lib/ipse/cli.ex` |
 | Provider selection and wire formats | `lib/ipse/provider.ex`, `lib/ipse/provider/` |
+| Isolated HTTP profile ownership | `lib/ipse/http_profile.ex` |
 | Authentication and protected storage | `lib/ipse/auth.ex`, `lib/ipse/auth/` |
 | Context, skills, JSONL persistence | `lib/ipse/context.ex`, `skills.ex`, `journal.ex` |
 | File tools and native Port protocol | `lib/ipse/tools.ex`, `runner.ex` |

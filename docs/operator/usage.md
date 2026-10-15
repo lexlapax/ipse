@@ -162,3 +162,7 @@ full-screen TUI, MCP, subagents, OS sandboxing, Windows, and remote execution ar
 not implemented.** The context ceiling stops with an actionable message rather
 than silently dropping history. Skills with scripts requiring Node/Python do not
 make those runtimes dependencies of Ipse.
+
+Authentication and provider requests share a bounded limit of 64 simultaneous
+HTTP clients per running Ipse application. If clients are busy, retry after
+another request finishes. Each request's connection and proxy state is isolated.
