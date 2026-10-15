@@ -5,6 +5,13 @@ and [verification results](../developer/testing.md) for known limits. Source
 commands run from the repository root; replace `./bin/ipse` with `./ipse` in a
 bundled release.
 
+If Rust compilation under `--sandbox native` fails to start a subprocess with
+`Operation not permitted`, rebuild an older helper before retrying. The Linux
+profile now permits the private Unix sequence-packet channels used by Rust's
+subprocess implementation; external sockets remain denied. User-installed
+toolchains and caches outside the allowed system/workspace roots still remain
+unavailable. See [the native boundary](../developer/sandbox.md).
+
 ## macOS native shell policy
 
 Keep the installed application outside the target workspace and use an owner-only

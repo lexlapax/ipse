@@ -24,7 +24,8 @@ read-only mounts prevent metadata changes outside writable roots, covering a gap
 that Landlock filesystem permissions alone do not close. Landlock confines file
 access and signals; seccomp denies network sockets, host IPC, namespace creation,
 process-group escape, and other dangerous calls. Private connected Unix stream
-socket pairs remain available for compiler/VM internals.
+and sequence-packet socket pairs remain available for compiler/VM internals.
+Datagram pairs and external sockets remain denied.
 
 The command receives a minimal environment: system `PATH`, locale, and private
 `HOME`/`TMPDIR`. Host provider keys and other inherited environment values are

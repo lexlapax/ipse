@@ -104,8 +104,9 @@ Landlock additionally confines file access and signal recipients to the new
 sandbox domain and descendants. Seccomp rejects external socket creation,
 connection, binding, listening and accepting; namespace/mount changes; tracing,
 process-memory and pidfd access; SysV IPC; io_uring; privilege/module changes;
-and process-group/session escape. Private connected AF_UNIX **stream** pairs
-are permitted for BEAM's child-spawn subsystem. Cross-PID resource-limit changes,
+and process-group/session escape. Private connected AF_UNIX **stream** and
+**sequence-packet** pairs are permitted for BEAM/Rust child-spawn internals;
+datagram pairs remain denied. Cross-PID resource-limit changes,
 scheduling/priority changes, page migration, and process-memory advice/release
 are denied; `prlimit64` accepts only current-process PID zero. Private pairs
 do not allow connecting to host socket names. Ordinary forks and threads remain

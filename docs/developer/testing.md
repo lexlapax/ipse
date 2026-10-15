@@ -857,3 +857,23 @@ recovery retain their P5 fixture evidence.
 
 Reviewed developer/operator guidance against the live result. All 245 local
 documentation links and heading anchors across 32 Markdown files passed.
+
+## Linux Rust subprocess compatibility, 2026-10-15
+
+During independent MCP investigation, an approved offline Cargo build inside
+the native Linux sandbox failed to start Rust compiler subprocesses. Rust 1.99
+uses a private connected Unix sequence-packet pair for its fork/exec error
+channel; the profile previously permitted only stream pairs. Permitted
+`AF_UNIX/SOCK_SEQPACKET` pairs while retaining datagram-pair and all external
+socket/connection denials. Namespace, Landlock, filesystem, and resource policy
+are unchanged.
+
+Source build, formatting, warnings-as-errors compilation, and the full ordinary
+suite passed in the development worktree. All nine focused Linux enforcement
+tests passed, including actual Rust compilation/linker spawning and forced
+`Command::pre_exec` child spawning. The probe also checked that private stream
+and sequence-packet pairs work, while datagram/non-Unix pairs and standalone
+Unix/IPv4/IPv6 sockets return permission denial. The previously failing locked
+Cargo build then passed with networking disabled and writes confined to its
+temporary native workspace. This is local Arch enforcement evidence, not a
+new protocol-compatibility or macOS claim.

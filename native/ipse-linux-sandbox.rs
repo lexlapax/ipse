@@ -744,13 +744,16 @@ fn filter() -> Vec<Filter> {
     } else {
         199
     };
-    f.push(instruction(0x15, 0, 8, socketpair));
+    f.push(instruction(0x15, 0, 9, socketpair));
     f.push(instruction(0x20, 0, 0, 16));
     f.push(instruction(0x15, 1, 0, 1));
     f.push(instruction(0x06, 0, 0, 0x50000 | 1));
     f.push(instruction(0x20, 0, 0, 24));
     f.push(instruction(0x54, 0, 0, 0xf));
-    f.push(instruction(0x15, 1, 0, 1));
+    // Connected private pairs support BEAM and Rust's fork/exec error channel.
+    // Datagram pairs remain denied because they can address external peers.
+    f.push(instruction(0x15, 2, 0, 1));
+    f.push(instruction(0x15, 1, 0, 5));
     f.push(instruction(0x06, 0, 0, 0x50000 | 1));
     f.push(instruction(0x06, 0, 0, 0x7fff0000));
     let deny: &[u32] = if cfg!(target_arch = "x86_64") {

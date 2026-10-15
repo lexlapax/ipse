@@ -125,6 +125,23 @@ defmodule Ipse.LinuxSandboxTest do
   end
 
   @tag :native_sandbox
+  test "Rust compilation and subprocess fallback work with only private connected socket pairs",
+       ctx do
+    File.cp!(ctx.probe_source, Path.join(ctx.cwd, "compile.rs"))
+
+    assert {:ok, result} =
+             Runner.run(
+               "/usr/bin/rustc --edition=2021 compile.rs -o compiled-probe && ./compiled-probe spawn",
+               ctx.cwd,
+               sandbox: :native,
+               timeout_ms: 20_000
+             )
+
+    assert result.exit_code == 0
+    assert result.output == "private pairs and subprocesses work; external sockets denied\n"
+  end
+
+  @tag :native_sandbox
   test "network positive control connects but a sandboxed Rust TCP probe gets EPERM", ctx do
     {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}])
     on_exit(fn -> :gen_tcp.close(listener) end)
@@ -235,14 +252,24 @@ defmodule Ipse.LinuxSandboxTest do
     use std::net::TcpStream;
     use std::io::{Read,Write};
     #[repr(C)] #[derive(Default)] struct Limit {soft:u64,hard:u64}
-    extern "C" { fn kill(pid:i32, signal:i32)->i32; fn syscall(n:i64,...)->i64; }
+    extern "C" { fn kill(pid:i32, signal:i32)->i32; fn syscall(n:i64,...)->i64; fn socketpair(domain:i32,kind:i32,protocol:i32,pair:*mut i32)->i32; fn socket(domain:i32,kind:i32,protocol:i32)->i32; fn close(fd:i32)->i32; }
     #[cfg(target_arch="x86_64")] const PRLIMIT:i64=302;
     #[cfg(target_arch="aarch64")] const PRLIMIT:i64=261;
     fn limits(pid:i32)->Limit {let mut out=Limit::default(); assert_eq!(unsafe{syscall(PRLIMIT,pid,7,0usize,&mut out as *mut Limit)},0);out}
     fn denied(result:i64) { assert_eq!(result,-1); assert_eq!(std::io::Error::last_os_error().raw_os_error(),Some(1)); }
     fn main() {
       let args:Vec<String>=std::env::args().collect();
-      if args[1]=="network" {
+      if args[1]=="spawn" {
+        use std::os::unix::process::CommandExt;
+        for kind in [1,5] {let mut pair=[-1;2];assert_eq!(unsafe{socketpair(1,kind,0,pair.as_mut_ptr())},0);for fd in pair {unsafe{close(fd);}}}
+        let mut pair=[-1;2];denied(unsafe{socketpair(1,2,0,pair.as_mut_ptr())} as i64);
+        denied(unsafe{socketpair(2,1,0,pair.as_mut_ptr())} as i64);
+        for domain in [1,2,10] {denied(unsafe{socket(domain,1,0)} as i64);}
+        let mut command=std::process::Command::new("/usr/bin/rustc");command.arg("--version");
+        unsafe{command.pre_exec(||Ok(()));}
+        assert!(command.output().unwrap().status.success());
+        println!("private pairs and subprocesses work; external sockets denied");
+      } else if args[1]=="network" {
         let result=TcpStream::connect(format!("127.0.0.1:{}",args[2]));
         if args[3]=="allow" {result.unwrap(); println!("network allowed");}
         else {assert_eq!(result.unwrap_err().raw_os_error(),Some(1)); println!("network denied");}
