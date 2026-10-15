@@ -30,17 +30,16 @@ defmodule Ipse.Provider.HTTPTest do
       timeout_ms: 5000
     }
 
-    assert {:ok,
-            %{
-              "content" => "hello",
-              "provider_data" => %{"reported_model" => "openai-fixture-model"}
-            }, %{"output_tokens" => 1}} =
+    assert {:ok, message, %{"output_tokens" => 1}} =
              Provider.complete(
                config,
                [runtime_message(config), %{"role" => "user", "content" => "hi"}],
                [],
                &send(owner, &1)
              )
+
+    assert message["content"] == "hello"
+    assert message["provider_data"]["reported_model"] == "openai-fixture-model"
 
     assert_received {:text, "hello"}
     {headers, request} = Task.await(server)
@@ -111,17 +110,16 @@ defmodule Ipse.Provider.HTTPTest do
 
     {base, server} = fixture(body)
 
-    assert {:ok,
-            %{
-              "tool_calls" => [call],
-              "provider_data" => %{"reported_model" => "ollama:fixture-model"}
-            }, %{"input_tokens" => 7}} =
+    assert {:ok, message, %{"input_tokens" => 7}} =
              Provider.complete(
                %{provider: :ollama, model: "test", base_url: base, timeout_ms: 5000},
                [runtime_message(%{provider: :ollama, model: "test"})],
                [],
                fn _ -> :ok end
              )
+
+    assert [call] = message["tool_calls"]
+    assert message["provider_data"]["reported_model"] == "ollama:fixture-model"
 
     assert Jason.decode!(call["function"]["arguments"]) == %{"path" => "a"}
     {headers, request} = Task.await(server)
