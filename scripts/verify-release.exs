@@ -33,12 +33,13 @@ end
 
 try do
   {:ok, result} =
-    Ipse.Runner.run("(sleep 0.5; printf survived > timeout-marker) & wait", scratch,
-      timeout_ms: 60
+    Ipse.Runner.run("(sleep 1; printf survived > timeout-marker) & printf ready; wait", scratch,
+      timeout_ms: 200
     )
 
   true = result.timed_out
-  Process.sleep(650)
+  true = result.output == "ready"
+  Process.sleep(1_100)
   false = File.exists?(Path.join(scratch, "timeout-marker"))
 
   parent = self()
@@ -46,7 +47,7 @@ try do
   owner =
     spawn(fn ->
       Ipse.Runner.run(
-        "printf ready; (sleep 0.5; printf survived > owner-marker) & wait",
+        "(sleep 1; printf survived > owner-marker) & printf ready; wait",
         scratch,
         emit: fn event -> send(parent, event) end
       )
@@ -59,7 +60,7 @@ try do
   end
 
   Process.exit(owner, :kill)
-  Process.sleep(650)
+  Process.sleep(1_100)
   false = File.exists?(Path.join(scratch, "owner-marker"))
 
   path = Path.join(scratch, "session.lock")

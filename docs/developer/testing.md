@@ -61,8 +61,10 @@ From that extracted directory, also run the bundled helper checks:
 
 This Elixir script verifies that runtime and application paths belong to the
 extraction, exercises timeout and owner-death cleanup, and checks lock exclusion,
-release on owner death, and inode preservation. `./bin/ipse eval` is the bundled
-OTP launcher; the root `./ipse` wrapper accepts Ipse CLI commands instead.
+release on owner death, and inode preservation. The cleanup commands emit readiness
+only after spawning their descendants, so the checks establish that work started
+before cancellation or timeout. `./bin/ipse eval` is the bundled OTP launcher;
+the root `./ipse` wrapper accepts Ipse CLI commands instead.
 To prove independence from development tools, repeat help, demo, and helper
 checks with Elixir, Erlang, Mix, and Rust executables absent from `PATH` while
 retaining ordinary host shell utilities, including `sleep` for the helper check.
