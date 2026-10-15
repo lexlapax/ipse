@@ -72,6 +72,10 @@ entitlements; check the current [native verification record](../developer/testin
 before relying on platform coverage. Native setup can fail after the Port is
 allocated, so successful startup text alone does not establish sandbox
 activation. See the [native policy and limits](../developer/sandbox.md).
+The macOS profile retains its ordinary process-group cleanup limit: detached
+children may survive with workspace access. An abrupt supervisor crash can also
+leave owner-only temporary environment data; normal worker execution removes it
+before starting the server.
 
 The helper and supervisor receive a fixed `PATH=/usr/bin:/bin` and `LANG=C.UTF-8`.
 The final server process receives those values plus only the environment entries

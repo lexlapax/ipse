@@ -7,6 +7,14 @@ create the requested sandbox stops that shell call; it never retries unsandboxed
 Sessions retain the requested mode in metadata and reject a different mode on
 resume. Provider inference runs in Elixir outside the shell sandbox.
 
+Local MCP servers can separately request these same fixed profiles using their
+explicit per-server `"sandbox": "native"` configuration. The shell CLI flag does
+not set MCP policy. Unlike the shell's minimal environment, the MCP direct-exec
+route can install explicitly selected environment values after the OS boundary;
+its supervisor and macOS worker startup retain a clean environment. See the
+[MCP contract](mcp.md#process-boundary-and-sandbox) for launch framing, private
+temporary data, approvals, and independent enforcement evidence.
+
 ## Linux workspace profile
 
 The dependency-free Rust helper implements `linux-workspace-v1`. It needs Linux

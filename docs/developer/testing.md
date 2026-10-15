@@ -980,6 +980,15 @@ fresh-extraction verifier passed, including bundled tool/resource/prompt calls,
 delegation, fresh-home workspace behavior, and helper/lock checks with a utility-only
 PATH. Supported-host CI remains pending.
 
+The [first P7 CI run](https://github.com/lexlapax/ipse/actions/runs/38798892424)
+passed Linux source/package checks and the Mac ordinary suite. The Mac enforcement
+step passed the new native cases but failed its repeated ordinary initial-server-
+exit cleanup fixture: stdout was retained, yet the helper's final `X` record was
+missing. Its log did not reveal which fixed error frame was sent. Added twenty
+bounded real cleanup iterations with exact status/frame diagnostics and explicit
+error-frame rejection, preserving the cleanup and completion requirements. All
+twenty iterations passed locally on Linux; Mac diagnosis/reverification is pending.
+
 ### Pinned independent interoperability
 
 The separately reviewed MIT `rust-mcp-filesystem` 0.2.0 at

@@ -148,13 +148,28 @@ defmodule Ipse.StdioRunnerTest do
   end
 
   test "initial server exit kills background children and drains bounded output", %{cwd: cwd} do
-    script = "(sleep 0.7; printf escaped > background-child) & printf done"
-    {:ok, port} = Runner.open_stdio("/bin/sh", ["-c", script], cwd, %{}, 2_000)
-    {frames, 0} = collect(port)
-    assert stream(frames, ?O) == "done"
-    assert completion(frames)["exit_code"] == 0
+    effects =
+      for iteration <- 1..20 do
+        effect = "background-child-#{iteration}"
+        script = ~S[(sleep 0.7; printf escaped > "$1") & printf done]
+
+        {:ok, port} =
+          Runner.open_stdio("/bin/sh", ["-c", script, "fixture", effect], cwd, %{}, 2_000)
+
+        {frames, status} = collect(port)
+
+        diagnostic =
+          "iteration #{iteration}: helper status #{inspect(status)}, frames #{inspect(frames)}"
+
+        assert status == 0, diagnostic
+        assert stream(frames, ?O) == "done", diagnostic
+        refute Enum.any?(frames, &(elem(&1, 0) == ?E)), diagnostic
+        assert completion(frames) == %{"exit_code" => 0, "timed_out" => false}, diagnostic
+        Path.join(cwd, effect)
+      end
+
     Process.sleep(800)
-    refute File.exists?(Path.join(cwd, "background-child"))
+    Enum.each(effects, fn effect -> refute File.exists?(effect) end)
   end
 
   test "invalid launch configuration is rejected without starting a process", %{cwd: cwd} do
