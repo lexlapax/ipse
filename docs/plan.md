@@ -90,6 +90,12 @@ and finished states; `/cancel` returns promptly; tests cover EOF during idle,
 work, and approval, plus queued input around cancellation and resume. Recovery
 must record unknown outcomes and never rerun started tools.
 
+On 2026-10-15, the CLI state/EOF/cancellation/resume acceptance checks passed
+with controlled loopback fixtures, including queued input discarded during
+cancellation and a fresh successful turn afterward. The full 61-test suite,
+source build, formatting, warnings-as-errors compilation, and demo passed.
+These CLI checks are fixture evidence, separate from the live P0 provider checks.
+
 Broaden skill/resource support only for demonstrated repository needs. Keep
 resources bounded, explicit, data-only, and provenance-bearing. Tests cover
 malformed metadata, precedence, size limits, changed files, and explicit loads.

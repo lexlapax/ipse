@@ -241,3 +241,25 @@ all secrets in memory/protected storage, and retained only sanitized booleans
 and timestamps as evidence. This is live renewal evidence, separate from fixtures.
 No API-billing fallback was enabled. Broader eligibility/usage-limit errors,
 revoked-session recovery, paid API calls, and other platforms remain unverified.
+
+### P1 CLI behavior, 2026-10-15
+
+Six controlled CLI integration tests exercise the real CLI, session, HTTP
+transport, and isolated journal homes with a loopback Ollama-protocol fixture.
+They cover idle EOF, visible provider failure, running/finished states and
+queued input at EOF, approval denial after EOF, resume preserving completed
+write history without replay, and cancellation races. The cancellation check
+forces repeated cancel and input arrival while cancellation is pending, proves
+queued/discarded input is not sent, then completes a fresh turn in the same CLI.
+No live model or account is used by these tests.
+
+Build, formatting, warnings-as-errors compilation, all **61 tests**, and the
+credential-free source demo passed. These checks do not establish live provider
+compatibility beyond the separately recorded P0 account checks.
+
+The rebuilt Arch bundle also passed help, credential-free demo, native timeout,
+owner-death and lock checks, and HTTP-profile acquisition/cleanup from a fresh
+extraction using a utility-only `PATH` without the development toolchain. A
+source `chat --provider demo --yes` smoke check accepted two piped tasks and
+finished both before exiting on EOF in an isolated scratch workspace. This is
+scripted CLI evidence, not additional live model connectivity evidence.

@@ -25,6 +25,7 @@ defmodule Ipse.CLI do
   Chat asks before writes and shell commands. Headless run denies them without --yes.
   Shell execution has your user permissions; this prototype has no OS sandbox.
   Chat commands: /help /skills /session /cancel /exit. Invoke skills with $name.
+  EOF finishes accepted work; /cancel clears queued input.
   """
 
   def main(args) do
@@ -175,6 +176,7 @@ defmodule Ipse.CLI do
           ref: ref,
           interactive: interactive,
           busy: prompt != nil,
+          cancelling: false,
           approval: nil,
           queued: [],
           exit: false,
@@ -223,8 +225,20 @@ defmodule Ipse.CLI do
         0
 
       {:input, "/cancel"} ->
-        Ipse.Session.cancel(s.pid)
-        client_loop(%{s | approval: nil, queued: []})
+        cond do
+          s.cancelling ->
+            IO.puts(:stderr, "Cancellation already requested.")
+            client_loop(s)
+
+          s.busy ->
+            IO.puts(:stderr, "Cancelling active work…")
+            Ipse.Session.cancel(s.pid)
+            client_loop(%{s | cancelling: true, approval: nil, queued: []})
+
+          true ->
+            IO.puts(:stderr, "No active work to cancel.")
+            client_loop(s)
+        end
 
       {:input, "/help"} ->
         IO.puts(@help)
@@ -241,6 +255,14 @@ defmodule Ipse.CLI do
       {:input, ""} ->
         client_loop(s)
 
+      {:input, _text} when s.cancelling ->
+        IO.puts(
+          :stderr,
+          "Input received during cancellation was discarded. Send it again after cancellation finishes."
+        )
+
+        client_loop(s)
+
       {:input, text} when s.approval != nil ->
         Ipse.Session.approve(s.pid, s.approval, String.downcase(text) in ["y", "yes"])
         client_loop(%{s | approval: nil})
@@ -252,6 +274,10 @@ defmodule Ipse.CLI do
       {:input, text} ->
         Ipse.Session.prompt(s.pid, text)
         client_loop(%{s | busy: true})
+
+      {:ipse, ^pid, {:status, _status}} ->
+        unless s.cancelling, do: IO.puts(:stderr, "Running…")
+        client_loop(s)
 
       {:ipse, ^pid, {:text, delta}} ->
         IO.write(delta)
@@ -280,7 +306,7 @@ defmodule Ipse.CLI do
         else
           IO.puts(
             :stderr,
-            "\nAllow #{name}?\n#{Jason.encode!(args, pretty: true)}\nType y to allow, anything else to deny."
+            "\nWaiting for approval: #{name}\nAllow #{name}?\n#{Jason.encode!(args, pretty: true)}\nType y to allow, anything else to deny."
           )
 
           client_loop(%{s | approval: ref})
@@ -290,20 +316,40 @@ defmodule Ipse.CLI do
         IO.puts(:stderr, "\nError: #{error}")
         client_loop(s)
 
+      {:ipse, ^pid, {:done, status}} when s.cancelling and status != :cancelled ->
+        client_loop(s)
+
       {:ipse, ^pid, {:done, status}} ->
         IO.puts("")
 
+        IO.puts(
+          :stderr,
+          case status do
+            :cancelled ->
+              "Cancelled. Started effects may have occurred; inspect the workspace before retrying."
+
+            :error ->
+              "Finished with an error."
+
+            _ ->
+              "Finished."
+          end
+        )
+
         cond do
-          not s.interactive or s.exit ->
+          not s.interactive ->
             if status == :error, do: 1, else: 0
 
           s.queued != [] ->
             [next | rest] = s.queued
             Ipse.Session.prompt(s.pid, next)
-            client_loop(%{s | busy: true, approval: nil, queued: rest})
+            client_loop(%{s | busy: true, cancelling: false, approval: nil, queued: rest})
+
+          s.exit ->
+            if status == :error, do: 1, else: 0
 
           true ->
-            client_loop(%{s | busy: false, approval: nil})
+            client_loop(%{s | busy: false, cancelling: false, approval: nil, queued: []})
         end
 
       {:ipse, _, _} ->

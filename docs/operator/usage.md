@@ -96,12 +96,22 @@ Chat commands:
 | --- | --- |
 | `/skills` | Show available skill metadata |
 | `/session` | Show the current session ID and state |
-| `/cancel` | Stop current work; started effects may already have happened |
+| `/cancel` | Stop current work and clear queued input; started effects may already have happened |
 | `/help` | Show commands and options |
 | `/exit` | Cancel active work and leave |
 
-New messages entered during a turn are queued for the next turn. `/cancel` interrupts
-the current turn. The UI is a line-oriented terminal client, not a full-screen TUI.
+The CLI reports running, waiting for approval, finished, failed, and cancelled
+states. New messages entered during a turn are queued for the next turn.
+`/cancel` clears that queue; input received while cancellation is pending is
+explicitly discarded. Send a fresh task after cancellation finishes. Repeated
+cancellation requests do not start more work. Inspect the workspace before
+retrying an interrupted mutation, because started effects may already have happened.
+
+EOF exits immediately while idle. During work it finishes accepted turns,
+including queued input, then exits. Pending and subsequent approvals are denied
+after EOF; EOF never authorizes a mutation. `/exit` cancels and leaves immediately.
+The UI is a line-oriented terminal client, not a full-screen TUI.
+
 
 ```sh
 ./bin/ipse sessions
