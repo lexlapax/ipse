@@ -188,6 +188,7 @@ defmodule Ipse.MCP.SessionTest do
             scenario
           ],
           "tools" => ["write_note"],
+          "env" => %{"PATH" => Path.join(to_string(:code.root_dir()), "bin") <> ":/usr/bin:/bin"},
           "timeout_ms" => 10_000
         }
       ]

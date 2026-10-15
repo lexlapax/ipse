@@ -57,6 +57,11 @@ unsandboxed server from reading your files. Known configured values are redacted
 from results and rejected in model-visible schemas and call arguments; it is
 not a general secret detector.
 
+Interpreted server launchers must also find their runtime through that selected
+environment. If Erlang or another approved runtime lives outside `/usr/bin:/bin`,
+include its installed `bin` directory in the config's explicit `PATH` value.
+An absolute launcher path alone does not select the interpreter it invokes.
+
 ## Recovery and limits
 
 Ipse uses a short-lived server connection for discovery and for each call. It

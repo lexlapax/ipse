@@ -807,3 +807,9 @@ network transports, resources/prompts, sampling/elicitation/tasks, delegation,
 remote execution, and Windows remain unverified or unimplemented. The P0 live
 subscription evidence is separate; no account setting or billing path changed
 in this milestone.
+
+The first P5 hosted run failed because the source fixtures launched Elixir with
+the deliberately cleared environment but did not select the CI installation's
+Erlang path. Arch's system Erlang masked that test setup error. Source fixtures
+and the SDK demo now explicitly select the running OTP installation's `bin`
+directory; the runtime environment isolation policy is unchanged.

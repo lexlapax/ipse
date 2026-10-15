@@ -141,7 +141,12 @@ defmodule Ipse.MCP.ClientTest do
           "command" => elixir,
           "args" => ["--erl", "+S 2:2", "-pa", jason_ebin, script, scenario],
           "tools" => ["write_note"],
-          "env" => env,
+          "env" =>
+            Map.put(
+              env,
+              "PATH",
+              Path.join(to_string(:code.root_dir()), "bin") <> ":/usr/bin:/bin"
+            ),
           "timeout_ms" => 5_000
         }
       ]
