@@ -342,3 +342,36 @@ of the minimum runtime combination. All 11 affected provider fixtures passed
 locally. The follow-up [GitHub Checks run](https://github.com/lexlapax/ipse/actions/runs/38703884589)
 passed on the configured OTP 27 / Elixir 1.18 combination, including formatting,
 all 78 tests, build, and demo.
+
+## P3 workspace context (2026-10-15)
+
+On Arch, the source build, Elixir 1.20 and 1.18 formatter checks,
+warnings-as-errors compilation, all **95 tests**, and credential-free demo
+passed. Workspace fixtures cover global/ancestor/nested scope, referenced
+resources, non-repositories, source bounds/UTF-8/symlinks, snapshot validation,
+saved-content resume with drift, explicit async refresh, and canonical cwd
+aliases. A two-call pending write batch is recorded as not started when new
+nested instructions appear; neither write executes before a revised proposal
+reaches approval. `/context` and refresh are local, and refresh is refused while
+model work is active. Independent review reproduced and fixed nonregular-source
+crashes and disagreement between resource discovery and snapshot validation for
+sensitive absolute paths; regression fixtures passed.
+
+Separate **live ChatGPT subscription** scratch checks used explicit
+`chatgpt/gpt-6.1-sol`: a coding task created `nested/hello.exs` with the comment
+required by nested guidance and ran it with Elixir (56 streamed text chunks,
+three approved mutations). After resume and a changed ancestor instruction file,
+a non-coding notes-file task retained the saved project marker and README purpose
+(29 streamed text chunks, one approved write). Two context snapshots were journaled;
+changed instructions produced drift diagnostics. Full proposed mutation arguments
+were displayed before approval. These checks do not establish semantic instruction
+compliance for every model or arbitrary shell target.
+
+Source and fresh bundled launchers passed from an arbitrary Git subdirectory
+and with explicit `--cwd`, using isolated `IPSE_HOME` directories. Fixture journal
+metadata and manifests confirmed the chosen cwd and ancestor provenance.
+The isolated P3 archive used the previously committed native helper (pending
+sandbox changes were excluded). The extracted release ran without Elixir, Mix,
+Rust, or Erlang on `PATH` and passed bundled timeout, owner-death, and lock checks.
+This is same-host Arch release evidence, not a new OS account or cross-machine
+portability check. The original journal is retained; resume never replays tools.

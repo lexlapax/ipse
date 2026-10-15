@@ -84,10 +84,12 @@ Project skills override user and bundled skills. A skill is plain instruction
 text: loading it never executes scripts and does not grant tool permission.
 `AGENTS.md` is also included when present. Explicit `$skill-name` references
 load the matching skill into the user turn.
-Current context loading reads only the selected workspace's direct `AGENTS.md`,
-bounded to 32 KiB. Automatic ancestor/nested instruction resolution and a global
-configuration precedence scheme are future work; see
-[P3 workspace context](../plan.md#p3-workspace-context-from-any-directory).
+`WorkspaceContext` builds bounded, provenance-bearing snapshots from global
+defaults, applicable repository instructions, README, and local references.
+Sessions journal snapshots, retain saved contents on resume, and explicitly
+refresh while idle. New nested file scopes force pending proposals to return
+without execution so the model can reconsider them. See the
+[workspace context contract](workspace-context.md), including shell-scope limits.
 
 Reads and mutations use workspace-relative tools. Path checks reject symlinks,
 workspace escapes, and writes under `.git`; these checks are not race-proof

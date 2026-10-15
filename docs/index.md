@@ -19,6 +19,7 @@ start. Use the guides below for operation, development, and project context.
 | [Agent instructions](../AGENTS.md) | Rules, code map, documentation and commit requirements |
 | [Architecture](developer/architecture.md) | Modules, ownership, persistence, trust boundaries |
 | [Context compaction](developer/context-compaction.md) | Preserved context, bounds, checkpoint and recovery contract |
+| [Workspace context](developer/workspace-context.md) | Instruction scope, source bounds, snapshots, and refresh |
 | [Dependencies](developer/dependencies.md) | Runtime/build/CI inventory, script policy, approval requirements |
 | [Testing and evidence](developer/testing.md) | Source/release checks, live acceptance, actual results |
 

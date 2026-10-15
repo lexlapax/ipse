@@ -273,6 +273,29 @@ defmodule Ipse.CLITest do
     end)
   end
 
+  test "/context refresh adopts instructions locally and is refused during work" do
+    with_fixture_and_cli(fn fixture, cli ->
+      await_input(cli.stdio)
+      File.write!(Path.join(cli.cwd, "AGENTS.md"), "Use the workspace marker persimmon.")
+      Ipse.CLITest.IOFixture.feed(cli.stdio, "/context refresh")
+      await_text(cli.stderr, "Finished.")
+      assert Ipse.CLITest.IOFixture.output(cli.stdio) =~ "AGENTS.md"
+      refute_receive {:ollama_request, _, _, _}, 100
+
+      Ipse.CLITest.IOFixture.feed(cli.stdio, "describe the instructions")
+      {server, 1, request} = await_request(fixture)
+      assert hd(request["messages"])["content"] =~ "persimmon"
+      Ipse.CLITest.IOFixture.feed(cli.stdio, "/context refresh")
+      await_text(cli.stderr, "Finish or cancel active work")
+      Ipse.CLITest.IOFixture.feed(cli.stdio, "/context")
+      refute_receive {:ollama_request, _, _, _}, 100
+      Ipse.CLITest.HTTPFixture.reply(server, 1, Ipse.CLITest.HTTPFixture.final_body("done"))
+      await_text(cli.stderr, "Finished.")
+      Ipse.CLITest.IOFixture.feed(cli.stdio, :eof)
+      assert 0 == Task.await(cli.task, 3_000)
+    end)
+  end
+
   test "running and finished are visible; EOF during work drains queued input" do
     with_fixture_and_cli(fn fixture, cli ->
       await_input(cli.stdio)

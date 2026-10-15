@@ -2,6 +2,10 @@ defmodule Ipse.Context do
   @moduledoc false
 
   def system(cwd, skills, runtime) do
+    system(cwd, skills, runtime, nil)
+  end
+
+  def system(cwd, skills, runtime, workspace_context) do
     """
     You are Ipse, a coding agent. Work with the user to complete their task.
     Inspect relevant code, make focused edits, and run appropriate checks. Report what you verified.
@@ -25,20 +29,11 @@ defmodule Ipse.Context do
     Available skills:
     #{Ipse.Skills.catalog(skills)}
 
-    Repository instructions:
-    #{instructions(cwd)}
+    Workspace instructions, scoped resources, provenance, and diagnostics:
+    #{workspace_instructions(workspace_context)}
     """
   end
 
-  defp instructions(cwd) do
-    path = Path.join(cwd, "AGENTS.md")
-
-    with {:ok, %{type: :regular, size: size}} when size <= 32_768 <- File.lstat(path),
-         {:ok, text} <- File.read(path),
-         true <- String.valid?(text) do
-      text
-    else
-      _ -> "No root AGENTS.md loaded. Check subdirectory instructions when working there."
-    end
-  end
+  defp workspace_instructions(nil), do: "No workspace instruction snapshot supplied."
+  defp workspace_instructions(snapshot), do: Ipse.WorkspaceContext.format(snapshot)
 end

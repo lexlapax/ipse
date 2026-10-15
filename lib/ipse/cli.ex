@@ -26,7 +26,8 @@ defmodule Ipse.CLI do
 
   Chat asks before writes and shell commands. Headless run denies them without --yes.
   Shell execution has your user permissions; this prototype has no OS sandbox.
-  Chat commands: /help /skills /session /info /cancel /exit. Invoke skills with $name.
+  Chat commands: /help /skills /session /info /context /context refresh /cancel /exit.
+  Invoke skills with $name.
   EOF finishes accepted work; /cancel clears queued input.
   """
 
@@ -260,6 +261,21 @@ defmodule Ipse.CLI do
         IO.puts(Ipse.RuntimeInfo.format(Ipse.Session.info(s.pid).runtime))
         client_loop(s)
 
+      {:input, "/context"} ->
+        print_context(Ipse.Session.info(s.pid).context)
+        client_loop(s)
+
+      {:input, "/context refresh"} ->
+        case Ipse.Session.refresh_context(s.pid) do
+          :ok ->
+            IO.puts(:stderr, "Refreshing workspace instructions…")
+            client_loop(%{s | busy: true})
+
+          {:error, :busy} ->
+            IO.puts(:stderr, "Finish or cancel active work before refreshing instructions.")
+            client_loop(s)
+        end
+
       {:input, ""} ->
         client_loop(s)
 
@@ -295,6 +311,10 @@ defmodule Ipse.CLI do
           "Context compacted: #{before_bytes} → #{after_bytes} bytes. Original journal retained."
         )
 
+        client_loop(s)
+
+      {:ipse, ^pid, {:context_refreshed, manifest}} ->
+        print_context(manifest)
         client_loop(s)
 
       {:ipse, ^pid, {:status, _status}} ->
@@ -429,6 +449,7 @@ defmodule Ipse.CLI do
              provider: provider,
              model: model,
              auth_dir: auth_dir(),
+             home: home(),
              base_url: opts[:base_url],
              max_steps: opts[:max_steps] || 30,
              context_bytes: opts[:context_bytes] || 400_000,
@@ -473,6 +494,8 @@ defmodule Ipse.CLI do
   defp default_cwd, do: System.get_env("IPSE_WORKSPACE") || File.cwd!()
   defp home, do: System.get_env("IPSE_HOME") || Path.expand("~/.ipse")
   defp print_skills(cwd), do: IO.puts(Ipse.Skills.catalog(Ipse.Skills.discover(cwd)))
+
+  defp print_context(manifest), do: IO.puts(Jason.encode!(manifest, pretty: true))
   defp preview(args), do: args |> Jason.encode!() |> String.slice(0, 600)
   defp report(:ok), do: 0
 

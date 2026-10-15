@@ -62,6 +62,7 @@ defmodule Ipse.SessionTest do
           provider: :demo,
           model: "test",
           provider_module: Fake,
+          home: Path.join(ctx.root, "home"),
           test_pid: self(),
           approval: :ask
         },

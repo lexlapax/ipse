@@ -1,7 +1,7 @@
 defmodule Ipse.Session do
   @moduledoc "One supervised owner per coding conversation. I/O runs in monitored tasks."
   use GenServer
-  alias Ipse.{Journal, Skills, Tools}
+  alias Ipse.{Journal, Skills, Tools, WorkspaceContext}
 
   def start_link(opts), do: GenServer.start_link(__MODULE__, opts)
 
@@ -11,31 +11,38 @@ defmodule Ipse.Session do
   def prompt(pid, text), do: GenServer.call(pid, {:prompt, text})
   def approve(pid, ref, allowed), do: GenServer.call(pid, {:approve, ref, allowed})
   def cancel(pid), do: GenServer.call(pid, :cancel, 10_000)
+  def refresh_context(pid), do: GenServer.call(pid, :refresh_context)
   def info(pid), do: GenServer.call(pid, :info)
 
   @impl true
   def init(opts) do
     config = Keyword.fetch!(opts, :config)
-    cwd = Path.expand(Keyword.fetch!(opts, :cwd))
+    requested_cwd = Keyword.fetch!(opts, :cwd)
+    home = Map.get(config, :home) || System.get_env("IPSE_HOME") || Path.expand("~/.ipse")
     dir = Keyword.fetch!(opts, :state_dir) |> Path.expand()
     id = Keyword.get(opts, :id)
 
-    with true <- File.dir?(cwd),
+    with {:ok, cwd} <- WorkspaceContext.canonical_path(requested_cwd),
+         true <- File.dir?(cwd),
          {:ok, id, _events} <- open(dir, id, cwd, config),
          {:ok, _} <- Registry.register(Ipse.Registry, {dir, id}, nil),
          {:ok, lock} <- acquire_lock(Path.join(dir, id <> ".lock"), 10),
          :ok <- Journal.repair_tail(dir, id),
          {:ok, events} <- Journal.load(dir, id),
-         {:ok, messages} <- restore(events) do
+         {:ok, messages} <- restore(events),
+         {:ok, context_snapshot, context_is_new} <- workspace_snapshot(events, cwd, home) do
       state = %{
         id: id,
         dir: dir,
         cwd: cwd,
         config: config,
+        context_home: Path.expand(home),
+        context_snapshot: context_snapshot,
+        context_drift: WorkspaceContext.drift(context_snapshot),
         reported_model: nil,
         historical_model: historical_model(events),
         subscriber: Keyword.fetch!(opts, :subscriber),
-        skills: Skills.discover(cwd),
+        skills: Skills.discover(cwd, Path.join(Path.expand(home), "skills")),
         messages: messages,
         compaction: nil,
         tool_decision: "not_decided",
@@ -50,7 +57,9 @@ defmodule Ipse.Session do
         final: ""
       }
 
-      {:ok, state}
+      if context_is_new,
+        do: {:ok, persist_context(state, context_snapshot, true)},
+        else: {:ok, state}
     else
       false -> {:stop, :workspace_not_found}
       {:error, reason} -> {:stop, reason}
@@ -59,8 +68,27 @@ defmodule Ipse.Session do
 
   @impl true
   def handle_call(:info, _from, s) do
-    info = Map.take(s, [:id, :cwd, :phase, :usage, :final]) |> Map.put(:runtime, runtime(s))
+    info =
+      Map.take(s, [:id, :cwd, :phase, :usage, :final])
+      |> Map.put(:runtime, runtime(s))
+      |> Map.put(:context, context_manifest(s))
+
     {:reply, info, s}
+  end
+
+  def handle_call(:refresh_context, _from, %{phase: phase} = s) when phase != :idle,
+    do: {:reply, {:error, :busy}, s}
+
+  def handle_call(:refresh_context, _from, s) do
+    task =
+      owned_task(fn ->
+        with {:ok, snapshot} <- WorkspaceContext.snapshot(s.cwd, s.context_home) do
+          {:ok, snapshot, WorkspaceContext.drift(snapshot)}
+        end
+      end)
+
+    notify(s, {:status, :refreshing_context})
+    {:reply, :ok, %{s | task: task, phase: :context_refresh, job_ref: nil}}
   end
 
   def handle_call({:prompt, _}, _from, %{phase: phase} = s) when phase != :idle,
@@ -133,6 +161,42 @@ defmodule Ipse.Session do
     s = %{s | task: nil}
 
     case {phase, result} do
+      {:context_preflight, {:ok, snapshot, drift}} ->
+        if snapshot == s.context_snapshot do
+          {:noreply, dispatch_pending_tool(%{s | context_drift: drift})}
+        else
+          s = persist_context(%{s | context_drift: drift}, snapshot)
+
+          s =
+            settle_calls(
+              s,
+              "Not executed: new scoped workspace context was loaded. Review it before retrying this action."
+            )
+
+          {:noreply, model(s)}
+        end
+
+      {:context_preflight, {:error, reason}} ->
+        s =
+          settle_calls(
+            s,
+            "Not executed: scoped context could not be loaded (#{inspect(reason)}). Review workspace guidance before retrying."
+          )
+
+        {:noreply, model(s)}
+
+      {:context_refresh, {:ok, snapshot, drift}} ->
+        s = persist_context(%{s | context_drift: drift}, snapshot)
+        manifest = context_manifest(s)
+        notify(s, {:context_refreshed, manifest})
+        notify(s, {:done, :ok})
+        {:noreply, %{s | phase: :idle, job_ref: nil}}
+
+      {:context_refresh, {:error, reason}} ->
+        notify(s, {:error, "Workspace context refresh failed: #{inspect(reason)}"})
+        notify(s, {:done, {:error, reason}})
+        {:noreply, %{s | phase: :idle, job_ref: nil}}
+
       {:compaction, {:ok, assistant, usage}} ->
         {:noreply, complete_compaction(s, assistant, usage)}
 
@@ -196,7 +260,46 @@ defmodule Ipse.Session do
   end
 
   defp system_message(s) do
-    %{"role" => "system", "content" => Ipse.Context.system(s.cwd, s.skills, runtime(s))}
+    %{
+      "role" => "system",
+      "content" => Ipse.Context.system(s.cwd, s.skills, runtime(s), s.context_snapshot)
+    }
+  end
+
+  defp workspace_snapshot(events, cwd, home) do
+    case Enum.find(Enum.reverse(events), &(&1["type"] == "workspace_context_snapshot")) do
+      nil ->
+        case WorkspaceContext.snapshot(cwd, home) do
+          {:ok, snapshot} -> {:ok, snapshot, true}
+          {:error, reason} -> {:error, {:workspace_context_unavailable, reason}}
+        end
+
+      %{"version" => 1, "snapshot" => snapshot} ->
+        if WorkspaceContext.valid?(snapshot) and snapshot["cwd"] == cwd,
+          do: {:ok, snapshot, false},
+          else: {:error, :invalid_workspace_context_snapshot}
+
+      _ ->
+        {:error, :invalid_workspace_context_snapshot}
+    end
+  end
+
+  defp persist_context(s, snapshot, force \\ false) do
+    if force or snapshot != s.context_snapshot do
+      record(s, %{
+        "type" => "workspace_context_snapshot",
+        "version" => 1,
+        "snapshot" => snapshot
+      })
+    end
+
+    %{s | context_snapshot: snapshot}
+  end
+
+  defp context_manifest(s) do
+    manifest = WorkspaceContext.manifest(s.context_snapshot)
+    diagnostics = Enum.uniq(manifest["diagnostics"] ++ s.context_drift)
+    %{manifest | "diagnostics" => diagnostics}
   end
 
   defp model(s) do
@@ -321,26 +424,19 @@ defmodule Ipse.Session do
 
     with args when is_binary(args) <- get_in(call, ["function", "arguments"]),
          {:ok, args} when is_map(args) <- Jason.decode(args) do
-      mode = Map.get(s.config, :approval, :ask)
+      if name in ["read", "write", "edit"] do
+        task =
+          owned_task(fn ->
+            with {:ok, snapshot, _added} <-
+                   WorkspaceContext.nested(s.context_snapshot, args["path"]) do
+              {:ok, snapshot, WorkspaceContext.drift(snapshot)}
+            end
+          end)
 
-      cond do
-        Tools.mutating?(name) and mode == :deny ->
-          tool_result(
-            s,
-            call,
-            "Denied: this run is read-only. Ask the user to enable execution.",
-            "denied",
-            "policy_denied"
-          )
-
-        Tools.mutating?(name) and mode == :ask ->
-          ref = make_ref()
-          notify(s, {:approval, ref, name, args})
-          %{s | phase: :approval, approval: {ref, call, args}}
-
-        true ->
-          decision = if Tools.mutating?(name), do: "session_allow", else: "not_required"
-          launch_tool(s, call, args, decision)
+        notify(s, {:status, :checking_workspace_context})
+        %{s | phase: :context_preflight, task: task, job_ref: nil}
+      else
+        dispatch_tool(s, call, args)
       end
     else
       _ ->
@@ -351,6 +447,53 @@ defmodule Ipse.Session do
           "invalid_arguments",
           "not_decided"
         )
+    end
+  end
+
+  defp dispatch_pending_tool(s) do
+    case s.calls do
+      [call | _] ->
+        with args when is_binary(args) <- get_in(call, ["function", "arguments"]),
+             {:ok, args} when is_map(args) <- Jason.decode(args) do
+          dispatch_tool(s, call, args)
+        else
+          _ ->
+            tool_result(
+              s,
+              call,
+              "Invalid tool arguments: expected a JSON object.",
+              "invalid_arguments",
+              "not_decided"
+            )
+        end
+
+      [] ->
+        model(s)
+    end
+  end
+
+  defp dispatch_tool(s, call, args) do
+    name = get_in(call, ["function", "name"])
+    mode = Map.get(s.config, :approval, :ask)
+
+    cond do
+      Tools.mutating?(name) and mode == :deny ->
+        tool_result(
+          s,
+          call,
+          "Denied: this run is read-only. Ask the user to enable execution.",
+          "denied",
+          "policy_denied"
+        )
+
+      Tools.mutating?(name) and mode == :ask ->
+        ref = make_ref()
+        notify(s, {:approval, ref, name, args})
+        %{s | phase: :approval, approval: {ref, call, args}}
+
+      true ->
+        decision = if Tools.mutating?(name), do: "session_allow", else: "not_required"
+        launch_tool(s, call, args, decision)
     end
   end
 
@@ -465,8 +608,9 @@ defmodule Ipse.Session do
 
   defp open(dir, id, cwd, config) do
     with {:ok, [%{"metadata" => meta} | _] = events} <- Journal.load(dir, id),
+         {:ok, old_cwd} <- WorkspaceContext.canonical_path(meta["cwd"]),
          true <-
-           meta["cwd"] == cwd and meta["provider"] == to_string(config.provider) and
+           old_cwd == cwd and meta["provider"] == to_string(config.provider) and
              meta["model"] == config.model do
       {:ok, id, events}
     else

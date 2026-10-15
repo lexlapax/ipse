@@ -97,6 +97,8 @@ Chat commands:
 | `/skills` | Show available skill metadata |
 | `/session` | Show the current session ID and state |
 | `/info` | Show local application/provider/model facts without inference |
+| `/context` | Show saved workspace instruction sources, digests, and diagnostics |
+| `/context refresh` | Reload workspace instructions while idle, without inference |
 | `/cancel` | Stop current work and clear queued input; started effects may already have happened |
 | `/help` | Show commands and options |
 | `/exit` | Cancel active work and leave |
@@ -180,15 +182,39 @@ Version 0.1 accepts simple single-line frontmatter values for name and descripti
 Only metadata enters the initial context. The model can call `load_skill`; `$review`
 explicitly loads a skill into the next user turn. Loaded content includes its path
 and SHA-256. No script is executed by loading a skill, and skills grant no permissions.
-Repository root `AGENTS.md` is also loaded (up to 32 KiB).
-Currently this means the `AGENTS.md` directly in the selected workspace. Launching
-from a subdirectory does not automatically load ancestor or nested instruction
-files. Read applicable guidance explicitly for now; broader discovery and global
-configuration precedence are planned in the
-[workspace-context milestone](../plan.md#p3-workspace-context-from-any-directory).
+Repository instructions use a saved, bounded workspace snapshot. See
+[workspace instructions](#workspace-instructions) below.
 Version 0.1 loads `SKILL.md` text only. Referenced resources do not load
 automatically; the model can read workspace files through ordinary file tools.
 Resources outside the workspace and broader skill packaging need further support.
+
+## Workspace instructions
+
+Run Ipse from the directory where you want it to work, or choose `--cwd PATH`.
+Ipse-wide state and skills stay under `~/.ipse` (or `IPSE_HOME`). Optional
+`~/.ipse/AGENTS.md` supplies instruction defaults; it cannot change provider,
+billing, or approval settings.
+
+Within a Git repository, applicable `AGENTS.md` files load from the nearest
+repository boundary to the selected directory. Outside a repository, discovery
+stops at the selected directory. Nearer project instructions override broader
+guidance, and explicit user requests take precedence. The workspace's README
+and one level of local text references also supply bounded context. Sources are
+limited to 32 KiB each, 16 sources, and 128 KiB total; omitted invalid or oversized
+sources produce diagnostics. Symlink and sensitive-path sources are excluded.
+
+`/context` shows source paths, scopes, SHA-256 digests, and diagnostics. Resume
+keeps the saved instruction contents and reports detected drift. To adopt changed
+files, finish or cancel active work and use `/context refresh`. Refresh neither
+executes tools nor changes approval settings. Journals retain instruction text;
+treat them as private session data.
+
+For deeper file-tool targets, newly discovered nested instructions return the
+pending proposals as not started so the model can reconsider them before approval.
+Arbitrary shell commands can target directories indirectly; the host cannot infer
+every applicable scope. Review deeper guidance and full shell arguments before
+approving. See the [context contract](../developer/workspace-context.md) for
+discovery, persistence, and boundary details.
 
 ## Runtime and limits
 

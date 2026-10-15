@@ -177,10 +177,10 @@ shell execution as trusted local execution, not a sandbox.
 Ipse should run as a coding agent or another action agent from any directory or
 subdirectory, using the launch directory as its working context while retaining
 Ipse-wide preferences, skills, and state under `~/.ipse` (or `IPSE_HOME`).
-The source launcher already preserves the launch directory, and `--cwd` chooses
-a workspace explicitly. Current automatic instruction loading covers only
-`AGENTS.md` directly in that workspace; ancestor and nested scope resolution
-are not implemented.
+The source launcher preserves the launch directory, and `--cwd` chooses
+a workspace explicitly. Bounded global, ancestor, workspace, and nested
+instruction snapshots are implemented; see the
+[context contract](developer/workspace-context.md).
 
 Define workspace boundaries and instruction precedence before extending loading.
 Discover applicable ancestor `AGENTS.md` files within the chosen boundary and
@@ -202,6 +202,14 @@ Demonstrate both a coding task and a non-coding file/action task in scratch
 workspaces, retaining approvals and unknown-outcome recovery. Any new global
 configuration schema must be documented without silently changing provider,
 billing, or approval policy.
+
+On 2026-10-15, P3 source and bundled launch-directory checks, bounded instruction
+scope/provenance, deterministic resume/refresh, and pending-batch replan fixtures
+passed on Arch. All 95 tests and both supported formatter checks passed. Separate
+live ChatGPT coding and non-coding file tasks honored nested/saved instructions
+with individual approvals. See [actual evidence](developer/testing.md#p3-workspace-context-2026-10-15).
+Arbitrary shell target scopes remain explicitly unknown; these path checks are
+not an OS sandbox or protection against concurrent hostile filesystem changes.
 
 ## P4: packaging and protocols
 

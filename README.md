@@ -47,6 +47,9 @@ Shell commands run with your user permissions; Ipse does not provide an OS sandb
 
 Automatic context compaction retains the original journal and uses the selected
 provider; see [operation and limits](docs/operator/usage.md#context-compaction).
+Run from any working directory or use `--cwd`; `/context` shows applicable saved
+instructions and `/context refresh` reloads them while idle. See
+[workspace instructions](docs/operator/usage.md#workspace-instructions).
 Current limits include no full-screen TUI, MCP, subagents,
 Windows, or remote execution. See [runtime limits](docs/operator/usage.md#runtime-and-limits)
 and [architecture](docs/developer/architecture.md) for details.

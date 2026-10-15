@@ -100,6 +100,7 @@ defmodule Ipse.CompactionSessionTest do
           provider: :demo,
           model: "test",
           provider_module: Fake,
+          home: Path.join(ctx.root, "home"),
           test_pid: self(),
           approval: :ask,
           context_bytes: 24_000,
