@@ -29,3 +29,93 @@ byte releases the lock and emits a `U` frame; stdin EOF also releases it.
 Ownership follows the helper process, so an Elixir Port owner's death releases
 the lock automatically. Lock files must **never be deleted**: preserving the
 inode prevents concurrent owners from locking different files at the same path.
+
+## Optional native Linux workspace sandbox
+
+`ipse-runner --sandbox linux-workspace-v1 CWD TIMEOUT_MS COMMAND` selects a
+fixed, fail-closed OS policy. The three-argument form above retains its trusted
+behavior. The sandbox form never falls back to trusted execution. Unsupported
+platforms/profiles, privileged callers, or failed kernel setup emit an `E` frame
+without starting the requested shell. Policy is applied in the child after the
+supervisor creates its process group and before `/bin/sh` executes.
+
+The backend requires native little-endian Linux x86_64 or aarch64, enabled
+Landlock ABI 6 or later (Linux 6.12+), permitted unprivileged user namespaces and
+UID/GID mappings, mount/network namespaces, and the `open_tree`, `move_mount`,
+`mount_setattr`, `statx`, and `close_range` interfaces. Distribution security
+policy can disable these facilities even on a recent kernel. Effective UID zero
+and effective/permitted/ambient capabilities are rejected. `/proc` is needed by
+the supervisor for bounded capability/thread inspection and namespace mapping;
+it is absent from the child filesystem. Kernel setup is the capability probe:
+a successful sandboxed harmless command establishes support for that invocation.
+
+The child receives a separate user, mount, and network namespace and a private
+read-only filesystem root. Canonical `/usr`, `/bin`, `/lib`, and `/lib64` trees
+are recursively mounted read-only when present. `/etc/ld.so.cache` and
+`/etc/localtime` are optional exact read-only files. Exact devices are
+`/dev/null` read/write and `/dev/zero`, `/dev/urandom`, `/dev/random` read-only.
+The canonical workspace and a per-command mode-0700 data directory are writable;
+the latter appears as private `/tmp` and at its original absolute path. The
+read-only root is a sibling of that writable data, never inside it. Mount sources
+are pinned and their inode/device identities checked after namespace creation;
+replacing a source before spawn fails closed. Mounts are `nosuid`; directory
+mounts are `nodev`. Capabilities and their bounding set are dropped before exec.
+
+Landlock additionally confines file access and signal recipients to the new
+sandbox domain and descendants. Seccomp rejects external socket creation,
+connection, binding, listening and accepting; namespace/mount changes; tracing,
+process-memory and pidfd access; SysV IPC; io_uring; privilege/module changes;
+and process-group/session escape. Private connected AF_UNIX **stream** pairs
+are permitted for BEAM's child-spawn subsystem. Cross-PID resource-limit changes,
+scheduling/priority changes, page migration, and process-memory advice/release
+are denied; `prlimit64` accepts only current-process PID zero. Private pairs
+do not allow connecting to host socket names. Ordinary forks and threads remain
+available; `clone3` reports `ENOSYS` for libc's legacy-clone fallback. Inherited
+nonstandard descriptors close at exec. The child environment contains only
+`PATH=/usr/bin:/bin`, `LANG=C.UTF-8`, and private `HOME`/`TMPDIR` values.
+
+Resource ceilings are: no core dumps, CPU seconds `ceil(timeout)+1`, address
+space 16 GiB, 256 open descriptors, and regular file size 64 MiB. NPROC is the
+observed real-UID thread count plus 1024, clamped to the caller's existing hard
+limit; exhausted hard limits or failed bounded `/proc` scans fail setup. These
+are OS resource ceilings, not an aggregate per-command memory, disk, or process
+quota; NPROC is shared by the real UID and its count is a snapshot. The existing
+supervisor timeout and group cleanup still bound command lifetime. The guard
+kills the group before releasing the private-directory owner.
+
+The helper rejects `/`, `/tmp`, overlap with protected system roots, the real
+UID's home or its ancestors, and overlap with that home's `.ipse`, `.ssh`,
+`.aws`, `.codex`, or a configured `IPSE_HOME`. The caller must still validate
+the selected workspace before authorizing this mode: choosing a workspace
+authorizes its contents, including unknown custom credential files or other
+secrets within it. System tools outside the allowlist and builds requiring
+network, host home configuration, `/proc`, or other system paths can fail.
+
+Verified on the development Linux x86_64 host: actual namespace setup, shell
+forks, Rust threads, network/signal/pidfd/SysV denials, writable workspace chmod,
+absent outside sentinels, read-only system chmod, Elixir version startup and
+Elixir compilation, and replaced-workspace rejection. Aarch64 constants were
+reviewed against kernel headers; aarch64 execution and other hosts remain
+unverified. Authoritative layouts: [Landlock](https://github.com/torvalds/linux/blob/v6.12/include/uapi/linux/landlock.h),
+[mount APIs](https://github.com/torvalds/linux/blob/v6.12/include/uapi/linux/mount.h),
+[statx](https://github.com/torvalds/linux/blob/v6.12/include/uapi/linux/stat.h),
+[x86_64 syscalls](https://github.com/torvalds/linux/blob/v6.12/arch/x86/entry/syscalls/syscall_64.tbl),
+and [aarch64/generic syscalls](https://github.com/torvalds/linux/blob/v6.12/include/uapi/asm-generic/unistd.h).
+
+### Native enforcement tests
+
+The default `mix test` excludes tests tagged `:native_sandbox`. Its untagged
+capability test distinguishes successful explicit execution from fail-closed
+unavailability; that test alone is not evidence that enforcement was exercised.
+Run actual adversarial OS tests on a suitable Linux host with:
+
+```sh
+mix test test/linux_sandbox_test.exs --include native_sandbox
+```
+
+Included enforcement tests fail if the backend is unavailable. They compile a
+small Rust standard-library probe using the existing build toolchain, establish
+a successful host TCP connection as a positive control, then verify network,
+signal, IPC and process-group restrictions through the sandbox. File tests use
+fake credentials, and lifecycle tests synchronize on child output before timeout
+or owner termination. Loopback access is required for Mix and the TCP fixture.

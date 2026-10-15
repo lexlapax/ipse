@@ -375,3 +375,38 @@ sandbox changes were excluded). The extracted release ran without Elixir, Mix,
 Rust, or Erlang on `PATH` and passed bundled timeout, owner-death, and lock checks.
 This is same-host Arch release evidence, not a new OS account or cross-machine
 portability check. The original journal is retained; resume never replays tools.
+
+## P2 native Linux sandbox (2026-10-15)
+
+On Arch x86_64, kernel `7.2.9-arch1-1`, the source build, both Elixir formatter
+versions, warnings-as-errors compile, **97 ordinary tests (7 enforcement tests
+explicitly excluded)**, and demo passed. Running `mix test --include native_sandbox`
+against the rebuilt helper passed **all 104 tests**. These are actual OS checks,
+not simulated permission errors: outside fake credentials and symlink targets
+could not be read/written/chmodded; system metadata remained read-only; workspace
+chmod, Rust threads, and Elixir compilation worked; inherited test secrets and
+`/proc` were absent. A reachable loopback control endpoint became inaccessible
+inside the sandbox. Host signals, IPC, pidfds, process-group escape, scheduling,
+page/process-memory mutations, and cross-PID resource changes were denied.
+A disposable host process's file-descriptor limit stayed unchanged, while
+current-process limit queries worked. Synchronized timeout and owner-death tests
+proved started descendants did not leave delayed effects.
+
+Independent review found host-process resource-control calls still needed
+restriction. The fixed profile now allows `prlimit64` only for current-process
+PID zero and denies scheduling/priority/page mutation APIs; compiler and thread
+checks passed afterward. Native mount-source replacement was also checked
+against retained inode/device identities and failed closed.
+
+Separate **live ChatGPT subscription** evidence: `chatgpt/gpt-6.1-sol` streamed
+42 text chunks while creating a scratch Elixir file and executing precisely
+`elixir hello.exs` under the native profile. Both effects were individually
+approved with full arguments; the native shell returned exit zero and expected
+output. Provider inference remained outside shell enforcement. No fallback to
+API billing or trusted execution occurred.
+
+A fresh bundled extraction passed native outside-file denial, workspace write,
+protected-workspace refusal, demo, and existing timeout/owner-death/lock checks
+with no development toolchain on `PATH`. Linux aarch64 and other kernel policies
+remain unverified. macOS enforcement and Windows remain separate work; selecting
+native on unsupported platforms fails closed. See [scope and limits](sandbox.md).

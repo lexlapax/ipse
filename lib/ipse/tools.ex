@@ -5,7 +5,7 @@ defmodule Ipse.Tools do
   @file_limit 1_048_576
   @scan_limit 8_388_608
 
-  def definitions do
+  def definitions(sandbox \\ :off) do
     [
       tool(
         "read",
@@ -42,7 +42,7 @@ defmodule Ipse.Tools do
       ),
       tool(
         "shell",
-        "Run a trusted local shell command in the workspace. This is NOT a sandbox: it has local filesystem and network access. Output is bounded and execution times out.",
+        shell_description(sandbox),
         %{
           "command" => string("Command for /bin/sh -c"),
           "timeout_ms" => %{"type" => "integer", "minimum" => 1, "maximum" => 600_000}
@@ -114,6 +114,7 @@ defmodule Ipse.Tools do
            Runner.run(args["command"], Map.get(context, :cwd, File.cwd!()),
              timeout_ms: timeout,
              output_limit: @output_limit,
+             sandbox: Map.get(context, :sandbox, :off),
              emit: Map.get(context, :emit)
            ) do
       suffix = if result.timed_out, do: " (timed out)", else: ""
@@ -125,6 +126,14 @@ defmodule Ipse.Tools do
 
   defp dispatch(name, _, _),
     do: {:error, "unknown tool: #{inspect(name, limit: 20, printable_limit: 100)}"}
+
+  defp shell_description(:native),
+    do:
+      "Request a trusted local shell command under the fixed linux-workspace-v1 OS policy. Requests fail closed when the native Linux backend or workspace policy is unavailable. Output is bounded and execution times out."
+
+  defp shell_description(_),
+    do:
+      "Run a trusted local shell command in the workspace with the user's filesystem and network permissions. Shell execution is unsandboxed unless the fixed native policy is explicitly selected. Output is bounded and execution times out."
 
   defp checked_path(path, context, mutation) do
     with :ok <- text_arg(path, "path"),

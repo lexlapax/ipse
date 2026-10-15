@@ -19,8 +19,9 @@ credential-free demo.
   than replaying them.
 
 Automatic context compaction is available with a retained original journal.
-Full-screen TUI, MCP, subagents, remote execution, Windows, and OS sandboxing
-are not implemented. Uncompactable context stops with recovery guidance.
+Full-screen TUI, MCP, subagents, remote execution, and Windows are not implemented.
+The optional Linux native shell profile is separate from trusted execution.
+Uncompactable context stops with recovery guidance.
 
 ## P0: verify the current release path
 
@@ -171,6 +172,16 @@ filesystem, network, process, and resource limits separately from the Rust
 process helper. Acceptance: adversarial tests prove denied access is blocked by
 the OS, including access to credential files by default. Until then, describe
 shell execution as trusted local execution, not a sandbox.
+
+On 2026-10-15, the optional fixed Linux native profile passed actual filesystem,
+network, process, environment, and resource-control adversarial checks on Arch.
+All 104 tests passed with native enforcement explicitly included; fresh-bundle
+enforcement and a live approved ChatGPT coding command also passed. The default
+remains trusted local execution; requested native enforcement fails closed.
+See [profile and limitations](developer/sandbox.md) and
+[actual evidence](developer/testing.md#p2-native-linux-sandbox-2026-10-15).
+Native OS backends were selected for portability; macOS App Sandbox probing and
+eventual Windows AppContainer/Job Object support are separate from Linux evidence.
 
 ## P3: workspace context from any directory
 

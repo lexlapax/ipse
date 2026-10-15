@@ -72,6 +72,7 @@ defmodule Ipse.Session do
       Map.take(s, [:id, :cwd, :phase, :usage, :final])
       |> Map.put(:runtime, runtime(s))
       |> Map.put(:context, context_manifest(s))
+      |> Map.put(:sandbox, Ipse.Sandbox.info(Map.get(s.config, :sandbox, :off)))
 
     {:reply, info, s}
   end
@@ -262,7 +263,14 @@ defmodule Ipse.Session do
   defp system_message(s) do
     %{
       "role" => "system",
-      "content" => Ipse.Context.system(s.cwd, s.skills, runtime(s), s.context_snapshot)
+      "content" =>
+        Ipse.Context.system(
+          s.cwd,
+          s.skills,
+          runtime(s),
+          s.context_snapshot,
+          Map.get(s.config, :sandbox, :off)
+        )
     }
   end
 
@@ -342,7 +350,7 @@ defmodule Ipse.Session do
 
     task =
       owned_task(fn ->
-        request(s.config, messages, definitions(), fn event ->
+        request(s.config, messages, definitions(s.config), fn event ->
           send(owner, {:progress, job_ref, event})
         end)
       end)
@@ -504,7 +512,8 @@ defmodule Ipse.Session do
       "type" => "tool_started",
       "call_id" => call["id"],
       "name" => name,
-      "approval" => decision
+      "approval" => decision,
+      "sandbox_requested" => to_string(Map.get(s.config, :sandbox, :off))
     })
 
     notify(s, {:tool, name, args})
@@ -514,6 +523,7 @@ defmodule Ipse.Session do
     context = %{
       cwd: s.cwd,
       skills: s.skills,
+      sandbox: Map.get(s.config, :sandbox, :off),
       emit: fn event -> send(owner, {:progress, job_ref, event}) end
     }
 
@@ -601,7 +611,8 @@ defmodule Ipse.Session do
            Journal.create(dir, %{
              "cwd" => cwd,
              "provider" => to_string(config.provider),
-             "model" => config.model
+             "model" => config.model,
+             "sandbox" => to_string(Map.get(config, :sandbox, :off))
            }),
          do: {:ok, id, []}
   end
@@ -611,7 +622,8 @@ defmodule Ipse.Session do
          {:ok, old_cwd} <- WorkspaceContext.canonical_path(meta["cwd"]),
          true <-
            old_cwd == cwd and meta["provider"] == to_string(config.provider) and
-             meta["model"] == config.model do
+             meta["model"] == config.model and
+             Map.get(meta, "sandbox", "off") == to_string(Map.get(config, :sandbox, :off)) do
       {:ok, id, events}
     else
       false -> {:error, :resume_configuration_mismatch}
@@ -734,8 +746,8 @@ defmodule Ipse.Session do
     end
   end
 
-  defp definitions do
-    Tools.definitions() ++
+  defp definitions(config) do
+    Tools.definitions(Map.get(config, :sandbox, :off)) ++
       [
         %{
           "type" => "function",

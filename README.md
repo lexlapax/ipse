@@ -43,7 +43,9 @@ sign-in, other providers, approvals, skills, session resume, and logout.
 ChatGPT subscription is the default; API billing always requires explicit provider
 selection. In chat, `/info` shows the running application version and configured
 provider/model without calling a model. Review proposed file and shell calls before approving them.
-Shell commands run with your user permissions; Ipse does not provide an OS sandbox.
+Shell commands use trusted local execution by default. `--sandbox native` requests
+the opt-in Linux workspace sandbox and fails closed when unavailable; see
+[shell policy](docs/operator/usage.md#shell-policy).
 
 Automatic context compaction retains the original journal and uses the selected
 provider; see [operation and limits](docs/operator/usage.md#context-compaction).

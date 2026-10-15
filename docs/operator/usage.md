@@ -82,13 +82,39 @@ Interactive chat asks before `write`, `edit`, and every `shell` call. `--yes`
 allows them for the session. Headless `run` denies mutations unless `--yes` is
 present. Approvals display the full proposed arguments.
 
-**Shell execution is trusted local execution, not an OS sandbox.** Commands have
+With the default `--sandbox off`, shell execution is trusted local execution. Commands have
 your user permissions. The helper clears common provider credential environment
 variables, but it cannot prevent authorized commands from reading your files,
 credentials on disk, or other ambient secrets. Use a disposable workspace/container
 when appropriate. File tools reject symlinks and workspace escapes; writes to
 `.git` are rejected. These path checks are not a defense against a hostile process
 concurrently replacing filesystem entries.
+
+### Shell policy
+
+To request the fixed Linux workspace sandbox explicitly:
+
+```sh
+./bin/ipse chat --cwd /path/to/project --sandbox native
+```
+
+It permits workspace/private-temp writes and system tool reads, denies network
+access and credentials outside the workspace, and clears inherited command environment
+values. Approvals still apply; `--yes` changes approval policy only. Unsupported
+OS/kernel policy or failed setup stops the shell call without retrying outside
+the sandbox. Linux needs Landlock ABI 6+ and permitted unprivileged user,
+mount, and network namespaces. A configured mode is not proof a command started.
+
+Root, home directories, protected credential directories, and broad system
+workspaces are refused. Secrets already inside the selected workspace remain
+accessible. User toolchains/home caches, `/proc`, and network package fetching
+may be unavailable. Resource ceilings are per process or real UID, not aggregate
+memory/disk quotas. See [native policy and limits](../developer/sandbox.md).
+The saved mode is restored on CLI resume; a conflicting mode is refused. Start
+a new session to choose a different shell policy.
+
+macOS sandbox enforcement is experimental and not exposed as a supported native
+backend yet; `--sandbox native` fails closed there. Windows is future work.
 
 Chat commands:
 
@@ -233,7 +259,7 @@ required by the provider; raw hidden reasoning is not exposed in the UI.
 Current limits: 30 model calls per turn by default (`--max-steps`), bounded file and
 shell output, and a conservative conversation byte ceiling with bounded
 [automatic compaction](#context-compaction). **Full-screen TUI, MCP, subagents,
-OS sandboxing, Windows, and remote execution are not implemented.** Uncompactable
+Windows and remote execution are not implemented.** Uncompactable
 context stops with an actionable message rather than silently dropping history. Skills with scripts requiring Node/Python do not
 make those runtimes dependencies of Ipse.
 

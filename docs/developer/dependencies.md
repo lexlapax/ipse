@@ -34,7 +34,7 @@ See [agent rules](../../AGENTS.md), [setup](../operator/arch-linux.md), and
 | Erlang/OTP and ERTS | OTP 27+; system toolchain or bundled release | VM, OTP supervision, crypto, public-key/TLS, HTTP, filesystem and process APIs | Apache-2.0 with component notices |
 | Jason | Git tag `v1.4.4`, commit `926d2ac6cc0271b9a7079b2ec16ae0cf802f7963` in `mix.lock` | Sole external Elixir package; JSON for HTTP, native protocol, and journals | MIT |
 | Rust toolchain and standard library | Rust 1.85+; `native/build.sh` invokes `rustc --edition=2021` | Build the OS helper; no third-party Cargo packages | MIT OR Apache-2.0 |
-| Ipse native helper | `native/ipse-runner.rs`, compiled as `priv/ipse-runner` | Runtime process groups and advisory locks; used by tests | MIT (project source) |
+| Ipse native helper | `native/ipse-runner.rs`, `native/ipse-linux-sandbox.rs`, compiled as `priv/ipse-runner` | Runtime process groups, advisory locks, optional Linux namespace/Landlock/seccomp policy; used by tests | MIT (project source) |
 
 OTP libraries are distributed with OTP rather than fetched as separate packages.
 Mix lists `logger`, `inets`, and `ssl` applications; authentication also uses OTP
@@ -60,6 +60,13 @@ compatible OS libraries and `/bin/sh`. Toolchain license notices and
 [release check](testing.md#release-check). Record actual versions and tested
 platforms in [verification results](testing.md#current-evidence-and-next-checks).
 
+The optional Linux native sandbox uses kernel APIs through the existing Rust
+helper, without bubblewrap, containers, new packages, or a separate daemon.
+It requires enabled Landlock ABI 6+ (Linux 6.12+) and permitted unprivileged
+user/mount/network namespaces and modern mount APIs. These are host capabilities,
+not automatically installed dependencies; unavailable enforcement fails closed.
+See [the fixed profile](sandbox.md).
+
 ## Existing CI dependencies
 
 The [checks workflow](../../.github/workflows/ci.yml) uses GitHub Actions on
@@ -74,6 +81,18 @@ The runner image and action tags are rolling inputs; record changes and obtain
 developer approval before introducing additional actions or external CI tools.
 
 ## Optional integrations
+
+The developer approved macOS's built-in `/usr/bin/codesign` on 2026-10-15
+in response to the sandbox dependency question ("Approve built-in codesign").
+Its approved scope is ad-hoc signing of Ipse's generated helper application
+and sealing its App Sandbox entitlements, including macOS CI enforcement
+checks. It needs no signing certificate or personal signing key. The utility
+is supplied and licensed with macOS; supported macOS versions and enforcement
+results must be recorded before claiming a working backend. Elixir and Rust
+can generate the bundle and entitlement files but do not replace Apple's
+platform code-signing facility. Deprecated `sandbox-exec` and a Linux VM were
+considered alternatives; native platform tooling was selected by the developer.
+This approval does not establish that the prototype enforces the intended policy.
 
 ChatGPT/OpenAI, Ollama, and Anthropic are selected providers, not automatically
 installed dependencies. The scripted demo needs none of them. Remote providers

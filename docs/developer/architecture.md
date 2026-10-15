@@ -96,9 +96,11 @@ workspace escapes, and writes under `.git`; these checks are not race-proof
 against a hostile process changing paths concurrently. Interactive chat asks
 before writes and shell execution. Headless mode denies mutations unless
 `--yes` is supplied. Approval controls agent-directed calls only. Shell
-commands run with the user's OS permissions and are **not sandboxed**.
+commands default to the user's OS permissions. Explicit `--sandbox native`
+requests the fixed Linux workspace profile and fails closed when unavailable;
+see the [native boundary](sandbox.md).
 
-The Rust helper launches `/bin/sh -c` in a process group, streams bounded
+In default trusted mode, the Rust helper launches `/bin/sh -c` in a process group, streams bounded
 output, and kills the group on timeout or loss of its parent pipe. It removes
 common provider-token environment variables, but other inherited environment
 values and files remain accessible. A deliberately adversarial process can
@@ -124,7 +126,8 @@ repaired while holding the session lock. The full transcript remains on disk.
 
 The line-oriented terminal client is not a full-screen TUI. There is no
 MCP support, subagent execution, remote execution,
-Windows support, or OS sandbox integration. When the context byte ceiling is
+or Windows support. The Linux native sandbox is optional; macOS enforcement is
+experimental and not a supported backend. When the context byte ceiling is
 reached, the current version stops with an actionable error rather than
 silently dropping conversation history.
 

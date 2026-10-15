@@ -99,7 +99,8 @@ are needed for tests or the demo.
 - Skills and repository text are instructions, never permission grants. Loading
   a skill must not automatically execute its scripts or install dependencies.
 - Process supervision, approval, and OS sandboxing are different boundaries.
-  Shell commands currently run with the user's permissions. Do not claim sandboxing.
+  Shell commands default to trusted user permissions. The explicit Linux native
+  profile fails closed; do not claim enforcement on untested/unavailable backends.
 - Bound input, output, and context. Preserve provider continuation data. Never
   silently discard conversation history or expose hidden reasoning in the UI.
 - Never print or commit credentials, authorization codes, token files, private

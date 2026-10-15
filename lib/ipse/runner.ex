@@ -1,10 +1,12 @@
 defmodule Ipse.Runner do
   @moduledoc """
-  Streams trusted local shell commands through the Unix Rust supervisor.
+  Streams trusted local shell commands through the Rust supervisor.
 
-  This is process cleanup and output bounding, not a filesystem/network sandbox.
-  `emit` receives `{:tool_output, utf8_chunk}`; retained and streamed output share
-  the `output_limit` byte budget. Remaining child output is continuously drained.
+  By default, this provides process cleanup and output bounding only. The fixed
+  `:native` profile is opt-in and currently available on supported Linux hosts.
+  `emit` receives `{:tool_output, utf8_chunk}`; retained and streamed output
+  share the `output_limit` byte budget. Remaining child output is continuously
+  drained.
   """
   @root Path.expand("../..", __DIR__)
   @default_limit 65_536
@@ -67,27 +69,53 @@ defmodule Ipse.Runner do
   def run(command, cwd, opts \\ []) do
     timeout = Keyword.get(opts, :timeout_ms, 120_000)
     limit = Keyword.get(opts, :output_limit, @default_limit)
+    sandbox = Keyword.get(opts, :sandbox, :off)
 
     cond do
-      not is_binary(command) or not is_binary(cwd) -> {:error, "command and cwd must be strings"}
-      not is_integer(timeout) or timeout < 1 -> {:error, "timeout_ms must be a positive integer"}
-      not is_integer(limit) or limit < 0 -> {:error, "output_limit must be a nonnegative integer"}
-      not File.dir?(cwd) -> {:error, "working directory does not exist"}
-      true -> run_supervised(command, cwd, timeout, limit, Keyword.get(opts, :emit))
+      not is_binary(command) or not is_binary(cwd) ->
+        {:error, "command and cwd must be strings"}
+
+      not is_integer(timeout) or timeout < 1 ->
+        {:error, "timeout_ms must be a positive integer"}
+
+      not is_integer(limit) or limit < 0 ->
+        {:error, "output_limit must be a nonnegative integer"}
+
+      not File.dir?(cwd) ->
+        {:error, "working directory does not exist"}
+
+      true ->
+        with {:ok, policy} <- Ipse.Sandbox.resolve(sandbox, cwd) do
+          run_supervised(
+            command,
+            policy.cwd,
+            timeout,
+            limit,
+            Keyword.get(opts, :emit),
+            policy.profile
+          )
+        end
     end
   rescue
     error -> {:error, Exception.message(error)}
   end
 
-  defp run_supervised(command, cwd, timeout, limit, emit) do
+  defp run_supervised(command, cwd, timeout, limit, emit, profile) do
     with {:ok, helper} <- helper_path() do
+      args =
+        if profile do
+          ["--sandbox", profile, cwd, Integer.to_string(timeout), command]
+        else
+          [cwd, Integer.to_string(timeout), command]
+        end
+
       port =
         Port.open({:spawn_executable, String.to_charlist(helper)}, [
           :binary,
           :exit_status,
           :use_stdio,
           :hide,
-          args: [cwd, Integer.to_string(timeout), command]
+          args: args
         ])
 
       state = %{

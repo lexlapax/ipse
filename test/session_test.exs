@@ -268,6 +268,29 @@ defmodule Ipse.SessionTest do
     assert Ipse.Session.info(pid).runtime.reported_model == nil
   end
 
+  test "resume refuses silently weakening the saved shell sandbox policy", ctx do
+    pid = session(ctx, %{sandbox: :native, scenario: :identity})
+    id = Ipse.Session.info(pid).id
+    assert Ipse.Session.info(pid).sandbox.requested == :native
+    DynamicSupervisor.terminate_child(Ipse.Sessions, pid)
+
+    config = %{provider: :demo, model: "test", sandbox: :off, approval: :ask}
+
+    assert {:error, :resume_configuration_mismatch} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Ipse.Session,
+                config: config, cwd: ctx.root, state_dir: ctx.dir, id: id, subscriber: self()}
+             )
+
+    resumed = session(ctx, %{sandbox: :native, scenario: :identity}, id)
+    assert Ipse.Session.info(resumed).sandbox.requested == :native
+    :ok = Ipse.Session.prompt(resumed, "show policy")
+    assert_receive {:model_input, [system | _]}, 2000
+    assert system["content"] =~ "native workspace sandbox"
+    assert_receive {:ipse, ^resumed, {:done, :ok}}, 2000
+  end
+
   test "resume labels saved reported identity separately from the active runtime", ctx do
     config = %{scenario: :identity, reported: "saved-snapshot"}
     pid = session(ctx, config)

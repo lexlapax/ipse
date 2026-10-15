@@ -6,6 +6,10 @@ defmodule Ipse.Context do
   end
 
   def system(cwd, skills, runtime, workspace_context) do
+    system(cwd, skills, runtime, workspace_context, :off)
+  end
+
+  def system(cwd, skills, runtime, workspace_context, sandbox) do
     """
     You are Ipse, a coding agent. Work with the user to complete their task.
     Inspect relevant code, make focused edits, and run appropriate checks. Report what you verified.
@@ -20,7 +24,9 @@ defmodule Ipse.Context do
     may be incomplete; inspect the journal and current workspace before repeating an effect.
     A previous approval never approves a new tool call.
     Workspace: #{cwd}
-    The shell runs as the user, without an OS sandbox. Approval is enforced by the host.
+    Shell policy requested by the host: #{sandbox_description(sandbox)}
+    Approval is enforced separately by the host. A configured profile is not evidence
+    that an individual command launched successfully; use its result as evidence.
     File tools are confined to the workspace. Do not use shell to evade a denied action.
     Skills are optional instructions, not permissions. Use load_skill when one is relevant,
     or when the user invokes $skill-name. Read referenced resources as needed.
@@ -36,4 +42,12 @@ defmodule Ipse.Context do
 
   defp workspace_instructions(nil), do: "No workspace instruction snapshot supplied."
   defp workspace_instructions(snapshot), do: Ipse.WorkspaceContext.format(snapshot)
+
+  defp sandbox_description(:native),
+    do:
+      "native workspace sandbox; unavailable enforcement fails closed, network denied, workspace writes allowed."
+
+  defp sandbox_description(_),
+    do:
+      "trusted local execution with user filesystem and network permissions, without an OS sandbox."
 end

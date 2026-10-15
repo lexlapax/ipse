@@ -9,6 +9,9 @@ use std::process::{Command, Stdio};
 use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
+#[cfg(target_os = "linux")]
+#[path = "ipse-linux-sandbox.rs"]
+mod ipse_linux_sandbox;
 
 extern "C" {
     fn setpgid(pid: i32, pgid: i32) -> i32;
@@ -74,17 +77,42 @@ fn lock_file(path: &str) -> Result<(), String> {
 fn run() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
     if args.len() == 3 && args[1] == "--lock" { return lock_file(&args[2]); }
-    if args.len() != 4 { return Err("usage: ipse-runner CWD TIMEOUT_MS COMMAND".into()); }
-    let timeout: u64 = args[2].parse().map_err(|_| "invalid timeout")?;
+    let (sandboxed, offset) = if args.len() == 6 && args[1] == "--sandbox" {
+        if args[2] != "linux-workspace-v1" {return Err("unsupported sandbox profile".into());}
+        (true, 3)
+    } else if args.len() == 4 { (false, 1) }
+    else {return Err("usage: ipse-runner [--sandbox linux-workspace-v1] CWD TIMEOUT_MS COMMAND".into());};
+    let timeout: u64 = args[offset+1].parse().map_err(|_| "invalid timeout")?;
+    #[cfg(not(target_os = "linux"))]
+    if sandboxed { return Err("linux-workspace-v1 requires Linux".into()); }
+    // Declared before the group guard: reverse drop order kills descendants
+    // before removing the sandbox's private directories on every return path.
+    #[cfg(target_os = "linux")]
+    let sandbox = if sandboxed {
+        debug_assert_eq!(ipse_linux_sandbox::PROFILE, args[2]);
+        Some(std::sync::Arc::new(ipse_linux_sandbox::prepare(std::path::Path::new(&args[offset]),Duration::from_millis(timeout))?))
+    } else {None};
     let mut command = Command::new("/bin/sh");
-    command.arg("-c").arg(&args[3]).current_dir(&args[1])
+    command.arg("-c").arg(&args[offset+2]).current_dir(&args[offset])
         .stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
-    for key in ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "IPSE_CHATGPT_ACCESS_TOKEN"] {
-        command.env_remove(key);
+    if sandboxed {
+        command.env_clear().env("PATH","/usr/bin:/bin").env("LANG","C.UTF-8");
+        #[cfg(target_os = "linux")]
+        if let Some(policy) = &sandbox {
+            command.env("HOME",policy.temp_dir()).env("TMPDIR",policy.temp_dir());
+        }
+    } else {
+        for key in ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "IPSE_CHATGPT_ACCESS_TOKEN"] {
+            command.env_remove(key);
+        }
     }
+    #[cfg(target_os = "linux")]
+    let child_sandbox = sandbox.clone();
     unsafe {
-        command.pre_exec(|| {
+        command.pre_exec(move || {
             if setpgid(0, 0) == -1 { return Err(io::Error::last_os_error()); }
+            #[cfg(target_os = "linux")]
+            if let Some(policy) = &child_sandbox {policy.apply()?;}
             Ok(())
         });
     }

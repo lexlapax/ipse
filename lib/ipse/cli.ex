@@ -23,9 +23,11 @@ defmodule Ipse.CLI do
   --max-steps N                        Model calls per turn (default: 30)
   --context-bytes N                    Context byte ceiling (default: 400000)
   --no-compact                         Stop at the ceiling without summarizing
+  --sandbox off|native                 Shell OS policy (default: off)
 
   Chat asks before writes and shell commands. Headless run denies them without --yes.
-  Shell execution has your user permissions; this prototype has no OS sandbox.
+  Shell execution uses your user permissions unless --sandbox native is selected.
+  Native enforcement fails closed when unavailable; approvals remain required.
   Chat commands: /help /skills /session /info /context /context refresh /cancel /exit.
   Invoke skills with $name.
   EOF finishes accepted work; /cancel clears queued input.
@@ -55,6 +57,7 @@ defmodule Ipse.CLI do
           max_steps: :integer,
           context_bytes: :integer,
           compact: :boolean,
+          sandbox: :string,
           help: :boolean,
           demo: :boolean
         ],
@@ -165,8 +168,10 @@ defmodule Ipse.CLI do
         "Ipse · #{config.provider}/#{config.model}\nSession: #{info.id}\nWorkspace: #{info.cwd}"
       )
 
+      IO.puts(:stderr, "Shell policy requested: #{config.sandbox}.")
+
       if config.approval == :allow,
-        do: IO.puts(:stderr, "Trusted local execution enabled (--yes).")
+        do: IO.puts(:stderr, "Mutation approvals enabled for the session (--yes).")
 
       client = self()
       reader = if interactive, do: spawn(fn -> read_input(client) end), else: nil
@@ -429,9 +434,15 @@ defmodule Ipse.CLI do
           demo: "scripted"
         }[provider]
 
+    sandbox_name = opts[:sandbox] || "off"
+    sandbox = %{"off" => :off, "native" => :native}[sandbox_name]
+
     cond do
       provider == nil ->
         {:error, "Unknown provider: #{name}"}
+
+      sandbox == nil ->
+        {:error, "Unknown sandbox mode: #{sandbox_name}; choose off or native"}
 
       opts[:max_steps] && opts[:max_steps] < 1 ->
         {:error, "--max-steps must be positive"}
@@ -443,13 +454,15 @@ defmodule Ipse.CLI do
         {:error, "Subscription credentials only go to the official OpenAI endpoint."}
 
       true ->
-        with {:ok, _key} <- credential(provider) do
+        with {:ok, _policy} <- Ipse.Sandbox.resolve(sandbox, opts[:cwd] || default_cwd()),
+             {:ok, _key} <- credential(provider) do
           {:ok,
            %{
              provider: provider,
              model: model,
              auth_dir: auth_dir(),
              home: home(),
+             sandbox: sandbox,
              base_url: opts[:base_url],
              max_steps: opts[:max_steps] || 30,
              context_bytes: opts[:context_bytes] || 400_000,
@@ -480,7 +493,8 @@ defmodule Ipse.CLI do
          opts
          |> Keyword.put_new(:cwd, meta["cwd"])
          |> Keyword.put_new(:provider, meta["provider"])
-         |> Keyword.put_new(:model, meta["model"])}
+         |> Keyword.put_new(:model, meta["model"])
+         |> Keyword.put_new(:sandbox, Map.get(meta, "sandbox", "off"))}
       else
         _ -> {:error, "Session could not be loaded."}
       end
