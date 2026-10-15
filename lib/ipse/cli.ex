@@ -170,6 +170,13 @@ defmodule Ipse.CLI do
 
       IO.puts(:stderr, "Shell policy requested: #{config.sandbox}.")
 
+      if config.sandbox == :native and :os.type() == {:unix, :darwin} do
+        IO.puts(
+          :stderr,
+          "macOS restricts files and network. Detached child processes may survive cancellation."
+        )
+      end
+
       if config.approval == :allow,
         do: IO.puts(:stderr, "Mutation approvals enabled for the session (--yes).")
 

@@ -21,6 +21,12 @@ jobs:
       - run: mix format --check-formatted
       - run: mix compile --warnings-as-errors
       - run: mix test
+      - name: macOS native enforcement
+        if: runner.os == 'macOS'
+        run: |
+          rustc --edition=2021 --test native/ipse-macos-sandbox.rs -o "$RUNNER_TEMP/ipse-macos-policy-test"
+          "$RUNNER_TEMP/ipse-macos-policy-test"
+          mix test test/macos_sandbox_test.exs --include macos_sandbox
       - run: ./bin/ipse demo
       - run: ./scripts/package.sh
       - run: elixir scripts/verify-package.exs dist/ipse-*.tar.gz

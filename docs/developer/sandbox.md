@@ -48,28 +48,36 @@ kernel vulnerabilities, an administrator, or every resource-exhaustion technique
 
 ## macOS production boundary
 
-The developer selected native backends rather than Linux containers on every OS.
-macOS core/runtime checks and an experimental signed App Sandbox helper probe
-are separate from a supported production sandbox backend. Built-in `codesign`
-was explicitly approved; see [dependency approval](dependencies.md#optional-integrations).
-The experimental file/network and child-inheritance probe passed on macOS 14
-arm64 CI; see [actual evidence](testing.md#p4-release-verification-and-protocol-proposal-2026-10-15).
-Those checks do not prove resource/process containment or a production CLI backend.
-Deprecated `sandbox-exec` is not used.
+On 2026-10-15, after reviewing the descendant escapes below, the developer
+selected native macOS execution with best-effort descendant cleanup. The fixed
+`macos-workspace-v1` backend uses an ad-hoc signed App Sandbox worker and the
+approved built-in `/usr/bin/codesign`. See
+[dependency approval](dependencies.md#optional-integrations). Deprecated
+`sandbox-exec`, private APIs, privileged services, and VMs are not used.
 
-Local checks on macOS 26.7.2 arm64 reproduced file/network enforcement but found
-a process-containment failure. Both `setsid` and `setpgid` descendants survived
-normal command exit, timeout, explicit Port closure, and Port-owner death.
-They retained App Sandbox's outside-file denial and still wrote inside the
-workspace after the helper process exited. Ordinary descendants in the original
-group were terminated in all four cases. The CLI remains fail closed on macOS.
-See [the reproducible diagnostic and evidence](testing.md#macos-process-boundary-2026-10-15).
+The unsigned supervisor verifies the signed worker before launching untrusted
+code. App Sandbox restricts files and network access and passes those restrictions
+to children. The canonical workspace and a stable per-workspace data directory
+are writable. `/opt/homebrew/` and `/usr/local/` are readable for installed tools;
+macOS also grants its App Sandbox baseline and the application's own container
+and bundle access. This is not a strict two-directory read allowlist.
+The worker executes `/bin/sh` with a minimal `PATH`, locale, and temporary
+`HOME`/`TMPDIR`, without inherited provider credentials or loader injection values.
+
+Process groups stop ordinary children on exit, timeout, cancellation, or owner
+death. Detached `setsid`/`setpgid` children can survive and continue workspace
+writes. Their file/network restrictions remain active, but their lifetime is
+not contained. Commands sharing the same workspace generation also share its
+data root and OS container; there is no isolation between those commands.
+After the initial child exits, output draining ends within 500 ms even if an
+escaped child retains a pipe. See [the diagnostic](testing.md#macos-process-boundary-2026-10-15)
+and [native verification](testing.md#macos-native-backend-2026-10-15).
 
 ### Public interfaces and remaining limits
 
 Apple documents [App Sandbox entitlements](https://developer.apple.com/library/archive/documentation/Miscellaneous/Reference/EntitlementKeyReference/Chapters/EnablingAppSandbox.html)
 and [absolute-path file exceptions](https://developer.apple.com/library/archive/documentation/Miscellaneous/Reference/EntitlementKeyReference/Chapters/AppSandboxTemporaryExceptionEntitlements.html).
-They provide the probe's file/network boundary. The experiment does not establish
+They provide the file/network boundary. The experiment did not establish
 a public entitlement that prevents process-group changes or terminates an entire
 adversarial process tree. File-policy inheritance and descendant lifetime are
 separate acceptance checks.
@@ -114,49 +122,58 @@ The installed SDK inspected was **27.0**, separate from the **26.7.2** host OS
 and earlier macOS 14 CI. SDK inspection is not execution evidence for any of
 those candidate APIs or a compatibility claim for older releases.
 
-This review found no verified replacement for process-group cleanup. A viable
+This review found no verified replacement for process-group cleanup. A stronger
 candidate must establish kernel-enforced membership before untrusted code runs,
 preserve it across fork/spawn/exec and group changes, protect the supervisor,
 and force every member to stop on cancellation, timeout, or owner death.
 It must also provide a safe completion check without signaling unrelated host
-processes. Until that contract and adversarial proof exist, resource ceilings
-and a signing cache cannot make the current design production-ready.
+processes. The developer subsequently accepted best-effort cleanup for native
+macOS mode. The current backend does not satisfy this stronger lifetime contract.
 
 ### Resource requirements
 
 Apple's [`setrlimit` contract](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/getrlimit.2.html)
-provides inherited process limits. The proposed ceilings are core files disabled,
-256 open descriptors, 64 MiB regular files, and CPU seconds derived from the
-command deadline. CPU limits do not constrain a sleeping escaped process.
-`RLIMIT_NPROC` applies to a real UID, not a private job. Memory-limit behavior
-needs verification on each supported macOS version before claiming a hard
-ceiling. These macOS ceilings are design requirements, not implemented limits.
-Tests must prove actual denial, inheritance, and inability to raise a hard limit.
+provides inherited process limits. Before shell exec the worker disables core
+files, caps open descriptors at 256 and regular files at 64 MiB, and sets CPU
+seconds to `ceil(timeout_ms / 1000) + 1`. Limits clamp to existing lower soft/hard
+values. Tests verify inherited values, descriptor exhaustion, regular-file write
+denial, and rejection of a hard-limit increase. CPU limits do not replace
+wall-clock cleanup or constrain sleeping escaped processes.
+
+The backend does not set a private process quota or claim aggregate memory/disk
+limits. `RLIMIT_NPROC` applies to a real UID rather than a private job; it is not
+used here. Hard memory-limit behavior has not been established.
 
 ### Signing and integration gates
 
-A production cache needs an owner-only location outside the writable workspace,
-cross-process locking, atomic publication of a strictly verified signature,
-and rejection of replaced or symlinked inputs. Cache identity must include the
-helper contents, policy version, and exact canonical granted roots. No reused
-bundle may silently retain a broader workspace or temporary-directory grant.
-Concurrent commands and interrupted signing need explicit recovery checks.
+`Ipse.MacOSSandbox` prepares an owner-only cache under
+`IPSE_HOME/sandbox/macos`, defaulting to `~/.ipse/sandbox/macos`. A persistent
+advisory lock serializes preparation. Staged signing publishes by atomic rename;
+bounded abandoned stages are inspected and removed on the next preparation.
+Unsafe ownership, permissions, symlinks, hard links, unexpected files, or
+mismatched signatures, manifests, helper digests, and exact entitlement schemas
+fail closed. Each signing/verification call has a 10-second timeout and bounded
+output. The Rust supervisor independently verifies the signature and policy.
 
-The current diagnostic removes its scratch bundle and workspace files. macOS
-also creates `~/Library/Containers/org.ipse.sandbox.<random-id>` for the signed
-application. Those OS-managed containers persist after the probe; three were
-observed after three local invocations. Container retention and cleanup must be
-part of the production signing lifecycle. The probe does not remove them or
-change unrelated application containers.
+Cache identity includes helper contents, policy version, canonical workspace,
+and cache root. The cache permits 32 generations and 32 matching data roots;
+it fails before creating another generation when full. There is no automatic
+eviction while detached children could still be running. Reuse does not broaden
+the granted workspace. Each command gets a random temporary home below its
+generation's shared data root; removal is best effort after completion.
 
-Integration remains gated on a verified process boundary, resource enforcement,
-signing/cache recovery, cancellation and owner-death cleanup, and a fresh bundled
-native-mode check. Signal isolation from the supervisor and unrelated host
-processes also remains unverified. Polling or cooperative child self-termination
-cannot replace adversarial containment. No private API, deprecated sandbox
-utility, privileged service, or VM dependency has been introduced. Changing
-the required boundary or adopting another platform dependency needs a developer
-decision before enabling a production backend.
+The workspace must not contain the active helper, compiled application, or
+protected cache. A source checkout therefore cannot sandbox itself; install a
+bundle outside the target workspace. Native macOS mode requires a prebuilt
+helper and refuses root. Existing `IPSE_HOME` directories must be owned by the
+current user with mode `0700`.
+
+macOS retains OS-managed app containers after cache or test removal. The
+production cache uses a stable `org.ipse.runner.<generation>` bundle ID, avoiding
+a new app container on every command. The backend and diagnostic do not remove
+them or change unrelated application containers. The generation cap bounds
+creation within one retained cache, not containers accumulated across deleted
+caches. The experimental probe still creates a random bundle ID on each run.
 
 ## Windows
 
@@ -173,6 +190,12 @@ Linux enforcement tests are opt-in because kernel policy differs between hosts:
 ```sh
 ./scripts/build.sh
 mix test --include native_sandbox
+```
+
+On macOS, run the production backend's enforcement suite:
+
+```sh
+mix test test/macos_sandbox_test.exs --include macos_sandbox
 ```
 
 Included enforcement tests fail if unavailable; they never convert an unsupported

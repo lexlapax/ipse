@@ -41,6 +41,16 @@ defmodule Ipse.LinuxSandboxTest do
   end
 
   test "native capability either executes explicitly or fails closed without effects", %{cwd: cwd} do
+    previous = System.get_env("IPSE_HOME")
+    home = Path.join(Path.dirname(cwd), "state")
+    File.mkdir!(home)
+    File.chmod!(home, 0o700)
+    System.put_env("IPSE_HOME", home)
+
+    on_exit(fn ->
+      if previous, do: System.put_env("IPSE_HOME", previous), else: System.delete_env("IPSE_HOME")
+    end)
+
     marker = Path.join(cwd, "capability-marker")
 
     case Runner.run("printf explicit > capability-marker", cwd, sandbox: :native) do

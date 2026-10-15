@@ -246,25 +246,17 @@ The corrected experimental macOS probe also passed its actual file/network and
 child-inheritance checks; network assertions require connect permission denial.
 P4's packaging verification and protocol-design scope is complete; see
 [actual results](developer/testing.md#p4-release-verification-and-protocol-proposal-2026-10-15).
-The next proposed scope is a production macOS native backend with verified
-resource/process containment and signing lifecycle. Windows, MCP implementation,
-subagents, remote execution, broader account eligibility, and other architectures
-remain future work rather than implied completed integrations.
+On 2026-10-15, public-native research and bounded tests established that
+`setsid`/`setpgid` descendants can escape process-group cleanup on macOS.
+The developer then selected native Mac execution with this documented lifetime
+limit. The optional signed App Sandbox backend now enforces file/network
+restrictions, applies per-process resource ceilings, and validates immutable
+per-workspace signed workers through a bounded protected cache. Ordinary child
+cleanup remains active; detached children may survive and keep workspace access.
+See [the exact boundary](developer/sandbox.md#macos-production-boundary) and
+[current verification](developer/testing.md#macos-native-backend-2026-10-15).
 
-On 2026-10-15, the local macOS 26.7.2 arm64 baseline and signed file/network
-probe passed. A new bounded diagnostic found that `setsid` and `setpgid`
-descendants survived all four cleanup cases: normal exit, timeout, Port closure,
-and Port-owner death. Public-interface research and the reproducer are complete;
-the production backend remains blocked on a verified process boundary.
-Resource ceilings, signing/cache lifecycle, and CLI integration remain open.
-Keep native mode unavailable on macOS until those gates pass. See
-[boundary and design constraints](developer/sandbox.md#macos-production-boundary)
-and [actual local results](developer/testing.md#macos-process-boundary-2026-10-15).
-The developer selected continued investigation of public native process controls
-with macOS native mode disabled. Relaxing descendant cleanup or adopting a VM
-was not selected.
-The follow-up review covered Foundation, XPC, spawn attributes, ptrace, libproc,
-coalitions, and Endpoint Security. No compatible public process-tree boundary
-was verified; see the [candidate comparison](developer/sandbox.md#additional-native-controls-reviewed).
-Source visibility, event notifications, and service lifecycle are insufficient
-evidence for adversarial descendant termination. The production gates stay open.
+Windows, MCP implementation, subagents, remote execution, broader account
+eligibility, and other architectures remain future work. Reliable adversarial
+descendant termination on macOS also remains unimplemented. No private API,
+deprecated sandbox utility, privileged service, or VM was adopted.

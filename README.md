@@ -44,10 +44,11 @@ ChatGPT subscription is the default; API billing always requires explicit provid
 selection. In chat, `/info` shows the running application version and configured
 provider/model without calling a model. Review proposed file and shell calls before approving them.
 Shell commands use trusted local execution by default. `--sandbox native` requests
-the opt-in Linux workspace sandbox and fails closed when unavailable; see
+the opt-in Linux or macOS workspace sandbox and fails closed when unavailable; see
 [shell policy](docs/operator/usage.md#shell-policy).
 Core and bundled-release checks passed on Linux x86_64 and macOS arm64;
-macOS native sandboxing remains experimental, and Windows is future work.
+native macOS enforcement also passed locally on macOS 26.7.2 arm64. Detached
+children may survive cancellation with workspace access. Windows is future work.
 
 Automatic context compaction retains the original journal and uses the selected
 provider; see [operation and limits](docs/operator/usage.md#context-compaction).

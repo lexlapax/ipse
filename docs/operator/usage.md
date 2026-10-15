@@ -92,18 +92,20 @@ concurrently replacing filesystem entries.
 
 ### Shell policy
 
-To request the fixed Linux workspace sandbox explicitly:
+To request the fixed native workspace sandbox explicitly:
 
 ```sh
 ./bin/ipse chat --cwd /path/to/project --sandbox native
 ```
 
-It permits workspace/private-temp writes and system tool reads, denies network
-access and credentials outside the workspace, and clears inherited command environment
-values. Approvals still apply; `--yes` changes approval policy only. Unsupported
-OS/kernel policy or failed setup stops the shell call without retrying outside
-the sandbox. Linux needs Landlock ABI 6+ and permitted unprivileged user,
-mount, and network namespaces. A configured mode is not proof a command started.
+Linux permits workspace/private-temp writes and system tool reads, denies network
+access, and clears the command environment. macOS runs the shell through a signed
+App Sandbox worker: it permits workspace and sandbox data writes, selected system
+reads, and denies network access. Approvals still apply; `--yes` changes approval
+policy only. Unsupported OS/kernel policy or failed setup stops the shell call
+without retrying outside the sandbox. Linux needs Landlock ABI 6+ and permitted
+unprivileged user, mount, and network namespaces. A configured mode is not proof
+a command started.
 
 Root, home directories, protected credential directories, and broad system
 workspaces are refused. Secrets already inside the selected workspace remain
@@ -113,16 +115,21 @@ memory/disk quotas. See [native policy and limits](../developer/sandbox.md).
 The saved mode is restored on CLI resume; a conflicting mode is refused. Start
 a new session to choose a different shell policy.
 
-macOS sandbox enforcement is experimental and not exposed as a supported native
-backend yet; `--sandbox native` fails closed there. Its file/network probe passed
-on macOS 14 and 26.7.2 arm64. Local adversarial checks found that children can
-create a new process group and survive timeout or cancellation while retaining
-workspace write access. Resource limits and production signing/cache cleanup
-also remain incomplete. See [the macOS boundary](../developer/sandbox.md#macos-production-boundary).
-The [public native API review](../developer/sandbox.md#additional-native-controls-reviewed)
-has not verified a replacement process boundary, so the failed native request
-must not be retried in trusted mode automatically.
-Core/source and fresh-bundle CI passed on Linux x86_64 and macOS arm64; live
+On macOS, the signed worker and its exact entitlements are validated for each
+invocation. Its protected cache is under `IPSE_HOME/sandbox/macos` (or the default
+Ipse home), and the selected workspace must not contain the active helper,
+application, or cache. Use an installed bundle outside the workspace; a source
+checkout whose application files are inside the workspace is refused. Existing
+`IPSE_HOME` must be owned by your user with mode `0700`. The cache stops at 32
+generations; it does not evict data while detached processes may still use it. Detached
+`setsid`/`setpgid` children may survive cancellation or timeout and retain access
+to that workspace. The sandbox still confines their filesystem and network
+access, but process cleanup is best effort. Sandbox data and its container are
+shared by commands for the same workspace; there is no per-command data isolation
+or aggregate memory/disk quota. See [native policy and limits](../developer/sandbox.md).
+Core/source and fresh-bundle CI passed on Linux x86_64 and macOS arm64. Native
+macOS enforcement passed locally on macOS 26.7.2 arm64; see
+[native results](../developer/testing.md#macos-native-backend-2026-10-15). Live
 subscription checks were on Arch. See [evidence](../developer/testing.md#p4-release-verification-and-protocol-proposal-2026-10-15).
 Windows is future work.
 

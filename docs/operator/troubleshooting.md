@@ -5,6 +5,16 @@ and [verification results](../developer/testing.md) for known limits. Source
 commands run from the repository root; replace `./bin/ipse` with `./ipse` in a
 bundled release.
 
+## macOS native shell policy
+
+Keep the installed application outside the target workspace and use an owner-only
+`IPSE_HOME` with mode `0700`. A changed signature, unsafe cache entry, or full
+32-generation cache stops the command before execution. The cache is under
+`IPSE_HOME/sandbox/macos`; do not remove it while commands or detached children
+may still be running. Cancellation cannot guarantee termination of detached
+children, which can retain workspace write access. See
+[macOS policy and limits](../developer/sandbox.md#macos-production-boundary).
+
 ## Build and sockets
 
 - Missing `mix` or `rustc`: check packages and `PATH` against the

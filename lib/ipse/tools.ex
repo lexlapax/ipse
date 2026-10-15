@@ -129,7 +129,7 @@ defmodule Ipse.Tools do
 
   defp shell_description(:native),
     do:
-      "Request a trusted local shell command under the fixed linux-workspace-v1 OS policy. Requests fail closed when the native Linux backend or workspace policy is unavailable. Output is bounded and execution times out."
+      "Request a local shell command under the native workspace sandbox. Files and network are restricted; setup fails closed. macOS descendant cleanup is best effort: detached children may continue changing the workspace after cancellation. Output and execution time are bounded."
 
   defp shell_description(_),
     do:

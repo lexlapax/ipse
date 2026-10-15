@@ -3,4 +3,4 @@
 {:ok, temporary_root} = Ipse.WorkspaceContext.canonical_path(System.tmp_dir!())
 System.put_env("TMPDIR", temporary_root)
 
-ExUnit.start(exclude: [:native_sandbox])
+ExUnit.start(exclude: [:native_sandbox, :macos_sandbox])

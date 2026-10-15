@@ -97,15 +97,17 @@ against a hostile process changing paths concurrently. Interactive chat asks
 before writes and shell execution. Headless mode denies mutations unless
 `--yes` is supplied. Approval controls agent-directed calls only. Shell
 commands default to the user's OS permissions. Explicit `--sandbox native`
-requests the fixed Linux workspace profile and fails closed when unavailable;
+requests the fixed Linux or macOS workspace profile and fails closed when unavailable;
 see the [native boundary](sandbox.md).
 
 In default trusted mode, the Rust helper launches `/bin/sh -c` in a process group, streams bounded
 output, and kills the group on timeout or loss of its parent pipe. It removes
 common provider-token environment variables, but other inherited environment
 values and files remain accessible. A deliberately adversarial process can
-escape the process group. Use a separate OS sandbox or disposable environment
-when that isolation is required.
+escape the process group. On macOS, the signed App Sandbox worker enforces file
+and network boundaries, while cleanup of detached descendants is best effort;
+they may survive cancellation or timeout with workspace access. See
+[native policy](sandbox.md) and [actual checks](testing.md#macos-native-backend-2026-10-15).
 
 ## Persistence and recovery
 
@@ -126,10 +128,10 @@ repaired while holding the session lock. The full transcript remains on disk.
 
 The line-oriented terminal client is not a full-screen TUI. There is no
 MCP support, subagent execution, remote execution,
-or Windows support. The Linux native sandbox is optional; macOS enforcement is
-experimental and not a supported backend. Local macOS App Sandbox checks found
-descendants could escape process-group cleanup while retaining workspace access;
-see [the production gates](sandbox.md#macos-production-boundary).
+or Windows support. Native Linux and macOS sandbox profiles are optional. macOS
+does not provide reliable cleanup for descendants that detach from the process
+group; its filesystem and network enforcement do not make those descendants
+short-lived. See [native policy](sandbox.md).
 Automatic compaction attempts to retain useful history within the context byte
 ceiling. If no safe checkpoint fits, the session stops with recovery guidance
 and keeps the original journal.

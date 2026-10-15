@@ -92,6 +92,45 @@ try do
   true = File.stat!(path).inode == inode
   :ok = Ipse.Runner.unlock(final)
 
+  if :os.type() == {:unix, :darwin} do
+    workspace = Path.join(scratch, "native workspace")
+    File.mkdir!(workspace)
+    secret = Path.join(scratch, "outside-fixture-key")
+    File.write!(secret, "fixture-private-value")
+    quote_shell = fn text -> "'" <> String.replace(text, "'", "'\\''") <> "'" end
+
+    {:ok, native} =
+      Ipse.Runner.run(
+        "set -e; printf allowed > native-marker; if cat #{quote_shell.(secret)}; then exit 11; fi; if printf changed > #{quote_shell.(secret)}; then exit 12; fi; printf confined",
+        workspace,
+        sandbox: :native
+      )
+
+    0 = native.exit_code
+    false = native.timed_out
+    true = String.contains?(native.output, "confined")
+    false = String.contains?(native.output, "fixture-private-value")
+    "allowed" = File.read!(Path.join(workspace, "native-marker"))
+    "fixture-private-value" = File.read!(secret)
+
+    {:ok, timed} =
+      Ipse.Runner.run(
+        "(printf native-ready; sleep 1.7; printf survived > native-timeout-marker) & wait",
+        workspace,
+        sandbox: :native,
+        timeout_ms: 1_000
+      )
+
+    true = timed.timed_out
+    "native-ready" = timed.output
+    Process.sleep(1_850)
+    false = File.exists?(Path.join(workspace, "native-timeout-marker"))
+
+    IO.puts(
+      "Bundled macOS native workspace writes, outside-file denial, and ordinary timeout cleanup passed."
+    )
+  end
+
   IO.puts("Bundled runtime/helper, timeout cleanup, owner-death cleanup, and locks passed.")
 after
   File.rm_rf!(scratch)

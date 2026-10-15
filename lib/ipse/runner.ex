@@ -3,7 +3,8 @@ defmodule Ipse.Runner do
   Streams trusted local shell commands through the Rust supervisor.
 
   By default, this provides process cleanup and output bounding only. The fixed
-  `:native` profile is opt-in and currently available on supported Linux hosts.
+  `:native` profile is opt-in on supported Linux and macOS hosts. macOS uses a
+  verified signed worker and provides best-effort process-group cleanup.
   `emit` receives `{:tool_output, utf8_chunk}`; retained and streamed output
   share the `output_limit` byte budget. Remaining child output is continuously
   drained.
@@ -101,14 +102,8 @@ defmodule Ipse.Runner do
   end
 
   defp run_supervised(command, cwd, timeout, limit, emit, profile) do
-    with {:ok, helper} <- helper_path() do
-      args =
-        if profile do
-          ["--sandbox", profile, cwd, Integer.to_string(timeout), command]
-        else
-          [cwd, Integer.to_string(timeout), command]
-        end
-
+    with {:ok, helper} <- helper_path(profile != "macos-workspace-v1"),
+         {:ok, args} <- launch_args(helper, profile, cwd, timeout, command) do
       port =
         Port.open({:spawn_executable, String.to_charlist(helper)}, [
           :binary,
@@ -128,7 +123,8 @@ defmodule Ipse.Runner do
         error: nil
       }
 
-      deadline = System.monotonic_time(:millisecond) + timeout + 5_000
+      setup_allowance = if profile == "macos-workspace-v1", do: 25_000, else: 5_000
+      deadline = System.monotonic_time(:millisecond) + timeout + setup_allowance
 
       try do
         receive_output(port, state, deadline)
@@ -137,6 +133,27 @@ defmodule Ipse.Runner do
       end
     end
   end
+
+  defp launch_args(helper, "macos-workspace-v1" = profile, cwd, timeout, command) do
+    with {:ok, policy} <- Ipse.MacOSSandbox.prepare(helper, cwd) do
+      {:ok,
+       [
+         "--sandbox",
+         profile,
+         policy.worker,
+         policy.data,
+         cwd,
+         Integer.to_string(timeout),
+         command
+       ]}
+    end
+  end
+
+  defp launch_args(_helper, nil, cwd, timeout, command),
+    do: {:ok, [cwd, Integer.to_string(timeout), command]}
+
+  defp launch_args(_helper, profile, cwd, timeout, command),
+    do: {:ok, ["--sandbox", profile, cwd, Integer.to_string(timeout), command]}
 
   defp receive_output(port, state, deadline) do
     remaining = max(deadline - System.monotonic_time(:millisecond), 0)
@@ -225,12 +242,13 @@ defmodule Ipse.Runner do
     text
   end
 
-  defp helper_path do
+  defp helper_path(allow_build \\ true) do
     configured = System.get_env("IPSE_RUNNER_PATH")
     paths = [configured, app_helper(), Path.join(@root, "priv/ipse-runner")]
 
     case Enum.find(paths, &(is_binary(&1) and File.regular?(&1))) do
-      nil -> build_helper()
+      nil when allow_build -> build_helper()
+      nil -> {:error, "native macOS helper missing; run scripts/build.sh before starting Ipse"}
       path -> {:ok, Path.expand(path)}
     end
   end

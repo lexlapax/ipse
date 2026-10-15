@@ -30,6 +30,45 @@ Ownership follows the helper process, so an Elixir Port owner's death releases
 the lock automatically. Lock files must **never be deleted**: preserving the
 inode prevents concurrent owners from locking different files at the same path.
 
+## Optional native macOS workspace sandbox
+
+`ipse-runner --sandbox macos-workspace-v1 WORKER DATA CWD TIMEOUT_MS COMMAND`
+uses an immutable, ad-hoc signed App Sandbox
+worker generated and validated with the built-in `/usr/bin/codesign`. The worker
+entitlements grant read/write access to the canonical workspace and stable
+per-workspace data directory, read-only access to `/opt/homebrew` and
+`/usr/local`, and the platform's normal baseline/container access. Network
+entitlements are absent. The worker clears inherited environment values and
+sets `HOME` and `TMPDIR` to a random temporary directory under shared workspace data.
+
+The signed worker and its metadata are cached under
+`IPSE_HOME/sandbox/macos` (default `~/.ipse/sandbox/macos`). The cache rejects
+unsafe ownership, permissions, symlinks, and unexpected entries; it validates
+the helper digest, manifest, signature, and exact entitlements, and retains at
+most 32 generations. The workspace cannot overlap the active helper, application,
+or cache. Run from an installed bundle outside the workspace; a source checkout
+inside the selected workspace is refused.
+
+The worker applies per-process ceilings: CPU time `ceil(timeout)+1` seconds,
+64 MiB regular-file size, 256 open descriptors, and zero core-file size. There
+is no aggregate memory or disk quota. Shell and ordinary descendants inherit
+the App Sandbox filesystem and network limits. A descendant that calls
+`setsid` or `setpgid` may survive cancellation or timeout and retain workspace
+write access; process cleanup is best effort, not an OS sandbox boundary.
+Sandbox data and the app container are shared by commands for the same
+workspace, so this is not per-command data isolation.
+
+`--uid`, `--macos-entitlements CWD DATA`, and `--codesign ARGS...` are internal
+cache-preparation operations. `--macos-worker CWD TEMP TIMEOUT_MS COMMAND` is the
+signed worker's execution role; calling this role directly on an unsigned binary
+does not activate App Sandbox. The public native Runner path always validates
+the signed app and its fixed policy first. Setup commands have bounded output
+and a 10-second deadline. Initial-child exit ends output draining within 500 ms
+even if a detached child retains a pipe.
+
+Actual native macOS enforcement tests passed on macOS 26.7.2 arm64. See
+[verification and limits](../docs/developer/testing.md#macos-native-backend-2026-10-15).
+
 ## Optional native Linux workspace sandbox
 
 `ipse-runner --sandbox linux-workspace-v1 CWD TIMEOUT_MS COMMAND` selects a
@@ -104,7 +143,7 @@ and [aarch64/generic syscalls](https://github.com/torvalds/linux/blob/v6.12/incl
 
 ### Native enforcement tests
 
-The default `mix test` excludes tests tagged `:native_sandbox`. Its untagged
+The default `mix test` excludes `:native_sandbox` and `:macos_sandbox` tests. Its untagged
 capability test distinguishes successful explicit execution from fail-closed
 unavailability; that test alone is not evidence that enforcement was exercised.
 Run actual adversarial OS tests on a suitable Linux host with:

@@ -6,17 +6,22 @@ use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::os::unix::io::AsRawFd;
 use std::os::unix::process::{CommandExt, ExitStatusExt};
 use std::process::{Command, Stdio};
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::{Duration, Instant};
 #[cfg(target_os = "linux")]
 #[path = "ipse-linux-sandbox.rs"]
 mod ipse_linux_sandbox;
+#[cfg(target_os = "macos")]
+#[path = "ipse-macos-sandbox.rs"]
+mod ipse_macos_sandbox;
 
 extern "C" {
     fn setpgid(pid: i32, pgid: i32) -> i32;
     fn kill(pid: i32, signal: i32) -> i32;
     fn flock(fd: i32, operation: i32) -> i32;
+    fn geteuid() -> u32;
 }
 fn kill_group(pid: i32) { unsafe { kill(-pid, 9); } }
 struct GroupGuard(i32);
@@ -76,15 +81,57 @@ fn lock_file(path: &str) -> Result<(), String> {
 }
 fn run() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
+    if args.len() == 2 && args[1] == "--uid" { println!("{}", unsafe { geteuid() }); return Ok(()); }
+    #[cfg(target_os = "macos")]
+    {
+        if args.len() == 4 && args[1] == "--macos-entitlements" {
+            print!("{}", ipse_macos_sandbox::entitlements(&args[2], &args[3])?);
+            return Ok(());
+        }
+        if args.len() >= 3 && args[1] == "--codesign" {
+            return Err(format!("cannot execute codesign: {}", ipse_macos_sandbox::codesign_exec(&args[2..])));
+        }
+        if args.len() >= 2 && args[1] == "--macos-worker" {
+            if let Err(error) = ipse_macos_sandbox::worker(&args) {
+                eprintln!("macOS sandbox worker: {error}");
+                std::process::exit(1);
+            }
+            return Ok(());
+        }
+    }
     if args.len() == 3 && args[1] == "--lock" { return lock_file(&args[2]); }
-    let (sandboxed, offset) = if args.len() == 6 && args[1] == "--sandbox" {
+    let (sandboxed, offset) = if args.len() == 8 && args[1] == "--sandbox" && args[2] == "macos-workspace-v1" {
+        #[cfg(not(target_os = "macos"))]
+        return Err("macos-workspace-v1 requires macOS".into());
+        #[cfg(target_os = "macos")]
+        (true, 5)
+    } else if args.len() == 6 && args[1] == "--sandbox" {
         if args[2] != "linux-workspace-v1" {return Err("unsupported sandbox profile".into());}
         (true, 3)
     } else if args.len() == 4 { (false, 1) }
     else {return Err("usage: ipse-runner [--sandbox linux-workspace-v1] CWD TIMEOUT_MS COMMAND".into());};
     let timeout: u64 = args[offset+1].parse().map_err(|_| "invalid timeout")?;
     #[cfg(not(target_os = "linux"))]
-    if sandboxed { return Err("linux-workspace-v1 requires Linux".into()); }
+    if sandboxed && args[2] == "linux-workspace-v1" { return Err("linux-workspace-v1 requires Linux".into()); }
+    let cancelled = Arc::new(AtomicBool::new(false));
+    let child_slot = Arc::new(Mutex::new(None::<i32>));
+    let owner_cancelled = cancelled.clone();
+    let owner_child = child_slot.clone();
+    // Watch owner death during signature verification as well as command execution.
+    thread::spawn(move || {
+        let mut input = io::stdin();
+        let mut buffer = [0u8; 256];
+        loop {
+            match input.read(&mut buffer) {
+                Ok(0) => break,
+                Ok(_) => (),
+                Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
+                Err(_) => break,
+            }
+        }
+        owner_cancelled.store(true, Ordering::SeqCst);
+        if let Some(pid) = *owner_child.lock().unwrap() { kill_group(pid); }
+    });
     // Declared before the group guard: reverse drop order kills descendants
     // before removing the sandbox's private directories on every return path.
     #[cfg(target_os = "linux")]
@@ -92,8 +139,19 @@ fn run() -> Result<(), String> {
         debug_assert_eq!(ipse_linux_sandbox::PROFILE, args[2]);
         Some(std::sync::Arc::new(ipse_linux_sandbox::prepare(std::path::Path::new(&args[offset]),Duration::from_millis(timeout))?))
     } else {None};
-    let mut command = Command::new("/bin/sh");
-    command.arg("-c").arg(&args[offset+2]).current_dir(&args[offset])
+    #[cfg(target_os = "macos")]
+    let mut macos = if sandboxed {
+        debug_assert_eq!(ipse_macos_sandbox::PROFILE, args[2]);
+        Some(ipse_macos_sandbox::prepare(&args[3], &args[offset], &args[4], timeout,
+            &args[offset+2], &cancelled)?)
+    } else { None };
+    let mut plain_command = Command::new("/bin/sh");
+    plain_command.arg("-c").arg(&args[offset+2]);
+    #[cfg(target_os = "macos")]
+    let command = match &mut macos { Some(policy) => &mut policy.command, None => &mut plain_command };
+    #[cfg(not(target_os = "macos"))]
+    let command = &mut plain_command;
+    command.current_dir(&args[offset])
         .stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
     if sandboxed {
         command.env_clear().env("PATH","/usr/bin:/bin").env("LANG","C.UTF-8");
@@ -116,23 +174,14 @@ fn run() -> Result<(), String> {
             Ok(())
         });
     }
+    let mut slot = child_slot.lock().unwrap();
+    if cancelled.load(Ordering::SeqCst) { return Err("shell owner disconnected before launch".into()); }
     let mut child = command.spawn().map_err(|e| format!("cannot start shell: {e}"))?;
     let pid = child.id() as i32;
+    *slot = Some(pid);
+    drop(slot);
     let _cleanup = GroupGuard(pid);
-    // The Elixir Port keeps this pipe open. Closing/crashing the owner terminates
-    // the complete shell process group, even if the supervisor is blocked writing.
-    thread::spawn(move || {
-        let mut stdin = io::stdin();
-        let mut buf = [0u8; 256];
-        loop {
-            match stdin.read(&mut buf) {
-                Ok(0) => { kill_group(pid); break; },
-                Ok(_) => (),
-                Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
-                Err(_) => { kill_group(pid); break; },
-            }
-        }
-    });
+    // The owner watcher kills this group even while output delivery is blocked.
     let (tx, rx) = mpsc::sync_channel(32);
     reader(child.stdout.take().unwrap(), tx.clone());
     reader(child.stderr.take().unwrap(), tx.clone());
@@ -140,6 +189,7 @@ fn run() -> Result<(), String> {
     let start = Instant::now();
     let mut timed_out = false;
     let mut status = None;
+    let mut drain_deadline = None;
     let mut disconnected = false;
     loop {
         if status.is_none() {
@@ -148,9 +198,14 @@ fn run() -> Result<(), String> {
                 kill_group(pid);
             }
             status = child.try_wait().map_err(|e| format!("cannot wait for shell: {e}"))?;
-            // Background jobs must not survive their shell or hold output open.
-            if status.is_some() { kill_group(pid); }
+            // Stop remaining group members when the initial child exits.
+            if status.is_some() {
+                kill_group(pid);
+                drain_deadline = Some(Instant::now() + Duration::from_millis(500));
+            }
         }
+        // Detached descendants may retain the output pipes. Completion stays bounded.
+        if drain_deadline.is_some_and(|deadline| Instant::now() >= deadline) { break; }
         if status.is_some() && disconnected { break; }
         match rx.recv_timeout(Duration::from_millis(10)) {
             Ok(bytes) => if frame(b'O', &bytes).is_err() {

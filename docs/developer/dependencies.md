@@ -34,7 +34,7 @@ See [agent rules](../../AGENTS.md), [setup](../operator/arch-linux.md), and
 | Erlang/OTP and ERTS | OTP 27+; system toolchain or bundled release | VM, OTP supervision, crypto, public-key/TLS, HTTP, filesystem and process APIs | Apache-2.0 with component notices |
 | Jason | Git tag `v1.4.4`, commit `926d2ac6cc0271b9a7079b2ec16ae0cf802f7963` in `mix.lock` | Sole external Elixir package; JSON for HTTP, native protocol, and journals | MIT |
 | Rust toolchain and standard library | Rust 1.85+; `native/build.sh` invokes `rustc --edition=2021` | Build the OS helper; no third-party Cargo packages | MIT OR Apache-2.0 |
-| Ipse native helper | `native/ipse-runner.rs`, `native/ipse-linux-sandbox.rs`, compiled as `priv/ipse-runner` | Runtime process groups, advisory locks, optional Linux namespace/Landlock/seccomp policy; used by tests | MIT (project source) |
+| Ipse native helper | `native/ipse-runner.rs`, `native/ipse-linux-sandbox.rs`, `native/ipse-macos-sandbox.rs`, compiled as `priv/ipse-runner` | Runtime process groups, advisory locks, optional Linux namespace/Landlock/seccomp and macOS signed App Sandbox worker policies; used by tests | MIT (project source) |
 
 OTP libraries are distributed with OTP rather than fetched as separate packages.
 Mix lists `logger`, `inets`, and `ssl` applications; authentication also uses OTP
@@ -80,31 +80,32 @@ and standard library have separate MIT OR Apache-2.0 licensing.
 The runner image and action tags are rolling inputs; record changes and obtain
 developer approval before introducing additional actions or external CI tools.
 The macOS runner extends the existing workflow/actions to the native platform
-selected by the developer on 2026-10-15; the separately approved built-in
-`codesign` is used only for the experimental App Sandbox probe. No container,
-VM runtime, new CI action, or downloaded testing utility is introduced.
+selected by the developer on 2026-10-15. The separately approved built-in
+`codesign` signs and validates immutable App Sandbox workers at runtime. No
+container, VM runtime, new CI action, or downloaded testing utility is introduced.
 
 The optional macOS process diagnostic compiles
 `scripts/support/macos_process_probe.rs` with the existing Rust standard library
 and orchestrates it from Elixir. Its `setsid`, `setpgid`, `getpgrp`, and
 `kill(pid, 0)` checks use the existing host C library. It adds no package,
-external command dependency, or runtime service. The extra process check is
-opt-in and fails on the currently observed group escapes; it is separate from
-CI's passing file/network probe.
+external command dependency, or runtime service. This diagnostic is separate
+from OS file/network enforcement. Detached children can survive cancellation
+or timeout; their cleanup is best effort.
 
 ## Optional integrations
 
 The developer approved macOS's built-in `/usr/bin/codesign` on 2026-10-15
 in response to the sandbox dependency question ("Approve built-in codesign").
-Its approved scope is ad-hoc signing of Ipse's generated helper application
-and sealing its App Sandbox entitlements, including macOS CI enforcement
-checks. It needs no signing certificate or personal signing key. The utility
+Its approved scope is ad-hoc signing and validation of Ipse's generated worker
+application and its fixed App Sandbox entitlements. It needs no signing
+certificate or personal signing key. The utility
 is supplied and licensed with macOS; supported macOS versions and enforcement
 results must be recorded before claiming a working backend. Elixir and Rust
 can generate the bundle and entitlement files but do not replace Apple's
 platform code-signing facility. Deprecated `sandbox-exec` and a Linux VM were
 considered alternatives; native platform tooling was selected by the developer.
-This approval does not establish that the prototype enforces the intended policy.
+Native macOS enforcement checks passed locally on macOS 26.7.2 arm64; see
+[actual evidence](testing.md#macos-native-backend-2026-10-15).
 
 ChatGPT/OpenAI, Ollama, and Anthropic are selected providers, not automatically
 installed dependencies. The scripted demo needs none of them. Remote providers

@@ -36,9 +36,10 @@ Mix can also need local sockets. Initial dependency fetching needs network.
 No real API keys or subscription are required. Auth transport injection is
 compiled only for the test environment.
 
-Ordinary `mix test` excludes `:native_sandbox` enforcement checks. On a supported
+Ordinary `mix test` excludes `:native_sandbox` and `:macos_sandbox` enforcement checks. On a supported
 Linux host, run `mix test --include native_sandbox`; included checks fail when
-unavailable. Report the exclusion count and actual OS enforcement separately.
+unavailable. On macOS, run `mix test test/macos_sandbox_test.exs --include macos_sandbox`.
+Report the exclusion count and actual OS enforcement separately.
 
 The demo is deterministic and does not call a model. It checks that the CLI,
 session loop, skill loading, file tools, and native command helper work together.
@@ -68,9 +69,10 @@ Children stop after five seconds even if the probe crashes. No process flood,
 provider account, or credential file is involved.
 
 Currently the extra flag prints eight `GAP` lines and exits nonzero. This is a
-failed production acceptance check, not a passing enforcement result. CI keeps
-the default file/network probe and both source/package platforms. The process
-diagnostic is opt-in until a backend can contain the escaped descendants.
+failure of the stronger descendant-lifetime contract, not a passing containment
+result. The developer subsequently accepted best-effort cleanup for macOS native
+mode. CI includes production macOS enforcement, the default experimental probe,
+and both source/package platforms. The stronger process diagnostic remains opt-in.
 The script removes its scratch files and bundle, but macOS retains each generated
 `org.ipse.sandbox.<random-id>` app container under `~/Library/Containers`.
 See [production gates and container lifecycle](sandbox.md#signing-and-integration-gates).
@@ -105,6 +107,8 @@ From that extracted directory, also run the bundled helper checks:
 ./bin/ipse eval 'Code.require_file("verify-release.exs")'
 ```
 
+On macOS it also checks native workspace writes, outside-file denial, and ordinary
+child timeout cleanup using built-in codesign without a development toolchain.
 This Elixir script verifies that runtime and application paths belong to the
 extraction, exercises timeout and owner-death cleanup, and checks lock exclusion,
 release on owner death, and inode preservation. The cleanup commands emit readiness
@@ -521,6 +525,10 @@ the app registration for the next sign-in.
 
 ## macOS process boundary (2026-10-15)
 
+Historical research milestone before the native-backend decision below. Statements
+about unavailable native mode describe this earlier state. See the
+[current backend and verification](#macos-native-backend-2026-10-15).
+
 Continued from `d7d2118` on macOS **26.7.2**, build `25G325`, Darwin `25.6.0`,
 arm64. The installed toolchain was Elixir **1.20.3**, Erlang/OTP **29.0.5** with
 ERTS **17.0.5**, and Rust **1.97.1**. Source build, formatting,
@@ -582,3 +590,41 @@ entitlement, or package was adopted. See the
 The follow-up documentation check validated 192 local inline links and heading
 anchors across 29 Markdown files. CLI help still documents opt-in native mode
 and fail-closed unavailability. No additional runtime behavior was changed.
+
+## macOS native backend (2026-10-15)
+
+After the research above, the developer requested native execution on the Mac,
+accepting best-effort detached-descendant cleanup. On the same macOS 26.7.2 arm64
+host, the production Runner path passed actual workspace writes, outside-file
+read/write/chmod and symlink denial, protected signed-worker mutation denial,
+environment scrubbing, temporary-home writes, and installed Elixir compilation.
+A reachable loopback TCP positive control connected; the sandboxed Rust probe
+received `EPERM`. Host and supervisor signal probes were denied. Resource probes
+verified inherited ceilings, descriptor exhaustion, regular-file write denial,
+and inability to raise a hard limit.
+
+Ordinary process-group children stopped on timeout and owner death. A synchronized
+detached child retained an output pipe after its parent exited; Runner completed
+within the bound, then the surviving child proved outside-file denial before its
+bounded exit. This explicitly verifies the accepted lifetime limitation rather
+than claiming complete descendant cleanup. Changed signed-worker contents and
+workspaces containing the active application failed before command effects.
+
+The full suite with macOS enforcement included passed **121 tests with 7 Linux
+enforcement tests excluded**. Sixteen portable cache tests use a fake helper;
+they cover reuse, corruption, unsafe links/modes, abandoned stages, generation
+capacity, malformed or broadened entitlement schemas, and competing locks.
+Those fixtures are distinct from the real codesign and OS enforcement checks.
+A Rust policy-parser test also passed, including boolean/array type confusion,
+exact roots, duplicates, and trailing-data rejection.
+
+Source build, formatting, warnings-as-errors compilation, and the credential-free
+demo passed. The actual CLI demo also completed with `--sandbox native` in an
+isolated scratch workspace and state home. The Mac archive built and
+`verify-package.exs` passed using a fresh isolated HOME/IPSE_HOME and utility-only
+PATH. Its bundled native checks exercised allowed workspace writes, outside-file
+read/write denial, and ordinary child timeout cleanup without Elixir/Mix/Rust on
+PATH. Earlier trusted helper/lock checks also passed.
+
+Linux enforcement and live provider inference were not run on this Mac.
+OS-managed test app containers persist. No package was published.

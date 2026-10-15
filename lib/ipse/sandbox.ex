@@ -1,7 +1,6 @@
 defmodule Ipse.Sandbox do
   @moduledoc "Selects the fixed native shell sandbox policy."
 
-  @profile "linux-workspace-v1"
   @system_paths [
     "/tmp",
     "/usr",
@@ -25,7 +24,7 @@ defmodule Ipse.Sandbox do
          {:ok, canonical_cwd} <- Ipse.WorkspaceContext.canonical_path(cwd),
          true <- File.dir?(canonical_cwd) || {:error, "sandbox workspace does not exist"},
          :ok <- validate_workspace(canonical_cwd) do
-      {:ok, %{requested: :native, cwd: canonical_cwd, profile: @profile}}
+      {:ok, %{requested: :native, cwd: canonical_cwd, profile: profile()}}
     else
       {:error, _} = error -> error
       false -> {:error, "sandbox workspace is invalid"}
@@ -38,14 +37,25 @@ defmodule Ipse.Sandbox do
   def info(mode \\ :off) do
     %{
       requested: mode,
-      backend: if(mode == :native, do: @profile, else: nil),
+      backend: if(mode == :native, do: profile(), else: nil),
       platform_supported: native_platform?(),
       note:
-        "This reports the requested mode and platform support. A native helper must still accept each workspace and command before execution."
+        "This reports requested policy, not activation." <>
+          if(mode == :native and :os.type() == {:unix, :darwin},
+            do:
+              " macOS descendant cleanup is best effort; detached children may survive cancellation while remaining sandboxed.",
+            else: ""
+          )
     }
   end
 
-  def profile, do: @profile
+  def profile do
+    case :os.type() do
+      {:unix, :linux} -> "linux-workspace-v1"
+      {:unix, :darwin} -> "macos-workspace-v1"
+      _ -> nil
+    end
+  end
 
   defp ensure_available do
     if native_platform?(),
@@ -56,14 +66,15 @@ defmodule Ipse.Sandbox do
   defp native_platform? do
     architecture = :erlang.system_info(:system_architecture) |> List.to_string()
 
-    :os.type() == {:unix, :linux} and
+    :os.type() in [{:unix, :linux}, {:unix, :darwin}] and
       (String.starts_with?(architecture, "x86_64-") or
-         String.starts_with?(architecture, "aarch64-"))
+         String.starts_with?(architecture, "aarch64-") or
+         String.starts_with?(architecture, "arm64-"))
   end
 
   defp validate_workspace(cwd) do
     with true <- cwd != "/" || {:error, "sandbox workspace cannot be the filesystem root"},
-         :ok <- reject_overlaps(cwd, @system_paths),
+         :ok <- reject_overlaps(cwd, system_paths()),
          {:ok, homes} <- canonical_homes(),
          true <-
            Enum.all?(homes, &(not within?(&1, cwd))) ||
@@ -78,6 +89,24 @@ defmodule Ipse.Sandbox do
     else
       {:error, _} = error -> error
       false -> {:error, "sandbox workspace overlaps a protected path"}
+    end
+  end
+
+  defp system_paths do
+    if :os.type() == {:unix, :darwin} do
+      @system_paths ++
+        [
+          "/sbin",
+          "/System",
+          "/Library",
+          "/Applications",
+          "/opt",
+          "/private/etc",
+          "/private/var/db",
+          "/private/var/root"
+        ]
+    else
+      @system_paths
     end
   end
 
@@ -108,8 +137,8 @@ defmodule Ipse.Sandbox do
     Enum.reduce_while(paths, :ok, fn path, :ok ->
       case Ipse.WorkspaceContext.canonical_path(path) do
         {:ok, protected} ->
-          if (protected == "/tmp" and cwd == protected) or
-               (protected != "/tmp" and overlap?(cwd, protected)),
+          if (path == "/tmp" and cwd == protected) or
+               (path != "/tmp" and overlap?(cwd, protected)),
              do: {:halt, {:error, "sandbox workspace overlaps a protected path: #{protected}"}},
              else: {:cont, :ok}
 
