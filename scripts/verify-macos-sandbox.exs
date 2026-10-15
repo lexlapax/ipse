@@ -1,12 +1,27 @@
 # macOS-only App Sandbox enforcement probe. Run on macOS after building ipse-runner:
 #   elixir scripts/verify-macos-sandbox.exs /path/to/ipse-runner /path/to/workspace
 # This signs a temporary ad-hoc helper app, runs real filesystem/network probes,
-# and removes its temporary bundle and files. It makes no repository changes.
+# and removes its temporary bundle and files. macOS retains the generated app
+# container under ~/Library/Containers. It makes no repository changes.
+# Add --process-boundary to check descendant cleanup. Known group escapes cause
+# a nonzero exit; the default file/network probe does not establish containment.
 
 defmodule Ipse.MacSandboxProbe do
   @codesign "/usr/bin/codesign"
 
   def main([helper, workspace_arg]) do
+    main([helper, workspace_arg], false)
+  end
+
+  def main([helper, workspace_arg, "--process-boundary"]) do
+    main([helper, workspace_arg], true)
+  end
+
+  def main(_) do
+    raise "usage: elixir scripts/verify-macos-sandbox.exs /path/to/ipse-runner /workspace [--process-boundary]"
+  end
+
+  defp main([helper, workspace_arg], process_checks) do
     require_macos!()
     require_tool!(@codesign)
 
@@ -16,14 +31,10 @@ defmodule Ipse.MacSandboxProbe do
 
     helper = canonical_file!(helper)
     workspace = canonical_dir!(workspace_arg)
-    run!(helper, workspace, rustc)
+    run!(helper, workspace, rustc, process_checks)
   end
 
-  def main(_) do
-    raise "usage: elixir ipse-macos-sandbox-probe.exs /path/to/ipse-runner /workspace"
-  end
-
-  defp run!(helper, workspace, rustc) do
+  defp run!(helper, workspace, rustc, process_checks) do
     id = Base.encode16(:crypto.strong_rand_bytes(8), case: :lower)
     root_lexical = Path.join(System.tmp_dir!(), "ipse-macos-sandbox-#{id}")
     File.mkdir_p!(root_lexical)
@@ -211,6 +222,11 @@ defmodule Ipse.MacSandboxProbe do
         IO.puts(
           "PASS: codesign strict verification; signed entitlements inspected; profile=#{id}"
         )
+
+        if process_checks do
+          Code.require_file("support/macos_process_boundary.exs", __DIR__)
+          Ipse.MacProcessBoundary.run!(executable, workspace, outside_secret, rustc)
+        end
       after
         :gen_tcp.close(listener)
         Task.shutdown(server_task, :brutal_kill)

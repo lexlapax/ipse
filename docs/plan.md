@@ -250,3 +250,16 @@ The next proposed scope is a production macOS native backend with verified
 resource/process containment and signing lifecycle. Windows, MCP implementation,
 subagents, remote execution, broader account eligibility, and other architectures
 remain future work rather than implied completed integrations.
+
+On 2026-10-15, the local macOS 26.7.2 arm64 baseline and signed file/network
+probe passed. A new bounded diagnostic found that `setsid` and `setpgid`
+descendants survived all four cleanup cases: normal exit, timeout, Port closure,
+and Port-owner death. Public-interface research and the reproducer are complete;
+the production backend remains blocked on a verified process boundary.
+Resource ceilings, signing/cache lifecycle, and CLI integration remain open.
+Keep native mode unavailable on macOS until those gates pass. See
+[boundary and design constraints](developer/sandbox.md#macos-production-boundary)
+and [actual local results](developer/testing.md#macos-process-boundary-2026-10-15).
+The developer selected continued investigation of public native process controls
+with macOS native mode disabled. Relaxing descendant cleanup or adopting a VM
+was not selected.

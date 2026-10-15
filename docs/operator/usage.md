@@ -115,7 +115,10 @@ a new session to choose a different shell policy.
 
 macOS sandbox enforcement is experimental and not exposed as a supported native
 backend yet; `--sandbox native` fails closed there. Its file/network probe passed
-on macOS 14 arm64, but resource/process containment still needs implementation.
+on macOS 14 and 26.7.2 arm64. Local adversarial checks found that children can
+create a new process group and survive timeout or cancellation while retaining
+workspace write access. Resource limits and production signing/cache cleanup
+also remain incomplete. See [the macOS boundary](../developer/sandbox.md#macos-production-boundary).
 Core/source and fresh-bundle CI passed on Linux x86_64 and macOS arm64; live
 subscription checks were on Arch. See [evidence](../developer/testing.md#p4-release-verification-and-protocol-proposal-2026-10-15).
 Windows is future work.

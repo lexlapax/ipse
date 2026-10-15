@@ -127,9 +127,12 @@ repaired while holding the session lock. The full transcript remains on disk.
 The line-oriented terminal client is not a full-screen TUI. There is no
 MCP support, subagent execution, remote execution,
 or Windows support. The Linux native sandbox is optional; macOS enforcement is
-experimental and not a supported backend. When the context byte ceiling is
-reached, the current version stops with an actionable error rather than
-silently dropping conversation history.
+experimental and not a supported backend. Local macOS App Sandbox checks found
+descendants could escape process-group cleanup while retaining workspace access;
+see [the production gates](sandbox.md#macos-production-boundary).
+Automatic compaction attempts to retain useful history within the context byte
+ceiling. If no safe checkpoint fits, the session stops with recovery guidance
+and keeps the original journal.
 
 ChatGPT subscription sign-in follows the documented open-source app flow.
 Browser sign-in, inference, coding tools, resume, and logout passed with one

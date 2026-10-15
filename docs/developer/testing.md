@@ -45,6 +45,36 @@ session loop, skill loading, file tools, and native command helper work together
 Use its printed ID with `./bin/ipse chat --resume SESSION_ID` under the
 same `IPSE_HOME`; `/session` should show the session without replaying tools.
 
+### macOS App Sandbox diagnostics
+
+After building on macOS, use a disposable workspace outside the probe's own
+temporary directory:
+
+```sh
+IPSE_MACOS_WORKSPACE=$(mktemp -d)
+elixir scripts/verify-macos-sandbox.exs priv/ipse-runner "$IPSE_MACOS_WORKSPACE"
+elixir scripts/verify-macos-sandbox.exs priv/ipse-runner "$IPSE_MACOS_WORKSPACE" --process-boundary
+rm -rf "$IPSE_MACOS_WORKSPACE"
+```
+
+The default probe checks signed file/network enforcement and ordinary child
+inheritance. The extra flag also runs twelve process cases through the same
+signed helper. Four controls keep the descendant in the original group. Eight
+cases use `setsid` or `setpgid`, each followed by normal exit, timeout, explicit
+Port closure, or Port-owner death. Readiness follows the group change and an
+actual inherited outside-read denial. The probe confirms helper-process exit,
+then releases a scratch-file gate and checks for a descendant's write and exit.
+Children stop after five seconds even if the probe crashes. No process flood,
+provider account, or credential file is involved.
+
+Currently the extra flag prints eight `GAP` lines and exits nonzero. This is a
+failed production acceptance check, not a passing enforcement result. CI keeps
+the default file/network probe and both source/package platforms. The process
+diagnostic is opt-in until a backend can contain the escaped descendants.
+The script removes its scratch files and bundle, but macOS retains each generated
+`org.ipse.sandbox.<random-id>` app container under `~/Library/Containers`.
+See [production gates and container lifecycle](sandbox.md#signing-and-integration-gates).
+
 ## Release check
 
 ```sh
@@ -488,3 +518,48 @@ lifecycle, and a production CLI backend remain unimplemented/unverified on macOS
 No Windows execution or paid API checks were performed. Final live-test logout
 completed successfully; local subscription tokens were cleared while retaining
 the app registration for the next sign-in.
+
+## macOS process boundary (2026-10-15)
+
+Continued from `d7d2118` on macOS **26.7.2**, build `25G325`, Darwin `25.6.0`,
+arm64. The installed toolchain was Elixir **1.20.3**, Erlang/OTP **29.0.5** with
+ERTS **17.0.5**, and Rust **1.97.1**. Source build, formatting,
+warnings-as-errors compilation, **97 tests with 7 Linux enforcement tests
+excluded**, and the credential-free demo passed. The initial build was blocked
+by Mix's loopback TCP lock under the execution sandbox; the build and tests
+passed with the required socket access. TLS and tests were unchanged.
+
+The default signed App Sandbox probe passed. Two subsequent invocations with
+`--process-boundary`, including one refined to confirm actual helper-process
+exit, reproduced these results:
+
+| Descendant | Normal exit | Timeout | Port closure | Port-owner death |
+| --- | --- | --- | --- | --- |
+| Original process group | Stopped | Stopped | Stopped | Stopped |
+| New session using `setsid` | Survived | Survived | Survived | Survived |
+| New group using `setpgid` | Survived | Survived | Survived | Survived |
+
+Each surviving descendant retained outside-file denial and wrote its workspace
+marker only after the signed helper had exited. The bounded fixtures then
+terminated; liveness checks confirmed their exit. Both diagnostic runs exited
+nonzero with eight named containment failures. The three initial probe runs
+also left three generated macOS app containers; scratch bundles and workspace
+fixtures were removed. This is actual host OS evidence, separate from provider
+fixtures and the earlier macOS 14 CI evidence.
+
+The local `ipse-0.1.0-darwin-arm64.tar.gz` archive built and passed
+`verify-package.exs`: fresh isolated HOME/IPSE_HOME, help, default and explicit
+workspaces containing spaces, exact demo output, bundled timeout/owner-death
+and lock checks, and no development toolchain on PATH. This verifies the
+existing trusted runner, not bundled native-mode enforcement. No additional
+version-matched toolchain notice directory was supplied, and no release was
+published. Final formatting, warnings-as-errors compilation, and the ordinary
+97-test suite passed again. All 189 local inline documentation links and heading
+anchors across 29 Markdown files passed validation.
+
+Public-interface research is recorded in
+[the macOS boundary](sandbox.md#public-interfaces-and-remaining-limits).
+`--sandbox native` remains unavailable on macOS. Resource ceilings, signal
+isolation, adversarial reparenting, signing/cache recovery and container cleanup,
+and bundled native-mode enforcement remain open. Linux enforcement was not run
+on this macOS host. No live provider or Windows check was performed.

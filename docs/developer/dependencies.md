@@ -84,6 +84,14 @@ selected by the developer on 2026-10-15; the separately approved built-in
 `codesign` is used only for the experimental App Sandbox probe. No container,
 VM runtime, new CI action, or downloaded testing utility is introduced.
 
+The optional macOS process diagnostic compiles
+`scripts/support/macos_process_probe.rs` with the existing Rust standard library
+and orchestrates it from Elixir. Its `setsid`, `setpgid`, `getpgrp`, and
+`kill(pid, 0)` checks use the existing host C library. It adds no package,
+external command dependency, or runtime service. The extra process check is
+opt-in and fails on the currently observed group escapes; it is separate from
+CI's passing file/network probe.
+
 ## Optional integrations
 
 The developer approved macOS's built-in `/usr/bin/codesign` on 2026-10-15
