@@ -89,6 +89,8 @@ are needed for tests or the demo.
   Keep TLS verification enabled and auth files owner-only.
 - Use documented public authentication/inference interfaces. Do not borrow
   Codex credentials or rely on private ChatGPT endpoints.
+- Never add AI authorship or code attribution such as "Claude" or "Codex" to
+  source code or code comments.
 
 ## Finish a change
 
@@ -97,5 +99,10 @@ Add behavior tests for meaningful state/protocol changes. Update usage and plan
 status when behavior changes. Distinguish fixture tests from live account tests.
 Report what changed, checks actually run, and remaining limitations. Do not
 claim Arch, browser sign-in, paid inference, or a release was verified unless
-the corresponding check really ran. Leave commits and publishing to the user's
-requested scope; never force-push or overwrite someone else's work.
+the corresponding check really ran.
+
+Once satisfied that a sub-goal or sub-milestone is complete and its relevant
+checks pass, always commit the focused changes and push to `origin`. Do not add
+AI authorship trailers or attribution to commit messages. Preserve unrelated
+user edits; never force-push or overwrite someone else's work. Report any
+commit or push failure accurately.
