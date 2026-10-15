@@ -1,7 +1,7 @@
 # Arch Linux: run and develop Ipse
 
 Ipse is developed with Elixir/OTP and a small Rust helper. Codex CLI is a
-development tool you can use in the checkout; it is not a Ipse dependency.
+development tool you can use in the checkout; it is not an Ipse dependency.
 Ipse's ChatGPT login is separate from your Codex login.
 
 ## Install the toolchain
@@ -27,6 +27,7 @@ See [Arch's Elixir guide](https://wiki.archlinux.org/title/Elixir) and the
 git clone https://github.com/lexlapax/ipse.git
 cd ipse
 mix local.hex --force
+mix local.rebar --force
 ./scripts/build.sh
 mix format --check-formatted
 mix compile --warnings-as-errors
@@ -34,8 +35,9 @@ mix test
 ./bin/ipse demo
 ```
 
-Hex bootstraps Mix dependency handling; the sole direct dependency, Jason,
-is fetched from its pinned Git revision. Rust uses only the standard library.
+Hex fetches the locked MCP/schema packages; Rebar3 builds the approved Telemetry
+dependency. Jason is fetched from its pinned Git revision. See the
+[dependency inventory](../developer/dependencies.md). Rust uses only the standard library.
 Do not run Mix or Ipse with sudo. The demo is scripted, requires no account,
 and prints a session ID and temporary workspace. It writes `ipse-demo.txt`,
 reads it back, and runs a short shell command.

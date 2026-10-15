@@ -19,7 +19,8 @@ credential-free demo.
   than replaying them.
 
 Automatic context compaction is available with a retained original journal.
-Full-screen TUI, MCP, subagents, remote execution, and Windows are not implemented.
+Explicit local stdio MCP tools are available; network MCP, full-screen TUI,
+subagents, remote execution, and Windows are not implemented.
 The optional Linux and macOS native shell profiles are separate from trusted
 execution. macOS detached-descendant cleanup is best effort.
 Uncompactable context stops with recovery guidance.
@@ -242,8 +243,8 @@ in-flight recovery. Subagents and remote execution need separate trust and
 unknown-outcome designs plus focused tests before implementation.
 
 The [protocol proposal](developer/protocol-proposal.md) defines these contracts
-and separate implementation gates; MCP, subagents, and remote execution remain
-unimplemented. Linux/macOS CI now includes source checks and fresh-home bundled
+and separate implementation gates. P5 adds the local MCP client; subagents and
+remote execution remain unimplemented. Linux/macOS CI includes source checks and fresh-home bundled
 release verification. The macOS App Sandbox probe signs an isolated helper with
 approved built-in `codesign`; its file/network enforcement passed on the macOS
 14 arm64 runner. Fresh-home checks do not substitute for every target OS,
@@ -269,7 +270,37 @@ including actual Mac enforcement. Local Mac checks passed 122 tests with seven
 Linux enforcement tests excluded. Development then returned to Serenity;
 [Linux return verification is complete](developer/testing.md#p0-closure-on-serenity-2026-10-15).
 
-Windows, MCP implementation, subagents, remote execution, broader account
+Windows, broader MCP features, subagents, remote execution, broader account
 eligibility, and other architectures remain future work. Reliable adversarial
 descendant termination on macOS also remains unimplemented. No private API,
 deprecated sandbox utility, privileged service, or VM was adopted.
+
+## P5: local MCP tools
+
+Implement an explicitly selected local stdio client and small tool allowlist,
+using existing Elixir packages for protocol and schema evaluation. Every external
+call enters the host's full-argument approval and durable intent boundary.
+Server descriptions/annotations/results cannot grant permission. The session
+owns transport lifetime; unknown outcomes stop the batch and are never replayed.
+No network transport, resource/prompt loading, sampling, delegation, or remote
+execution is implied by this milestone.
+
+Acceptance: bounded explicit configuration; credential isolation and redaction;
+schema validation with unsupported features rejected; duplicate/changed
+discovery handling; exact descriptor binding; interactive approval and headless
+denial; owner-death and cancellation cleanup; serial calls and bounded queues;
+intent-before-dispatch journaling; unknown-outcome resume without retries;
+and a credential-free demo. Verify source and package checks on supported hosts,
+review developer/operator guidance, and commit/push the focused result.
+
+The implementation reuses MCP Elixir SDK 1.1.0 and JSONSchex 0.10.0, with a
+bounded SDK transport around Ipse's Rust OS helper. The developer approved
+Telemetry and Rebar3 as BEAM dependencies on 2026-10-15. The source SDK-to-SDK
+demo passed one exact approved scratch write without a model service.
+Source and fresh-package verification passed on Arch: 182 ordinary tests and
+189 with Linux enforcement included. The extracted runtime passed an actual
+SDK-to-SDK MCP round trip without the development toolchain. The initial local
+MCP scope is complete; live-model/third-party-server interoperability and the
+broader protocol capabilities remain separate checks.
+See [operator setup](operator/mcp.md), [developer contract](developer/mcp.md),
+and [actual verification](developer/testing.md#p5-local-mcp-2026-10-15).

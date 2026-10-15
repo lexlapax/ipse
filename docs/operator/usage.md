@@ -288,7 +288,8 @@ required by the provider; raw hidden reasoning is not exposed in the UI.
 
 Current limits: 30 model calls per turn by default (`--max-steps`), bounded file and
 shell output, and a conservative conversation byte ceiling with bounded
-[automatic compaction](#context-compaction). **Full-screen TUI, MCP, subagents,
+[automatic compaction](#context-compaction). Explicit local stdio MCP tools use
+[separate configuration and trust boundaries](mcp.md). **Full-screen TUI, network MCP, subagents,
 Windows and remote execution are not implemented.** Uncompactable
 context stops with an actionable message rather than silently dropping history. Skills with scripts requiring Node/Python do not
 make those runtimes dependencies of Ipse.

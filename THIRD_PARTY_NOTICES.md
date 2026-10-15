@@ -4,7 +4,17 @@ Ipse's own source is MIT licensed. No Loopex or rs-llmspell source was copied
 into this prototype. Those projects informed the design.
 
 The source build fetches [Jason](https://github.com/michalmuskala/jason), Copyright
-(c) 2017-2024 Michał Muskała, under MIT. Its license is in `deps/jason/LICENSE`.
+(c) 2017-present Michał Muskała, under Apache-2.0. Its notice is in
+`deps/jason/LICENSE`; the Apache-2.0 license text is also bundled.
+The earlier MIT label for Jason was incorrect.
+
+The MCP client reuses MCP Elixir SDK and JSONSchex (MIT), plus their locked
+Elixir/BEAM dependencies. All versions, purposes, licenses, and required approvals
+are listed in the [dependency inventory](docs/developer/dependencies.md).
+Bundled releases copy every locked package's upstream LICENSE/COPYING/NOTICE
+files into `licenses/`, preserving package-specific copyrights and notices.
+For NimblePool 1.1.0, which ships that notice in README.md, the upstream README
+is retained alongside the Apache-2.0 license text.
 The Rust helper uses only the Rust standard library (MIT OR Apache-2.0); it has
 no third-party Cargo dependencies.
 

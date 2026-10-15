@@ -17,15 +17,16 @@ defmodule Ipse.CLI do
   --model NAME                         Override the provider default
   --cwd PATH                           Workspace (default: current directory)
   --resume ID                          Resume a saved session
-  --yes                                Allow writes and trusted local shell execution
+  --yes                                Allow mutations, shell, and configured MCP calls
   --base-url URL                       API endpoint root (API/Ollama only)
   --state-dir PATH                     Session directory
   --max-steps N                        Model calls per turn (default: 30)
   --context-bytes N                    Context byte ceiling (default: 400000)
   --no-compact                         Stop at the ceiling without summarizing
   --sandbox off|native                 Shell OS policy (default: off)
+  --mcp-config PATH                    Explicit local stdio servers and tool allowlist
 
-  Chat asks before writes and shell commands. Headless run denies them without --yes.
+  Chat asks before writes, shell commands, and MCP calls. Headless run denies them without --yes.
   Shell execution uses your user permissions unless --sandbox native is selected.
   Native enforcement fails closed when unavailable; approvals remain required.
   Chat commands: /help /skills /session /info /context /context refresh /cancel /exit.
@@ -58,6 +59,7 @@ defmodule Ipse.CLI do
           context_bytes: :integer,
           compact: :boolean,
           sandbox: :string,
+          mcp_config: :string,
           help: :boolean,
           demo: :boolean
         ],
@@ -170,6 +172,11 @@ defmodule Ipse.CLI do
 
       IO.puts(:stderr, "Shell policy requested: #{config.sandbox}.")
 
+      for server <- config.mcp_servers do
+        IO.puts(:stderr, "MCP local server (trusted user permissions; outside shell sandbox):")
+        IO.puts(:stderr, Jason.encode!(Ipse.MCP.Config.manifest(server), pretty: true))
+      end
+
       if config.sandbox == :native and :os.type() == {:unix, :darwin} do
         IO.puts(
           :stderr,
@@ -178,7 +185,11 @@ defmodule Ipse.CLI do
       end
 
       if config.approval == :allow,
-        do: IO.puts(:stderr, "Mutation approvals enabled for the session (--yes).")
+        do:
+          IO.puts(
+            :stderr,
+            "Mutations, shell, and configured MCP calls are allowed for this session (--yes)."
+          )
 
       client = self()
       reader = if interactive, do: spawn(fn -> read_input(client) end), else: nil
@@ -473,7 +484,8 @@ defmodule Ipse.CLI do
         {:error, "Subscription credentials only go to the official OpenAI endpoint."}
 
       true ->
-        with {:ok, _policy} <- Ipse.Sandbox.resolve(sandbox, opts[:cwd] || default_cwd()),
+        with {:ok, servers} <- Ipse.MCP.Config.load(opts[:mcp_config]),
+             {:ok, _policy} <- Ipse.Sandbox.resolve(sandbox, opts[:cwd] || default_cwd()),
              {:ok, _key} <- credential(provider) do
           {:ok,
            %{
@@ -486,6 +498,7 @@ defmodule Ipse.CLI do
              max_steps: opts[:max_steps] || 30,
              context_bytes: opts[:context_bytes] || 400_000,
              compact: opts[:compact] != false,
+             mcp_servers: servers,
              approval: if(opts[:yes], do: :allow, else: if(interactive, do: :ask, else: :deny))
            }}
         end

@@ -7,8 +7,15 @@ defmodule Ipse.MixProject do
       version: "0.1.0",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
+      test_ignore_filters: [~r/^test\/support\/mcp_server\.exs$/],
       escript: [main_module: Ipse.CLI],
-      deps: [{:jason, github: "michalmuskala/jason", tag: "v1.4.4"}],
+      deps: [
+        {:jason, github: "michalmuskala/jason", tag: "v1.4.4", override: true},
+        {:mcp_elixir_sdk, "== 1.1.0"},
+        {:jsonschex, "== 0.10.0"},
+        {:req, "== 0.7.5"},
+        {:plug, "== 1.20.3"}
+      ],
       releases: [ipse: [include_executables_for: [:unix]]]
     ]
   end

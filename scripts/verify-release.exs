@@ -92,6 +92,37 @@ try do
   true = File.stat!(path).inode == inode
   :ok = Ipse.Runner.unlock(final)
 
+  # Both peers use this extracted runtime; no system Elixir/Mix is involved.
+  mcp_workspace = Path.join(scratch, "mcp workspace")
+  File.mkdir!(mcp_workspace)
+  server_script = Path.join(app_root, "priv/mcp-notes.exs")
+  config_path = Path.join(scratch, "mcp.json")
+
+  File.write!(
+    config_path,
+    Jason.encode!(%{
+      "servers" => [
+        %{
+          "id" => "bundled",
+          "command" => Path.join(release_root, "bin/ipse"),
+          "args" => ["eval", "Code.require_file(#{inspect(server_script)})"],
+          "tools" => ["write_note"],
+          "env" => %{"ELIXIR_ERL_OPTIONS" => "+S 2:2"},
+          "timeout_ms" => 15_000
+        }
+      ]
+    })
+  )
+
+  {:ok, [server]} = Ipse.MCP.Config.load(config_path)
+  {:ok, [descriptor]} = Ipse.MCP.Client.discover(server, mcp_workspace)
+
+  {:ok, "Wrote mcp-note.txt."} =
+    Ipse.MCP.Client.call(descriptor, %{"content" => "bundled MCP verified"}, mcp_workspace)
+
+  "bundled MCP verified" = File.read!(Path.join(mcp_workspace, "mcp-note.txt"))
+  IO.puts("Bundled local MCP SDK round trip passed without a development toolchain.")
+
   if :os.type() == {:unix, :darwin} do
     workspace = Path.join(scratch, "native workspace")
     File.mkdir!(workspace)

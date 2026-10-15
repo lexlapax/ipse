@@ -743,3 +743,67 @@ Developer/operator commands and content were reviewed; the fulfilled Serenity
 handoff is preserved in the documentation archive. All 221 local links and
 heading anchors across 30 Markdown documents passed validation. No new
 dependency was added.
+
+## P5 local MCP, 2026-10-15
+
+Implemented the explicitly configured local stdio client described in the
+[MCP contract](mcp.md). Reused MCP Elixir SDK 1.1.0 and JSONSchex 0.10.0 after
+comparing published package contracts and actual source. The SDK's advertised
+optional Req/Plug modules were necessary for compilation on Elixir 1.20; their
+locked dependency chain is documented. Req 0.7.5 replaced the older release
+flagged during resolution, and `mix hex.audit` passed with no current advisories
+or retired packages. The developer explicitly approved Telemetry and Rebar3.
+Rebar3 was already installed here (3.27.0); no new system package was installed.
+
+### Protocol, effect, and ownership evidence
+
+Local fixtures use real subprocess stdin/stdout, not an in-memory MCP transport.
+They verify explicit config/allowlists, collisions including normalized dotted
+names, strict schema subsets and bounds, pagination, duplicate/changed discovery,
+unsupported sampling, safe protocol errors, text redaction, and invalid/oversized
+messages. Mixed request/response envelopes are rejected before SDK decoding, and
+private values containing JSON escapes are checked before encoding. Persistent
+configuration fingerprints exclude private values.
+
+Real session fixtures verify exact approval arguments, intent before dispatch,
+headless denial, serial calls, confirmed cancellation, owner-death cleanup,
+configuration-bound resume, completed-call preservation, and unknown-outcome
+batch stopping/resume without replay. The OS supervisor tests cover independent
+stdout/stderr, environment clearing, lossless bounded binary relaying, output and
+input backpressure, timeout/owner death, ordinary child cleanup, and cancellation
+while writes are queued. Only an unsent cancellation control can retry; tool
+input is never replayed. Cleanup confirmation requires actual exit status,
+including after a linked Port error. Detached process-group escape remains an
+explicit trusted-execution limitation on both platforms.
+
+`mix run scripts/demo-mcp.exs` passed with the existing SDK as **both client and
+example server**, a scripted model, one displayed exact approval, and a verified
+scratch `mcp-note.txt` write. No model service was contacted. The documented
+`--mcp-config` CLI option also passed a credential-free scratch smoke check;
+`--help` and operator examples were reviewed against the implementation.
+
+### Source and package baseline
+
+On Serenity's Arch x86_64 toolchain recorded in P0, source build, warnings-as-errors
+Ipse compilation, both Elixir 1.20/1.18 formatter checks, and the original
+credential-free demo passed. Ordinary suite: **182 passed, 16 enforcement checks
+excluded**. Including actual Linux native enforcement: **189 passed, 9 Mac
+checks excluded**. All 244 local documentation links and heading anchors across
+32 Markdown files passed validation. Mac enforcement was not run on this host.
+Fresh upstream dependency compilation emits existing UUID/JSONSchex deprecation
+and type-analysis warnings on Elixir 1.20; these were not suppressed, vendored,
+or patched. Ipse's own warnings-as-errors compilation passes.
+
+The Arch archive rebuilt with every resolved package's upstream license notices,
+including NimblePool's README notice. Corrected the old Jason MIT label to match
+its pinned Apache-2.0 notice. Fresh-package verification passed the existing
+help/demo/workspace/helper/lock checks and a **real bundled MCP SDK round trip**:
+both peers used the extracted runtime without Elixir/Erlang/Mix/Rust on PATH.
+The matching Elixir/OTP notice set from P0 was supplied. No archive was published.
+
+These are fixture and local SDK interoperability checks. Live ChatGPT/Ollama/API
+use with MCP, arbitrary third-party servers, persistent server sessions,
+network transports, resources/prompts, sampling/elicitation/tasks, delegation,
+remote execution, and Windows remain unverified or unimplemented. The P0 live
+subscription evidence is separate; no account setting or billing path changed
+in this milestone.

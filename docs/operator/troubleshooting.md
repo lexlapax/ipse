@@ -99,6 +99,20 @@ byte ceiling. See [compaction behavior](usage.md#context-compaction).
 A damaged committed checkpoint stops resume; keep the original journal for
 diagnosis rather than deleting checkpoint records blindly.
 
+## Local MCP failures
+
+MCP is disabled without an explicit `--mcp-config` file. Invalid configuration,
+unsupported schema keywords, missing allowlisted tools, duplicate names, or the
+wrong protocol version stop discovery before a tool call. Check your server's
+installed executable and the [supported subset](mcp.md#recovery-and-limits).
+
+A changed descriptor requires a fresh turn and approval. An unknown outcome
+after dispatch is never retried automatically; inspect the affected files or
+service before asking for a new call. If cleanup cannot be confirmed, the session
+stops. Resume requires the same public server configuration and never replays
+interrupted calls. MCP processes use trusted user permissions outside the shell
+sandbox; a successful transport shutdown does not reverse effects.
+
 ## Sharing diagnostics
 
 Report the command, toolchain, sanitized error, and whether it ran in a sandbox.

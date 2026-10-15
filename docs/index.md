@@ -9,6 +9,7 @@ start. Use the guides below for operation, development, and project context.
 | --- | --- |
 | [Arch Linux setup](operator/arch-linux.md) | Prerequisites, source installation, development setup, release requirements |
 | [Usage](operator/usage.md) | Providers, login, approvals, skills, resume, logout, state, limits |
+| [Local MCP tools](operator/mcp.md) | Explicit server config, approvals, credentials, lifecycle, limits, and source demo |
 | [Troubleshooting](operator/troubleshooting.md) | Build, callback, account, lock, and recovery problems |
 
 ## Develop Ipse
@@ -22,6 +23,7 @@ start. Use the guides below for operation, development, and project context.
 | [Workspace context](developer/workspace-context.md) | Instruction scope, source bounds, snapshots, and refresh |
 | [Native shell sandbox](developer/sandbox.md) | OS capabilities, fail-closed selection, and platform limits |
 | [Protocol proposal](developer/protocol-proposal.md) | Proposed MCP, delegation, and remote-execution trust/recovery contracts |
+| [MCP client contract](developer/mcp.md) | Reused packages, transport ownership, descriptor binding, schema policy, and recovery |
 | [Dependencies](developer/dependencies.md) | Runtime/build/CI inventory, script policy, approval requirements |
 | [Testing and evidence](developer/testing.md) | Source/release checks, live acceptance, actual results |
 

@@ -23,6 +23,7 @@ No Cargo packages are required. Jason is pinned to a Git tag and commit in mix.l
 git clone https://github.com/lexlapax/ipse.git
 cd ipse
 mix local.hex --force
+mix local.rebar --force
 ./scripts/build.sh
 ./bin/ipse demo
 ```
@@ -55,7 +56,9 @@ provider; see [operation and limits](docs/operator/usage.md#context-compaction).
 Run from any working directory or use `--cwd`; `/context` shows applicable saved
 instructions and `/context refresh` reloads them while idle. See
 [workspace instructions](docs/operator/usage.md#workspace-instructions).
-Current limits include no full-screen TUI, MCP, subagents,
+Explicit local stdio MCP tools are available through `--mcp-config`; see
+[configuration and trust boundaries](docs/operator/mcp.md).
+Current limits include no full-screen TUI, network MCP, subagents,
 Windows, or remote execution. See [runtime limits](docs/operator/usage.md#runtime-and-limits)
 and [architecture](docs/developer/architecture.md) for details.
 

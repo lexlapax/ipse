@@ -101,6 +101,174 @@ defmodule Ipse.Runner do
     error -> {:error, Exception.message(error)}
   end
 
+  @doc """
+  Open a directly executed stdio server owned by the calling process.
+
+  Use send_stdio/2 for server stdin and close_stdio/1 for confirmed cancellation.
+  The returned Port emits native O/S/X/E frames; its owner must handle Port exits.
+  Closing it or killing its owner stops the server's ordinary process group.
+  This trusted local transport does not provide an OS sandbox. Only PATH, LANG,
+  and explicitly selected environment values reach the helper and server.
+  """
+  def open_stdio(executable, args, cwd, selected_env \\ %{}, timeout_ms \\ 120_000) do
+    valid_text = fn value ->
+      is_binary(value) and String.valid?(value) and not String.contains?(value, <<0>>)
+    end
+
+    valid_args =
+      is_list(args) and length(args) <= 256 and Enum.all?(args, valid_text) and
+        Enum.reduce(args, 0, &(byte_size(&1) + &2)) <= 65_536
+
+    valid_env =
+      is_map(selected_env) and map_size(selected_env) <= 128 and
+        Enum.all?(selected_env, fn {key, value} ->
+          valid_text.(key) and Regex.match?(~r/\A[A-Za-z_][A-Za-z0-9_]*\z/, key) and
+            valid_text.(value)
+        end) and
+        Enum.reduce(selected_env, 0, fn {key, value}, size ->
+          size + byte_size(key) + byte_size(value)
+        end) <= 131_072
+
+    cond do
+      not valid_text.(executable) or executable == "" or byte_size(executable) > 4096 ->
+        {:error, "invalid stdio executable"}
+
+      not valid_args ->
+        {:error, "invalid or oversized stdio arguments"}
+
+      not valid_env ->
+        {:error, "invalid or oversized stdio environment"}
+
+      not valid_text.(cwd) or not File.dir?(cwd) ->
+        {:error, "stdio working directory does not exist"}
+
+      not is_integer(timeout_ms) or timeout_ms < 1 or timeout_ms > 86_400_000 ->
+        {:error, "stdio timeout must be between 1 and 86400000 ms"}
+
+      true ->
+        with {:ok, helper} <- helper_path() do
+          selected = Map.merge(%{"PATH" => "/usr/bin:/bin", "LANG" => "C.UTF-8"}, selected_env)
+          # Port env uses false to unset inherited values. No values are logged
+          # or copied into process arguments, the journal, or protocol frames.
+          removed =
+            System.get_env()
+            |> Map.keys()
+            |> Enum.reject(&Map.has_key?(selected, &1))
+            |> Enum.map(&{String.to_charlist(&1), false})
+
+          environment =
+            removed ++
+              Enum.map(selected, fn {key, value} ->
+                {String.to_charlist(key), String.to_charlist(value)}
+              end)
+
+          port =
+            Port.open({:spawn_executable, String.to_charlist(helper)}, [
+              :binary,
+              :exit_status,
+              :use_stdio,
+              :hide,
+              cd: String.to_charlist(Path.expand(cwd)),
+              env: environment,
+              args: [
+                "--stdio",
+                Path.expand(cwd),
+                Integer.to_string(timeout_ms),
+                executable | args
+              ]
+            ])
+
+          {:ok, port}
+        end
+    end
+  rescue
+    _ -> {:error, "could not open stdio server"}
+  end
+
+  @doc "Send at most one MiB of server bytes without suspending on a busy Port."
+  def send_stdio(port, bytes)
+      when is_port(port) and is_binary(bytes) and byte_size(bytes) <= 1_048_576 do
+    if Port.command(port, [<<?I, byte_size(bytes)::unsigned-big-32>>, bytes], [:nosuspend]),
+      do: :ok,
+      else: {:error, "stdio input is backpressured"}
+  rescue
+    _ -> {:error, "stdio transport is closed"}
+  end
+
+  def send_stdio(_, _), do: {:error, "invalid or oversized stdio input"}
+
+  @doc "Cancel and await supervisor exit for at most two seconds before closing its Port."
+  def close_stdio(port) when is_port(port) do
+    result =
+      try do
+        cancel_stdio(port, System.monotonic_time(:millisecond) + 2_000)
+      rescue
+        _ -> {:error, "stdio cleanup unconfirmed"}
+      end
+
+    close_stdio_port(port)
+    result
+  end
+
+  def close_stdio(_), do: {:error, "stdio cleanup unconfirmed"}
+
+  defp cancel_stdio(port, deadline) do
+    remaining = deadline - System.monotonic_time(:millisecond)
+
+    if remaining <= 0 do
+      {:error, "stdio cleanup unconfirmed"}
+    else
+      sent =
+        try do
+          if Port.info(port), do: Port.command(port, <<?C, 0::32>>, [:nosuspend]), else: :gone
+        rescue
+          _ -> :gone
+        end
+
+      case sent do
+        true ->
+          await_stdio_exit(port, deadline)
+
+        :gone ->
+          await_stdio_exit(port, deadline)
+
+        false ->
+          # A rejected nosuspend command was not queued. Retry only cancel,
+          # never server bytes, and retain the original cleanup deadline.
+          receive do
+            {^port, {:data, _bytes}} -> cancel_stdio(port, deadline)
+            {^port, {:exit_status, _status}} -> :ok
+            {:EXIT, ^port, _reason} -> await_stdio_exit(port, deadline)
+          after
+            min(remaining, 5) -> cancel_stdio(port, deadline)
+          end
+      end
+    end
+  end
+
+  defp await_stdio_exit(port, deadline) do
+    remaining = deadline - System.monotonic_time(:millisecond)
+
+    if remaining <= 0 do
+      {:error, "stdio cleanup unconfirmed"}
+    else
+      receive do
+        {^port, {:data, _bytes}} -> await_stdio_exit(port, deadline)
+        {^port, {:exit_status, _status}} -> :ok
+        {:EXIT, ^port, _reason} -> await_stdio_exit(port, deadline)
+      after
+        remaining -> {:error, "stdio cleanup unconfirmed"}
+      end
+    end
+  end
+
+  defp close_stdio_port(port) do
+    if Port.info(port), do: Port.close(port)
+    :ok
+  rescue
+    _ -> :ok
+  end
+
   defp run_supervised(command, cwd, timeout, limit, emit, profile) do
     with {:ok, helper} <- helper_path(profile != "macos-workspace-v1"),
          {:ok, args} <- launch_args(helper, profile, cwd, timeout, command) do

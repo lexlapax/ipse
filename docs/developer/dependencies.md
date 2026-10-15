@@ -32,14 +32,30 @@ See [agent rules](../../AGENTS.md), [setup](../operator/arch-linux.md), and
 | --- | --- | --- | --- |
 | Elixir and Mix | Elixir 1.18+; `mix.exs` requires `~> 1.18` | Core implementation, build, release, ExUnit tests, scripts | Apache-2.0 |
 | Erlang/OTP and ERTS | OTP 27+; system toolchain or bundled release | VM, OTP supervision, crypto, public-key/TLS, HTTP, filesystem and process APIs | Apache-2.0 with component notices |
-| Jason | Git tag `v1.4.4`, commit `926d2ac6cc0271b9a7079b2ec16ae0cf802f7963` in `mix.lock` | Sole external Elixir package; JSON for HTTP, native protocol, and journals | MIT |
+| Jason | Git tag `v1.4.4`, commit `926d2ac6cc0271b9a7079b2ec16ae0cf802f7963` in `mix.lock`; direct override for shared package requirements | JSON for HTTP, native protocol, and journals | Apache-2.0 (corrected from the earlier MIT label against the pinned upstream notice) |
+| MCP Elixir SDK | Hex `mcp_elixir_sdk` 1.1.0, pinned in `mix.exs` and `mix.lock` | MCP 2025-11-25 client handshake, request matching, and protocol types; Ipse supplies its bounded local transport | MIT |
+| elixir_uuid | Hex 1.2.1, transitive SDK dependency, locked in `mix.lock` | SDK UUID utilities | Apache-2.0 |
+| JSONSchex | Hex `jsonschex` 0.10.0, pinned in `mix.exs` and `mix.lock` | JSON Schema Draft 2020-12 validation behind Ipse's bounded keyword allowlist; no remote loader | MIT |
+| ex_json_pointer | Hex 0.8.0, transitive JSONSchex dependency, locked in `mix.lock` | JSON Pointer handling inside schema compilation | MIT |
+| Req and Plug | Hex `req` 0.7.5, `plug` 1.20.3, pinned in `mix.exs` and `mix.lock` | The SDK 1.1.0 advertises optional HTTP dependencies but unconditionally references their modules; required for successful compilation on Elixir 1.20. No MCP network transport or HTTP server is enabled | Apache-2.0 |
+| Finch | Hex 0.24.0, locked | Req's HTTP pool implementation; no MCP network calls are enabled | MIT |
+| Mint | Hex 1.11.0, locked | Finch HTTP transport | Apache-2.0 |
+| HPAX | Hex 1.1.0, locked | Mint HTTP/2 compression support | Apache-2.0 |
+| MIME | Hex 2.0.7, locked | Req/Plug MIME utilities | Apache-2.0 |
+| NimbleOptions | Hex 1.1.1, locked | Finch option validation | Apache-2.0 |
+| NimblePool | Hex 1.1.0, locked | Finch process pooling | Apache-2.0 |
+| PlugCrypto | Hex 2.2.0, locked | Plug cryptographic helpers | Apache-2.0 |
+| Telemetry | Hex 1.4.2, locked; developer approved on 2026-10-15 | Erlang/BEAM events used by Finch/Plug; adds no outside runtime service | Apache-2.0 with upstream NOTICE |
 | Rust toolchain and standard library | Rust 1.85+; `native/build.sh` invokes `rustc --edition=2021` | Build the OS helper; no third-party Cargo packages | MIT OR Apache-2.0 |
-| Ipse native helper | `native/ipse-runner.rs`, `native/ipse-linux-sandbox.rs`, `native/ipse-macos-sandbox.rs`, compiled as `priv/ipse-runner` | Runtime process groups, advisory locks, optional Linux namespace/Landlock/seccomp and macOS signed App Sandbox worker policies; used by tests | MIT (project source) |
+| Ipse native helper | `native/ipse-runner.rs`, `native/ipse-stdio.rs`, `native/ipse-linux-sandbox.rs`, `native/ipse-macos-sandbox.rs`, compiled as `priv/ipse-runner` | Runtime process groups, advisory locks, bidirectional OS pipes, optional Linux namespace/Landlock/seccomp and macOS signed App Sandbox worker policies; used by tests | MIT (project source) |
 
 OTP libraries are distributed with OTP rather than fetched as separate packages.
 Mix lists `logger`, `inets`, and `ssl` applications; authentication also uses OTP
 crypto/public-key facilities. Jason has no additional package dependencies in
-the current lockfile. No Node, JavaScript, or Python runtime is required.
+its own package. The MCP/schema packages add the transitive packages listed
+above. Req/Plug are included for SDK compilation; Bandit/Decimal/IDNA are not
+enabled. No MCP listener or remote transport starts automatically.
+No Node, JavaScript, or Python runtime is required.
 
 ## Existing host and build requirements
 
@@ -52,13 +68,22 @@ the current lockfile. No Node, JavaScript, or Python runtime is required.
 | Git | Fetch the pinned Jason dependency and repository work | Host Git package, GPL-2.0 |
 | Standard filesystem/text utilities | Scripts use `dirname`, `mkdir`, `cp`, `chmod`, `rm`, `uname`, and `tr`; setup examples use `mktemp`; helper verification uses `sleep`, and tests use `head`/`tr`. Existing bundled OTP launchers/fresh-release checks also need `basename`, `cut`, `sed`, `cat`, `grep`, `readlink`, `expr`, `awk`, and `id`; the package verifier makes that utility-only PATH explicit | Existing host utility implementation/licenses vary, commonly GNU coreutils plus GNU sed/grep and awk on Linux; OS-supplied equivalents on macOS |
 | `tar`, gzip support, `getconf` | Packaging archive and Linux libc identification | Host distribution; `getconf` is a libc utility. `getconf` failure falls back to `system-libc` naming |
-| Hex bootstrap | Documented `mix local.hex --force` setup step | [Hex](https://github.com/hexpm/hex), Apache-2.0; Jason itself is fetched through Git, not a Hex package |
+| Hex bootstrap | Documented `mix local.hex --force` setup step; fetch and verify locked MCP/schema packages | [Hex](https://github.com/hexpm/hex), Apache-2.0; Jason itself is fetched through Git |
+| Rebar3 | Build Telemetry's Erlang code during Mix dependency compilation; existing installation on Serenity; developer approved on 2026-10-15 | Standard BEAM build tool, [upstream](https://github.com/erlang/rebar3), Apache-2.0 |
 
-Bundled releases include ERTS, Elixir code, Jason, and the helper; they still need
+Bundled releases include ERTS, Elixir code, all locked runtime packages, and the helper; they still need
 compatible OS libraries and `/bin/sh`. Toolchain license notices and
 `IPSE_NOTICES_DIR` handling are described in the
 [release check](testing.md#release-check). Record actual versions and tested
 platforms in [verification results](testing.md#current-evidence-and-next-checks).
+
+On 2026-10-15 the developer explicitly selected “Approve Telemetry and Rebar3”
+after reviewing the working package-backed MCP integration and the dependency
+question. Serenity already had Rebar3 3.27.0. These BEAM dependencies are needed
+by the selected SDK's compile-time Req/Plug chain; they introduce no JavaScript,
+Python, container, or outside runtime service. The alternatives considered were
+another broader MCP stack or maintaining custom protocol code; package reuse
+was selected. See [the package decision](mcp.md#package-decision).
 
 The optional Linux native sandbox uses kernel APIs through the existing Rust
 helper, without bubblewrap, containers, new packages, or a separate daemon.

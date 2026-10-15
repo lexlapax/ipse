@@ -158,3 +158,53 @@ a successful host TCP connection as a positive control, then verify network,
 signal, IPC and process-group restrictions through the sandbox. File tests use
 fake credentials, and lifecycle tests synchronize on child output before timeout
 or owner termination. Loopback access is required for Mix and the TCP fixture.
+
+## Direct stdio server transport
+
+`ipse-runner --stdio CWD TIMEOUT_MS EXECUTABLE ARGS...` directly executes a
+configured local server, with no shell construction or interpretation of its
+arguments. The application entry point is
+`Ipse.Runner.open_stdio(executable, args, cwd, selected_env, timeout_ms)`, which
+returns an owned Port. It removes the inherited environment before starting the
+helper and supplies only `PATH=/usr/bin:/bin`, `LANG=C.UTF-8`, and the explicitly
+selected environment map. The Rust child clears its environment and copies this
+already selected helper environment. The native CLI itself trusts its launcher's
+environment; applications must use the scrubbed entry point. Credentials belong
+in explicitly selected environment values, never executable arguments or logs.
+
+The helper's input is OS transport framing, not MCP framing: `I` followed by an
+unsigned big-endian four-byte length and that many raw server bytes forwards
+stdin; `C` followed by a zero length cancels the child. Input payloads are at
+most one MiB. Use `Ipse.Runner.send_stdio(port, bytes)` to construct input frames
+without suspending on a busy Port. `Ipse.Runner.close_stdio(port)` sends cancel,
+drains output, and waits at most two seconds for supervisor exit before closing
+the Port. It returns `:ok` only after an exit-status confirmation; otherwise it
+returns a fixed cleanup-unconfirmed error. Do not reuse a server slot as if
+cleanup succeeded after an unconfirmed result. Abrupt owner death still closes
+the pipe and independently kills the ordinary process group.
+
+Output uses the existing one-byte kind and unsigned big-endian four-byte length
+framing: `O` is server stdout, `S` is server stderr, `X` contains
+`{"exit_code": integer, "timed_out": boolean}`, and `E` contains a fixed transport
+failure. Output chunks are at most 8192 bytes, and the combined output queue is
+32 chunks. Stdout and stderr are separate streams; a chunk need not contain a
+complete UTF-8 character or application message. Elixir owns MCP/JSON-RPC parsing;
+the native helper interprets neither server messages nor tool schemas.
+
+The lifetime timeout accepts 1–86400000 milliseconds. Owner pipe EOF, timeout,
+failed output delivery, input overflow, and initial server exit kill its ordinary
+process group. An independent watchdog enforces the deadline even when output
+is blocked and allows at most one additional second before forcing supervisor
+exit. After server exit, output drains for at most 500 milliseconds; retained
+pipes that exceed this bound produce a transport failure. Input relay buffering
+is bounded to one MiB plus the current chunks and OS pipe buffers. Overload fails
+closed instead of blocking the owner-death reader. An oversized in-flight Port
+write may surface as a linked `:epipe` exit before the final error frame, so the
+transport owner must handle Port exits and treat them as failed exchanges.
+
+This mode runs a trusted configured server with the user's OS permissions. Its
+process-group cleanup is best effort for ordinary descendants; a deliberately
+detached process can escape. It is separate from the native workspace sandbox
+and makes no filesystem or network isolation claim. A transport failure never
+proves that a server operation had no effects and must not automatically replay
+an interrupted request.

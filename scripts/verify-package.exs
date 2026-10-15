@@ -104,8 +104,15 @@ defmodule Ipse.PackageVerifier do
       raise "release helper verification did not print its completion marker: #{inspect(output)}"
     end
 
+    unless String.contains?(
+             output,
+             "Bundled local MCP SDK round trip passed without a development toolchain."
+           ) do
+      raise "release MCP verification did not print its completion marker"
+    end
+
     IO.puts(
-      "PASS: extracted package help, demo from isolated fresh HOME/IPSE_HOME, default cwd, explicit --cwd, and bundled OTP/helper checks."
+      "PASS: extracted package help, demo from isolated fresh HOME/IPSE_HOME, default cwd, explicit --cwd, bundled MCP round trip, and OTP/helper checks."
     )
 
     IO.puts("Verified default workspace: #{default_workspace}")

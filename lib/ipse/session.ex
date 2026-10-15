@@ -54,7 +54,10 @@ defmodule Ipse.Session do
         steps: 0,
         lock: lock,
         usage: %{},
-        final: ""
+        final: "",
+        mcp_tools: [],
+        mcp_ready: false,
+        mcp_resources: %{}
       }
 
       if context_is_new,
@@ -67,12 +70,20 @@ defmodule Ipse.Session do
   end
 
   @impl true
+  def handle_call({:mcp_register, ref, resource}, _from, %{job_ref: ref} = s) when ref != nil do
+    monitor = Process.monitor(resource)
+    {:reply, :ok, %{s | mcp_resources: Map.put(s.mcp_resources, resource, monitor)}}
+  end
+
+  def handle_call({:mcp_register, _, _}, _from, s), do: {:reply, {:error, :cancelled}, s}
+
   def handle_call(:info, _from, s) do
     info =
       Map.take(s, [:id, :cwd, :phase, :usage, :final])
       |> Map.put(:runtime, runtime(s))
       |> Map.put(:context, context_manifest(s))
       |> Map.put(:sandbox, Ipse.Sandbox.info(Map.get(s.config, :sandbox, :off)))
+      |> Map.put(:mcp, Enum.map(Map.get(s.config, :mcp_servers, []), &Ipse.MCP.Config.manifest/1))
 
     {:reply, info, s}
   end
@@ -109,7 +120,7 @@ defmodule Ipse.Session do
       end)
 
     s = append_message(s, %{"role" => "user", "content" => text})
-    {:reply, :ok, model(%{s | steps: 0, final: ""})}
+    {:reply, :ok, model(%{s | steps: 0, final: "", mcp_ready: false})}
   end
 
   def handle_call({:prompt, _}, _from, s), do: {:reply, {:error, :empty_prompt}, s}
@@ -127,6 +138,12 @@ defmodule Ipse.Session do
   def handle_call({:approve, _, _}, _from, s), do: {:reply, {:error, :no_pending_approval}, s}
 
   def handle_call(:cancel, _from, s) do
+    cleanup =
+      s.mcp_resources
+      |> Map.keys()
+      |> Enum.filter(&Process.alive?/1)
+      |> Enum.map(&Ipse.MCP.Transport.close/1)
+
     if s.task, do: Task.shutdown(s.task, :brutal_kill)
 
     s =
@@ -136,18 +153,31 @@ defmodule Ipse.Session do
       )
 
     record(s, %{"type" => "cancelled"})
-    notify(s, {:done, :cancelled})
 
-    {:reply, :ok,
-     %{
-       s
-       | phase: :idle,
-         task: nil,
-         approval: nil,
-         job_ref: nil,
-         compaction: nil,
-         tool_decision: "not_decided"
-     }}
+    next =
+      %{
+        s
+        | phase: :idle,
+          task: nil,
+          approval: nil,
+          job_ref: nil,
+          compaction: nil,
+          tool_decision: "not_decided",
+          mcp_resources: %{}
+      }
+
+    if Enum.any?(cleanup, &(&1 != :ok)) do
+      notify(
+        s,
+        {:error, "MCP cleanup could not be confirmed. Inspect running processes before retrying."}
+      )
+
+      notify(s, {:done, :error})
+      {:stop, :normal, {:error, :cleanup_unconfirmed}, next}
+    else
+      notify(s, {:done, :cancelled})
+      {:reply, :ok, next}
+    end
   end
 
   @impl true
@@ -162,6 +192,17 @@ defmodule Ipse.Session do
     s = %{s | task: nil}
 
     case {phase, result} do
+      {:mcp_discovery, {:ok, tools}} ->
+        record(s, %{"type" => "mcp_catalog", "version" => 1, "tools" => Ipse.MCP.manifests(tools)})
+
+        {:noreply, model(%{s | mcp_tools: tools, mcp_ready: true})}
+
+      {:mcp_discovery, {:error, error}} ->
+        {:noreply, fail(s, error)}
+
+      {:tool, {:unknown, error}} ->
+        {:noreply, fail(s, error)}
+
       {:context_preflight, {:ok, snapshot, drift}} ->
         if snapshot == s.context_snapshot do
           {:noreply, dispatch_pending_tool(%{s | context_drift: drift})}
@@ -239,6 +280,13 @@ defmodule Ipse.Session do
      )}
   end
 
+  def handle_info({:DOWN, ref, :process, pid, _}, s) do
+    resources =
+      if s.mcp_resources[pid] == ref, do: Map.delete(s.mcp_resources, pid), else: s.mcp_resources
+
+    {:noreply, %{s | mcp_resources: resources}}
+  end
+
   def handle_info({port, {:exit_status, _}}, %{lock: port} = s) do
     # Stop without appending: journal ownership is no longer guaranteed.
     notify(s, {:error, "Session lock helper exited; stopping to protect the journal."})
@@ -311,36 +359,46 @@ defmodule Ipse.Session do
   end
 
   defp model(s) do
-    if s.steps >= Map.get(s.config, :max_steps, 30) do
-      fail(
-        s,
-        "Reached the #{Map.get(s.config, :max_steps, 30)}-step limit. Send another message to continue."
-      )
-    else
-      system = system_message(s)
+    servers = Map.get(s.config, :mcp_servers, [])
 
-      case Ipse.Compaction.prepare(s.messages, s.config, system) do
-        :skip ->
-          launch_model(s, [system | s.messages])
+    cond do
+      servers != [] and not s.mcp_ready ->
+        resource = %{owner: self(), job_ref: make_ref()}
+        task = owned_task(fn -> Ipse.MCP.discover(servers, s.cwd, resource) end)
+        notify(s, {:status, :discovering_mcp})
+        %{s | task: task, phase: :mcp_discovery, job_ref: resource.job_ref}
 
-        {:ok, plan} ->
-          task =
-            owned_task(fn -> request(s.config, plan.summary_messages, [], fn _ -> :ok end) end)
+      s.steps >= Map.get(s.config, :max_steps, 30) ->
+        fail(
+          s,
+          "Reached the #{Map.get(s.config, :max_steps, 30)}-step limit. Send another message to continue."
+        )
 
-          notify(s, {:status, :compacting})
+      true ->
+        system = system_message(s)
 
-          %{
-            s
-            | task: task,
-              phase: :compaction,
-              compaction: plan,
-              steps: s.steps + 1,
-              job_ref: nil
-          }
+        case Ipse.Compaction.prepare(s.messages, s.config, system) do
+          :skip ->
+            launch_model(s, [system | s.messages])
 
-        {:error, _reason} ->
-          compaction_failed(s)
-      end
+          {:ok, plan} ->
+            task =
+              owned_task(fn -> request(s.config, plan.summary_messages, [], fn _ -> :ok end) end)
+
+            notify(s, {:status, :compacting})
+
+            %{
+              s
+              | task: task,
+                phase: :compaction,
+                compaction: plan,
+                steps: s.steps + 1,
+                job_ref: nil
+            }
+
+          {:error, _reason} ->
+            compaction_failed(s)
+        end
     end
   end
 
@@ -350,9 +408,14 @@ defmodule Ipse.Session do
 
     task =
       owned_task(fn ->
-        request(s.config, messages, definitions(s.config), fn event ->
-          send(owner, {:progress, job_ref, event})
-        end)
+        request(
+          s.config,
+          messages,
+          definitions(s.config) ++ Ipse.MCP.definitions(s.mcp_tools),
+          fn event ->
+            send(owner, {:progress, job_ref, event})
+          end
+        )
       end)
 
     notify(s, {:status, "Thinking"})
@@ -483,9 +546,19 @@ defmodule Ipse.Session do
   defp dispatch_tool(s, call, args) do
     name = get_in(call, ["function", "name"])
     mode = Map.get(s.config, :approval, :ask)
+    external = Ipse.MCP.external?(name)
+
+    validation =
+      if external, do: Ipse.MCP.validate_call(Ipse.MCP.tool(s.mcp_tools, name), args), else: :ok
+
+    requires_approval = Tools.mutating?(name) or external
 
     cond do
-      Tools.mutating?(name) and mode == :deny ->
+      validation != :ok ->
+        {:error, reason} = validation
+        tool_result(s, call, reason, "invalid_arguments", "not_decided")
+
+      requires_approval and mode == :deny ->
         tool_result(
           s,
           call,
@@ -494,25 +567,28 @@ defmodule Ipse.Session do
           "policy_denied"
         )
 
-      Tools.mutating?(name) and mode == :ask ->
+      requires_approval and mode == :ask ->
         ref = make_ref()
         notify(s, {:approval, ref, name, args})
         %{s | phase: :approval, approval: {ref, call, args}}
 
       true ->
-        decision = if Tools.mutating?(name), do: "session_allow", else: "not_required"
+        decision = if requires_approval, do: "session_allow", else: "not_required"
         launch_tool(s, call, args, decision)
     end
   end
 
   defp launch_tool(s, call, args, decision) do
     name = get_in(call, ["function", "name"])
+    external = Ipse.MCP.tool(s.mcp_tools, name)
 
     record(s, %{
       "type" => "tool_started",
       "call_id" => call["id"],
       "name" => name,
       "approval" => decision,
+      "arguments" => if(external, do: args),
+      "mcp" => if(external, do: Ipse.MCP.Client.manifest(external)),
       "sandbox_requested" => to_string(Map.get(s.config, :sandbox, :off))
     })
 
@@ -529,9 +605,16 @@ defmodule Ipse.Session do
 
     task =
       owned_task(fn ->
-        if name == "load_skill",
-          do: Skills.load(s.skills, args["name"] || ""),
-          else: Tools.execute(name, args, context)
+        cond do
+          external ->
+            Ipse.MCP.Client.call(external, args, s.cwd, %{owner: owner, job_ref: job_ref})
+
+          name == "load_skill" ->
+            Skills.load(s.skills, args["name"] || "")
+
+          true ->
+            Tools.execute(name, args, context)
+        end
       end)
 
     %{s | phase: :tool, task: task, job_ref: job_ref, tool_decision: decision}
@@ -612,7 +695,8 @@ defmodule Ipse.Session do
              "cwd" => cwd,
              "provider" => to_string(config.provider),
              "model" => config.model,
-             "sandbox" => to_string(Map.get(config, :sandbox, :off))
+             "sandbox" => to_string(Map.get(config, :sandbox, :off)),
+             "mcp_servers" => Ipse.MCP.fingerprints(config)
            }),
          do: {:ok, id, []}
   end
@@ -623,7 +707,8 @@ defmodule Ipse.Session do
          true <-
            old_cwd == cwd and meta["provider"] == to_string(config.provider) and
              meta["model"] == config.model and
-             Map.get(meta, "sandbox", "off") == to_string(Map.get(config, :sandbox, :off)) do
+             Map.get(meta, "sandbox", "off") == to_string(Map.get(config, :sandbox, :off)) and
+             Map.get(meta, "mcp_servers", []) == Ipse.MCP.fingerprints(config) do
       {:ok, id, events}
     else
       false -> {:error, :resume_configuration_mismatch}

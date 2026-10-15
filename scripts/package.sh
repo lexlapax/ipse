@@ -12,7 +12,7 @@ cp scripts/verify-release.exs "$IPSE_RELEASE/"
 rm -rf "$IPSE_RELEASE/docs" "$IPSE_RELEASE/licenses"
 cp -R docs "$IPSE_RELEASE/"
 mkdir -p "$IPSE_RELEASE/licenses"
-cp deps/jason/LICENSE "$IPSE_RELEASE/licenses/Jason-MIT.txt"
+MIX_ENV=prod mix run --no-start scripts/copy-package-notices.exs "$IPSE_RELEASE/licenses"
 cp third_party/APACHE-2.0.txt "$IPSE_RELEASE/licenses/"
 # Additional notices can be supplied by the toolchain distributor.
 if [ -n "${IPSE_NOTICES_DIR:-}" ]; then

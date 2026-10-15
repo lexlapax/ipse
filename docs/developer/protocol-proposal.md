@@ -1,8 +1,8 @@
 # Protocol and delegation proposal
 
-**Status:** design proposal for P4; none of the protocol features below are
-implemented. This document covers boundaries and acceptance criteria, not an
-authorization to add a dependency or enable tools by default.
+**Status:** P4 design proposal. P5 implements the focused
+[local stdio MCP client](mcp.md); other protocol/delegation capabilities remain
+proposals. This document does not enable tools by default or authorize dependencies.
 
 Ipse's current session, approval, and journal behavior is the baseline. A
 protocol adapter must not create a second permission system or weaken the host's
@@ -180,6 +180,6 @@ and obtain any approvals required by repository policy before adding a package.
 
 Subagent and remote-execution implementation each require a separate proposal,
 threat review, recovery contract, and focused tests. They remain deferred even
-if MCP support is later accepted. Revisit this proposal only after P4 packaging
+if further MCP support is accepted. Revisit this proposal only after P4 packaging
 is repeatable and session, approval, cancellation, and journal recovery
 acceptance checks remain green.

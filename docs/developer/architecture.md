@@ -127,7 +127,7 @@ repaired while holding the session lock. The full transcript remains on disk.
 ## Boundaries and current limits
 
 The line-oriented terminal client is not a full-screen TUI. There is no
-MCP support, subagent execution, remote execution,
+network MCP, subagent execution, remote execution,
 or Windows support. Native Linux and macOS sandbox profiles are optional. macOS
 does not provide reliable cleanup for descendants that detach from the process
 group; its filesystem and network enforcement do not make those descendants
@@ -166,6 +166,15 @@ only test-compiled code permits loopback fixtures. Provider errors redact the
 active credential and stop the turn; the CLI clears queued requests visibly.
 
 ## Extension guidance
+
+Local stdio MCP uses an existing SDK behind the session's approval/journal
+boundary. Servers are explicitly configured and allowlisted; discovery and
+results grant no permissions. Every external call requires approval. A
+registered, session-owned transport uses the Rust helper for bounded pipes and
+ordinary process-group cleanup; it is unsandboxed even when the shell uses native
+mode. Loss after dispatch stops the batch with an unknown outcome, never an
+automatic retry. See the [MCP contract](mcp.md) for ownership, package decisions,
+schema limits, and detached-descendant limitations.
 
 Keep provider-specific wire formats inside provider adapters and keep session
 state transitions in `Ipse.Session`. Put ordinary filesystem and shell

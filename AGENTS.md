@@ -10,6 +10,9 @@ Ipse is an MIT-licensed, local coding agent. Keep the agent loop, provider
 adapters, skills, approvals, persistence, and orchestration in Elixir/OTP. Rust
 is for small OS helpers. Do not add JavaScript or Python runtime dependencies.
 Prefer ordinary modules, processes, and messages over a workflow framework.
+Evaluate existing Elixir/OTP modules and maintained Mix packages before writing
+common protocol or validation machinery. Reuse suitable implementations behind
+small Ipse adapters; document concrete reasons when custom code is necessary.
 Use Elixir for scripts created for development, staging, helpers, and tests
 wherever possible. If Elixir is unsuitable, use Bash or portable shell; use
 Ipse's Rust helper binary for the OS facilities it owns. Do not introduce Python
