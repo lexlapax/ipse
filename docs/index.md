@@ -18,6 +18,7 @@ start. Use the guides below for operation, development, and project context.
 | [Contributing](../CONTRIBUTING.md) | Contribution scope and handoff requirements |
 | [Agent instructions](../AGENTS.md) | Rules, code map, documentation and commit requirements |
 | [Architecture](developer/architecture.md) | Modules, ownership, persistence, trust boundaries |
+| [Context compaction](developer/context-compaction.md) | Preserved context, bounds, checkpoint and recovery contract |
 | [Dependencies](developer/dependencies.md) | Runtime/build/CI inventory, script policy, approval requirements |
 | [Testing and evidence](developer/testing.md) | Source/release checks, live acceptance, actual results |
 

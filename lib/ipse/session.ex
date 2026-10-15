@@ -25,7 +25,8 @@ defmodule Ipse.Session do
          {:ok, _} <- Registry.register(Ipse.Registry, {dir, id}, nil),
          {:ok, lock} <- acquire_lock(Path.join(dir, id <> ".lock"), 10),
          :ok <- Journal.repair_tail(dir, id),
-         {:ok, events} <- Journal.load(dir, id) do
+         {:ok, events} <- Journal.load(dir, id),
+         {:ok, messages} <- restore(events) do
       state = %{
         id: id,
         dir: dir,
@@ -35,7 +36,9 @@ defmodule Ipse.Session do
         historical_model: historical_model(events),
         subscriber: Keyword.fetch!(opts, :subscriber),
         skills: Skills.discover(cwd),
-        messages: restore(events),
+        messages: messages,
+        compaction: nil,
+        tool_decision: "not_decided",
         task: nil,
         job_ref: nil,
         phase: :idle,
@@ -86,8 +89,10 @@ defmodule Ipse.Session do
     s = %{s | approval: nil}
 
     if allowed,
-      do: {:reply, :ok, launch_tool(s, call, args)},
-      else: {:reply, :ok, tool_result(s, call, "Denied by user. Do not evade this denial.")}
+      do: {:reply, :ok, launch_tool(s, call, args, "approved")},
+      else:
+        {:reply, :ok,
+         tool_result(s, call, "Denied by user. Do not evade this denial.", "denied", "denied")}
   end
 
   def handle_call({:approve, _, _}, _from, s), do: {:reply, {:error, :no_pending_approval}, s}
@@ -103,7 +108,17 @@ defmodule Ipse.Session do
 
     record(s, %{"type" => "cancelled"})
     notify(s, {:done, :cancelled})
-    {:reply, :ok, %{s | phase: :idle, task: nil, approval: nil, job_ref: nil}}
+
+    {:reply, :ok,
+     %{
+       s
+       | phase: :idle,
+         task: nil,
+         approval: nil,
+         job_ref: nil,
+         compaction: nil,
+         tool_decision: "not_decided"
+     }}
   end
 
   @impl true
@@ -118,6 +133,12 @@ defmodule Ipse.Session do
     s = %{s | task: nil}
 
     case {phase, result} do
+      {:compaction, {:ok, assistant, usage}} ->
+        {:noreply, complete_compaction(s, assistant, usage)}
+
+      {:compaction, {:error, _error}} ->
+        {:noreply, compaction_failed(s)}
+
       {:model, {:ok, assistant, usage}} ->
         s = append_message(s, assistant)
         calls = Map.get(assistant, "tool_calls", []) || []
@@ -136,8 +157,9 @@ defmodule Ipse.Session do
       {:model, {:error, error}} ->
         {:noreply, fail(s, error)}
 
-      {:tool, {_, text}} when is_binary(text) ->
-        {:noreply, tool_result(s, hd(s.calls), text)}
+      {:tool, {status, text}} when is_binary(text) ->
+        outcome = if status == :error, do: "error", else: "result_recorded"
+        {:noreply, tool_result(s, hd(s.calls), text, outcome, s.tool_decision)}
 
       _ ->
         {:noreply, fail(s, "Unexpected worker result")}
@@ -173,63 +195,122 @@ defmodule Ipse.Session do
     [data: [{~c"State", Map.take(state, [:id, :phase])}]]
   end
 
+  defp system_message(s) do
+    %{"role" => "system", "content" => Ipse.Context.system(s.cwd, s.skills, runtime(s))}
+  end
+
   defp model(s) do
-    max = Map.get(s.config, :max_steps, 30)
-
-    if s.steps >= max do
-      fail(s, "Reached the #{max}-step limit. Send another message to continue.")
+    if s.steps >= Map.get(s.config, :max_steps, 30) do
+      fail(
+        s,
+        "Reached the #{Map.get(s.config, :max_steps, 30)}-step limit. Send another message to continue."
+      )
     else
-      messages = [
-        %{"role" => "system", "content" => Ipse.Context.system(s.cwd, s.skills, runtime(s))}
-        | s.messages
-      ]
+      system = system_message(s)
 
-      if byte_size(Jason.encode!(messages)) > Map.get(s.config, :context_bytes, 400_000) do
-        fail(
-          s,
-          "Conversation reached the prototype context limit. Start a new session with a concise summary."
-        )
-      else
-        owner = self()
-        job_ref = make_ref()
+      case Ipse.Compaction.prepare(s.messages, s.config, system) do
+        :skip ->
+          launch_model(s, [system | s.messages])
 
-        provider =
-          Map.get(
-            s.config,
-            :provider_module,
-            if(s.config.provider == :demo, do: Ipse.Provider.Demo, else: Ipse.Provider)
-          )
+        {:ok, plan} ->
+          task =
+            owned_task(fn -> request(s.config, plan.summary_messages, [], fn _ -> :ok end) end)
 
-        task =
-          owned_task(fn ->
-            config =
-              if s.config.provider == :chatgpt do
-                case Ipse.Auth.token(s.config.auth_dir) do
-                  {:ok, token} -> {:ok, Map.put(s.config, :api_key, token)}
-                  error -> error
-                end
-              else
-                key =
-                  case s.config.provider do
-                    :openai -> System.get_env("OPENAI_API_KEY")
-                    :anthropic -> System.get_env("ANTHROPIC_API_KEY")
-                    _ -> nil
-                  end
+          notify(s, {:status, :compacting})
 
-                {:ok, Map.put_new(s.config, :api_key, key)}
-              end
+          %{
+            s
+            | task: task,
+              phase: :compaction,
+              compaction: plan,
+              steps: s.steps + 1,
+              job_ref: nil
+          }
 
-            with {:ok, config} <- config do
-              provider.complete(config, messages, definitions(), fn event ->
-                send(owner, {:progress, job_ref, event})
-              end)
-            end
-          end)
-
-        notify(s, {:status, "Thinking"})
-        %{s | task: task, phase: :model, steps: s.steps + 1, job_ref: job_ref}
+        {:error, _reason} ->
+          compaction_failed(s)
       end
     end
+  end
+
+  defp launch_model(s, messages) do
+    owner = self()
+    job_ref = make_ref()
+
+    task =
+      owned_task(fn ->
+        request(s.config, messages, definitions(), fn event ->
+          send(owner, {:progress, job_ref, event})
+        end)
+      end)
+
+    notify(s, {:status, "Thinking"})
+    %{s | task: task, phase: :model, steps: s.steps + 1, job_ref: job_ref}
+  end
+
+  defp request(config, messages, tools, emit) do
+    provider =
+      Map.get(
+        config,
+        :provider_module,
+        if(config.provider == :demo, do: Ipse.Provider.Demo, else: Ipse.Provider)
+      )
+
+    credentials =
+      if config.provider == :chatgpt do
+        case Ipse.Auth.token(config.auth_dir) do
+          {:ok, token} -> {:ok, Map.put(config, :api_key, token)}
+          error -> error
+        end
+      else
+        key =
+          case config.provider do
+            :openai -> System.get_env("OPENAI_API_KEY")
+            :anthropic -> System.get_env("ANTHROPIC_API_KEY")
+            _ -> nil
+          end
+
+        {:ok, Map.put_new(config, :api_key, key)}
+      end
+
+    with {:ok, config} <- credentials, do: provider.complete(config, messages, tools, emit)
+  end
+
+  defp complete_compaction(s, assistant, usage) do
+    case Ipse.Compaction.finish(s.compaction, assistant, system_message(s), s.config) do
+      {:ok, messages, checkpoint, stats} ->
+        record(s, %{
+          "type" => "context_compacted",
+          "version" => 1,
+          "covered_messages" => length(s.compaction.prefix),
+          "prefix_sha256" => Ipse.Compaction.digest(s.compaction.prefix),
+          "checkpoint" => checkpoint,
+          "before_bytes" => stats.before_bytes,
+          "after_bytes" => stats.after_bytes
+        })
+
+        notify(s, {:compacted, stats.before_bytes, stats.after_bytes})
+        notify(s, {:usage, usage})
+
+        model(%{
+          s
+          | messages: messages,
+            compaction: nil,
+            usage: usage,
+            reported_model: reported_model(assistant)
+        })
+
+      {:error, _reason} ->
+        compaction_failed(s)
+    end
+  end
+
+  defp compaction_failed(s) do
+    fail(
+      s,
+      "Context compaction could not safely fit this conversation. Original history is retained. " <>
+        "Review the journal and start a new session with the necessary context; no tools were replayed."
+    )
   end
 
   defp next_tool(%{calls: []} = s), do: model(s)
@@ -244,7 +325,13 @@ defmodule Ipse.Session do
 
       cond do
         Tools.mutating?(name) and mode == :deny ->
-          tool_result(s, call, "Denied: this run is read-only. Ask the user to enable execution.")
+          tool_result(
+            s,
+            call,
+            "Denied: this run is read-only. Ask the user to enable execution.",
+            "denied",
+            "policy_denied"
+          )
 
         Tools.mutating?(name) and mode == :ask ->
           ref = make_ref()
@@ -252,16 +339,31 @@ defmodule Ipse.Session do
           %{s | phase: :approval, approval: {ref, call, args}}
 
         true ->
-          launch_tool(s, call, args)
+          decision = if Tools.mutating?(name), do: "session_allow", else: "not_required"
+          launch_tool(s, call, args, decision)
       end
     else
-      _ -> tool_result(s, call, "Invalid tool arguments: expected a JSON object.")
+      _ ->
+        tool_result(
+          s,
+          call,
+          "Invalid tool arguments: expected a JSON object.",
+          "invalid_arguments",
+          "not_decided"
+        )
     end
   end
 
-  defp launch_tool(s, call, args) do
+  defp launch_tool(s, call, args, decision) do
     name = get_in(call, ["function", "name"])
-    record(s, %{"type" => "tool_started", "call_id" => call["id"], "name" => name})
+
+    record(s, %{
+      "type" => "tool_started",
+      "call_id" => call["id"],
+      "name" => name,
+      "approval" => decision
+    })
+
     notify(s, {:tool, name, args})
     owner = self()
     job_ref = make_ref()
@@ -279,18 +381,37 @@ defmodule Ipse.Session do
           else: Tools.execute(name, args, context)
       end)
 
-    %{s | phase: :tool, task: task, job_ref: job_ref}
+    %{s | phase: :tool, task: task, job_ref: job_ref, tool_decision: decision}
   end
 
-  defp tool_result(s, call, text) do
-    s = append_message(s, %{"role" => "tool", "tool_call_id" => call["id"], "content" => text})
+  defp tool_result(s, call, text, status, approval) do
+    s =
+      append_message(s, %{
+        "role" => "tool",
+        "tool_call_id" => call["id"],
+        "content" => text,
+        "ipse_tool_outcome" => %{"status" => status, "approval" => approval}
+      })
+
     notify(s, {:tool_result, get_in(call, ["function", "name"]), text})
-    next_tool(%{s | calls: tl(s.calls)})
+    next_tool(%{s | calls: tl(s.calls), tool_decision: "not_decided"})
   end
 
   defp settle_calls(s, text) do
-    Enum.reduce(s.calls, s, fn call, state ->
-      append_message(state, %{"role" => "tool", "tool_call_id" => call["id"], "content" => text})
+    s.calls
+    |> Enum.with_index()
+    |> Enum.reduce(s, fn {call, index}, state ->
+      started = index == 0 and s.phase == :tool
+      approval = if started, do: s.tool_decision, else: "not_decided"
+      status = if started, do: "unknown", else: "not_started"
+      outcome = if started, do: text, else: "Not executed: work stopped before this call started."
+
+      append_message(state, %{
+        "role" => "tool",
+        "tool_call_id" => call["id"],
+        "content" => outcome,
+        "ipse_tool_outcome" => %{"status" => status, "approval" => approval}
+      })
     end)
     |> Map.put(:calls, [])
   end
@@ -306,7 +427,16 @@ defmodule Ipse.Session do
   defp finish(s, status) do
     record(s, %{"type" => "turn_finished", "status" => to_string(status)})
     notify(s, {:done, status})
-    %{s | phase: :idle, task: nil, approval: nil, job_ref: nil}
+
+    %{
+      s
+      | phase: :idle,
+        task: nil,
+        approval: nil,
+        job_ref: nil,
+        compaction: nil,
+        tool_decision: "not_decided"
+    }
   end
 
   defp append_message(s, message) do
@@ -371,8 +501,30 @@ defmodule Ipse.Session do
   end
 
   defp restore(events) do
-    messages = for %{"type" => "message", "message" => message} <- events, do: message
-    restore_messages(messages)
+    Enum.reduce_while(events, {:ok, []}, fn
+      %{"type" => "message", "message" => message}, {:ok, messages} ->
+        {:cont, {:ok, messages ++ [message]}}
+
+      %{"type" => "context_compacted"} = event, {:ok, messages} ->
+        messages = restore_messages(messages)
+        count = event["covered_messages"]
+
+        if event["version"] == 1 and is_integer(count) and count > 0 and
+             count <= length(messages) and
+             Ipse.Compaction.valid_checkpoint?(event["checkpoint"]) and
+             Ipse.Compaction.digest(Enum.take(messages, count)) == event["prefix_sha256"] do
+          {:cont, {:ok, [event["checkpoint"] | Enum.drop(messages, count)]}}
+        else
+          {:halt, {:error, :invalid_compaction_checkpoint}}
+        end
+
+      _, acc ->
+        {:cont, acc}
+    end)
+    |> case do
+      {:ok, messages} -> {:ok, restore_messages(messages)}
+      error -> error
+    end
   end
 
   defp restore_messages([]), do: []
@@ -388,7 +540,8 @@ defmodule Ipse.Session do
           "role" => "tool",
           "tool_call_id" => call["id"],
           "content" =>
-            "Outcome unknown: session interrupted before a result was recorded. Inspect the workspace before retrying."
+            "Outcome unknown: session interrupted before a result was recorded. Inspect the workspace before retrying.",
+          "ipse_tool_outcome" => %{"status" => "unknown", "approval" => "historical_unknown"}
         })
       end)
 

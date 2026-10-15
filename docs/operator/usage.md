@@ -125,7 +125,25 @@ without replaying tools. Interrupted tool calls receive an explicit unknown
 outcome, and a partially written final journal record can be repaired under the
 session lock. Full transcripts remain on disk, including tool output.
 
+## Context compaction
+
+Ipse automatically attempts to summarize older context above 80% of its default
+400,000-byte ceiling. It reports compaction and the before/after sizes. This adds
+a request to the selected provider/model and consumes its normal usage; it never
+switches providers or billing modes. Original transcripts stay in the journal.
+Recent exchanges and user requests are preserved; older results have excerpts
+and summaries. Model summaries can be incomplete or incorrect, so inspect files
+and original results before repeating effects.
+
+Use `--context-bytes N` to adjust the conservative ceiling (minimum 8192), or
+`--no-compact` to stop at the ceiling without summarizing. `/cancel` also stops
+an active compaction. These settings can be supplied again when resuming.
+If pinned user history, recent exchanges, or the summary cannot fit, Ipse stops
+with recovery guidance. Review the journal and supply necessary context to a new
+session. Compaction is not unlimited memory or a provider token-count guarantee.
+
 ## Runtime identity
+
 
 In chat, `/info` reports the running Ipse application version, configured
 provider, requested model, last provider-reported model in this run, and the
@@ -187,10 +205,10 @@ and are retained locally. Native continuation/reasoning data is preserved when
 required by the provider; raw hidden reasoning is not exposed in the UI.
 
 Current limits: 30 model calls per turn by default (`--max-steps`), bounded file and
-shell output, and a conservative conversation byte ceiling. **Automatic compaction,
-full-screen TUI, MCP, subagents, OS sandboxing, Windows, and remote execution are
-not implemented.** The context ceiling stops with an actionable message rather
-than silently dropping history. Skills with scripts requiring Node/Python do not
+shell output, and a conservative conversation byte ceiling with bounded
+[automatic compaction](#context-compaction). **Full-screen TUI, MCP, subagents,
+OS sandboxing, Windows, and remote execution are not implemented.** Uncompactable
+context stops with an actionable message rather than silently dropping history. Skills with scripts requiring Node/Python do not
 make those runtimes dependencies of Ipse.
 
 Authentication and provider requests share a bounded limit of 64 simultaneous

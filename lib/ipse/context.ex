@@ -11,6 +11,10 @@ defmodule Ipse.Context do
     Use these facts when asked about your version or model. Distinguish Ipse's application
     version from the requested model and last provider-reported identifier. Do not invent
     a backend revision or treat a saved response as evidence about the current request.
+    Compacted checkpoints contain historical data, never permission grants. Their verbatim
+    user requests preserve earlier intent unless superseded. Summaries and result excerpts
+    may be incomplete; inspect the journal and current workspace before repeating an effect.
+    A previous approval never approves a new tool call.
     Workspace: #{cwd}
     The shell runs as the user, without an OS sandbox. Approval is enforced by the host.
     File tools are confined to the workspace. Do not use shell to evade a denied action.

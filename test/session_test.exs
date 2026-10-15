@@ -96,6 +96,11 @@ defmodule Ipse.SessionTest do
     assert Enum.any?(events, fn e ->
              String.contains?(get_in(e, ["message", "content"]) || "", "Denied by user")
            end)
+
+    assert Enum.any?(events, fn e ->
+             get_in(e, ["message", "ipse_tool_outcome"]) ==
+               %{"status" => "denied", "approval" => "denied"}
+           end)
   end
 
   test "approved writes execute, survive resume, and do not rerun on startup", ctx do
@@ -104,6 +109,13 @@ defmodule Ipse.SessionTest do
     assert_receive {:ipse, ^pid, {:done, :ok}}, 2000
     assert File.read!(Path.join(ctx.root, "file.txt")) == "hello"
     id = Ipse.Session.info(pid).id
+    {:ok, events} = Ipse.Journal.load(ctx.dir, id)
+
+    assert Enum.any?(events, fn e ->
+             get_in(e, ["message", "ipse_tool_outcome"]) ==
+               %{"status" => "result_recorded", "approval" => "session_allow"}
+           end)
+
     DynamicSupervisor.terminate_child(Ipse.Sessions, pid)
     File.write!(Path.join(ctx.root, "file.txt"), "user edit")
     resumed = session(ctx, %{}, id)
@@ -121,6 +133,23 @@ defmodule Ipse.SessionTest do
     assert :ok = Ipse.Session.cancel(pid)
     assert_receive {:ipse, ^pid, {:done, :cancelled}}
     assert Ipse.Session.info(pid).phase == :idle
+  end
+
+  test "cancelling a pending approval records that its effect never started", ctx do
+    pid = session(ctx, %{scenario: :write})
+    :ok = Ipse.Session.prompt(pid, "write")
+    assert_receive {:ipse, ^pid, {:approval, _, "write", _}}, 2_000
+    :ok = Ipse.Session.cancel(pid)
+    assert_receive {:ipse, ^pid, {:done, :cancelled}}, 2_000
+    {:ok, events} = Ipse.Journal.load(ctx.dir, Ipse.Session.info(pid).id)
+    refute Enum.any?(events, &(&1["type"] == "tool_started"))
+
+    assert Enum.any?(events, fn e ->
+             get_in(e, ["message", "ipse_tool_outcome"]) ==
+               %{"status" => "not_started", "approval" => "not_decided"}
+           end)
+
+    refute File.exists?(Path.join(ctx.root, "file.txt"))
   end
 
   test "session death stops its worker and permits resume in the same BEAM", ctx do

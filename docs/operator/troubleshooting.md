@@ -55,9 +55,13 @@ Interrupted effects may already have happened. Resume marks their outcome
 unknown and does not automatically replay them. Inspect affected files before
 requesting another mutation.
 
-The context ceiling stops work instead of silently dropping history. Automatic
-compaction is not implemented; review the saved session and start a new session
-with the necessary context supplied explicitly.
+If automatic compaction cannot fit the pinned user history, recent exchanges,
+or a valid summary, work stops and the original journal is retained. Review it
+and start a new session with necessary context supplied explicitly.
+`--no-compact` disables summary requests; `--context-bytes` adjusts the conservative
+byte ceiling. See [compaction behavior](usage.md#context-compaction).
+A damaged committed checkpoint stops resume; keep the original journal for
+diagnosis rather than deleting checkpoint records blindly.
 
 ## Sharing diagnostics
 

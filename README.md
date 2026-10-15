@@ -45,7 +45,9 @@ selection. In chat, `/info` shows the running application version and configured
 provider/model without calling a model. Review proposed file and shell calls before approving them.
 Shell commands run with your user permissions; Ipse does not provide an OS sandbox.
 
-Current limits include no automatic compaction, full-screen TUI, MCP, subagents,
+Automatic context compaction retains the original journal and uses the selected
+provider; see [operation and limits](docs/operator/usage.md#context-compaction).
+Current limits include no full-screen TUI, MCP, subagents,
 Windows, or remote execution. See [runtime limits](docs/operator/usage.md#runtime-and-limits)
 and [architecture](docs/developer/architecture.md) for details.
 

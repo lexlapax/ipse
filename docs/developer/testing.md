@@ -291,3 +291,41 @@ development toolchain. `/info` showed bundled application version `0.1.0` and
 explicit demo/scripted configuration. All 144 local documentation links/anchors
 across 24 Markdown documents passed validation; developer/operator guidance was
 reviewed against the implementation.
+
+### Subsequent live ChatGPT identity, 2026-10-15
+
+Reauthorized the same Ipse registration through the documented browser consent
+flow. An explicit ChatGPT `gpt-6.1-sol` scratch session returned application
+version `0.1.0`, provider `chatgpt`, requested model `gpt-6.1-sol`, and appropriately
+unknown backend revision. `/info` after resume showed saved reported model
+`gpt-6.1-sol` separately from unavailable current-run metadata, without inference.
+No API provider or billing fallback was enabled.
+
+### P2 context compaction, 2026-10-15
+
+Build, formatting, warnings-as-errors compilation, all **78 tests**, and source
+demo passed. Six helper tests cover safe boundaries, repeated compaction,
+verbatim intent/action provenance, native recent continuation, old reasoning
+exclusion from summary input, bounded/schema/tool-call rejection, stable JSON
+digests, and disabled compaction. Five session integration tests cover durable
+commit plus continuation, original journal retention and resume without replay,
+cancellation before commit, owner death after commit, malformed summary recovery,
+and rejection of corrupted committed checkpoints. Existing approval tests now
+verify host-written decision/outcome metadata rather than inferring it from text.
+A cancellation regression distinguishes approval-pending calls that never started
+from executing calls whose effects may already have occurred.
+
+A separate live ChatGPT scratch transcript with synthetic project facts compacted
+from **29,490 to 3,358 bytes**. The resulting streamed reply (16 text chunks)
+retained the project name `acorn` and MIT constraint. Exactly one checkpoint was
+saved, all original messages remained, and no tools started. Resume retained
+those facts without another compaction or tool execution. This is live evidence
+for that account/model, separate from deterministic fixtures. Summary fidelity
+is not proven generally; native OpenAI compaction and other providers' live
+compaction behavior remain unverified. See [the contract](context-compaction.md).
+
+The final compaction archive passed help, `/info`, `--context-bytes 8192` and
+`--no-compact` parsing, credential-free demo, bundled compaction-module loading,
+and native timeout/owner-death/lock checks from a fresh extraction with no
+development toolchain on `PATH`. Developer/operator docs were reviewed and all
+153 local links/anchors across 25 Markdown documents passed validation.

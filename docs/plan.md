@@ -18,9 +18,9 @@ credential-free demo.
 - Cancellation and restart recovery mark interrupted effects unknown rather
   than replaying them.
 
-Automatic compaction, full-screen TUI, MCP, subagents, remote execution,
-Windows, and OS sandboxing are not implemented. The context limit stops with
-an actionable error instead of silently dropping history.
+Automatic context compaction is available with a retained original journal.
+Full-screen TUI, MCP, subagents, remote execution, Windows, and OS sandboxing
+are not implemented. Uncompactable context stops with recovery guidance.
 
 ## P0: verify the current release path
 
@@ -128,8 +128,8 @@ request fixtures prove the facts reach each adapter. Live natural-language check
 are recorded separately and do not replace deterministic `/info` checks. Operator
 docs explain configured versus reported identity and unresolved aliases.
 The full 66-test fixture suite and source baseline passed; a live local Ollama
-identity response also passed. Subscription identity inference was not repeated
-after logout. See [verification evidence](developer/testing.md).
+identity response also passed. Live ChatGPT identity and saved reported-model
+metadata after resume subsequently passed with explicit subscription selection. See [verification evidence](developer/testing.md).
 
 Research favors code-managed prompt builders with explicit identity/context,
 not a plugin framework for this example; see official OpenAI
@@ -155,6 +155,14 @@ journal events and retain the original transcript. Acceptance: deterministic
 threshold tests verify useful history survives; resume uses the saved summary
 without replaying side effects; compaction is reported to the user; failure to
 produce a safe summary stops with recovery guidance.
+
+Implemented on 2026-10-15 with verbatim user intent, host action/approval metadata,
+two intact recent user turns, bounded provider-neutral summaries, and durable
+validated checkpoints. Original transcripts remain intact. All 78 tests and the
+source baseline passed. A live ChatGPT scratch check compacted 29,490 to 3,358
+bytes, retained its project name/license, and resumed without recompression or
+tool execution. See [design and limits](developer/context-compaction.md) and
+[verification evidence](developer/testing.md#p2-context-compaction-2026-10-15).
 
 ## P2: define an OS sandbox boundary
 

@@ -21,6 +21,8 @@ defmodule Ipse.CLI do
   --base-url URL                       API endpoint root (API/Ollama only)
   --state-dir PATH                     Session directory
   --max-steps N                        Model calls per turn (default: 30)
+  --context-bytes N                    Context byte ceiling (default: 400000)
+  --no-compact                         Stop at the ceiling without summarizing
 
   Chat asks before writes and shell commands. Headless run denies them without --yes.
   Shell execution has your user permissions; this prototype has no OS sandbox.
@@ -50,6 +52,8 @@ defmodule Ipse.CLI do
           yes: :boolean,
           base_url: :string,
           max_steps: :integer,
+          context_bytes: :integer,
+          compact: :boolean,
           help: :boolean,
           demo: :boolean
         ],
@@ -279,6 +283,20 @@ defmodule Ipse.CLI do
         Ipse.Session.prompt(s.pid, text)
         client_loop(%{s | busy: true})
 
+      {:ipse, ^pid, {:status, :compacting}} ->
+        unless s.cancelling,
+          do: IO.puts(:stderr, "Compacting context with the selected provider…")
+
+        client_loop(s)
+
+      {:ipse, ^pid, {:compacted, before_bytes, after_bytes}} ->
+        IO.puts(
+          :stderr,
+          "Context compacted: #{before_bytes} → #{after_bytes} bytes. Original journal retained."
+        )
+
+        client_loop(s)
+
       {:ipse, ^pid, {:status, _status}} ->
         unless s.cancelling, do: IO.puts(:stderr, "Running…")
         client_loop(s)
@@ -398,6 +416,9 @@ defmodule Ipse.CLI do
       opts[:max_steps] && opts[:max_steps] < 1 ->
         {:error, "--max-steps must be positive"}
 
+      opts[:context_bytes] && opts[:context_bytes] < 8192 ->
+        {:error, "--context-bytes must be at least 8192"}
+
       provider == :chatgpt && opts[:base_url] ->
         {:error, "Subscription credentials only go to the official OpenAI endpoint."}
 
@@ -410,6 +431,8 @@ defmodule Ipse.CLI do
              auth_dir: auth_dir(),
              base_url: opts[:base_url],
              max_steps: opts[:max_steps] || 30,
+             context_bytes: opts[:context_bytes] || 400_000,
+             compact: opts[:compact] != false,
              approval: if(opts[:yes], do: :allow, else: if(interactive, do: :ask, else: :deny))
            }}
         end

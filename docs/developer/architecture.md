@@ -44,7 +44,20 @@ bounds atom usage and keeps proxy settings and connection state isolated between
 concurrent requests. Exhaustion returns a retryable error instead of creating
 unbounded profile names.
 
+## Context compaction
+
+`Ipse.Compaction` builds bounded summary requests and validates checkpoints;
+Session owns the extra provider task and journal commit. It preserves verbatim
+older user intent, host-written action/approval provenance, and the latest two
+user turns including native continuation data. Summaries remain untrusted data.
+A synced checkpoint changes only the effective projection; original transcript
+events stay intact. Resume validates the covered prefix and restores without
+automatically restarting inference or tools. Cancellation saves no partial
+checkpoint. See [the compaction contract](context-compaction.md) for thresholds,
+schema, recovery, and fidelity limits.
+
 ## Runtime identity
+
 
 `Ipse.RuntimeInfo` is a small shared formatter and allowlisted snapshot builder.
 `Session.info/1` exposes it under `runtime`; `/info` formats that snapshot locally.
@@ -100,14 +113,15 @@ include user secrets. A state directory can be overridden with `--state-dir`.
 Each session journal is JSONL. The Rust helper provides a persistent advisory
 lock whose lifetime follows its Port owner; lock files are kept to preserve
 inode identity. Resume loads events into conversation history without replaying
-tool calls. Interrupted calls are marked with an unknown outcome because their
-external effects may already have happened. A final partial record may be
+tool calls. Started interrupted calls are marked with an unknown outcome because
+their external effects may already have happened. Calls cancelled before launch
+are recorded as not started; older unresolved history remains conservative. A final partial record may be
 repaired while holding the session lock. The full transcript remains on disk.
 
 ## Boundaries and current limits
 
 The line-oriented terminal client is not a full-screen TUI. There is no
-automatic context compaction, MCP support, subagent execution, remote execution,
+MCP support, subagent execution, remote execution,
 Windows support, or OS sandbox integration. When the context byte ceiling is
 reached, the current version stops with an actionable error rather than
 silently dropping conversation history.
