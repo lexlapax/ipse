@@ -463,3 +463,10 @@ fixes this reproduced build issue. Review also tightened network checks to accep
 only a connect permission denial, rejecting refusal, timeout, and successful
 connections. The revised Rust probe passed those controls under Linux native
 enforcement; macOS enforcement still requires its own successful run.
+
+The [second hosted run](https://github.com/lexlapax/ipse/actions/runs/38710166415)
+again passed both platforms' core/package checks, then stopped at code signing:
+the auxiliary entitlement input had been placed in `Contents`, a nested-code
+location. It now stays outside the app bundle, following Apple's documented
+[bundle structure](https://developer.apple.com/documentation/bundleresources/placing-content-in-a-bundle).
+This is a signing-layout fix, not a passing enforcement result.

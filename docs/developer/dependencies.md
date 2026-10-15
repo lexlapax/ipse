@@ -50,7 +50,7 @@ the current lockfile. No Node, JavaScript, or Python runtime is required.
 | `/bin/sh` | Runtime shell tool and source/release launchers | Host shell implementation and license vary; POSIX shell syntax is used |
 | C linker/toolchain | Link the Rust helper during source builds | Arch `base-devel`; versions/licenses supplied by distribution |
 | Git | Fetch the pinned Jason dependency and repository work | Host Git package, GPL-2.0 |
-| Standard filesystem/text utilities | Scripts use `dirname`, `mkdir`, `cp`, `chmod`, `rm`, `uname`, and `tr`; setup examples use `mktemp`; helper verification uses `sleep`, and tests use `head`/`tr` | Existing host utility implementation/licenses vary, commonly GNU coreutils on Linux |
+| Standard filesystem/text utilities | Scripts use `dirname`, `mkdir`, `cp`, `chmod`, `rm`, `uname`, and `tr`; setup examples use `mktemp`; helper verification uses `sleep`, and tests use `head`/`tr`. Existing bundled OTP launchers/fresh-release checks also need `basename`, `cut`, `sed`, `cat`, `grep`, `readlink`, `expr`, `awk`, and `id`; the package verifier makes that utility-only PATH explicit | Existing host utility implementation/licenses vary, commonly GNU coreutils plus GNU sed/grep and awk on Linux; OS-supplied equivalents on macOS |
 | `tar`, gzip support, `getconf` | Packaging archive and Linux libc identification | Host distribution; `getconf` is a libc utility. `getconf` failure falls back to `system-libc` naming |
 | Hex bootstrap | Documented `mix local.hex --force` setup step | [Hex](https://github.com/hexpm/hex), Apache-2.0; Jason itself is fetched through Git, not a Hex package |
 

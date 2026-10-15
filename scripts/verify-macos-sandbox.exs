@@ -77,7 +77,7 @@ defmodule Ipse.MacSandboxProbe do
       info = info_plist("org.ipse.sandbox.#{id}")
       entitlements = entitlements([workspace, allowed_tmp])
       File.write!(Path.join(contents, "Info.plist"), info)
-      entitlements_path = Path.join(contents, "ipse.entitlements.plist")
+      entitlements_path = Path.join(cache, "ipse.entitlements.plist")
       File.write!(entitlements_path, entitlements)
 
       # Sign only with the explicitly approved Apple command and an ad-hoc
