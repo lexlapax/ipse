@@ -634,4 +634,18 @@ tests. Elixir 1.18 wraps a long pinned-pattern expression differently from 1.20.
 Extracting the entitlement path keeps the expression short and both formatter
 versions agree. Formatting passed locally with Elixir 1.18.5/OTP 27.3.4 and
 1.20.3/OTP 29.0.5; all 16 cache tests passed after this behavior-preserving change.
-Operator guidance was reviewed and remains valid. The replacement CI run is pending.
+Operator guidance was reviewed and remains valid. The
+[replacement CI run for `f07d3f2`](https://github.com/lexlapax/ipse/actions/runs/38757410934)
+passed the complete Linux job and Mac source/ordinary tests. Seven Mac enforcement
+tests passed; the compiler check returned 127 because CI installs Elixir outside
+the native profile's fixed tool roots and minimal PATH.
+
+The corrected suite separates workspace/environment checks from compiler access.
+An unsandboxed compilation first proves the installed toolchain works. Native
+execution must compile when that toolchain is under the fixed readable roots;
+otherwise it must report permission denial and leave no compiled artifact.
+All nine corrected Mac enforcement tests passed locally with Homebrew Elixir.
+Formatting passed with both supported Elixir versions. A local attempt to use
+the isolated older toolchain could not start tests because its fresh Mix home
+lacked Hex; no dependency was installed and that attempt is not a test pass.
+The next CI result will establish the outside-tool-root denial on the hosted Mac.

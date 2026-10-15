@@ -59,7 +59,7 @@ defmodule Ipse.MacOSSandboxTest do
     assert Bitwise.band(File.stat!(ctx.secret).mode, 0o777) == 0o600
   end
 
-  test "workspace, temporary home and installed Elixir work with a scrubbed environment", ctx do
+  test "workspace and temporary home work with a scrubbed environment", ctx do
     key = "IPSE_NATIVE_TEST_SECRET"
     previous = System.get_env(key)
     System.put_env(key, "fixture-must-not-reach-child")
@@ -68,22 +68,54 @@ defmodule Ipse.MacOSSandboxTest do
       if previous, do: System.put_env(key, previous), else: System.delete_env(key)
     end)
 
-    File.write!(
-      Path.join(ctx.cwd, "compile.ex"),
-      "defmodule MacNativeFixture do\n def answer, do: 42\nend\n"
-    )
-
     assert {:ok, result} =
              Runner.run(
-               ~S[set -e; test -z "${IPSE_NATIVE_TEST_SECRET+x}"; printf workspace > writable; chmod 700 writable; printf temp > "$HOME/temp"; test "$HOME" = "$TMPDIR"; export ERL_FLAGS='+S 2'; elixirc compile.ex; test -s Elixir.MacNativeFixture.beam; printf compiled],
+               ~S[set -e; test -z "${IPSE_NATIVE_TEST_SECRET+x}"; printf workspace > writable; chmod 700 writable; printf temp > "$HOME/temp"; test "$HOME" = "$TMPDIR"; printf writable],
                ctx.cwd,
                sandbox: :native,
                timeout_ms: 20_000
              )
 
     assert result.exit_code == 0
-    assert result.output =~ "compiled"
+    assert result.output == "writable"
     assert Bitwise.band(File.stat!(Path.join(ctx.cwd, "writable")).mode, 0o777) == 0o700
+  end
+
+  test "installed compiler follows the fixed readable tool roots", ctx do
+    elixirc = System.find_executable("elixirc") || flunk("Elixir build toolchain is missing")
+    assert {:ok, compiler} = Ipse.WorkspaceContext.canonical_path(elixirc)
+    beam = Path.join(ctx.cwd, "Elixir.MacNativeFixture.beam")
+
+    File.write!(
+      Path.join(ctx.cwd, "compile.ex"),
+      "defmodule MacNativeFixture do\n def answer, do: 42\nend\n"
+    )
+
+    assert {_, 0} =
+             System.cmd(elixirc, ["compile.ex"],
+               cd: ctx.cwd,
+               env: [{"ERL_FLAGS", "+S 2"}],
+               stderr_to_stdout: true
+             )
+
+    assert File.regular?(beam)
+    File.rm!(beam)
+
+    assert {:ok, result} =
+             Runner.run("export ERL_FLAGS='+S 2'; #{q(elixirc)} compile.ex", ctx.cwd,
+               sandbox: :native,
+               timeout_ms: 20_000
+             )
+
+    if String.starts_with?(compiler, "/opt/homebrew/") or
+         String.starts_with?(compiler, "/usr/local/") do
+      assert result.exit_code == 0, result.output
+      assert File.regular?(beam)
+    else
+      assert result.exit_code in [126, 127], result.output
+      assert result.output =~ "Operation not permitted" or result.output =~ "Permission denied"
+      refute File.exists?(beam)
+    end
   end
 
   test "network positive control connects and sandboxed connect returns EPERM", ctx do
