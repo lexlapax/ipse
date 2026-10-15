@@ -32,7 +32,15 @@ defmodule Ipse.Provider.Ollama do
       "stream" => true
     }
 
-    state = %{buffer: "", content: "", thinking: "", calls: [], done: false, usage: %{}}
+    state = %{
+      buffer: "",
+      content: "",
+      thinking: "",
+      calls: [],
+      done: false,
+      usage: %{},
+      reported_model: nil
+    }
 
     headers =
       if config[:api_key] in [nil, ""],
@@ -72,6 +80,11 @@ defmodule Ipse.Provider.Ollama do
           "content" => state.content,
           "provider_data" => %{"provider" => "ollama", "message" => native}
         }
+
+        message =
+          if state.reported_model,
+            do: put_in(message, ["provider_data", "reported_model"], state.reported_model),
+            else: message
 
         message = if calls == [], do: message, else: Map.put(message, "tool_calls", calls)
         {:ok, message, state.usage}
@@ -144,7 +157,8 @@ defmodule Ipse.Provider.Ollama do
              thinking: state.thinking <> (message["thinking"] || ""),
              calls: state.calls ++ (message["tool_calls"] || []),
              done: state.done or data["done"] == true,
-             usage: usage
+             usage: usage,
+             reported_model: Ipse.RuntimeInfo.model_name(data["model"]) || state.reported_model
          }}
 
       _ ->

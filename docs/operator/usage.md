@@ -96,6 +96,7 @@ Chat commands:
 | --- | --- |
 | `/skills` | Show available skill metadata |
 | `/session` | Show the current session ID and state |
+| `/info` | Show local application/provider/model facts without inference |
 | `/cancel` | Stop current work and clear queued input; started effects may already have happened |
 | `/help` | Show commands and options |
 | `/exit` | Cancel active work and leave |
@@ -124,7 +125,25 @@ without replaying tools. Interrupted tool calls receive an explicit unknown
 outcome, and a partially written final journal record can be repaired under the
 session lock. Full transcripts remain on disk, including tool output.
 
+## Runtime identity
+
+In chat, `/info` reports the running Ipse application version, configured
+provider, requested model, last provider-reported model in this run, and the
+saved session's last reported model when resuming. It is available during work
+and approval, sends no model request, and exposes no credential configuration.
+These allowlisted facts also enter the model's host instructions on every turn.
+
+The requested model comes from `--model`, `IPSE_MODEL`, or the provider default.
+A provider-reported identifier may differ from that request or be absent. It
+identifies a response, not a guarantee about the next response or an exact
+backend revision. Aliases remain aliases. Saved response metadata is historical;
+current-run metadata begins unavailable on resume. Older journals without this
+metadata remain resumable and show unavailable. The application version always
+comes from the running application, not an old journal. `/info` is authoritative
+for these host facts; a natural-language self-description can still be wrong.
+
 ## Skills
+
 
 Put local skills under `.agents/skills/<name>/SKILL.md` or
 `~/.ipse/skills/<name>/SKILL.md`. Project definitions override user and bundled

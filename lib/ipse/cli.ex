@@ -24,7 +24,7 @@ defmodule Ipse.CLI do
 
   Chat asks before writes and shell commands. Headless run denies them without --yes.
   Shell execution has your user permissions; this prototype has no OS sandbox.
-  Chat commands: /help /skills /session /cancel /exit. Invoke skills with $name.
+  Chat commands: /help /skills /session /info /cancel /exit. Invoke skills with $name.
   EOF finishes accepted work; /cancel clears queued input.
   """
 
@@ -250,6 +250,10 @@ defmodule Ipse.CLI do
 
       {:input, "/session"} ->
         IO.puts(inspect(Ipse.Session.info(s.pid)))
+        client_loop(s)
+
+      {:input, "/info"} ->
+        IO.puts(Ipse.RuntimeInfo.format(Ipse.Session.info(s.pid).runtime))
         client_loop(s)
 
       {:input, ""} ->

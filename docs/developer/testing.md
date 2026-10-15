@@ -263,3 +263,31 @@ extraction using a utility-only `PATH` without the development toolchain. A
 source `chat --provider demo --yes` smoke check accepted two piped tasks and
 finished both before exiting on EOF in an isolated scratch workspace. This is
 scripted CLI evidence, not additional live model connectivity evidence.
+
+### P1 runtime identity, 2026-10-15
+
+Build, formatting, warnings-as-errors compilation, all **66 fixture tests**, and
+the credential-free source demo passed. Added checks cover application version,
+provider/model overrides, bounded invalid identifiers, missing/differing reported
+models, secret exclusion, repeated-turn context, historical versus current-run
+metadata after resume, and `/info` without inference while a request is pending.
+Existing HTTP fixtures now assert runtime context survives serialization for
+ChatGPT/OpenAI, Ollama, and Anthropic, and optional response metadata preserves
+existing tool/continuation formats.
+
+A separate live request to the already installed local Ollama `qwen3.5:9b`
+returned application version `0.1.0`, configured provider `ollama`, and requested
+model `qwen3.5:9b` from the supplied host facts. Resuming that scratch session
+showed the saved provider-reported model in `/info`, with the current-run field
+unavailable before inference. A plain “What version are you?” follow-up returned
+`0.1.0`. No model was downloaded and no paid credentials were used. The new
+identity behavior was not rechecked live with ChatGPT, OpenAI API, or Anthropic;
+the earlier subscription lifecycle evidence remains separate.
+
+The rebuilt Arch archive passed help, `/info` followed by EOF without inference,
+credential-free demo, native timeout/owner-death/lock checks, and HTTP-profile
+cleanup from a fresh extraction with a utility-only `PATH` containing no
+development toolchain. `/info` showed bundled application version `0.1.0` and
+explicit demo/scripted configuration. All 144 local documentation links/anchors
+across 24 Markdown documents passed validation; developer/operator guidance was
+reviewed against the implementation.

@@ -41,7 +41,8 @@ needed. Match the OS/architecture and libc requirements in the release filename.
 Follow the [operator guide](docs/operator/usage.md) for ChatGPT subscription
 sign-in, other providers, approvals, skills, session resume, and logout.
 ChatGPT subscription is the default; API billing always requires explicit provider
-selection. Review proposed file and shell calls before approving them.
+selection. In chat, `/info` shows the running application version and configured
+provider/model without calling a model. Review proposed file and shell calls before approving them.
 Shell commands run with your user permissions; Ipse does not provide an OS sandbox.
 
 Current limits include no automatic compaction, full-screen TUI, MCP, subagents,

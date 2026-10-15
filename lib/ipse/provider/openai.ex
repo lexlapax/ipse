@@ -179,10 +179,19 @@ defmodule Ipse.Provider.OpenAI do
       "provider_data" => %{"provider" => "openai", "output" => output}
     }
 
+    message = put_reported_model(message, response["model"])
+
     message = if calls == [], do: message, else: Map.put(message, "tool_calls", calls)
     {:ok, message, response["usage"] || %{}}
   end
 
   def finish(_),
     do: {:error, "OpenAI stream ended before response.completed; no tools were executed."}
+
+  defp put_reported_model(message, model) do
+    case Ipse.RuntimeInfo.model_name(model) do
+      nil -> message
+      model -> put_in(message, ["provider_data", "reported_model"], model)
+    end
+  end
 end

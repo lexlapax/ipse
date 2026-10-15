@@ -6,6 +6,17 @@ defmodule Ipse.SessionTest do
       send(config.test_pid, {:model_input, messages})
 
       case config[:scenario] do
+        :identity ->
+          reported =
+            if List.last(messages)["content"] == "missing", do: nil, else: config[:reported]
+
+          {:ok,
+           %{
+             "role" => "assistant",
+             "content" => "Identity fixture",
+             "provider_data" => %{"reported_model" => reported}
+           }, %{}}
+
         :wait ->
           send(config.test_pid, {:worker, self()})
           Process.sleep(:infinity)
@@ -198,5 +209,53 @@ defmodule Ipse.SessionTest do
     assert_receive {:ipse, ^pid, {:done, :ok}}, 5000
     assert File.read!(Path.join(ctx.root, "ipse-demo.txt")) == "Hello from Ipse!\n"
     assert Ipse.Session.info(pid).final =~ "scripted demo"
+  end
+
+  test "runtime identity reaches each turn and missing reports clear the last response", ctx do
+    pid =
+      session(ctx, %{
+        provider: :ollama,
+        model: "chosen:alias",
+        scenario: :identity,
+        reported: "reported-snapshot",
+        api_key: "private-token"
+      })
+
+    assert Ipse.Session.info(pid).runtime.reported_model == nil
+    Ipse.Session.prompt(pid, "identity")
+    assert_receive {:model_input, [system | _]}, 2000
+    assert system["content"] =~ "Configured provider: ollama"
+    assert system["content"] =~ "Requested model: chosen:alias"
+    refute system["content"] =~ "private-token"
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 2000
+    assert Ipse.Session.info(pid).runtime.reported_model == "reported-snapshot"
+    refute inspect(Ipse.Session.info(pid)) =~ "private-token"
+
+    Ipse.Session.prompt(pid, "missing")
+    assert_receive {:model_input, [system | _]}, 2000
+    assert system["content"] =~ "Last response model (current run): reported-snapshot"
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 2000
+    assert Ipse.Session.info(pid).runtime.reported_model == nil
+  end
+
+  test "resume labels saved reported identity separately from the active runtime", ctx do
+    config = %{scenario: :identity, reported: "saved-snapshot"}
+    pid = session(ctx, config)
+    Ipse.Session.prompt(pid, "identity")
+    assert_receive {:model_input, _}, 2000
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 2000
+    id = Ipse.Session.info(pid).id
+    DynamicSupervisor.terminate_child(Ipse.Sessions, pid)
+    resumed = session(ctx, %{scenario: :identity, reported: "new-snapshot"}, id)
+    info = Ipse.Session.info(resumed).runtime
+    assert info.version == Application.spec(:ipse, :vsn) |> to_string()
+    assert info.reported_model == nil
+    assert info.historical_reported_model == "saved-snapshot"
+    Ipse.Session.prompt(resumed, "identity again")
+    assert_receive {:model_input, [system | _]}, 2000
+    assert system["content"] =~ "Last response model (current run): unavailable"
+    assert system["content"] =~ "Saved session's last response model: saved-snapshot"
+    assert_receive {:ipse, ^resumed, {:done, :ok}}, 2000
+    assert Ipse.Session.info(resumed).runtime.reported_model == "new-snapshot"
   end
 end

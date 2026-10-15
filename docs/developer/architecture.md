@@ -44,7 +44,27 @@ bounds atom usage and keeps proxy settings and connection state isolated between
 concurrent requests. Exhaustion returns a retryable error instead of creating
 unbounded profile names.
 
+## Runtime identity
+
+`Ipse.RuntimeInfo` is a small shared formatter and allowlisted snapshot builder.
+`Session.info/1` exposes it under `runtime`; `/info` formats that snapshot locally.
+The context builder formats the same facts for every model call. Application
+version is read from OTP application metadata. Configured provider/requested
+model come from the session configuration; configuration maps and credentials
+are never interpolated wholesale.
+
+Adapters retain optional validated `reported_model` in existing assistant
+`provider_data`, without changing their result tuples or continuation formats.
+Identifiers are bounded to 200 ASCII bytes and exclude whitespace/control text.
+The session tracks the last successful response in the active run separately
+from the last saved assistant response on resume. Missing metadata remains
+unavailable; it does not fall back to an older reported model or overwrite the
+requested model. Original journals without this optional field still work.
+A reported identifier is provider data, not evidence of an exact backend revision.
+No plugins, answer rewriting, extra model requests, or dependencies are needed.
+
 ## Trust and side effects
+
 
 The system message describes the workspace and available skill metadata.
 Project skills override user and bundled skills. A skill is plain instruction

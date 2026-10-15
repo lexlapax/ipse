@@ -68,8 +68,12 @@ transcripts. Never share `~/.ipse/auth/` or environment dumps.
 ## Model answers about its own version
 
 The startup banner shows the configured provider and requested model, not a
-verified backend revision. The current model instructions do not include those
-runtime facts, so a conversational answer about its own version can be incomplete
-or incorrect. Use the banner and your explicit `--model` selection as configuration
-evidence. A deterministic runtime-info command and bounded identity context are
-[planned](../plan.md#runtime-identity-and-extension-boundaries), not implemented.
+verified backend revision. Use `/info` in chat for the active Ipse application
+version, configured provider, requested model, and last provider-reported model.
+This command is local and does not call a model or change billing mode.
+The same allowlisted facts enter model context on every turn, but conversational
+answers can still be incorrect. Aliases do not prove an exact backend revision.
+Before a response, or when the provider omits an identifier, the current-run
+reported model is unavailable. Resume labels saved response metadata separately.
+See [runtime identity](usage.md#runtime-identity) and the
+[design boundaries](../plan.md#runtime-identity-and-extension-boundaries).

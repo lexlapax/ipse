@@ -73,6 +73,7 @@ are needed for tests or the demo.
 | --- | --- |
 | Application supervision | `lib/ipse/application.ex` |
 | Session state, turn loop, approval, cancellation | `lib/ipse/session.ex` |
+| Allowlisted application/provider/model facts | `lib/ipse/runtime_info.ex` |
 | Terminal client and option parsing | `lib/ipse/cli.ex` |
 | Provider selection and wire formats | `lib/ipse/provider.ex`, `lib/ipse/provider/` |
 | Isolated HTTP profile ownership | `lib/ipse/http_profile.ex` |

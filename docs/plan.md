@@ -106,14 +106,12 @@ it.
 
 Observed on 2026-10-15: the CLI displayed `chatgpt/gpt-6.1-sol`, but a
 natural-language version question produced a claim that the model name was
-unavailable. `Ipse.Context.system/2` currently supplies the agent name and
-workspace, not the application version or configured provider/model. The
-OpenAI adapter currently retains usage and continuation items, not reported
-model identity. This is a runtime-context gap; model self-description is not
-an authoritative version source.
+unavailable. The previous context builder omitted application/provider/model
+facts and adapters discarded reported model metadata. Model self-description
+is not an authoritative version source.
 
-Prioritize a small follow-up within P1 before P2/P3: one core Elixir module
-builds an allowlisted runtime description from application/session state.
+Implemented on 2026-10-15: `Ipse.RuntimeInfo` builds an allowlisted runtime
+description from application/session state for `/info` and every model turn.
 Distinguish Ipse's application version, configured provider and requested model,
 and any provider-reported model identifier. An alias is not proof of an exact
 backend revision; unknown revision stays unknown. Feed these facts into the
@@ -121,14 +119,17 @@ host-owned instruction section on every turn and offer a deterministic `/info`
 command using the same source. Do not intercept natural-language questions with
 keyword matching or rewrite model answers after streaming them. Keep credentials,
 authorization headers, account identity, and private configuration out of this
-surface. Resume must describe the active runtime and clearly separate any saved
-session metadata.
+surface. Resume describes the active application version and separates the
+saved session's last reported model from current-run responses.
 
 Acceptance: fixture tests cover application version, provider/model overrides,
 resume, missing or differing provider-reported identifiers, and secret exclusion;
 request fixtures prove the facts reach each adapter. Live natural-language checks
 are recorded separately and do not replace deterministic `/info` checks. Operator
-docs must explain configured versus reported identity and unresolved aliases.
+docs explain configured versus reported identity and unresolved aliases.
+The full 66-test fixture suite and source baseline passed; a live local Ollama
+identity response also passed. Subscription identity inference was not repeated
+after logout. See [verification evidence](developer/testing.md).
 
 Research favors code-managed prompt builders with explicit identity/context,
 not a plugin framework for this example; see official OpenAI

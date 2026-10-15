@@ -31,6 +31,8 @@ defmodule Ipse.Session do
         dir: dir,
         cwd: cwd,
         config: config,
+        reported_model: nil,
+        historical_model: historical_model(events),
         subscriber: Keyword.fetch!(opts, :subscriber),
         skills: Skills.discover(cwd),
         messages: restore(events),
@@ -53,8 +55,10 @@ defmodule Ipse.Session do
   end
 
   @impl true
-  def handle_call(:info, _from, s),
-    do: {:reply, Map.take(s, [:id, :cwd, :phase, :usage, :final]), s}
+  def handle_call(:info, _from, s) do
+    info = Map.take(s, [:id, :cwd, :phase, :usage, :final]) |> Map.put(:runtime, runtime(s))
+    {:reply, info, s}
+  end
 
   def handle_call({:prompt, _}, _from, %{phase: phase} = s) when phase != :idle,
     do: {:reply, {:error, :busy}, s}
@@ -117,7 +121,15 @@ defmodule Ipse.Session do
       {:model, {:ok, assistant, usage}} ->
         s = append_message(s, assistant)
         calls = Map.get(assistant, "tool_calls", []) || []
-        s = %{s | usage: usage, calls: calls, final: assistant["content"] || ""}
+
+        s = %{
+          s
+          | usage: usage,
+            calls: calls,
+            final: assistant["content"] || "",
+            reported_model: reported_model(assistant)
+        }
+
         notify(s, {:usage, usage})
         if calls == [], do: {:noreply, finish(s, :ok)}, else: {:noreply, next_tool(s)}
 
@@ -168,7 +180,8 @@ defmodule Ipse.Session do
       fail(s, "Reached the #{max}-step limit. Send another message to continue.")
     else
       messages = [
-        %{"role" => "system", "content" => Ipse.Context.system(s.cwd, s.skills)} | s.messages
+        %{"role" => "system", "content" => Ipse.Context.system(s.cwd, s.skills, runtime(s))}
+        | s.messages
       ]
 
       if byte_size(Jason.encode!(messages)) > Map.get(s.config, :context_bytes, 400_000) do
@@ -330,6 +343,30 @@ defmodule Ipse.Session do
       false -> {:error, :resume_configuration_mismatch}
       {:error, reason} -> {:error, reason}
       _ -> {:error, :invalid_session}
+    end
+  end
+
+  defp runtime(s),
+    do: Ipse.RuntimeInfo.snapshot(s.config, s.reported_model, s.historical_model)
+
+  defp reported_model(%{"provider_data" => data}) when is_map(data),
+    do: Ipse.RuntimeInfo.model_name(data["reported_model"])
+
+  defp reported_model(_), do: nil
+
+  defp historical_model(events) do
+    events
+    |> Enum.reverse()
+    |> Enum.find_value(fn
+      %{"type" => "message", "message" => %{"role" => "assistant"} = message} ->
+        {:found, reported_model(message)}
+
+      _ ->
+        nil
+    end)
+    |> case do
+      {:found, model} -> model
+      nil -> nil
     end
   end
 

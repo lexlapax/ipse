@@ -236,6 +236,29 @@ defmodule Ipse.CLITest do
     end)
   end
 
+  test "/info is local and stays available while a model response is pending" do
+    with_fixture_and_cli(fn fixture, cli ->
+      await_input(cli.stdio)
+      stdio = cli.stdio
+      Ipse.CLITest.IOFixture.feed(cli.stdio, "/info")
+      assert_receive {:io_output, ^stdio, "Ipse version: " <> _ = first_info}, 2_000
+      assert first_info =~ "Ipse version: #{Application.spec(:ipse, :vsn)}"
+      assert first_info =~ "Requested model: test"
+      refute_receive {:ollama_request, _, _, _}, 100
+      Ipse.CLITest.IOFixture.feed(cli.stdio, "identify yourself")
+      {server, 1, request} = await_request(fixture)
+      assert hd(request["messages"])["content"] =~ "Configured provider: ollama"
+      Ipse.CLITest.IOFixture.feed(cli.stdio, "/info")
+      assert_receive {:io_output, ^stdio, "Ipse version: " <> _ = pending_info}, 2_000
+      assert pending_info =~ "Last response model (current run): unavailable"
+      Ipse.CLITest.HTTPFixture.reply(server, 1, Ipse.CLITest.HTTPFixture.final_body("done"))
+      await_text(cli.stderr, "Finished.")
+      refute_receive {:ollama_request, _, _, _}, 100
+      Ipse.CLITest.IOFixture.feed(cli.stdio, :eof)
+      assert 0 == Task.await(cli.task, 3_000)
+    end)
+  end
+
   test "provider errors are visible and finish the turn with an error status" do
     with_fixture_and_cli(fn fixture, cli ->
       await_input(cli.stdio)

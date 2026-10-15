@@ -20,6 +20,7 @@ defmodule Ipse.Provider.OpenAITest do
           "type" => "response.completed",
           "response" => %{
             "status" => "completed",
+            "model" => "openai-reported-model",
             "output" => output,
             "usage" => %{"input_tokens" => 5}
           }
@@ -28,6 +29,7 @@ defmodule Ipse.Provider.OpenAITest do
       )
 
     assert {:ok, message, %{"input_tokens" => 5}} = OpenAI.finish(state)
+    assert message["provider_data"]["reported_model"] == "openai-reported-model"
 
     assert [
              %{
@@ -85,6 +87,7 @@ defmodule Ipse.Provider.OpenAITest do
 
     {:ok, state} = OpenAI.consume(OpenAI.new(), Enum.map_join(events, &sse/1), fn _ -> :ok end)
     assert {:ok, message, %{}} = OpenAI.finish(state)
+    refute Map.has_key?(message["provider_data"], "reported_model")
     assert Enum.map(message["tool_calls"], & &1["function"]["arguments"]) == ["{\"x\":1}", "{}"]
   end
 

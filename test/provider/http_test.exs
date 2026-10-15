@@ -13,6 +13,7 @@ defmodule Ipse.Provider.HTTPTest do
           "type" => "response.completed",
           "response" => %{
             "status" => "completed",
+            "model" => "openai-fixture-model",
             "output" => output,
             "usage" => %{"output_tokens" => 1}
           }
@@ -29,10 +30,14 @@ defmodule Ipse.Provider.HTTPTest do
       timeout_ms: 5000
     }
 
-    assert {:ok, %{"content" => "hello"}, %{"output_tokens" => 1}} =
+    assert {:ok,
+            %{
+              "content" => "hello",
+              "provider_data" => %{"reported_model" => "openai-fixture-model"}
+            }, %{"output_tokens" => 1}} =
              Provider.complete(
                config,
-               [%{"role" => "user", "content" => "hi"}],
+               [runtime_message(config), %{"role" => "user", "content" => "hi"}],
                [],
                &send(owner, &1)
              )
@@ -43,6 +48,10 @@ defmodule Ipse.Provider.HTTPTest do
     assert String.downcase(headers) =~ "authorization: bearer test-secret"
     assert request["store"] == false
     assert request["stream"] == true
+
+    assert Enum.any?(request["input"], fn item ->
+             item["content"] =~ "Ipse version:" and item["content"] =~ "Requested model: test"
+           end)
   end
 
   test "a clean HTTP EOF without a model completion is an error" do
@@ -94,6 +103,7 @@ defmodule Ipse.Provider.HTTPTest do
           "content" => "",
           "tool_calls" => [%{"function" => %{"name" => "read", "arguments" => %{"path" => "a"}}}]
         },
+        "model" => "ollama:fixture-model",
         "done" => true,
         "prompt_eval_count" => 7,
         "eval_count" => 3
@@ -101,17 +111,26 @@ defmodule Ipse.Provider.HTTPTest do
 
     {base, server} = fixture(body)
 
-    assert {:ok, %{"tool_calls" => [call]}, %{"input_tokens" => 7}} =
+    assert {:ok,
+            %{
+              "tool_calls" => [call],
+              "provider_data" => %{"reported_model" => "ollama:fixture-model"}
+            }, %{"input_tokens" => 7}} =
              Provider.complete(
                %{provider: :ollama, model: "test", base_url: base, timeout_ms: 5000},
-               [],
+               [runtime_message(%{provider: :ollama, model: "test"})],
                [],
                fn _ -> :ok end
              )
 
     assert Jason.decode!(call["function"]["arguments"]) == %{"path" => "a"}
-    {headers, _} = Task.await(server)
+    {headers, request} = Task.await(server)
     assert headers =~ "POST /api/chat HTTP/1.1"
+
+    assert Enum.any?(request["messages"], fn message ->
+             message["content"] =~ "Ipse version:" and
+               message["content"] =~ "Requested model: test"
+           end)
 
     {next_base, next_server} = fixture(body)
 
@@ -130,7 +149,10 @@ defmodule Ipse.Provider.HTTPTest do
   test "Anthropic streams tools and preserves native blocks" do
     body =
       [
-        %{"type" => "message_start", "message" => %{"usage" => %{"input_tokens" => 4}}},
+        %{
+          "type" => "message_start",
+          "message" => %{"model" => "anthropic-fixture-model", "usage" => %{"input_tokens" => 4}}
+        },
         %{
           "type" => "content_block_start",
           "index" => 0,
@@ -171,7 +193,7 @@ defmodule Ipse.Provider.HTTPTest do
                  api_key: "key",
                  timeout_ms: 5000
                },
-               [],
+               [runtime_message(%{provider: :anthropic, model: "test"})],
                [],
                fn _ -> :ok end
              )
@@ -180,7 +202,11 @@ defmodule Ipse.Provider.HTTPTest do
              message["tool_calls"]
 
     assert [%{"input" => %{"path" => "a"}}] = message["provider_data"]["content"]
-    Task.await(server)
+    assert message["provider_data"]["reported_model"] == "anthropic-fixture-model"
+    {_headers, request} = Task.await(server)
+    assert request["system"] =~ "Ipse version:"
+    assert request["system"] =~ "Configured provider: anthropic"
+    assert request["system"] =~ "Requested model: test"
   end
 
   test "loopback always bypasses proxies" do
@@ -232,4 +258,9 @@ defmodule Ipse.Provider.HTTPTest do
   end
 
   defp event(data), do: "data: " <> Jason.encode!(data) <> "\n\n"
+
+  defp runtime_message(config) do
+    runtime = Ipse.RuntimeInfo.snapshot(config)
+    %{"role" => "system", "content" => Ipse.Context.system(System.tmp_dir!(), [], runtime)}
+  end
 end

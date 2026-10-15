@@ -15,7 +15,14 @@ defmodule Ipse.Provider.Anthropic do
         {"accept", "text/event-stream"}
       ]
 
-      state = %{sse: SSE.new(), blocks: %{}, done: false, stop_reason: nil, usage: %{}}
+      state = %{
+        sse: SSE.new(),
+        blocks: %{},
+        done: false,
+        stop_reason: nil,
+        usage: %{},
+        reported_model: nil
+      }
 
       with {:ok, state} <-
              HTTP.stream(url, headers, body, config, state, fn state, chunk ->
@@ -110,7 +117,13 @@ defmodule Ipse.Provider.Anthropic do
        "Anthropic reported an error. Check model access, account limits, and request settings."}
 
   defp event(state, %{"type" => "message_start", "message" => message}, _),
-    do: {:ok, %{state | usage: message["usage"] || %{}}}
+    do:
+      {:ok,
+       %{
+         state
+         | usage: message["usage"] || %{},
+           reported_model: Ipse.RuntimeInfo.model_name(message["model"])
+       }}
 
   defp event(
          state,
@@ -189,6 +202,11 @@ defmodule Ipse.Provider.Anthropic do
       "content" => text,
       "provider_data" => %{"provider" => "anthropic", "content" => content}
     }
+
+    message =
+      if state.reported_model,
+        do: put_in(message, ["provider_data", "reported_model"], state.reported_model),
+        else: message
 
     message = if calls == [], do: message, else: Map.put(message, "tool_calls", calls)
     {:ok, message, state.usage}
