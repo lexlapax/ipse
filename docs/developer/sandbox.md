@@ -91,6 +91,39 @@ The public alternatives reviewed so far do not close the observed gap:
   It is outside the approved ad-hoc helper design and has not been adopted or
   evaluated as a complete termination mechanism.
 
+### Additional native controls reviewed
+
+After the developer chose continued public-native research, the follow-up
+review compared these contracts with the reproduced escape. These are source
+and documentation findings; none is a new runtime dependency or OS test.
+
+| Candidate | Documented behavior or source evidence | Decision for Ipse |
+| --- | --- | --- |
+| [Foundation `Process.terminate()`](https://developer.apple.com/documentation/foundation/process/terminate()) | Sends `SIGTERM`, which the target may ignore. Has no effect after the receiver finishes. | Cannot establish forced cleanup after the original command exits. |
+| [XPC services](https://developer.apple.com/library/archive/documentation/MacOSX/Conceptual/BPSystemStartup/Chapters/CreatingXPCServices.html) | `launchd` manages the service and kills idle services. | Useful for a separate helper policy, but no verified contract for escaped descendants. |
+| [`posix_spawn` attributes](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/posix_spawnattr_setflags.3.html) | Set the initial group or start the initial child suspended. | Do not establish inherited, immutable membership for later untrusted forks. |
+| [`ptrace`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/ptrace.2.html) | Controls an identified traced process. The documented request set has no follow-fork containment operation. | No verified mechanism for arbitrary descendants and owner death. |
+| [libproc interfaces](https://github.com/apple-oss-distributions/xnu/blob/main/libsyscall/wrappers/libproc/libproc.h) | The header labels its process-information interfaces private and subject to change. The installed SDK has the same warning. | Do not adopt them as a documented public containment contract. |
+| [`proc_terminate_all_rsr`](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/kern/proc_info.c) | XNU iterates the global process list and filters `P_RSR`, not descendants of a caller-supplied command. | Not a per-command kill-tree operation. Not invoked. |
+| [XNU coalition controls](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/sys/coalition.h) | Visible in OS source, but absent from the inspected SDK's `usr/include` tree. No documented app contract was located for private job creation, immutable membership, and forced teardown. | Source visibility does not satisfy the public-interface requirement. Not invoked. |
+| [Endpoint Security fork events](https://developer.apple.com/documentation/endpointsecurity/event-types?language=objc) | Forks produce `NOTIFY_FORK`; the installed SDK has no `AUTH_FORK`. [Apple documents dropped messages](https://developer.apple.com/videos/play/wwdc2020/10159/) when the queue fills. | Notifications alone cannot prove complete descendant membership or prevent escape. No entitlement requested or client installed. |
+
+Context7 resolved Apple's Foundation documentation and returned the termination
+contract. Direct Apple documentation and XNU source supplied the other findings.
+The installed SDK inspected was **27.0**, separate from the **26.7.2** host OS
+and earlier macOS 14 CI. SDK inspection is not execution evidence for any of
+those candidate APIs or a compatibility claim for older releases.
+
+This review found no verified replacement for process-group cleanup. A viable
+candidate must establish kernel-enforced membership before untrusted code runs,
+preserve it across fork/spawn/exec and group changes, protect the supervisor,
+and force every member to stop on cancellation, timeout, or owner death.
+It must also provide a safe completion check without signaling unrelated host
+processes. Until that contract and adversarial proof exist, resource ceilings
+and a signing cache cannot make the current design production-ready.
+
+### Resource requirements
+
 Apple's [`setrlimit` contract](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/getrlimit.2.html)
 provides inherited process limits. The proposed ceilings are core files disabled,
 256 open descriptors, 64 MiB regular files, and CPU seconds derived from the

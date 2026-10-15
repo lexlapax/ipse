@@ -263,3 +263,8 @@ and [actual local results](developer/testing.md#macos-process-boundary-2026-10-1
 The developer selected continued investigation of public native process controls
 with macOS native mode disabled. Relaxing descendant cleanup or adopting a VM
 was not selected.
+The follow-up review covered Foundation, XPC, spawn attributes, ptrace, libproc,
+coalitions, and Endpoint Security. No compatible public process-tree boundary
+was verified; see the [candidate comparison](developer/sandbox.md#additional-native-controls-reviewed).
+Source visibility, event notifications, and service lifecycle are insufficient
+evidence for adversarial descendant termination. The production gates stay open.

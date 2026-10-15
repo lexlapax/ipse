@@ -563,3 +563,22 @@ Public-interface research is recorded in
 isolation, adversarial reparenting, signing/cache recovery and container cleanup,
 and bundled native-mode enforcement remain open. Linux enforcement was not run
 on this macOS host. No live provider or Windows check was performed.
+
+The [CI run for `e4ce266`](https://github.com/lexlapax/ipse/actions/runs/38714558457)
+passed both Ubuntu Linux and macOS 14 jobs: source build, formatting,
+warnings-as-errors compilation, ordinary tests, demo, packaging, and fresh-home
+bundled verification. The macOS file/network probe also passed. The new
+process-boundary flag was not included in that passing CI run; its eight local
+failures remain open production acceptance checks.
+
+Following the developer's decision to keep native mode unavailable and continue
+public-native investigation, reviewed Foundation termination through Context7,
+Apple's XPC/spawn/ptrace contracts, XNU libproc and coalition sources, and
+Endpoint Security documentation and installed SDK headers. The SDK was **27.0**.
+No compatible process-tree boundary was verified. These are documentation/source
+findings, not live tests of the candidate APIs. No private API, service,
+entitlement, or package was adopted. See the
+[candidate comparison](sandbox.md#additional-native-controls-reviewed).
+The follow-up documentation check validated 192 local inline links and heading
+anchors across 29 Markdown files. CLI help still documents opt-in native mode
+and fail-closed unavailability. No additional runtime behavior was changed.
