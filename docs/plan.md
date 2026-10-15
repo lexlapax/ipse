@@ -240,3 +240,9 @@ release verification. The macOS App Sandbox probe signs an isolated helper with
 approved built-in `codesign`; its enforcement result must be recorded after the
 actual macOS CI run. Fresh-home checks do not substitute for every target OS,
 architecture, signing/notarization, or account-eligibility check.
+
+The first hosted matrix run passed Linux and macOS core/source/package checks.
+The macOS enforcement probe stopped before signing on a Rust crate-name error;
+that reproduced issue is fixed, and network assertions now require permission
+denial rather than any failed connection. Enforcement remains pending a passing
+macOS probe; see [actual results](developer/testing.md#p4-release-verification-and-protocol-proposal-2026-10-15).

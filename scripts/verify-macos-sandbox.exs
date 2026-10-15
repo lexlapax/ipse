@@ -59,10 +59,16 @@ defmodule Ipse.MacSandboxProbe do
       :ok = File.ln_s(outside_secret, symlink_read)
       File.write!(network_source, network_probe_source())
 
-      {_compile_output, 0} =
-        System.cmd(rustc, ["--edition=2021", network_source, "-o", network_probe],
-          stderr_to_stdout: true
-        )
+      compile_args = [
+        "--edition=2021",
+        "--crate-name",
+        "ipse_network_probe",
+        network_source,
+        "-o",
+        network_probe
+      ]
+
+      {_compile_output, 0} = System.cmd(rustc, compile_args, stderr_to_stdout: true)
 
       File.chmod!(network_probe, 0o700)
       File.cp!(helper, executable)
@@ -128,7 +134,7 @@ defmodule Ipse.MacSandboxProbe do
         network_self_test = "#{shell_quote(network_probe)} --self-test"
 
         network_denial_check =
-          "#{shell_quote(network_probe)} 127.0.0.1 #{port} >/dev/null 2>&1 && exit 33; test $? -ne 0"
+          "#{shell_quote(network_probe)} --expect-denied 127.0.0.1 #{port}"
 
         nested_commands = [
           outside_read_check,
@@ -274,10 +280,24 @@ defmodule Ipse.MacSandboxProbe do
             println!("ready");
             return Ok(());
         }
-        if args.len() != 3 { return Err("usage: network-probe IP PORT".into()); }
-        let address: SocketAddr = format!("{}:{}", args[1], args[2])
+        let expect_denied = args.len() == 4 && args[1] == "--expect-denied";
+        if args.len() != 3 && !expect_denied { return Err("usage: network-probe [--expect-denied] IP PORT".into()); }
+        let offset = if expect_denied {2} else {1};
+        let address: SocketAddr = format!("{}:{}", args[offset], args[offset+1])
             .parse().map_err(|error| format!("invalid address: {error}"))?;
-        let mut stream = TcpStream::connect_timeout(&address, Duration::from_secs(2))
+        let connection = TcpStream::connect_timeout(&address, Duration::from_secs(2));
+        if expect_denied {
+            return match connection {
+                Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied ||
+                    matches!(error.raw_os_error(), Some(1) | Some(13)) => {
+                        println!("connect denied by permission policy");
+                        Ok(())
+                    },
+                Err(error) => Err(format!("expected a connect permission denial, got: {error}")),
+                Ok(_) => Err("connection succeeded despite expected sandbox denial".into()),
+            };
+        }
+        let mut stream = connection
             .map_err(|error| format!("connect denied or unavailable: {error}"))?;
         stream.set_read_timeout(Some(Duration::from_secs(2))).map_err(|error| error.to_string())?;
         let mut response = String::new();

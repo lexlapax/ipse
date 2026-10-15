@@ -36,6 +36,10 @@ Mix can also need local sockets. Initial dependency fetching needs network.
 No real API keys or subscription are required. Auth transport injection is
 compiled only for the test environment.
 
+Ordinary `mix test` excludes `:native_sandbox` enforcement checks. On a supported
+Linux host, run `mix test --include native_sandbox`; included checks fail when
+unavailable. Report the exclusion count and actual OS enforcement separately.
+
 The demo is deterministic and does not call a model. It checks that the CLI,
 session loop, skill loading, file tools, and native command helper work together.
 Use its printed ID with `./bin/ipse chat --resume SESSION_ID` under the
@@ -46,6 +50,18 @@ same `IPSE_HOME`; `/session` should show the session without replaying tools.
 ```sh
 ./scripts/package.sh
 ```
+
+From the source checkout, verify the printed archive automatically:
+
+```sh
+elixir scripts/verify-package.exs dist/ipse-*.tar.gz
+```
+
+The glob must select exactly one archive; otherwise pass the exact printed path.
+This creates an isolated fresh HOME/IPSE_HOME and utility-only PATH, checks
+default/explicit working directories (including spaces), and runs bundled helper
+lifecycle checks. It uses the existing account and needs a bounded outer job
+timeout. CI runs it on Linux and macOS; no archive is published automatically.
 
 Extract the printed archive into an empty directory. Run `./ipse --help`
 and `IPSE_HOME=$(mktemp -d) ./ipse demo` there. Do not rely on a source
@@ -429,7 +445,7 @@ helper app, and Rust standard-library TCP probe. It requires successful executio
 and a reachable network control before claiming network denial; it checks outside
 file/symlink/metadata denial and allowed workspace/private-temp writes. Syntax
 and the Rust probe were checked locally; actual macOS enforcement remains
-unverified until the hosted job completes. The supported CLI still fails closed
+unverified until a hosted probe passes. The supported CLI still fails closed
 for native mode on macOS; this probe alone does not implement resource/process
 containment for a production backend.
 
@@ -437,3 +453,13 @@ The [protocol proposal](protocol-proposal.md) defines schemas, explicit trust an
 configuration, approvals, cancellation/ownership, durable intent/results, and
 unknown-outcome recovery. It does not implement MCP, delegated agents, or remote
 execution. Those require their own focused implementation and tests.
+
+The [first cross-platform CI run](https://github.com/lexlapax/ipse/actions/runs/38709598986)
+passed Linux checks and macOS source build, formatting, warnings-as-errors
+compilation, ordinary tests, demo, packaging, and fresh-home bundled verification.
+The experimental macOS step failed before enforcement because the hidden Rust
+source filename produced an invalid inferred crate name. An explicit crate name
+fixes this reproduced build issue. Review also tightened network checks to accept
+only a connect permission denial, rejecting refusal, timeout, and successful
+connections. The revised Rust probe passed those controls under Linux native
+enforcement; macOS enforcement still requires its own successful run.
