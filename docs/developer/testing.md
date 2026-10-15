@@ -339,4 +339,6 @@ ambiguity without changing their coverage. Formatting passes with both Arch
 Elixir 1.20.4 and the official checksum-verified Elixir 1.18.4 OTP-27 build.
 The latter was used for formatting only on the local OTP 29 host, not as proof
 of the minimum runtime combination. All 11 affected provider fixtures passed
-locally. The follow-up GitHub run will determine actual CI compatibility.
+locally. The follow-up [GitHub Checks run](https://github.com/lexlapax/ipse/actions/runs/38703884589)
+passed on the configured OTP 27 / Elixir 1.18 combination, including formatting,
+all 78 tests, build, and demo.
