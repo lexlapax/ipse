@@ -628,3 +628,10 @@ PATH. Earlier trusted helper/lock checks also passed.
 
 Linux enforcement and live provider inference were not run on this Mac.
 OS-managed test app containers persist. No package was published.
+
+The first CI run for `2ffcad2` stopped at formatting on both platforms before
+tests. Elixir 1.18 wraps a long pinned-pattern expression differently from 1.20.
+Extracting the entitlement path keeps the expression short and both formatter
+versions agree. Formatting passed locally with Elixir 1.18.5/OTP 27.3.4 and
+1.20.3/OTP 29.0.5; all 16 cache tests passed after this behavior-preserving change.
+Operator guidance was reviewed and remains valid. The replacement CI run is pending.

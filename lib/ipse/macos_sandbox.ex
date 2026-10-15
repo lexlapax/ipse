@@ -311,6 +311,8 @@ defmodule Ipse.MacOSSandbox do
   end
 
   defp validate_generation(helper, generation, expected, xml, uid) do
+    entitlements_path = Path.join(generation, "entitlements.plist")
+
     with :ok <- validate_tree(generation, uid),
          {:ok, bytes} <- read_bounded(Path.join(generation, "manifest.json"), @metadata_limit),
          {:ok, manifest} <- Jason.decode(bytes),
@@ -318,7 +320,7 @@ defmodule Ipse.MacOSSandbox do
          true <- Map.delete(manifest, "worker_sha256") == expected,
          {:ok, worker} <- read_bounded(worker_path(generation), @source_limit),
          true <- manifest["worker_sha256"] == sha256(worker),
-         {:ok, ^xml} <- read_bounded(Path.join(generation, "entitlements.plist"), @metadata_limit),
+         {:ok, ^xml} <- read_bounded(entitlements_path, @metadata_limit),
          {:ok, info} <-
            read_bounded(
              Path.join([app_path(generation), "Contents", "Info.plist"]),
