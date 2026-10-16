@@ -85,6 +85,10 @@ recovery behavior. There is no full-screen TUI, remote-agent, or Windows support
 See [runtime limits](docs/operator/usage.md#runtime-and-limits)
 and [architecture](docs/developer/architecture.md) for details.
 
+Use `$research` with explicitly configured search/fetch MCP tools for bounded
+research and a durable source/claim ledger; see [research setup](docs/operator/research.md).
+No external search service is embedded or required.
+
 Find setup, operation, development, and verification guidance in the
 [documentation map](docs/index.md).
 

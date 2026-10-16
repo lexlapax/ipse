@@ -88,8 +88,11 @@ public identifiers or metadata.
 
 Tool input and prompt argument schemas are bounded to 32 KiB, depth 8, and 256
 nodes. The root may omit `$schema` or use exactly
-`https://json-schema.org/draft/2020-12/schema`; other dialect identifiers are
-rejected. Supported types are object, string, integer, number, boolean, null,
+`https://json-schema.org/draft/2020-12/schema`. The canonical
+`http://json-schema.org/draft-07/schema#` identifier is accepted only for the
+checked identical-keyword subset, then explicitly adapted for JSONSchex. Other
+dialect identifiers and draft-specific keywords remain rejected; see
+[research compatibility](research.md#mcp-compatibility-evaluation). Supported types are object, string, integer, number, boolean, null,
 and array. A two-element type array is accepted only when it pairs one supported
 non-null type with `null`. Supported keywords are `properties`, `required`,
 boolean `additionalProperties`, `items`, scalar `enum`, string and array length

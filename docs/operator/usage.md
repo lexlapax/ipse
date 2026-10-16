@@ -448,3 +448,12 @@ Embedded clients receive `{:question, id, arguments}` inside the usual Ipse even
 envelope and answer with `Ipse.Session.answer(pid, id, answers)`, where `answers`
 maps each question ID to an option ID, a list of IDs, or text. See the
 [developer contract](../developer/operator-questions.md) for schema and recovery.
+
+## Research
+
+Use `$research` with an explicitly selected compatible MCP search/fetch service.
+Native source/claim tools retain auditable evidence in the private session journal
+outside compacted model context; `ipse research --resume ID` exports it locally.
+No endpoint, credential or fallback search service is embedded. See
+[research configuration and limits](research.md); recorded support kinds are
+model assessments, not automatic truth or freshness guarantees.

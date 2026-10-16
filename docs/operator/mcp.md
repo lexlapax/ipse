@@ -120,7 +120,8 @@ An in-flight approval retains its immutable configuration snapshot.
 The supported protocol is MCP 2025-11-25 over stdio or bounded Streamable HTTP. Each server supports
 at most 16 combined allowlist entries. Pagination, protocol messages, schemas,
 arguments, and results are bounded. Tool and prompt schemas allow the canonical
-JSON Schema Draft 2020-12 dialect (or no `$schema`), supported scalar/object/
+JSON Schema Draft 2020-12 dialect (or no `$schema`) and the explicitly checked
+identical-keyword Draft-07 subset, supported scalar/object/
 array types, a narrow keyword subset, and nullable type pairs. Defaults are
 validated as bounded data but never inserted into calls. References, arbitrary
 dialects, combinators, patterns, formats, and remote loading fail closed.

@@ -57,6 +57,55 @@ defmodule Ipse.MCP.SchemaTest do
     assert :ok = Schema.validate_arguments(enum_schema, %{"amount" => 1.0})
   end
 
+  test "adapts only the identical draft-07 keyword subset without loading a remote dialect" do
+    schema = %{
+      "$schema" => "http://json-schema.org/draft-07/schema#",
+      "type" => "object",
+      "properties" => %{
+        "query" => %{"type" => "string", "minLength" => 1},
+        "count" => %{"type" => "number", "minimum" => 1, "maximum" => 3},
+        "urls" => %{"type" => "array", "items" => %{"type" => "string"}, "maxItems" => 2}
+      },
+      "required" => ["query"],
+      "additionalProperties" => false
+    }
+
+    assert :ok = Schema.validate_schema(schema)
+
+    assert :ok =
+             Schema.validate_arguments(schema, %{
+               "query" => "public sources",
+               "count" => 2,
+               "urls" => ["https://example.com"]
+             })
+
+    for args <- [
+          %{},
+          %{"query" => ""},
+          %{"query" => "x", "count" => 4},
+          %{"query" => "x", "unexpected" => true}
+        ] do
+      assert {:error, _} = Schema.validate_arguments(schema, args)
+    end
+
+    assert {:error, _} =
+             Schema.validate_schema(Map.put(schema, "$ref", "https://example.com/private"))
+
+    assert {:error, _} = Schema.validate_schema(Map.put(schema, "dependencies", %{}))
+
+    assert {:error, _} =
+             Schema.validate_schema(%{
+               "$schema" => "http://json-schema.org/draft-07/schema#",
+               "type" => "array",
+               "items" => [%{"type" => "string"}]
+             })
+
+    assert {:error, _} =
+             Schema.validate_schema(
+               Map.put(schema, "$schema", "http://json-schema.org/draft-04/schema#")
+             )
+  end
+
   test "accepts only the canonical root dialect and bounded inert defaults" do
     schema = %{
       "$schema" => "https://json-schema.org/draft/2020-12/schema",

@@ -64,6 +64,95 @@ await_lock = fn await_lock, path, attempts ->
 end
 
 try do
+  config_home = Path.join(scratch, "config-home")
+  File.mkdir_p!(config_home)
+  File.mkdir_p!(Path.join(scratch, ".git"))
+
+  File.write!(
+    Path.join(config_home, "config.json"),
+    Jason.encode!(%{
+      version: 1,
+      settings: %{subagents: true},
+      profiles: %{
+        strong: %{provider: "chatgpt", model: "gpt-6.1-sol", reasoning_effort: "high"},
+        local: %{provider: "ollama", model: "fixture-local"}
+      },
+      roles: %{main: "strong", routine: "local"}
+    })
+  )
+
+  {:ok, effective} = Ipse.Config.resolve(scratch, config_home, [], %{})
+  "strong" = effective.execution.id
+  "high" = Ipse.Profiles.runtime(effective).reasoning_effort
+
+  parent =
+    Map.merge(
+      %{provider: :chatgpt, model: "gpt-6.1-sol", api_key: "synthetic-parent-key"},
+      Ipse.Profiles.runtime(effective)
+    )
+
+  {:ok, local_child} = Ipse.Profiles.child_config(parent, %{}, %{})
+  :ollama = local_child.provider
+  false = Map.has_key?(local_child, :api_key)
+
+  %{"effort" => "high"} =
+    Ipse.Provider.OpenAI.request_body(
+      %{provider: :chatgpt, model: "gpt-6.1-sol", reasoning_effort: "high"},
+      [],
+      []
+    )["reasoning"]
+
+  IO.puts(
+    "Bundled scoped configuration and model-profile verification passed without authentication/inference."
+  )
+
+  research_dir = Path.join(scratch, "research-state")
+
+  {:ok, research_id} =
+    Ipse.Journal.create(research_dir, %{
+      "provider" => "demo",
+      "model" => "scripted",
+      "cwd" => scratch
+    })
+
+  :ok =
+    Ipse.Journal.append(research_dir, research_id, %{
+      "type" => "tool_started",
+      "name" => "mcp__fixture__fetch",
+      "call_id" => "bundled-fetch"
+    })
+
+  :ok =
+    Ipse.Journal.append(research_dir, research_id, %{
+      "type" => "message",
+      "message" => %{
+        "role" => "tool",
+        "tool_call_id" => "bundled-fetch",
+        "content" => "https://example.invalid/source Literal bundled evidence.",
+        "ipse_tool_outcome" => %{"status" => "result_recorded", "approval" => "approved"}
+      }
+    })
+
+  {:research_record, event, _} =
+    Ipse.Research.call(research_dir, research_id, "research_source", %{
+      "tool_call_id" => "bundled-fetch",
+      "url" => "https://example.invalid/source",
+      "excerpt" => "Literal bundled evidence."
+    })
+
+  :ok = Ipse.Journal.append(research_dir, research_id, event)
+  {:ok, %{"sources" => [source]}} = Ipse.Research.load(research_dir, research_id)
+  "Literal bundled evidence." = source["excerpt"]
+
+  {:error, _} =
+    Ipse.Research.call(research_dir, research_id, "research_claim", %{
+      "statement" => "Unsupported",
+      "kind" => "supported",
+      "source_ids" => []
+    })
+
+  IO.puts("Bundled durable research ledger verification passed without network retrieval.")
+
   {:ok, question_session} =
     DynamicSupervisor.start_child(
       Ipse.Sessions,

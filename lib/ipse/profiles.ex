@@ -23,7 +23,11 @@ defmodule Ipse.Profiles do
     if Enum.all?(profiles, fn {id, profile} -> id?(id) and validate_profile(profile) == :ok end) and
          Enum.all?(roles, fn {role, id} ->
            role in ~w(main routine review) and Map.has_key?(profiles, id)
-         end), do: :ok, else: {:error, "Invalid profile or role configuration."}
+         end) do
+      :ok
+    else
+      {:error, "Invalid profile or role configuration."}
+    end
   end
 
   def validate(_, _), do: {:error, "Invalid profile or role configuration."}
@@ -57,7 +61,9 @@ defmodule Ipse.Profiles do
   def reasoning(_provider, _model, nil), do: :ok
 
   def reasoning(provider, "gpt-6.1-sol", effort)
-      when provider in ["chatgpt", "openai"] and effort in ~w(low medium high xhigh max), do: :ok
+      when provider in ["chatgpt", "openai"] and effort in ~w(low medium high xhigh max) do
+    :ok
+  end
 
   def reasoning(_, _, _),
     do: {:error, "Reasoning effort is supported only for documented gpt-6.1-sol profiles."}
@@ -147,6 +153,7 @@ defmodule Ipse.Profiles do
             :home,
             :operator_home,
             :shared_root,
+            :parallel_child,
             :approval,
             :delegation_origin
           ])

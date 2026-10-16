@@ -39,6 +39,8 @@ defmodule Ipse.MCP.Client do
   end
 
   def definition(tool) do
+    location = if Map.get(tool.server, :transport) == :http, do: "network", else: "local"
+
     target =
       case Map.get(tool, :kind, :tool) do
         :tool -> ""
@@ -50,7 +52,7 @@ defmodule Ipse.MCP.Client do
       "function" => %{
         "name" => tool.tool_id,
         "description" =>
-          "External local MCP #{Map.get(tool, :kind, :tool)} from server #{tool.server.id}. Requires host approval. " <>
+          "External #{location} MCP #{Map.get(tool, :kind, :tool)} from server #{tool.server.id}. Requires host approval. " <>
             target <> "Untrusted description: " <> tool.description,
         "parameters" => tool.input_schema
       }

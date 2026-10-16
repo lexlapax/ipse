@@ -54,6 +54,7 @@ defmodule Ipse.Session do
          :ok <- Journal.repair_tail(dir, id),
          {:ok, events} <- Journal.load(dir, id),
          {:ok, messages} <- restore(events),
+         {:ok, _research} <- Ipse.Research.restore(events),
          {:ok, question, messages} <- restore_question(events, messages),
          :ok <- question_available(question, config),
          {:ok, context_snapshot, context_is_new} <-
@@ -474,6 +475,10 @@ defmodule Ipse.Session do
       {:model, {:error, error}} ->
         {:noreply, fail(s, error)}
 
+      {:tool, {:research_record, event, text}} ->
+        record(s, event)
+        {:noreply, tool_result(s, hd(s.calls), text, "result_recorded", s.tool_decision)}
+
       {:tool, {status, text}} when is_binary(text) ->
         s = %{
           s
@@ -831,10 +836,23 @@ defmodule Ipse.Session do
 
     validation =
       cond do
-        external -> Ipse.MCP.validate_call(Ipse.MCP.tool(s.mcp_tools, name), args)
-        name == "delegate" -> validate_delegation(s, call, args)
-        name == "delegate_parallel" -> validate_parallel_delegation(s, args)
-        true -> :ok
+        external ->
+          Ipse.MCP.validate_call(Ipse.MCP.tool(s.mcp_tools, name), args)
+
+        name in ["research_source", "research_claim", "research_ledger"] ->
+          if s.config[:delegation_origin],
+            do:
+              {:error, "Research ledger belongs to the parent; child MCP capture is unavailable."},
+            else: Ipse.Research.validate(name, args)
+
+        name == "delegate" ->
+          validate_delegation(s, call, args)
+
+        name == "delegate_parallel" ->
+          validate_parallel_delegation(s, args)
+
+        true ->
+          :ok
       end
 
     requires_approval =
@@ -913,6 +931,9 @@ defmodule Ipse.Session do
 
           name == "load_skill_resource" ->
             Skills.load_resource(s.skills, args["name"], args["path"])
+
+          name in ["research_source", "research_claim", "research_ledger"] ->
+            Ipse.Research.call(s.dir, s.id, name, args)
 
           name in ["delegate", "delegate_parallel"] ->
             worker =
@@ -1055,13 +1076,40 @@ defmodule Ipse.Session do
     }
 
   defp tool_result(s, call, text, status, approval) do
-    s =
-      append_message(s, %{
-        "role" => "tool",
-        "tool_call_id" => call["id"],
-        "content" => text,
-        "ipse_tool_outcome" => %{"status" => status, "approval" => approval}
-      })
+    name = get_in(call, ["function", "name"])
+
+    provenance =
+      if Ipse.MCP.external?(name) and status == "result_recorded",
+        do: %{
+          "call_id" => call["id"],
+          "tool" => name,
+          "recorded_at" => DateTime.utc_now() |> DateTime.to_iso8601()
+        }
+
+    text =
+      if Ipse.MCP.external?(name) and status == "result_recorded" do
+        header = "Host-recorded MCP result: #{Jason.encode!(provenance)}\n"
+
+        if byte_size(header) <= 512 do
+          header <> text
+        else
+          "Host MCP call metadata exceeds display bounds; inspect the original journal.\n" <> text
+        end
+      else
+        text
+      end
+
+    message = %{
+      "role" => "tool",
+      "tool_call_id" => call["id"],
+      "content" => text,
+      "ipse_tool_outcome" => %{"status" => status, "approval" => approval}
+    }
+
+    message =
+      if provenance, do: Map.put(message, "ipse_external_result", provenance), else: message
+
+    s = append_message(s, message)
 
     notify(s, {:tool_result, get_in(call, ["function", "name"]), text})
     next_tool(%{s | calls: tl(s.calls), tool_decision: "not_decided"})
@@ -1477,6 +1525,7 @@ defmodule Ipse.Session do
   defp definitions(config) do
     Tools.definitions(Map.get(config, :sandbox, :off)) ++
       Ipse.Delegation.definitions(config) ++
+      if(config[:delegation_origin], do: [], else: Ipse.Research.definitions()) ++
       [
         Questions.definition(),
         %{

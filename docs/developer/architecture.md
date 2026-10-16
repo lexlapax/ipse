@@ -269,3 +269,12 @@ documented reasoning capabilities and credential/native-history isolation for
 mixed-provider children. Configuration and skills grant no effect permissions.
 Shared skill discovery is integrated separately from the stable self-development
 trial.
+
+## Research ledger
+
+`Ipse.Research` binds bounded literal source excerpts and claim references to
+successful original MCP results. Native bookkeeping stays in private durable
+journal events, is revalidated on resume and survives context compaction without
+retrieval replay. Call IDs/time are explicit host provenance, while source content
+and semantic support assessments remain untrusted. Search services are operator
+MCP configuration, never embedded endpoints. See [research contract](research.md).
