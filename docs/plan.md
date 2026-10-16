@@ -19,9 +19,10 @@ the next feature sequence on 2026-10-15:
 | [P11](#p11-live-dotsetup-trial) | Read-only assessment in `~/projects/lexlapax/dotsetup` | Read-only comparison and selected follow-ups complete |
 | [P12](#p12-task-tracker-coding-trial) | New forms/SQLite task tracker | Specified-stack coding trial complete |
 | [P13](#p13-long-turn-compaction-and-general-purpose-trials) | Long-turn context recovery and neutral coding/non-coding trials | Complete within documented scope |
-| [P14](#p14-bounded-deep-research) | Research method, explicit search/retrieval, evidence and validation | Planned; implementation and live research trial not started |
-| [P15](#p15-scoped-configuration-and-shared-operator-skills) | Operator/project/directory configuration and shared skills | Planned; implementation not started |
-| [P16](#p16-explicit-model-profiles-and-task-routing) | Main/subtask model profiles and provider-specific settings | Planned; implementation and mixed-model live trial not started |
+| [P14](#p14-bounded-deep-research) | Research method, explicit search/retrieval, evidence and validation | Authorized; queued after P16 |
+| [P15](#p15-scoped-configuration-and-shared-operator-skills) | Operator/project/directory configuration and shared skills | Authorized; shared skills/self-development in progress |
+| [P16](#p16-explicit-model-profiles-and-task-routing) | Main/subtask model profiles and provider-specific settings | Authorized; queued after scoped configuration |
+| [P17](#p17-structured-operator-questions) | Validated operator questions and resumable answers | Authorized; queued after shared skills |
 
 Feature completion does not close every live provider acceptance check. On
 2026-10-15, installed Ollama `qwen3.5:9b`, Anthropic `claude-haiku-4-5`, and
@@ -36,7 +37,27 @@ history or changing billing/provider selection. Broader model/host eligibility
 and negative account cases remain separate from these scoped passes. No model
 download or new runtime dependency was required.
 
+## Authorized execution order, 2026-10-16
+
+The developer explicitly authorized completing all five proposed stages, with
+continued execution until done and a pause only for required operator action/input.
+This supersedes the earlier planning-only status of the selected work. Provider,
+billing, credentials and external-effect invariants still apply.
+
+| Order | Work | Status |
+| --- | --- | --- |
+| 1 | Supervised self-development using stable Ipse to add P15 shared operator skills | In progress in isolated worktree; independent review pending |
+| 2 | P17 structured operator questions | Pending |
+| 3 | Remaining P15 scoped configuration | Pending |
+| 4 | P16 explicit model profiles/routing | Pending |
+| 5 | P14 bounded deep research | Pending |
+
+Update each row and its implementation/evidence record as focused increments pass.
+Use independent review, required source/package checks and explicit live evidence;
+commit/push completed increments without declaring unverified integrations done.
+
 ## Prototype 0.1: available now
+
 
 - CLI and supervised OTP sessions; resumable JSONL conversations and demo.
 - Streaming ChatGPT/OpenAI, Ollama, and Anthropic adapters.
@@ -590,8 +611,8 @@ No unrestricted task coverage or unattended self-development is claimed.
 The developer asked what is needed for Ipse to develop itself. Existing file/shell
 and Git/Mix tooling, scoped instructions, approvals, persistence, providers and
 optional delegation/MCP can support a supervised trial now; a dedicated GitHub
-adapter or workflow engine is not a prerequisite. This is a proposed next trial,
-not authorization to implement another milestone during P13.
+adapter or workflow engine is not a prerequisite. The developer subsequently selected this as the first authorized stage on
+2026-10-16, using shared operator skill discovery as the bounded first change.
 
 Use an isolated checkout/worktree and the stable installed harness to make one
 small Ipse change, review its diff independently, run the required source and
@@ -604,10 +625,10 @@ supervised trials do not establish that capability.
 
 ## P14: bounded deep research
 
-Added to the plan at the developer's request on 2026-10-16. Status: planned;
-implementation and end-to-end live research validation have not started. This
-records direction, not authorization to enable servers, install dependencies,
-spend through another provider, or execute the milestone now. The separate
+Added to the plan at the developer's request on 2026-10-16 and subsequently
+authorized for implementation. Status: queued after P16; end-to-end live research
+validation has not started. External setup, credentials and provider/billing choices
+remain explicit within the authorized research scope. The separate
 [supervised self-development candidate](#candidate-next-step-supervised-self-development)
 remains available; adding this milestone does not impose a mandatory workflow.
 
@@ -665,11 +686,14 @@ cancellation/EOF and defined headless behavior. Waiting for clarification must
 not confer approval, execute an action or leave a model request running. Keep
 questions separate from permission prompts, validate stale/duplicate answers,
 and define how child questions reach the parent operator before enabling them.
-This is a recorded candidate, not an implemented or selected feature milestone.
+This is now selected for implementation in [P17](#p17-structured-operator-questions);
+it remains unavailable until that stage passes its checks.
 
 ## P15: scoped configuration and shared operator skills
 
-Added at the developer's request on 2026-10-16. Status: planned, not implemented.
+Added at the developer's request and authorized on 2026-10-16. Status: shared
+operator skill implementation/self-development trial in progress; scoped config
+queued after P17.
 Ipse currently uses CLI/environment settings and `~/.ipse` (or `IPSE_HOME`) for
 state, authentication, global instructions and Ipse-specific user skills. It does
 not automatically load operator/project configuration files, project/directory
@@ -720,7 +744,8 @@ Acceptance:
 
 ## P16: explicit model profiles and task routing
 
-Added at the developer's request on 2026-10-16. Status: planned, not implemented.
+Added at the developer's request and authorized on 2026-10-16. Status: queued
+after P15 scoped configuration.
 Current sessions select one provider/model from CLI/environment; children inherit
 that choice, and configurable reasoning effort is not exposed or forwarded.
 The intended use is a stronger main model with an explicitly chosen smaller local
@@ -767,3 +792,26 @@ Acceptance:
    contracts before declaring an increment complete. Document any added dependency
    in the inventory. Complete relevant source/package checks and commit/push;
    profile configuration and skills must never become implicit permission grants.
+
+## P17: structured operator questions
+
+Selected and authorized on 2026-10-16. Status: queued after shared operator skills.
+Implement the host-native clarification capability described in P14's related gap.
+
+Acceptance:
+
+1. A bounded `ask_operator` tool supports single-choice, multiple-choice and free
+   text with stable question/option identifiers, descriptions and optional
+   recommendations. Recommended options are never automatically submitted.
+2. Expose typed session/client question and answer events with explicit answer
+   validation. Reject stale/duplicate/invalid responses without executing tools;
+   keep clarifications separate from approval and permission grants.
+3. Journal questions and explicit answers and restore pending questions on idle
+   resume without repeating prior effects or inference. Cancellation, EOF, owner
+   death and headless invocation have defined bounded behavior; no hanging model
+   task or implicit default answer. Child questions use parent-mediated routing
+   or fail explicitly until that routing is supported.
+4. Verify CLI/API behavior, malformed and over-limit payloads, waiting/cancellation,
+   resume, owner death and no replay with fixtures and a bounded live choice task.
+   Review developer/operator documentation and map/links; run required source/
+   package checks and commit/push completed increments.
