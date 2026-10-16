@@ -24,6 +24,11 @@ third-party document or skill is not approval.
 The inventory below records the existing repository baseline, not newly granted
 approval. P6 local delegation uses existing Elixir/OTP and Rust facilities and
 adds no package or external runtime dependency.
+P22A1's inert artifact validator/store also adds no dependency: it reuses Jason,
+JSONSchex through the existing bounded schema adapter, OTP `Version`/filesystem/
+crypto APIs and the Rust helper's advisory locks. Custom code is limited to
+Ipse's descriptor constraints, snapshot identity and publication policy;
+no compiler, package loader, archive extractor or remote schema loader runs on import.
 See [agent rules](../../AGENTS.md), [setup](../operator/arch-linux.md), and
 [third-party notices](../../THIRD_PARTY_NOTICES.md).
 

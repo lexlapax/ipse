@@ -2396,3 +2396,23 @@ reported benchmark was reproduced. The knowledge plan now requires per-capabilit
 research/selection gates and a tool/skill/MCP/extension/core decision before any
 production implementation. Zero-Mem is an inspiration candidate, not a selected
 dependency, and token-free maintenance does not imply zero total compute/cost.
+
+## Extension artifact foundation (2026-10-16)
+
+P22A1 adds the inert manifest/store API, not executable extension activation.
+On Serenity (Linux, Elixir 1.20.4 / OTP 29.1.1), `./scripts/build.sh`,
+`mix format --check-formatted`, `mix compile --warnings-as-errors`,
+`mix test --include native_sandbox` and `./bin/ipse demo` passed. The full suite
+reported **358 passed / 14 macOS tests excluded**. Afterward, one additional
+interrupted-stage/symlinked-lock fixture was added; the complete focused
+`mix test test/extensions_store_test.exs --trace` run reported **8 passed**.
+No runtime code changed after the full run. Expected negative TLS and killed
+transport fixtures emitted diagnostics; no test failed.
+
+The focused fixtures cover nested duplicate keys, closed/bounded descriptors,
+path/hash/runtime declarations, inert copying/idempotence, source changes,
+symlinks, corruption/extra files, persistent advisory-lock inode identity and
+abandoned staging. See [developer contract](extension-artifacts.md) and
+[operator limitations](../operator/extensions.md). No live model, extension worker,
+macOS execution, extracted-package execution or release publication was verified
+by this increment. Those remain later P22 acceptance checks.

@@ -27,10 +27,10 @@ the next feature sequence on 2026-10-15:
 | [P19](#p19-long-session-diagnosis-and-recovery) | Diagnose retained-context limits and improve explicit recovery | Complete within documented scope; Linux and hosted Mac checks passed |
 | [P20](#p20-repeatable-supervised-self-development) | Reusable supervised development/review skill and evidence | Complete: fixtures, hosted checks and supervised live use; limitations recorded |
 | [P21](#p21-larger-self-development-trial-on-serenity) | Larger supervised trial with independent Mac verification | Complete within supervised scope; bounded review and Linux/hosted Mac checks passed |
-| [P22](#p22-extension-scaffold-and-lifecycle-hooks) | Typed extension scaffold, lifecycle hooks and runtime observability | Detailed extension-first plan ready; implementation not started |
-| [P23](#p23-usage-cost-reporting-and-budget-controls) | Usage/cost extensions and host budget admission | Planned follow-on; implementation not authorized |
-| [P24](#p24-voice-and-realtime-media) | Voice extensions and owned realtime/media capabilities | Planned follow-on; implementation not authorized |
-| [P25](#p25-optional-knowledge-extensions) | Default-off working/long-term memory, research, graph and RAG | Planned extension family; implementation not authorized |
+| [P22](#p22-extension-scaffold-and-lifecycle-hooks) | Typed extension scaffold, lifecycle hooks and runtime observability | Authorized; P22A artifact/SDK foundation in progress |
+| [P23](#p23-usage-cost-reporting-and-budget-controls) | Usage/cost extensions and host budget admission | Authorized; follows P22 accounting foundation |
+| [P24](#p24-voice-and-realtime-media) | Voice extensions and owned realtime/media capabilities | Authorized; follows owned stream/provider foundation |
+| [P25](#p25-optional-knowledge-extensions) | Default-off working/long-term memory, research, graph and RAG | Authorized; research gates precede implementation selection |
 
 Feature completion does not close every live provider acceptance check. On
 2026-10-15, installed Ollama `qwen3.5:9b`, Anthropic `claude-haiku-4-5`, and
@@ -76,9 +76,8 @@ completed scope.
 P18 exposed retained-context stops and a review exceeding its bounded child budget.
 The proposed order is P19 diagnosis/recovery, P20 a reusable supervised-development
 skill, P21 a larger trial, and P22 the extension scaffold. P19–P21 implementation
-was subsequently authorized on 2026-10-16; P22 remains research and planning.
-P22 is authorized for research and detailed planning after those trials, not
-implementation yet.
+was subsequently authorized on 2026-10-16. Following the extension/runtime/knowledge
+review, the operator authorized implementation of P22–P25 on the same date.
 On 2026-10-16 the operator requested extension/debugging research, including
 OpenCode, Codex and Pi; that research is recorded under P22. Bring minimal
 content-free context/timing diagnostics forward into P19 so recovery work is
@@ -989,8 +988,14 @@ remain intact. This is separate from the P22 extension scaffold.
 
 ## P22: extension scaffold and lifecycle hooks
 
-Operator-requested research/design completed on 2026-10-16. Implementation is not
-started or authorized by this update. The comparison covers OpenCode, Codex, Pi
+The operator authorized completing P22–P25 after the plain-English plan on
+2026-10-16. Work proceeds in focused verified increments, with optional P25
+clarification only where an implementation decision needs operator input.
+P22A begins with inert artifact validation/import before executable activation;
+the acceptance criteria below remain required, not a completion claim.
+
+Operator-requested research/design completed on 2026-10-16. Implementation is now
+authorized and in progress. The comparison covers OpenCode, Codex, Pi
 and Claude Code primary documentation/source, alongside Elixir/OTP, Telemetry and
 OpenTelemetry. The resulting recommendation is a versioned Elixir behaviour with owned workers,
 explicit configuration and separate observational events/ordered transformations.
@@ -1025,8 +1030,15 @@ facts and bounded text subscriptions in P22. Cost reports/budgets become P23;
 voice/realtime becomes P24. The operator also requested a shipped default-off
 [memory/research/graph/RAG family](developer/knowledge-extensions.md), mapped to
 P25 with service composition, evidence, scope and owned-job foundations in P22.
-These are independently selected follow-ons, not a mandatory execution pipeline
-or authorization to implement them now. P25 can proceed independently of voice.
+These are independently selected, authorized follow-ons rather than a mandatory
+execution pipeline. P25 can proceed independently of voice.
+
+P22A1 implements the inert local artifact manifest/store API: bounded closed v1
+JSON, nested duplicate rejection, file/runtime/license declarations, pinned hashes,
+private staging and advisory-locked publication. This does not yet expose a CLI,
+grant trust or execute an extension. See the [artifact contract](developer/extension-artifacts.md)
+and [installation status](operator/extensions.md). Worker/SDK/configuration and the
+remaining acceptance checks below are still in progress.
 
 Acceptance:
 
@@ -1086,7 +1098,7 @@ Acceptance:
 
 ## P23: usage, cost reporting and budget controls
 
-Planned after P22; no implementation authorization implied. P22 supplies durable
+Authorized after P22's accounting foundation. P22 supplies durable
 canonical usage facts and identities independently of tracing. Build an optional
 bundled report/cost extension using configurable versioned pricing, explicit
 provider/billing/model/unit attribution, unknown/incomplete estimates and dated
@@ -1108,8 +1120,8 @@ See [usage contract](developer/runtime-capabilities.md#usage-facts-and-costs).
 
 ## P24: voice and realtime media
 
-Planned after P22/P23 foundations; implementation and external dependencies are
-not authorized by this entry. Start with a chained STT → admitted text agent → TTS
+Implementation is authorized after P22/P23 foundations. Additional dependencies
+still follow the dependency approval policy. Start with a chained STT → admitted text agent → TTS
 extension/client. Use separately selected explicit provider profiles and bounded
 owned input/output resources. Then add a versioned realtime provider/session
 capability for bidirectional transport, interruption, turn control, playback
@@ -1138,7 +1150,7 @@ extension or backend implementation per use case; automatic policies may need
 hooks while explicit retrieval may need only tools. Configuration selects
 independent instances and providers; no store, worker, indexing job,
 network request or inference starts merely because the code ships with Ipse.
-This is a follow-on plan, not implementation authorization.
+Implementation is authorized, with research gates before backend selection.
 
 Zero-Mem is the operator's inspiration candidate. Require thorough primary-source,
 implementation/license/dependency and alternative research for each capability
@@ -1158,8 +1170,8 @@ none requires a mandatory database, embedding model, search service or framework
 
 Deliver selected memory tools/adapters first, then research/RAG and graph capabilities
 as independently useful increments; this work need not wait for voice or cost UI.
-The operator requested a plain-English implementation sequence for approval;
-runtime implementation remains paused until that go-ahead. Require default-off parity,
+The operator approved the implementation sequence on 2026-10-16. Ask for input
+only when a material selection requires it. Require default-off parity,
 scope/provenance/retention, deletion propagation, source-supported citations,
 partial-failure/cancellation/budget handling and unchanged no-replay resume.
 Evaluate dependencies, run source/package fixtures and separate live checks,

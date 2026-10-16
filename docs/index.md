@@ -16,6 +16,7 @@ start. Use the guides below for operation, development, and project context.
 | [Local subagents](operator/subagents.md) | Explicit delegation, child approvals, bounds, journals, and recovery |
 | [Supervised self-development](operator/self-development.md) | Mac trial setup, frozen runner, candidate worktree, review, resume and publication |
 | [Context recovery](operator/recovery.md) | Content-free diagnostics, reviewed handoff export/fresh-chat import and unknown-effect review |
+| [Extensions](operator/extensions.md) | Current inert import status, pinned identity and safe installation/recovery limits |
 | [Troubleshooting](operator/troubleshooting.md) | Build, callback, account, lock, and recovery problems |
 
 ## Develop Ipse
@@ -34,6 +35,7 @@ start. Use the guides below for operation, development, and project context.
 | [Protocol proposal](developer/protocol-proposal.md) | Proposed MCP, delegation, and remote-execution trust/recovery contracts |
 | [Research contract](developer/research.md) | Provenance-bound source/claim records, bounds, compatibility and resume |
 | [Extension proposal](developer/extensions.md) | P22 comparison, SDK/core boundary, lifecycle/trust/versioning and extension-only delivery gates |
+| [Extension artifact contract](developer/extension-artifacts.md) | Implemented inert manifest/store API, hashes, runtime declarations and publication boundaries |
 | [Extension adoption scenarios](developer/extension-scenarios.md) | Bundled/third-party/generated feature walkthroughs, artifact installation, temporary use and deferred host capabilities |
 | [Runtime capability boundaries](developer/runtime-capabilities.md) | Framework comparison, usage/cost facts, text/voice streams and core versus extension ownership |
 | [Knowledge extension family](developer/knowledge-extensions.md) | Default-off working/long-term memory, pluggable research, graph/RAG and composition/evidence contracts |

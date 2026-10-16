@@ -1,13 +1,14 @@
 # Extension architecture proposal
 
 Research reviewed on 2026-10-16 against repository `3ad33b3`. This is the P22
-design proposal, not an implemented API, loader, hook configuration or memory
-service. Names and limits below are proposed contracts. Existing skills, explicit
+design proposal; implementation was subsequently authorized for P22–P25.
+The [artifact contract](extension-artifacts.md) documents the first implemented
+API. Other names and limits below remain proposed contracts. Existing skills, explicit
 MCP tools and provider adapters remain the available extension points.
 The operator's subsequent bundled, third-party and generated-feature scenarios
 are exercised in [scenario analysis](extension-scenarios.md). That review replaces
 the original rebuild-only loading assumption with a backend-independent SDK,
-immutable artifacts and scoped activation. These mechanisms are still planned.
+immutable artifacts and scoped activation. Activation mechanisms are still planned.
 
 ## Recommendation
 
@@ -467,6 +468,12 @@ and resumed transforms; corruption refusal; and credential-free package examples
 Run Linux source/native and hosted Mac/package checks, plus an independently
 reviewed supervised trial. Record real limitations and dependencies, review both
 operator/developer guidance and links, then commit/push completed increments.
+
+P22A1 now implements the [inert artifact contract](extension-artifacts.md).
+Executable host/SDK, configuration, examples and proofs above remain in progress;
+the operator authorized completing P22–P25 on 2026-10-16. The
+[operator guide](../operator/extensions.md) distinguishes the available API from
+planned activation commands.
 
 Use the shared event contracts in [observability](observability.md). See
 [P22](../plan.md#p22-extension-scaffold-and-lifecycle-hooks),
