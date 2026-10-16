@@ -4,7 +4,8 @@ Research reviewed on 2026-10-16 against repository `3ad33b3`. This is the P22
 design proposal; implementation was subsequently authorized for P22–P25.
 The [artifact contract](extension-artifacts.md) documents the first implemented
 API. Other names and limits below remain proposed contracts. Existing skills, explicit
-MCP tools and provider adapters remain the available extension points.
+MCP tools and provider adapters remain available alongside the
+[initial session hooks](extension-hooks.md).
 The operator's subsequent bundled, third-party and generated-feature scenarios
 are exercised in [scenario analysis](extension-scenarios.md). That review replaces
 the original rebuild-only loading assumption with a backend-independent SDK,
@@ -471,8 +472,10 @@ operator/developer guidance and links, then commit/push completed increments.
 
 P22A1 implements the [inert artifact contract](extension-artifacts.md), followed by
 P22A2's [independent worker SDK](extension-artifacts.md#independent-worker-sdk).
-P22A3 adds scoped selection/trust data and inert CLI commands; enabled selections
-still explicitly refuse execution. Session host/registry, examples and proofs above remain in progress;
+P22A3 adds scoped selection/trust data and inert CLI commands. P22A4 implements
+the [initial session hooks](extension-hooks.md), a generic registry and two opt-in
+examples with durable projections/no-replay resume. Broader SDK seams,
+observability and extension-only proofs above remain in progress;
 the operator authorized completing P22–P25 on 2026-10-16. The
 [operator guide](../operator/extensions.md) distinguishes the available API from
 planned activation commands.

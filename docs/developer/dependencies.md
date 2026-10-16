@@ -39,6 +39,14 @@ P22A3's scoped selection/trust validator and inert CLI commands reuse the same
 schema/JSON/OTP adapters without adding dependencies. Config inspection hashes
 extension options instead of printing them; no extension runtime is started by
 configuration discovery.
+P22A4 uses the same worker path for compiled examples and independent artifacts;
+their bundled license is the project's MIT license. It reuses the current ERTS
+clean boot/runtime, existing Elixir compiler for isolated synthetic fixtures and
+the native stdio supervisor. SDK values reuse the schema adapter's plain-JSON
+bounds before encoding on both sides; no schema compiler or extra dependency is
+needed inside the worker for that check. Source cancellation fixtures use the
+already inventoried `/bin/sh` `kill -0` builtin to check their own synthetic VM
+exit. The package fixture needs no external compiler, model or service.
 See [agent rules](../../AGENTS.md), [setup](../operator/arch-linux.md), and
 [third-party notices](../../THIRD_PARTY_NOTICES.md).
 

@@ -175,8 +175,14 @@ defmodule Ipse.PackageVerifier do
                "release self-development skill verification did not print its completion marker"
              )
 
+    unless String.contains?(
+             output,
+             "Extension prompt/presentation and unchanged idle resume fixture passed"
+           ),
+           do: raise("release extension verification did not print its completion marker")
+
     IO.puts(
-      "PASS: extracted package help, demo from isolated fresh HOME/IPSE_HOME, default cwd, explicit --cwd, bundled MCP and delegation checks, and OTP/helper checks."
+      "PASS: extracted package help, demo from isolated fresh HOME/IPSE_HOME, default cwd, explicit --cwd, bundled MCP/delegation/extensions, and OTP/helper checks."
     )
 
     IO.puts("Verified default workspace: #{default_workspace}")

@@ -68,8 +68,10 @@ instructions and `/context refresh` reloads them while idle. See
 Operator and trusted project/directory JSON settings support explicit precedence,
 local `ipse config` inspection and resume checks; see [configuration](docs/operator/configuration.md).
 `ipse extension import PATH` and `ipse extension inspect DIGEST` provide inert,
-pinned local artifact installation. Scoped extension trust/selection is data-only;
-session activation is still pending. See [extensions](docs/operator/extensions.md).
+pinned local artifact installation. Scoped trust/selection can enable default-off
+prompt annotations and completed-answer formatting in separate Elixir workers.
+Resume pins code/configuration and restores committed projections without replay.
+See [extensions](docs/operator/extensions.md) for bounds and current SDK scope.
 Use `$project-orientation` to assess a repository's purpose, current changes,
 and available checks before choosing next steps; see
 [project assessment](docs/operator/usage.md#working-with-the-agent).

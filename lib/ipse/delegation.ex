@@ -164,11 +164,13 @@ defmodule Ipse.Delegation do
       :mcp_tools,
       :profiles,
       :roles,
-      :configuration
+      :configuration,
+      :extensions
     ])
     |> Map.put(:subagents, false)
     |> Map.put(:subagent_concurrency, 1)
     |> Map.put(:mcp_servers, [])
+    |> Map.put(:extensions, Ipse.Extensions.Registry.child_entries(config))
     |> Map.put(:approval, :ask)
     |> Map.put(:max_steps, min(parent_max_steps(config), max_steps()))
     |> Map.put(:compact, false)

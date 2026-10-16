@@ -15,6 +15,7 @@ defmodule Ipse.CLI do
   ipse config [options]            Show effective non-secret configuration
   ipse extension import PATH       Copy a local inert extension artifact
   ipse extension inspect DIGEST    Verify an installed artifact without executing it
+  ipse extension list              List inert built-in extension descriptors
   ipse research --resume ID        Export a saved session's evidence ledger locally
   ipse diagnose --resume ID        Inspect content-free saved context measurements
   ipse handoff --resume ID --note TEXT  Export an explicit recovery note locally
@@ -41,7 +42,7 @@ defmodule Ipse.CLI do
   --no-project-config                  Ignore project/directory configuration
   --timeout-ms N                       Provider request timeout (1000..600000)
   --profile ID                         Select an operator-configured main profile
-  --extension INSTANCE                 Select a configured temporary instance (activation pending)
+  --extension INSTANCE                 Activate a configured temporary extension instance
   --no-extensions                      Disable configured extension instances
 
   Chat asks before writes, shell, MCP, and delegation. Headless run denies them without --yes.
@@ -171,6 +172,11 @@ defmodule Ipse.CLI do
     end
   end
 
+  defp dispatch(["extension", "list"], _opts) do
+    IO.puts(Jason.encode!(Ipse.Extensions.Registry.builtins(), pretty: true))
+    0
+  end
+
   defp dispatch(["extension", "import", source], _opts) do
     extension_artifact(
       Ipse.Extensions.Store.import(source, Path.join(home(), "extensions/artifacts"))
@@ -179,7 +185,7 @@ defmodule Ipse.CLI do
 
   defp dispatch(["extension", "inspect", digest], _opts) do
     extension_artifact(
-      Ipse.Extensions.Store.lookup(Path.join(home(), "extensions/artifacts"), digest)
+      Ipse.Extensions.Registry.lookup(Path.join(home(), "extensions/artifacts"), digest)
     )
   end
 
@@ -311,6 +317,15 @@ defmodule Ipse.CLI do
             :stderr,
             "Effective configuration:\n" <> Jason.encode!(config.configuration, pretty: true)
           )
+
+      if config.extensions != [] do
+        IO.puts(
+          :stderr,
+          "Extensions enabled: trusted worker programs use your OS permissions outside the shell sandbox."
+        )
+
+        IO.puts(:stderr, Jason.encode!(Ipse.Extensions.Registry.manifests(config), pretty: true))
+      end
 
       if config.subagents,
         do:
@@ -549,6 +564,10 @@ defmodule Ipse.CLI do
         IO.write(delta)
         client_loop(s)
 
+      {:ipse, ^pid, {:presentation, text}} ->
+        IO.puts("\n" <> text)
+        client_loop(s)
+
       {:ipse, ^pid, {:tool_output, delta}} ->
         IO.write(:stderr, delta)
         client_loop(s)
@@ -714,10 +733,6 @@ defmodule Ipse.CLI do
     sandbox = %{"off" => :off, "native" => :native}[sandbox_name]
 
     cond do
-      Enum.any?(effective.extensions["instances"], & &1["enabled"]) ->
-        {:error,
-         "Extension activation is not available yet; inspect selections with ipse config or disable them."}
-
       provider == nil ->
         {:error, "Unknown provider: #{name}"}
 
@@ -738,7 +753,8 @@ defmodule Ipse.CLI do
         {:error, "Subscription credentials only go to the official OpenAI endpoint."}
 
       true ->
-        with {:ok, servers} <- Ipse.MCP.Config.load(opts[:mcp_config]),
+        with {:ok, extensions} <- Ipse.Extensions.Registry.prepare(effective.extensions, home()),
+             {:ok, servers} <- Ipse.MCP.Config.load(opts[:mcp_config]),
              {:ok, _policy} <- Ipse.Sandbox.resolve(sandbox, opts[:cwd] || default_cwd()),
              {:ok, _key} <- credential(provider) do
           {:ok,
@@ -750,6 +766,7 @@ defmodule Ipse.CLI do
                home: home(),
                operator_home: Ipse.Skills.operator_home(),
                configuration: Ipse.Config.manifest(effective),
+               extensions: extensions,
                timeout_ms: opts[:timeout_ms],
                sandbox: sandbox,
                base_url: opts[:base_url],

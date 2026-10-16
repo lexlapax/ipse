@@ -46,8 +46,10 @@ matching operator artifact ceiling with `allow_project`. CLI instance selection
 is temporary, while `--no-extensions` disables selections. Validation/discovery
 never opens an artifact, invokes code or installs it. Activation must separately
 revalidate hashes/runtime/options, capabilities, child scope, trust/lease expiry
-and revocation before invoking callbacks. The CLI currently refuses enabled
-selections explicitly because session activation is still pending.
+and revocation before invoking callbacks. P22A4 now admits the two supported
+prompt/presentation capabilities, rechecking required code in a monitored task
+before Session startup. Expiry and explicit child ceilings apply; live revocation
+is still a later delivery check. See [session hooks](extension-hooks.md).
 
 Config JSON now rejects duplicate keys recursively using Jason's ordered decoder
 behind the existing artifact decoder. Fingerprints include resolved extension

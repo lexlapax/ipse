@@ -14,14 +14,16 @@ defmodule Ipse.Extensions.WorkerTest do
       @behaviour Ipse.Extension
       @on_load :loaded
       def loaded, do: (File.write!(#{inspect(marker)}, "explicit worker load"); :ok)
-      def describe, do: %{"sdk" => 1, "capabilities" => ~w(fixture.echo fixture.crash fixture.hang fixture.bad fixture.output fixture.env fixture.wrong fixture.duplicate)}
+      def describe, do: %{"sdk" => 1, "capabilities" => ~w(fixture.echo fixture.crash fixture.hang fixture.bad fixture.output fixture.env fixture.wrong fixture.duplicate fixture.atoms)}
       def init(options), do: {:ok, options}
       def handle("fixture.echo", payload, state), do: {:ok, %{"echo" => payload, "options" => state, "pid" => System.pid()}, state}
       def handle("fixture.crash", _, _), do: raise("private-synthetic-error")
       def handle("fixture.hang", _, state), do: (Process.sleep(:infinity); {:ok, %{}, state})
       def handle("fixture.bad", _, state), do: {:ok, %{"pid" => self()}, state}
+      def handle("fixture.atoms", _, state), do: {:ok, %{unsafe: "atom key"}, state}
       def handle("fixture.output", _, state), do: (IO.puts("unframed private output"); {:ok, %{}, state})
-      def handle("fixture.env", _, state), do: {:ok, %{"secret" => System.get_env("IPSE_WORKER_SYNTHETIC_SECRET")}, state}
+      def handle("fixture.env", _, state), do: {:ok, %{"secret" => System.get_env("IPSE_WORKER_SYNTHETIC_SECRET"),
+        "ipse_started" => List.keymember?(Application.started_applications(), :ipse, 0)}, state}
       def handle("fixture.wrong", _, state) do
         bytes = ~s({"protocol":1,"id":999,"result":{}})
         IO.binwrite(:stdio, <<byte_size(bytes)::32, bytes::binary>>)
@@ -64,7 +66,7 @@ defmodule Ipse.Extensions.WorkerTest do
       "entrypoint" => entrypoint,
       "license_file" => "LICENSE",
       "capabilities" =>
-        ~w(fixture.echo fixture.crash fixture.hang fixture.bad fixture.output fixture.env fixture.wrong fixture.duplicate),
+        ~w(fixture.echo fixture.crash fixture.hang fixture.bad fixture.output fixture.env fixture.wrong fixture.duplicate fixture.atoms),
       "options_schema" => %{
         "type" => "object",
         "additionalProperties" => false,
@@ -118,11 +120,17 @@ defmodule Ipse.Extensions.WorkerTest do
   end
 
   test "separate VM initializes once, preserves private state and validates capabilities", c do
-    pid = ready(c, %{"label" => "fixture"})
+    File.rm(c.marker)
+    assert {:ok, pid} = start(c, self(), %{"label" => "fixture"})
+    refute File.exists?(c.marker)
+    assert {:ok, %{"sdk" => 1}} = Worker.call(pid, "initialize", %{"label" => "fixture"})
     assert File.read!(c.marker) == "explicit worker load"
     assert {:ok, result} = Worker.call(pid, "fixture.echo", %{"text" => "hello"})
     assert result["echo"] == %{"text" => "hello"}
     assert result["options"] == %{"label" => "fixture"}
+    status = inspect(:sys.get_status(pid), limit: :infinity, printable_limit: :infinity)
+    refute status =~ "inert bytes"
+    refute status =~ "\"label\""
     refute result["pid"] == System.pid()
     assert_raise ArgumentError, fn -> String.to_existing_atom("Elixir." <> c.entrypoint) end
     assert {:error, :invalid_extension_request} = Worker.call(pid, "initialize", %{})
@@ -143,7 +151,10 @@ defmodule Ipse.Extensions.WorkerTest do
 
     try do
       pid = ready(c)
-      assert {:ok, %{"secret" => nil}} = Worker.call(pid, "fixture.env", %{})
+
+      assert {:ok, %{"secret" => nil, "ipse_started" => false}} =
+               Worker.call(pid, "fixture.env", %{})
+
       assert :ok = Worker.close(pid)
     after
       System.delete_env("IPSE_WORKER_SYNTHETIC_SECRET")
@@ -151,7 +162,8 @@ defmodule Ipse.Extensions.WorkerTest do
   end
 
   test "crash, non-JSON return and unframed output terminate instead of leaking diagnostics", c do
-    for stage <- ~w(fixture.crash fixture.bad fixture.output fixture.wrong fixture.duplicate) do
+    for stage <-
+          ~w(fixture.crash fixture.bad fixture.output fixture.wrong fixture.duplicate fixture.atoms) do
       pid = ready(c)
       ref = Process.monitor(pid)
       assert {:error, reason} = Worker.call(pid, stage, %{})

@@ -296,7 +296,7 @@ defmodule Ipse.Extensions.StoreTest do
                  ]) == 1
         end)
 
-      assert error =~ "Extension activation is not available yet"
+      assert error =~ "Extension transform failed"
 
       output =
         ExUnit.CaptureIO.capture_io(fn ->

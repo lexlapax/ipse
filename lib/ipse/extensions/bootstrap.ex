@@ -8,7 +8,6 @@ defmodule Ipse.Extensions.Bootstrap do
     [path, name] = :init.get_plain_arguments() |> Enum.map(&List.to_string/1)
     true = Code.prepend_path(Path.join(path, "ebin"))
     module = String.to_atom("Elixir." <> name)
-    Code.ensure_loaded!(module)
     loop(module, nil, false)
   rescue
     _ -> System.halt(1)
@@ -21,8 +20,10 @@ defmodule Ipse.Extensions.Bootstrap do
          bytes when is_binary(bytes) and byte_size(bytes) == size <- IO.binread(:stdio, size),
          {:ok, %{"protocol" => 1, "id" => id, "stage" => stage, "payload" => payload}} <-
            Jason.decode(bytes),
-         true <- is_integer(id) and is_binary(stage) and is_map(payload) do
+         true <- is_integer(id) and is_binary(stage) and is_map(payload),
+         :ok <- Ipse.Extension.validate(payload) do
       {result, next, ready} = dispatch(module, stage, payload, state, initialized)
+      :ok = Ipse.Extension.validate(result)
       bytes = Jason.encode!(%{"protocol" => 1, "id" => id, "result" => result})
       true = byte_size(bytes) <= 32_768
       :ok = IO.binwrite(:stdio, <<byte_size(bytes)::unsigned-big-32, bytes::binary>>)
@@ -33,6 +34,7 @@ defmodule Ipse.Extensions.Bootstrap do
   end
 
   defp dispatch(module, "initialize", options, nil, false) do
+    Code.ensure_loaded!(module)
     description = module.describe()
     {:ok, state} = module.init(options)
     {description, state, true}

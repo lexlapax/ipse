@@ -2,10 +2,10 @@
 
 P22A1 implements inert local directory snapshots in `Ipse.Extensions.Manifest`
 and `Ipse.Extensions.Store`. The [SDK/lifecycle design](extensions.md) remains the
-target for session activation. Import remains inert; the explicit worker SDK below
-executes reviewed artifacts without changing session behavior. Scoped selection
-configuration and inert CLI commands are described in
-[operator extensions](../operator/extensions.md); enabled selections currently refuse chat/run.
+target beyond the two implemented [session hooks](extension-hooks.md). Import
+remains inert; explicit scoped selections can execute reviewed workers through
+the SDK below. Configuration and CLI procedures are described in
+[operator extensions](../operator/extensions.md).
 See [operator status](../operator/extensions.md) before trying installation.
 
 ## Descriptor and identity
@@ -104,15 +104,17 @@ P22A2 adds `Ipse.Extension` and `Ipse.Extensions.Worker` as a developer API.
 trusted: digest, options: options)` explicitly admits execution; omitting or
 mismatching `trusted` refuses startup. This argument is a caller assertion, not a
 persisted trust record, signature or project authorization. The session/config
-host must supply it only after operator policy validation. Inert import/inspect
-CLI commands now exist; there is no automatic or session hook activation yet.
+host supplies it only after operator policy validation. Import/inspect/list CLI
+commands remain inert; the initial session host admits explicit prompt/presentation selections.
 
 Admission revalidates the installed snapshot, runtime compatibility and options
 schema. The worker launches the current ERTS with existing Elixir/Jason/Ipse
-code paths and the selected artifact in a separate VM. It starts Elixir, not
-Ipse's application/session tree. Neither code-path changes nor module-name atom
-creation happen in the host. The OS helper clears inherited environment; only
-its explicit baseline PATH/LANG reaches this worker. No credentials, auth
+code paths and the selected artifact in a separate VM using the current clean
+boot script. Executable module loading waits for `initialize`; it starts Elixir,
+not Ipse's application/session tree. Neither code-path changes nor module-name atom
+creation happen in the host. The OS helper clears inherited environment, preserving
+only the selected caller PATH and baseline LANG; the ERTS launcher derives its
+own runtime variables. No credentials, auth
 configuration, provider continuation or Session state is passed.
 
 An extension implements:
@@ -151,9 +153,10 @@ The owner is monitored while idle or active. Owner death, deadline expiry,
 process exit and protocol failure close the owned native stdio process group;
 failed callbacks are not restarted/replayed. `Worker.close(pid)` reports the
 native helper's cleanup result. Worker status formatting includes only readiness,
-sequence and traffic counters, never options/payloads. The SDK exposes no host
-effect/approval callback yet; lifecycle/tool/service registration, durable
-projections, activation identity and resume are subsequent P22 increments.
+sequence and traffic counters, never options/payloads. P22A4's
+[session host](extension-hooks.md) adds pinned activation identity and durable
+prompt/display projections. The SDK still exposes no host effect/approval,
+tool/command/service or scoped state/job interface; those are later P22 increments.
 
 `test/extensions_worker_test.exs` compiles a uniquely named independent artifact
 with the existing Elixir compiler in a separate VM. It verifies inert import,

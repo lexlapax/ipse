@@ -8,6 +8,9 @@ defmodule Ipse.Extension do
 
   @doc "Reject private runtime terms and independently bound each SDK object."
   def validate(object) do
-    Ipse.MCP.Schema.validate_arguments(%{"type" => "object"}, object)
+    case Ipse.MCP.Schema.validate_object(object) do
+      :ok -> :ok
+      _ -> {:error, :invalid_extension_value}
+    end
   end
 end

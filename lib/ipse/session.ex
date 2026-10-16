@@ -2,8 +2,27 @@ defmodule Ipse.Session do
   @moduledoc "One supervised owner per agent conversation. I/O runs in monitored tasks."
   use GenServer
   alias Ipse.{Journal, Skills, Tools, WorkspaceContext, Questions}
+  alias Ipse.Extensions.{Host, Projection}
 
-  def start_link(opts), do: GenServer.start_link(__MODULE__, opts)
+  def start_link(opts) do
+    config = Keyword.fetch!(opts, :config)
+
+    cond do
+      not Ipse.Extensions.Registry.valid_entries?(config) ->
+        {:error, :invalid_extension_configuration}
+
+      Map.get(config, :extensions, []) == [] ->
+        GenServer.start_link(__MODULE__, opts)
+
+      true ->
+        task = owned_task(fn -> Ipse.Extensions.Registry.revalidate(config) end)
+
+        case Task.yield(task, 5_000) || Task.shutdown(task, :brutal_kill) do
+          {:ok, :ok} -> GenServer.start_link(__MODULE__, opts)
+          _ -> {:error, :extension_admission_refused}
+        end
+    end
+  end
 
   def child_spec(opts),
     do: %{id: make_ref(), start: {__MODULE__, :start_link, [opts]}, restart: :temporary}
@@ -48,6 +67,7 @@ defmodule Ipse.Session do
     owner_ref = if is_pid(opts[:owner]), do: Process.monitor(opts[:owner])
 
     with {:ok, handoff} <- handoff_option(opts),
+         :ok <- extension_configuration(config),
          {:ok, cwd} <- WorkspaceContext.canonical_path(requested_cwd),
          true <- File.dir?(cwd),
          {:ok, id, _events} <- open(dir, id, cwd, config),
@@ -90,7 +110,8 @@ defmodule Ipse.Session do
         steps: if(question, do: question.steps, else: 0),
         lock: lock,
         usage: %{},
-        final: "",
+        final: Projection.presentation(events),
+        extension_intent: nil,
         mcp_tools: [],
         mcp_ready: false,
         mcp_resources: %{},
@@ -129,6 +150,13 @@ defmodule Ipse.Session do
     end
   end
 
+  defp extension_configuration(config),
+    do:
+      if(Ipse.Extensions.Registry.valid_entries?(config),
+        do: :ok,
+        else: {:error, :invalid_extension_configuration}
+      )
+
   # Explicit application homes are commonly isolation fixtures. Shared discovery
   # requires a separate opt-in in that case; the CLI supplies the operator home.
   defp skill_discovery_options(config) do
@@ -146,6 +174,51 @@ defmodule Ipse.Session do
   end
 
   @impl true
+  def handle_call(
+        {:extension_begin, ref, instance, stage},
+        {caller, _},
+        %{job_ref: ref, task: %{pid: caller}, extension_intent: nil, phase: phase} = s
+      )
+      when ref != nil and phase in [:extension_prompt, :extension_presentation] do
+    expected =
+      if phase == :extension_prompt, do: "transform.prompt", else: "transform.presentation"
+
+    entry = Enum.find(Map.get(s.config, :extensions, []), &(&1.identity["instance"] == instance))
+    input = if phase == :extension_prompt, do: List.last(s.messages)["content"], else: s.final
+
+    if stage == expected and entry != nil and stage in entry.identity["capabilities"] and
+         Ipse.Extensions.Registry.live?(entry.identity) do
+      intent = Projection.intent(entry.identity, stage, input, s.messages)
+      record(s, intent)
+      {:reply, {:ok, intent, input}, %{s | extension_intent: intent}}
+    else
+      {:reply, {:error, :extension_admission_refused}, s}
+    end
+  end
+
+  def handle_call({:extension_begin, _, _, _}, _, s), do: {:reply, {:error, :cancelled}, s}
+
+  def handle_call(
+        {:extension_commit, ref, event},
+        {caller, _},
+        %{job_ref: ref, task: %{pid: caller}, extension_intent: intent, phase: phase} = s
+      )
+      when ref != nil and intent != nil and phase in [:extension_prompt, :extension_presentation] do
+    with {:ok, expected} <- Projection.build(intent, event["input"], event["result"]),
+         true <- expected == event,
+         true <- phase != :extension_presentation or event["input"] == s.final,
+         true <- Ipse.Extensions.Registry.live?(intent["identity"]),
+         {:ok, messages} <- Projection.apply(s.messages, event) do
+      record(s, event)
+      final = if phase == :extension_presentation, do: event["output"], else: s.final
+      {:reply, :ok, %{s | messages: messages, final: final, extension_intent: nil}}
+    else
+      _ -> {:reply, {:error, :invalid_extension_projection}, s}
+    end
+  end
+
+  def handle_call({:extension_commit, _, _}, _, s), do: {:reply, {:error, :cancelled}, s}
+
   def handle_call({:mcp_register, ref, resource}, _from, %{job_ref: ref} = s) when ref != nil do
     monitor = Process.monitor(resource)
     {:reply, :ok, %{s | mcp_resources: Map.put(s.mcp_resources, resource, monitor)}}
@@ -214,6 +287,7 @@ defmodule Ipse.Session do
       |> Map.put(:mcp, Enum.map(Map.get(s.config, :mcp_servers, []), &Ipse.MCP.Config.manifest/1))
       |> Map.put(:subagents, Ipse.Delegation.enabled?(s.config))
       |> Map.put(:configuration, Map.get(s.config, :configuration))
+      |> Map.put(:extensions, Ipse.Extensions.Registry.manifests(s.config))
       |> Map.put(:question, if(s.question, do: Map.take(s.question, [:id, :arguments])))
 
     {:reply, info, s}
@@ -252,6 +326,8 @@ defmodule Ipse.Session do
     do: {:reply, {:error, :busy}, s}
 
   def handle_call({:prompt, text}, _from, s) when is_binary(text) and byte_size(text) > 0 do
+    original = text
+
     text =
       Enum.reduce(Skills.explicit(text, s.skills), text, fn name, acc ->
         case Skills.load(s.skills, name) do
@@ -264,8 +340,24 @@ defmodule Ipse.Session do
         end
       end)
 
+    if Host.enabled?(s.config, "transform.prompt") do
+      record(s, %{
+        "type" => "extension_prompt_received",
+        "version" => 1,
+        "original" => original,
+        "original_sha256" => Ipse.Extensions.Manifest.sha256(original)
+      })
+    end
+
     s = append_message(s, %{"role" => "user", "content" => text})
-    {:reply, :ok, model(%{s | steps: 0, final: "", mcp_ready: false, delegations: 0})}
+    s = %{s | steps: 0, final: "", mcp_ready: false, delegations: 0}
+
+    next =
+      if Host.enabled?(s.config, "transform.prompt"),
+        do: launch_extensions(s, :extension_prompt),
+        else: model(s)
+
+    {:reply, :ok, next}
   end
 
   def handle_call({:prompt, _}, _from, s), do: {:reply, {:error, :empty_prompt}, s}
@@ -390,6 +482,7 @@ defmodule Ipse.Session do
           approval: nil,
           job_ref: nil,
           compaction: nil,
+          extension_intent: nil,
           tool_decision: "not_decided",
           mcp_resources: %{},
           delegation_resources: %{},
@@ -454,6 +547,17 @@ defmodule Ipse.Session do
     s = %{s | task: nil}
 
     case {phase, result} do
+      {:extension_prompt, :ok} ->
+        {:noreply, model(%{s | extension_intent: nil})}
+
+      {:extension_presentation, :ok} ->
+        notify(s, {:presentation, s.final})
+        {:noreply, finish(s, :ok)}
+
+      {extension_phase, {:error, error}}
+      when extension_phase in [:extension_prompt, :extension_presentation] ->
+        {:noreply, fail(s, error)}
+
       {:mcp_discovery, {:ok, tools}} ->
         record(s, %{"type" => "mcp_catalog", "version" => 1, "tools" => Ipse.MCP.manifests(tools)})
 
@@ -521,7 +625,17 @@ defmodule Ipse.Session do
         }
 
         notify(s, {:usage, usage})
-        if calls == [], do: {:noreply, finish(s, :ok)}, else: {:noreply, next_tool(s)}
+
+        cond do
+          calls != [] ->
+            {:noreply, next_tool(s)}
+
+          Host.enabled?(s.config, "transform.presentation") ->
+            {:noreply, launch_extensions(s, :extension_presentation)}
+
+          true ->
+            {:noreply, finish(s, :ok)}
+        end
 
       {:model, {:error, error}} ->
         {:noreply, fail(s, error)}
@@ -603,8 +717,14 @@ defmodule Ipse.Session do
   end
 
   @impl true
-  def format_status(_reason, [_dictionary, state]) do
-    [data: [{~c"State", Map.take(state, [:id, :phase])}]]
+  def format_status(status) do
+    Map.new(status, fn
+      {:state, state} -> {:state, Map.take(state, [:id, :phase])}
+      {:message, _} -> {:message, :redacted}
+      {:reason, _} -> {:reason, :redacted}
+      {:log, _} -> {:log, []}
+      pair -> pair
+    end)
   end
 
   defp system_message(s) do
@@ -763,6 +883,14 @@ defmodule Ipse.Session do
         job_ref: job_ref,
         request_started_at: System.monotonic_time(:millisecond)
     }
+  end
+
+  defp launch_extensions(s, phase) do
+    owner = self()
+    job_ref = make_ref()
+    stage = if phase == :extension_prompt, do: "transform.prompt", else: "transform.presentation"
+    task = owned_task(fn -> Host.run(s.config, stage, owner, job_ref) end)
+    %{s | phase: phase, task: task, job_ref: job_ref, extension_intent: nil}
   end
 
   defp request(config, messages, tools, emit) do
@@ -1220,6 +1348,7 @@ defmodule Ipse.Session do
         approval: nil,
         job_ref: nil,
         compaction: nil,
+        extension_intent: nil,
         tool_decision: "not_decided"
     }
   end
@@ -1269,7 +1398,8 @@ defmodule Ipse.Session do
              "subagent_concurrency" => Map.get(config, :subagent_concurrency, 1),
              "delegation_origin" => config[:delegation_origin],
              "configuration" => Map.get(config, :configuration),
-             "execution" => Map.get(config, :execution)
+             "execution" => Map.get(config, :execution),
+             "extensions" => Ipse.Extensions.Registry.manifests(config)
            }),
          do: {:ok, id, []}
   end
@@ -1286,8 +1416,10 @@ defmodule Ipse.Session do
              Map.get(meta, "subagent_concurrency", 1) == Map.get(config, :subagent_concurrency, 1) and
              meta["delegation_origin"] == config[:delegation_origin] and
              compatible_configuration?(meta["configuration"], config[:configuration]) and
-             meta["execution"] == json_execution(config[:execution]),
-         :ok <- Ipse.Handoff.validate_events(events) do
+             meta["execution"] == json_execution(config[:execution]) and
+             Map.get(meta, "extensions", []) == Ipse.Extensions.Registry.manifests(config),
+         :ok <- Ipse.Handoff.validate_events(events),
+         {:ok, _messages} <- restore_context(events) do
       {:ok, id, events}
     else
       false -> {:error, :resume_configuration_mismatch}
@@ -1339,13 +1471,28 @@ defmodule Ipse.Session do
 
   @doc "Validate saved effective context without starting inference, tools or a session."
   def restore_context(events) do
-    with :ok <- Ipse.Handoff.validate_events(events) do
+    with :ok <- Ipse.Handoff.validate_events(events),
+         :ok <- Projection.validate_events(events) do
       restore_validated_context(events)
     end
   end
 
   defp restore_validated_context(events) do
     Enum.reduce_while(events, {:ok, []}, fn
+      %{"type" => "extension_transform_intent"} = event, {:ok, messages} ->
+        messages = restore_messages(messages)
+
+        case Projection.validate_intent_context(messages, event) do
+          :ok -> {:cont, {:ok, messages}}
+          error -> {:halt, error}
+        end
+
+      %{"type" => "extension_transform_result"} = event, {:ok, messages} ->
+        case Projection.apply(restore_messages(messages), event) do
+          {:ok, projected} -> {:cont, {:ok, projected}}
+          error -> {:halt, error}
+        end
+
       %{"type" => "handoff_imported", "message" => message}, {:ok, messages} ->
         {:cont, {:ok, messages ++ [message]}}
 

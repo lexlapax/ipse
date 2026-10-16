@@ -33,9 +33,7 @@ defmodule Ipse.MCP.Schema do
   @doc "Validate JSON arguments against a schema, enforcing independent input bounds."
   def validate_arguments(schema, arguments) when is_map(schema) and is_map(arguments) do
     with :ok <- validate_schema(schema),
-         :ok <- json_value(arguments, 1),
-         {:ok, encoded} <- encode(arguments),
-         true <- byte_size(encoded) <= @argument_limit,
+         :ok <- validate_object(arguments),
          {:ok, compiled} <- compile(schema),
          :ok <- JSONSchex.validate(compiled, arguments) do
       :ok
@@ -47,6 +45,21 @@ defmodule Ipse.MCP.Schema do
   end
 
   def validate_arguments(_, _), do: {:error, @argument_error}
+
+  @doc "Validate a bounded plain JSON object without compiling an application schema."
+  def validate_object(arguments) when is_map(arguments) do
+    with :ok <- json_value(arguments, 1),
+         {:ok, encoded} <- encode(arguments),
+         true <- byte_size(encoded) <= @argument_limit do
+      :ok
+    else
+      _ -> {:error, @argument_error}
+    end
+  rescue
+    _ -> {:error, @argument_error}
+  end
+
+  def validate_object(_), do: {:error, @argument_error}
 
   defp compile(schema) do
     # No loader is supplied: external references cannot trigger network or file access.

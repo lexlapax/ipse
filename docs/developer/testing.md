@@ -2458,3 +2458,47 @@ was not changed after that full run. No paid provider, macOS or extracted-packag
 extension execution was verified by this increment. See
 [selection procedures and current limits](../operator/extensions.md) and
 [configuration contract](configuration.md#extension-selection-data).
+
+## Session extension hooks (2026-10-16)
+
+P22A4 implements explicit registry/session admission and two default-off built-ins:
+`builtin:prompt-annotation:1` and `builtin:answer-format:1`. Independent local
+artifacts use the same worker SDK without loading their modules or creating
+module-name atoms in the host. Intent precedes executable initialization;
+validated projections preserve raw operator input, original messages and native
+continuation. Resume restores cached projections without callbacks or inference.
+See [developer contract](extension-hooks.md) and [operator procedures](../operator/extensions.md).
+
+On Serenity (Linux, Elixir 1.20.4 / OTP 29.1.1), the final build, format checking,
+warnings-as-errors compilation, `mix test --include native_sandbox` and
+credential-free demo passed: **387 passed / 14 macOS tests excluded**. Focused
+worker/session fixtures reported **16 passed**, registry fixtures **4 passed**,
+and the actual MCP schema plus worker files **14 passed**. Tests cover ordered
+hooks, plain JSON before encoding and after decoding, callback errors/timeouts,
+credential exclusion, redacted actual status queries, original/native integrity,
+mutation denial, expiry/child ceilings, missing/tampered artifacts, deleted/
+mistyped/duplicate/orphan projections and corruption refusal before tail repair.
+An interrupted-tool regression verifies generated unknown-outcome placeholders
+remain consistent in subsequent callback context hashes and are never replayed.
+The cancellation/owner-death fixture checks its actual callback VM exits using the
+existing shell `kill -0` builtin. Unfinished callback intents remain inert on
+byte-identical idle resume.
+
+The source `priv/extension-demo.exs` fixture passed with both examples and idle
+resume. An initial extracted-package check also passed without system development
+tools. Final archive verification is recorded separately after rebuilding the
+current code/documentation snapshot. Worker boot uses installed OTP's profile-free
+`no_dot_erlang.boot` or the bundled Mix `start_clean.boot`; their boot instructions
+were checked to exclude `c:erlangrc` startup. The worker fixture confirms Ipse's
+application tree is not automatically started. No paid model, live account,
+macOS local run, remote installer, full SDK, supervised extension-only trial or
+published release is claimed by this increment. P22 remains in progress.
+
+The final archive was reassembled from the current code/documentation snapshot
+with `IPSE_NOTICES_DIR=/tmp/ipse-toolchain-notices-29.1.1 ./scripts/package.sh`;
+`elixir scripts/verify-package.exs dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz`
+passed. It exercised both hook examples, preserved native fixture data and
+unchanged idle resume alongside the existing complete package verifier, using
+fresh isolated homes and a utility-only development PATH. The archive is a local
+verification artifact, not a published release. Hosted platform evidence follows
+the commit's CI run separately.

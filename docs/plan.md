@@ -27,7 +27,7 @@ the next feature sequence on 2026-10-15:
 | [P19](#p19-long-session-diagnosis-and-recovery) | Diagnose retained-context limits and improve explicit recovery | Complete within documented scope; Linux and hosted Mac checks passed |
 | [P20](#p20-repeatable-supervised-self-development) | Reusable supervised development/review skill and evidence | Complete: fixtures, hosted checks and supervised live use; limitations recorded |
 | [P21](#p21-larger-self-development-trial-on-serenity) | Larger supervised trial with independent Mac verification | Complete within supervised scope; bounded review and Linux/hosted Mac checks passed |
-| [P22](#p22-extension-scaffold-and-lifecycle-hooks) | Typed extension scaffold, lifecycle hooks and runtime observability | Authorized; P22A artifact/SDK foundation in progress |
+| [P22](#p22-extension-scaffold-and-lifecycle-hooks) | Typed extension scaffold, lifecycle hooks and runtime observability | In progress; artifacts/workers/config and two durable session hooks implemented |
 | [P23](#p23-usage-cost-reporting-and-budget-controls) | Usage/cost extensions and host budget admission | Authorized; follows P22 accounting foundation |
 | [P24](#p24-voice-and-realtime-media) | Voice extensions and owned realtime/media capabilities | Authorized; follows owned stream/provider foundation |
 | [P25](#p25-optional-knowledge-extensions) | Default-off working/long-term memory, research, graph and RAG | Authorized; research gates precede implementation selection |
@@ -1044,9 +1044,16 @@ credential environment exclusion. See the
 [worker contract](developer/extension-artifacts.md#independent-worker-sdk).
 P22A3 adds inert import/inspect CLI commands and scoped data-only instance/trust
 configuration, temporary selection, disable flags and option-digest inspection.
-Enabled selections explicitly refuse chat/run until activation exists. Registry/
-session hooks and the remaining acceptance checks below are still in progress;
-operator-facing activation and durable extension resume are not implemented yet.
+P22A4 connects a generic registry/session host and two default-off built-ins:
+attributed prompt annotation and completed-answer formatting. Local worker artifacts
+use the same JSON SDK. Intent precedes executable initialization; typed derived
+projections are journaled, preserve original/native data and restore without callbacks.
+Resume pins artifact/options/runtime/host identity and refuses corruption/missing code
+before journal repair. Child scope, expiry and actual worker cancellation are tested.
+Source and extracted-package fixtures exercise both examples. Broader lifecycle/
+tools/commands/state/services/jobs, usage/stream foundations, live controls and the
+extension-only memory/workflow proof remain in progress. See the
+[implemented hook contract](developer/extension-hooks.md).
 
 Acceptance:
 

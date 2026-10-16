@@ -1,7 +1,7 @@
 defmodule Ipse.Extensions.Worker do
   @moduledoc "Owner-monitored independent VM bridge; never loads an artifact in the host."
   use GenServer
-  alias Ipse.Extensions.{Manifest, Store}
+  alias Ipse.Extensions.{Manifest, Registry}
   @limit 32_768
   @traffic_limit 67_108_864
 
@@ -29,11 +29,13 @@ defmodule Ipse.Extensions.Worker do
 
     with true <- is_pid(owner) and Process.alive?(owner),
          true <- Keyword.get(opts, :trusted) == digest,
-         {:ok, artifact} <- Store.lookup(Keyword.fetch!(opts, :store), digest),
+         {:ok, artifact} <- Registry.lookup(Keyword.fetch!(opts, :store), digest),
+         true <- is_nil(opts[:artifact_sha256]) or opts[:artifact_sha256] == artifact.digest,
          true <- Manifest.compatible?(artifact.manifest),
          :ok <- Ipse.MCP.Schema.validate_arguments(artifact.manifest["options_schema"], options),
-         {:ok, executable, args} <- launch(artifact),
-         {:ok, port} <- Ipse.Runner.open_stdio(executable, args, artifact.path, %{}, 86_400_000) do
+         {:ok, executable, args, environment} <- launch(artifact),
+         {:ok, port} <-
+           Ipse.Runner.open_stdio(executable, args, artifact.path, environment, 86_400_000) do
       {:ok,
        %{
          owner: owner,
@@ -64,7 +66,8 @@ defmodule Ipse.Extensions.Worker do
       (stage == "initialize" and not state.ready and payload == state.options) or
         (state.ready and stage in state.manifest["capabilities"])
 
-    with true <- is_integer(timeout) and timeout >= 1 and timeout <= 30_000,
+    with true <- Process.alive?(state.owner),
+         true <- is_integer(timeout) and timeout >= 1 and timeout <= 30_000,
          true <- permitted,
          :ok <- Ipse.Extension.validate(payload),
          id = state.sequence + 1,
@@ -122,8 +125,15 @@ defmodule Ipse.Extensions.Worker do
   end
 
   @impl true
-  def format_status(%{state: state} = status),
-    do: %{status | state: Map.take(state, [:ready, :sequence, :traffic]), message: :redacted}
+  def format_status(status) do
+    Map.new(status, fn
+      {:state, state} -> {:state, Map.take(state, [:ready, :sequence, :traffic])}
+      {:message, _} -> {:message, :redacted}
+      {:reason, _} -> {:reason, :redacted}
+      {:log, _} -> {:log, []}
+      pair -> pair
+    end)
+  end
 
   defp stop(state, reason), do: {:stop, :normal, fail_pending(state, reason)}
 
@@ -213,9 +223,24 @@ defmodule Ipse.Extensions.Worker do
     erts = "erts-" <> to_string(:erlang.system_info(:version))
     executable = Path.join([root, erts, "bin", "erl"])
     paths = Enum.map([:elixir, :jason, :ipse], &Application.app_dir(&1, "ebin"))
+    boot = clean_boot(root)
 
     args =
-      ["+S", "1:1", "+A", "1", "-noshell", "-pa"] ++
+      [
+        "+S",
+        "1:1",
+        "+A",
+        "1",
+        "-noshell",
+        "-mode",
+        "interactive",
+        "-boot",
+        boot,
+        "-boot_var",
+        "RELEASE_LIB",
+        Path.join(root, "lib"),
+        "-pa"
+      ] ++
         paths ++
         [
           "-s",
@@ -226,8 +251,28 @@ defmodule Ipse.Extensions.Worker do
           artifact.manifest["entrypoint"]
         ]
 
-    if File.regular?(executable),
-      do: {:ok, executable, args},
+    if boot != "" and File.regular?(executable) and File.regular?(boot <> ".boot"),
+      do: {:ok, executable, args, %{"PATH" => System.get_env("PATH", "/usr/bin:/bin")}},
       else: {:error, :runtime_unavailable}
+  end
+
+  defp clean_boot(root) do
+    current =
+      case :init.get_argument(:boot) do
+        {:ok, [[path]]} ->
+          path = List.to_string(path)
+
+          if Path.type(path) == :absolute and
+               String.starts_with?(Path.expand(path), Path.join(root, "releases") <> "/"),
+             do: Path.join(Path.dirname(path), "start_clean")
+
+        _ ->
+          nil
+      end
+
+    Enum.find(
+      [current, Path.join([root, "bin", "no_dot_erlang"])],
+      &(is_binary(&1) and File.regular?(&1 <> ".boot"))
+    ) || ""
   end
 end
