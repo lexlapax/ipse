@@ -46,11 +46,11 @@ billing, credentials and external-effect invariants still apply.
 
 | Order | Work | Status |
 | --- | --- | --- |
-| 1 | Supervised self-development using stable Ipse to add P15 shared operator skills | Implemented and independently verified; integrating into main |
-| 2 | P17 structured operator questions | Verified feature branch `5984d09`; integration follows shared-skills review |
-| 3 | Remaining P15 scoped configuration | Implemented and verified; integrating into main |
-| 4 | P16 explicit model profiles/routing | Implemented and verified; integrating into main |
-| 5 | P14 bounded deep research | Pending |
+| 1 | Supervised self-development using stable Ipse to add P15 shared operator skills | Integrated; independent source/package checks passed |
+| 2 | P17 structured operator questions | Integrated; fixture/live and feature-package checks passed |
+| 3 | Remaining P15 scoped configuration | Integrated; source and feature hosted checks passed |
+| 4 | P16 explicit model profiles/routing | Integrated; fixture/live checks passed, combined release/hosted checks pending |
+| 5 | P14 bounded deep research | Generic configured MCP/ledger implementation and live validation in progress |
 
 Update each row and its implementation/evidence record as focused increments pass.
 Use independent review, required source/package checks and explicit live evidence;
@@ -674,8 +674,7 @@ Acceptance:
 
 The original gap was free-text-only clarification, separate from yes/no action
 approvals. P17 now implements native single/multiple/text questions with validated
-explicit answers and durable waiting in its feature worktree; main-branch
-integration remains pending the current execution sequence.
+explicit answers and durable waiting on main; see the operator/developer contracts.
 MCP elicitation is also unsupported. Skills can guide wording but cannot supply
 this runtime capability. Research scoping can initially use ordinary chat.
 
@@ -686,14 +685,15 @@ cancellation/EOF and defined headless behavior. Waiting for clarification must
 not confer approval, execute an action or leave a model request running. Keep
 questions separate from permission prompts, validate stale/duplicate answers,
 and define how child questions reach the parent operator before enabling them.
-This is now selected for implementation in [P17](#p17-structured-operator-questions);
-it remains unavailable until that stage passes its checks.
+This is implemented under [P17](#p17-structured-operator-questions); child-to-parent
+question forwarding and MCP elicitation remain unavailable.
 
 ## P15: scoped configuration and shared operator skills
 
 Added at the developer's request and authorized on 2026-10-16. Status: shared
 operator skills and scoped JSON settings are implemented and independently
-verified. Main integration checks remain pending. Shared discovery uses project >
+verified on main. Combined source checks passed 316 native Linux tests; release
+and hosted integration checks remain pending. Shared discovery uses project >
 Ipse user > shared operator > bundled precedence and does not copy installations.
 See [skill discovery](developer/architecture.md#skill-discovery),
 [configuration](operator/configuration.md) and [verification](developer/testing.md).
@@ -743,12 +743,12 @@ Acceptance:
 ## P16: explicit model profiles and task routing
 
 Added at the developer's request and authorized on 2026-10-16. Implemented on
-the model-profile feature branch: bounded named profiles, main/routine/review
+main: bounded named profiles, main/routine/review
 roles, conservative Responses effort mapping and selected-profile child isolation.
 The native Linux suite passed 309 tests (14 macOS excluded); a live subscription
 `gpt-6.1-sol`/high parent and installed Ollama `qwen3.5:9b` child passed routing,
-arithmetic verification and unchanged idle resume. Main/package/hosted integration
-checks follow the first self-development increment. See
+arithmetic verification and unchanged idle resume. The combined main suite passed
+316 native Linux tests; package/hosted integration checks remain pending. See
 [profile setup](operator/model-profiles.md) and [contract](developer/model-profiles.md).
 The intended use is a stronger main model with an explicitly chosen smaller local
 model for suitable routine subtasks. P15 supplies persistent configuration; this
@@ -797,12 +797,11 @@ Acceptance:
 
 ## P17: structured operator questions
 
-Selected and authorized on 2026-10-16. Implemented and verified in isolated
-feature branch `5984d09` while the first stable self-development trial runs.
-The question/API/CLI suites passed 25 tests, full native Linux suite 293 tests
-(14 Mac excluded), synthetic live ChatGPT single/multiple/text answers passed,
-and extracted-runtime question checks passed. Main integration and hosted checks
-follow shared-skills independent review; this main checkout has not changed yet.
+Selected and authorized on 2026-10-16. Implemented on main. The feature passed
+25 focused tests, 293 native Linux tests, live subscription single/multiple/text
+answers, extracted runtime checks and hosted Linux/macOS checks. Combined main
+source passed 316 native Linux tests (14 macOS excluded locally); final combined
+release/hosted verification remains pending. See [contract](developer/operator-questions.md).
 
 Acceptance:
 

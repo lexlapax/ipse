@@ -1917,3 +1917,27 @@ Private staging artifacts live under `/tmp/ipse-profile-live/` and are not
 committed. This validates this account/model/host, not every reasoning model,
 remote Ollama deployment or paid-provider profile. Source package and main/hosted
 integration checks follow the first supervised self-development increment.
+
+## Shared skills, questions, configuration and profiles integration, 2026-10-16
+
+The first four authorized stages are integrated into main. The combined source
+suite passed 316 native Linux tests with 14 macOS exclusions. Feature hosted
+configuration and question checks passed on Linux/macOS. Initial profile CI
+stopped at Elixir 1.18 formatting (local toolchain is 1.20); explicit block syntax
+repairs that difference. Initial shared-skills macOS CI exposed isolated HOME
+hiding rustup's installed toolchain; fixtures now preserve RUSTUP_HOME before
+isolating operator discovery, without reading real skills/auth. Combined hosted
+checks remain pending; these failures were not successful macOS validation.
+
+The stable self-development trial also exposed bundled release launcher variables
+selecting its ERTS during system Mix builds. Trusted shell launch now removes only
+the active bundle's ERTS PATH entry and launcher variables; source-mode environment
+is unchanged. A bundled fixture checks this boundary without a development
+toolchain. Configuration/provider selection and native sandbox policy are unchanged.
+
+The integrated Linux archive also passed its extracted verifier, including the
+new trusted-shell launcher-variable/ERTS PATH check, question lifecycle, native
+helpers, MCP and delegation. Execution used isolated HOME/IPSE_HOME and a utility-
+only PATH. All 44 Markdown documents and 414 local links/anchors passed. Hosted
+checks are rerun on the integrated commits rather than treating earlier failures
+as passes.

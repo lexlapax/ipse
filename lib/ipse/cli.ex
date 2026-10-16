@@ -631,7 +631,7 @@ defmodule Ipse.CLI do
                model: model,
                auth_dir: auth_dir(),
                home: home(),
-                operator_home: Ipse.Skills.operator_home(),
+               operator_home: Ipse.Skills.operator_home(),
                configuration: Ipse.Config.manifest(effective),
                timeout_ms: opts[:timeout_ms],
                sandbox: sandbox,

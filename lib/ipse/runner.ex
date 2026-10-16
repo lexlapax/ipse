@@ -325,6 +325,7 @@ defmodule Ipse.Runner do
           :exit_status,
           :use_stdio,
           :hide,
+          env: bundled_shell_environment(),
           args: args
         ])
 
@@ -346,6 +347,38 @@ defmodule Ipse.Runner do
       after
         if Port.info(port), do: Port.close(port)
       end
+    end
+  end
+
+  # A bundled release prepends its own ERTS and exports launcher variables. They
+  # must not select the release's boot files when trusted shell tools invoke the
+  # operator's independently installed Erlang/Elixir toolchain.
+  defp bundled_shell_environment do
+    root = System.get_env("RELEASE_ROOT")
+    runtime = :code.root_dir() |> List.to_string()
+    app = Application.app_dir(:ipse)
+
+    if is_binary(root) and Path.expand(root) == Path.expand(runtime) and
+         String.starts_with?(app, Path.join(root, "lib") <> "/") do
+      runtime_bin =
+        Path.join([root, "erts-" <> List.to_string(:erlang.system_info(:version)), "bin"])
+
+      path =
+        System.get_env("PATH", "/usr/bin:/bin")
+        |> String.split(":")
+        |> Enum.reject(&(Path.expand(&1) == Path.expand(runtime_bin)))
+        |> Enum.join(":")
+
+      keys =
+        ~w(ROOTDIR BINDIR EMU PROGNAME ERL_ROOTDIR ERL_LIBS ERL_FLAGS ERL_AFLAGS ERL_ZFLAGS) ++
+          (System.get_env() |> Map.keys() |> Enum.filter(&String.starts_with?(&1, "RELEASE_")))
+
+      [
+        {~c"PATH", String.to_charlist(path)}
+        | Enum.map(Enum.uniq(keys), &{String.to_charlist(&1), false})
+      ]
+    else
+      []
     end
   end
 

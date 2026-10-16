@@ -267,3 +267,7 @@ P16 reuses Jason/JSONSchex, fixed provider adapters and ordinary OTP delegation.
 It adds no dependency, inference framework, model downloader or credential store.
 Reasoning effort is a small documented Responses mapping with a conservative
 model allowlist; unsupported provider settings fail explicitly.
+
+Bundled shell environment cleanup reuses existing OTP Port environment overrides.
+Test HOME isolation preserves the existing Rustup toolchain location explicitly;
+no compiler download, new toolchain package or runtime dependency is introduced.

@@ -306,3 +306,8 @@ documented reasoning capabilities and credential/native-history isolation for
 mixed-provider children. Configuration and skills grant no effect permissions.
 Shared operator skills use explicit isolation inputs; see
 [skill discovery](#skill-discovery).
+
+Bundled trusted shell launches strip the active release's injected ERTS PATH entry
+and launcher variables before executing operator tools. This avoids contaminating
+an independent installed Erlang/Elixir toolchain. Native execution keeps its own
+fixed environment policy. This adds no filesystem or network enforcement claim.

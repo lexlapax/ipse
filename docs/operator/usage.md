@@ -467,3 +467,8 @@ Embedded clients receive `{:question, id, arguments}` inside the usual Ipse even
 envelope and answer with `Ipse.Session.answer(pid, id, answers)`, where `answers`
 maps each question ID to an option ID, a list of IDs, or text. See the
 [developer contract](../developer/operator-questions.md) for schema and recovery.
+
+When launched from a bundled release, trusted shell tools use the operator's
+remaining PATH after Ipse removes its own bundled ERTS directory and release
+launcher variables. This prevents system Mix/Elixir commands from selecting
+Ipse's release boot files. It is environment cleanup, not a sandbox guarantee.

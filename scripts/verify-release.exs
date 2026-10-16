@@ -64,6 +64,19 @@ await_lock = fn await_lock, path, attempts ->
 end
 
 try do
+  {:ok, release_environment} =
+    Ipse.Runner.run(
+      ~s(test -z "${RELEASE_ROOT:-}" && test -z "${ROOTDIR:-}" && test -z "${BINDIR:-}" && printf release-env-clean),
+      scratch
+    )
+
+  0 = release_environment.exit_code
+  "release-env-clean" = release_environment.output
+
+  {:ok, selected_erl} = Ipse.Runner.run("command -v erl || true", scratch)
+  false = String.contains?(selected_erl.output, release_root)
+  IO.puts("Bundled trusted shell excludes its launcher environment and bundled ERTS PATH.")
+
   {:ok, question_session} =
     DynamicSupervisor.start_child(
       Ipse.Sessions,
