@@ -78,7 +78,7 @@ Uses `http://localhost:11434/api/chat`. Override its root with
 model and local hardware.
 
 Recorded live checks used the installed `qwen3.5:9b` model for basic tool/stream
-acceptance, identity/resume, compaction, native local MCP, and serial delegation; see
+acceptance, identity/resume, compaction, native local MCP, and serial/parallel delegation; see
 [provider verification status](../developer/testing.md#provider-verification-status).
 
 ## 4. Anthropic API
@@ -91,7 +91,7 @@ Set `ANTHROPIC_API_KEY`, then:
 
 This explicitly selects Anthropic API billing. Live acceptance with
 `claude-haiku-4-5` passed streamed text, an approved tool round trip, continuation,
-resume, a provider error, compaction, native local MCP, and serial delegation on
+resume, a provider error, compaction, native local MCP, and serial/parallel delegation on
 Arch. Other models/hosts remain separate checks. See
 [provider verification status](../developer/testing.md#provider-verification-status).
 
@@ -318,11 +318,13 @@ required by the provider; raw hidden reasoning is not exposed in the UI.
 
 Current limits: 30 model calls per turn by default (`--max-steps`), bounded file and
 shell output, and a conservative conversation byte ceiling with bounded
-[automatic compaction](#context-compaction). Explicit local stdio MCP can expose
-allowlisted tools, exact-URI text resources, and named prompts. Each MCP server
-has its own `off` or `native` sandbox setting, separate from shell `--sandbox`;
+[automatic compaction](#context-compaction). Explicit stdio and Streamable HTTP MCP can expose
+allowlisted tools, exact-URI text resources, and named prompts. Local MCP servers
+have their own `off` or `native` sandbox setting, separate from shell `--sandbox`.
+HTTP endpoints use verified TLS and optional server-specific bearer credentials;
+remote effects cannot be confined or cancelled by the local sandbox;
 see the [MCP guide](mcp.md) for allowlist, schema, and platform limits. **Full-screen
-TUI, network MCP, remote agents, and Windows are not implemented.** Local
+TUI, remote agents, and Windows are not implemented.** Local
 delegation is opt-in and serial by default; two-child parallel mode uses
 `--subagents --subagent-concurrency 2`. Children do not inherit MCP servers. See
 [local subagents](subagents.md). Uncompactable

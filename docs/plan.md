@@ -13,15 +13,15 @@ the next feature sequence on 2026-10-15:
 | Milestone | Scope | Status |
 | --- | --- | --- |
 | [P8](#p8-bounded-skill-resources) | Bounded explicit skill resources | Complete within documented scope |
-| [P9](#p9-parallel-local-subagents) | Parallel local subagents | Implemented; host verification in progress |
-| [P10](#p10-network-mcp) | Explicit network MCP | Planned; not started |
+| [P9](#p9-parallel-local-subagents) | Parallel local subagents | Complete within documented scope |
+| [P10](#p10-network-mcp) | Explicit network MCP | Implemented; host verification in progress |
 | [P11](#p11-live-dotsetup-trial) | Live use in `~/projects/lexlapax/dotsetup` | Planned after P10 |
 
 Feature completion does not close every live provider acceptance check. On
 2026-10-15, installed Ollama `qwen3.5:9b`, Anthropic `claude-haiku-4-5`, and
 OpenAI API `gpt-4.1-mini` passed basic live acceptance, compaction, native local
-MCP, serial delegation, and idle resume. Paid API checks used privately loaded
-keys from the ignored repository `.env` under explicit developer authorization.
+MCP, HTTP MCP, serial/parallel delegation, and idle resume. Paid API checks used
+privately loaded keys from the ignored repository `.env` under explicit developer authorization.
 See the authoritative
 [provider status and outstanding checks](developer/testing.md#provider-verification-status).
 
@@ -44,8 +44,8 @@ download or new runtime dependency was required.
   than replaying them.
 
 Automatic context compaction is available with a retained original journal.
-Explicit local stdio MCP tools and opt-in serial local delegation are available;
-network MCP, full-screen TUI, remote agents, and Windows are not implemented.
+Explicit stdio/Streamable HTTP MCP tools and opt-in serial/parallel local delegation
+are available. Full-screen TUI, remote agents, and Windows are not implemented.
 Local parallel groups are explicitly enabled with `--subagent-concurrency 2`.
 The optional Linux and macOS native shell profiles are separate from trusted
 execution. macOS detached-descendant cleanup is best effort.
@@ -440,7 +440,7 @@ without replay. Update the delegation contract and operator guide, distinguish
 fixture from live provider evidence, verify supported hosts, and commit/push.
 Implemented opt-in two-child groups using existing OTP ownership and separate
 sessions. Source fixtures and live Ollama/Anthropic/OpenAI API checks passed;
-hosted source/package checks are in progress. Remote agents remain outside this
+hosted Linux/macOS source/package checks passed. Remote agents remain outside this
 milestone. See [P9 evidence](developer/testing.md#p9-parallel-local-delegation-2026-10-15).
 
 ## P10: network MCP
@@ -461,8 +461,15 @@ as potentially unknown remote effects, never automatic replay. Verify against a
 pinned independent server, update developer/operator guidance and dependency
 inventory, and commit/push the supported result. Local approvals and sandboxing
 cannot establish a remote server's isolation or guarantee remote cancellation.
-Status: planned, not implemented; this does not authorize remote subagents or
-arbitrary remote command execution.
+Implemented MCP 2025-11-25 Streamable HTTP POST with JSON/finite SSE responses,
+verified HTTPS, optional per-server bearer credentials, bounded private HTTP/1
+clients, and best-effort session DELETE. Literal loopback HTTP requires an explicit
+exception. Redirects, retries, OAuth negotiation, GET streams/subscriptions, and
+reconnection/replay are excluded. Fixture and pinned independent-server checks
+passed; hosted source/package verification is in progress. See the
+[contract](developer/mcp.md#streamable-http-boundary) and
+[P10 evidence](developer/testing.md#p10-streamable-http-mcp-2026-10-15).
+Remote subagents and arbitrary remote command execution remain outside this scope.
 
 ## P11: live dotsetup trial
 

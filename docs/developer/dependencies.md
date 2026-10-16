@@ -34,13 +34,13 @@ See [agent rules](../../AGENTS.md), [setup](../operator/arch-linux.md), and
 | Elixir and Mix | Elixir 1.18+; `mix.exs` requires `~> 1.18` | Core implementation, build, release, ExUnit tests, scripts | Apache-2.0 |
 | Erlang/OTP and ERTS | OTP 27+; system toolchain or bundled release | VM, OTP supervision, crypto, public-key/TLS, HTTP, filesystem and process APIs | Apache-2.0 with component notices |
 | Jason | Git tag `v1.4.4`, commit `926d2ac6cc0271b9a7079b2ec16ae0cf802f7963` in `mix.lock`; direct override for shared package requirements | JSON for HTTP, native protocol, and journals | Apache-2.0 (corrected from the earlier MIT label against the pinned upstream notice) |
-| MCP Elixir SDK | Hex `mcp_elixir_sdk` 1.1.0, pinned in `mix.exs` and `mix.lock` | MCP 2025-11-25 client handshake, request matching, and protocol types; Ipse supplies its bounded local transport | MIT |
+| MCP Elixir SDK | Hex `mcp_elixir_sdk` 1.1.0, pinned in `mix.exs` and `mix.lock` | MCP 2025-11-25 client handshake, request matching, and protocol types; Ipse supplies bounded stdio/HTTP transports and reuses the SDK's SSE parser | MIT |
 | elixir_uuid | Hex 1.2.1, transitive SDK dependency, locked in `mix.lock` | SDK UUID utilities | Apache-2.0 |
 | JSONSchex | Hex `jsonschex` 0.10.0, pinned in `mix.exs` and `mix.lock` | JSON Schema Draft 2020-12 validation behind Ipse's bounded keyword allowlist; no remote loader | MIT |
 | ex_json_pointer | Hex 0.8.0, transitive JSONSchex dependency, locked in `mix.lock` | JSON Pointer handling inside schema compilation | MIT |
-| Req and Plug | Hex `req` 0.7.5, `plug` 1.20.3, pinned in `mix.exs` and `mix.lock` | The SDK 1.1.0 advertises optional HTTP dependencies but unconditionally references their modules; required for successful compilation on Elixir 1.20. No MCP network transport or HTTP server is enabled | Apache-2.0 |
-| Finch | Hex 0.24.0, locked | Req's HTTP pool implementation; no MCP network calls are enabled | MIT |
-| Mint | Hex 1.11.0, locked | Finch HTTP transport | Apache-2.0 |
+| Req and Plug | Hex `req` 0.7.5, `plug` 1.20.3, pinned in `mix.exs` and `mix.lock` | The SDK 1.1.0 advertises optional HTTP dependencies but unconditionally references their modules; required for successful compilation on Elixir 1.20. P10 also reuses Req for bounded opt-in HTTP MCP; no HTTP server is enabled | Apache-2.0 |
+| Finch | Hex 0.24.0, locked | Req HTTP pools; P10 uses a privately owned bounded HTTP/1 pool per request | MIT |
+| Mint | Hex 1.11.0, locked | Finch transport with default certificate/hostname verification and a header bound | Apache-2.0 |
 | HPAX | Hex 1.1.0, locked | Mint HTTP/2 compression support | Apache-2.0 |
 | MIME | Hex 2.0.7, locked | Req/Plug MIME utilities | Apache-2.0 |
 | NimbleOptions | Hex 1.1.1, locked | Finch option validation | Apache-2.0 |
@@ -54,7 +54,8 @@ OTP libraries are distributed with OTP rather than fetched as separate packages.
 Mix lists `logger`, `inets`, and `ssl` applications; authentication also uses OTP
 crypto/public-key facilities. Jason has no additional package dependencies in
 its own package. The MCP/schema packages add the transitive packages listed
-above. Req/Plug are included for SDK compilation; Bandit/Decimal/IDNA are not
+above. Req/Plug are included for SDK compilation; Req/Finch/Mint also serve P10's
+explicit HTTP client. Bandit/Decimal/IDNA are not
 enabled. No MCP listener or remote transport starts automatically.
 No Node, JavaScript, or Python runtime is required.
 
@@ -195,9 +196,10 @@ Its Rust package graph is pinned by the archive's
 Tokio, Serde/serde_json, Clap, axum, ahash, parking_lot, arc-swap,
 crossbeam-channel, crc32fast, futures, tracing, thiserror, anyhow, and subtle.
 These are temporary investigation dependencies, not additions to Ipse's
-runtime, Mix lockfile, default tests, CI, or bundle. Only the stdio transport
-was exercised; no HTTP/TCP service, embedding model, external database, or
-additional system tool was used. The verifier uses existing Elixir/OTP and
+runtime, Mix lockfile, default tests, CI, or bundle. The original P7 check exercised stdio. P10 separately exercised its authenticated
+HTTP/SSE endpoint on literal loopback using a synthetic bearer token and
+disposable graph. No embedding model, external database, or additional system
+tool was used. The verifier uses existing Elixir/OTP and
 Jason. No upstream source or executable is redistributed.
 
 Downloaded locked Rust dependencies into a temporary Cargo cache without

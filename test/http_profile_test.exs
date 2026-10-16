@@ -2,6 +2,46 @@ defmodule Ipse.HTTPProfileTest do
   use ExUnit.Case, async: false
   alias Ipse.HTTPProfile
 
+  test "private Finch pools and their guardians stop on return and borrower death" do
+    {pid, monitor, guardian} =
+      HTTPProfile.with_finch(fn name ->
+        pid = Process.whereis(name)
+        {pid, Process.monitor(pid), HTTPProfile.finch_guardian(self())}
+      end)
+
+    assert_receive {:DOWN, ^monitor, :process, ^pid, _}, 2000
+    refute Process.alive?(guardian)
+
+    parent = self()
+
+    borrower =
+      spawn(fn ->
+        HTTPProfile.with_finch(fn name ->
+          send(parent, {:finch_ready, Process.whereis(name), HTTPProfile.finch_guardian(self())})
+          Process.sleep(:infinity)
+        end)
+      end)
+
+    assert_receive {:finch_ready, pool, guardian}, 2000
+    pool_monitor = Process.monitor(pool)
+    guardian_monitor = Process.monitor(guardian)
+
+    descendants =
+      for {_, child, _, _} <- Supervisor.which_children(pool),
+          is_pid(child),
+          do: {child, Process.monitor(child)}
+
+    Process.exit(borrower, :kill)
+    assert_receive {:DOWN, ^pool_monitor, :process, ^pool, _}, 2000
+    assert_receive {:DOWN, ^guardian_monitor, :process, ^guardian, _}, 2000
+
+    for {child, reference} <- descendants do
+      assert_receive {:DOWN, ^reference, :process, ^child, _}, 2000
+    end
+
+    assert HTTPProfile.with_finch(fn name -> is_pid(Process.whereis(name)) end)
+  end
+
   test "normal return closes the profile before releasing its slot" do
     {profile, monitor} =
       HTTPProfile.with_profile(fn profile ->

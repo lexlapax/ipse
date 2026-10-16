@@ -9,7 +9,7 @@ start. Use the guides below for operation, development, and project context.
 | --- | --- |
 | [Arch Linux setup](operator/arch-linux.md) | Prerequisites, source installation, development setup, release requirements |
 | [Usage](operator/usage.md) | Providers, login, approvals, skills, resume, logout, state, limits |
-| [Local MCP servers](operator/mcp.md) | Explicit tool/resource/prompt config, server sandbox, approvals, credentials, recovery, and demo |
+| [MCP servers](operator/mcp.md) | Explicit stdio/HTTP configuration, TLS, credentials, server sandbox, approvals, recovery, and demos |
 | [Local subagents](operator/subagents.md) | Explicit delegation, child approvals, bounds, journals, and recovery |
 | [Troubleshooting](operator/troubleshooting.md) | Build, callback, account, lock, and recovery problems |
 

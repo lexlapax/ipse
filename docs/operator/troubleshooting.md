@@ -106,7 +106,7 @@ byte ceiling. See [compaction behavior](usage.md#context-compaction).
 A damaged committed checkpoint stops resume; keep the original journal for
 diagnosis rather than deleting checkpoint records blindly.
 
-## Local MCP failures
+## MCP failures
 
 MCP is disabled without an explicit `--mcp-config` file. Invalid configuration,
 unsupported schema keywords, missing allowlisted tools/resources/prompts,
@@ -122,13 +122,21 @@ Resume never replays it. If cleanup cannot be confirmed, the session stops.
 Resume requires the same public server configuration, including resource/prompt
 allowlists and per-server sandbox mode.
 
-MCP servers default to trusted user permissions outside the shell sandbox.
+Local MCP servers default to trusted user permissions outside the shell sandbox.
 Setting that server's `sandbox` to `native` requests its independent fixed OS
 profile and fails closed if unavailable; it does not inherit the CLI shell mode.
 Provider executable setup errors can occur after a transport Port exists, so
 check the call result rather than inferring activation from startup alone. A
 successful shutdown does not reverse prior effects. See the
 [MCP guide](mcp.md#server-permissions-and-sandbox).
+
+For HTTP MCP, check the explicit endpoint, named bearer variable, system CA trust,
+and certificate hostname. Ipse rejects redirects, missing/invalid tokens,
+non-loopback plain HTTP, and unfinished/oversized response streams. It does not
+perform OAuth login, refresh, or reconnect/replay. Restart to load a rotated token.
+Cancelling the local connection cannot confirm that remote work stopped; inspect
+remote effects before requesting another call. See
+[network setup and limits](mcp.md#configure-a-network-endpoint).
 
 ## Sharing diagnostics
 

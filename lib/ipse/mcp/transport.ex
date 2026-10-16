@@ -16,6 +16,16 @@ defmodule Ipse.MCP.Transport do
     :exit, _ -> {:error, :cleanup_unconfirmed}
   end
 
+  @doc false
+  def admit_response(message, pending, private_config) do
+    with true <- bounded?(message, 0),
+         {:ok, message, next} <- admit(message, pending) do
+      {:ok, sanitize_identity(message, private_config), next}
+    else
+      _ -> :error
+    end
+  end
+
   @impl true
   def init(opts) do
     Process.flag(:trap_exit, true)

@@ -53,7 +53,7 @@ defmodule Ipse.IndependentMemoryMCPCheck do
   defp create_call,
     do: {Config.tool_id("memory", "create_entities"), %{"entities" => [@entity]}}
 
-  def run(binary) do
+  def run(binary, mode \\ :stdio) do
     root =
       Path.join(
         System.tmp_dir!(),
@@ -66,40 +66,103 @@ defmodule Ipse.IndependentMemoryMCPCheck do
     File.mkdir!(home)
     File.chmod!(home, 0o700)
     previous_home = System.get_env("IPSE_HOME")
+    previous_token = System.get_env("IPSE_MCP_INDEPENDENT_TOKEN")
     System.put_env("IPSE_HOME", home)
 
     try do
-      check(binary, root, workspace, home)
+      check(binary, root, workspace, home, mode)
     after
+      cleanup =
+        if port = Process.delete(:independent_http_port),
+          do: Ipse.Runner.close_stdio(port),
+          else: :ok
+
+      if previous_token,
+        do: System.put_env("IPSE_MCP_INDEPENDENT_TOKEN", previous_token),
+        else: System.delete_env("IPSE_MCP_INDEPENDENT_TOKEN")
+
       if previous_home,
         do: System.put_env("IPSE_HOME", previous_home),
         else: System.delete_env("IPSE_HOME")
 
       File.rm_rf!(root)
+      :ok = cleanup
     end
   end
 
-  defp check(binary, root, workspace, home) do
+  defp check(binary, root, workspace, home, mode) do
     executable = Path.join(workspace, "memory-server")
     File.cp!(Path.expand(binary), executable)
     File.chmod!(executable, 0o700)
     graph = Path.join(workspace, "fixture.mcpmem")
     path = Path.join(root, "mcp.json")
 
+    entry =
+      if mode == :http do
+        {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}])
+        {:ok, {_, port}} = :inet.sockname(listener)
+        :gen_tcp.close(listener)
+        token = Base.encode16(:crypto.strong_rand_bytes(24), case: :lower)
+        System.put_env("IPSE_MCP_INDEPENDENT_TOKEN", token)
+
+        {:ok, process} =
+          Ipse.Runner.open_stdio(
+            executable,
+            [
+              "--memory-file",
+              graph,
+              "--transport",
+              "http",
+              "--bind",
+              "127.0.0.1:#{port}",
+              "--log-level",
+              "error"
+            ],
+            workspace,
+            %{"MCP_MEMORY_DURABILITY" => "sync", "MCP_MEMORY_AUTH_TOKEN" => token},
+            120_000
+          )
+
+        Process.put(:independent_http_port, process)
+
+        true =
+          Enum.any?(1..100, fn _ ->
+            case :gen_tcp.connect({127, 0, 0, 1}, port, [:binary, active: false], 50) do
+              {:ok, socket} ->
+                :gen_tcp.close(socket)
+                true
+
+              _ ->
+                Process.sleep(25)
+                false
+            end
+          end)
+
+        %{
+          "id" => "memory",
+          "transport" => "http",
+          "url" => "http://127.0.0.1:#{port}/mcp",
+          "allow_insecure_loopback" => true,
+          "bearer_env" => "IPSE_MCP_INDEPENDENT_TOKEN",
+          "tools" => ["create_entities", "get_entity", "search_nodes"],
+          "timeout_ms" => 15_000
+        }
+      else
+        %{
+          "id" => "memory",
+          "command" => executable,
+          "args" => ["--memory-file", graph, "--transport", "stdio", "--log-level", "error"],
+          "tools" => ["create_entities", "get_entity", "search_nodes"],
+          "sandbox" => "native",
+          "env" => %{"MCP_MEMORY_DURABILITY" => "sync"},
+          "timeout_ms" => 15_000
+        }
+      end
+
     File.write!(
       path,
       Jason.encode!(%{
-        "servers" => [
-          %{
-            "id" => "memory",
-            "command" => executable,
-            "args" => ["--memory-file", graph, "--transport", "stdio", "--log-level", "error"],
-            "tools" => ["create_entities", "get_entity", "search_nodes"],
-            "sandbox" => "native",
-            "env" => %{"MCP_MEMORY_DURABILITY" => "sync"},
-            "timeout_ms" => 15_000
-          }
-        ]
+        "servers" => [entry]
       })
     )
 
@@ -148,8 +211,8 @@ defmodule Ipse.IndependentMemoryMCPCheck do
     ^written_graph = File.read!(graph)
 
     IO.puts(
-      "PASS: independent memory MCP native stdio discovery, denied write without dispatch, " <>
-        "exact approved write/get/search, persistence across fresh processes, tool error, " <>
+      "PASS: independent memory MCP #{mode} discovery, denied write without dispatch, " <>
+        "exact approved write/get/search, persistence across connections, tool error, " <>
         "and idle resume without replay. No model service contacted."
     )
   end
@@ -172,7 +235,7 @@ defmodule Ipse.IndependentMemoryMCPCheck do
     true =
       Enum.all?(intents, fn event ->
         event["approval"] == "approved" and event["mcp"]["server_id"] == "memory" and
-          get_in(event, ["mcp", "origin", "sandbox_requested"]) == "native" and
+          get_in(event, ["mcp", "origin", "sandbox_requested"]) == to_string(server.sandbox) and
           get_in(event, ["mcp", "origin", "configured_endpoint_fingerprint"]) ==
             server.fingerprint
       end)
@@ -229,6 +292,9 @@ case System.argv() do
   [binary] ->
     Ipse.IndependentMemoryMCPCheck.run(binary)
 
+  [binary, "--http"] ->
+    Ipse.IndependentMemoryMCPCheck.run(binary, :http)
+
   _ ->
-    raise "Usage: mix run scripts/verify-independent-memory-mcp.exs /path/to/reviewed/mcp-memory"
+    raise "Usage: mix run scripts/verify-independent-memory-mcp.exs /path/to/reviewed/mcp-memory [--http]"
 end

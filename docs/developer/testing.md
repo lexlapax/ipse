@@ -183,9 +183,9 @@ not live-service acceptance. Current recorded status:
 | Provider | Live evidence | Outstanding |
 | --- | --- | --- |
 | ChatGPT subscription | Browser sign-in, streamed coding/tools, resume, natural-expiry rotating refresh, logout, compaction, local MCP, and serial delegation on Arch | Broader eligibility/allowance cases and other hosts remain bounded by the individual records below |
-| Ollama | Installed `qwen3.5:9b`: basic acceptance, compaction, native local MCP, serial delegation and idle resume on Arch | Other models/hosts and feature-specific negative paths |
-| Anthropic API | Explicit API billing with `claude-haiku-4-5`: basic acceptance, compaction, native local MCP, serial delegation and idle resume on Arch | Other models/hosts and feature-specific negative paths |
-| OpenAI API | Explicit API billing with `gpt-4.1-mini`: basic acceptance, compaction, native local MCP, serial delegation and idle resume on Arch | Other models/hosts and feature-specific negative paths |
+| Ollama | Installed `qwen3.5:9b`: basic acceptance, compaction, native local/HTTP MCP, serial/parallel delegation and idle resume on Arch | Other models/hosts and feature-specific negative paths |
+| Anthropic API | Explicit API billing with `claude-haiku-4-5`: basic acceptance, compaction, native local/HTTP MCP, serial/parallel delegation and idle resume on Arch | Other models/hosts and feature-specific negative paths |
+| OpenAI API | Explicit API billing with `gpt-4.1-mini`: basic acceptance, compaction, native local/HTTP MCP, serial/parallel delegation and idle resume on Arch | Other models/hosts and feature-specific negative paths |
 
 The developer authorized live API calls using the ignored repository `.env` on
 2026-10-15. Keys were loaded privately for the check; they were not printed,
@@ -1347,7 +1347,63 @@ warnings-as-errors compilation, isolated demo, and **249 tests with Linux native
 enforcement included (14 Mac tests excluded)** passed. The exact rebuilt
 `dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz`, with version-matched runtime
 notices, passed fresh-home/utility-only-PATH verification including bundled
-serial and parallel delegation. Hosted source/package verification is pending.
-No dependency was added. Reads are not isolated from
+serial and parallel delegation. Hosted [Linux/macOS source/package CI passed](https://github.com/lexlapax/ipse/actions/runs/38846368587)
+at `4e5f922`. No dependency was added. Reads are not isolated from
 writes; unrelated processes and detached descendants retain the documented
 limits. Remote/recursive agents and child MCP remain unavailable.
+
+## P10 Streamable HTTP MCP, 2026-10-15
+
+Implemented explicit MCP 2025-11-25 Streamable HTTP POST with JSON/finite SSE
+responses, verified HTTPS, optional server-specific static bearer authentication,
+and session headers/best-effort DELETE. Reuses the existing SDK, SSE parser,
+strict admission/catalog/schema checks, approvals, and synced intent journal.
+Existing Req/Finch/Mint provide streaming HTTP/1 with private guarded pools;
+no dependency or external runtime was added. See the
+[transport contract](mcp.md#streamable-http-boundary) and
+[operator setup](../operator/mcp.md#configure-a-network-endpoint).
+
+Eleven network fixtures plus five HTTP profile tests passed: explicit endpoint
+and token identity/rotation, JSON/SSE handshake and private session lifecycle,
+exact resources/prompts, full approvals/headless denial, authentication errors,
+redirect rejection without another request, body/header bounds, incomplete or
+mixed malformed streams, wrong IDs, unmatched ping, changed sessions, descriptor
+drift, post-dispatch disconnect with unknown/not-started outcomes, idle resume
+without replay, cancellation, and owner death closing the client socket. Private
+Finch root/children/guardian exit is separately confirmed on borrower death and
+normal return. HTTPS fixtures passed trusted matching-host discovery/tool calls,
+untrusted-CA rejection, and trusted-certificate hostname mismatch without HTTP
+dispatch. Trust was changed/restored only inside the isolated test VM. An initial
+fixture asserted the wrong TLS alert name; the actual hostname rejection was
+retained and the fixture now accepts the supported OTP alert names. A later
+redirect fixture used the wrong OTP socket-info module; correcting that fixture
+restored the full focused pass without changing production policy.
+
+The optional independent verifier passed against the previously reviewed,
+checksum-pinned and explicitly patched Apache-2.0 `mcp-memory` 2.0.0 executable.
+Its authenticated literal-loopback HTTP endpoint returned finite SSE responses.
+A disposable graph check denied one create without dispatch/intent, approved
+exact synthetic create/get/search/missing-record calls, checked persisted bytes
+and ordinary tool errors, and resumed idle with unchanged events and no replay.
+The daemon received only a synthetic server token and selected durability flag,
+then its ordinary process group was closed. This was not an arbitrary public
+HTTPS service, OAuth server, current upstream release, or remote-isolation test.
+See [the exact upstream source/build record](dependencies.md#second-independent-mcp-investigation-memory).
+
+Actual live Ollama `qwen3.5:9b`, Anthropic `claude-haiku-4-5`, and OpenAI API
+`gpt-4.1-mini` each passed two exact individually approved create/get calls through
+that authenticated HTTP server, parent completion with the synthetic marker,
+network-origin intent records, and idle resume without replay. Provider keys
+were loaded privately from the ignored `.env` and were never supplied to the
+server. These are synthetic-data checks on Arch, separate from fixture and
+original ChatGPT subscription evidence. No ChatGPT HTTP MCP check, live remote
+cancellation guarantee, OAuth flow, long-lived GET stream, reconnection/event
+resumption, other model/host acceptance, or general server compatibility is claimed.
+
+Source build, formatting, warnings-as-errors compilation, isolated demo, and
+**261 tests with Linux native enforcement included (14 Mac tests excluded)**
+passed. Rebuilt the exact `dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz` with
+version-matched runtime notices and passed fresh-home/utility-only-PATH verification,
+including the new bundled HTTP MCP round trip and serial/parallel delegation.
+The HTTP demo uses only OTP sockets and the extracted runtime. Hosted Linux/macOS
+source/package checks are pending.

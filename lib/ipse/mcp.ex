@@ -1,5 +1,5 @@
 defmodule Ipse.MCP do
-  @moduledoc "Explicit local MCP tools behind the session's existing approval and journal boundary."
+  @moduledoc "Explicit MCP tools behind the session's existing approval and journal boundary."
   alias Ipse.MCP.{Client, Config, Schema}
 
   def fingerprints(config) do

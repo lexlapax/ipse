@@ -135,8 +135,10 @@ repaired while holding the session lock. The full transcript remains on disk.
 
 The line-oriented terminal client is not a full-screen TUI. Explicit opt-in
 serial local delegation is implemented with bounded child sessions and an
-explicit two-child parallel mode. Recursive and remote agents are not implemented. Network MCP and Windows are
-also unsupported. Native Linux and macOS sandbox profiles are optional. macOS
+explicit two-child parallel mode. Recursive and remote agents are not implemented.
+Network MCP supports explicitly configured Streamable HTTP endpoints; see the
+[transport contract](mcp.md#streamable-http-boundary). Windows is unsupported.
+Native Linux and macOS sandbox profiles are optional. macOS
 does not provide reliable cleanup for descendants that detach from the process
 group; its filesystem and network enforcement do not make those descendants
 short-lived. See [native policy](sandbox.md).
@@ -196,12 +198,13 @@ No additional package or resource framework was introduced.
 
 ## Extension guidance
 
-Local stdio MCP uses an existing SDK behind the session's approval/journal
-boundary. Servers are explicitly configured and allowlisted for exact tools,
+Explicit stdio and Streamable HTTP MCP use an existing SDK behind the session's
+approval/journal boundary. Servers are explicitly configured and allowlisted for exact tools,
 resource URIs, and prompt names. Discovery and results grant no permissions;
 every external call requires approval. Resource text and role-tagged prompt
 messages remain untrusted data. A session-owned transport uses the Rust helper
-for bounded pipes and ordinary process-group cleanup. Per-server MCP sandboxing
+for bounded pipes and ordinary process-group cleanup, or guarded private Finch
+pools for network IO. Local per-server MCP sandboxing
 is independently selected and fails closed; shell `--sandbox` does not change
 the server policy. Loss or RPC failure after dispatch stops the batch with an
 unknown outcome, never an automatic retry. See the [MCP contract](mcp.md) for

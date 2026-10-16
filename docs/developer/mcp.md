@@ -1,6 +1,6 @@
-# Local MCP client contract
+# MCP client contract
 
-Ipse connects only to explicitly configured local stdio MCP servers. Its MCP
+Ipse connects only to explicitly configured stdio or Streamable HTTP MCP servers. Its MCP
 client is an adapter around the existing session, approval, and journal, not a
 second agent loop. See [operator setup](../operator/mcp.md), the
 [protocol proposal](protocol-proposal.md), and [P7](../plan.md#p7-expanded-mcp-capability).
@@ -31,8 +31,7 @@ Rust owns only OS pipe/process facilities. Elixir owns MCP and JSON-RPC parsing.
 The official [2025-11-25 transport specification](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports)
 defines stdio as newline-delimited JSON-RPC with protocol output on stdout and
 optional diagnostics on stderr. Ipse uses that protocol over local pipes, with
-its own bounded native-helper framing beneath it. It does not enable Streamable
-HTTP or another network transport. See the official
+its own bounded native-helper framing beneath it. P10 adds the bounded Streamable HTTP slice described below. See the official
 [resources](https://modelcontextprotocol.io/specification/2025-11-25/server/resources)
 and [prompts](https://modelcontextprotocol.io/specification/2025-11-25/server/prompts)
 specifications for the protocol surfaces Ipse selectively exposes.
@@ -99,7 +98,7 @@ References, regex/format, combinators, remote loading, and every other keyword
 are rejected before compilation. JSONSchex's broader feature set is not
 implicitly enabled.
 
-## Process boundary and sandbox
+## Local process boundary and sandbox
 
 Servers inherit only `PATH=/usr/bin:/bin`, `LANG=C.UTF-8`, and explicitly
 selected environment variables. The helper itself receives only the fixed
@@ -116,7 +115,7 @@ data behind. The native profile is not
 a general per-server permission system: see the
 [native policy](sandbox.md) for OS-specific roots and limitations.
 
-Discovery and each call use a short-lived SDK client. Before launching, the
+For both transports, discovery and each call use a short-lived SDK client. Before launching, the
 session registers the transport against the active job reference. Before an
 approved dispatch, the client rediscovers the descriptor and checks its
 reviewed digest. The synced `tool_started` event precedes a write-capable tool
@@ -132,6 +131,63 @@ drain polls within the fixed 500 ms deadline. A pipe retained beyond that limit
 still yields an error frame without successful completion. See the
 [Mac load investigation](testing.md#macos-stdio-cleanup-load-2026-10-15)
 and [repeatable diagnostic](testing.md#stdio-cleanup-load-diagnostic).
+
+## Streamable HTTP boundary
+
+P10 pins MCP 2025-11-25 Streamable HTTP. `Ipse.MCP.HTTPTransport` implements
+POST requests with JSON or finite SSE response bodies and optional session IDs.
+It reuses the SDK's client/request matching, SSE parser, and Ipse's existing
+strict message admission, catalogs, schema validation, descriptor digest,
+approvals, and journal contract. It does not implement another agent loop.
+The SDK's supplied HTTP adapter performs blocking IO in its GenServer, uses
+unbounded/default-retrying requests, logs raw errors, and omits authentication
+on session DELETE. Those concrete lifecycle/privacy/bound gaps require this
+small replaceable transport; the JSON-RPC and SSE machinery is reused.
+
+Endpoints require HTTPS with Mint's default peer verification, hostname checking,
+and system CA trust. There is no TLS-disable option. Plain HTTP requires
+`allow_insecure_loopback: true` and literal `127.0.0.1` or `::1`; DNS `localhost`
+does not qualify. Userinfo, query strings, fragments, control characters, and
+unsupported schemes fail configuration. Redirects and retries are disabled;
+credentials never follow a Location header. HTTP entries cannot specify command,
+args, env maps, or a local sandbox. No ambient proxy configuration is inherited.
+The explicitly configured endpoint is trusted by the operator, never chosen
+from model text, a repository, or a server response.
+
+Optional bearer authentication resolves one named server-specific environment
+variable at config load. Provider credential names are rejected. The environment
+name, endpoint, loopback exception, allowlists, and timeout bind the resume
+fingerprint; credential values are excluded. Rotating a token requires restarting
+with the same public configuration. Bearer values and session IDs are private,
+redacted from results/identity and excluded from manifests/journals. Authentication
+failures discard raw response bodies and fail closed. This slice does not implement
+OAuth discovery/registration/negotiation or token refresh; servers that require
+those flows remain unsupported. See the official
+[authorization specification](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization).
+
+Every request uses a private Finch HTTP/1 pool with one connection, owned by an
+`HTTPProfile` guardian. A task performs IO outside the transport GenServer;
+monitors stop the worker on transport/owner death, and the guardian closes the
+pool before releasing its fixed-name lease. Closing waits for local cleanup and
+makes a bounded best-effort authenticated DELETE for an assigned session. DELETE
+failure does not establish whether remote work stopped. Cancelling local IO,
+a local approval, and OS sandboxing cannot confine or undo remote effects.
+
+A server deadline is fixed across handshake/catalog/call. Request bodies are at
+most 32 KiB; responses at most 256 KiB, headers 16 KiB, aggregate traffic 1 MiB,
+protocol messages 256, and queued POSTs 16. Endpoint/session ID limits are
+4096/1024 bytes. The response stream must terminate within these bounds; all
+messages are validated before delivering a successful response. Session headers
+are accepted only during initialization and cannot change afterward. Requests
+require a matching response; notification acceptance uses HTTP 202. Only the
+existing server `ping` request is supported. GET streams, subscriptions,
+reconnection, event resumption, automatic 404 reinitialization, and replay are
+excluded. Interrupted dispatched calls retain unknown outcomes.
+
+See [P10 evidence](testing.md#p10-streamable-http-mcp-2026-10-15) for fixture,
+independent-server, live-provider, bundle, and host verification. No package or
+external runtime was added: existing Req/Finch/Mint are listed in the
+[dependency inventory](dependencies.md).
 
 ## Bounds and evidence
 

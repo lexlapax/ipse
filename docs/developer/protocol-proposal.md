@@ -6,7 +6,9 @@ delegation; supported behavior and trust boundaries are in the
 [delegation contract](delegation.md). P6 passed Linux/macOS source/package CI.
 P7 extends the local client with explicit resources/prompts and a per-server
 native sandbox choice; the current [MCP contract](mcp.md) owns that behavior.
-This document does not enable tools by default or authorize dependencies.
+P9 adds bounded two-child local groups; P10 adds explicit Streamable HTTP through
+the same MCP contract. This document does not enable tools by default or
+authorize dependencies.
 
 Ipse's current session, approval, and journal behavior is the baseline. A
 protocol adapter must not create a second permission system or weaken the host's

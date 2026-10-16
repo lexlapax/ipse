@@ -1,11 +1,11 @@
-# Local MCP servers
+# MCP servers
 
-Ipse can connect to explicitly configured local stdio MCP servers. MCP is
+Ipse can connect to explicitly configured stdio or Streamable HTTP MCP servers. MCP is
 disabled unless you pass `--mcp-config PATH`. Ipse does not discover config in
 the workspace or `~/.ipse`, and instructions or skills cannot enable a server.
 Discovery does not install executables.
 
-## Configure and start
+## Configure local stdio and start
 
 Create a JSON file in a location you trust, for example `~/.ipse/mcp.json`.
 Select exact capabilities and use the absolute path to an installed executable:
@@ -113,10 +113,11 @@ Linux package verification without a live provider or fresh sign-in.
 
 Resume with the same `--mcp-config` file. Public configuration changes—including
 allowlists or sandbox mode—refuse resume. Private environment values are not
-stored in the fingerprint; each new process uses values from the supplied file.
+stored in the fingerprint; each launch loads selected values from the supplied
+stdio config or the named HTTP credential environment variable.
 An in-flight approval retains its immutable configuration snapshot.
 
-The supported protocol is MCP 2025-11-25 over local stdio. Each server supports
+The supported protocol is MCP 2025-11-25 over stdio or bounded Streamable HTTP. Each server supports
 at most 16 combined allowlist entries. Pagination, protocol messages, schemas,
 arguments, and results are bounded. Tool and prompt schemas allow the canonical
 JSON Schema Draft 2020-12 dialect (or no `$schema`), supported scalar/object/
@@ -124,11 +125,60 @@ array types, a narrow keyword subset, and nullable type pairs. Defaults are
 validated as bounded data but never inserted into calls. References, arbitrary
 dialects, combinators, patterns, formats, and remote loading fail closed.
 
-Network transports, resource templates/subscriptions, sampling, elicitation,
+OAuth negotiation, GET streams, resource templates/subscriptions, sampling, elicitation,
 MCP tasks, an Ipse MCP server, and automatic fetching of links or embedded
-resources are unavailable. Local serial subagents are a separate opt-in feature;
+resources are unavailable. Local serial/parallel subagents are a separate opt-in feature;
 they do not inherit MCP servers. See [local delegation](subagents.md) and the
 [developer contract](../developer/mcp.md).
+
+## Configure a network endpoint
+
+Use a trusted endpoint and its exact capability allowlist. For example:
+
+```json
+{
+  "servers": [
+    {
+      "id": "remote",
+      "transport": "http",
+      "url": "https://mcp.example.test/mcp",
+      "tools": ["lookup"],
+      "bearer_env": "IPSE_MCP_REMOTE_TOKEN",
+      "timeout_ms": 30000
+    }
+  ]
+}
+```
+
+Set `IPSE_MCP_REMOTE_TOKEN` privately in the launching environment to the
+server-specific bearer token, then pass this file with `--mcp-config`. Ipse does
+not automatically load `.env` files. Omit `bearer_env` for an unauthenticated
+server. Never put the token in the URL/config or reuse provider credentials.
+Missing/invalid credentials fail configuration; HTTP 401/403 fails the request.
+Ipse supports static bearer authentication, not OAuth discovery/login/refresh.
+A token change takes effect at restart and does not change public resume identity.
+
+HTTPS verifies certificates and hostnames against system trust. There is no
+insecure HTTPS mode. A separately selected literal loopback test endpoint can
+use `http://127.0.0.1:PORT/mcp` or `http://[::1]:PORT/mcp` with
+`"allow_insecure_loopback": true`; this exception does not accept `localhost` or
+other HTTP addresses. URLs cannot contain userinfo, queries, or fragments.
+Redirects are rejected and requests are never automatically retried.
+
+The startup manifest shows the endpoint, allowlists, selected credential variable
+name, timeout, exception flag, and fingerprint; token/session values are private.
+Calls use the same full approval and intent journal as stdio. The transport is
+MCP 2025-11-25 Streamable HTTP POST with JSON or finite SSE responses. Servers
+requiring long-lived GET streams, OAuth negotiation, reconnection, subscriptions,
+or event replay are unsupported. Session DELETE on close is best effort.
+
+The local shell/server sandbox cannot isolate a remote server or stop its work.
+A disconnect after dispatch can leave a completed or continuing remote effect;
+Ipse records unknown, stops the batch, and never replays it on resume. Inspect
+remote state before requesting another effect. Configure only endpoints you trust
+with the selected arguments; MCP content cannot change endpoints or credentials.
+See the [transport contract](../developer/mcp.md#streamable-http-boundary) and
+[actual verification](../developer/testing.md#p10-streamable-http-mcp-2026-10-15).
 
 ## Credential-free source demo
 
@@ -170,3 +220,16 @@ build patch. See [exact evidence and limits](../developer/testing.md#second-inde
 and [source/dependencies](../developer/dependencies.md#second-independent-mcp-investigation-memory)
 before reproducing it with an executable you have reviewed. This is separate
 from the credential-free bundled SDK demo and live provider evidence.
+
+To repeat the independent check over authenticated literal loopback HTTP instead
+of native stdio:
+
+```sh
+mix run scripts/verify-independent-memory-mcp.exs /path/to/reviewed/mcp-memory --http
+```
+
+This starts that reviewed executable as a temporary loopback daemon with a
+synthetic server-only token, runs the same approval/recovery checks, then stops
+its process group and removes disposable state. It does not claim remote
+isolation or install a service. The bundled runtime verifier additionally runs
+`priv/mcp-http-demo.exs` using only its extracted OTP runtime and local sockets.

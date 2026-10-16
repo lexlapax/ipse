@@ -1,5 +1,5 @@
 defmodule Ipse.MCP.Client do
-  @moduledoc "Allowlisted MCP tools using the existing SDK and an Ipse-owned local transport."
+  @moduledoc "Allowlisted MCP tools using the existing SDK and Ipse-owned bounded transports."
   alias Ipse.MCP.{Catalog, Config, Schema, Transport}
 
   def discover(server, cwd, resource \\ nil) do
@@ -64,7 +64,8 @@ defmodule Ipse.MCP.Client do
       server_id: tool.server.id,
       name: tool.name,
       origin: %{
-        transport: "stdio",
+        transport:
+          if(Map.get(tool.server, :transport) == :http, do: "streamable_http", else: "stdio"),
         configured_endpoint_fingerprint: tool.server.fingerprint,
         sandbox_requested: to_string(Map.get(tool.server, :sandbox, :off))
       },
@@ -79,8 +80,12 @@ defmodule Ipse.MCP.Client do
   end
 
   defp connection(server, cwd, resource, fun) do
+    transport_module =
+      if Map.get(server, :transport) == :http, do: Ipse.MCP.HTTPTransport, else: Transport
+
     opts = [
-      transport: {Transport, server: server, cwd: cwd, resource: resource, cleanup_owner: self()},
+      transport:
+        {transport_module, server: server, cwd: cwd, resource: resource, cleanup_owner: self()},
       client_info: %{name: "ipse", version: to_string(Application.spec(:ipse, :vsn))},
       request_timeout: server.timeout_ms,
       request_handlers: %{"ping" => fn _ -> {:ok, %{}} end},

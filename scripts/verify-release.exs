@@ -135,6 +135,10 @@ try do
   true = String.contains?(prompt_text, "Summarize this topic: bundled notes")
   IO.puts("Bundled MCP resource and prompt round trips passed.")
 
+  Code.require_file(Path.join(app_root, "priv/mcp-http-demo.exs"))
+  :ok = Ipse.MCPHTTPDemo.run()
+  IO.puts("Bundled Streamable HTTP MCP round trip passed.")
+
   Code.require_file(Path.join(app_root, "priv/subagent-demo.exs"))
   :ok = Ipse.SubagentDemo.run()
   IO.puts("Bundled local delegation approvals and child journal verification passed.")

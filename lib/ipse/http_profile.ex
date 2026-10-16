@@ -6,10 +6,37 @@ defmodule Ipse.HTTPProfile do
   @profiles for index <- 1..64, do: :"ipse_http_#{index}"
 
   def with_profile(fun) when is_function(fun, 1) do
+    with_client(fun, :httpc)
+  end
+
+  def with_finch(fun) when is_function(fun, 1), do: with_client(fun, :finch)
+
+  def finch_guardian(owner) do
+    case Registry.lookup(Ipse.Registry, {__MODULE__, :finch_borrower, owner}) do
+      [{guardian, _}] -> guardian
+      [] -> nil
+    end
+  end
+
+  def await_guardian(nil), do: :ok
+
+  def await_guardian(pid) do
+    monitor = Process.monitor(pid)
+
+    receive do
+      {:DOWN, ^monitor, :process, ^pid, _} -> :ok
+    after
+      2000 ->
+        Process.demonitor(monitor, [:flush])
+        {:error, :cleanup_unconfirmed}
+    end
+  end
+
+  defp with_client(fun, backend) do
     Application.ensure_all_started(:ipse)
     owner = self()
     reference = make_ref()
-    {guardian, monitor} = spawn_monitor(fn -> own_profile(owner, reference) end)
+    {guardian, monitor} = spawn_monitor(fn -> own_profile(owner, reference, backend) end)
 
     receive do
       {^reference, {:ok, profile}} ->
@@ -29,17 +56,20 @@ defmodule Ipse.HTTPProfile do
     end
   end
 
-  defp own_profile(owner, reference) do
+  defp own_profile(owner, reference, backend) do
     Process.flag(:trap_exit, true)
     owner_monitor = Process.monitor(owner)
+
+    if backend == :finch,
+      do: Registry.register(Ipse.Registry, {__MODULE__, :finch_borrower, owner}, nil)
 
     case reserve() do
       {:ok, name} ->
         try do
-          case :inets.start(:httpc, [profile: name], :stand_alone) do
+          case start_client(backend, name) do
             {:ok, profile} ->
               profile_monitor = Process.monitor(profile)
-              send(owner, {reference, {:ok, profile}})
+              send(owner, {reference, {:ok, if(backend == :finch, do: name, else: profile)}})
 
               receive do
                 {^reference, :finished} -> :ok
@@ -49,7 +79,7 @@ defmodule Ipse.HTTPProfile do
               end
 
               Process.demonitor(profile_monitor, [:flush])
-              stop_profile(profile)
+              stop_profile(profile, backend)
 
             _ ->
               send(owner, {reference, {:error, "Could not start an isolated HTTP client."}})
@@ -75,9 +105,33 @@ defmodule Ipse.HTTPProfile do
     end)
   end
 
-  defp stop_profile(profile) do
+  defp start_client(:httpc, name), do: :inets.start(:httpc, [profile: name], :stand_alone)
+
+  defp start_client(:finch, name) do
+    Finch.start_link(
+      name: name,
+      pools: %{
+        default: [
+          size: 1,
+          count: 1,
+          conn_opts: [protocols: [:http1], max_header_list_size: 16_384]
+        ]
+      }
+    )
+  end
+
+  defp stop_profile(profile, backend) do
     monitor = Process.monitor(profile)
-    :inets.stop(:stand_alone, profile)
+
+    if backend == :httpc do
+      :inets.stop(:stand_alone, profile)
+    else
+      try do
+        Supervisor.stop(profile, :normal, 1000)
+      catch
+        :exit, _ -> Process.exit(profile, :kill)
+      end
+    end
 
     receive do
       {:DOWN, ^monitor, :process, ^profile, _} -> :ok

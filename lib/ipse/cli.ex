@@ -24,7 +24,7 @@ defmodule Ipse.CLI do
   --context-bytes N                    Context byte ceiling (default: 400000)
   --no-compact                         Stop at the ceiling without summarizing
   --sandbox off|native                 Shell OS policy (default: off)
-  --mcp-config PATH                    Explicit local stdio servers and capability allowlists
+  --mcp-config PATH                    Explicit stdio/HTTP servers and capability allowlists
   --subagents                          Enable bounded local delegation with parent approvals
   --subagent-concurrency 1|2            Permit two parallel local children (requires --subagents)
 
@@ -190,7 +190,13 @@ defmodule Ipse.CLI do
             do: "native workspace sandbox requested; fails closed",
             else: "trusted user permissions; outside shell sandbox"
 
-        IO.puts(:stderr, "MCP local server (#{policy}):")
+        notice =
+          if Map.get(server, :transport) == :http,
+            do:
+              "MCP network server (explicit endpoint; remote effects and cancellation are outside the local sandbox):",
+            else: "MCP local server (#{policy}):"
+
+        IO.puts(:stderr, notice)
         IO.puts(:stderr, Jason.encode!(Ipse.MCP.Config.manifest(server), pretty: true))
       end
 

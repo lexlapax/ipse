@@ -53,7 +53,7 @@ defmodule Ipse.MCP.Config do
   def prompt_id(server_id, name), do: "mcp__#{server_id}__p_#{digest(name)}"
 
   def manifest(server) when is_map(server) do
-    %{
+    base = %{
       id: server.id,
       command: server.command,
       args: Enum.map(server.args, &redact(&1, server)),
@@ -65,6 +65,17 @@ defmodule Ipse.MCP.Config do
       timeout_ms: server.timeout_ms,
       fingerprint: server.fingerprint
     }
+
+    if Map.get(server, :transport) == :http,
+      do:
+        base
+        |> Map.drop([:command, :args])
+        |> Map.merge(%{
+          transport: "streamable_http",
+          endpoint: server.url,
+          allow_insecure_loopback: server.allow_insecure_loopback
+        }),
+      else: base
   end
 
   def redact(text, server) when is_binary(text) and is_map(server) do
@@ -121,6 +132,8 @@ defmodule Ipse.MCP.Config do
     end
   end
 
+  defp parse_server(%{"transport" => "http"} = entry), do: parse_http_server(entry)
+
   defp parse_server(entry) when is_map(entry) do
     allowed = [
       "id",
@@ -131,10 +144,12 @@ defmodule Ipse.MCP.Config do
       "prompts",
       "env",
       "timeout_ms",
-      "sandbox"
+      "sandbox",
+      "transport"
     ]
 
     with true <- keys?(entry, allowed),
+         true <- Map.get(entry, "transport", "stdio") == "stdio",
          id when is_binary(id) <- entry["id"],
          true <- Regex.match?(@id, id),
          command when is_binary(command) <- entry["command"],
@@ -163,7 +178,8 @@ defmodule Ipse.MCP.Config do
          sandbox: sandbox,
          env: env,
          timeout_ms: timeout,
-         fingerprint: fingerprint
+         fingerprint: fingerprint,
+         transport: :stdio
        }}
     else
       _ -> {:error, :invalid_server}
@@ -171,6 +187,77 @@ defmodule Ipse.MCP.Config do
   end
 
   defp parse_server(_), do: {:error, :invalid_server}
+
+  defp parse_http_server(entry) do
+    allowed =
+      ~w(id transport url tools resources prompts bearer_env allow_insecure_loopback timeout_ms)
+
+    with true <- keys?(entry, allowed),
+         id when is_binary(id) <- entry["id"],
+         true <- Regex.match?(@id, id),
+         url when is_binary(url) and byte_size(url) <= 4096 <- entry["url"],
+         insecure when is_boolean(insecure) <- Map.get(entry, "allow_insecure_loopback", false),
+         true <- valid_http_endpoint?(url, insecure),
+         {:ok, tools} <- validate_tools(Map.get(entry, "tools", [])),
+         {:ok, resources} <- validate_resources(Map.get(entry, "resources", [])),
+         {:ok, prompts} <- validate_prompts(Map.get(entry, "prompts", [])),
+         true <- (length(tools) + length(resources) + length(prompts)) in 1..@allowlist_limit,
+         {:ok, env} <- bearer_environment(entry["bearer_env"]),
+         true <- public_fields_clear?(id, url, tools, resources, prompts, env),
+         timeout when is_integer(timeout) and timeout in 1..120_000 <-
+           Map.get(entry, "timeout_ms", 30_000) do
+      fingerprint =
+        digest_http({id, url, tools, resources, prompts, entry["bearer_env"], insecure, timeout})
+
+      {:ok,
+       %{
+         id: id,
+         transport: :http,
+         url: url,
+         command: url,
+         args: [],
+         tools: tools,
+         resources: resources,
+         prompts: prompts,
+         env: env,
+         sandbox: :remote,
+         allow_insecure_loopback: insecure,
+         timeout_ms: timeout,
+         fingerprint: fingerprint
+       }}
+    else
+      _ -> {:error, :invalid_http_server}
+    end
+  end
+
+  defp valid_http_endpoint?(url, insecure) do
+    uri = URI.parse(url)
+
+    String.valid?(url) and not Regex.match?(~r/[\x00-\x20\x7f]/, url) and
+      is_binary(uri.host) and uri.host != "" and is_nil(uri.userinfo) and
+      is_nil(uri.fragment) and is_nil(uri.query) and uri.port in 1..65535 and
+      Regex.match?(~r/\A[a-zA-Z0-9.\-:\[\]]+\z/, uri.host) and
+      (uri.scheme == "https" or
+         (uri.scheme == "http" and insecure and uri.host in ["127.0.0.1", "::1"]))
+  end
+
+  defp bearer_environment(nil), do: {:ok, %{}}
+
+  defp bearer_environment(name) when is_binary(name) do
+    value = System.get_env(name)
+
+    if Regex.match?(@env_name, name) and name not in @blocked_env and is_binary(value) and
+         byte_size(value) in 1..4096 and Regex.match?(~r/\A[A-Za-z0-9\-._~+\/=]+\z/, value),
+       do: {:ok, %{name => value}},
+       else: {:error, :invalid_bearer_environment}
+  end
+
+  defp bearer_environment(_), do: {:error, :invalid_bearer_environment}
+
+  defp digest_http(value),
+    do:
+      :crypto.hash(:sha256, :erlang.term_to_binary({:http, value}, [:deterministic]))
+      |> Base.encode16(case: :lower)
 
   defp executable(path) do
     if Path.type(path) == :absolute and String.valid?(path) and

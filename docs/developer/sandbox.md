@@ -12,7 +12,7 @@ explicit per-server `"sandbox": "native"` configuration. The shell CLI flag does
 not set MCP policy. Unlike the shell's minimal environment, the MCP direct-exec
 route can install explicitly selected environment values after the OS boundary;
 its supervisor and macOS worker startup retain a clean environment. See the
-[MCP contract](mcp.md#process-boundary-and-sandbox) for launch framing, private
+[MCP contract](mcp.md#local-process-boundary-and-sandbox) for launch framing, private
 temporary data, approvals, and independent enforcement evidence.
 
 ## Linux workspace profile
