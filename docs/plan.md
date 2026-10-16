@@ -48,7 +48,7 @@ billing, credentials and external-effect invariants still apply.
 | --- | --- | --- |
 | 1 | Supervised self-development using stable Ipse to add P15 shared operator skills | Implemented and independently verified; integrating into main |
 | 2 | P17 structured operator questions | Verified feature branch `5984d09`; integration follows shared-skills review |
-| 3 | Remaining P15 scoped configuration | Pending |
+| 3 | Remaining P15 scoped configuration | Implemented and verified; integrating into main |
 | 4 | P16 explicit model profiles/routing | Pending |
 | 5 | P14 bounded deep research | Pending |
 
@@ -692,24 +692,11 @@ it remains unavailable until that stage passes its checks.
 ## P15: scoped configuration and shared operator skills
 
 Added at the developer's request and authorized on 2026-10-16. Status: shared
-operator discovery implemented and independently reviewed in the isolated
-worktree; source/native demo and extracted package passed, integration pending. Scoped config is queued
-after P17; P15 as a whole remains incomplete.
-
-Shared discovery now uses project > Ipse user > shared operator > bundled
-precedence, explicit `operator_home`/`shared_root` isolation inputs, canonical-file
-deduplication, and selected source/digest plus shadowed-path reporting. No shared
-installation is copied or changed. See the
-[developer contract](developer/architecture.md#skill-discovery),
-[operator guide](operator/usage.md#skills) and
-[source evidence](developer/testing.md#p15-shared-operator-skills-2026-10-16).
-
-Ipse still uses CLI/environment settings and `~/.ipse` (or `IPSE_HOME`) for
-state, authentication, global instructions and Ipse-specific user skills. It does
-not automatically load operator/project configuration files or project/directory
-`.ipse/config.*`. Shared skills do not add full YAML/metadata support,
-configuration loading, routing or structured questions. Existing project
-`.agents/skills/` and applicable `AGENTS.md` discovery remain supported.
+operator skills and scoped JSON settings are implemented and independently
+verified. Main integration checks remain pending. Shared discovery uses project >
+Ipse user > shared operator > bundled precedence and does not copy installations.
+See [skill discovery](developer/architecture.md#skill-discovery),
+[configuration](operator/configuration.md) and [verification](developer/testing.md).
 
 Acceptance:
 

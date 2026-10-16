@@ -12,6 +12,7 @@ defmodule Ipse.CLI do
   ipse demo                        Scripted demo in a temporary directory
   ipse sessions                    List saved sessions
   ipse skills [--cwd PATH]         List available skills
+  ipse config [options]            Show effective non-secret configuration
 
   --provider chatgpt|openai|ollama|anthropic|demo  (default: chatgpt)
   --model NAME                         Override the provider default
@@ -27,6 +28,10 @@ defmodule Ipse.CLI do
   --mcp-config PATH                    Explicit stdio/HTTP servers and capability allowlists
   --subagents                          Enable bounded local delegation with parent approvals
   --subagent-concurrency 1|2            Permit two parallel local children (requires --subagents)
+  --config PATH                        Explicit operator JSON configuration
+  --trust-project-config               Authorize scoped project settings for this run
+  --no-project-config                  Ignore project/directory configuration
+  --timeout-ms N                       Provider request timeout (1000..600000)
 
   Chat asks before writes, shell, MCP, and delegation. Headless run denies them without --yes.
   Shell execution uses your user permissions unless --sandbox native is selected.
@@ -64,6 +69,10 @@ defmodule Ipse.CLI do
           mcp_config: :string,
           subagents: :boolean,
           subagent_concurrency: :integer,
+          config: :string,
+          trust_project_config: :boolean,
+          project_config: :boolean,
+          timeout_ms: :integer,
           help: :boolean,
           demo: :boolean
         ],
@@ -110,6 +119,17 @@ defmodule Ipse.CLI do
   defp dispatch(["skills"], opts) do
     print_skills(opts[:cwd] || default_cwd())
     0
+  end
+
+  defp dispatch(["config"], opts) do
+    case Ipse.Config.resolve(opts[:cwd] || default_cwd(), home(), opts) do
+      {:ok, effective} ->
+        IO.puts(Jason.encode!(Ipse.Config.manifest(effective), pretty: true))
+        0
+
+      {:error, reason} ->
+        report({:error, reason})
+    end
   end
 
   defp dispatch(["demo"], opts) do
@@ -175,6 +195,13 @@ defmodule Ipse.CLI do
       )
 
       IO.puts(:stderr, Ipse.Sandbox.describe(config.sandbox))
+
+      if config.configuration.sources != [],
+        do:
+          IO.puts(
+            :stderr,
+            "Effective configuration:\n" <> Jason.encode!(config.configuration, pretty: true)
+          )
 
       if config.subagents,
         do:
@@ -539,7 +566,15 @@ defmodule Ipse.CLI do
   end
 
   defp config(opts, interactive) do
-    name = opts[:provider] || System.get_env("IPSE_PROVIDER") || "chatgpt"
+    with {:ok, effective} <- Ipse.Config.resolve(opts[:cwd] || default_cwd(), home(), opts) do
+      configured = Ipse.Config.runtime_settings(effective)
+      opts = Keyword.merge(opts, Map.to_list(configured))
+      build_config(opts, interactive, effective)
+    end
+  end
+
+  defp build_config(opts, interactive, effective) do
+    name = opts[:provider]
 
     provider =
       %{
@@ -576,7 +611,7 @@ defmodule Ipse.CLI do
       opts[:context_bytes] && opts[:context_bytes] < 8192 ->
         {:error, "--context-bytes must be at least 8192"}
 
-      opts[:subagent_concurrency] &&
+      opts[:subagent_concurrency] != 1 &&
           (opts[:subagent_concurrency] not in [1, 2] or opts[:subagents] != true) ->
         {:error, "--subagent-concurrency must be 1 or 2 and requires --subagents"}
 
@@ -594,6 +629,8 @@ defmodule Ipse.CLI do
              auth_dir: auth_dir(),
              home: home(),
              operator_home: Ipse.Skills.operator_home(),
+             configuration: Ipse.Config.manifest(effective),
+             timeout_ms: opts[:timeout_ms],
              sandbox: sandbox,
              base_url: opts[:base_url],
              max_steps: opts[:max_steps] || 30,
@@ -625,8 +662,22 @@ defmodule Ipse.CLI do
     if opts[:resume] do
       with {:ok, [%{"metadata" => meta} | _]} <-
              Ipse.Journal.load(state_dir(opts), opts[:resume]) do
+        saved = get_in(meta, ["configuration", "settings"]) || %{}
+
+        restored =
+          Enum.reduce(saved, opts, fn {key, value}, acc ->
+            case key do
+              key
+              when key in ~w(provider model sandbox max_steps context_bytes compact subagents subagent_concurrency timeout_ms) ->
+                Keyword.put_new(acc, String.to_existing_atom(key), value)
+
+              _ ->
+                acc
+            end
+          end)
+
         {:ok,
-         opts
+         restored
          |> Keyword.put_new(:cwd, meta["cwd"])
          |> Keyword.put_new(:provider, meta["provider"])
          |> Keyword.put_new(:model, meta["model"])

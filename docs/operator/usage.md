@@ -426,20 +426,16 @@ Authentication and provider requests share a bounded limit of 64 simultaneous
 HTTP clients per running Ipse application. If clients are busy, retry after
 another request finishes. Each request's connection and proxy state is isolated.
 
-## Planned configuration and model routing
+## Configuration and model routing
 
-Current provider/model selection uses `--provider`, `--model`, `IPSE_PROVIDER`
-and `IPSE_MODEL`. There is no automatic operator/project `.ipse/config.*` loader,
-task-role routing or configurable reasoning-effort setting. Children use the
-parent's provider/model. Redirecting `IPSE_HOME` changes Ipse's data/auth location;
-it does not load a project configuration file.
-
-[P15](../plan.md#p15-scoped-configuration-and-shared-operator-skills) has implemented
-shared operator skill discovery, but scoped data configuration remains planned;
-[P16](../plan.md#p16-explicit-model-profiles-and-task-routing) plans named
-main/routine/review profiles and explicitly permitted mixed-model execution.
-Configuration loading and routing are not implemented. Skills can guide task
-selection but cannot change host provider/billing/approval policy themselves.
+Version-1 JSON settings are supported in `IPSE_HOME/config.json` and scoped
+project/directory `.ipse/config.json`. Project files require current-run
+`--trust-project-config`; `--no-project-config` ignores them. `ipse config` reports
+effective non-secret settings and provenance locally, without authentication or
+inference. See [configuration](configuration.md) for fields, precedence, examples
+and resume behavior. Skills and configuration grant no effect permissions.
+Named role profiles and reasoning-effort routing remain planned under
+[P16](../plan.md#p16-explicit-model-profiles-and-task-routing).
 
 ## Operator questions
 

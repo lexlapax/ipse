@@ -1879,3 +1879,15 @@ The verified operator-question Linux archive SHA-256 is
 `26a6444dc0f7491cd85c6052535b98ac1c87a7b729e373d67906c803acaab294`.
 All 40 documentation files and 393 local links/heading anchors passed the local
 checker. The native question fixture is part of extracted-package verification.
+
+## P15 scoped configuration, 2026-10-16
+
+The isolated configuration branch passed seven loader fixtures and two CLI/session
+fixtures, together with 24 existing CLI/session checks (33 focused tests). The full
+native Linux suite passed 302 tests with 14 macOS-only tests excluded. These are
+credential-free fixture results, not live inference or macOS execution. Configuration
+inspection used a provider without credentials and made no request; unchanged idle
+resume kept journal bytes/effects unchanged, while source drift refused startup.
+Source build, formatting, warnings-as-errors compilation, native credential-free
+demo and all 42 Markdown documents/398 local links passed. Integration, packaged
+runtime verification and hosted checks remain pending.

@@ -9,6 +9,7 @@ start. Use the guides below for operation, development, and project context.
 | --- | --- |
 | [Arch Linux setup](operator/arch-linux.md) | Prerequisites, source installation, development setup, release requirements |
 | [Usage](operator/usage.md) | Providers, login, approvals, operator clarification, project assessment and skills, resume, state, current configuration limits |
+| [Configuration](operator/configuration.md) | Scoped JSON settings, precedence, project trust, local inspection and resume |
 | [MCP servers](operator/mcp.md) | Explicit stdio/HTTP configuration, TLS, credentials, server sandbox, approvals, recovery, and demos |
 | [Local subagents](operator/subagents.md) | Explicit delegation, child approvals, bounds, journals, and recovery |
 | [Troubleshooting](operator/troubleshooting.md) | Build, callback, account, lock, and recovery problems |
@@ -20,6 +21,7 @@ start. Use the guides below for operation, development, and project context.
 | [Contributing](../CONTRIBUTING.md) | Contribution scope and handoff requirements |
 | [Agent instructions](../AGENTS.md) | Rules, code map, documentation and commit requirements |
 | [Architecture](developer/architecture.md) | Modules, ownership, persistence, trust boundaries |
+| [Configuration contract](developer/configuration.md) | Bounded loader, scope, schema reuse, provenance and resume policy |
 | [Operator questions](developer/operator-questions.md) | Native question schema, explicit answers, approvals and durable recovery |
 | [Context compaction](developer/context-compaction.md) | Preserved context, bounds, checkpoint and recovery contract |
 | [Workspace context](developer/workspace-context.md) | Instruction scope, source bounds, snapshots, and refresh |
