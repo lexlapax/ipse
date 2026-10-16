@@ -2416,3 +2416,25 @@ abandoned staging. See [developer contract](extension-artifacts.md) and
 [operator limitations](../operator/extensions.md). No live model, extension worker,
 macOS execution, extracted-package execution or release publication was verified
 by this increment. Those remain later P22 acceptance checks.
+
+## Independent extension worker bridge (2026-10-16)
+
+P22A2 adds the explicit developer worker API and `Ipse.Extension` behaviour.
+On Serenity, the full build, format, warnings-as-errors compile and credential-free
+demo passed. After protocol integer/duplicate-key tightening, the final
+`mix test --include native_sandbox` reported **365 passed / 14 macOS tests excluded**;
+focused store/worker fixtures reported **14 passed**. The external fixture is
+compiled with the existing Elixir compiler in a separate VM; runtime callbacks
+use the current ERTS through the native stdio helper. A uniquely named module
+runs without creating its module atom in the host. Explicit trust/options,
+initialization/capability bounds, credential exclusion, wrong IDs, nested duplicate
+response keys, non-JSON returns, unframed stdout, callback crash/timeout, contention
+and idle/active owner death are covered. Tests use synthetic local code/data only.
+
+Initial fixtures exposed the effect of Erlang `-noinput` and standard-I/O encoding;
+the bridge now uses binary Latin-1 I/O without `-noinput`. The passing final runs
+include that correction. See the [worker contract](extension-artifacts.md#independent-worker-sdk)
+and [operator status](../operator/extensions.md). This increment does not yet
+verify session activation/configuration, durable projections/resume, an OS sandbox,
+extracted-release worker startup or live providers. Hosted macOS results must be
+recorded separately once available.

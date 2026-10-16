@@ -469,8 +469,9 @@ Run Linux source/native and hosted Mac/package checks, plus an independently
 reviewed supervised trial. Record real limitations and dependencies, review both
 operator/developer guidance and links, then commit/push completed increments.
 
-P22A1 now implements the [inert artifact contract](extension-artifacts.md).
-Executable host/SDK, configuration, examples and proofs above remain in progress;
+P22A1 implements the [inert artifact contract](extension-artifacts.md), followed by
+P22A2's [independent worker SDK](extension-artifacts.md#independent-worker-sdk).
+Session host/registry/configuration, examples and proofs above remain in progress;
 the operator authorized completing P22–P25 on 2026-10-16. The
 [operator guide](../operator/extensions.md) distinguishes the available API from
 planned activation commands.

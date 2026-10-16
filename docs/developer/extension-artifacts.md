@@ -93,3 +93,67 @@ keys, symlinks, store corruption, extra files and lock contention/inode identity
 These fixtures do not yet establish worker execution, trust configuration,
 activation, resume or extension-only development. Follow
 [testing evidence](testing.md#extension-artifact-foundation-2026-10-16).
+
+## Independent worker SDK
+
+P22A2 adds `Ipse.Extension` and `Ipse.Extensions.Worker` as a developer API.
+`Worker.start(owner: owner_pid, store: private_store, digest: digest,
+trusted: digest, options: options)` explicitly admits execution; omitting or
+mismatching `trusted` refuses startup. This argument is a caller assertion, not a
+persisted trust record, signature or project authorization. The session/config
+host must supply it only after operator policy validation. There is no CLI or
+automatic activation yet.
+
+Admission revalidates the installed snapshot, runtime compatibility and options
+schema. The worker launches the current ERTS with existing Elixir/Jason/Ipse
+code paths and the selected artifact in a separate VM. It starts Elixir, not
+Ipse's application/session tree. Neither code-path changes nor module-name atom
+creation happen in the host. The OS helper clears inherited environment; only
+its explicit baseline PATH/LANG reaches this worker. No credentials, auth
+configuration, provider continuation or Session state is passed.
+
+An extension implements:
+
+```elixir
+@behaviour Ipse.Extension
+
+def describe, do: %{"sdk" => 1, "capabilities" => ["transform.prompt"]}
+def init(options), do: {:ok, options}
+def handle("transform.prompt", payload, state), do: {:ok, payload, state}
+```
+
+`describe/0` returns a JSON object with SDK 1 and capabilities exactly matching
+the reviewed manifest. `init/1` receives validated options once; its private
+state stays in that worker. `handle/3` receives a declared capability string and
+bounded JSON object, returning a JSON object plus new private state. Arbitrary
+runtime terms are permitted only in private state. Public objects use the
+existing schema adapter's 16 KiB/depth/string/collection bounds; PIDs, functions,
+references, structs and atom-keyed maps cannot cross the bridge.
+
+After startup call `Worker.call(pid, "initialize", options)` with the exact
+admitted options, then `Worker.call(pid, declared_stage, payload, timeout_ms)`.
+Calls default to five seconds; explicit deadlines are 1–30,000 ms. Initialization
+must finish before other stages; duplicate initialization and undeclared stages
+are refused. One call may be active; competing calls receive `:extension_busy`.
+The protocol uses 32-bit length-prefixed JSON objects (32 KiB envelope maximum),
+protocol version 1 and monotonically increasing call IDs. Nested duplicate keys,
+incorrect IDs/versions, malformed/non-JSON returns and unexpected stdout fail
+closed. Binary standard I/O is required; Erlang `-noinput` must not be used.
+Stdout is exclusively the protocol channel; stderr is discarded, never printed
+as a callback error. Total native stdout/stderr traffic is capped at 64 MiB per
+worker lifetime. These bounds do not constitute an OS memory quota or permission
+sandbox for trusted executable code.
+
+The owner is monitored while idle or active. Owner death, deadline expiry,
+process exit and protocol failure close the owned native stdio process group;
+failed callbacks are not restarted/replayed. `Worker.close(pid)` reports the
+native helper's cleanup result. Worker status formatting includes only readiness,
+sequence and traffic counters, never options/payloads. The SDK exposes no host
+effect/approval callback yet; lifecycle/tool/service registration, durable
+projections, activation identity and resume are subsequent P22 increments.
+
+`test/extensions_worker_test.exs` compiles a uniquely named independent artifact
+with the existing Elixir compiler in a separate VM. It verifies inert import,
+explicit trust, options, initialization, separate process/module identity,
+credential exclusion, JSON/capability bounds, callback failure/timeout/contention
+and owner death. It does not prove an OS sandbox or session resume contract.

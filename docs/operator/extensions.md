@@ -25,3 +25,12 @@ inert. Inspect and remove abandoned staging only when no importer is running;
 never delete active lock files. No automatic garbage collector or repair command
 exists yet. Private permissions do not isolate trusted extension code from the
 operator's OS account; worker separation will not itself provide an OS sandbox.
+
+The next increment exposes an explicit developer worker API for reviewed local
+artifacts. Passing the exact digest as a separate `trusted` assertion executes
+that artifact in its own Elixir VM; importing alone remains inert. This is not
+an operator trust database or a session configuration interface. The worker
+inherits no credential environment, but trusted code still has the operator's
+filesystem/OS access. See the [worker SDK](../developer/extension-artifacts.md#independent-worker-sdk)
+for lifecycle, deadlines, failures and current integration limits. There is still
+no install/enable CLI, automatic hook activation or extension resume support.

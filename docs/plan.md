@@ -1037,8 +1037,13 @@ P22A1 implements the inert local artifact manifest/store API: bounded closed v1
 JSON, nested duplicate rejection, file/runtime/license declarations, pinned hashes,
 private staging and advisory-locked publication. This does not yet expose a CLI,
 grant trust or execute an extension. See the [artifact contract](developer/extension-artifacts.md)
-and [installation status](operator/extensions.md). Worker/SDK/configuration and the
-remaining acceptance checks below are still in progress.
+and [installation status](operator/extensions.md). P22A2 adds the explicit developer
+worker API and SDK behaviour: pinned trust assertion, separate Elixir VM, bounded
+JSON protocol, schema/capability admission, deadline/crash/owner cleanup and
+credential environment exclusion. See the
+[worker contract](developer/extension-artifacts.md#independent-worker-sdk).
+Configuration, registry/session hooks and the remaining acceptance checks below
+are still in progress; operator-facing activation and durable resume are not implemented yet.
 
 Acceptance:
 

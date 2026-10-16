@@ -29,6 +29,12 @@ JSONSchex through the existing bounded schema adapter, OTP `Version`/filesystem/
 crypto APIs and the Rust helper's advisory locks. Custom code is limited to
 Ipse's descriptor constraints, snapshot identity and publication policy;
 no compiler, package loader, archive extractor or remote schema loader runs on import.
+P22A2's worker bridge reuses the current ERTS, Elixir, Jason and native stdio
+helper, adding no dependency. The synthetic independent artifact fixture uses
+the existing Elixir compiler in a separate VM. A small Ipse bootstrap implements
+the versioned length-prefixed SDK envelope; it is not a second MCP implementation.
+Its identity/capability/lifecycle contract differs from MCP, while OS pipe and
+process-group ownership are reused unchanged.
 See [agent rules](../../AGENTS.md), [setup](../operator/arch-linux.md), and
 [third-party notices](../../THIRD_PARTY_NOTICES.md).
 

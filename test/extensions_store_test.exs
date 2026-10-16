@@ -72,7 +72,9 @@ defmodule Ipse.Extensions.StoreTest do
 
     for {key, value} <- [
           {"format", 2},
+          {"format", 1.0},
           {"sdk", 2},
+          {"sdk", 1.0},
           {"protocol", 2},
           {"backend", "builtin"},
           {"id", "../bad"},

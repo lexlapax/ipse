@@ -55,9 +55,9 @@ defmodule Ipse.Extensions.Manifest do
 
   @doc "Decode bounded JSON with duplicate keys rejected at every nesting level."
   def decode(bytes) when is_binary(bytes) and byte_size(bytes) <= @limit do
-    with {:ok, ordered} <- Jason.decode(bytes, objects: :ordered_objects),
-         {:ok, manifest} <- unique_object(ordered),
+    with {:ok, manifest} <- decode_json(bytes),
          :ok <- Schema.validate_arguments(@schema, manifest),
+         true <- Enum.all?(~w(format sdk protocol), &(manifest[&1] === 1)),
          true <-
            Regex.match?(~r/\A[a-z][a-z0-9_-]{0,63}\/[a-z][a-z0-9_-]{0,63}\z/, manifest["id"]),
          {:ok, _} <- Version.parse(manifest["version"]),
@@ -71,6 +71,7 @@ defmodule Ipse.Extensions.Manifest do
          true <-
            Enum.all?(manifest["capabilities"], &Regex.match?(~r/\A[a-z][a-z0-9_.-]{0,127}\z/, &1)),
          true <- unique?(manifest["runtime"]["otp"]),
+         true <- Enum.all?(manifest["runtime"]["otp"], &is_integer/1),
          true <- unique?(manifest["runtime"]["platforms"]),
          true <-
            Enum.all?(
@@ -86,6 +87,18 @@ defmodule Ipse.Extensions.Manifest do
   end
 
   def decode(_), do: {:error, :invalid_extension_manifest}
+
+  @doc false
+  def decode_json(bytes) when is_binary(bytes) and byte_size(bytes) <= 32_768 do
+    with {:ok, ordered} <- Jason.decode(bytes, objects: :ordered_objects),
+         {:ok, value} <- unique_object(ordered, 0) do
+      {:ok, value}
+    end
+  rescue
+    _ -> {:error, :invalid_json}
+  end
+
+  def decode_json(_), do: {:error, :invalid_json}
 
   @doc "Compatibility is explicit; admission must recheck it before activation."
   def compatible?(manifest) do
@@ -113,7 +126,10 @@ defmodule Ipse.Extensions.Manifest do
     paths = Enum.map(files, & &1["path"])
 
     unique?(paths) and Enum.all?(paths, &safe_path?/1) and
-      Enum.all?(files, &Regex.match?(~r/\A[0-9a-f]{64}\z/, &1["sha256"])) and
+      Enum.all?(
+        files,
+        &(is_integer(&1["bytes"]) and Regex.match?(~r/\A[0-9a-f]{64}\z/, &1["sha256"]))
+      ) and
       Enum.sum(Enum.map(files, & &1["bytes"])) <= 33_554_432 and
       manifest["license_file"] in paths and
       "ebin/Elixir.#{manifest["entrypoint"]}.beam" in paths and
@@ -122,10 +138,12 @@ defmodule Ipse.Extensions.Manifest do
 
   defp unique?(values), do: length(values) == length(Enum.uniq(values))
 
-  defp unique_object(%Jason.OrderedObject{values: pairs}) do
+  defp unique_object(_value, depth) when depth > 16, do: {:error, :invalid_json}
+
+  defp unique_object(%Jason.OrderedObject{values: pairs}, depth) do
     if length(pairs) == map_size(Map.new(pairs)) do
       Enum.reduce_while(pairs, {:ok, %{}}, fn {key, value}, {:ok, map} ->
-        case unique_object(value) do
+        case unique_object(value, depth + 1) do
           {:ok, decoded} -> {:cont, {:ok, Map.put(map, key, decoded)}}
           error -> {:halt, error}
         end
@@ -135,9 +153,9 @@ defmodule Ipse.Extensions.Manifest do
     end
   end
 
-  defp unique_object(list) when is_list(list) do
+  defp unique_object(list, depth) when is_list(list) do
     Enum.reduce_while(list, {:ok, []}, fn value, {:ok, acc} ->
-      case unique_object(value) do
+      case unique_object(value, depth + 1) do
         {:ok, decoded} -> {:cont, {:ok, [decoded | acc]}}
         error -> {:halt, error}
       end
@@ -148,5 +166,5 @@ defmodule Ipse.Extensions.Manifest do
     end
   end
 
-  defp unique_object(value), do: {:ok, value}
+  defp unique_object(value, _depth), do: {:ok, value}
 end
