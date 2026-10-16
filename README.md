@@ -53,8 +53,9 @@ Core and bundled-release checks passed on Linux x86_64 and macOS arm64;
 native macOS enforcement also passed on macOS 26.7.2 locally and macOS 14 CI, both arm64. Detached
 children may survive cancellation with workspace access. Windows is future work.
 
-Automatic context compaction retains the original journal and uses the selected
-provider; see [operation and limits](docs/operator/usage.md#context-compaction).
+Automatic context compaction retains the original journal. Older-turn summaries
+use the selected provider; a long-turn fallback excerpts older settled tool output
+without a model request; see [operation and limits](docs/operator/usage.md#context-compaction).
 Run from any working directory or use `--cwd`; `/context` shows applicable saved
 instructions and `/context refresh` reloads them while idle. See
 [workspace instructions](docs/operator/usage.md#workspace-instructions).

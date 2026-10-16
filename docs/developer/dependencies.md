@@ -217,3 +217,12 @@ The patched build passed. This is independent protocol interoperability with
 an explicitly patched upstream build, not acceptance of the unmodified release.
 The optional `scripts/verify-independent-memory-mcp.exs` never downloads,
 builds, or installs a server. See [verification and limits](testing.md#second-independent-local-mcp-server-2026-10-15).
+
+### Long-turn context reduction
+
+P13's deterministic tool-output checkpoint policy reuses existing Elixir/OTP,
+Jason, SHA-256, and journal durability/integrity code. It adds no package,
+external runtime, workflow framework, or provider-native compaction dependency.
+The existing bundled-runtime verifier now also restores a synthetic long-turn
+checkpoint; this is an Elixir test artifact, not a new testing dependency.
+Workload dependencies in separate trial apps remain distinct from Ipse's graph.

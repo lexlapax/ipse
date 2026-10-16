@@ -1597,7 +1597,8 @@ selected finishing this app. Repository instructions, entry points, architecture
 and operator guidance now distinguish harness implementation constraints from
 workload choices. This specified-stack trial does not verify autonomous stack
 selection or broad non-coding coverage. Current host instructions and bundled
-tools remain coding/project-oriented; broader coverage is still a validation goal.
+tools were coding/project-oriented at this point; P13 later neutralizes the host
+role and records separate broader trials.
 
 Ipse implemented server-rendered create/edit/complete/reopen/delete forms using
 Bandit, Plug, Ecto SQL/SQLite and Phoenix HTML escaping, with a locked dependency
@@ -1642,8 +1643,41 @@ connection-lock error before migration/startup succeeded; no request failure
 was observed. The source app README owns its operating procedures and limitations.
 Dotsetup's original status/diff/lockfile hashes remained unchanged.
 
-This completes the selected local coding trial. Proposed next harness work is
-safe compaction for long action turns and cause-specific recovery diagnostics;
-a later trial should allow task-appropriate stack selection and separately
-exercise non-coding work. This evidence does not require a project registry,
+This completes the selected local coding trial. The developer selected safe
+long-turn compaction, specific diagnostics, neutral stack selection, and separate
+non-coding work as [P13](../plan.md#p13-long-turn-compaction-and-general-purpose-trials). This evidence does not require a project registry,
 new language-specific runtime dependency in Ipse, or a new GitHub adapter.
+
+## P13 long-turn compaction, 2026-10-16
+
+On Linux Serenity, source build, formatting, warnings-as-errors compilation,
+**277 tests passed** with native sandbox tests included (14 macOS tests excluded),
+and the native credential-free demo passed. The focused compaction suites passed
+**19 tests**, covering deterministic single-turn reductions, parallel batch
+protection, unknown outcomes, original provenance across repeated reductions and
+later summaries, durable resume, owner death, corrupt checkpoints, existing
+summary cancellation, and failure with no partial projection or replay.
+
+A read-only replay of the original P12 failed context reduced **351,956 to
+304,892 bytes** by excerpting three older known results, without another user
+message. All user text, native fields, exact calls and host provenance were
+unchanged; original journal bytes were unchanged and checkpoint restore matched.
+This is a planner replay, not new inference over the private transcript.
+
+A separate live embedded `Ipse.Session` used explicit ChatGPT subscription
+`gpt-6.1-sol`, native policy, and eight sequential reads of synthetic 25 KiB files
+in one user turn. One output checkpoint reduced **185,114 to 66,434 bytes** under
+a test trigger of 160,000 (ceiling 400,000). Ipse correctly reported all eight
+marker pairs and acknowledged incomplete older excerpts. No extra user turn,
+summary request, tool retry, mutation, provider switch, or API billing was used.
+All original provider continuation fields matched the effective projection.
+Private session state and metadata-only evidence remained outside Git.
+
+The Linux archive passed extracted help/demo, MCP/delegation, helper/OTP, and
+long-turn checkpoint verification using a utility-only PATH. Archive SHA-256:
+`394d6166751a35ec3d337b2cb1fee968efc94dfc76d5c27299612fb82a3f8b93`.
+Hosted Linux/macOS checks are pending below;
+neutral coding and non-coding trial evidence will be recorded separately. The
+[compaction contract](context-compaction.md) describes output fidelity limits and
+remaining cases that cannot fit. This is host-side projection, not a native
+provider compaction endpoint or proof of unrestricted context capacity.

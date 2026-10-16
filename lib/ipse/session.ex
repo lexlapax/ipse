@@ -411,7 +411,8 @@ defmodule Ipse.Session do
         {:noreply, complete_compaction(s, assistant, usage)}
 
       {:compaction, {:error, _error}} ->
-        {:noreply, compaction_failed(s)}
+        {:noreply,
+         compaction_failed(s, "The selected provider's summary request failed.", "summary")}
 
       {:model, {:ok, assistant, usage}} ->
         s = append_message(s, assistant)
@@ -615,8 +616,13 @@ defmodule Ipse.Session do
                 job_ref: nil
             }
 
-          {:error, _reason} ->
-            compaction_failed(s)
+          {:tool_results, messages, event} ->
+            record(s, event)
+            notify(s, {:compacted, event["before_bytes"], event["after_bytes"]})
+            model(%{s | messages: messages})
+
+          {:error, reason} ->
+            compaction_failed(s, reason, "prepare")
         end
     end
   end
@@ -693,16 +699,21 @@ defmodule Ipse.Session do
             reported_model: reported_model(assistant)
         })
 
-      {:error, _reason} ->
-        compaction_failed(s)
+      {:error, reason} ->
+        compaction_failed(s, reason, "validation")
     end
   end
 
-  defp compaction_failed(s) do
+  defp compaction_failed(s, reason, stage) do
+    record(s, %{"type" => "compaction_failed", "stage" => stage, "reason" => reason})
+
     fail(
       s,
-      "Context compaction could not safely fit this conversation. Original history is retained. " <>
-        "Review the journal and start a new session with the necessary context; no tools were replayed."
+      "Context compaction stopped: " <>
+        reason <>
+        " Original history is retained. " <>
+        "Review recorded effects before continuing. A short continuation may make an older turn eligible; " <>
+        "otherwise choose a suitable context ceiling or start a new session with necessary context. No tools were replayed."
     )
   end
 
@@ -1122,6 +1133,12 @@ defmodule Ipse.Session do
           {:cont, {:ok, [event["checkpoint"] | Enum.drop(messages, count)]}}
         else
           {:halt, {:error, :invalid_compaction_checkpoint}}
+        end
+
+      %{"type" => "tool_results_compacted"} = event, {:ok, messages} ->
+        case Ipse.Compaction.restore_tool_results(restore_messages(messages), event) do
+          {:ok, projected} -> {:cont, {:ok, projected}}
+          error -> {:halt, error}
         end
 
       _, acc ->

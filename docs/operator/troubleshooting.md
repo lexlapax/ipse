@@ -98,14 +98,18 @@ Interrupted effects may already have happened. Resume marks their outcome
 unknown and does not automatically replay them. Inspect affected files before
 requesting another mutation.
 
-If automatic compaction cannot fit the pinned user history, recent exchanges,
-or a valid summary, work stops and the original journal is retained. Review it
+Compaction first tries an older-turn summary, then deterministic excerpts of
+older settled tool outputs when summary planning fails. The newest two call
+batches, all user text, native payloads, and exact call arguments remain intact.
+If neither projection fits, work stops with a planning/validation diagnosis and
+the original journal is retained. Provider-summary failures show a static safe
+message rather than a raw provider response. Review it
 and inspect actual effects before continuing. With only one or two user turns,
 a short continuation may make an older completed turn eligible for compaction;
 large retained history can still require a new session with necessary context
 supplied explicitly. Never repeat a completed effect solely because the turn
 stopped.
-`--no-compact` disables summary requests; `--context-bytes` adjusts the conservative
+`--no-compact` disables both reduction paths; `--context-bytes` adjusts the conservative
 byte ceiling. See [compaction behavior](usage.md#context-compaction).
 A damaged committed checkpoint stops resume; keep the original journal for
 diagnosis rather than deleting checkpoint records blindly.

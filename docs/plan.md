@@ -17,7 +17,8 @@ the next feature sequence on 2026-10-15:
 | [P9](#p9-parallel-local-subagents) | Parallel local subagents | Complete within documented scope |
 | [P10](#p10-network-mcp) | Explicit network MCP | Complete within documented scope |
 | [P11](#p11-live-dotsetup-trial) | Read-only assessment in `~/projects/lexlapax/dotsetup` | Read-only comparison and selected follow-ups complete |
-| [P12](#p12-task-tracker-coding-trial) | New forms/SQLite task tracker | Specified-stack coding trial complete; broader harness validation pending |
+| [P12](#p12-task-tracker-coding-trial) | New forms/SQLite task tracker | Specified-stack coding trial complete |
+| [P13](#p13-long-turn-compaction-and-general-purpose-trials) | Long-turn context recovery and neutral coding/non-coding trials | Core and bundled Linux checks passed; hosted checks and trials in progress |
 
 Feature completion does not close every live provider acceptance check. On
 2026-10-15, installed Ollama `qwen3.5:9b`, Anthropic `claude-haiku-4-5`, and
@@ -543,5 +544,32 @@ The long session exposed an existing compaction limitation: one or two retained
 user turns can exceed the trigger without an eligible older prefix. A short
 continuation made the completed first turn eligible; live compaction and local
 commit then succeeded without replay. Improving long-turn compaction and its
-cause-specific recovery diagnostics is proposed follow-up, not implemented here.
-A later neutral stack-selection/non-coding trial remains separate from this pass.
+cause-specific recovery diagnostics became the selected [P13 follow-up](#p13-long-turn-compaction-and-general-purpose-trials).
+Neutral stack-selection/non-coding trials remain separate from this historical pass.
+
+## P13: long-turn compaction and general-purpose trials
+
+Selected by the developer on 2026-10-16 to complete the P12 follow-ups. Status:
+long-turn output checkpoints and specific failure diagnostics implemented; source
+build, formatting, warnings-as-errors compilation, 277 Linux tests, native demo,
+P12 transcript replay, and a live eight-read single-turn check passed. Packaging
+passed; hosted verification in progress; both new trials pending.
+Update this record as each acceptance check completes.
+
+1. Improve safe context reduction during long action turns and provide specific
+   recovery causes. Preserve user requests, provider continuation payloads, exact
+   tool-call identities/arguments, approval/outcome metadata, and the original
+   journal. Retain recent tool results; checkpoint reductions durably before
+   continuation and validate them on resume. Prove no automatic replay, failure
+   integrity, cancellation/owner-death behavior, and compatibility with existing
+   checkpoints. Reproduce the P12 long-turn failure and verify source/package
+   checks, operator/developer documentation, and commit/push.
+2. Run a fresh task-tracker/forms/SQLite coding trial with neutral requirements
+   and let Ipse choose an appropriate installed stack. Do not inherit Ipse's
+   Elixir implementation constraint into the workload. Independently review
+   implementation, validation, persistence, and the actual selection rationale.
+3. Run a bounded non-coding task over synthetic local documents, independently
+   verify its factual result and artifact, and preserve task scope/permissions.
+   Record actual provider, tools, checks, limitations, and any needed harness
+   fixes. No deployment, new public repository, private project transfer, or
+   external messaging is required by these trials.

@@ -241,20 +241,25 @@ session lock. Full transcripts remain on disk, including tool output.
 
 ## Context compaction
 
-Ipse automatically attempts to summarize older context above 80% of its default
-400,000-byte ceiling. It reports compaction and the before/after sizes. This adds
-a request to the selected provider/model and consumes its normal usage; it never
-switches providers or billing modes. Original transcripts stay in the journal.
-Recent exchanges and user requests are preserved; older results have excerpts
-and summaries. Model summaries can be incomplete or incorrect, so inspect files
+Ipse automatically attempts context reduction above 80% of its default
+400,000-byte ceiling. It reports compaction and before/after sizes. The preferred
+older-turn summary adds a request to the selected provider/model and consumes
+its normal usage. If that cannot be planned, a deterministic older-tool-output
+reduction makes no model request. Neither switches provider or billing mode. Original transcripts stay in the journal.
+The summary path retains the latest two user turns in full. The output fallback
+can operate within one turn: it keeps all user requests, provider continuation
+fields, exact calls, approval/outcome metadata, and the newest two tool-call
+batches. Older settled outputs over 4 KiB become marked beginning/end excerpts
+with original byte counts and hashes. Full results remain in the journal. Model summaries can be incomplete or incorrect, so inspect files
 and original results before repeating effects.
 
 Use `--context-bytes N` to adjust the conservative ceiling (minimum 8192), or
-`--no-compact` to stop at the ceiling without summarizing. `/cancel` also stops
+`--no-compact` to stop at the ceiling without either reduction path. `/cancel` also stops
 an active compaction. These settings can be supplied again when resuming.
-If pinned user history, recent exchanges, or the summary cannot fit, Ipse stops
-with recovery guidance. The latest two user turns are retained in full, so a
-long session with only one or two turns can stop before the hard ceiling.
+If retained history or a valid summary cannot fit, Ipse stops with a specific
+planning/validation diagnosis; provider-summary failures show a safe generic
+message. User text, native payloads, arguments, or newest results can still
+prevent reduction, even during a long single turn.
 Inspect the journal and actual tool effects first. A short continuation may make
 an older completed turn eligible, as in the
 [task-tracker trial](../developer/testing.md#p12-task-tracker-coding-trial-2026-10-15);

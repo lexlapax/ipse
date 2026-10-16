@@ -229,4 +229,124 @@ defmodule Ipse.CompactionSessionTest do
     refute_receive {:normal_request, _}, 50
     assert File.read!(Path.join(ctx.root, "kept.txt")) == "manual edit"
   end
+
+  defp long_turn(ctx) do
+    {:ok, id} =
+      Ipse.Journal.create(ctx.dir, %{"cwd" => ctx.root, "provider" => "demo", "model" => "test"})
+
+    initial = Enum.take(ctx.original, 3)
+
+    messages =
+      initial ++
+        Enum.flat_map(1..5, fn n ->
+          [
+            %{
+              "role" => "assistant",
+              "content" => "",
+              "provider_data" => %{"opaque" => "continuation-#{n}"},
+              "tool_calls" => [
+                %{
+                  "id" => "read-#{n}",
+                  "function" => %{"name" => "read", "arguments" => ~s({"path":"evidence.txt"})}
+                }
+              ]
+            },
+            %{
+              "role" => "tool",
+              "tool_call_id" => "read-#{n}",
+              "content" => String.duplicate("synthetic evidence ", 500),
+              "ipse_tool_outcome" => %{
+                "status" => "result_recorded",
+                "approval" => "not_required"
+              }
+            }
+          ]
+        end)
+
+    for message <- messages,
+        do: :ok = Ipse.Journal.append(ctx.dir, id, %{"type" => "message", "message" => message})
+
+    :ok =
+      Ipse.Journal.append(ctx.dir, id, %{
+        "type" => "tool_started",
+        "call_id" => "past-write",
+        "name" => "write"
+      })
+
+    %{ctx | id: id, original: messages}
+  end
+
+  test "a long turn journals excerpts before continuation and resumes without replay", ctx do
+    ctx = long_turn(ctx)
+    config = %{context_bytes: 100_000, compact_threshold_bytes: 36_000}
+    {:ok, pid} = start(ctx, config)
+    :ok = Ipse.Session.prompt(pid, "Continue the same task without repeating effects.")
+    assert_receive {:ipse, ^pid, {:compacted, before_bytes, after_bytes}}, 2000
+    assert after_bytes < before_bytes
+    assert_receive {:normal_request, [_system | projected]}, 2000
+    assert Enum.any?(projected, &Map.has_key?(&1, "ipse_result_excerpt"))
+    {:ok, events} = Ipse.Journal.load(ctx.dir, ctx.id)
+    assert Enum.count(events, &(&1["type"] == "tool_results_compacted")) == 1
+    for original <- ctx.original, do: assert(Enum.any?(events, &(&1["message"] == original)))
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 2000
+    refute_receive {:summary_request, _, _}, 30
+    :ok = Ipse.Session.close(pid)
+
+    {:ok, resumed} = start(ctx, config)
+    :ok = Ipse.Session.prompt(resumed, "Report remaining work.")
+    assert_receive {:normal_request, [_system | restored]}, 2000
+    assert Enum.take(restored, length(projected)) == projected
+    assert_receive {:ipse, ^resumed, {:done, :ok}}, 2000
+    {:ok, events} = Ipse.Journal.load(ctx.dir, ctx.id)
+    assert Enum.count(events, &(&1["type"] == "tool_results_compacted")) == 1
+    assert Enum.count(events, &(&1["type"] == "tool_started")) == 1
+    assert File.read!(Path.join(ctx.root, "kept.txt")) == "manual edit"
+  end
+
+  test "owner death after a tool-output checkpoint keeps the projection on idle resume", ctx do
+    ctx = long_turn(ctx)
+    config = %{context_bytes: 100_000, compact_threshold_bytes: 36_000}
+    {:ok, pid} = start(ctx, Map.put(config, :normal_mode, :wait))
+    :ok = Ipse.Session.prompt(pid, "Continue.")
+    assert_receive {:normal_request, [_system | projected]}, 2000
+    assert_receive {:normal_worker, worker}, 2000
+    owner_ref = Process.monitor(pid)
+    worker_ref = Process.monitor(worker)
+    Process.exit(pid, :kill)
+    assert_receive {:DOWN, ^owner_ref, :process, ^pid, :killed}, 2000
+    assert_receive {:DOWN, ^worker_ref, :process, ^worker, :killed}, 2000
+    {:ok, resumed} = start(ctx, config)
+    refute_receive {:normal_request, _}, 30
+    :ok = Ipse.Session.prompt(resumed, "Recover without replay.")
+    assert_receive {:normal_request, [_system | restored]}, 2000
+    assert Enum.take(restored, length(projected)) == projected
+    assert_receive {:ipse, ^resumed, {:done, :ok}}, 2000
+    assert File.read!(Path.join(ctx.root, "kept.txt")) == "manual edit"
+  end
+
+  test "corrupt excerpt checkpoints fail closed and reduction failures retain specific causes",
+       ctx do
+    ctx = long_turn(ctx)
+
+    {:tool_results, _, event} =
+      Ipse.Compaction.prepare(
+        ctx.original,
+        %{context_bytes: 100_000, compact_threshold_bytes: 36_000},
+        %{"role" => "system", "content" => "rules"}
+      )
+
+    :ok = Ipse.Journal.append(ctx.dir, ctx.id, Map.put(event, "projection_sha256", "bad"))
+    assert {:error, :invalid_tool_result_checkpoint} = start(ctx)
+
+    ctx = long_turn(ctx)
+    {:ok, pid} = start(ctx, %{context_bytes: 20_000, compact_threshold_bytes: 8_000})
+    :ok = Ipse.Session.prompt(pid, "Continue.")
+    assert_receive {:ipse, ^pid, {:error, message}}, 2000
+    assert message =~ "retained user requests"
+    assert_receive {:ipse, ^pid, {:done, :error}}, 2000
+    {:ok, events} = Ipse.Journal.load(ctx.dir, ctx.id)
+    assert Enum.any?(events, &(&1["type"] == "compaction_failed" and &1["stage"] == "prepare"))
+    refute Enum.any?(events, &(&1["type"] == "tool_results_compacted"))
+    refute_receive {:normal_request, _}, 30
+  end
 end

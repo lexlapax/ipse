@@ -1,8 +1,10 @@
 # Architecture
 
 Ipse is an MIT-licensed, general-purpose local AI harness built around Elixir
-and OTP. Its current tool bundle and host prompt focus on coding/project work;
-broader task coverage is a validation goal, not an already verified capability.
+and OTP. The host role supports general-purpose tasks, with focused changes
+when requested and workload stacks chosen from user requirements and environment.
+The current bundled tools mainly serve file/project work; broader task coverage
+remains bounded by the actual trials in the testing record.
 The core agent loop, provider adapters, tool policy, skills, authentication, and
 session journal are Elixir. A small Rust standard-library helper owns shell and
 configured MCP process groups and advisory session locks. There is no JavaScript or Python
@@ -62,9 +64,12 @@ unbounded profile names.
 ## Context compaction
 
 `Ipse.Compaction` builds bounded summary requests and validates checkpoints;
-Session owns the extra provider task and journal commit. It preserves verbatim
-older user intent, host-written action/approval provenance, and the latest two
-user turns including native continuation data. Summaries remain untrusted data.
+Session owns the extra provider task and journal commit. Summaries preserve older
+user intent/action provenance and the latest two user turns including native data.
+When summary planning fails, deterministic older settled tool-output excerpts can
+reduce a single long turn, preserving all user/native/call/provenance fields and
+the newest two call batches. Both paths retain the original journal and validate
+durable projections on resume. Summaries and excerpts remain untrusted data.
 A synced checkpoint changes only the effective projection; original transcript
 events stay intact. Resume validates the covered prefix and restores without
 automatically restarting inference or tools. Cancellation saves no partial

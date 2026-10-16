@@ -131,6 +131,9 @@ defmodule Ipse.PackageVerifier do
     unless String.contains?(output, "Bundled Streamable HTTP MCP round trip passed."),
       do: raise("release network MCP verification did not print its completion marker")
 
+    unless String.contains?(output, "Bundled long-turn output checkpoint verification passed."),
+      do: raise("release long-turn checkpoint verification did not print its completion marker")
+
     IO.puts(
       "PASS: extracted package help, demo from isolated fresh HOME/IPSE_HOME, default cwd, explicit --cwd, bundled MCP and delegation checks, and OTP/helper checks."
     )

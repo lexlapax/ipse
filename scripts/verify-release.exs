@@ -32,6 +32,38 @@ await_lock = fn await_lock, path, attempts ->
 end
 
 try do
+  compaction_history =
+    [%{"role" => "user", "content" => "Inspect synthetic evidence without repeating effects."}] ++
+      Enum.flat_map(1..4, fn n ->
+        [
+          %{
+            "role" => "assistant",
+            "content" => "",
+            "provider_data" => %{"opaque" => "native-#{n}"},
+            "tool_calls" => [
+              %{"id" => "read-#{n}", "function" => %{"name" => "read", "arguments" => "{}"}}
+            ]
+          },
+          %{
+            "role" => "tool",
+            "tool_call_id" => "read-#{n}",
+            "content" => String.duplicate("synthetic evidence ", 500),
+            "ipse_tool_outcome" => %{"status" => "result_recorded", "approval" => "not_required"}
+          }
+        ]
+      end)
+
+  {:tool_results, projected, checkpoint} =
+    Ipse.Compaction.prepare(
+      compaction_history,
+      %{context_bytes: 100_000, compact_threshold_bytes: 28_000},
+      %{"role" => "system", "content" => "rules"}
+    )
+
+  {:ok, ^projected} = Ipse.Compaction.restore_tool_results(compaction_history, checkpoint)
+  true = Enum.take(projected, -4) == Enum.take(compaction_history, -4)
+  IO.puts("Bundled long-turn output checkpoint verification passed.")
+
   {:ok, result} =
     Ipse.Runner.run("(sleep 1; printf survived > timeout-marker) & printf ready; wait", scratch,
       timeout_ms: 200
