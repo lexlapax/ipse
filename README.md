@@ -29,7 +29,7 @@ mix local.rebar --force
 ```
 
 If you received a source archive, extract it and start at `./scripts/build.sh`.
-The demo needs no credentials. It loads the review skill, creates and reads
+The demo needs no credentials. It loads the review skill and its checklist, creates and reads
 `ipse-demo.txt` in a new temporary directory, and runs `printf`. It is a
 deterministic fixture, **not a model**. The printed session ID can be resumed.
 

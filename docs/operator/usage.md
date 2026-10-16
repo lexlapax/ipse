@@ -265,9 +265,15 @@ explicitly loads a skill into the next user turn. Loaded content includes its pa
 and SHA-256. No script is executed by loading a skill, and skills grant no permissions.
 Repository instructions use a saved, bounded workspace snapshot. See
 [workspace instructions](#workspace-instructions) below.
-Version 0.1 loads `SKILL.md` text only. Referenced resources do not load
-automatically; the model can read workspace files through ordinary file tools.
-Resources outside the workspace and broader skill packaging need further support.
+Supporting text loads explicitly through `load_skill_resource` with a discovered
+skill name and a skill-relative path, including user/bundled skills outside the
+workspace. Each read is limited to 32 KiB and eight path components. Absolute,
+escaping, symlink, credential-path, invalid UTF-8, and oversized targets are
+rejected with a diagnostic. Resource links do not load recursively and script
+text never executes. The bundled review skill uses `references/checklist.md`.
+Results include source and SHA-256 and stay in the journal; resume retains the
+saved contents instead of silently rereading changed resources. Ordinary context
+compaction still applies. See [the developer contract](../developer/architecture.md#skill-resources).
 
 ## Workspace instructions
 

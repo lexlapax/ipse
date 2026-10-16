@@ -1270,3 +1270,19 @@ write recovery, or power-loss durability was exercised here. The script removes
 its scratch state and restores the previous `IPSE_HOME`; the reviewed source,
 Cargo cache, and executable remain in `/tmp` only. No server was installed,
 bundled, enabled in normal sessions, or added as a default/CI dependency.
+
+## P8 skill resources, 2026-10-15
+
+Added explicit skill-relative text reads through the existing bounded source
+reader, without a new dependency. The bundled review skill/checklist and source
+demo exercise the feature. Focused fixtures passed precedence, inert script/link
+content, path/symlink/credential rejection, invalid UTF-8 and size/depth bounds,
+current-byte hashes, outside-workspace user skill resources, and saved-content
+resume after a file change. No automatic reload or effect replay occurred.
+
+Arch source build, formatting, warnings-as-errors compilation, and the isolated
+resource-enabled demo passed. Full Linux enforcement suite: **239 passed,
+14 macOS tests excluded**. Hosted source/package verification is pending.
+See [skill contract](architecture.md#skill-resources) and
+[operator usage](../operator/usage.md#skills). Provider validation is recorded
+separately; these fixtures/demo require no service or credentials.

@@ -802,6 +802,9 @@ defmodule Ipse.Session do
           name == "load_skill" ->
             Skills.load(s.skills, args["name"] || "")
 
+          name == "load_skill_resource" ->
+            Skills.load_resource(s.skills, args["name"], args["path"])
+
           name == "delegate" ->
             Ipse.Delegation.Worker.run(
               %{
@@ -1071,6 +1074,20 @@ defmodule Ipse.Session do
               "type" => "object",
               "properties" => %{"name" => %{"type" => "string"}},
               "required" => ["name"]
+            }
+          }
+        },
+        %{
+          "type" => "function",
+          "function" => %{
+            "name" => "load_skill_resource",
+            "description" =>
+              "Read one explicit UTF-8 file relative to a discovered skill directory (32 KiB maximum). Does not execute scripts or follow resource links; grants no permissions.",
+            "parameters" => %{
+              "type" => "object",
+              "properties" => %{"name" => %{"type" => "string"}, "path" => %{"type" => "string"}},
+              "required" => ["name", "path"],
+              "additionalProperties" => false
             }
           }
         }

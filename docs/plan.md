@@ -12,9 +12,10 @@ the next feature sequence on 2026-10-15:
 
 | Milestone | Scope | Status |
 | --- | --- | --- |
-| [P8](#p8-bounded-skill-resources) | Bounded explicit skill resources | Planned; not started |
+| [P8](#p8-bounded-skill-resources) | Bounded explicit skill resources | Implemented; host verification in progress |
 | [P9](#p9-parallel-local-subagents) | Parallel local subagents | Planned; not started |
 | [P10](#p10-network-mcp) | Explicit network MCP | Planned; not started |
+| [P11](#p11-live-dotsetup-trial) | Live use in `~/projects/lexlapax/dotsetup` | Planned after P10 |
 
 Feature completion does not close every live provider acceptance check. Ollama
 passed a live `qwen3.5:9b` read-tool round trip on 2026-10-14 and runtime identity/
@@ -415,7 +416,12 @@ malformed, oversized, sensitive, symlink, and escaping targets; preserve exact
 loaded content/digests in bounded session context and deterministic resume;
 show omissions clearly. Review operator/developer guidance, run appropriate
 source and supported-host checks, and commit/push the focused implementation.
-Status: planned, not implemented. Provider verification above remains separate.
+Implemented `load_skill_resource` using the existing bounded source reader.
+The bundled review checklist, explicit provenance, rejection boundaries, and
+changed-file resume fixtures passed. Arch build, format, warnings-as-errors,
+239 tests with Linux enforcement (14 Mac tests excluded), and resource-enabled
+demo passed. Hosted verification remains in progress; provider checks remain
+separate. See [P8 evidence](developer/testing.md#p8-skill-resources-2026-10-15).
 
 ## P9: parallel local subagents
 
@@ -455,3 +461,14 @@ inventory, and commit/push the supported result. Local approvals and sandboxing
 cannot establish a remote server's isolation or guarantee remote cancellation.
 Status: planned, not implemented; this does not authorize remote subagents or
 arbitrary remote command execution.
+
+## P11: live dotsetup trial
+
+Selected by the developer after P10: use Ipse in the live repository
+`~/projects/lexlapax/dotsetup`. Inspect its instructions, branch, and worktree
+first and preserve unrelated edits. Select a concrete bounded task from its
+current needs; retain explicit provider selection, full tool approvals, and
+unknown-outcome recovery. Record the actual task, provider/model, checks, and
+limitations without credentials or private transcripts. Do not infer successful
+live use from Ipse fixtures or earlier scratch-workspace checks.
+Status: planned after P10; the repository has not been changed for this trial.

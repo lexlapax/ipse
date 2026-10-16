@@ -12,20 +12,26 @@ defmodule Ipse.Provider.Demo do
         call("demo-skill", "load_skill", %{"name" => "review"})
 
       1 ->
+        call("demo-resource", "load_skill_resource", %{
+          "name" => "review",
+          "path" => "references/checklist.md"
+        })
+
+      2 ->
         call("demo-write", "write", %{
           "path" => "ipse-demo.txt",
           "content" => "Hello from Ipse!\n"
         })
 
-      2 ->
+      3 ->
         call("demo-read", "read", %{"path" => "ipse-demo.txt"})
 
-      3 ->
+      4 ->
         call("demo-shell", "shell", %{"command" => "printf 'Runner works\\n'"})
 
       _ ->
         text =
-          "Demo finished. I requested a skill, wrote and read ipse-demo.txt, and ran a command. Inspect the tool results for approvals or failures. This is a scripted demo, not an AI response."
+          "Demo finished. I requested a skill and its checklist resource, wrote and read ipse-demo.txt, and ran a command. Inspect the tool results for approvals or failures. This is a scripted demo, not an AI response."
 
         emit.({:text, text})
         {:ok, %{"role" => "assistant", "content" => text}, %{}}

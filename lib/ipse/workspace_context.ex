@@ -12,6 +12,32 @@ defmodule Ipse.WorkspaceContext do
   def canonical_path(path) when is_binary(path), do: canonical(path)
   def canonical_path(_), do: {:error, "path must be a string"}
 
+  @doc "Read one explicit UTF-8 resource inside a selected skill directory."
+  def read_skill_resource(root, relative) when is_binary(root) and is_binary(relative) do
+    parts = Path.split(relative)
+
+    safe =
+      String.valid?(relative) and byte_size(relative) in 1..1024 and
+        Path.type(relative) == :relative and length(parts) <= 8 and
+        not String.contains?(relative, [<<0>>, "\\", ":"]) and
+        not Enum.any?(parts, fn part ->
+          name = String.downcase(part)
+
+          name in [".", ".." | @sensitive_parts] or String.starts_with?(name, ".env") or
+            Path.extname(name) in [".pem", ".key", ".p12", ".pfx"]
+        end)
+
+    with true <- safe,
+         {:ok, %{type: :directory}} <- File.lstat(root),
+         {:ok, root} <- canonical(root) do
+      read_source(Path.join(root, relative), "skill_resource", "explicit", root, false)
+    else
+      _ -> {:error, :invalid_skill_resource_path}
+    end
+  end
+
+  def read_skill_resource(_, _), do: {:error, :invalid_skill_resource_path}
+
   def snapshot(cwd, home) when is_binary(cwd) and is_binary(home) do
     with {:ok, cwd} <- canonical(cwd),
          true <- File.dir?(cwd) || {:error, "workspace is not a directory: #{cwd}"},

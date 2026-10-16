@@ -173,6 +173,27 @@ keeps its existing wire shape. Subscription endpoints are pinned below the CLI;
 only test-compiled code permits loopback fixtures. Provider errors redact the
 active credential and stop the turn; the CLI clears queued requests visibly.
 
+## Skill resources
+
+`Skills.load_resource/3` resolves one explicit name/path against the selected
+discovered skill, preserving project > user > bundled precedence. It reuses
+`WorkspaceContext`'s bounded source reader and canonical root checks. Resources
+are UTF-8 files of at most 32 KiB, with at most eight relative path components
+and a 1024-byte path. Parent traversal, absolute paths, resource symlinks,
+credential directories, `.env*`, and private-key extensions are refused. The
+selected skill directory itself must be a directory rather than a symlink;
+trusted application path aliases are canonicalized before reading beneath it.
+These checks do not resist hostile concurrent filesystem replacement.
+
+The `load_skill_resource` tool performs no automatic link traversal, dependency
+installation, or execution. It returns exact content, canonical source, and a
+SHA-256 digest through ordinary tool journaling. Repeated explicit loads read
+current bytes and report the current digest. Idle resume uses saved messages,
+including the old resource result, without rereading disk. Normal bounded
+context/checkpoint rules apply; full original results stay in the journal.
+The bundled review skill's checklist is the first supporting-file use case.
+No additional package or resource framework was introduced.
+
 ## Extension guidance
 
 Local stdio MCP uses an existing SDK behind the session's approval/journal
