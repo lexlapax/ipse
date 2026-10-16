@@ -47,7 +47,7 @@ billing, credentials and external-effect invariants still apply.
 | Order | Work | Status |
 | --- | --- | --- |
 | 1 | Supervised self-development using stable Ipse to add P15 shared operator skills | In progress in isolated worktree; independent review pending |
-| 2 | P17 structured operator questions | Pending |
+| 2 | P17 structured operator questions | Verified feature branch `5984d09`; integration follows shared-skills review |
 | 3 | Remaining P15 scoped configuration | Pending |
 | 4 | P16 explicit model profiles/routing | Pending |
 | 5 | P14 bounded deep research | Pending |
@@ -795,8 +795,12 @@ Acceptance:
 
 ## P17: structured operator questions
 
-Selected and authorized on 2026-10-16. Status: queued after shared operator skills.
-Implement the host-native clarification capability described in P14's related gap.
+Selected and authorized on 2026-10-16. Implemented and verified in isolated
+feature branch `5984d09` while the first stable self-development trial runs.
+The question/API/CLI suites passed 25 tests, full native Linux suite 293 tests
+(14 Mac excluded), synthetic live ChatGPT single/multiple/text answers passed,
+and extracted-runtime question checks passed. Main integration and hosted checks
+follow shared-skills independent review; this main checkout has not changed yet.
 
 Acceptance:
 
