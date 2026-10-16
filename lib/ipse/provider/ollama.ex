@@ -32,6 +32,17 @@ defmodule Ipse.Provider.Ollama do
       "stream" => true
     }
 
+    body =
+      if is_map(config[:summary_schema]) do
+        Map.merge(body, %{
+          "format" => config.summary_schema,
+          "think" => false,
+          "options" => %{"temperature" => 0, "num_predict" => 4096}
+        })
+      else
+        body
+      end
+
     state = %{
       buffer: "",
       content: "",

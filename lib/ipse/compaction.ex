@@ -6,6 +6,24 @@ defmodule Ipse.Compaction do
   @default_tail_turns 2
   @excerpt_chars 256
 
+  @doc "Provider-specific summary controls without changing ordinary turns or routing."
+  def request_config(%{provider: :ollama} = config) do
+    schema = %{
+      "type" => "object",
+      "properties" =>
+        Map.new(
+          ~w(decisions facts open_questions),
+          &{&1, %{"type" => "array", "items" => %{"type" => "string"}}}
+        ),
+      "required" => ~w(decisions facts open_questions),
+      "additionalProperties" => false
+    }
+
+    Map.put(config, :summary_schema, schema)
+  end
+
+  def request_config(config), do: config
+
   @type plan :: %{
           prefix: [map()],
           tail: [map()],
@@ -67,7 +85,7 @@ defmodule Ipse.Compaction do
     max_summary = positive(config[:compact_summary_bytes], @default_summary_bytes)
 
     with :ok <- valid_summary_response(assistant, max_summary),
-         {:ok, summary} <- Jason.decode(assistant["content"]),
+         {:ok, summary} <- decode_summary(assistant["content"]),
          checkpoint = checkpoint_message(summary, plan.user_intents, plan.actions),
          projected = [checkpoint | plan.tail],
          final_bytes = encoded_bytes([system_message | projected]),
@@ -279,7 +297,7 @@ defmodule Ipse.Compaction do
 
   defp valid_summary_response(%{"role" => "assistant", "content" => content} = assistant, max)
        when is_binary(content) and byte_size(content) <= max do
-    with {:ok, value} when is_map(value) <- Jason.decode(content),
+    with {:ok, value} when is_map(value) <- decode_summary(content),
          true <- assistant["tool_calls"] in [nil, []],
          true <- valid_summary_map?(value) do
       :ok
@@ -292,6 +310,15 @@ defmodule Ipse.Compaction do
     do:
       {:error,
        "Compaction summary was missing or exceeded its size limit; original history is intact."}
+
+  defp decode_summary(content) do
+    text = String.trim(content)
+
+    case Regex.run(~r/\A```(?:json)?\r?\n(.*?)\r?\n```\z/s, text, capture: :all_but_first) do
+      [json] -> Jason.decode(json)
+      _ -> Jason.decode(text)
+    end
+  end
 
   defp final_fits?(bytes, plan) do
     if bytes < plan.before_bytes and bytes <= plan.target_bytes do

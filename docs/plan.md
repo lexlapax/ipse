@@ -12,26 +12,23 @@ the next feature sequence on 2026-10-15:
 
 | Milestone | Scope | Status |
 | --- | --- | --- |
-| [P8](#p8-bounded-skill-resources) | Bounded explicit skill resources | Implemented; host verification in progress |
+| [P8](#p8-bounded-skill-resources) | Bounded explicit skill resources | Complete within documented scope |
 | [P9](#p9-parallel-local-subagents) | Parallel local subagents | Planned; not started |
 | [P10](#p10-network-mcp) | Explicit network MCP | Planned; not started |
 | [P11](#p11-live-dotsetup-trial) | Live use in `~/projects/lexlapax/dotsetup` | Planned after P10 |
 
-Feature completion does not close every live provider acceptance check. Ollama
-passed a live `qwen3.5:9b` read-tool round trip on 2026-10-14 and runtime identity/
-resume checks on 2026-10-15. Its later compaction, MCP, and delegation paths have
-not been verified live. Anthropic and OpenAI API have local fixture coverage but
-no recorded live paid API acceptance. See the authoritative
+Feature completion does not close every live provider acceptance check. On
+2026-10-15, installed Ollama `qwen3.5:9b`, Anthropic `claude-haiku-4-5`, and
+OpenAI API `gpt-4.1-mini` passed basic live acceptance, compaction, native local
+MCP, serial delegation, and idle resume. Paid API checks used privately loaded
+keys from the ignored repository `.env` under explicit developer authorization.
+See the authoritative
 [provider status and outstanding checks](developer/testing.md#provider-verification-status).
 
-Recommended immediate work before starting P8 is a bounded Ollama acceptance
-pass on the installed service/model, followed by Anthropic acceptance when a
-securely supplied API key and explicit paid-test authorization are available.
-Cover streamed text, an individually approved scratch tool round trip, native
-continuation, idle resume without replay, and a safely surfaced provider error;
-then track compaction, local MCP, and serial delegation as separate checks.
-Record exact provider/model/host evidence and unresolved branches. Do not
-download a model, switch providers/billing, or make paid calls by implication.
+The live checks repaired two compaction-format failures without replacing
+history or changing billing/provider selection. Broader model/host eligibility
+and negative account cases remain separate from these scoped passes. No model
+download or new runtime dependency was required.
 
 ## Prototype 0.1: available now
 
@@ -420,8 +417,9 @@ Implemented `load_skill_resource` using the existing bounded source reader.
 The bundled review checklist, explicit provenance, rejection boundaries, and
 changed-file resume fixtures passed. Arch build, format, warnings-as-errors,
 239 tests with Linux enforcement (14 Mac tests excluded), and resource-enabled
-demo passed. Hosted verification remains in progress; provider checks remain
-separate. See [P8 evidence](developer/testing.md#p8-skill-resources-2026-10-15).
+demo passed. Hosted Linux/macOS source/package verification also passed at
+`4a19bb3`; P8 is complete within this scope. Provider checks remain separate.
+See [P8 evidence](developer/testing.md#p8-skill-resources-2026-10-15).
 
 ## P9: parallel local subagents
 

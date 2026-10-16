@@ -183,24 +183,17 @@ not live-service acceptance. Current recorded status:
 | Provider | Live evidence | Outstanding |
 | --- | --- | --- |
 | ChatGPT subscription | Browser sign-in, streamed coding/tools, resume, natural-expiry rotating refresh, logout, compaction, local MCP, and serial delegation on Arch | Broader eligibility/allowance cases and other hosts remain bounded by the individual records below |
-| Ollama | `qwen3.5:9b` read-tool round trip on 2026-10-14; identity and resume checks on 2026-10-15, using the installed service | Current-checkout acceptance pass; live compaction, local MCP, and serial delegation |
-| Anthropic API | No live API acceptance recorded; local HTTP fixtures cover streamed tool calls and native content blocks | Live streamed text, approved tool round trip, continuation, idle resume, surfaced error, then separate compaction/MCP/delegation checks |
-| OpenAI API | No live paid API acceptance recorded; local Responses fixtures exist | Live text/tool acceptance with an explicitly selected API billing account |
+| Ollama | Installed `qwen3.5:9b`: basic acceptance, compaction, native local MCP, serial delegation and idle resume on Arch | Other models/hosts and feature-specific negative paths |
+| Anthropic API | Explicit API billing with `claude-haiku-4-5`: basic acceptance, compaction, native local MCP, serial delegation and idle resume on Arch | Other models/hosts and feature-specific negative paths |
+| OpenAI API | Explicit API billing with `gpt-4.1-mini`: basic acceptance, compaction, native local MCP, serial delegation and idle resume on Arch | Other models/hosts and feature-specific negative paths |
 
-The next recommended provider task is a small scratch-workspace Ollama run
-using an installed tool-capable model, recording service/model/host versions.
-Do not download a model automatically. Follow with Anthropic only after a key
-is securely configured and paid test calls are explicitly authorized; do not
-print credentials or infer permission from an available environment variable.
-For each provider, verify streaming, one exact individually approved tool call,
-the next model request with native continuation, idle resume without replay,
-and a bounded provider failure without switching billing/provider. Keep later
-compaction, MCP, and delegation checks distinct from this basic acceptance.
-
-These are open follow-ups alongside the
-[planned P8–P10 sequence](../plan.md#current-sequence-and-provider-verification),
-not results of the latest fixture or independent-server checks. No new live
-provider request was made while recording this status. Earlier Ollama evidence
+The developer authorized live API calls using the ignored repository `.env` on
+2026-10-15. Keys were loaded privately for the check; they were not printed,
+committed, journaled, or supplied to the MCP server. No model was downloaded,
+no credential fallback occurred, and each provider was explicitly selected.
+These results do not establish arbitrary model/host coverage. See
+[the live acceptance record](#live-provider-acceptance-follow-up-2026-10-15).
+Earlier Ollama evidence
 is in [Arch local provider checks](#arch-release-and-local-provider-checks-2026-10-14)
 and [runtime identity](#p1-runtime-identity-2026-10-15).
 
@@ -1282,7 +1275,49 @@ resume after a file change. No automatic reload or effect replay occurred.
 
 Arch source build, formatting, warnings-as-errors compilation, and the isolated
 resource-enabled demo passed. Full Linux enforcement suite: **239 passed,
-14 macOS tests excluded**. Hosted source/package verification is pending.
+14 macOS tests excluded**. Hosted
+[Linux/macOS source/package CI passed](https://github.com/lexlapax/ipse/actions/runs/38844821382)
+at `4a19bb3`, including Mac native enforcement and resource-enabled bundled demo.
 See [skill contract](architecture.md#skill-resources) and
 [operator usage](../operator/usage.md#skills). Provider validation is recorded
 separately; these fixtures/demo require no service or credentials.
+
+## Live provider acceptance follow-up, 2026-10-15
+
+On the recorded Serenity Arch host, the developer explicitly authorized reading
+provider keys privately from the Git-ignored repository `.env` and paid API
+validation. Ollama 0.40.1 used the installed `qwen3.5:9b`; Anthropic used
+`claude-haiku-4-5`; OpenAI API used `gpt-4.1-mini`. All three passed streamed
+visible output, one exact individually approved synthetic write, native
+continuation, idle resume with unchanged journal events, a further model turn
+without tool replay, and a surfaced unavailable-model error. No provider/billing
+fallback or model download was used. Scratch transcripts were removed afterward.
+
+Each provider separately passed a live summary/checkpoint request over seeded
+synthetic history, subsequent inference retaining its marker/license, and idle
+resume without recompression or tools. Anthropic initially returned exactly one
+JSON Markdown fence; Ollama initially returned empty visible content. Both failed
+closed and retained history. The repair accepts one exact JSON fence while
+retaining the strict schema/tool/byte checks, and supplies Ollama's documented
+structured-output schema, disabled thinking, zero temperature, and a 4096-token
+summary cap only for compaction. Ordinary turn requests are unchanged. Focused
+fixtures verify both repairs and continued rejection of prose, multiple JSON
+documents, invalid keys, and tool calls. No hidden reasoning was displayed.
+
+All three also passed two separately approved native MCP calls against the
+previously reviewed independent Rust filesystem executable: exact synthetic
+write and read, followed by idle resume without replay. A safe explicit
+`overwrite: false`/`expected_revision: null` proposal from OpenAI was initially
+denied by the harness's omitted-argument expectation; the next request used that
+exact fully specified proposal and passed. Serial delegation passed with one
+exact approved task/context, a real same-provider child reply, parent completion,
+and idle resume without starting another child. Initial natural-language task
+wording varied the proposed arguments; explicit JSON proposals resolved this
+without broad approval or changed host policy.
+
+These are actual provider requests with synthetic data, distinct from fixture
+tests and the original ChatGPT subscription evidence. Compaction history was
+seeded, not a claim about an extended natural conversation. No live allowance
+exhaustion, paid-account eligibility, token revocation, concurrent external
+writers, or Mac provider check was performed. Provider keys and private
+configuration remain outside Git; only sanitized outcomes are recorded here.

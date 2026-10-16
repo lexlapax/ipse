@@ -58,6 +58,45 @@ defmodule Ipse.CompactionTest do
     assert stats.after_bytes <= plan.target_bytes
   end
 
+  test "one exact JSON fence is accepted while prose, multiple documents and tool calls are rejected" do
+    config = %{context_bytes: 10_000, compact_threshold_bytes: 1500}
+    {:ok, plan} = Compaction.prepare(three_turns(), config, system())
+    json = summary()["content"]
+
+    for wrapped <- ["```json\n#{json}\n```", "```\r\n#{json}\r\n```"] do
+      assert {:ok, _, _, _} =
+               Compaction.finish(
+                 plan,
+                 %{"role" => "assistant", "content" => wrapped},
+                 system(),
+                 config
+               )
+    end
+
+    for bad <- [
+          "Here is JSON:\n#{json}",
+          "```json\n#{json}\n```\nextra",
+          "#{json}\n#{json}",
+          "```json\n{}\n```"
+        ] do
+      assert {:error, _} =
+               Compaction.finish(
+                 plan,
+                 %{"role" => "assistant", "content" => bad},
+                 system(),
+                 config
+               )
+    end
+
+    assert {:error, _} =
+             Compaction.finish(plan, Map.put(summary(), "tool_calls", [%{}]), system(), config)
+
+    requested = Compaction.request_config(%{provider: :ollama, model: "test"})
+    assert requested.provider == :ollama and requested.model == "test"
+    assert requested.summary_schema["additionalProperties"] == false
+    assert Compaction.request_config(%{provider: :anthropic}) == %{provider: :anthropic}
+  end
+
   test "keeps native continuation and its tool result byte-for-byte in the recent tail" do
     native = %{
       "provider" => "anthropic",

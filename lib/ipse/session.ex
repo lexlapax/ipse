@@ -561,7 +561,14 @@ defmodule Ipse.Session do
 
           {:ok, plan} ->
             task =
-              owned_task(fn -> request(s.config, plan.summary_messages, [], fn _ -> :ok end) end)
+              owned_task(fn ->
+                request(
+                  Ipse.Compaction.request_config(s.config),
+                  plan.summary_messages,
+                  [],
+                  fn _ -> :ok end
+                )
+              end)
 
             notify(s, {:status, :compacting})
 

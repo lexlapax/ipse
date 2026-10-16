@@ -45,6 +45,17 @@ Compaction consumes one of the configured model calls per turn and incurs the
 selected provider's normal usage. Summary deltas are not forwarded to the UI.
 Cancellation stops the owned task and does not save a partial checkpoint.
 
+One exact outer JSON Markdown fence is accepted as presentation; prose before
+or after it, multiple documents, missing/extra schema keys, non-string array
+values, tool calls, and over-limit raw responses remain rejected. The same
+checkpoint validation applies after JSON decoding. For Ollama summaries only,
+the host sends the three-array JSON schema with `think: false`, zero temperature,
+and a 4096-token generation cap. Ordinary turns retain their existing options.
+These controls follow Ollama's documented
+[structured outputs](https://docs.ollama.com/capabilities/structured-outputs)
+and [thinking controls](https://docs.ollama.com/capabilities/thinking); unavailable
+model support fails rather than changing provider or billing mode.
+
 ## Durable checkpoint and resume
 
 A successful summary is validated for its exact schema, size, absence of tool
@@ -75,5 +86,8 @@ whose returned window must be used intact. Ipse's current implementation is a
 provider-neutral host checkpoint, not that endpoint or server-side compaction.
 
 See [testing and actual evidence](testing.md#p2-context-compaction-2026-10-15)
-for fixtures and the separate live ChatGPT scratch check. Future changes must
+for fixtures and the separate live ChatGPT scratch check. The later
+[provider acceptance](testing.md#live-provider-acceptance-follow-up-2026-10-15)
+also verifies live Ollama, Anthropic, and OpenAI API checkpoint requests over
+seeded synthetic history. Future changes must
 preserve failure, cancellation, checkpoint integrity, and no-replay behavior.

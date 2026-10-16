@@ -223,14 +223,24 @@ defmodule Ipse.Provider.HTTPTest do
 
     assert {:ok, %{"tool_calls" => [next_call]}, _} =
              Provider.complete(
-               %{provider: :ollama, model: "test", base_url: next_base, timeout_ms: 5000},
+               Ipse.Compaction.request_config(%{
+                 provider: :ollama,
+                 model: "test",
+                 base_url: next_base,
+                 timeout_ms: 5000
+               }),
                [],
                [],
                fn _ -> :ok end
              )
 
     assert call["id"] != next_call["id"]
-    Task.await(next_server)
+    {_, summary_request} = Task.await(next_server)
+    assert summary_request["format"]["required"] == ~w(decisions facts open_questions)
+    assert summary_request["think"] == false
+    assert summary_request["options"]["num_predict"] == 4096
+    refute Map.has_key?(request, "format")
+    refute Map.has_key?(request, "think")
   end
 
   test "Anthropic streams tools and preserves native blocks" do

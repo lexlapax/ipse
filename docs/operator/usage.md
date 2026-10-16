@@ -77,9 +77,8 @@ Uses `http://localhost:11434/api/chat`. Override its root with
 `--base-url http://localhost:11434`. Coding reliability depends on the selected
 model and local hardware.
 
-Recorded live checks used the already installed `qwen3.5:9b` model for a
-read-tool round trip and identity/resume. Live compaction, MCP, and delegation
-with Ollama remain unverified; see
+Recorded live checks used the installed `qwen3.5:9b` model for basic tool/stream
+acceptance, identity/resume, compaction, native local MCP, and serial delegation; see
 [provider verification status](../developer/testing.md#provider-verification-status).
 
 ## 4. Anthropic API
@@ -90,10 +89,10 @@ Set `ANTHROPIC_API_KEY`, then:
 ./bin/ipse chat --provider anthropic --model claude-sonnet-4-5
 ```
 
-This explicitly selects Anthropic API billing. Local fixtures cover streaming
-and native tool/content handling, but no live Anthropic API acceptance is
-recorded yet. Live testing requires a securely configured key and explicit
-authorization for paid requests; see
+This explicitly selects Anthropic API billing. Live acceptance with
+`claude-haiku-4-5` passed streamed text, an approved tool round trip, continuation,
+resume, a provider error, compaction, native local MCP, and serial delegation on
+Arch. Other models/hosts remain separate checks. See
 [provider verification status](../developer/testing.md#provider-verification-status).
 
 ## Working with the agent
