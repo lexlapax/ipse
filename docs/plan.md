@@ -48,7 +48,7 @@ billing, credentials and external-effect invariants still apply.
 | --- | --- | --- |
 | 1 | Supervised self-development using stable Ipse to add P15 shared operator skills | In progress in isolated worktree; independent review pending |
 | 2 | P17 structured operator questions | Isolated implementation, fixture/live and package verification passed; integration pending |
-| 3 | Remaining P15 scoped configuration | Pending |
+| 3 | Remaining P15 scoped configuration | JSON loader/CLI/resume verified on feature branch; integration pending |
 | 4 | P16 explicit model profiles/routing | Pending |
 | 5 | P14 bounded deep research | Pending |
 
@@ -694,11 +694,13 @@ it remains unavailable until that stage passes its checks.
 Added at the developer's request and authorized on 2026-10-16. Status: shared
 operator skill implementation/self-development trial in progress; scoped config
 queued after P17.
-Ipse currently uses CLI/environment settings and `~/.ipse` (or `IPSE_HOME`) for
-state, authentication, global instructions and Ipse-specific user skills. It does
-not automatically load operator/project configuration files, project/directory
-`.ipse/config.*`, or shared operator `~/.agents/skills/`. Existing project
-`.agents/skills/` and applicable `AGENTS.md` discovery remain supported.
+The scoped configuration feature branch implements bounded version-1 JSON in
+`IPSE_HOME/config.json` and repository/directory `.ipse/config.json`, with explicit
+project trust, local inspection, field/source provenance and resume fingerprints.
+It passed 302 native Linux tests, source build, format, warnings-as-errors compile,
+native demo and documentation target/anchor checks. Main integration follows the
+shared-skills trial and P17; packaged/hosted checks remain separate. See
+[operator configuration](operator/configuration.md).
 
 Acceptance:
 

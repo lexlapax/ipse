@@ -177,6 +177,7 @@ defmodule Ipse.Session do
       |> Map.put(:sandbox, Ipse.Sandbox.info(Map.get(s.config, :sandbox, :off)))
       |> Map.put(:mcp, Enum.map(Map.get(s.config, :mcp_servers, []), &Ipse.MCP.Config.manifest/1))
       |> Map.put(:subagents, Ipse.Delegation.enabled?(s.config))
+      |> Map.put(:configuration, Map.get(s.config, :configuration))
       |> Map.put(:question, if(s.question, do: Map.take(s.question, [:id, :arguments])))
 
     {:reply, info, s}
@@ -1122,7 +1123,8 @@ defmodule Ipse.Session do
              "mcp_servers" => Ipse.MCP.fingerprints(config),
              "subagents" => Ipse.Delegation.enabled?(config),
              "subagent_concurrency" => Map.get(config, :subagent_concurrency, 1),
-             "delegation_origin" => config[:delegation_origin]
+             "delegation_origin" => config[:delegation_origin],
+             "configuration" => Map.get(config, :configuration)
            }),
          do: {:ok, id, []}
   end
@@ -1137,7 +1139,8 @@ defmodule Ipse.Session do
              Map.get(meta, "mcp_servers", []) == Ipse.MCP.fingerprints(config) and
              Map.get(meta, "subagents", false) == Ipse.Delegation.enabled?(config) and
              Map.get(meta, "subagent_concurrency", 1) == Map.get(config, :subagent_concurrency, 1) and
-             meta["delegation_origin"] == config[:delegation_origin] do
+             meta["delegation_origin"] == config[:delegation_origin] and
+             compatible_configuration?(meta["configuration"], config[:configuration]) do
       {:ok, id, events}
     else
       false -> {:error, :resume_configuration_mismatch}
@@ -1145,6 +1148,16 @@ defmodule Ipse.Session do
       _ -> {:error, :invalid_session}
     end
   end
+
+  defp compatible_configuration?(nil, nil), do: true
+  defp compatible_configuration?(nil, %{"sources" => []}), do: true
+  defp compatible_configuration?(nil, %{sources: []}), do: true
+
+  defp compatible_configuration?(old, current) when is_map(old) and is_map(current) do
+    old["fingerprint"] == (current[:fingerprint] || current["fingerprint"])
+  end
+
+  defp compatible_configuration?(_, _), do: false
 
   defp runtime(s),
     do: Ipse.RuntimeInfo.snapshot(s.config, s.reported_model, s.historical_model)

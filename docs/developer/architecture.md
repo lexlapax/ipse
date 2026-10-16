@@ -258,14 +258,16 @@ from boolean action approvals and grant no permission. Headless/child requests
 fail explicitly. See the [question contract](operator-questions.md) for bounds,
 durable restore and terminal behavior. MCP elicitation remains unavailable.
 
-## Planned configuration and profile boundaries
+## Configuration and profile boundaries
 
 
-Current CLI configuration derives one provider/model from flags/environment and
-copies it into child policy. `Skills.discover/2` scans project `.agents/skills`,
+CLI configuration resolves bounded, versioned operator/project/directory JSON,
+environment and explicit flags through `Ipse.Config`. Project files require
+explicit trust. Effective settings/source digests are persisted and compared on
+resume before inference. See the [configuration contract](configuration.md).
+The selected provider/model is copied into child policy. `Skills.discover/2` scans project `.agents/skills`,
 the Ipse user skill directory and bundled skills; it does not scan shared
-operator `~/.agents/skills`. Project `.ipse/config.*` and provider-specific
-reasoning settings have no runtime loader/mapping today.
+operator `~/.agents/skills`. Provider-specific reasoning settings remain planned.
 
 [P15](../plan.md#p15-scoped-configuration-and-shared-operator-skills) specifies
 separate scoped data configuration and shared skill discovery. Preserve `.ipse`
@@ -273,4 +275,4 @@ sensitive-resource exclusions when introducing a dedicated config loader.
 [P16](../plan.md#p16-explicit-model-profiles-and-task-routing) specifies validated
 profile IDs and credential/native-continuation isolation for mixed-model children.
 Configuration, skill instructions, model suggestions and operator permissions
-remain different boundaries. These are planned contracts, not implemented APIs.
+remain different boundaries. Profile routing remains a planned contract.

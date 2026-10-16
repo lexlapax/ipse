@@ -246,3 +246,10 @@ question/answer shapes, with small host checks for unique option identities and
 cross-field semantics. OTP session messages and the current Jason/SHA-256 journal
 implement durable questions/answers. This adds no dependency or schema engine.
 The release verifier includes a synthetic question/explicit-answer fixture.
+
+### Scoped configuration
+
+P15 uses the existing Jason JSON parser and bounded JSONSchex schema adapter.
+JSON fits the small closed data-only settings schema; no executable config, YAML
+package, new runtime or separate validation engine is introduced. Canonical paths,
+SHA-256 and journal metadata reuse existing OTP/Ipse modules.

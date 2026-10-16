@@ -62,6 +62,8 @@ without a model request; see [operation and limits](docs/operator/usage.md#conte
 Run from any working directory or use `--cwd`; `/context` shows applicable saved
 instructions and `/context refresh` reloads them while idle. See
 [workspace instructions](docs/operator/usage.md#workspace-instructions).
+Operator and trusted project/directory JSON settings support explicit precedence,
+local `ipse config` inspection and resume checks; see [configuration](docs/operator/configuration.md).
 Use `$project-orientation` to assess a repository's purpose, current changes,
 and available checks before choosing next steps; see
 [project assessment](docs/operator/usage.md#working-with-the-agent).
