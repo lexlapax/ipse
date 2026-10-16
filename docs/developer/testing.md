@@ -1775,7 +1775,7 @@ and the original Elixir app source worktree were unchanged.
 P13 is complete for the selected context-recovery and two bounded task trials.
 The remaining proposed next step is supervised self-development in an isolated
 checkout, using a stable harness and independent diff/test review; see the
-[plan candidate](../plan.md#candidate-next-step-supervised-self-development).
+[first trial](../plan.md#first-supervised-self-development-trial).
 No major new Git/GitHub subsystem was demonstrated necessary by these trials.
 
 ## Research planning and operator-question audit, 2026-10-16
@@ -2038,3 +2038,26 @@ Independent content review and unchanged idle resume passed; no exhaustive resea
 or unattended self-development claim is made. Retrieval remains an optional,
 operator-selected MCP service; no external endpoint/tool name is embedded in runtime
 code and no new local dependency is introduced.
+
+## P18 macOS supervised self-development evidence
+
+Planning/runbook only as of 2026-10-16; no local operator Mac run or proposed
+`sessions --json` implementation is claimed. Follow the
+[operator procedure](../operator/self-development.md). The first Linux trial and
+hosted Mac CI above do not establish a live local Mac self-development pass.
+
+Record the frozen baseline, candidate commit, Mac OS/architecture and toolchain,
+provider/profile/requested and reported model, actual child routing, structured
+answers, approval outcomes, independent diff review, exact source/native/package
+checks and idle-resume evidence. Separate private session artifacts from the
+public evidence record. Compare journal/workspace state before and after idle
+resume without publishing transcript contents. For the proposed JSON feature,
+review the explicit field allowlist and synthetic-secret exclusion tests, verify
+no auth/inference/journal mutation, and retain existing human listing behavior.
+Only mark P18 complete after operator review/publication and actual CI results.
+
+The planning handoff validated all eight runbook shell blocks with `sh -n`,
+resolved its JSON/profile example through the actual `Ipse.Config` loader without
+auth/inference, and checked 48 Markdown files and 438 local links/anchors.
+This is syntax/configuration/documentation validation on Linux, not execution of
+the Mac commands. No new runtime feature or dependency was introduced.

@@ -1,0 +1,235 @@
+# Supervised self-development on macOS
+
+This is the P18 operator runbook. The first Linux supervised trial is complete;
+this second trial runs locally on the operator's Mac. It is planned, not verified
+on that Mac yet. Ipse prepares changes; the operator reviews approvals, tests,
+the final diff and publication. Keep the running harness separate from its target.
+
+## Proposed change and completion criteria
+
+The recommended first task is **add `ipse sessions --json`**. This flag is a
+proposed feature, not currently available. It gives the trial a small runtime
+change with observable behavior and meaningful tests:
+
+- Preserve the current human-readable `ipse sessions` output.
+- JSON mode emits one JSON array, sorted by session ID, containing only `id`,
+  `provider`, `model` and `cwd`. Missing metadata fields become JSON null.
+- Reuse existing journal listing behavior, including empty/missing directories
+  and skipped invalid journals. Do not export complete metadata or conversations.
+- Fixtures prove valid JSON, ordering, empty input, unchanged text output and
+  exclusion of synthetic private metadata/messages. Use isolated session stores.
+- No authentication, inference, network retrieval or journal mutation for listing;
+  no new dependency. Update CLI help, operator usage and developer verification.
+
+The operator can choose another small change before implementation. Keep the
+first Mac trial to one feature; use the existing review skill rather than also
+building a new self-development framework.
+
+## 1. Create a stable runner and a candidate worktree
+
+Use the Mac's existing Git, Elixir 1.18+/OTP 27+, Rust 1.85+ and C linker.
+Check those installations locally; this guide does not install toolchains.
+Dependency fetching needs network, and tests need loopback sockets.
+
+Run in the Mac's terminal, adjusting the repository path if necessary:
+
+```sh
+IPSE_REPO="$HOME/projects/lexlapax/ipse"
+cd "$IPSE_REPO"
+git status --short --branch
+git fetch origin
+IPSE_BASE=$(git rev-parse origin/main)
+IPSE_STABLE="$(dirname "$IPSE_REPO")/ipse-stable-macos"
+IPSE_CANDIDATE="$(dirname "$IPSE_REPO")/ipse-selfdev-macos"
+git worktree add --detach "$IPSE_STABLE" "$IPSE_BASE"
+git worktree add -b trial/macos-self-development "$IPSE_CANDIDATE" "$IPSE_BASE"
+```
+
+Record `IPSE_BASE`. Existing edits in the original checkout stay there. These
+commands require fresh worktree paths and branch name; if they already exist,
+inspect them and resume deliberately or choose new names. Do not delete/reset
+existing work. Variables below refer to the same terminal session.
+
+Build and check the frozen runner before starting model work:
+
+```sh
+cd "$IPSE_STABLE"
+./scripts/build.sh
+mix format --check-formatted
+mix compile --warnings-as-errors
+mix test
+./bin/ipse demo
+```
+
+Stop and diagnose a failing baseline. If Mix needs Hex/Rebar, provision them
+explicitly as described in the [README](../../README.md#build-and-try-it).
+The source runner uses the installed Mac toolchain; a separately built matching
+Mac release can replace it. Never run the Linux archive on macOS. Keep the stable
+checkout unchanged throughout the trial. Candidate tests may execute candidate
+code, but the assistant itself continues running from `IPSE_STABLE`.
+
+## 2. Select explicit execution profiles
+
+Keep trial configuration and transcripts outside the target checkout. Create a
+new private directory, without replacing the operator's normal configuration:
+
+```sh
+IPSE_TRIAL=$(mktemp -d "$HOME/ipse-macos-trial.XXXXXX")
+chmod 700 "$IPSE_TRIAL"
+cat > "$IPSE_TRIAL/config.json" <<'JSON'
+{
+  "version": 1,
+  "settings": {"subagents": true, "subagent_concurrency": 1},
+  "profiles": {
+    "main": {
+      "provider": "chatgpt",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "high",
+      "credential": "ipse-auth"
+    }
+  },
+  "roles": {"main": "main", "review": "main"}
+}
+JSON
+chmod 600 "$IPSE_TRIAL/config.json"
+"$IPSE_STABLE/bin/ipse" status
+```
+
+If necessary, run `"$IPSE_STABLE/bin/ipse" login` on the Mac and complete browser
+sign-in there. Use Ipse's own protected auth; do not copy another application's
+credentials or move tokens/transcripts through Git. Subscription analysis sends
+selected repository context to that provider under the operator's authorization.
+Provider/billing changes must remain explicit.
+
+For a smaller local routine worker, first inspect `ollama list` on the Mac. If a
+suitable model is already installed, add a `local` profile with provider `ollama`,
+its exact installed model name, `max_steps: 4` and `timeout_ms: 120000`, then set
+`roles.routine` to `local`. An optional endpoint belongs in that profile's
+`base_url`. Review [profile configuration](model-profiles.md) first. Do not assume
+Serenity's model is installed on the Mac, download one implicitly or substitute
+another provider on failure. The single-profile configuration above is sufficient.
+
+Inspect the selected settings, then launch:
+
+```sh
+"$IPSE_STABLE/bin/ipse" config --config "$IPSE_TRIAL/config.json" \
+  --no-project-config --profile main --cwd "$IPSE_CANDIDATE"
+"$IPSE_STABLE/bin/ipse" chat --config "$IPSE_TRIAL/config.json" \
+  --no-project-config --profile main --cwd "$IPSE_CANDIDATE" \
+  --state-dir "$IPSE_TRIAL/sessions" --sandbox off
+```
+
+This deliberately selects trusted local shell execution for Git/Mix/package work,
+which can require caches, network and paths outside the worktree. Approvals remain
+required; the worktree is not an OS sandbox. No MCP service is needed or enabled.
+Use `--sandbox native` only as an explicit alternative with its documented limits;
+do not fall back silently. Shared operator skills still follow the Mac's HOME.
+
+## 3. Give Ipse the bounded task
+
+Paste this after choosing the proposed task:
+
+```text
+This is a supervised self-development trial. Your running harness is frozen in
+a separate checkout. Work only on the candidate checkout selected by --cwd.
+Read AGENTS.md and the relevant implementation/tests. Use $project-orientation
+first. Propose a short implementation and verification plan before edits.
+
+Implement the proposed `ipse sessions --json` contract from
+docs/operator/self-development.md. Preserve default text output, use a closed
+field allowlist, reuse existing journal listing and add meaningful isolated
+fixtures, CLI help and operator/developer documentation. Add no dependency.
+
+Use ask_operator once before edits to confirm the selected task/scope, and for
+any material unresolved choice. Answers grant no effect permission and a
+recommendation must not be submitted automatically. If a routine local profile is configured, delegate
+one small read-only fixture/edge-case analysis to it; otherwise keep that work
+local to the parent. Request one bounded read-only review using the configured
+review role and $review. The parent must verify findings independently.
+
+Review each proposed effect with me. Do not start MCP, change provider/billing,
+install dependencies, touch other worktrees, commit, merge or push. These are
+explicit trial constraints overriding the ordinary automatic commit/push rule.
+Finish with the diff summary, actual test results and remaining limitations.
+```
+
+Approve only concrete calls you have reviewed. Child approvals are separate;
+delegation does not approve later writes/shell work. Read-only review is a task
+instruction, not filesystem enforcement. Children share the worktree and have
+six-step/two-minute limits; return unresolved findings to the parent. Do not use
+`--yes` for this supervised trial. See [subagents](subagents.md).
+
+## 4. Exercise interruption and resume
+
+Record the printed session ID and trial directory. At an idle boundary after a
+small settled edit, inspect `git diff`. In another terminal with the same path
+variables, replace `SESSION_ID` with the real ID and record private snapshots:
+
+```sh
+IPSE_SESSION=SESSION_ID
+shasum -a 256 "$IPSE_TRIAL/sessions/$IPSE_SESSION.jsonl" > "$IPSE_TRIAL/idle-journal.sha256"
+git -C "$IPSE_CANDIDATE" diff --binary > "$IPSE_TRIAL/diff-before-resume.patch"
+git -C "$IPSE_CANDIDATE" status --short > "$IPSE_TRIAL/status-before-resume.txt"
+```
+
+Exit the idle chat with `/exit`, then resume explicitly:
+
+```sh
+"$IPSE_STABLE/bin/ipse" chat --config "$IPSE_TRIAL/config.json" \
+  --no-project-config --profile main --cwd "$IPSE_CANDIDATE" \
+  --state-dir "$IPSE_TRIAL/sessions" --sandbox off --resume SESSION_ID
+```
+
+Before sending another prompt, verify no model/tool call restarted and compare
+the journal bytes and diff from the other terminal:
+
+```sh
+shasum -a 256 -c "$IPSE_TRIAL/idle-journal.sha256"
+git -C "$IPSE_CANDIDATE" diff --binary > "$IPSE_TRIAL/diff-after-resume.patch"
+cmp "$IPSE_TRIAL/diff-before-resume.patch" "$IPSE_TRIAL/diff-after-resume.patch"
+git -C "$IPSE_CANDIDATE" status --short > "$IPSE_TRIAL/status-after-resume.txt"
+cmp "$IPSE_TRIAL/status-before-resume.txt" "$IPSE_TRIAL/status-after-resume.txt"
+```
+
+These checks must pass for unchanged idle resume. Git diff omits untracked files:
+also inspect and record `shasum -a 256` digests for any new files before/after.
+If a structured question is pending, save and restore its explicit
+waiting state instead. For unexpected interruption during an effect, inspect
+the actual workspace/outcome before requesting continuation; never assume rollback
+or automatically replay the action. Keep the same configuration throughout resume.
+
+## 5. Review, verify and publish deliberately
+
+From the candidate checkout, independently inspect the diff and tests before
+executing them. Run focused behavior tests, then the required baseline:
+
+```sh
+cd "$IPSE_CANDIDATE"
+git diff --check
+git diff
+./scripts/build.sh
+mix format --check-formatted
+mix compile --warnings-as-errors
+mix test
+mix test test/macos_sandbox_test.exs test/stdio_runner_test.exs --include macos_sandbox
+./bin/ipse demo
+./scripts/package.sh
+elixir scripts/verify-package.exs dist/ipse-*.tar.gz
+```
+
+Use a fresh candidate so the archive glob selects only its new Mac archive.
+Record toolchain/OS/architecture, baseline hash, exact commands, failures/exclusions,
+structured-question behavior, actual routing and resume evidence. Keep journals,
+auth and private prompts out of commits. A separate reviewer should inspect the
+allowlist and tests; the authoring session's own approval is insufficient evidence.
+
+After that review, the operator stages the exact feature/test/doc files, inspects
+`git diff --cached`, commits the trial branch and pushes it to origin. Create a PR
+through the operator's usual GitHub workflow. Wait for Linux/macOS CI, review the
+exact commit and merge deliberately; do not let the running trial replace its own
+stable checkout. Update P18 with actual local Mac evidence before declaring it
+complete. Failed checks remain failed until repaired and rerun.
+
+See the [plan](../plan.md#p18-supervised-self-development-on-the-operators-mac),
+[verification guide](../developer/testing.md#p18-macos-supervised-self-development-evidence)
+and [configuration recovery](configuration.md).

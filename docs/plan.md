@@ -23,6 +23,7 @@ the next feature sequence on 2026-10-15:
 | [P15](#p15-scoped-configuration-and-shared-operator-skills) | Operator/project/directory configuration and shared skills | Complete within documented scope |
 | [P16](#p16-explicit-model-profiles-and-task-routing) | Main/subtask model profiles and provider-specific settings | Complete within documented scope |
 | [P17](#p17-structured-operator-questions) | Validated operator questions and resumable answers | Complete within documented scope |
+| [P18](#p18-supervised-self-development-on-the-operators-mac) | Second supervised trial using the combined harness on macOS | Runbook prepared; operator Mac execution not started |
 
 Feature completion does not close every live provider acceptance check. On
 2026-10-15, installed Ollama `qwen3.5:9b`, Anthropic `claude-haiku-4-5`, and
@@ -614,7 +615,7 @@ No unrestricted task coverage or unattended self-development is claimed.
    fixes. No deployment, new public repository, private project transfer, or
    external messaging is required by these trials.
 
-### Candidate next step: supervised self-development
+### First supervised self-development trial
 
 The developer asked what is needed for Ipse to develop itself. Existing file/shell
 and Git/Mix tooling, scoped instructions, approvals, persistence, providers and
@@ -627,6 +628,7 @@ preserved journal/workspace bytes, and the reviewed feature was integrated.
 The trial exposed bundled launcher environment contamination of system Mix;
 the integrated harness now removes its own release variables/ERTS PATH entry.
 See [actual evidence](developer/testing.md#shared-skills-questions-configuration-and-profiles-integration-2026-10-16).
+The next trial is [P18](#p18-supervised-self-development-on-the-operators-mac).
 
 Use an isolated checkout/worktree and the stable installed harness to make one
 small Ipse change, review its diff independently, run the required source and
@@ -839,3 +841,34 @@ Acceptance:
    resume, owner death and no replay with fixtures and a bounded live choice task.
    Review developer/operator documentation and map/links; run required source/
    package checks and commit/push completed increments.
+
+## P18: supervised self-development on the operator's Mac
+
+Selected for planning on 2026-10-16. The operator intends to run the combined
+harness locally on macOS. Status: runbook prepared; no new feature implementation
+or local Mac execution is claimed. The recommended task is `ipse sessions --json`,
+subject to operator selection. That flag is not implemented by this planning step.
+See the [Mac runbook](operator/self-development.md).
+
+Acceptance:
+
+1. Freeze a known baseline in a separate stable runner checkout and create a
+   candidate branch/worktree. Preserve existing Mac edits and validate the local
+   baseline before model work. Record exact OS/toolchain/commit evidence.
+2. Select explicit subscription/provider profiles and private trial state. Use
+   individually reviewed effects, native structured clarification and one bounded
+   read-only review. Local routine delegation is optional and uses only a model
+   actually installed/configured on the Mac. No mandatory external service.
+3. Complete one small behavior change with meaningful isolated regression tests,
+   relevant operator/developer documentation and no new dependency. The proposed
+   JSON listing contract is specified in the runbook; do not export raw metadata
+   or private conversation contents.
+4. Verify idle interruption/resume without automatic inference/effect replay.
+   Inspect unknown effects before explicit continuation. Keep the stable running
+   harness separate from the code under change.
+5. Independently review code and actual focused/full Mac source, native and
+   extracted-package results. Record skipped/failed checks honestly; hosted CI
+   cannot substitute for the operator's local Mac trial.
+6. After review, the operator commits/pushes the exact candidate, waits for
+   Linux/macOS CI and approves merge. Update this plan and the developer evidence
+   record before completion. The trial model must not commit/push/merge itself.
