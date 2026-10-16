@@ -356,6 +356,11 @@ address that local reproduction without changing sandbox policy or the detached-
 descendant limit. The fix at `b3db345` also passed
 [Linux and macOS source/package CI](https://github.com/lexlapax/ipse/actions/runs/38822941399),
 including actual Mac native enforcement. The initial CI failure's cause remains unconfirmed.
+The subsequent [Serenity return verification](developer/testing.md#linux-return-after-macos-cleanup-2026-10-15)
+passed source build, formatting, warnings-as-errors compilation, 236 tests with
+Linux native enforcement included (14 Mac tests excluded), isolated demo, and
+fresh Linux package verification. No runtime fix or live provider check was
+needed on return.
 Broader independent-server coverage remains recommended before designing
 authenticated network transports. See
 [actual P7 results and limits](developer/testing.md#p7-expanded-local-mcp-2026-10-15).

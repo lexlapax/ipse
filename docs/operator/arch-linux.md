@@ -44,8 +44,9 @@ reads it back, and runs a short shell command.
 
 ## Continue development with Codex CLI
 
-The Mac-to-Serenity return checks are recorded in
-[testing](../developer/testing.md#p0-closure-on-serenity-2026-10-15).
+The latest Mac-to-Serenity source, Linux enforcement, and package return checks
+are recorded in
+[testing](../developer/testing.md#linux-return-after-macos-cleanup-2026-10-15).
 Use the [native policy](../developer/sandbox.md) for accepted platform limits.
 
 From this checkout, start your installed Codex CLI:
@@ -60,7 +61,8 @@ Codex reads the root `AGENTS.md`. A useful first prompt is:
 Read AGENTS.md, docs/plan.md, docs/developer/architecture.md, and docs/developer/testing.md.
 Run the build, checks, and credential-free demo on this Arch machine.
 Fix concrete failures and record the actual toolchain and results.
-Then work on the first incomplete P0 item that does not require my account.
+P0–P7 are complete within their documented scope. Propose the next bounded
+task from the current plan without starting unrelated expansion.
 Keep Elixir as the core runtime and Rust limited to OS helpers.
 Do not print credentials or private transcripts. Ask me to perform browser
 sign-in when a live account check is needed; do not claim it passed from fixtures.

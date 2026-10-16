@@ -1141,3 +1141,43 @@ These are synthetic lifecycle and actual Mac file-enforcement checks. No live
 provider, independent MCP server, or Linux enforcement rerun is implied.
 Detached descendants can still survive with workspace access, and OS-managed
 sandbox containers persist. The original CI failure's cause remains unconfirmed.
+
+## Linux return after macOS cleanup, 2026-10-15
+
+Serenity returned with a clean `main` fast-forwarded to `39bdc8e`, including the
+cleanup fix `b3db345`. Fetch confirmed no further origin changes. Host: Arch
+Linux x86_64, kernel `7.2.9-arch1-1`, glibc 2.44, Elixir 1.20.4,
+OTP 29 / ERTS 17.0.6, Rust 1.99.0.
+
+The source build, formatter check, warnings-as-errors compilation, and
+`mix test --include native_sandbox` passed: **236 passed, 14 macOS tests
+excluded**. This includes actual Linux native enforcement and the new 200-run
+concurrent stdio cleanup regression with exact output/completion, no error
+frames, and no delayed child writes. The credential-free source demo passed
+under a fresh temporary `IPSE_HOME`. Initial sandboxed Mix invocations could
+not acquire their loopback TCP lock (`:eperm`); checks passed through the tool's
+permission flow without changing tests, TLS, or sandbox policy.
+
+Built `dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz` with
+`IPSE_NOTICES_DIR=/tmp/ipse-toolchain-notices`, reusing the version-matched
+Elixir 1.20.4 and OTP 29.0.6 upstream notice collection recorded above. Checked
+the archive for those notices, provenance/header inventory, Telemetry's NOTICE,
+and NimblePool's README notice. Ran:
+
+```sh
+elixir scripts/verify-package.exs dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz
+```
+
+Fresh isolated HOME/IPSE_HOME and utility-only PATH passed help, demo, default
+and explicit workspaces with spaces, bundled MCP tool/resource/prompt and
+delegation checks, and OTP/helper timeout, owner-death, and lock checks.
+No archive was published. Developer/operator guidance and source CLI help were
+reviewed; all 298 local file links and heading anchors across 36 tracked
+Markdown documents passed validation, as did `git diff --check`.
+
+No regression required a runtime fix. No live provider, fresh authentication,
+independent server, macOS enforcement, or extra stdio load diagnostic was run
+in this return check. Earlier Mac evidence remains separate; the original CI
+failure's cause is still unconfirmed, and detached-descendant cleanup remains
+best effort. P0–P7 remain complete within their documented scope; broader
+independent local-server interoperability is the next proposed bounded task.

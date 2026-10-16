@@ -106,7 +106,10 @@ before requesting another call. Developers can use the credential-free
 to distinguish these failures without connecting to a model or real MCP server.
 The cleanup fix passed local Mac load checks and Linux/macOS source/package CI;
 see the [verification record](../developer/testing.md#macos-stdio-cleanup-load-2026-10-15)
-for evidence and remaining limits.
+for evidence and remaining limits. The subsequent
+[Serenity return check](../developer/testing.md#linux-return-after-macos-cleanup-2026-10-15)
+passed actual Linux enforcement, the concurrent cleanup regression, and fresh
+Linux package verification without a live provider or fresh sign-in.
 
 Resume with the same `--mcp-config` file. Public configuration changes—including
 allowlists or sandbox mode—refuse resume. Private environment values are not
