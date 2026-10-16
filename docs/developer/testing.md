@@ -1531,7 +1531,10 @@ Rebuilt the exact `dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz` with
 version-matched runtime notices. Fresh-home/utility-only-PATH package verification
 passed, including bundled MCP and serial/parallel delegation. An additional
 probe through that extracted archive passed native Bash substitution and
-confirmed host `/proc` remains absent. Hosted Linux/macOS source/package checks
-are pending for this repair. The local evidence above does not establish
-macOS descriptor behavior, Linux aarch64 execution, extra dependency-root access,
-or general live-project coding acceptance.
+confirmed host `/proc` remains absent. Hosted
+[Linux/macOS source/package checks passed at 9ee5c3f](https://github.com/lexlapax/ipse/actions/runs/38854953735),
+including the separate macOS native enforcement checks. Serenity ran the Linux
+native suite; GitHub Actions ran `ubuntu-latest` and `macos-14`. No macOS suite
+ran locally on Serenity. The Linux descriptor repair does not establish macOS
+Bash compatibility, Linux aarch64 execution, extra dependency-root access, or
+general live-project coding acceptance.

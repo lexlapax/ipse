@@ -490,7 +490,7 @@ a sandbox-hidden sibling checkout was absent from the host. See the
 No project edits, live deployment, or coding-change acceptance are claimed.
 
 The developer selected the first two repairs on 2026-10-15. Implementation and
-local verification are complete; hosted verification is in progress. See
+local/bundled verification are complete; hosted Linux/macOS checks passed. See
 [repair evidence](developer/testing.md#native-bash-and-visibility-repair-2026-10-15).
 The orientation skill and multi-repository read roots remain proposals, not
 implementation authorization:
