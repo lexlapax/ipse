@@ -24,6 +24,10 @@ the next feature sequence on 2026-10-15:
 | [P16](#p16-explicit-model-profiles-and-task-routing) | Main/subtask model profiles and provider-specific settings | Complete within documented scope |
 | [P17](#p17-structured-operator-questions) | Validated operator questions and resumable answers | Complete within documented scope |
 | [P18](#p18-supervised-self-development-on-the-operators-mac) | Second supervised trial using the combined harness on macOS | Complete within documented supervised scope; local and hosted checks passed |
+| [P19](#p19-long-session-diagnosis-and-recovery) | Diagnose retained-context limits and improve explicit recovery | Authorized; diagnosis/implementation in progress |
+| [P20](#p20-repeatable-supervised-self-development) | Reusable supervised development/review skill and evidence | Authorized; queued after P19 |
+| [P21](#p21-larger-self-development-trial-on-serenity) | Larger supervised trial with independent Mac verification | Authorized; queued after P20 |
+| [P22](#p22-extension-scaffold-and-lifecycle-hooks) | Typed extension scaffold, lifecycle hooks and runtime observability | Research/design recorded; implementation not started |
 
 Feature completion does not close every live provider acceptance check. On
 2026-10-15, installed Ollama `qwen3.5:9b`, Anthropic `claude-haiku-4-5`, and
@@ -63,6 +67,20 @@ records 324 native Linux tests, extracted-package checks and hosted Linux/macOS
 verification, alongside the independently reviewed live trials. Optional summary
 routing, child questions/MCP and unattended self-development remain outside this
 completed scope.
+
+## Proposed next sequence after P18
+
+P18 exposed retained-context stops and a review exceeding its bounded child budget.
+The proposed order is P19 diagnosis/recovery, P20 a reusable supervised-development
+skill, P21 a larger trial, and P22 the extension scaffold. These are planning
+entries were subsequently authorized for P19–P21 implementation on 2026-10-16.
+P22 is authorized for research and detailed planning after those trials, not
+implementation yet.
+On 2026-10-16 the operator requested extension/debugging research, including
+OpenCode, Codex and Pi; that research is recorded under P22. Bring minimal
+content-free context/timing diagnostics forward into P19 so recovery work is
+measurable; extend the same contracts in P22 rather than waiting for a plugin
+system to diagnose a core failure. Services and exporters remain configurable.
 
 ## Prototype 0.1: available now
 
@@ -890,3 +908,106 @@ Acceptance:
 6. After review, the operator commits/pushes the exact candidate, waits for
    Linux/macOS CI and approves merge. Update this plan and the developer evidence
    record before completion. The trial model must not commit/push/merge itself.
+
+## P19: long-session diagnosis and recovery
+
+Authorized after the Mac trial; diagnosis/implementation is in progress.
+Reproduce the retained-context stop with synthetic fixtures and identify exact
+byte contributions before choosing a repair. Do not assume the safe refusal is
+itself a bug or solve it by silently dropping native continuation or operator intent.
+
+Acceptance direction:
+
+1. Add a local content-free diagnostic snapshot and correlated timing/context
+   measurements, including pinned requests, arguments/provenance, native data,
+   recent results and instructions. Preserve credential/hidden-reasoning exclusion.
+2. Reproduce P18's failure shape and independently verify the diagnosis. Real Mac
+   transcripts remain private; use sanitized structural measurements/synthetic
+   content rather than committing them or assuming they exist on Serenity.
+3. Improve validated compaction where supported, or an explicit operator-reviewed
+   handoff into a new session with provenance and unresolved effects clearly
+   represented. Preserve original journals, configuration identity and no replay.
+4. Verify cancellation, refusal/corruption paths, idle resume and source/package
+   behavior; update operator/developer docs and actual evidence, then commit/push.
+
+See the [diagnostics proposal](developer/observability.md).
+
+## P20: repeatable supervised self-development
+
+Authorized, queued after P19. Turn demonstrated procedures into a bounded repository-development
+skill with supporting review/evidence resources. Reuse existing questions,
+configuration, profiles, approvals and journals; do not require P22 or build a
+workflow engine. Scope child reviews to their real six-step/time limits.
+
+Acceptance direction: frozen runner/candidate separation; explicit task and
+acceptance checks; bounded review and independent validation; interruption/handoff;
+accurate test/package/platform evidence; operator-reviewed publication; inert
+skill loading and no hidden installs/provider changes. Validate the skill in a
+credential-free fixture and supervised use, review both documentation audiences,
+then commit/push.
+
+## P21: larger self-development trial on Serenity
+
+Authorized, queued after P20. Select one moderately larger, reviewable Ipse change after P19/P20.
+Use a frozen stable runner, candidate worktree, explicit configured profiles and
+independent review. Verify long-session behavior and evidence completeness, then
+source/native/package checks on Linux and independent Mac/hosted checks. Preserve
+separate permission, provider and operating-system boundaries. Record actual
+failures and supervisor intervention; do not infer unattended capability. The
+specific workload remains to be selected, not silently bundled with P22.
+
+## P22: extension scaffold and lifecycle hooks
+
+Operator-requested research/design recorded on 2026-10-16. Implementation is not
+started by this update. Evaluate OpenCode, Codex, Pi and Claude Code primary
+documentation/source, alongside Elixir/OTP, Telemetry and OpenTelemetry. The
+resulting recommendation is a versioned Elixir behaviour with owned workers,
+explicit configuration and separate observational events/ordered transformations.
+See [research and architecture](developer/extensions.md) and
+[runtime diagnostics/tracing](developer/observability.md).
+
+The operator selected an **extension-first** direction: new domain features,
+memory, presentation and optional workflows should use supported extension APIs
+wherever possible. Core changes should be reserved for lifecycle/trust/persistence/
+provider/OS correctness, fixes and deliberately reviewed API gaps. Refine P22
+after P19–P21 with a concrete feature-to-extension map, compatibility/versioning,
+SDK/packaging and proof that another feature can be added without editing core.
+This is a design target, not a promise that unknown future capabilities or core
+bugs will never require a core change.
+
+Acceptance:
+
+1. Define the event taxonomy and payload/version/ordering/failure contract for
+   session start/resume/close, prompt admission, context, model/stream, tool
+   validation/approval/intent/outcome, operator questions, children, compaction,
+   turn completion/error/cancellation and owner death. Implement only documented
+   stable seams, with observation distinct from permission to transform or act.
+2. Add a small compiled Elixir adapter registry/behaviour and supervised workers.
+   Enable known adapters explicitly through operator configuration, pin module/
+   config/API identity for resume, and separately validate project/child policy.
+   No automatic repository-code evaluation, hot loading, dependency installation
+   or arbitrary atom creation. Document in-VM code as trusted, not sandboxed.
+3. Ship two bounded, opt-in examples: an attributed operator prompt-context
+   template and a completed-answer presentation formatter. Preserve original
+   input/output, provider continuation and tool provenance; validate and journal
+   derived projections. Resume restores them without rerunning callbacks/effects.
+   Define streamed-versus-completed output behavior explicitly.
+4. Specify long-term memory recall/remember/forget/export and workflow adapter
+   contracts: scope, provenance, budgets, explicit approved/journaled effects,
+   stale/conflicting data, deletion and bounded continuation. Treat these as
+   follow-on designs unless separately selected for implementation. No mandatory
+   memory store, embedding service, workflow framework or remote exporter.
+5. Reuse P19's sanitized event foundation for lifecycle/extension timing, context
+   contributions and failure diagnosis. Evaluate Telemetry as a direct declared
+   dependency; do not run transform callbacks inside Telemetry handlers. Add a
+   bounded local diagnostic sink and explicit local developer tracing procedures.
+   External OpenTelemetry export remains optional and separately configured.
+6. Verify ordering, bounds, timeouts/crashes, cancellation/owner death, overload,
+   no approval bypass, synthetic-secret exclusion, original/derived integrity,
+   child isolation policy and durable no-replay resume. Include both example
+   adapters in credential-free source/package verification and an independently
+   reviewed supervised trial, with Linux/Mac evidence distinguished.
+7. Review operator/developer usage, installation/trust/recovery limitations and
+   dependency inventory; check file links/anchors, update actual status/evidence,
+   then commit/push completed focused increments. Research/design completion
+   alone must not mark the extension milestone implemented.

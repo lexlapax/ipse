@@ -2163,3 +2163,15 @@ The completion update changes documentation only; the implementation and tests
 retain the hashes verified during the local trial. No credentials or private
 journals were committed, no archive was released, and no local Linux or stronger
 detached-descendant diagnostic is claimed.
+
+## P22 extension research and planning, 2026-10-16
+
+Research/design only: [extension comparison](extensions.md) and
+[diagnostics/tracing proposal](observability.md) review primary OpenCode (main and
+separate V2 docs), official Codex, Pi declarations/guide, Claude Code, Elixir/OTP,
+Telemetry and OpenTelemetry documentation. Upstream references were opened on
+2026-10-16. No upstream runtime/plugin was installed, no live model or extension
+interoperability trial ran, and no callback API, trace flag, memory store or new
+dependency was implemented. P19–P21 are proposed direction; P22 has researched
+acceptance criteria rather than an implementation-complete claim. Operator and
+developer entry points distinguish current facilities from proposed behavior.

@@ -39,6 +39,13 @@ Anthropic API. Never switch providers or billing modes silently. Keep a
 credential-free demo usable without any model service. Choose small, testable
 improvements rather than turning the plan into a mandatory execution pipeline.
 
+P22's selected direction is extension-first feature development. Once its supported
+API exists, prefer extensions for new domain behavior, memory, presentation and
+optional workflows. Reserve core changes for host invariants, correctness and
+explicitly reviewed extension-API gaps; do not bypass approvals or execute
+untrusted code to avoid a necessary core change. The extension API is currently
+planned, so this does not require P19–P21 to use an unavailable mechanism.
+
 ## Start here
 
 - [README.md](README.md): current behavior and usage.

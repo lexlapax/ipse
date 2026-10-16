@@ -272,6 +272,19 @@ Bundled shell environment cleanup reuses existing OTP Port environment overrides
 Test HOME isolation preserves the existing Rustup toolchain location explicitly;
 no compiler download, new toolchain package or runtime dependency is introduced.
 
+### P22 extension and diagnostics evaluation
+
+The [extension proposal](extensions.md) and [observability proposal](observability.md)
+reuse Elixir behaviours, OTP supervisors/tasks, existing Jason/configuration and
+the journal contracts. No dependency or external service is added by this research.
+If implementation directly emits Telemetry events, promote the already locked
+1.4.2 package above to a declared direct dependency and update its runtime scope.
+OpenTelemetry API/SDK/OTLP exporter packages are optional evaluated future sinks,
+not installed dependencies or mandatory collectors; record selected versions,
+licenses and explicit export configuration before adoption. Memory storage and
+third-party extension distribution remain unselected. No upstream OpenCode/Pi/
+Codex/Claude runtime, plugin or script is installed or redistributed.
+
 ### Optional research retrieval and evidence ledger
 
 P14 adds no package, HTTP/HTML/search engine, executable plugin or non-Elixir

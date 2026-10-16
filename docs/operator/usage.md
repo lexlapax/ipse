@@ -496,3 +496,15 @@ outside compacted model context; `ipse research --resume ID` exports it locally.
 No endpoint, credential or fallback search service is embedded. See
 [research configuration and limits](research.md); recorded support kinds are
 model assessments, not automatic truth or freshness guarantees.
+
+## Extension and debugging roadmap
+
+Skills, configured MCP tools and provider adapters are available today. General
+lifecycle extensions, prompt/output transform configuration, cross-session memory
+adapters and an operator trace-export interface are proposed in
+[P22](../plan.md#p22-extension-scaffold-and-lifecycle-hooks), not available CLI
+options. The [extension research](../developer/extensions.md) distinguishes those
+proposals from current behavior. P19 proposes local diagnostics for long-session
+recovery; the [observability design](../developer/observability.md) separates
+sanitized diagnostics from private session journals and raw developer traces.
+No extension script, service, exporter or dependency is installed by this roadmap.
