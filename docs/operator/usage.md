@@ -353,7 +353,9 @@ discovery, persistence, and boundary details.
 Ipse's harness is implemented in Elixir/OTP with Rust OS helpers. Projects and
 tasks handled by it may use other languages and installed tools, including
 TypeScript/Node or Python; the harness's implementation restrictions are not a
-project-language policy. The CLI help and host role describe general-purpose tasks; the current
+project-language policy. A neutral forms/SQLite trial selected Python/Flask and
+passed independent app checks; see [coding evidence](../developer/testing.md#p13-neutral-stack-coding-trial-2026-10-16).
+The CLI help and host role describe general-purpose tasks; the current
 bundled tools mainly serve local file/project work. A bounded synthetic
 document-planning trial passed, including source reconciliation and an approved
 artifact write; this does not establish arbitrary task coverage.

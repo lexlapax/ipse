@@ -1682,10 +1682,25 @@ and extracted-package/checkpoint verification passed in
 for `57c9b67`. macOS checks ran on the hosted Mac runner, not Linux Serenity; the
 experimental App Sandbox step remains a separately scoped CI check.
 
-neutral coding and non-coding trial evidence will be recorded separately. The
+Neutral coding and non-coding evidence is recorded below. The
 [compaction contract](context-compaction.md) describes output fidelity limits and
 remaining cases that cannot fit. This is host-side projection, not a native
-provider compaction endpoint or proof of unrestricted context capacity.
+provider compaction endpoint or proof of unrestricted context capacity. The new
+within-turn output fallback has live evidence for ChatGPT only; earlier provider
+acceptance records cover the older summary path, not new fallback live tests.
+
+P13's final CLI wording also identifies Ipse as a general-purpose local AI agent
+and explains `--no-compact` as disabling automatic reduction. After this wording
+change, the source baseline again passed **277 Linux tests** (14 macOS excluded),
+formatting, warnings-as-errors compilation, build and native demo. The rebuilt
+Linux archive passed the same extracted verification; final SHA-256:
+`f8dbc34554124b6e7a0fead819ecd7499e7673c85dd58890815d8f8d721d8a67`.
+This supersedes the earlier local archive artifact, not its recorded check result.
+
+Hosted Linux/macOS source and extracted-package checks for final CLI wording
+`5759bea` passed in [run 38868964874](https://github.com/lexlapax/ipse/actions/runs/38868964874).
+Both production macOS enforcement and the separate experimental probe passed;
+these ran on macOS-14, while local checks ran on Linux Serenity.
 
 ## P13 non-coding document trial, 2026-10-16
 
@@ -1716,17 +1731,9 @@ skill was needed; explicit source paths removed the setup ambiguity. Operator
 [guidance](../operator/usage.md#runtime-and-limits) now explains this file-discovery
 boundary. The host role is neutral; approvals remain independent of instructions.
 
-P13's final CLI wording also identifies Ipse as a general-purpose local AI agent
-and explains `--no-compact` as disabling automatic reduction. After this wording
-change, the source baseline again passed **277 Linux tests** (14 macOS excluded),
-formatting, warnings-as-errors compilation, build and native demo. The rebuilt
-Linux archive passed the same extracted verification; final SHA-256:
-`f8dbc34554124b6e7a0fead819ecd7499e7673c85dd58890815d8f8d721d8a67`.
-This supersedes the earlier local archive artifact, not its recorded check result.
-
 ## P13 neutral-stack coding trial, 2026-10-16
 
-In progress: Ipse's embedded Session API uses explicit ChatGPT subscription
+Ipse's embedded Session API used explicit ChatGPT subscription
 `gpt-6.1-sol`, trusted mode selected openly, isolated state and individually
 reviewed tools. Requirements specify forms/SQLite behavior and loopback port 4200,
 with no language/framework constraint. Ipse inspected installed runtimes and
@@ -1742,7 +1749,31 @@ CRUD/restart smoke, pip consistency, compilation, CLI default-port check and
 staged whitespace checks passed. Independent HTTP review also passed blank-title
 inline errors with retained notes, CSRF/Host denials, escaping/CSP, completion,
 GET mutation denial and huge-ID handling, but reproduced a **NUL-only title HTTP
-500** missed by those tests. The same session is repairing this before acceptance;
-no completed-trial claim is made yet. Installed Chromium 153.0.8010.52 desktop
+500** missed by those tests. The same session reproduced the failure with a
+regression before adding a shared WTForms NUL validator, without weakening schema
+constraints or hiding database exceptions. Its expanded **44-test** suite passed,
+as did independent execution of those tests, real HTTP smoke/restart, dependency
+consistency and compilation checks. Independent real HTTP after an actual restart
+verified the existing task/status, retained signed session, edit/reopen/delete,
+and the formerly failing NUL title now returning **422**. Installed Chromium 153.0.8010.52 desktop
 1280 × 900 task-list and narrow 390 × 844 new-form renders were visually inspected
 without clipping. No full browser interaction or screen-reader audit is claimed.
+
+The app's exact lock, runtime prerequisites, dependency inventory/license notices,
+setup/run/test commands, database/secret location and local single-user limits are
+owned by its README. These are separate workload dependencies, not Ipse's graph.
+No OS package, provider/billing switch, delegation, MCP, remote publication or
+existing private-project transfer was required. App servers used for verification
+were stopped. Screenshots, synthetic database and private session journals remain
+outside Git. The repair was committed at `5d3d103`; independent verification
+docs and the corrected README at `3d27fca`. The app worktree is clean with no
+remote configured. All 22 Ipse tool intents had recorded outcomes (20 individually
+approved mutations/shell calls and two approval-free skill/resource calls); no
+context checkpoint was needed in this trial. Dotsetup status/diff/lockfile hashes
+and the original Elixir app source worktree were unchanged.
+
+P13 is complete for the selected context-recovery and two bounded task trials.
+The remaining proposed next step is supervised self-development in an isolated
+checkout, using a stable harness and independent diff/test review; see the
+[plan candidate](../plan.md#candidate-next-step-supervised-self-development).
+No major new Git/GitHub subsystem was demonstrated necessary by these trials.

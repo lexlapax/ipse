@@ -18,7 +18,7 @@ the next feature sequence on 2026-10-15:
 | [P10](#p10-network-mcp) | Explicit network MCP | Complete within documented scope |
 | [P11](#p11-live-dotsetup-trial) | Read-only assessment in `~/projects/lexlapax/dotsetup` | Read-only comparison and selected follow-ups complete |
 | [P12](#p12-task-tracker-coding-trial) | New forms/SQLite task tracker | Specified-stack coding trial complete |
-| [P13](#p13-long-turn-compaction-and-general-purpose-trials) | Long-turn context recovery and neutral coding/non-coding trials | Compaction source/package/hosted checks complete; neutral coding trial in progress |
+| [P13](#p13-long-turn-compaction-and-general-purpose-trials) | Long-turn context recovery and neutral coding/non-coding trials | Complete within documented scope |
 
 Feature completion does not close every live provider acceptance check. On
 2026-10-15, installed Ollama `qwen3.5:9b`, Anthropic `claude-haiku-4-5`, and
@@ -554,12 +554,15 @@ long-turn output checkpoints and specific failure diagnostics implemented; sourc
 build, formatting, warnings-as-errors compilation, 277 Linux tests, native demo,
 P12 transcript replay, and a live eight-read single-turn check passed. Packaging
 passed, and hosted Linux/macOS CI [38867833020](https://github.com/lexlapax/ipse/actions/runs/38867833020) passed. The core fix is committed/pushed at `57c9b67`.
-Neutral coding trial is in progress in a separate workspace; Ipse chose Python/Flask.
-The synthetic non-coding trial passed after one source-path clarification: source-backed
-plan, exact schedule/budget, pending owners and unchanged source hashes. Independent
-app review remains in progress: initial 25 tests and HTTP smoke passed; independent
-HTTP review found a NUL-title validation crash to repair before acceptance.
-Update this record as each acceptance check completes.
+Neutral coding trial passed in a separate workspace: Ipse chose Python/Flask;
+independent review found a NUL validation crash, the same session repaired it, and
+44 tests plus actual HTTP/restart/validation checks and desktop/narrow renders
+passed. The synthetic non-coding trial passed after one source-path clarification:
+source-backed plan, exact schedule/budget, pending owners and unchanged source
+hashes. P13 is complete within these bounded checks; see [coding](developer/testing.md#p13-neutral-stack-coding-trial-2026-10-16),
+[non-coding](developer/testing.md#p13-non-coding-document-trial-2026-10-16), and
+[compaction](developer/testing.md#p13-long-turn-compaction-2026-10-16) evidence.
+No unrestricted task coverage or unattended self-development is claimed.
 
 1. Improve safe context reduction during long action turns and provide specific
    recovery causes. Preserve user requests, provider continuation payloads, exact
