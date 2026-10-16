@@ -1567,8 +1567,10 @@ unchanged. It did not claim fresh remote state or deployment. Five journaled
 tool calls completed. The first harness post-check incorrectly expected local
 tool arguments in intent metadata; a corrected harness passed without an Ipse
 runtime change. Private journals and synthetic answers remain outside Git.
-This is scoped live skill evidence, not proof that every model will select or
-follow the skill automatically, and it sent no additional dotsetup content.
+Hosted [Linux/macOS source/package checks passed at 680b6f3](https://github.com/lexlapax/ipse/actions/runs/38857048801),
+including the separate macOS native checks. This is scoped live skill evidence,
+not proof that every model will select or follow the skill automatically, and it
+sent no additional dotsetup content.
 
 The developer then selected a new forms/SQLite task-tracker app for the coding
 trial, replacing the proposed dotsetup coding trial. Dotsetup's read-only
