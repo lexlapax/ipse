@@ -47,7 +47,8 @@ defmodule Ipse.Session do
     id = Keyword.get(opts, :id)
     owner_ref = if is_pid(opts[:owner]), do: Process.monitor(opts[:owner])
 
-    with {:ok, cwd} <- WorkspaceContext.canonical_path(requested_cwd),
+    with {:ok, handoff} <- handoff_option(opts),
+         {:ok, cwd} <- WorkspaceContext.canonical_path(requested_cwd),
          true <- File.dir?(cwd),
          {:ok, id, _events} <- open(dir, id, cwd, config),
          {:ok, _} <- Registry.register(Ipse.Registry, {dir, id}, nil),
@@ -104,10 +105,27 @@ defmodule Ipse.Session do
       }
 
       state = if context_is_new, do: persist_context(state, context_snapshot, true), else: state
+
+      state =
+        if handoff do
+          record(state, handoff)
+          %{state | messages: state.messages ++ [handoff["message"]]}
+        else
+          state
+        end
+
       if question, do: {:ok, state, {:continue, :question}}, else: {:ok, state}
     else
       false -> {:stop, :workspace_not_found}
       {:error, reason} -> {:stop, reason}
+    end
+  end
+
+  defp handoff_option(opts) do
+    cond do
+      not Keyword.has_key?(opts, :handoff) -> {:ok, nil}
+      opts[:id] != nil -> {:error, :handoff_requires_fresh_session}
+      true -> Ipse.Handoff.prepare(opts[:handoff])
     end
   end
 
@@ -1268,7 +1286,8 @@ defmodule Ipse.Session do
              Map.get(meta, "subagent_concurrency", 1) == Map.get(config, :subagent_concurrency, 1) and
              meta["delegation_origin"] == config[:delegation_origin] and
              compatible_configuration?(meta["configuration"], config[:configuration]) and
-             meta["execution"] == json_execution(config[:execution]) do
+             meta["execution"] == json_execution(config[:execution]),
+         :ok <- Ipse.Handoff.validate_events(events) do
       {:ok, id, events}
     else
       false -> {:error, :resume_configuration_mismatch}
@@ -1320,7 +1339,16 @@ defmodule Ipse.Session do
 
   @doc "Validate saved effective context without starting inference, tools or a session."
   def restore_context(events) do
+    with :ok <- Ipse.Handoff.validate_events(events) do
+      restore_validated_context(events)
+    end
+  end
+
+  defp restore_validated_context(events) do
     Enum.reduce_while(events, {:ok, []}, fn
+      %{"type" => "handoff_imported", "message" => message}, {:ok, messages} ->
+        {:cont, {:ok, messages ++ [message]}}
+
       %{"type" => type, "message" => message}, {:ok, messages}
       when type in ["message", "operator_answer", "operator_question_closed"] and is_map(message) ->
         {:cont, {:ok, messages ++ [message]}}

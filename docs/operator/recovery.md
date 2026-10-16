@@ -45,12 +45,38 @@ or a signature. It deliberately excludes tool arguments, results, provider data,
 auth and saved permission settings. The note itself can be private: this is not
 an automatic secret scanner or automatic model-generated summary.
 
-Review the artifact and source workspace, then explicitly start a new conversation
-with your selected configuration/provider and the reviewed note as task context.
-P19 provides export; automatic import is not implemented by that increment.
-Handoff carries no approval, billing choice, tool execution or permission grant.
-Starting a fresh session does not resolve source unknown outcomes. Corrupt committed
-compaction/research checkpoints refuse export instead of silently discarding them.
+Review the artifact and source workspace, then explicitly import it into fresh
+interactive chat with your selected current provider and configuration:
+
+```sh
+./bin/ipse chat --handoff /private/path/handoff.json --cwd /path/to/candidate
+```
+
+`--handoff` is accepted only for fresh interactive chat (including the default
+chat command). It cannot be combined with `--resume`, `run`, `demo`, or another
+command mode. Validation occurs before authentication or session creation. The
+input must be one closed version-1 UTF-8 JSON object of at most 16 KiB: extra or
+duplicate keys, malformed fields and inconsistent unknown-call/omission counts
+are rejected. The note remains verbatim, including whitespace, with an 8192-byte
+limit. Source IDs/digests and the capped unknown-call references are preserved;
+the digest is provenance, not proof that the source history was independently
+verified.
+
+Import starts a new, idle session and displays the source identity and unknown
+call count. **Type a fresh operator prompt to begin work.** The note enters as
+attributed untrusted historical context, not a new task or privileged instruction.
+No source session is opened, no saved call is replayed, and no provider settings,
+credentials, approvals, tools or native continuation are transferred. Current
+configuration and ordinary action approvals still apply. Starting a fresh session
+does not resolve source unknown outcomes; inspect effects before retrying them.
+
+The new journal saves the exact validated artifact bytes, their digest and the
+historical-context projection once. Later resume validates that saved record
+without reopening the import path, even if its file changed or was deleted.
+Resume normally with `chat --resume NEW_SESSION_ID`, without `--handoff`.
+A corrupt, duplicated or misplaced committed import refuses recovery rather
+than silently discarding historical context. Keep the original journal for
+inspection. Corrupt committed compaction/research checkpoints also refuse export.
 
 The P18 private Mac transcript was not copied to Serenity. A synthetic long-turn
 fixture reproduces the retained-native-data failure shape, with exact diagnostics;

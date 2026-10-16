@@ -161,8 +161,35 @@ references. It never copies arbitrary source metadata, history, approval setting
 or native continuation into a new session. Original events stay private and
 unchanged. Export neither creates nor resumes a session. Existing compaction
 rules are unchanged: there is no undocumented trimming of required native data
-or pinned intent. Unknown outcomes still require inspection. P21 may independently
-implement explicit artifact import as a separate supervised feature.
+or pinned intent. Unknown outcomes still require inspection.
+
+P21 adds explicit import through fresh interactive `chat --handoff PATH`. CLI mode
+conflicts fail before reading the artifact; `Handoff.read/1` reads at most 16 KiB
+plus one overflow byte and validates before configuration/authentication or Session
+startup. `Handoff.prepare/1` accepts raw UTF-8 JSON bytes only, rejects duplicate
+object keys using Jason's ordered decoding, and reuses the existing bounded
+`MCP.Schema`/JSONSchex adapter for a closed version-1 shape. Additional host checks
+validate lowercase source ID/digest, note byte length/nonblank content, bounded
+safe identifiers and exact count/cap/omission relationships. No new dependency,
+source-journal lookup, signature check or secret scanner is introduced.
+
+Embedding passes the same raw bytes as the Session `:handoff` option; Session
+validates them before creating any state and rejects the option alongside any
+existing `:id`. Callers cannot supply a prebuilt projection to bypass validation.
+The fresh journal records one `handoff_imported` event after its initial workspace
+snapshot, containing the original artifact bytes, SHA-256 and deterministic
+user-role projection. The projection attributes the source and labels the note
+as untrusted historical text, never a fresh task or permission. Import leaves the
+session idle until a new prompt; current provider/model/approval/tool configuration
+alone applies. No source provider-native history or executable calls are imported.
+
+`Handoff.validate_events/1` rederives the entire committed record and checks exact
+equality, beginning-of-journal placement and uniqueness. Both Session startup and
+pure `restore_context/1` validate it; invalid committed imports fail before resume
+can repair a tail. Resume restores the saved projection without reading the old
+artifact path. Compaction continues to treat it as historical user context under
+the ordinary checkpoint rules. Import never authorizes replay or changes unknown
+outcomes in the source journal.
 
 See [operator recovery](../operator/recovery.md) and
 [P19 evidence](testing.md#p19-diagnosis-and-explicit-recovery).

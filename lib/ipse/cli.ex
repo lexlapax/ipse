@@ -20,6 +20,7 @@ defmodule Ipse.CLI do
   --provider chatgpt|openai|ollama|anthropic|demo  (default: chatgpt)
   --model NAME                         Override the provider default
   --cwd PATH                           Workspace (default: current directory)
+  --handoff PATH                       Fresh chat only: import reviewed historical recovery context
   --resume ID                          Resume a saved session
   --yes                                Allow mutations, shell, configured MCP, and enabled delegation
   --base-url URL                       API endpoint root (API/Ollama only)
@@ -66,6 +67,7 @@ defmodule Ipse.CLI do
           cwd: :string,
           state_dir: :string,
           resume: :string,
+          handoff: :string,
           yes: :boolean,
           base_url: :string,
           max_steps: :integer,
@@ -92,6 +94,14 @@ defmodule Ipse.CLI do
       invalid != [] ->
         IO.puts(:stderr, "Unknown options: #{inspect(invalid)}")
         1
+
+      Keyword.has_key?(opts, :handoff) and
+          (rest not in [[], ["chat"]] or Keyword.has_key?(opts, :resume) or opts[:demo] == true or
+             opts[:help] == true) ->
+        report(
+          {:error,
+           "--handoff requires fresh interactive chat; cannot combine with --resume or another command mode."}
+        )
 
       opts[:help] ->
         IO.puts(@help)
@@ -229,18 +239,32 @@ defmodule Ipse.CLI do
         1
       )
 
+  defp handoff_options(opts) do
+    if Keyword.has_key?(opts, :handoff) do
+      case Ipse.Handoff.read(opts[:handoff]) do
+        {:ok, bytes} -> {:ok, [handoff: bytes]}
+        {:error, _} -> {:error, :invalid_handoff}
+      end
+    else
+      {:ok, []}
+    end
+  end
+
   defp start(opts, prompt, interactive) do
-    with {:ok, opts} <- resume_options(opts),
+    with {:ok, handoff_opts} <- handoff_options(opts),
+         {:ok, opts} <- resume_options(opts),
          {:ok, config} <- config(opts, interactive),
          {:ok, pid} <-
            DynamicSupervisor.start_child(
              Ipse.Sessions,
              {Ipse.Session,
-              config: config,
-              cwd: opts[:cwd] || default_cwd(),
-              state_dir: state_dir(opts),
-              id: opts[:resume],
-              subscriber: self()}
+              [
+                config: config,
+                cwd: opts[:cwd] || default_cwd(),
+                state_dir: state_dir(opts),
+                id: opts[:resume],
+                subscriber: self()
+              ] ++ handoff_opts}
            ) do
       ref = Process.monitor(pid)
       info = Ipse.Session.info(pid)
@@ -289,6 +313,8 @@ defmodule Ipse.CLI do
             :stderr,
             "Mutations, shell, configured MCP, and enabled delegation are allowed for this session (--yes)."
           )
+
+      if handoff_opts != [], do: IO.puts(:stderr, Ipse.Handoff.notice(handoff_opts[:handoff]))
 
       client = self()
       reader = if interactive, do: spawn(fn -> read_input(client) end), else: nil
@@ -781,6 +807,14 @@ defmodule Ipse.CLI do
         IO.puts(:stderr, format_error(reason))
         1
       )
+
+  defp format_error(:invalid_handoff),
+    do:
+      "Invalid handoff: expected one closed version-1 UTF-8 artifact of at most 16 KiB with consistent unknown-effect provenance."
+
+  defp format_error(:invalid_handoff_record),
+    do:
+      "Invalid committed handoff record; refusing recovery. Preserve the original journal for inspection."
 
   defp format_error(reason) when is_binary(reason), do: reason
   defp format_error(reason), do: inspect(reason)

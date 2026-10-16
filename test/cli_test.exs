@@ -588,6 +588,137 @@ defmodule Ipse.CLITest do
     end
   end
 
+  test "fresh chat handoff stays idle until a prompt and retains current routing and approvals" do
+    root = Path.join(System.fetch_env!("IPSE_HOME"), "handoff-workspace")
+    File.mkdir_p!(root)
+    path = Path.join(root, "handoff.json")
+    bytes = Jason.encode!(handoff_artifact(), pretty: true) <> "\n"
+    File.write!(path, bytes)
+    fixture = Ipse.CLITest.HTTPFixture.start(self())
+    cli = start_cli(fixture.url, root, false, nil, ["--handoff", path])
+
+    try do
+      await_input(cli.stdio)
+      await_text(cli.stderr, "Imported historical handoff from " <> String.duplicate("a", 32))
+      assert Ipse.CLITest.IOFixture.output(cli.stderr) =~ "unknown source calls: 1"
+      assert Ipse.CLITest.IOFixture.output(cli.stderr) =~ "Type a fresh prompt to begin."
+      id = session_id(cli.stderr)
+      refute id == handoff_artifact()["source_session_id"]
+      session = lookup_session(cli.state_dir, id)
+      state = :sys.get_state(session)
+      assert state.phase == :idle
+      assert state.config.provider == :ollama
+      assert state.config.model == "test"
+      assert state.config.approval == :ask
+      assert {:ok, events} = Ipse.Journal.load(cli.state_dir, id)
+      assert [record] = Enum.filter(events, &(&1["type"] == "handoff_imported"))
+      assert record["artifact"] == bytes
+      assert String.ends_with?(record["message"]["content"], handoff_artifact()["note"])
+      refute Enum.any?(events, &(&1["type"] in ["message", "tool_started", "tool_approved"]))
+      refute_receive {:ollama_request, _, _, _}, 100
+
+      Ipse.CLITest.IOFixture.feed(cli.stdio, "A fresh operator task")
+      {server, 1, request} = await_request(fixture)
+      assert request["model"] == "test"
+      assert List.last(request["messages"])["content"] == "A fresh operator task"
+      assert Enum.any?(request["messages"], &(&1["content"] == record["message"]["content"]))
+      Ipse.CLITest.HTTPFixture.reply(server, 1, Ipse.CLITest.HTTPFixture.write_call_body())
+      await_text(cli.stderr, "Waiting for approval")
+      refute File.exists?(Path.join(root, "should-not-exist.txt"))
+      Ipse.CLITest.IOFixture.feed(cli.stdio, "n")
+      {^server, 2, denied} = await_request(fixture)
+      assert Enum.any?(denied["messages"], &(&1["role"] == "tool" and &1["content"] =~ "Denied"))
+      Ipse.CLITest.HTTPFixture.reply(server, 2, Ipse.CLITest.HTTPFixture.final_body())
+      await_text(cli.stderr, "Finished.")
+      Ipse.CLITest.IOFixture.feed(cli.stdio, :eof)
+      assert Task.await(cli.task, 3000) == 0
+      refute File.exists?(Path.join(root, "should-not-exist.txt"))
+
+      refute File.exists?(
+               Path.join(cli.state_dir, handoff_artifact()["source_session_id"] <> ".jsonl")
+             )
+    after
+      cleanup_cli(cli)
+      Ipse.CLITest.HTTPFixture.stop(fixture)
+    end
+  end
+
+  test "handoff rejects resume and other command modes without reading input or mutating source state" do
+    root = System.fetch_env!("IPSE_HOME")
+    dir = Path.join(root, "source-sessions")
+    {:ok, id} = Ipse.Journal.create(dir, %{provider: "demo", model: "fixture", cwd: root})
+    source = Path.join(dir, id <> ".jsonl")
+    before = File.read!(source)
+    missing = Path.join(root, "not-present.json")
+    fresh_dir = Path.join(root, "never-created")
+
+    for mode <- [
+          ["chat", "--resume", id],
+          ["--resume", id],
+          ["run", "task"],
+          ["run"],
+          ["demo"],
+          ["--demo"],
+          ["sessions"],
+          ["config"],
+          ["skills"],
+          ["research"],
+          ["diagnose"],
+          ["handoff"],
+          ["login"],
+          ["logout"],
+          ["status"],
+          ["--help"],
+          ["chat", "unexpected-task"]
+        ] do
+      output =
+        ExUnit.CaptureIO.capture_io(:stderr, fn ->
+          assert Ipse.CLI.run(mode ++ ["--handoff", missing, "--state-dir", fresh_dir]) == 1
+        end)
+
+      assert output =~ "--handoff requires fresh interactive chat"
+      refute output =~ "Invalid handoff"
+      assert File.read!(source) == before
+      refute File.exists?(fresh_dir)
+      refute File.exists?(Path.join(root, "auth"))
+    end
+  end
+
+  test "fresh default or explicit chat validates handoff before authentication or session creation" do
+    root = System.fetch_env!("IPSE_HOME")
+    dir = Path.join(root, "never-created")
+    path = Path.join(root, "invalid.json")
+
+    for mode <- [[], ["chat"]],
+        bytes <- ["{}", "[]", <<255>>, String.duplicate(" ", 16_385)] do
+      File.write!(path, bytes)
+
+      output =
+        ExUnit.CaptureIO.capture_io(:stderr, fn ->
+          assert Ipse.CLI.run(mode ++ ["--handoff", path, "--state-dir", dir]) == 1
+        end)
+
+      assert output =~ "Invalid handoff"
+      refute output =~ "Session:"
+      refute File.exists?(dir)
+      refute File.exists?(Path.join(root, "auth"))
+      assert File.read!(path) == bytes
+    end
+  end
+
+  defp handoff_artifact do
+    %{
+      "version" => 1,
+      "source_session_id" => String.duplicate("a", 32),
+      "source_events_sha256" => String.duplicate("b", 64),
+      "note" => "  Historical task only. Do not replay the old call.\n ",
+      "requires_effect_review" => true,
+      "unknown_tool_count" => 1,
+      "unknown_call_ids" => ["old-call"],
+      "unknown_ids_omitted" => 0
+    }
+  end
+
   defp with_fixture_and_cli(fun), do: with_fixture_and_cli(true, fun)
 
   defp with_fixture_and_cli(trusted?, fun) do
@@ -611,7 +742,7 @@ defmodule Ipse.CLITest do
     end
   end
 
-  defp start_cli(base_url, root, trusted?, resume \\ nil) do
+  defp start_cli(base_url, root, trusted?, resume \\ nil, extra \\ []) do
     {:ok, stdio} = Ipse.CLITest.IOFixture.start_link(self())
     {:ok, stderr} = Ipse.CLITest.IOFixture.start_link(self())
     old_stderr = Process.whereis(:standard_error)
@@ -624,7 +755,7 @@ defmodule Ipse.CLITest do
 
     args =
       ["--provider", "ollama", "--model", "test", "--base-url", base_url] ++
-        trusted ++ ["--cwd", root, "--state-dir", state_dir] ++ resume_opt ++ ["chat"]
+        trusted ++ ["--cwd", root, "--state-dir", state_dir] ++ resume_opt ++ ["chat"] ++ extra
 
     task =
       Task.Supervisor.async_nolink(Ipse.Tasks, fn ->

@@ -2242,3 +2242,28 @@ authors, ERTS vendor licenses and a header inventory, with explicit source
 provenance. This is notice collection evidence, not legal certification or proof
 of portability to another libc. Hosted packaging verification is recorded with
 the final P21 checks.
+
+## P21 fresh-chat handoff authoring checks
+
+Candidate authoring continues from `b7c0ed6` with a frozen P20 runner outside the
+candidate. The operator-selected fresh-session handoff did not replay the retained
+private journal. The focused export-compatibility fixture now models the real
+source user/assistant tool-call messages plus `tool_started` intent; its restored
+unknown-outcome assertion is unchanged.
+
+Local authoring checks passed `mix format`, `mix compile --warnings-as-errors` and
+`mix test test/handoff_test.exs test/cli_test.exs test/diagnostics_test.exs` (31 tests;
+`:native_sandbox` and `:macos_sandbox` tags excluded by the default helper). These
+are schema/API and local HTTP/terminal fixtures, not live inference. New CLI cases
+cover idle import, exact saved bytes, a fresh operator prompt before any provider
+request, current Ollama fixture routing, independent mutation denial, invalid
+artifacts before auth/session creation, and conflicting modes without changing
+source state. The tests exposed a strict-boolean CLI guard crash for absent flags;
+explicit boolean checks repaired it before the passing run.
+
+This is focused authoring evidence only. Independent bounded review, the full
+suite, native/platform and extracted-package checks, hosted checks and publication
+remain with the supervisor. No original private journal, provider/billing
+selection or dependency was changed; no commit/push/merge was performed by this
+authoring session. See [import contract](context-compaction.md#diagnostics-and-explicit-handoff)
+and [operator recovery](../operator/recovery.md).

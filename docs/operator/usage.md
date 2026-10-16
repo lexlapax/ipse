@@ -261,6 +261,22 @@ without replaying tools. Interrupted tool calls receive an explicit unknown
 outcome, and a partially written final journal record can be repaired under the
 session lock. Full transcripts remain on disk, including tool output.
 
+For a fresh conversation after a retained-context refusal, explicitly import an
+operator-reviewed recovery artifact instead of resuming the old history:
+
+```sh
+./bin/ipse chat --handoff /private/path/handoff.json --cwd /path/to/repo
+```
+
+This is fresh interactive chat only: do not combine `--handoff` with `--resume`,
+`run`, `demo` or another command. The closed version-1 artifact is validated before
+authentication/session creation (16 KiB total, 8192-byte verbatim note). Import
+adds attributed untrusted historical context and stays idle until you type a
+fresh prompt. It transfers no provider, approval, tool or native continuation
+state and never replays source calls. The new journal retains the validated
+artifact, so later normal resume does not need its original file. Inspect unknown
+effects before retrying; see [recovery and artifact limits](recovery.md).
+
 ## Context compaction
 
 Ipse automatically attempts context reduction above 80% of its default
