@@ -150,3 +150,23 @@ not establish P7 resource/prompt or cross-platform sandbox coverage; consult the
 current [P7 record](../developer/testing.md#p7-expanded-local-mcp-2026-10-15)
 for those results. See [usage](usage.md) and
 [troubleshooting](troubleshooting.md).
+
+## Optional independent memory-server check
+
+For a separately reviewed and built `mcp-memory` executable, developers can run:
+
+```sh
+mix run scripts/verify-independent-memory-mcp.exs /path/to/reviewed/mcp-memory
+```
+
+This optional source check uses a scripted model, a disposable local graph, and
+per-server native enforcement. It denies one write, then approves exact synthetic
+create/get/search and missing-record calls, checks journal outcomes, and resumes
+idle without replay. It creates no persistent memory service or normal-session
+configuration, and never downloads, builds, or installs a server. Supported
+Linux native enforcement is required for the recorded check; unavailable setup
+fails closed. The independently tested 2.0.0 release needed a documented upstream
+build patch. See [exact evidence and limits](../developer/testing.md#second-independent-local-mcp-server-2026-10-15)
+and [source/dependencies](../developer/dependencies.md#second-independent-mcp-investigation-memory)
+before reproducing it with an executable you have reviewed. This is separate
+from the credential-free bundled SDK demo and live provider evidence.

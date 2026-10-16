@@ -364,3 +364,13 @@ needed on return.
 Broader independent-server coverage remains recommended before designing
 authenticated network transports. See
 [actual P7 results and limits](developer/testing.md#p7-expanded-local-mcp-2026-10-15).
+
+Following the Linux return check, a second pinned independent local server,
+`mcp-memory` 2.0.0, passed native stdio discovery, denied-write non-dispatch,
+exact approved create/get/search calls, persistence across fresh processes,
+ordinary tool-error journaling, and idle resume without replay. Its published
+source needed one documented prefetch pointer cast to build on Rust 1.99/x86_64;
+no Ipse runtime or protocol policy changed. The optional verifier installs
+nothing and adds no default/CI server dependency. This is scripted-model Linux
+evidence, not current-release, live-provider, Mac, or network-transport coverage;
+see [the second-server record](developer/testing.md#second-independent-local-mcp-server-2026-10-15).

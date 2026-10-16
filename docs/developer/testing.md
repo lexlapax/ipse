@@ -1067,9 +1067,11 @@ This live check used the existing Ipse subscription sign-in, with no API billing
 provider fallback, permission change, or new refresh/logout check. Private
 transcripts and credentials are not committed. The final approval target-display
 addition was verified by fixtures; the live run used the preceding display.
-Other independent servers, live providers, Mac independent/live MCP, network
-transports, templates/subscriptions, and persistent connections remain unverified
+At P7 closure, other independent servers, live providers, Mac independent/live MCP,
+network transports, templates/subscriptions, and persistent connections remained unverified
 or unimplemented. The existing macOS detached-descendant limitation remains.
+Subsequent independent memory-server evidence is recorded
+[below](#second-independent-local-mcp-server-2026-10-15).
 
 ## macOS stdio cleanup load, 2026-10-15
 
@@ -1180,4 +1182,62 @@ independent server, macOS enforcement, or extra stdio load diagnostic was run
 in this return check. Earlier Mac evidence remains separate; the original CI
 failure's cause is still unconfirmed, and detached-descendant cleanup remains
 best effort. P0–P7 remain complete within their documented scope; broader
-independent local-server interoperability is the next proposed bounded task.
+independent local-server interoperability was proposed next. The following
+section records the subsequent second-server check.
+
+## Second independent local MCP server, 2026-10-15
+
+Started from clean `main` at `f44bc8d` on the Serenity Arch x86_64 host recorded
+above. Selected the separately implemented Apache-2.0 `mcp-memory` 2.0.0
+published crate, pinned by its verified registry SHA-256 and included Cargo.lock;
+see [source, dependencies, and exact patch](dependencies.md#second-independent-mcp-investigation-memory).
+This version implements MCP itself rather than using the first server's rmcp
+SDK. An earlier SQLite candidate was rejected during source review because it
+hard-codes protocol revision 2024-11-05; Ipse's pinned revision was retained.
+
+The unmodified memory crate failed to build on Rust 1.99/x86_64 at an incorrectly
+typed prefetch pointer. Applied only the documented pointer cast in temporary
+upstream source, then built successfully offline inside the Linux native
+sandbox. No protocol source or Ipse runtime policy changed. This evidence covers
+that patched 2.0.0 build, not an unmodified or current upstream release.
+
+The optional verifier passed:
+
+```sh
+mix run scripts/verify-independent-memory-mcp.exs /path/to/reviewed/mcp-memory
+```
+
+It copied the reviewed executable into a fresh workspace, used an isolated
+owner-only `IPSE_HOME`, selected per-server native enforcement and stdio, and
+allowlisted only `create_entities`, `get_entity`, and `search_nodes`. It set the
+server's existing synchronous durability option. Startup/discovery creates an
+empty scratch binary log; it does not create the synthetic entity.
+
+The first proposed write was explicitly denied: the log bytes remained identical
+and the journal contained no dispatch intent. Four subsequent calls received
+separate approvals with exact nested arguments: create one synthetic entity,
+retrieve it, search for it with a one-result limit, and retrieve a deliberately
+missing name. Exact create/get/search content passed across fresh server
+processes. The last call returned a valid `isError` tool result, journaled as
+`error`, rather than an unknown transport outcome. The verifier checks approved
+intent arguments, server fingerprint, requested native policy, all five outcome
+records including denial, and unchanged journal events/log bytes on idle resume.
+Its initial search assertion expected a graph object; inspection confirmed the
+upstream array format and the checker was corrected to require the exact entity
+array. No runtime compatibility fix was needed.
+
+Source build, formatting, warnings-as-errors compilation, and the isolated
+credential-free demo passed. `mix test --include native_sandbox` passed
+**236 tests, with 14 macOS tests excluded**. All 304 local links and heading
+anchors across 36 tracked Markdown documents passed; `git diff --check` passed.
+Reviewed operator/developer guidance and kept the optional check separate from
+normal server configuration and the bundled SDK demo. No packaging or runtime
+code changed, so packaging was not rerun; the preceding Linux return record
+retains the separate fresh-package evidence.
+
+No live model/provider, authentication, Mac independent-server run, resources,
+prompts, network transport, concurrent memory writers, cancellation, interrupted
+write recovery, or power-loss durability was exercised here. The script removes
+its scratch state and restores the previous `IPSE_HOME`; the reviewed source,
+Cargo cache, and executable remain in `/tmp` only. No server was installed,
+bundled, enabled in normal sessions, or added as a default/CI dependency.

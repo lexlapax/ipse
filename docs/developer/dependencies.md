@@ -176,3 +176,42 @@ write calls, nullable/default/dialect compatibility, and idle resume. It never
 downloads or builds the server. A separate live ChatGPT read also passed on Arch;
 see [P7 evidence](testing.md#p7-expanded-local-mcp-2026-10-15). This investigation
 adds no mandatory build/test dependency or general compatibility claim.
+
+### Second independent MCP investigation: memory
+
+On 2026-10-15, the developer selected a second pinned independent local-server
+check. Reviewed the Apache-2.0
+[`mcp-memory` 2.0.0 published source](https://docs.rs/crate/mcp-memory/2.0.0/source/),
+whose archive SHA-256 matches the crates.io registry checksum:
+`fd6e3eb273e9ae8e829113f20c90f4d57c222340d7b3620c08dc3424e9f19215`.
+The archive's VCS metadata records `ec9737bed066fa821281dd60877ca671b3a5355e`;
+the published archive and checksum, rather than the current repository branch,
+pin this investigation. Selected this older binary-log release to avoid the
+current SQLite/code-indexing implementation's broader scope. No current-release
+compatibility is claimed.
+
+Its Rust package graph is pinned by the archive's
+[Cargo.lock](https://docs.rs/crate/mcp-memory/2.0.0/source/Cargo.lock), including
+Tokio, Serde/serde_json, Clap, axum, ahash, parking_lot, arc-swap,
+crossbeam-channel, crc32fast, futures, tracing, thiserror, anyhow, and subtle.
+These are temporary investigation dependencies, not additions to Ipse's
+runtime, Mix lockfile, default tests, CI, or bundle. Only the stdio transport
+was exercised; no HTTP/TCP service, embedding model, external database, or
+additional system tool was used. The verifier uses existing Elixir/OTP and
+Jason. No upstream source or executable is redistributed.
+
+Downloaded locked Rust dependencies into a temporary Cargo cache without
+executing the server. Built offline with the existing Rust 1.99 toolchain
+inside Ipse's Linux native workspace sandbox. The unmodified source failed
+on x86_64 because `_mm_prefetch` expects `*const i8`; the sole source patch in
+`src/kg.rs` was:
+
+```diff
+-    std::arch::x86_64::_mm_prefetch::<3>(addr);
++    std::arch::x86_64::_mm_prefetch::<3>(addr.cast());
+```
+
+The patched build passed. This is independent protocol interoperability with
+an explicitly patched upstream build, not acceptance of the unmodified release.
+The optional `scripts/verify-independent-memory-mcp.exs` never downloads,
+builds, or installs a server. See [verification and limits](testing.md#second-independent-local-mcp-server-2026-10-15).
