@@ -1,7 +1,7 @@
 defmodule Ipse.Session do
   @moduledoc "One supervised owner per agent conversation. I/O runs in monitored tasks."
   use GenServer
-  alias Ipse.{Journal, Skills, Tools, WorkspaceContext}
+  alias Ipse.{Journal, Skills, Tools, WorkspaceContext, Questions}
 
   def start_link(opts), do: GenServer.start_link(__MODULE__, opts)
 
@@ -10,6 +10,7 @@ defmodule Ipse.Session do
 
   def prompt(pid, text), do: GenServer.call(pid, {:prompt, text})
   def approve(pid, ref, allowed), do: GenServer.call(pid, {:approve, ref, allowed})
+  def answer(pid, id, answers), do: GenServer.call(pid, {:answer, id, answers})
   def cancel(pid), do: GenServer.call(pid, :cancel, 10_000)
 
   def close(pid) do
@@ -53,6 +54,8 @@ defmodule Ipse.Session do
          :ok <- Journal.repair_tail(dir, id),
          {:ok, events} <- Journal.load(dir, id),
          {:ok, messages} <- restore(events),
+         {:ok, question, messages} <- restore_question(events, messages),
+         :ok <- question_available(question, config),
          {:ok, context_snapshot, context_is_new} <-
            workspace_snapshot(events, cwd, home, opts[:context_snapshot]) do
       state = %{
@@ -77,10 +80,11 @@ defmodule Ipse.Session do
         tool_decision: "not_decided",
         task: nil,
         job_ref: nil,
-        phase: :idle,
-        calls: [],
+        phase: if(question, do: :question, else: :idle),
+        calls: if(question, do: [question.call], else: []),
+        question: question,
         approval: nil,
-        steps: 0,
+        steps: if(question, do: question.steps, else: 0),
         lock: lock,
         usage: %{},
         final: "",
@@ -96,9 +100,8 @@ defmodule Ipse.Session do
         owner_ref: owner_ref
       }
 
-      if context_is_new,
-        do: {:ok, persist_context(state, context_snapshot, true)},
-        else: {:ok, state}
+      state = if context_is_new, do: persist_context(state, context_snapshot, true), else: state
+      if question, do: {:ok, state, {:continue, :question}}, else: {:ok, state}
     else
       false -> {:stop, :workspace_not_found}
       {:error, reason} -> {:stop, reason}
@@ -113,6 +116,12 @@ defmodule Ipse.Session do
 
     [operator_home: Map.get(config, :operator_home, default)] ++
       if(Map.has_key?(config, :shared_root), do: [shared_root: config.shared_root], else: [])
+  end
+
+  @impl true
+  def handle_continue(:question, s) do
+    notify(s, {:question, s.question.id, s.question.arguments})
+    {:noreply, s}
   end
 
   @impl true
@@ -183,6 +192,7 @@ defmodule Ipse.Session do
       |> Map.put(:sandbox, Ipse.Sandbox.info(Map.get(s.config, :sandbox, :off)))
       |> Map.put(:mcp, Enum.map(Map.get(s.config, :mcp_servers, []), &Ipse.MCP.Config.manifest/1))
       |> Map.put(:subagents, Ipse.Delegation.enabled?(s.config))
+      |> Map.put(:question, if(s.question, do: Map.take(s.question, [:id, :arguments])))
 
     {:reply, info, s}
   end
@@ -261,6 +271,36 @@ defmodule Ipse.Session do
 
   def handle_call({:approve, _, _}, _from, s), do: {:reply, {:error, :no_pending_approval}, s}
 
+  def handle_call(
+        {:answer, id, answers},
+        _from,
+        %{question: %{id: id} = question, phase: :question} = s
+      ) do
+    case Questions.validate_answers(question.arguments, answers) do
+      {:ok, answers} ->
+        message =
+          question_result(
+            question.call,
+            Jason.encode!(%{
+              "answers" => answers,
+              "notice" => "Clarification only; no action permission."
+            }),
+            "result_recorded"
+          )
+
+        record(s, %{"type" => "operator_answer", "version" => 1, "id" => id, "message" => message})
+
+        notify(s, {:tool_result, "ask_operator", message["content"]})
+        next = %{s | messages: s.messages ++ [message], calls: [], question: nil, phase: :idle}
+        {:reply, :ok, model(next)}
+
+      error ->
+        {:reply, error, s}
+    end
+  end
+
+  def handle_call({:answer, _, _}, _from, s), do: {:reply, {:error, :no_pending_question}, s}
+
   def handle_call(:cancel, _from, s) do
     {cleanup, next} = stop_work(s)
 
@@ -286,6 +326,7 @@ defmodule Ipse.Session do
   end
 
   defp stop_work(s, record_cancel \\ true) do
+    s = close_question(s)
     child_cleanup = Enum.map(Map.keys(s.delegation_resources), &close/1)
 
     cleanup =
@@ -462,6 +503,15 @@ defmodule Ipse.Session do
       _ ->
         {:noreply, fail(s, "Unexpected worker result")}
     end
+  end
+
+  def handle_info(
+        {:DOWN, ref, :process, _pid, _reason},
+        %{owner_ref: ref, question: question} = s
+      )
+      when ref != nil and question != nil do
+    {_cleanup, next} = stop_work(%{s | question: nil, calls: []}, false)
+    {:stop, :normal, next}
   end
 
   def handle_info({:DOWN, ref, :process, _pid, _reason}, %{owner_ref: ref} = s) when ref != nil do
@@ -805,6 +855,9 @@ defmodule Ipse.Session do
       Tools.mutating?(name) or external or name in ["delegate", "delegate_parallel"]
 
     cond do
+      name == "ask_operator" ->
+        start_question(s, call, args)
+
       validation != :ok ->
         {:error, reason} = validation
         tool_result(s, call, reason, "invalid_arguments", "not_decided")
@@ -1134,7 +1187,8 @@ defmodule Ipse.Session do
 
   defp restore(events) do
     Enum.reduce_while(events, {:ok, []}, fn
-      %{"type" => "message", "message" => message}, {:ok, messages} ->
+      %{"type" => type, "message" => message}, {:ok, messages}
+      when type in ["message", "operator_answer", "operator_question_closed"] and is_map(message) ->
         {:cont, {:ok, messages ++ [message]}}
 
       %{"type" => "context_compacted"} = event, {:ok, messages} ->
@@ -1188,6 +1242,185 @@ defmodule Ipse.Session do
 
   defp restore_messages([message | rest]), do: [message | restore_messages(rest)]
 
+  defp question_available(nil, _), do: :ok
+
+  defp question_available(_, config),
+    do: if(questions_enabled?(config), do: :ok, else: {:error, :operator_input_unavailable})
+
+  defp questions_enabled?(config),
+    do: Map.get(config, :operator_questions, true) == true and is_nil(config[:delegation_origin])
+
+  defp start_question(s, call, arguments) do
+    case Questions.validate(arguments) do
+      {:ok, arguments} ->
+        if questions_enabled?(s.config) do
+          # Other proposed calls are settled without execution so the answer can change the plan.
+          next =
+            settle_calls(
+              %{s | calls: tl(s.calls), phase: :idle},
+              "Not started while clarification is required."
+            )
+
+          event = %{
+            "type" => "operator_question",
+            "version" => 1,
+            "id" => call["id"],
+            "call" => call,
+            "arguments" => arguments,
+            "steps" => s.steps,
+            "covered_messages" => length(next.messages),
+            "prefix_sha256" => Ipse.Compaction.digest(next.messages)
+          }
+
+          record(next, event)
+          notify(next, {:question, call["id"], arguments})
+
+          %{
+            next
+            | question: %{id: call["id"], call: call, arguments: arguments, steps: s.steps},
+              calls: [call],
+              phase: :question,
+              task: nil,
+              job_ref: nil
+          }
+        else
+          message =
+            question_result(
+              call,
+              "Operator clarification unavailable in headless or child sessions. Provide the missing information in the task; no default answer was selected.",
+              "error"
+            )
+
+          next = append_message(s, message)
+          notify(next, {:tool_result, "ask_operator", message["content"]})
+
+          fail(
+            %{next | calls: tl(s.calls)},
+            "This task requires operator input; use interactive chat or supply the missing information."
+          )
+        end
+
+      {:error, reason} ->
+        tool_result(s, call, reason, "invalid_arguments", "not_required")
+    end
+  end
+
+  defp question_result(call, content, status),
+    do: %{
+      "role" => "tool",
+      "tool_call_id" => call["id"],
+      "content" => content,
+      "ipse_tool_outcome" => %{"status" => status, "approval" => "not_required"}
+    }
+
+  defp close_question(%{question: nil} = s), do: s
+
+  defp close_question(s) do
+    message =
+      question_result(
+        s.question.call,
+        "Clarification cancelled without an answer. No action was authorized.",
+        "not_started"
+      )
+
+    record(s, %{
+      "type" => "operator_question_closed",
+      "version" => 1,
+      "id" => s.question.id,
+      "message" => message
+    })
+
+    %{s | question: nil, calls: [], messages: s.messages ++ [message]}
+  end
+
+  defp restore_question(events, messages) do
+    events
+    |> Enum.with_index()
+    |> Enum.reduce_while({:ok, nil}, fn
+      {%{"type" => "operator_question"} = event, index}, {:ok, nil} ->
+        call = event["call"]
+
+        with true <- event["version"] == 1 and is_map(call),
+             true <-
+               event["id"] == call["id"] and is_binary(call["id"]) and
+                 byte_size(call["id"]) in 1..256,
+             true <- get_in(call, ["function", "name"]) == "ask_operator",
+             {:ok, args} <- Jason.decode(get_in(call, ["function", "arguments"])),
+             {:ok, ^args} <- Questions.validate(event["arguments"]),
+             true <-
+               is_integer(event["steps"]) and event["steps"] >= 0 and event["steps"] <= 100_000,
+             {:ok, prefix} <- restore(Enum.take(events, index)),
+             prefix = remove_question_placeholder(prefix, call["id"]),
+             true <-
+               length(prefix) == event["covered_messages"] and
+                 Ipse.Compaction.digest(prefix) == event["prefix_sha256"],
+             true <-
+               Enum.any?(prefix, fn m ->
+                 m["role"] == "assistant" and call in (m["tool_calls"] || [])
+               end) do
+          {:cont, {:ok, %{id: call["id"], call: call, arguments: args, steps: event["steps"]}}}
+        else
+          _ -> {:halt, {:error, :invalid_operator_question_checkpoint}}
+        end
+
+      {%{"type" => type} = event, _}, {:ok, question}
+      when type in ["operator_answer", "operator_question_closed"] ->
+        if valid_question_end?(event, question),
+          do: {:cont, {:ok, nil}},
+          else: {:halt, {:error, :invalid_operator_question_checkpoint}}
+
+      {%{"type" => "operator_question"}, _}, _ ->
+        {:halt, {:error, :invalid_operator_question_checkpoint}}
+
+      _, state ->
+        {:cont, state}
+    end)
+    |> case do
+      {:ok, nil} -> {:ok, nil, messages}
+      {:ok, question} -> {:ok, question, remove_question_placeholder(messages, question.id)}
+      error -> error
+    end
+  rescue
+    _ -> {:error, :invalid_operator_question_checkpoint}
+  end
+
+  defp valid_question_end?(_, nil), do: false
+
+  defp valid_question_end?(event, question) do
+    message = event["message"]
+
+    expected_status =
+      if event["type"] == "operator_answer", do: "result_recorded", else: "not_started"
+
+    valid =
+      event["version"] == 1 and event["id"] == question.id and is_map(message) and
+        Map.delete(message, "content") ==
+          Map.delete(question_result(question.call, "", expected_status), "content")
+
+    if valid and event["type"] == "operator_answer" do
+      case Jason.decode(message["content"]) do
+        {:ok,
+         %{"answers" => answers, "notice" => "Clarification only; no action permission."} = result}
+        when map_size(result) == 2 ->
+          match?({:ok, _}, Questions.validate_answers(question.arguments, answers))
+
+        _ ->
+          false
+      end
+    else
+      valid and
+        message["content"] ==
+          "Clarification cancelled without an answer. No action was authorized."
+    end
+  end
+
+  defp remove_question_placeholder(messages, id) do
+    Enum.reject(messages, fn m ->
+      m["role"] == "tool" and m["tool_call_id"] == id and
+        get_in(m, ["ipse_tool_outcome", "approval"]) == "historical_unknown"
+    end)
+  end
+
   defp owned_task(fun) do
     owner = self()
 
@@ -1232,6 +1465,7 @@ defmodule Ipse.Session do
     Tools.definitions(Map.get(config, :sandbox, :off)) ++
       Ipse.Delegation.definitions(config) ++
       [
+        Questions.definition(),
         %{
           "type" => "function",
           "function" => %{

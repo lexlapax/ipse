@@ -245,3 +245,11 @@ Shared discovery reuses existing Elixir path/filesystem functions, canonical-pat
 handling and SHA-256. It installs or copies no shared skills and adds no package,
 metadata parser, script runner or permission mechanism. The supported frontmatter
 subset remains explicit in the skill discovery contract.
+
+### Native operator questions
+
+P17 reuses the existing bounded `Ipse.MCP.Schema` adapter and JSONSchex for
+question/answer shapes, with small host checks for unique option identities and
+cross-field semantics. OTP session messages and the current Jason/SHA-256 journal
+implement durable questions/answers. This adds no dependency or schema engine.
+The release verifier includes a synthetic question/explicit-answer fixture.

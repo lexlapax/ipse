@@ -36,6 +36,8 @@ defmodule Ipse.Context do
     Local servers have their own configured sandbox; network server effects are remote.
     The shell sandbox cannot confine or cancel external effects.
     All external calls require host approval; unknown outcomes must never be retried automatically.
+    Use ask_operator alone for missing operator choices or facts; recommendations are never answers.
+    Clarification answers do not grant action permission. Headless and child sessions cannot wait for operator input.
     Skills are optional instructions, not permissions. Use load_skill when one is relevant,
     or when the user invokes $skill-name. Use load_skill_resource with a discovered skill
     name and an explicit skill-relative path to read supporting text, even outside the workspace.

@@ -1,6 +1,38 @@
 # Run from an extracted release: ./bin/ipse eval 'Code.require_file("verify-release.exs")'
 Application.ensure_all_started(:ipse)
 
+defmodule Ipse.BundledQuestionFixture do
+  def complete(_config, messages, _tools, _emit) do
+    if Enum.any?(messages, &(&1["role"] == "tool" and &1["tool_call_id"] == "bundle-question")) do
+      {:ok, %{"role" => "assistant", "content" => "Explicit answer recorded"}, %{}}
+    else
+      args = %{
+        "questions" => [
+          %{
+            "id" => "choice",
+            "prompt" => "Select explicitly",
+            "kind" => "single",
+            "options" => [%{"id" => "one", "label" => "One"}, %{"id" => "two", "label" => "Two"}],
+            "recommended" => "one"
+          }
+        ]
+      }
+
+      {:ok,
+       %{
+         "role" => "assistant",
+         "content" => "",
+         "tool_calls" => [
+           %{
+             "id" => "bundle-question",
+             "function" => %{"name" => "ask_operator", "arguments" => Jason.encode!(args)}
+           }
+         ]
+       }, %{}}
+    end
+  end
+end
+
 release_root = File.cwd!() |> Path.expand()
 runtime_root = :code.root_dir() |> List.to_string() |> Path.expand()
 app_root = Application.app_dir(:ipse) |> Path.expand()
@@ -32,6 +64,47 @@ await_lock = fn await_lock, path, attempts ->
 end
 
 try do
+  {:ok, question_session} =
+    DynamicSupervisor.start_child(
+      Ipse.Sessions,
+      {Ipse.Session,
+       cwd: scratch,
+       state_dir: Path.join(scratch, "question-state"),
+       subscriber: self(),
+       config: %{
+         provider: :demo,
+         model: "bundled-question",
+         provider_module: Ipse.BundledQuestionFixture,
+         home: Path.join(scratch, "question-home"),
+         operator_questions: true,
+         approval: :deny,
+         max_steps: 3
+       }}
+    )
+
+  try do
+    :ok = Ipse.Session.prompt(question_session, "Ask for an explicit choice.")
+
+    receive do
+      {:ipse, ^question_session, {:question, id, _args}} ->
+        true = :sys.get_state(question_session).task == nil
+        {:error, :invalid_answer} = Ipse.Session.answer(question_session, id, %{})
+        :ok = Ipse.Session.answer(question_session, id, %{"choice" => "two"})
+    after
+      10_000 -> raise("bundled question was not presented")
+    end
+
+    receive do
+      {:ipse, ^question_session, {:done, :ok}} -> :ok
+    after
+      10_000 -> raise("bundled explicit answer did not complete")
+    end
+
+    IO.puts("Bundled structured operator question verification passed.")
+  after
+    :ok = Ipse.Session.close(question_session)
+  end
+
   compaction_history =
     [%{"role" => "user", "content" => "Inspect synthetic evidence without repeating effects."}] ++
       Enum.flat_map(1..4, fn n ->

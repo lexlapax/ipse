@@ -222,6 +222,8 @@ defmodule Ipse.CLI do
           busy: prompt != nil,
           cancelling: false,
           approval: nil,
+          question: nil,
+          question_answers: %{},
           queued: [],
           exit: false,
           cwd: info.cwd
@@ -257,6 +259,8 @@ defmodule Ipse.CLI do
 
     receive do
       {:input, :eof} ->
+        if s.question, do: Ipse.Session.cancel(s.pid)
+
         if s.busy do
           if s.approval, do: Ipse.Session.approve(s.pid, s.approval, false)
           client_loop(%{s | exit: true, approval: nil})
@@ -277,7 +281,15 @@ defmodule Ipse.CLI do
           s.busy ->
             IO.puts(:stderr, "Cancelling active work…")
             Ipse.Session.cancel(s.pid)
-            client_loop(%{s | cancelling: true, approval: nil, queued: []})
+
+            client_loop(%{
+              s
+              | cancelling: true,
+                approval: nil,
+                question: nil,
+                question_answers: %{},
+                queued: []
+            })
 
           true ->
             IO.puts(:stderr, "No active work to cancel.")
@@ -325,6 +337,33 @@ defmodule Ipse.CLI do
         )
 
         client_loop(s)
+
+      {:input, text} when s.question != nil ->
+        {id, arguments, remaining} = s.question
+        [question | rest] = remaining
+
+        case Ipse.Questions.parse_line(question, text) do
+          {:ok, answer} ->
+            answers = Map.put(s.question_answers, question["id"], answer)
+
+            if rest == [] do
+              case Ipse.Session.answer(s.pid, id, answers) do
+                :ok ->
+                  client_loop(%{s | question: nil, question_answers: %{}, busy: true})
+
+                {:error, reason} ->
+                  IO.puts(:stderr, "Answer rejected: #{inspect(reason)}")
+                  client_loop(s)
+              end
+            else
+              IO.puts(:stderr, Ipse.Questions.render(hd(rest)))
+              client_loop(%{s | question: {id, arguments, rest}, question_answers: answers})
+            end
+
+          _ ->
+            IO.puts(:stderr, "Invalid answer. " <> Ipse.Questions.render(question))
+            client_loop(s)
+        end
 
       {:input, text} when s.approval != nil ->
         Ipse.Session.approve(s.pid, s.approval, String.downcase(text) in ["y", "yes"])
@@ -388,6 +427,22 @@ defmodule Ipse.CLI do
         IO.puts(:stderr, "External MCP target:\n" <> Jason.encode!(manifest, pretty: true))
         client_loop(s)
 
+      {:ipse, ^pid, {:question, id, arguments}} ->
+        if s.exit do
+          Ipse.Session.cancel(s.pid)
+          client_loop(%{s | question: nil, question_answers: %{}})
+        else
+          IO.puts(:stderr, "Waiting for operator clarification (not action approval):")
+          IO.puts(:stderr, Ipse.Questions.render(hd(arguments["questions"])))
+
+          client_loop(%{
+            s
+            | busy: true,
+              question: {id, arguments, arguments["questions"]},
+              question_answers: %{}
+          })
+        end
+
       {:ipse, ^pid, {:approval, ref, name, args}} ->
         if s.exit do
           Ipse.Session.approve(s.pid, ref, false)
@@ -439,7 +494,16 @@ defmodule Ipse.CLI do
 
             if s.exit,
               do: 1,
-              else: client_loop(%{s | busy: false, cancelling: false, approval: nil, queued: []})
+              else:
+                client_loop(%{
+                  s
+                  | busy: false,
+                    cancelling: false,
+                    approval: nil,
+                    question: nil,
+                    question_answers: %{},
+                    queued: []
+                })
 
           s.queued != [] ->
             [next | rest] = s.queued
@@ -450,7 +514,15 @@ defmodule Ipse.CLI do
             0
 
           true ->
-            client_loop(%{s | busy: false, cancelling: false, approval: nil, queued: []})
+            client_loop(%{
+              s
+              | busy: false,
+                cancelling: false,
+                approval: nil,
+                question: nil,
+                question_answers: %{},
+                queued: []
+            })
         end
 
       {:ipse, _, _} ->
@@ -530,6 +602,7 @@ defmodule Ipse.CLI do
              mcp_servers: servers,
              subagents: opts[:subagents] == true,
              subagent_concurrency: opts[:subagent_concurrency] || 1,
+             operator_questions: interactive,
              approval: if(opts[:yes], do: :allow, else: if(interactive, do: :ask, else: :deny))
            }}
         end

@@ -471,6 +471,123 @@ defmodule Ipse.CLITest do
     end)
   end
 
+  defp question_body do
+    args = %{
+      "questions" => [
+        %{
+          "id" => "one",
+          "kind" => "single",
+          "prompt" => "Pick one",
+          "recommended" => "b",
+          "options" => [%{"id" => "a", "label" => "A"}, %{"id" => "b", "label" => "B"}]
+        },
+        %{
+          "id" => "many",
+          "kind" => "multiple",
+          "prompt" => "Pick several",
+          "options" => [%{"id" => "a", "label" => "A"}, %{"id" => "b", "label" => "B"}]
+        },
+        %{"id" => "text", "kind" => "text", "prompt" => "Provide notes"}
+      ]
+    }
+
+    Jason.encode!(%{
+      "message" => %{
+        "role" => "assistant",
+        "content" => "",
+        "tool_calls" => [%{"function" => %{"name" => "ask_operator", "arguments" => args}}]
+      },
+      "done" => true
+    }) <> "\n"
+  end
+
+  test "structured CLI questions validate single/multiple/text input without selecting recommendations" do
+    with_fixture_and_cli(false, fn fixture, cli ->
+      await_input(cli.stdio)
+      Ipse.CLITest.IOFixture.feed(cli.stdio, "choose")
+      {server, 1, _} = await_request(fixture)
+      Ipse.CLITest.HTTPFixture.reply(server, 1, question_body())
+      await_text(cli.stderr, "Pick one")
+      refute_receive {:ollama_request, _, _, _}, 50
+      Ipse.CLITest.IOFixture.feed(cli.stdio, "99")
+      await_text(cli.stderr, "Invalid answer")
+      refute_receive {:ollama_request, _, _, _}, 50
+      Ipse.CLITest.IOFixture.feed(cli.stdio, "1")
+      await_text(cli.stderr, "Pick several")
+      Ipse.CLITest.IOFixture.feed(cli.stdio, "1,2")
+      await_text(cli.stderr, "Provide notes")
+      Ipse.CLITest.IOFixture.feed(cli.stdio, "=/exit")
+      {^server, 2, request} = await_request(fixture)
+      answer = Enum.find(request["messages"], &(&1["role"] == "tool"))
+
+      assert Jason.decode!(answer["content"])["answers"] == %{
+               "one" => "a",
+               "many" => ["a", "b"],
+               "text" => "/exit"
+             }
+
+      refute Ipse.CLITest.IOFixture.output(cli.stderr) =~ "Waiting for approval"
+      Ipse.CLITest.HTTPFixture.reply(server, 2, Ipse.CLITest.HTTPFixture.final_body("answered"))
+      await_text(cli.stderr, "Finished.")
+      Ipse.CLITest.IOFixture.feed(cli.stdio, :eof)
+      assert Task.await(cli.task, 3000) == 0
+    end)
+  end
+
+  test "EOF during operator questions cancels without a default or another model request" do
+    with_fixture_and_cli(fn fixture, cli ->
+      await_input(cli.stdio)
+      Ipse.CLITest.IOFixture.feed(cli.stdio, "choose")
+      {server, 1, _} = await_request(fixture)
+      Ipse.CLITest.HTTPFixture.reply(server, 1, question_body())
+      await_text(cli.stderr, "Pick one")
+      id = session_id(cli.stderr)
+      Ipse.CLITest.IOFixture.feed(cli.stdio, :eof)
+      assert Task.await(cli.task, 3000) == 0
+      {:ok, events} = Ipse.Journal.load(cli.state_dir, id)
+      assert Enum.any?(events, &(&1["type"] == "operator_question_closed"))
+      refute Enum.any?(events, &(&1["type"] == "operator_answer"))
+      refute_receive {:ollama_request, _, _, _}, 50
+    end)
+  end
+
+  test "headless CLI fails required operator input even with yes enabled" do
+    root =
+      Path.join(System.tmp_dir!(), "ipse-headless-question-#{System.unique_integer([:positive])}")
+
+    File.mkdir_p!(root)
+    fixture = Ipse.CLITest.HTTPFixture.start(self())
+
+    try do
+      task =
+        Task.async(fn ->
+          Ipse.CLI.run([
+            "run",
+            "--provider",
+            "ollama",
+            "--model",
+            "test",
+            "--base-url",
+            fixture.url,
+            "--cwd",
+            root,
+            "--state-dir",
+            Path.join(root, "state"),
+            "--yes",
+            "choose"
+          ])
+        end)
+
+      {server, 1, _} = await_request(fixture)
+      Ipse.CLITest.HTTPFixture.reply(server, 1, question_body())
+      assert Task.await(task, 3000) == 1
+      refute_receive {:ollama_request, _, _, _}, 50
+    after
+      Ipse.CLITest.HTTPFixture.stop(fixture)
+      File.rm_rf!(root)
+    end
+  end
+
   defp with_fixture_and_cli(fun), do: with_fixture_and_cli(true, fun)
 
   defp with_fixture_and_cli(trusted?, fun) do

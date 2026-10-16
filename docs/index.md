@@ -20,6 +20,7 @@ start. Use the guides below for operation, development, and project context.
 | [Contributing](../CONTRIBUTING.md) | Contribution scope and handoff requirements |
 | [Agent instructions](../AGENTS.md) | Rules, code map, documentation and commit requirements |
 | [Architecture](developer/architecture.md) | Modules, ownership, persistence, trust boundaries |
+| [Operator questions](developer/operator-questions.md) | Native question schema, explicit answers, approvals and durable recovery |
 | [Context compaction](developer/context-compaction.md) | Preserved context, bounds, checkpoint and recovery contract |
 | [Workspace context](developer/workspace-context.md) | Instruction scope, source bounds, snapshots, and refresh |
 | [Native shell sandbox](developer/sandbox.md) | OS capabilities, fail-closed selection, and platform limits |
