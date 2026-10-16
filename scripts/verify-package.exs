@@ -46,6 +46,14 @@ defmodule Ipse.PackageVerifier do
     File.chmod!(ipse_home, 0o700)
 
     {_output, 0} = System.cmd(tar, ["-xzf", archive, "-C", release], stderr_to_stdout: true)
+    runtime_dirs = File.ls!(release) |> Enum.filter(&String.starts_with?(&1, "erts-"))
+
+    unless length(runtime_dirs) == 1,
+      do:
+        raise(
+          "package must contain exactly one bundled ERTS runtime, found #{length(runtime_dirs)}"
+        )
+
     utility_path = make_utility_path!(utility_path)
 
     for name <- ["erl", "elixir", "mix", "rustc"] do

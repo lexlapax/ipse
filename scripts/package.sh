@@ -3,8 +3,11 @@ set -eu
 cd "$(dirname "$0")/.."
 sh native/build.sh
 MIX_ENV=prod mix deps.get
-MIX_ENV=prod mix release --overwrite
 IPSE_RELEASE=_build/prod/rel/ipse
+# Recreate generated staging so an upgraded toolchain or removed application
+# cannot leave obsolete runtime files in the next archive.
+rm -rf "$IPSE_RELEASE"
+MIX_ENV=prod mix release --overwrite --path "$IPSE_RELEASE"
 cp scripts/release-launcher.sh "$IPSE_RELEASE/ipse"
 chmod +x "$IPSE_RELEASE/ipse"
 cp LICENSE README.md AGENTS.md CONTRIBUTING.md THIRD_PARTY_NOTICES.md "$IPSE_RELEASE/"

@@ -155,8 +155,10 @@ a release, set `IPSE_NOTICES_DIR` to a directory containing the bundled toolchai
 license notices; the packager copies these into `licenses/`. Building on one Linux
 distribution does not establish compatibility with another distribution.
 Inspect that directory in the extracted archive and record the supplied notice
-sources and versions. Repackaging replaces the generated docs and licenses trees
-so deleted material from an earlier build cannot survive there.
+sources and versions. Repackaging recreates the entire generated release staging
+directory, including runtime, applications, docs and licenses. The archive
+verifier requires exactly one ERTS directory; obsolete files from a prior
+toolchain or application set must not survive a rebuild.
 
 ## Live provider acceptance
 
@@ -2178,7 +2180,7 @@ developer entry points distinguish current facilities from proposed behavior.
 
 ## P19 diagnosis and explicit recovery
 
-Implementation verification in progress. Synthetic fixtures reproduce a long
+Implementation verification completed within the scope below. Synthetic fixtures reproduce a long
 single turn whose required native continuation alone exceeds the context ceiling;
 compaction refuses without altering it and exact byte categories explain why.
 The original P18 private Mac transcript is unavailable here, so that live failure's
@@ -2192,8 +2194,8 @@ actual Session refusal path, exact escaped JSON byte accounting, native/content
 secret exclusion, unknown-effect references, complete printed artifact bounds,
 no tail repair, corrupted checkpoint refusal, cancellation and unchanged idle
 resume. The new package fixture checks saved diagnostics and explicit handoff
-export without inference or replay. Hosted Linux/Mac verification follows the
-focused commit; no local Mac run is claimed.
+export without inference or replay. Hosted Linux/Mac results are recorded below;
+no local Mac run is claimed.
 
 The first P19 hosted run passed Linux but failed the existing Mac lost-resource
 fixture's five-second end-to-end receive budget after tool dispatch. It did not
@@ -2201,7 +2203,7 @@ report a false successful result. The fixture now observes dispatch readiness
 separately and allows the configured five-second call lifetime plus bounded
 helper/transport cleanup before asserting error, unknown/not-started outcomes and
 no-replay resume. Protocol timeouts, cleanup and those assertions are unchanged.
-This is a fixture timing repair; hosted rerun is required before claiming a pass.
+This is a fixture timing repair; the hosted rerun below verifies it.
 
 The repaired baseline subsequently [passed Linux and macOS](https://github.com/lexlapax/ipse/actions/runs/38953064513)
 at `8c0a34b`, including native Mac, experimental enforcement and extracted-package
@@ -2220,3 +2222,23 @@ or external service was used. The extracted glibc-2.44 package ran the same
 fixture successfully under isolated HOME and a utility-only PATH, and the full
 native Linux suite passed 340 tests (14 macOS excluded). Live P21 evidence follows;
 the fixture does not prove a model followed every instruction.
+
+## Release staging cleanup after a toolchain upgrade
+
+On 2026-10-16, inspection found that `mix release --overwrite` retained both
+ERTS 17.0.6 and 17.1 after Serenity upgraded OTP. The active launcher selected
+17.1 and functional checks passed, but the old directory remained in the archive
+and the supplied OTP notice collection still described 29.0.6. No archive was
+published. The frozen P21 trial runner was preserved unchanged.
+
+Packaging now recreates only its fixed generated staging directory before release
+assembly. The strengthened verifier rejected the old two-runtime archive. A
+fresh build contained one ERTS runtime and passed all extracted-package fixtures
+under isolated HOME and utility-only PATH. This local build used Elixir 1.20.4,
+OTP 29.1.1/ERTS 17.1 and glibc 2.44. Its external notice collection was refreshed
+from official OTP tag `OTP-29.1.1` (`ad05823719d77c8faee87348ea39513d4e2f99c5`),
+retaining the matched Elixir 1.20.4 collection. It includes upstream license trees,
+authors, ERTS vendor licenses and a header inventory, with explicit source
+provenance. This is notice collection evidence, not legal certification or proof
+of portability to another libc. Hosted packaging verification is recorded with
+the final P21 checks.
