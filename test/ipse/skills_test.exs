@@ -1,5 +1,5 @@
 defmodule Ipse.SkillsTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias Ipse.Skills
 
@@ -91,6 +91,145 @@ defmodule Ipse.SkillsTest do
     assert String.ends_with?(result, content)
     refute File.exists?(Path.join(project_root, "must-not-run"))
     assert {:error, _} = Skills.load_resource(skills, "missing", "references/check.sh")
+  end
+
+  defp install(root, directory, name, body \\ "Inert body") do
+    dir = Path.join(root, directory)
+    File.mkdir_p!(dir)
+    path = Path.join(dir, "SKILL.md")
+    File.write!(path, "---\nname: #{name}\ndescription: #{directory}\n---\n#{body}\n")
+    path
+  end
+
+  test "default discovery uses HOME independently of IPSE_HOME", ctx do
+    previous_home = System.get_env("HOME")
+    previous_ipse = System.get_env("IPSE_HOME")
+    operator = Path.join(ctx.project, "operator-home")
+    System.put_env("HOME", operator)
+    System.put_env("IPSE_HOME", ctx.user)
+
+    on_exit(fn ->
+      System.put_env("HOME", previous_home)
+      System.put_env("IPSE_HOME", previous_ipse)
+    end)
+
+    shared_path =
+      install(Path.join(operator, ".agents/skills"), "shared-default", "shared-default")
+
+    user_path = install(Path.join(ctx.user, "skills"), "ipse-default", "ipse-default")
+    skills = Skills.discover(ctx.project)
+    assert Enum.find(skills, &(&1["name"] == "shared-default"))["path"] == shared_path
+    assert Enum.find(skills, &(&1["name"] == "ipse-default"))["path"] == user_path
+  end
+
+  test "shared skills are discovered in place with all four precedence levels", ctx do
+    operator = Path.join(ctx.user, "operator-home")
+    shared = Path.join(operator, ".agents/skills")
+    project = Path.join(ctx.project, ".agents/skills")
+    shared_path = install(shared, "review", "review")
+    user_path = install(ctx.user, "review", "review")
+    project_path = install(project, "review", "review")
+    opts = [operator_home: operator]
+
+    [selected] =
+      Skills.discover(ctx.project, ctx.user, opts) |> Enum.filter(&(&1["name"] == "review"))
+
+    assert selected["path"] == project_path
+    assert [^user_path, ^shared_path, bundled] = selected["shadowed_paths"]
+    assert String.ends_with?(bundled, "/skills/review/SKILL.md")
+    catalog = Skills.catalog([selected])
+    assert catalog =~ "Source: #{project_path}"
+    assert catalog =~ "Shadowed: #{shared_path}"
+
+    File.rm!(project_path)
+    selected = Enum.find(Skills.discover(ctx.project, ctx.user, opts), &(&1["name"] == "review"))
+    assert selected["path"] == user_path
+    File.rm!(user_path)
+    selected = Enum.find(Skills.discover(ctx.project, ctx.user, opts), &(&1["name"] == "review"))
+    assert selected["path"] == shared_path
+    assert selected["shadowed_paths"] == [bundled]
+    File.rm!(shared_path)
+    selected = Enum.find(Skills.discover(ctx.project, ctx.user, opts), &(&1["name"] == "review"))
+    assert selected["path"] == bundled
+    assert selected["shadowed_paths"] == []
+  end
+
+  test "operator home is independent of Ipse user skills and explicit roots can disable sharing",
+       ctx do
+    operator = Path.join(ctx.project, "operator")
+    shared = Path.join(operator, ".agents/skills")
+    path = install(shared, "only-shared", "only-shared", "touch must-not-run")
+    install(Path.join(ctx.user, ".agents/skills"), "wrong", "wrong-home")
+    skills = Skills.discover(ctx.project, ctx.user, operator_home: operator)
+    assert Enum.find(skills, &(&1["name"] == "only-shared"))["path"] == path
+    refute Enum.any?(skills, &(&1["name"] == "wrong-home"))
+    assert {:ok, loaded} = Skills.load(skills, "only-shared")
+    assert loaded =~ "touch must-not-run"
+    assert loaded =~ "Source: #{path}"
+    assert File.exists?(path)
+    refute File.exists?(Path.join(Path.dirname(path), "must-not-run"))
+    assert {:error, _} = Skills.load(Skills.discover(ctx.project, ctx.user), "only-shared")
+
+    assert {:error, _} =
+             Skills.load(
+               Skills.discover(ctx.project, ctx.user, operator_home: operator, shared_root: nil),
+               "only-shared"
+             )
+
+    assert {:ok, _} =
+             Skills.load(
+               Skills.discover(ctx.project, ctx.user, shared_root: shared),
+               "only-shared"
+             )
+
+    resource = Path.join(Path.dirname(path), "guide.txt")
+    File.write!(resource, "Shared resource, no automatic link traversal")
+    assert {:ok, text} = Skills.load_resource(skills, "only-shared", "guide.txt")
+    assert text =~ "Source: #{resource}"
+    assert text =~ "SHA-256:"
+    File.ln_s!(resource, Path.join(Path.dirname(path), "alias.txt"))
+    assert {:error, _} = Skills.load_resource(skills, "only-shared", "alias.txt")
+    assert {:error, _} = Skills.load_resource(skills, "only-shared", "../guide.txt")
+  end
+
+  test "root aliases deduplicate canonical files but retain deterministic selected provenance",
+       ctx do
+    shared = Path.join(ctx.user, "shared")
+    path = install(shared, "a", "alias-fixture")
+    alias_root = Path.join(ctx.user, "alias")
+    File.ln_s!(shared, alias_root)
+    skills = Skills.discover(ctx.project, alias_root, shared_root: shared)
+    selected = Enum.find(skills, &(&1["name"] == "alias-fixture"))
+    assert selected["path"] == Path.join(alias_root, "a/SKILL.md")
+    assert selected["canonical_path"] == path
+    assert selected["shadowed_paths"] == []
+    assert skills == Skills.discover(ctx.project, alias_root, shared_root: shared)
+    File.write!(Path.join(shared, "a/guide.txt"), "root alias works")
+    assert {:ok, text} = Skills.load_resource(skills, "alias-fixture", "guide.txt")
+    assert text =~ "root alias works"
+
+    File.ln_s!(Path.join(shared, "a"), Path.join(shared, "b"))
+    # Directory aliases are accepted for metadata, but cannot be resource roots.
+    skill_alias = Map.put(selected, "path", Path.join(shared, "b/SKILL.md"))
+    assert {:error, _} = Skills.load_resource([skill_alias], "alias-fixture", "guide.txt")
+  end
+
+  test "shared discovery skips malformed oversized and invalid UTF-8 files", ctx do
+    shared = Path.join(ctx.user, "shared")
+    good = install(shared, "good", "valid-shared")
+    bad = install(shared, "bad", "bad-shared")
+    huge = install(shared, "huge", "huge-shared")
+    invalid = install(shared, "invalid", "invalid-shared")
+    File.write!(bad, "---\nname: bad-shared\n---\nNo description")
+    File.write!(huge, String.duplicate("x", 65_537))
+    File.write!(invalid, <<255>>)
+    skills = Skills.discover(ctx.project, ctx.user, shared_root: shared)
+    assert Enum.find(skills, &(&1["name"] == "valid-shared"))["path"] == good
+    refute Enum.any?(skills, &(&1["name"] in ["bad-shared", "huge-shared", "invalid-shared"]))
+    File.write!(good, String.duplicate("x", 65_537))
+    assert {:error, _} = Skills.load(skills, "valid-shared")
+    File.write!(good, <<255>>)
+    assert {:error, _} = Skills.load(skills, "valid-shared")
   end
 
   test "resource reads reject escapes, sensitive names, symlinks, invalid text and excess bytes",

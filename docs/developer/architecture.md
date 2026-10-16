@@ -109,7 +109,8 @@ credential/environment dumps and do not grant extra roots. See
 
 
 The system message describes the workspace and available skill metadata.
-Project skills override user and bundled skills. A skill is plain instruction
+Project skills override Ipse user, shared operator, and bundled skills, in that
+order. A skill is plain instruction
 text: loading it never executes scripts and does not grant tool permission.
 `AGENTS.md` is also included when present. Explicit `$skill-name` references
 load the matching skill into the user turn.
@@ -197,6 +198,42 @@ keeps its existing wire shape. Subscription endpoints are pinned below the CLI;
 only test-compiled code permits loopback fixtures. Provider errors redact the
 active credential and stop the turn; the CLI clears queued requests visibly.
 
+## Skill discovery
+
+`Skills.discover(cwd)` scans project `.agents/skills`, Ipse user skills
+(`IPSE_HOME/skills`, default `~/.ipse/skills`), shared operator
+`HOME/.agents/skills` (VM user home fallback), then bundled skills. Shared home
+is independent of Ipse's data/auth home. Existing `discover(cwd, user_dir)`
+callers remain compatible and isolated: this form does not scan a personal
+shared root. `discover(cwd, user_dir, operator_home: path)` enables that home's
+`.agents/skills`; `shared_root: path` overrides the derived root, and
+`shared_root: nil` explicitly disables it. No directories are installed/copied.
+
+Sessions accept `:operator_home` and `:shared_root` in their config. An explicit
+`:home` or `IPSE_HOME` without a separate shared-root/operator-home input disables
+implicit shared discovery for embedding/fixtures. The CLI explicitly supplies
+`Skills.operator_home/0`, so CLI users retain shared discovery when redirecting
+`IPSE_HOME`. Delegated children inherit these inputs with their parent config;
+this does not redirect auth or add configuration-file loading.
+
+Candidates within a root use wildcard path order; the first valid document for a
+metadata name wins in root-priority order, and the result list sorts by name.
+Each selected descriptor retains its expanded source `path`, `canonical_path`,
+SHA-256 and lower-priority distinct `shadowed_paths`. Catalogs show source,
+digest and shadows. Canonical-file identity deduplicates aliases before name
+selection; aliases to the same file are not distinct shadows. This is not inode
+hardlink deduplication. `load/2` reads current bytes with a fresh digest rather
+than pinning the catalog's discovery-time bytes.
+
+Only single-line name/description frontmatter is supported, not full YAML or
+arbitrary shared skill metadata. Discovery skips malformed, unreadable, invalid
+UTF-8 and over-64-KiB documents. Metadata and skill-body reads retain their
+existing symlink-following behavior; canonicalization is not a trust/race-proof
+boundary. Resource reads keep their stricter directory/entry symlink exclusions
+and 32-KiB bounds below. Skill bodies/resources remain inert until explicitly
+loaded; even loading grants no execution, installation or tool permissions.
+Tests isolate HOME and IPSE_HOME before default CLI/session discovery.
+
 ## Skill resources
 
 `Skills.load_resource/3` resolves one explicit name/path against the selected
@@ -264,14 +301,14 @@ structured-question candidate. Neither adds runtime functionality by itself.
 ## Planned configuration and profile boundaries
 
 Current CLI configuration derives one provider/model from flags/environment and
-copies it into child policy. `Skills.discover/2` scans project `.agents/skills`,
-the Ipse user skill directory and bundled skills; it does not scan shared
-operator `~/.agents/skills`. Project `.ipse/config.*` and provider-specific
-reasoning settings have no runtime loader/mapping today.
+copies it into child policy. `Skills.discover/1,2,3` now supports shared operator
+skills with explicit isolation inputs; see [skill discovery](#skill-discovery).
+Project `.ipse/config.*` and provider-specific reasoning settings still have no
+runtime loader/mapping.
 
-[P15](../plan.md#p15-scoped-configuration-and-shared-operator-skills) specifies
-separate scoped data configuration and shared skill discovery. Preserve `.ipse`
-sensitive-resource exclusions when introducing a dedicated config loader.
+[P15](../plan.md#p15-scoped-configuration-and-shared-operator-skills) is partial:
+shared discovery is implemented, separate scoped data configuration remains.
+Preserve `.ipse` sensitive-resource exclusions when introducing a dedicated config loader.
 [P16](../plan.md#p16-explicit-model-profiles-and-task-routing) specifies validated
 profile IDs and credential/native-continuation isolation for mixed-model children.
 Configuration, skill instructions, model suggestions and operator permissions

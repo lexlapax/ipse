@@ -300,15 +300,27 @@ for these host facts; a natural-language self-description can still be wrong.
 ## Skills
 
 
-Put local skills under `.agents/skills/<name>/SKILL.md` or
-`~/.ipse/skills/<name>/SKILL.md`. Project definitions override user and bundled
-definitions with the same name. `review` and `project-orientation` are bundled.
+Skills are discovered in place (no copying or installation), in this same-name
+precedence order:
+
+1. Project `.agents/skills/<name>/SKILL.md`
+2. Ipse user `IPSE_HOME/skills/<name>/SKILL.md` (default `~/.ipse/skills`)
+3. Shared operator `~/.agents/skills/<name>/SKILL.md`
+4. Bundled skills
+
+The shared operator home comes from `HOME` (VM user home fallback), independently
+of `IPSE_HOME`. Redirecting Ipse data/auth with `IPSE_HOME` does not relocate the
+CLI's shared skill root. Discovery never changes authentication or writes shared
+installations. `ipse skills` and `/skills` report the selected source, SHA-256,
+and shadowed paths. Canonical-file aliases are deduplicated rather than reported
+as separate shadows. Selection is deterministic; malformed/oversized/invalid
+UTF-8 documents are skipped. `review` and `project-orientation` are bundled.
 Use the latter for [project assessment](#working-with-the-agent).
 
-Shared operator `~/.agents/skills/` is not currently discovered automatically.
-[P15](../plan.md#p15-scoped-configuration-and-shared-operator-skills) requires
-support alongside the current roots, with explicit precedence and source
-provenance. This is planned behavior; current discovery has not changed.
+For embedding and isolated fixtures, see the explicit root inputs and session
+isolation rules in the [developer contract](../developer/architecture.md#skill-discovery).
+[P15](../plan.md#p15-scoped-configuration-and-shared-operator-skills) remains
+partial: scoped configuration is not implemented.
 
 ```markdown
 ---
@@ -319,7 +331,14 @@ description: Review changes for correctness and missing tests.
 Read the diff and surrounding code. Report actionable findings with file locations.
 ```
 
-Version 0.1 accepts simple single-line frontmatter values for name and description.
+Version 0.1 accepts simple single-line frontmatter values for name and description,
+not full YAML or arbitrary skill metadata. Skill documents are bounded to 64 KiB.
+Metadata discovery and skill loads can follow filesystem symlinks; canonical
+identity deduplicates aliases, but is not an installation trust check or a
+race-proof filesystem boundary. Resource loading remains stricter: the selected
+skill directory and resource entries cannot be symlinks (root-path aliases such
+as macOS `/var` are canonicalized). Discovery does not establish compatibility
+with every shared skill format or authorize referenced scripts.
 Only metadata enters the initial context. The model can call `load_skill`; `$review`
 explicitly loads a skill into the next user turn. Loaded content includes its path
 and SHA-256. No script is executed by loading a skill, and skills grant no permissions.
@@ -420,8 +439,9 @@ task-role routing or configurable reasoning-effort setting. Children use the
 parent's provider/model. Redirecting `IPSE_HOME` changes Ipse's data/auth location;
 it does not load a project configuration file.
 
-[P15](../plan.md#p15-scoped-configuration-and-shared-operator-skills) plans scoped
-configuration and shared operator skills; [P16](../plan.md#p16-explicit-model-profiles-and-task-routing)
-plans named main/routine/review profiles and explicitly permitted mixed-model
-execution. Neither is implemented. Skills can guide task selection but cannot
-change host provider/billing/approval policy themselves.
+[P15](../plan.md#p15-scoped-configuration-and-shared-operator-skills) has implemented
+shared operator skill discovery, but scoped data configuration remains planned;
+[P16](../plan.md#p16-explicit-model-profiles-and-task-routing) plans named
+main/routine/review profiles and explicitly permitted mixed-model execution.
+Configuration loading and routing are not implemented. Skills can guide task
+selection but cannot change host provider/billing/approval policy themselves.

@@ -66,7 +66,12 @@ defmodule Ipse.Session do
         reported_model: nil,
         historical_model: historical_model(events),
         subscriber: Keyword.fetch!(opts, :subscriber),
-        skills: Skills.discover(cwd, Path.join(Path.expand(home), "skills")),
+        skills:
+          Skills.discover(
+            cwd,
+            Path.join(Path.expand(home), "skills"),
+            skill_discovery_options(config)
+          ),
         messages: messages,
         compaction: nil,
         tool_decision: "not_decided",
@@ -98,6 +103,16 @@ defmodule Ipse.Session do
       false -> {:stop, :workspace_not_found}
       {:error, reason} -> {:stop, reason}
     end
+  end
+
+  # Explicit application homes are commonly isolation fixtures. Shared discovery
+  # requires a separate opt-in in that case; the CLI supplies the operator home.
+  defp skill_discovery_options(config) do
+    isolated_home? = Map.get(config, :home) || System.get_env("IPSE_HOME")
+    default = if isolated_home?, do: nil, else: Skills.operator_home()
+
+    [operator_home: Map.get(config, :operator_home, default)] ++
+      if(Map.has_key?(config, :shared_root), do: [shared_root: config.shared_root], else: [])
   end
 
   @impl true

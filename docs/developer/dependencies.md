@@ -238,3 +238,10 @@ Ipse runtime, build, test, CI, packaging or helper dependencies. Ipse itself sti
 has no Python or JavaScript runtime/tooling dependency. Independent HTTP checks
 and trial orchestration used existing Elixir/OTP; existing Chromium was used only
 for local visual inspection. See [trial evidence](testing.md#p13-neutral-stack-coding-trial-2026-10-16).
+
+### Shared operator skills
+
+Shared discovery reuses existing Elixir path/filesystem functions, canonical-path
+handling and SHA-256. It installs or copies no shared skills and adds no package,
+metadata parser, script runner or permission mechanism. The supported frontmatter
+subset remains explicit in the skill discovery contract.

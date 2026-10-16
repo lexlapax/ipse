@@ -46,7 +46,7 @@ billing, credentials and external-effect invariants still apply.
 
 | Order | Work | Status |
 | --- | --- | --- |
-| 1 | Supervised self-development using stable Ipse to add P15 shared operator skills | In progress in isolated worktree; independent review pending |
+| 1 | Supervised self-development using stable Ipse to add P15 shared operator skills | Implemented and independently verified; integrating into main |
 | 2 | P17 structured operator questions | Verified feature branch `5984d09`; integration follows shared-skills review |
 | 3 | Remaining P15 scoped configuration | Pending |
 | 4 | P16 explicit model profiles/routing | Pending |
@@ -692,12 +692,23 @@ it remains unavailable until that stage passes its checks.
 ## P15: scoped configuration and shared operator skills
 
 Added at the developer's request and authorized on 2026-10-16. Status: shared
-operator skill implementation/self-development trial in progress; scoped config
-queued after P17.
-Ipse currently uses CLI/environment settings and `~/.ipse` (or `IPSE_HOME`) for
+operator discovery implemented and independently reviewed in the isolated
+worktree; source/native demo and extracted package passed, integration pending. Scoped config is queued
+after P17; P15 as a whole remains incomplete.
+
+Shared discovery now uses project > Ipse user > shared operator > bundled
+precedence, explicit `operator_home`/`shared_root` isolation inputs, canonical-file
+deduplication, and selected source/digest plus shadowed-path reporting. No shared
+installation is copied or changed. See the
+[developer contract](developer/architecture.md#skill-discovery),
+[operator guide](operator/usage.md#skills) and
+[source evidence](developer/testing.md#p15-shared-operator-skills-2026-10-16).
+
+Ipse still uses CLI/environment settings and `~/.ipse` (or `IPSE_HOME`) for
 state, authentication, global instructions and Ipse-specific user skills. It does
-not automatically load operator/project configuration files, project/directory
-`.ipse/config.*`, or shared operator `~/.agents/skills/`. Existing project
+not automatically load operator/project configuration files or project/directory
+`.ipse/config.*`. Shared skills do not add full YAML/metadata support,
+configuration loading, routing or structured questions. Existing project
 `.agents/skills/` and applicable `AGENTS.md` discovery remain supported.
 
 Acceptance:
@@ -721,7 +732,7 @@ Acceptance:
    from general instruction/resource loading or expose auth/session contents.
 4. Discover shared **`~/.agents/skills/<name>/SKILL.md`** in addition to current
    project `.agents/skills/`, Ipse-specific user skills and bundled skills.
-   Proposed same-name precedence: project `.agents/skills` > Ipse-specific
+   Implemented same-name precedence: project `.agents/skills` > Ipse-specific
    `IPSE_HOME/skills` (default `~/.ipse/skills`) > operator `~/.agents/skills` >
    bundled. Shared operator discovery follows the operator home, independently of
    the Ipse state directory. Report selected/shadowed paths and retain provenance;
