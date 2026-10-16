@@ -1795,3 +1795,20 @@ choice feedback (absent), and action approval. The related structured-question
 proposal is a candidate, not an implementation milestone selected by this audit.
 Documentation links/anchors and CLI help/examples are the relevant checks;
 no runtime tests or paid inference are required for this planning-only change.
+
+## Scoped configuration, shared skills and routing plan, 2026-10-16
+
+Documentation-only planning update requested by the developer. P15 records
+operator/project/directory configuration and required shared operator
+`~/.agents/skills/` discovery with explicit precedence/provenance; P16 records
+named model profiles, reasoning settings and bounded mixed-provider delegation.
+No config parser, skill root, profile setting, adapter or dependency changed.
+
+Rechecked current skill discovery, CLI provider/model configuration, child policy
+inheritance and OpenAI request construction. Current code does not automatically
+scan shared operator skills or project `.ipse/config.*`, route task roles to
+other models, or forward a configurable reasoning-effort field. Operator and
+developer guidance distinguish these gaps from the planned contracts. Relevant
+verification is CLI help, documentation file/anchor checks and diff whitespace;
+no new runtime tests, live inference or access to installed personal skills are
+needed for this documentation-only update.

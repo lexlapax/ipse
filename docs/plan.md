@@ -20,6 +20,8 @@ the next feature sequence on 2026-10-15:
 | [P12](#p12-task-tracker-coding-trial) | New forms/SQLite task tracker | Specified-stack coding trial complete |
 | [P13](#p13-long-turn-compaction-and-general-purpose-trials) | Long-turn context recovery and neutral coding/non-coding trials | Complete within documented scope |
 | [P14](#p14-bounded-deep-research) | Research method, explicit search/retrieval, evidence and validation | Planned; implementation and live research trial not started |
+| [P15](#p15-scoped-configuration-and-shared-operator-skills) | Operator/project/directory configuration and shared skills | Planned; implementation not started |
+| [P16](#p16-explicit-model-profiles-and-task-routing) | Main/subtask model profiles and provider-specific settings | Planned; implementation and mixed-model live trial not started |
 
 Feature completion does not close every live provider acceptance check. On
 2026-10-15, installed Ollama `qwen3.5:9b`, Anthropic `claude-haiku-4-5`, and
@@ -664,3 +666,104 @@ not confer approval, execute an action or leave a model request running. Keep
 questions separate from permission prompts, validate stale/duplicate answers,
 and define how child questions reach the parent operator before enabling them.
 This is a recorded candidate, not an implemented or selected feature milestone.
+
+## P15: scoped configuration and shared operator skills
+
+Added at the developer's request on 2026-10-16. Status: planned, not implemented.
+Ipse currently uses CLI/environment settings and `~/.ipse` (or `IPSE_HOME`) for
+state, authentication, global instructions and Ipse-specific user skills. It does
+not automatically load operator/project configuration files, project/directory
+`.ipse/config.*`, or shared operator `~/.agents/skills/`. Existing project
+`.agents/skills/` and applicable `AGENTS.md` discovery remain supported.
+
+Acceptance:
+
+1. Define one bounded, versioned, data-only configuration schema for operator
+   defaults and project/directory `.ipse/` settings. Evaluate existing Elixir/OTP
+   and maintained Mix packages before choosing format/parsing machinery; reuse
+   current Jason if JSON is suitable. Document exact filenames and supported
+   fields before implementation examples are presented as usable commands.
+2. Define deterministic setting precedence: built-in defaults, operator config,
+   trusted project config, nearer trusted directory config, environment, then
+   explicit CLI overrides. Keep directory discovery within the selected workspace/
+   repository boundary; do not silently inherit unrelated parent-project policy.
+   Preserve explicit user overrides and show effective values with their sources.
+3. Treat discovered repository configuration as untrusted until applicable
+   operator authorization is established. Configuration files must not silently
+   change billing/provider, enable MCP/delegation, weaken approvals/sandbox, run
+   scripts, or expand filesystem roots. Keep credentials in protected auth storage
+   or explicit secret references, not committed project config or model context.
+   The dedicated config loader must not remove `.ipse` sensitive-path exclusions
+   from general instruction/resource loading or expose auth/session contents.
+4. Discover shared **`~/.agents/skills/<name>/SKILL.md`** in addition to current
+   project `.agents/skills/`, Ipse-specific user skills and bundled skills.
+   Proposed same-name precedence: project `.agents/skills` > Ipse-specific
+   `IPSE_HOME/skills` (default `~/.ipse/skills`) > operator `~/.agents/skills` >
+   bundled. Shared operator discovery follows the operator home, independently of
+   the Ipse state directory. Report selected/shadowed paths and retain provenance;
+   avoid duplicate discovery of the same canonical source. Honor supported skills
+   without copying or modifying their installation directories.
+5. Verify supported frontmatter/resource compatibility with isolated skill trees;
+   report unsupported metadata rather than claiming universal format support.
+   Document and test path-alias/symlink handling without weakening existing
+   resource restrictions. Loading any skill remains bounded, explicit and inert:
+   no script execution, dependency installation or permission grants. Shared
+   resources stay bound to their selected skill source and normal journal rules.
+6. Fixture checks cover missing/malformed/oversized config, unknown fields,
+   precedence and nested boundaries, duplicate/shared skills, secret exclusion,
+   CLI/environment overrides and resume/refresh behavior. Persist the effective
+   non-secret configuration/provenance needed for reproducibility; changed
+   execution policy must not silently alter a resumed session. Isolate operator
+   HOME and `IPSE_HOME` in tests so installed personal skills/auth are never read.
+   Review operator/developer docs, map and links; run appropriate source/package
+   checks, then commit/push the completed focused increments.
+
+## P16: explicit model profiles and task routing
+
+Added at the developer's request on 2026-10-16. Status: planned, not implemented.
+Current sessions select one provider/model from CLI/environment; children inherit
+that choice, and configurable reasoning effort is not exposed or forwarded.
+The intended use is a stronger main model with an explicitly chosen smaller local
+model for suitable routine subtasks. P15 supplies persistent configuration; this
+milestone supplies host-enforced profiles/routing, not a mandatory task pipeline.
+
+Acceptance:
+
+1. Add named, validated execution profiles with provider, model, supported
+   provider-specific reasoning settings, context/step/timeout limits and credential
+   references. Separate ChatGPT subscription and OpenAI API billing identities.
+   Validate reasoning settings against documented provider/model capabilities;
+   reject unsupported settings instead of silently ignoring them or inventing
+   model-name suffixes. Review current public provider documentation when wiring
+   these settings into each adapter.
+2. Support explicit role assignments such as `main`, `routine` and `review`, with
+   optional separately configured summary routing. Preserve the existing single-
+   provider behavior when routing is absent. A model may propose only operator-
+   configured profile IDs; it may not invent endpoints, credentials, billing modes
+   or arbitrary provider overrides. Skills may recommend a task/profile but the
+   harness validates and enforces the configured choice.
+3. Permit a selected main profile and a different bounded child profile, including
+   ChatGPT subscription parent plus local Ollama child. Keep child conversations,
+   credentials and journals separate, pass only approved task/context, and never
+   replay one provider's opaque continuation fields into another provider. Keep
+   independent parent/child approvals, ownership/cancellation, step budgets and
+   current no-recursive-delegation/no-child-MCP boundaries. Treat child output as
+   untrusted evidence for the parent to check before acting on it.
+4. Display and journal the actual role/profile/provider/requested model/settings
+   and available usage metadata for each execution, preserving reported-model
+   identity separately. Make routing and credential/data-transfer boundaries
+   visible before execution. Default to reporting unavailable/failed profiles;
+   any fallback must be explicitly configured/authorized, bounded and visible.
+   Never silently escalate a local task to paid inference or change billing mode.
+5. Fixture tests cover precedence, role/profile validation, every adapter's request
+   mapping, unsupported reasoning options, missing credentials, failure without
+   unapproved fallback, native-payload isolation, cancellation, resume and unknown
+   effect outcomes. Run a bounded live stronger-parent/local-child trial under
+   explicit account/provider authorization and independently verify actual routing
+   and results. Verify `high` reasoning separately only where the public interface
+   and selected account/model support it. Keep credential-free fixtures/demo and
+   record untested providers/settings honestly.
+6. Update operator configuration/examples and developer trust/provider/delegation
+   contracts before declaring an increment complete. Document any added dependency
+   in the inventory. Complete relevant source/package checks and commit/push;
+   profile configuration and skills must never become implicit permission grants.

@@ -305,6 +305,11 @@ Put local skills under `.agents/skills/<name>/SKILL.md` or
 definitions with the same name. `review` and `project-orientation` are bundled.
 Use the latter for [project assessment](#working-with-the-agent).
 
+Shared operator `~/.agents/skills/` is not currently discovered automatically.
+[P15](../plan.md#p15-scoped-configuration-and-shared-operator-skills) requires
+support alongside the current roots, with explicit precedence and source
+provenance. This is planned behavior; current discovery has not changed.
+
 ```markdown
 ---
 name: review
@@ -406,3 +411,17 @@ make those runtimes dependencies of Ipse.
 Authentication and provider requests share a bounded limit of 64 simultaneous
 HTTP clients per running Ipse application. If clients are busy, retry after
 another request finishes. Each request's connection and proxy state is isolated.
+
+## Planned configuration and model routing
+
+Current provider/model selection uses `--provider`, `--model`, `IPSE_PROVIDER`
+and `IPSE_MODEL`. There is no automatic operator/project `.ipse/config.*` loader,
+task-role routing or configurable reasoning-effort setting. Children use the
+parent's provider/model. Redirecting `IPSE_HOME` changes Ipse's data/auth location;
+it does not load a project configuration file.
+
+[P15](../plan.md#p15-scoped-configuration-and-shared-operator-skills) plans scoped
+configuration and shared operator skills; [P16](../plan.md#p16-explicit-model-profiles-and-task-routing)
+plans named main/routine/review profiles and explicitly permitted mixed-model
+execution. Neither is implemented. Skills can guide task selection but cannot
+change host provider/billing/approval policy themselves.

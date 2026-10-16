@@ -260,3 +260,19 @@ implemented. Keep this distinct from approval and from any future UI integration
 
 [P14](../plan.md#p14-bounded-deep-research) records research work and a related
 structured-question candidate. Neither adds runtime functionality by itself.
+
+## Planned configuration and profile boundaries
+
+Current CLI configuration derives one provider/model from flags/environment and
+copies it into child policy. `Skills.discover/2` scans project `.agents/skills`,
+the Ipse user skill directory and bundled skills; it does not scan shared
+operator `~/.agents/skills`. Project `.ipse/config.*` and provider-specific
+reasoning settings have no runtime loader/mapping today.
+
+[P15](../plan.md#p15-scoped-configuration-and-shared-operator-skills) specifies
+separate scoped data configuration and shared skill discovery. Preserve `.ipse`
+sensitive-resource exclusions when introducing a dedicated config loader.
+[P16](../plan.md#p16-explicit-model-profiles-and-task-routing) specifies validated
+profile IDs and credential/native-continuation isolation for mixed-model children.
+Configuration, skill instructions, model suggestions and operator permissions
+remain different boundaries. These are planned contracts, not implemented APIs.
