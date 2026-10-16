@@ -23,7 +23,7 @@ the next feature sequence on 2026-10-15:
 | [P15](#p15-scoped-configuration-and-shared-operator-skills) | Operator/project/directory configuration and shared skills | Complete within documented scope |
 | [P16](#p16-explicit-model-profiles-and-task-routing) | Main/subtask model profiles and provider-specific settings | Complete within documented scope |
 | [P17](#p17-structured-operator-questions) | Validated operator questions and resumable answers | Complete within documented scope |
-| [P18](#p18-supervised-self-development-on-the-operators-mac) | Second supervised trial using the combined harness on macOS | Local Mac checks and review passed; publication authorized, CI pending |
+| [P18](#p18-supervised-self-development-on-the-operators-mac) | Second supervised trial using the combined harness on macOS | Complete within documented supervised scope; local and hosted checks passed |
 
 Feature completion does not close every live provider acceptance check. On
 2026-10-15, installed Ollama `qwen3.5:9b`, Anthropic `claude-haiku-4-5`, and
@@ -844,7 +844,7 @@ Acceptance:
 
 ## P18: supervised self-development on the operator's Mac
 
-The local supervised Mac trial ran on 2026-10-16. Ipse authored the uncommitted
+The local supervised Mac trial ran on 2026-10-16. Ipse authored the
 `sessions --json` implementation, eight isolated regressions, CLI help and
 operator/developer guidance from a frozen `ee50392` runner. Independent source,
 Mac native and extracted-package checks passed, as did a bounded read-only review.
@@ -862,8 +862,11 @@ updates without changing Ipse's source or tests. See the
 [local evidence](developer/testing.md#p18-macos-supervised-self-development-evidence).
 
 The operator delegated final review and publication to the supervisor after the
-local results were presented. P18 remains open for publication, Linux/macOS CI
-and merge; no new hosted result is claimed yet.
+local results were presented. PR [#1](https://github.com/lexlapax/ipse/pull/1)
+merged after the exact candidate passed hosted Linux and macOS checks for both
+push and pull-request runs. P18 is complete within this supervised trial's
+documented scope. The context, child-budget and live-account limitations above
+and in the evidence record remain.
 
 Acceptance:
 

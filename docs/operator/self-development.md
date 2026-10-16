@@ -3,9 +3,9 @@
 This is the P18 operator runbook. The local Mac trial on 2026-10-16 produced an
 Ipse-authored `sessions --json` candidate with passing independent source,
 Mac native and extracted-package checks and a completed bounded review. The operator
-subsequently delegated final review and publication to the supervisor. CI and
-merge remain pending. Keep the running harness
-separate from its target. See the
+subsequently delegated final review and publication to the supervisor. PR #1
+merged after hosted Linux/macOS CI passed. P18 is complete within this supervised
+trial's documented scope. Keep the running harness separate from its target. See the
 [local evidence](../developer/testing.md#p18-macos-supervised-self-development-evidence).
 
 ## Selected change and completion criteria

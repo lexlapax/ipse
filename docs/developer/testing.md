@@ -2041,13 +2041,14 @@ code and no new local dependency is introduced.
 
 ## P18 macOS supervised self-development evidence
 
-Local execution and independent checks passed on 2026-10-16. Ipse stopped before
-committing on `codex/trial-macos-self-development`. After receiving the results,
-the operator delegated final review and publication to the supervisor. Publication,
-Linux/macOS CI and merge remain pending. P18 is not marked complete. Follow the
-[operator procedure](../operator/self-development.md).
+Local execution, independent review, publication and hosted CI passed on
+2026-10-16. Ipse stopped before committing on `codex/trial-macos-self-development`.
+After receiving the results, the operator delegated final review and publication
+to the supervisor. PR #1 merged after Linux/macOS CI passed for the exact
+candidate. P18 is complete within this supervised trial's documented scope.
+Follow the [operator procedure](../operator/self-development.md).
 
-The original `main` checkout was clean and stayed unchanged. Fetch confirmed
+During the local trial, the original `main` checkout was clean and unchanged. Fetch confirmed
 `origin/main` at `ee50392e87b9f9958b81066707fa777e61c0ac72`. The detached
 `ipse-stable-macos` runner and separate `ipse-selfdev-macos` candidate both began
 at that commit. The stable checkout stayed clean. Host versions were macOS 26.7.2
@@ -2139,5 +2140,26 @@ existing map/ownership. Local file and heading checks passed for 48 Markdown
 files and 442 links; all eight edited runbook shell blocks parsed with `sh -n`.
 Private transcripts and auth remain excluded. At the initial local handoff, no
 commit, push, PR, new hosted CI run or merge had occurred. Publication evidence
-will be recorded separately. No local Linux execution or stronger detached-process
+appears below. No local Linux execution or stronger detached-process
 diagnostic is claimed.
+
+### P18 publication and CI, 2026-10-16
+
+The supervisor committed the seven reviewed source/test/documentation files as
+`d8a7fd8bde675d7fa409b5aeb1fb24ef2b326641` and published
+[PR #1](https://github.com/lexlapax/ipse/pull/1). Both the
+[push workflow](https://github.com/lexlapax/ipse/actions/runs/38944044532) and
+[pull-request workflow](https://github.com/lexlapax/ipse/actions/runs/38944101262)
+completed successfully for that exact candidate, with Linux and macOS jobs in
+each run. The jobs included source formatting/compilation/tests, demos and
+extracted-package verification. The Mac jobs also ran native policy unit tests,
+native/stdio enforcement fixtures and the default experimental enforcement probe.
+Those hosted checks supplement the local Mac evidence above.
+
+PR #1 merged as `d14e78195b76f5df768fd581d19299bdbc5c1e9c`. The original checkout
+advanced by fast-forward after its clean state was confirmed. The frozen runner
+remained at `ee50392`.
+The completion update changes documentation only; the implementation and tests
+retain the hashes verified during the local trial. No credentials or private
+journals were committed, no archive was released, and no local Linux or stronger
+detached-descendant diagnostic is claimed.
