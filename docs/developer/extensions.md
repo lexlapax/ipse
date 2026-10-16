@@ -177,6 +177,176 @@ framework simply to express a few module/process transitions.
 
 ## P22 completion evidence
 
+### Core boundary and SDK coverage
+
+The goal is that a new domain feature adds an extension package, configuration,
+documentation and extension tests, without edits under `lib/ipse/` or `native/`.
+Core owns the generic interfaces and safety invariants. Extensions own feature
+policy and implementation. This is a measurable acceptance rule, not a guarantee
+that future core defects or genuinely new host capabilities never need fixes.
+An API gap needs a reviewed, general host capability with its own invariants;
+do not add a feature-name conditional to Session or the CLI to work around it.
+
+| Feature | Required generic SDK surface | Host retains |
+| --- | --- | --- |
+| Prompt preprocessing | Ordered prompt annotation/projection | Original intent, bounds, source identity, admission and durable projection |
+| Output postprocessing | Completed presentation projection | Original model message/native continuation and streaming semantics |
+| Custom tools | Static descriptor/schema registration and owned invocation | Catalog collision checks, argument validation, full approval, intent and outcomes |
+| Operator commands/forms | Namespaced command registration and existing structured-question API | Parsing, terminal lifecycle, stale-answer checks and permission separation |
+| Long-term memory | Bounded context contributions, namespaced storage and approved effect proposals | Scope/locks, snapshot provenance, context budget and no replay |
+| Customized workflows | Bounded host-action proposals at admission or before settlement | Cancellation, step/time budgets, child ownership, approvals and unknown-effect stop |
+| Research integrations | Custom tools plus attributable context/source contributions | Research ledger validation, citations/provenance and effect policy |
+| Optional provider integration | Registered provider-adapter contract with capability declaration | Explicit profile/model/billing selection, credential resolution and wire continuation integrity |
+| Debugging/tracing | Sanitized lifecycle events, snapshots and diagnostic sinks | Private journal integrity, secret exclusion, quotas and owner cleanup |
+
+These surfaces belong in one small SDK with independently versioned contracts,
+not one arbitrary callback that receives a Session PID and private state. Publish
+behaviours, closed request/result schemas, fixtures and conformance helpers.
+Registration rejects duplicate IDs, builtin shadowing, unsupported required
+capabilities and unbounded descriptors before a session starts. Use namespaced
+tool/command IDs; route through generic host dispatch, rather than new CLI cases
+per extension. A provider registration is a later SDK capability: it must reuse
+the existing public-interface and explicit billing rules, and cannot redirect a
+configured request as a fallback. P22 need not rewrite existing provider adapters
+merely to demonstrate the first examples.
+
+### Context, state and effects
+
+Proposed version-1 result contracts should be closed schemas, not arbitrary
+maps interpreted differently by each caller:
+
+| Invocation | Accepted result | Commit/use boundary |
+| --- | --- | --- |
+| Registration | IDs, SDK/capabilities, descriptors, scopes, option schema | Validate once before activation; no session effects |
+| Observation | `:ok` only | Never changes context/actions; ephemeral diagnostic state only |
+| Prompt admission | `continue` or bounded attributed annotation/projection | Save original and validated projection before inference |
+| Context contribution | List of bounded text/source/version contributions | Select within declared budgets and journal the selected snapshot |
+| Completed presentation | Bounded visible text plus format/provenance | Save after original response; label display and preserve continuation |
+| Tool invocation | Recorded result or typed failed/unknown outcome | Host validates full arguments, approves and syncs intent before execution |
+| Operator command | Informational display or typed host-action proposals | Action proposals use ordinary approval/question/intent paths |
+| Before settlement | `settle` or finite typed action list | Validate remaining budgets and current phase before scheduling |
+
+Each envelope includes `api_version`, event ID, session/turn/call correlation,
+stage, monotonic timestamp, fixed outcome category and an allowlisted payload.
+Each durable projection additionally pins adapter/config/build identity and
+input/output digests. Tool/context text is private capability data, not part of
+the sanitized observational envelope. Unknown result keys/kinds fail validation;
+no returned command string is implicitly executed. Any policy veto may reduce
+capabilities only. It cannot grant approval, rewrite already reviewed arguments,
+change credential/provider selection or erase unknown outcomes.
+
+Serialize stateful invocations per adapter/session, keeping slow work in an owned
+worker and versioning the state snapshot committed with a derived projection.
+Observers use a separate bounded channel and cannot mutate that durable state.
+Do not promise exactly-once callback invocation across a crash: only committed
+results restore, while uncommitted transforms stop for explicit recovery and
+effect intents retain unknown-outcome semantics. Specify init/shutdown failures
+and owner cleanup independently of optional notification delivery.
+
+Separate mandatory operator/repository instructions, original admitted intent and
+provider continuation from optional reference documents, memory and extension
+annotations. Each optional contribution declares origin, stable ID/version,
+UTF-8 text, encoded-byte cost, priority and maximum budget. Host selection reports
+which contributions fit or were omitted; it never silently removes mandatory
+instructions or native continuation. Retrieval does not get unlimited space
+just because it is useful. The supervised P21 trial's large instruction and
+retained-context measurements motivate this distinction; they do not establish
+that any mandatory instruction was safe to discard.
+
+For version 1, the prompt example appends an attributed annotation. Arbitrary
+rewrites require an explicit separate capability and operator-visible policy.
+The host can validate structure, budgets and provenance, but cannot prove that
+a rewrite preserved the semantic meaning of every original instruction. Keep
+raw and derived values in the private journal, with a defined provider projection.
+A privacy-redaction transform must not claim that data was removed from inference
+if a pinned-intent ledger or compaction projection can reinsert it. Test that
+case before offering such a transform. Admission runs once per new operator
+prompt; context retrieval runs only at documented request boundaries. Restore
+committed snapshots on resume and compaction without reexecuting either callback.
+
+Storage is scoped by extension ID, operator/project identity and namespace, with
+bounded record sizes, cross-process locks and explicit export/deletion semantics.
+Start by evaluating existing OTP/files and maintained Mix packages against the
+actual access pattern; choose no mandatory database or embedding backend now.
+Separate private durable extension state from model-visible text. Remember,
+forget, network retrieval and other effects are proposals that enter the same
+host approval/intent/outcome path as builtin tools. Journal a stable operation ID,
+adapter identity and outcome; interrupted effects remain unknown and are never
+replayed automatically. State migrations are explicit offline operations with
+their own review and recovery procedure, not resume callbacks with side effects.
+
+Workflows can propose a structured question, ordinary tool request, child review,
+or bounded continuation before a turn settles. The final `settled` event is
+notification only. Host action validation applies the remaining step/time budget,
+deduplicates operation IDs, and stops on cancellation, questions or unknown
+effects. No observer may recursively start turns. Callback workers cannot make
+synchronous reentrant calls into the waiting session. Generic proposals support
+custom sequences without adopting a workflow framework or making self-development
+a mandatory pipeline.
+
+### Installation and compatibility
+
+Initial installation means reviewing an Elixir package/source, recording its
+license/dependencies, adding it to a build manifest, rebuilding a release and
+explicitly enabling its known string ID. Document a small external example
+package so the procedure does not require edits to core modules. No implicit
+project code evaluation, startup dependency download or hot reload. Release
+verification includes enabled packages and their notices; a disabled package's
+callbacks must never run. Project `.ipse/` can configure an operator-enabled
+subset, not authorize executable loading or remote egress. Child sessions get a
+validated subset with separate storage/approval/effect identities.
+
+Pin SDK major/minor requirements, required capabilities, code/build digest,
+ordered configuration digest and journal projection version. Configuration
+changes affect new sessions. Resume refuses unknown mandatory versions, changed
+identity, corrupt projections or missing required adapters before any callback,
+tail repair or inference. Optional diagnostic sinks may be absent only under a
+documented policy that cannot change context or effects. Provide compatibility
+fixtures and a deliberate migration/new-session path, preserving old evidence.
+Do not claim that an older binary can recognize future journal formats: document
+the minimum reader version and forbid unsupported downgrade of such sessions.
+
+In-VM modules remain fully trusted code, even when SDK capabilities are narrow.
+Timeouts and owned tasks do not prevent arbitrary file access, memory exhaustion
+or an extension deliberately spawning unowned processes. Extension conformance
+is not OS sandbox certification. External execution must use a separately
+reviewed process/protocol/isolation boundary; no automatic switch to an external
+service is permitted.
+
+### Delivery sequence and extension-only proof
+
+1. **P22A — contracts and host kernel:** finalize schemas, capability/trust and
+   version policy; implement the registry, generic owned dispatch, durable
+   projections and the lifecycle events required by exercised capabilities.
+   Include generic tool/command/context/state/effect seams rather than merely
+   hardwiring the two examples. Keep unexercised callbacks provisional.
+2. **P22B — two packaged examples:** opt-in prompt annotation and completed-answer
+   formatter, with original/derived integrity, ordering and disabled parity.
+   Include operator install/enable/inspect/disable/recovery instructions.
+3. **P22C — coverage gate:** build a separate local memory/workflow demonstration
+   package using only the documented SDK. Exercise scoped remember/recall/forget,
+   a namespaced command/tool, a structured question and one bounded approved
+   workflow action. Use synthetic local records, no model service or new store
+   dependency. Freeze core before adding this package; the resulting diff must
+   contain no core/native edits or feature-specific host branches. A failed gate
+   sends the general SDK gap back to P22A before compatibility is declared stable.
+   Production memory stores and elaborate workflows remain follow-on extensions.
+4. **P22D — observability and compatibility:** bounded local lifecycle sink,
+   transform/event timing and drop counters; documented opt-in local BEAM tracing;
+   conformance fixtures, package checks and a supervised extension-only trial.
+   Remote OpenTelemetry is optional follow-on work with an explicit configurable
+   endpoint and separate data-transfer authorization, not a completion dependency.
+
+For every phase, test crash/timeout/owner death, full queues, malformed/oversized
+returns, unsupported identity, conflicting registration, cancelled/partial
+projections, corrupt journals, child policy, no approval bypass and unknown-effect
+no replay. Prove original/native data and admitted intent survive compaction.
+Run credential-free source and extracted-package checks on Linux and hosted Mac;
+report local live-provider and OS verification separately. Review SDK/operator
+documentation, notices and links before committing/pushing each completed phase.
+
+### Evidence requirements
+
 Require disabled-by-default behavior parity; config/trust/version/ordering tests;
 both adapters end to end; invalid output, timeout, crash and owner-death cleanup;
 slow/full observer queue behavior; original/derived text and provider continuation

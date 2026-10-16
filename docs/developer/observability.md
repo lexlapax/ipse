@@ -35,9 +35,11 @@ separate allowlist for operational diagnostics instead of forwarding it verbatim
 Instrumentation must identify waiting for approval/question separately from
 provider/tool latency. Record request kind (agent/compaction), selected profile,
 provider/requested and reported model separately, step/child budget, elapsed time,
-error category and original/effective/context-contribution byte counts. For P19,
-break down pinned user intent, tool arguments/provenance, native continuation,
-recent results, instruction snapshot, summaries and extension/memory additions.
+error category and original/effective/context-contribution byte counts. P19's
+implemented categories are instructions, user/assistant text, recent/older tool
+results, calls, native continuation, checkpoints, provenance and JSON envelope.
+P22 adds attribution within instruction/context contributions, including optional
+memory and extensions, rather than claiming those categories already exist.
 Count bytes without displaying the text or hidden reasoning. Derive metrics labels
 from bounded categories; keep unique session/call IDs for trace correlation rather
 than unbounded metric-cardinality labels. Record parent/child links explicitly
@@ -107,6 +109,26 @@ during effects. Optional visual tools must not introduce unapproved host/UI
 dependencies into packaged operation.
 
 ## Acceptance
+
+P22's local event schema should version a fixed stage/outcome vocabulary and
+bounded correlation IDs, elapsed monotonic duration, request kind, phase and
+byte/count measurements. Record approval/question wait separately from active
+provider/tool/extension work. Do not log model text, tool payloads, filesystem
+contents, arbitrary extension labels or raw exceptions. Extension observers see
+only the allowlisted event view; context/tool capabilities receive separate,
+explicitly private callback values that must not enter the diagnostic sink.
+
+Start with proposed configurable caps: 256 queued events, 16 KiB encoded event,
+10 MiB local trace rotation and two retained files, owner-only permissions and
+visible drop/disabled-handler counters. Validate these defaults against stress
+fixtures before freezing the contract. The channel must enforce capacity before
+enqueue, include bounded shutdown/drain behavior, and never block journal sync
+or effect cleanup. No tracing consumer is required for ordinary operation.
+Sanitized local debugging should expose current worker category, correlation and
+elapsed wait, without exposing Session state or suspending the owner. Raw BEAM
+tracing is a separate opt-in synthetic-development procedure with time/event caps
+and automatic trace-session destruction on cancellation or owner death. Verify
+required runtime apps and release debug information before offering that mode.
 
 Prove known lifecycle ordering and correlation, separate approval wait time,
 exact context-category accounting, synthetic-secret exclusion, valid bounded

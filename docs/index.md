@@ -33,7 +33,7 @@ start. Use the guides below for operation, development, and project context.
 | [Native shell sandbox](developer/sandbox.md) | OS capabilities, fail-closed selection, and platform limits |
 | [Protocol proposal](developer/protocol-proposal.md) | Proposed MCP, delegation, and remote-execution trust/recovery contracts |
 | [Research contract](developer/research.md) | Provenance-bound source/claim records, bounds, compatibility and resume |
-| [Extension proposal](developer/extensions.md) | P22 research comparison, typed hooks, loading/trust, first adapters and memory/workflow design |
+| [Extension proposal](developer/extensions.md) | P22 comparison, SDK/core boundary, lifecycle/trust/versioning and extension-only delivery gates |
 | [Observability proposal](developer/observability.md) | P19/P22 diagnostics, lifecycle telemetry, optional export and BEAM debugging |
 | [MCP client contract](developer/mcp.md) | Reused packages, transport ownership, descriptor binding, schema policy, and recovery |
 | [Local delegation contract](developer/delegation.md) | Parent/child ownership, explicit context, approvals, budgets, and unknown outcomes |

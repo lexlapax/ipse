@@ -530,6 +530,17 @@ recovery; the [observability design](../developer/observability.md) separates
 sanitized diagnostics from private session journals and raw developer traces.
 No extension script, service, exporter or dependency is installed by this roadmap.
 
+P22's proposed installation flow is review a compiled Elixir extension package,
+build it into a release, explicitly enable its known ID, and inspect its effective
+order/capabilities/configuration sources before starting a session. Project
+configuration may select only an operator-enabled subset. A loaded skill or
+repository instruction cannot install code, activate an endpoint or grant action
+approval. In-VM extensions are fully trusted executable code with the user's
+access; the SDK and worker timeouts are not an OS sandbox. Changed required
+code/configuration identity needs a new session or a documented migration, not
+silent reload on resume. These remain proposed procedures, with no install or
+enable command available yet. See the [P22 delivery gates](../developer/extensions.md#delivery-sequence-and-extension-only-proof).
+
 Local `/diagnostics`, `ipse diagnose --resume ID` and explicit
 `ipse handoff --resume ID --note TEXT` are now available for context diagnosis and
 reviewed recovery. See [context recovery](recovery.md) for scope, privacy and

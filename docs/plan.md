@@ -25,8 +25,8 @@ the next feature sequence on 2026-10-15:
 | [P17](#p17-structured-operator-questions) | Validated operator questions and resumable answers | Complete within documented scope |
 | [P18](#p18-supervised-self-development-on-the-operators-mac) | Second supervised trial using the combined harness on macOS | Complete within documented supervised scope; local and hosted checks passed |
 | [P19](#p19-long-session-diagnosis-and-recovery) | Diagnose retained-context limits and improve explicit recovery | Complete within documented scope; Linux and hosted Mac checks passed |
-| [P20](#p20-repeatable-supervised-self-development) | Reusable supervised development/review skill and evidence | Skill/source/package fixtures verified; live P21 verification follows |
-| [P21](#p21-larger-self-development-trial-on-serenity) | Larger supervised trial with independent Mac verification | Live authoring/recovery trial in progress; independent completion checks pending |
+| [P20](#p20-repeatable-supervised-self-development) | Reusable supervised development/review skill and evidence | Complete: fixtures, hosted checks and supervised live use; limitations recorded |
+| [P21](#p21-larger-self-development-trial-on-serenity) | Larger supervised trial with independent Mac verification | Authoring/Linux/package/recovery passed; bounded review and final hosted closure pending |
 | [P22](#p22-extension-scaffold-and-lifecycle-hooks) | Typed extension scaffold, lifecycle hooks and runtime observability | Research/design recorded; implementation not started |
 
 Feature completion does not close every live provider acceptance check. On
@@ -72,8 +72,8 @@ completed scope.
 
 P18 exposed retained-context stops and a review exceeding its bounded child budget.
 The proposed order is P19 diagnosis/recovery, P20 a reusable supervised-development
-skill, P21 a larger trial, and P22 the extension scaffold. These are planning
-entries were subsequently authorized for P19–P21 implementation on 2026-10-16.
+skill, P21 a larger trial, and P22 the extension scaffold. P19–P21 implementation
+was subsequently authorized on 2026-10-16; P22 remains research and planning.
 P22 is authorized for research and detailed planning after those trials, not
 implementation yet.
 On 2026-10-16 the operator requested extension/debugging research, including
@@ -941,11 +941,14 @@ See the [diagnostics proposal](developer/observability.md).
 ## P20: repeatable supervised self-development
 
 Implemented as the bundled `self-development` skill with evidence/review resources
-and a credential-free real Session fixture. Source/package fixtures and 340
-native Linux tests passed; live P21 verification follows. Turn demonstrated procedures into a bounded repository-development
-skill with supporting review/evidence resources. Reuse existing questions,
-configuration, profiles, approvals and journals; do not require P22 or build a
-workflow engine. Scope child reviews to their real six-step/time limits.
+and a credential-free real Session fixture. Source/package fixtures, 340 native
+Linux tests and hosted Linux/Mac checks passed. Supervised live P21 use completed
+authoring and recovery, with repeated orientation requiring supervisor narrowing;
+this is not evidence of unattended development. The resources reuse existing
+questions, configuration, profiles, approvals and journals without P22 or a
+workflow engine. Child reviews retain their real six-step/time limits. See
+[skill evidence](developer/testing.md#p20-reusable-self-development-skill) and
+[live limitations](developer/testing.md#p21-supervised-serenity-trial-and-independent-checks).
 
 Acceptance direction: frozen runner/candidate separation; explicit task and
 acceptance checks; bounded review and independent validation; interruption/handoff;
@@ -956,14 +959,19 @@ then commit/push.
 
 ## P21: larger self-development trial on Serenity
 
-Live supervised authoring is in progress from frozen P20 runtime `b7c0ed6` in a
-separate candidate worktree. The import implementation builds; an independent
-initial test run passed seven of eight new fixtures and identified a malformed
-unknown-call source fixture. The supervisor exercised byte-identical idle resume,
-inspected an unstarted proposal before explicit continuation, and used a bounded
-P19 handoff note for a fresh session after a safe retained-context refusal.
-Repeated orientation required supervisor phase narrowing; this is not unattended
-development evidence. Completion review, full checks and publication remain pending.
+Live supervised authoring completed from frozen P20 runtime `b7c0ed6` in a
+separate candidate worktree. The fresh-chat import passed 31 focused fixtures,
+independent build/format/compile/demo, 351 native Linux tests (14 Mac-only
+exclusions), and integrated extracted-package recovery checks. The supervisor
+exercised byte-identical idle resume, inspected an unstarted proposal before
+explicit continuation, and manually supplied a reviewed P19 handoff note to a
+fresh session after a safe retained-context stop. Repeated orientation required
+supervisor phase narrowing; this is not unattended development evidence.
+Implementation and independent package/evidence additions were committed and
+pushed. The separate bounded child review is waiting for the operator's decision
+after automatic approval review rejected it; zero review tools executed. Final
+hosted checks and milestone closure remain pending. See
+[actual trial evidence](developer/testing.md#p21-supervised-serenity-trial-and-independent-checks).
 Select one moderately larger, reviewable Ipse change after P19/P20.
 Use a frozen stable runner, candidate worktree, explicit configured profiles and
 independent review. Verify long-session behavior and evidence completeness, then
@@ -990,6 +998,11 @@ wherever possible. Core changes should be reserved for lifecycle/trust/persisten
 provider/OS correctness, fixes and deliberately reviewed API gaps. Refine P22
 after P19–P21 with a concrete feature-to-extension map, compatibility/versioning,
 SDK/packaging and proof that another feature can be added without editing core.
+The detailed [delivery sequence and coverage gate](developer/extensions.md#delivery-sequence-and-extension-only-proof)
+now specifies P22A contracts/host kernel, P22B two examples, P22C a separate
+memory/workflow package with no core edits, and P22D observability/compatibility.
+The [SDK coverage matrix](developer/extensions.md#core-boundary-and-sdk-coverage)
+includes tools, commands, context/state, approved effects and bounded workflows.
 This is a design target, not a promise that unknown future capabilities or core
 bugs will never require a core change.
 
@@ -1012,9 +1025,11 @@ Acceptance:
    Define streamed-versus-completed output behavior explicitly.
 4. Specify long-term memory recall/remember/forget/export and workflow adapter
    contracts: scope, provenance, budgets, explicit approved/journaled effects,
-   stale/conflicting data, deletion and bounded continuation. Treat these as
-   follow-on designs unless separately selected for implementation. No mandatory
-   memory store, embedding service, workflow framework or remote exporter.
+   stale/conflicting data, deletion and bounded continuation. Prove the generic
+   SDK with a separate synthetic local memory/workflow package after core is
+   frozen: no edits under core/native and no feature-name dispatch branches.
+   Production memory backends and elaborate workflows remain follow-on extensions.
+   No mandatory memory store, embedding service, workflow framework or exporter.
 5. Reuse P19's sanitized event foundation for lifecycle/extension timing, context
    contributions and failure diagnosis. Evaluate Telemetry as a direct declared
    dependency; do not run transform callbacks inside Telemetry handlers. Add a
