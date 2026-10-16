@@ -22,7 +22,7 @@ the next feature sequence on 2026-10-15:
 | [P14](#p14-bounded-deep-research) | Research method, explicit search/retrieval, evidence and validation | Authorized; queued after P16 |
 | [P15](#p15-scoped-configuration-and-shared-operator-skills) | Operator/project/directory configuration and shared skills | Authorized; shared skills/self-development in progress |
 | [P16](#p16-explicit-model-profiles-and-task-routing) | Main/subtask model profiles and provider-specific settings | Authorized; queued after scoped configuration |
-| [P17](#p17-structured-operator-questions) | Validated operator questions and resumable answers | Authorized; queued after shared skills |
+| [P17](#p17-structured-operator-questions) | Validated operator questions and resumable answers | Implemented and verified in isolated feature worktree; integration pending shared-skills review |
 
 Feature completion does not close every live provider acceptance check. On
 2026-10-15, installed Ollama `qwen3.5:9b`, Anthropic `claude-haiku-4-5`, and
@@ -47,7 +47,7 @@ billing, credentials and external-effect invariants still apply.
 | Order | Work | Status |
 | --- | --- | --- |
 | 1 | Supervised self-development using stable Ipse to add P15 shared operator skills | In progress in isolated worktree; independent review pending |
-| 2 | P17 structured operator questions | Pending |
+| 2 | P17 structured operator questions | Isolated implementation, fixture/live and package verification passed; integration pending |
 | 3 | Remaining P15 scoped configuration | Pending |
 | 4 | P16 explicit model profiles/routing | Pending |
 | 5 | P14 bounded deep research | Pending |
@@ -672,14 +672,14 @@ Acceptance:
 
 ### Related gap: structured operator questions
 
-Current interactive chat supports free-text answers, including replies to
-model-written numbered choices; action approvals are a separate yes/no mechanism.
-There is no host-native question/answer tool with single-select or multi-select
-schema, option identifiers, answer validation or a pending-question lifecycle.
+The original gap was free-text-only clarification, separate from yes/no action
+approvals. P17 now implements native single/multiple/text questions with validated
+explicit answers and durable waiting in its feature worktree; main-branch
+integration remains pending the current execution sequence.
 MCP elicitation is also unsupported. Skills can guide wording but cannot supply
 this runtime capability. Research scoping can initially use ordinary chat.
 
-A possible later native `ask_operator` tool should support bounded single-choice,
+The selected native `ask_operator` tool supports bounded single-choice,
 multiple-choice and free-text questions, explicit responses (no auto-submitted
 recommendations/defaults), typed session/client events, journaling/resume,
 cancellation/EOF and defined headless behavior. Waiting for clarification must
@@ -795,8 +795,11 @@ Acceptance:
 
 ## P17: structured operator questions
 
-Selected and authorized on 2026-10-16. Status: queued after shared operator skills.
-Implement the host-native clarification capability described in P14's related gap.
+Selected and authorized on 2026-10-16. Native questions are implemented in the
+isolated operator-question worktree while the stable shared-skills self-development
+trial continues. Fixture/live and bundled checks passed; integration review follows
+the first stage. See [contract](developer/operator-questions.md) and
+[actual evidence](developer/testing.md#p17-structured-operator-questions-2026-10-16).
 
 Acceptance:
 

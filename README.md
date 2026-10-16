@@ -46,6 +46,9 @@ sign-in, other providers, approvals, skills, session resume, and logout.
 ChatGPT subscription is the default; API billing always requires explicit provider
 selection. In chat, `/info` shows the running application version and configured
 provider/model without calling a model. Review proposed file and shell calls before approving them.
+Interactive chat also supports validated single-choice, multi-select and free-text
+[operator questions](docs/operator/usage.md#operator-questions), with explicit
+answers and resumable waiting; answers grant no action permission.
 Shell commands use trusted local execution by default. `--sandbox native` requests
 the opt-in Linux or macOS workspace sandbox and fails closed when unavailable; see
 [shell policy](docs/operator/usage.md#shell-policy).

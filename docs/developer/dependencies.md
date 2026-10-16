@@ -238,3 +238,11 @@ Ipse runtime, build, test, CI, packaging or helper dependencies. Ipse itself sti
 has no Python or JavaScript runtime/tooling dependency. Independent HTTP checks
 and trial orchestration used existing Elixir/OTP; existing Chromium was used only
 for local visual inspection. See [trial evidence](testing.md#p13-neutral-stack-coding-trial-2026-10-16).
+
+### Native operator questions
+
+P17 reuses the existing bounded `Ipse.MCP.Schema` adapter and JSONSchex for
+question/answer shapes, with small host checks for unique option identities and
+cross-field semantics. OTP session messages and the current Jason/SHA-256 journal
+implement durable questions/answers. This adds no dependency or schema engine.
+The release verifier includes a synthetic question/explicit-answer fixture.

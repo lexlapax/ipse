@@ -125,15 +125,10 @@ Interactive chat asks before `write`, `edit`, and every `shell` call. `--yes`
 allows them for the session. Headless `run` denies mutations unless `--yes` is
 present. Approvals display the full proposed arguments.
 
-Operator clarification currently uses ordinary chat: Ipse can ask a question and
-you can reply with text or a number from model-written options. There is no native
-single-select/multi-select question widget or validated choice-response tool.
-After Ipse finishes asking, your reply becomes a normal user turn. During a
-pending action approval, input is instead interpreted as allow/deny; do not use
-that prompt to answer a clarification question. Approvals are not a structured
-feedback mechanism. MCP elicitation is unsupported. The
-[research plan and related question gap](../plan.md#related-gap-structured-operator-questions)
-record future work; neither capability is enabled by loading a skill.
+Ipse can request [structured operator clarification](#operator-questions) using
+single-choice, multiple-choice or free-text questions. Answers are validated and
+journaled separately from action approvals. Ordinary conversational questions
+still accept normal user turns; MCP elicitation remains unsupported.
 
 With the default `--sandbox off`, shell execution is trusted local execution. Commands have
 your user permissions. The helper clears common provider credential environment
@@ -425,3 +420,33 @@ configuration and shared operator skills; [P16](../plan.md#p16-explicit-model-pr
 plans named main/routine/review profiles and explicitly permitted mixed-model
 execution. Neither is implemented. Skills can guide task selection but cannot
 change host provider/billing/approval policy themselves.
+
+## Operator questions
+
+Interactive chat supports the native `ask_operator` tool with up to three
+questions per call. The terminal shows stable option IDs, descriptions and optional
+recommendations. Enter one number/ID for a single choice, comma-separated numbers/
+IDs for multiple choices, or text for a free-text question. Invalid answers remain
+at the question; recommendations are never automatically selected or submitted.
+For literal slash-command text, prefix `=` (for example `=/exit`). `/info` and
+`/context` remain local; `/cancel` stops the turn and `/exit` exits.
+
+A complete answer bundle is synced to the private journal before the next model
+request. Partial entries in the terminal's multi-question form are not submitted
+until all questions are answered. If the session/VM is interrupted while waiting,
+resume presents the saved question bundle without restarting inference or tools.
+A recorded answer survives interruption; idle resume does not continue inference
+automatically. Explicit cancellation/EOF closes the question without an answer.
+Neither clarification nor a recommended choice authorizes a file/shell/MCP action.
+
+Headless `run` cannot wait for answers, including with `--yes`: a required question
+fails explicitly. A headless attempt to resume a pending question refuses without
+changing its checkpoint; resume with interactive chat instead. Local children
+currently cannot ask operator questions and must return needed clarification to
+the parent; parent question forwarding is not implemented. This capability is
+separate from MCP elicitation and from a full-screen or graphical form UI.
+
+Embedded clients receive `{:question, id, arguments}` inside the usual Ipse event
+envelope and answer with `Ipse.Session.answer(pid, id, answers)`, where `answers`
+maps each question ID to an option ID, a list of IDs, or text. See the
+[developer contract](../developer/operator-questions.md) for schema and recovery.

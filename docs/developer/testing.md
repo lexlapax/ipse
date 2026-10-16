@@ -1812,3 +1812,37 @@ developer guidance distinguish these gaps from the planned contracts. Relevant
 verification is CLI help, documentation file/anchor checks and diff whitespace;
 no new runtime tests, live inference or access to installed personal skills are
 needed for this documentation-only update.
+
+## P17 structured operator questions, 2026-10-16
+
+Isolated feature worktree verification on Linux Serenity: the focused question,
+session and CLI suites passed **25 tests**. The full native Linux suite passed
+**293 tests** (14 macOS tests excluded), including monitored-owner and repeated
+checkpoint recovery. Source build, formatting,
+warnings-as-errors compilation and native credential-free demo passed. The Linux
+archive passed extracted help/demo, MCP/delegation/helper/context checks and a new
+credential-free bundled question/explicit-answer check with no toolchain on PATH.
+
+Fixtures verify single/multiple/text validation, no submitted recommendation,
+waiting without a model worker, unchanged action approvals, pending and committed
+answer recovery, owner death, cancellation/EOF, repeated questions, corrupt
+checkpoints, headless failure/refusal and settlement of other proposed batch calls
+without effects. Children fail required input explicitly; parent question routing
+is not claimed.
+
+A live embedded ChatGPT subscription session requested `gpt-6.1-sol` over a wholly
+synthetic prompt with mutations denied. It used one question call for three kinds,
+received explicit non-recommended single choice plus multiple/text answers, and
+reported all exact values. The first attempt failed safely when the model supplied
+dummy choices for a text question under optional-field normalization. Nullable
+optional fields, explicit `strict: false` and field guidance repaired this; the
+separate repeat passed. No provider/billing switch or private project transfer was
+used for this live check. Private journals/evidence stay under `/tmp/ipse-question-live`.
+Hosted macOS/new combined-source checks remain pending integration; local Linux
+results are not macOS evidence. This stage reuses current JSONSchex/OTP/Jason and
+adds no dependency. Operator/developer docs and their map were reviewed together.
+
+The verified operator-question Linux archive SHA-256 is
+`26a6444dc0f7491cd85c6052535b98ac1c87a7b729e373d67906c803acaab294`.
+All 40 documentation files and 393 local links/heading anchors passed the local
+checker. The native question fixture is part of extracted-package verification.

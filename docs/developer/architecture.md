@@ -249,19 +249,17 @@ paid model access.
 
 ## Operator clarification
 
-The current session/client interface accepts ordinary user prompt text and
-boolean decisions for pending tool approvals. The CLI reads lines and interprets
-`y`/`yes` only while an approval is pending; other idle text becomes a user turn,
-and text during active work is queued. Model-written questions/numbered options
-are presentation text, not a host-validated question schema or answer event.
-There is no native `ask_operator` tool, single-select/multi-select feedback
-protocol, or question-specific persistence/resume state. MCP elicitation is not
-implemented. Keep this distinct from approval and from any future UI integration.
-
-[P14](../plan.md#p14-bounded-deep-research) records research work and a related
-structured-question candidate. Neither adds runtime functionality by itself.
+`Ipse.Questions` reuses the existing bounded JSON Schema adapter for shapes and
+adds question/option identity and explicit-answer checks. Session owns pending
+questions, emits typed client events and commits answers before continuation.
+No model task remains active while waiting. Other proposed batch calls are
+settled as not started so the answer can change the plan. Questions are separate
+from boolean action approvals and grant no permission. Headless/child requests
+fail explicitly. See the [question contract](operator-questions.md) for bounds,
+durable restore and terminal behavior. MCP elicitation remains unavailable.
 
 ## Planned configuration and profile boundaries
+
 
 Current CLI configuration derives one provider/model from flags/environment and
 copies it into child policy. `Skills.discover/2` scans project `.agents/skills`,
