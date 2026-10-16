@@ -557,7 +557,8 @@ passed, and hosted Linux/macOS CI [38867833020](https://github.com/lexlapax/ipse
 Neutral coding trial is in progress in a separate workspace; Ipse chose Python/Flask.
 The synthetic non-coding trial passed after one source-path clarification: source-backed
 plan, exact schedule/budget, pending owners and unchanged source hashes. Independent
-app review remains in progress.
+app review remains in progress: initial 25 tests and HTTP smoke passed; independent
+HTTP review found a NUL-title validation crash to repair before acceptance.
 Update this record as each acceptance check completes.
 
 1. Improve safe context reduction during long action turns and provide specific
@@ -577,3 +578,20 @@ Update this record as each acceptance check completes.
    Record actual provider, tools, checks, limitations, and any needed harness
    fixes. No deployment, new public repository, private project transfer, or
    external messaging is required by these trials.
+
+### Candidate next step: supervised self-development
+
+The developer asked what is needed for Ipse to develop itself. Existing file/shell
+and Git/Mix tooling, scoped instructions, approvals, persistence, providers and
+optional delegation/MCP can support a supervised trial now; a dedicated GitHub
+adapter or workflow engine is not a prerequisite. This is a proposed next trial,
+not authorization to implement another milestone during P13.
+
+Use an isolated checkout/worktree and the stable installed harness to make one
+small Ipse change, review its diff independently, run the required source and
+package checks, exercise interruption/resume, then review the exact commit before
+merging/pushing. Keep the running harness separate from the code under change.
+A reusable repository-development skill, clearer review/test evidence, and real
+task regressions may improve this loop after demonstrated needs. Unattended
+self-development would require stronger isolation and acceptance controls; current
+supervised trials do not establish that capability.

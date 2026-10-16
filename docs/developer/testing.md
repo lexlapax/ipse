@@ -1723,3 +1723,26 @@ formatting, warnings-as-errors compilation, build and native demo. The rebuilt
 Linux archive passed the same extracted verification; final SHA-256:
 `f8dbc34554124b6e7a0fead819ecd7499e7673c85dd58890815d8f8d721d8a67`.
 This supersedes the earlier local archive artifact, not its recorded check result.
+
+## P13 neutral-stack coding trial, 2026-10-16
+
+In progress: Ipse's embedded Session API uses explicit ChatGPT subscription
+`gpt-6.1-sol`, trusted mode selected openly, isolated state and individually
+reviewed tools. Requirements specify forms/SQLite behavior and loopback port 4200,
+with no language/framework constraint. Ipse inspected installed runtimes and
+selected **Python 3.14.7 / Flask 3.1.3 / Flask-WTF 1.3.0 / Waitress 3.0.2 /
+SQLite 3.53.4** for maintained HTTP, form/CSRF and escaping facilities without an
+asset build or separate database service. Its separate workspace is
+`~/projects/lexlapax/ipse-task-tracker-open`; no private pre-existing project data
+was sent. The Elixir app on port 4100 is separate and preserved.
+
+Initial implementation was committed locally at `7473a00`. Ipse repaired an
+omitted-optional-notes NULL bug found by its tests. Its 25 tests, real Waitress HTTP
+CRUD/restart smoke, pip consistency, compilation, CLI default-port check and
+staged whitespace checks passed. Independent HTTP review also passed blank-title
+inline errors with retained notes, CSRF/Host denials, escaping/CSP, completion,
+GET mutation denial and huge-ID handling, but reproduced a **NUL-only title HTTP
+500** missed by those tests. The same session is repairing this before acceptance;
+no completed-trial claim is made yet. Installed Chromium 153.0.8010.52 desktop
+1280 × 900 task-list and narrow 390 × 844 new-form renders were visually inspected
+without clipping. No full browser interaction or screen-reader audit is claimed.

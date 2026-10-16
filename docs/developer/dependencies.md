@@ -226,3 +226,15 @@ external runtime, workflow framework, or provider-native compaction dependency.
 The existing bundled-runtime verifier now also restores a synthetic long-turn
 checkpoint; this is an Elixir test artifact, not a new testing dependency.
 Workload dependencies in separate trial apps remain distinct from Ipse's graph.
+
+### Neutral coding workload trial
+
+The separate P13 task tracker selected Python/Flask, Flask-WTF/WTForms, Waitress,
+and Python's bundled SQLite after inspecting installed runtimes. Its project-local
+virtual environment, exact direct/transitive lock and license notices live in
+`~/projects/lexlapax/ipse-task-tracker-open`. They are workload dependencies under
+the developer's explicit general-purpose/stack-choice trial authorization, not
+Ipse runtime, build, test, CI, packaging or helper dependencies. Ipse itself still
+has no Python or JavaScript runtime/tooling dependency. Independent HTTP checks
+and trial orchestration used existing Elixir/OTP; existing Chromium was used only
+for local visual inspection. See [trial evidence](testing.md#p13-neutral-stack-coding-trial-2026-10-16).
