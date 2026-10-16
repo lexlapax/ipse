@@ -282,7 +282,16 @@ If implementation directly emits Telemetry events, promote the already locked
 OpenTelemetry API/SDK/OTLP exporter packages are optional evaluated future sinks,
 not installed dependencies or mandatory collectors; record selected versions,
 licenses and explicit export configuration before adoption. Memory storage and
-third-party extension distribution remain unselected. No upstream OpenCode/Pi/
+remote catalog/signature/download packages remain unselected. P22's adoption
+design now requires a local immutable artifact contract and a standalone Elixir
+worker proof alongside builtin adapters. Evaluate current OTP stdio ownership,
+Rust helper, Jason/JSONSchex and maintained packages before adding framing or
+installation machinery. No worker bridge, installer or dependency is implemented
+by that design update. Extension artifacts must carry their own locked dependency,
+runtime-target and license inventory; builds use declared tooling rather than
+assuming a bundled release includes Mix. Non-Elixir/Rust dependencies still need
+explicit developer approval. See [scenario boundaries](extension-scenarios.md).
+No upstream OpenCode/Pi/
 Codex/Claude runtime, plugin or script is installed or redistributed.
 
 P19 diagnostics and explicit handoff export add no dependency: existing Jason,

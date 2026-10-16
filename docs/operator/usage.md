@@ -530,16 +530,28 @@ recovery; the [observability design](../developer/observability.md) separates
 sanitized diagnostics from private session journals and raw developer traces.
 No extension script, service, exporter or dependency is installed by this roadmap.
 
-P22's proposed installation flow is review a compiled Elixir extension package,
-build it into a release, explicitly enable its known ID, and inspect its effective
-order/capabilities/configuration sources before starting a session. Project
-configuration may select only an operator-enabled subset. A loaded skill or
-repository instruction cannot install code, activate an endpoint or grant action
-approval. In-VM extensions are fully trusted executable code with the user's
-access; the SDK and worker timeouts are not an OS sandbox. Changed required
-code/configuration identity needs a new session or a documented migration, not
-silent reload on resume. These remain proposed procedures, with no install or
-enable command available yet. See the [P22 delivery gates](../developer/extensions.md#delivery-sequence-and-extension-only-proof).
+P22 plans three separate operations: acquire/build an immutable package, install
+and review its executable scope, then enable/configure an instance for a session.
+Bundled precompiled examples will be default-off and selectable through generic
+configuration/flags. Independently built packages will use an owned worker and
+local import without rebuilding Ipse. Remote download/build assistants follow
+later against the same contracts. Project configuration may select only an
+operator-approved subset; unknown IDs never trigger an automatic install.
+
+An operator-requested feature can first be trialed with a temporary session lease
+and later promoted into explicit persistent configuration using the exact reviewed
+artifact. Temporary use does not save global defaults, erase journals or undo
+external writes. Initial activation uses a new session; use a reviewed handoff
+when continuing current work. Changing a live session's extension catalog is a
+future host capability, not implicit hot reload. Resume pins artifact/options/
+lifetime identity and refuses unavailable or incompatible required code.
+
+A loaded skill, repository instruction or generated feature cannot grant action
+permission or trust itself. In-VM extensions and trusted local worker programs
+have the user's OS access; separate workers/timeouts are not an OS sandbox. These
+remain proposed procedures, with no extension install/enable/lease flags available
+yet. See the [scenario analysis](../developer/extension-scenarios.md) and
+[P22 delivery gates](../developer/extensions.md#delivery-sequence-and-extension-only-proof).
 
 Local `/diagnostics`, `ipse diagnose --resume ID` and explicit
 `ipse handoff --resume ID --note TEXT` are now available for context diagnosis and

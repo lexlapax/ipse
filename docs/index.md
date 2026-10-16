@@ -34,6 +34,7 @@ start. Use the guides below for operation, development, and project context.
 | [Protocol proposal](developer/protocol-proposal.md) | Proposed MCP, delegation, and remote-execution trust/recovery contracts |
 | [Research contract](developer/research.md) | Provenance-bound source/claim records, bounds, compatibility and resume |
 | [Extension proposal](developer/extensions.md) | P22 comparison, SDK/core boundary, lifecycle/trust/versioning and extension-only delivery gates |
+| [Extension adoption scenarios](developer/extension-scenarios.md) | Bundled/third-party/generated feature walkthroughs, artifact installation, temporary use and deferred host capabilities |
 | [Observability proposal](developer/observability.md) | P19/P22 diagnostics, lifecycle telemetry, optional export and BEAM debugging |
 | [MCP client contract](developer/mcp.md) | Reused packages, transport ownership, descriptor binding, schema policy, and recovery |
 | [Local delegation contract](developer/delegation.md) | Parent/child ownership, explicit context, approvals, budgets, and unknown outcomes |

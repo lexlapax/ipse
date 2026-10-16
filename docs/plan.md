@@ -989,8 +989,7 @@ remain intact. This is separate from the P22 extension scaffold.
 Operator-requested research/design completed on 2026-10-16. Implementation is not
 started or authorized by this update. The comparison covers OpenCode, Codex, Pi
 and Claude Code primary documentation/source, alongside Elixir/OTP, Telemetry and
-OpenTelemetry. The
-resulting recommendation is a versioned Elixir behaviour with owned workers,
+OpenTelemetry. The resulting recommendation is a versioned Elixir behaviour with owned workers,
 explicit configuration and separate observational events/ordered transformations.
 See [research and architecture](developer/extensions.md) and
 [runtime diagnostics/tracing](developer/observability.md).
@@ -1006,6 +1005,14 @@ now specifies P22A contracts/host kernel, P22B two examples, P22C a separate
 memory/workflow package with no core edits, and P22D observability/compatibility.
 The [SDK coverage matrix](developer/extensions.md#core-boundary-and-sdk-coverage)
 includes tools, commands, context/state, approved effects and bounded workflows.
+The operator's bundled/third-party/assisted/generated permanent and temporary
+use cases are tested as [design walkthroughs](developer/extension-scenarios.md).
+They revealed a rebuild-only loading gap. P22 now includes backend-independent
+SDK values, package/installed/activation identity, a minimal local immutable
+artifact import, worker execution and scoped config/session leases. Remote
+catalogs, turnkey builders and idle live activation remain foreseen follow-ons;
+they must use the same contracts rather than replace the SDK or modify feature
+dispatch in core. These are architectural tests, not implemented runtime results.
 This is a design target, not a promise that unknown future capabilities or core
 bugs will never require a core change.
 
@@ -1016,11 +1023,15 @@ Acceptance:
    validation/approval/intent/outcome, operator questions, children, compaction,
    turn completion/error/cancellation and owner death. Implement only documented
    stable seams, with observation distinct from permission to transform or act.
-2. Add a small compiled Elixir adapter registry/behaviour and supervised workers.
-   Enable known adapters explicitly through operator configuration, pin module/
-   config/API identity for resume, and separately validate project/child policy.
-   No automatic repository-code evaluation, hot loading, dependency installation
-   or arbitrary atom creation. Document in-VM code as trusted, not sandboxed.
+2. Add a backend-independent Elixir SDK/registry and owned workers: bundled
+   trusted modules may run in-VM, while independent packages use a versioned
+   serializable worker bridge. Define immutable artifacts, installed/trusted
+   records and activation instances with distinct identities. Support local
+   artifact import without rebuilding Ipse, generic config/flag selection and
+   scoped options/lifetimes. Pin artifact/runtime/config/API/generation for resume,
+   separately validate project/child policy, and verify disabled adapters never
+   initialize. No implicit evaluation, downloads, host code-path injection or
+   arbitrary host atoms. Process separation is not an OS sandbox claim.
 3. Ship two bounded, opt-in examples: an attributed operator prompt-context
    template and a completed-answer presentation formatter. Preserve original
    input/output, provider continuation and tool provenance; validate and journal
@@ -1033,6 +1044,8 @@ Acceptance:
    frozen: no edits under core/native and no feature-name dispatch branches.
    Production memory backends and elaborate workflows remain follow-on extensions.
    No mandatory memory store, embedding service, workflow framework or exporter.
+   Exercise a separately built worker artifact in temporary-session use and
+   explicit persistent configuration, with no Ipse rebuild or core changes.
 5. Reuse P19's sanitized event foundation for lifecycle/extension timing, context
    contributions and failure diagnosis. Evaluate Telemetry as a direct declared
    dependency; do not run transform callbacks inside Telemetry handlers. Add a
@@ -1042,7 +1055,10 @@ Acceptance:
    no approval bypass, synthetic-secret exclusion, original/derived integrity,
    child isolation policy and durable no-replay resume. Include both example
    adapters in credential-free source/package verification and an independently
-   reviewed supervised trial, with Linux/Mac evidence distinguished.
+   reviewed supervised trial, with Linux/Mac evidence distinguished. Cover pinned
+   concurrent versions, malformed artifacts, interrupted imports, scope/promotion,
+   expiry/revocation and resume after missing/changed artifacts. Deferred installers,
+   builders and live activation must refuse unsupported capabilities explicitly.
 7. Review operator/developer usage, installation/trust/recovery limitations and
    dependency inventory; check file links/anchors, update actual status/evidence,
    then commit/push completed focused increments. Research/design completion

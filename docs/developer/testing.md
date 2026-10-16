@@ -2346,3 +2346,26 @@ four delivery gates and a separate memory/workflow package proof requiring no
 core/native edits. Operator/developer entry points and the plan agree that this
 is planning, with no extension implementation or dependency added. Markdown file
 and anchor validation passed across 54 tracked documents and 487 local links.
+
+## P22 extension adoption scenario review
+
+The operator's bundled default-off, independently installed, assisted setup and
+generated permanent/temporary feature cases were exercised as architectural
+walkthroughs in [extension adoption](extension-scenarios.md). The earlier
+rebuild-only loading route and single enablement concept did not cover those
+cases. The revised design separates artifact, installed/trusted record and scoped
+activation instance; makes SDK values backend-independent; requires a standalone
+Elixir worker/local import proof; and specifies configuration, leases, retention,
+promotion and versioned future idle activation. The matrix also covers versions,
+interrupted installs, missing artifacts, revocation and project discovery.
+
+Current Config/CLI, Session/journal, Runner and MCP transport ownership were
+reviewed. Official OTP code-loading/port and Elixir compilation documentation
+informed the process boundary; no upstream code/tooling was installed. This is a
+design gap analysis and future fixture specification, not executed extension
+tests, a working installer or proof that every future feature needs no core
+enhancement. P22 implementation remains unstarted. Network catalogs, managed
+builders and live catalog replacement are explicit follow-ons; the foundational
+contracts must refuse unsupported operations without silently executing code.
+Operator/developer guidance, dependency policy and navigation were updated;
+document links/anchors and current CLI help are checked for this planning change.

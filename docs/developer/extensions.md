@@ -4,6 +4,10 @@ Research reviewed on 2026-10-16 against repository `3ad33b3`. This is the P22
 design proposal, not an implemented API, loader, hook configuration or memory
 service. Names and limits below are proposed contracts. Existing skills, explicit
 MCP tools and provider adapters remain the available extension points.
+The operator's subsequent bundled, third-party and generated-feature scenarios
+are exercised in [scenario analysis](extension-scenarios.md). That review replaces
+the original rebuild-only loading assumption with a backend-independent SDK,
+immutable artifacts and scoped activation. These mechanisms are still planned.
 
 ## Recommendation
 
@@ -45,14 +49,23 @@ Elixir [behaviours](https://elixir.hexdocs.pm/Module.html#module-behaviour) supp
 callback contracts; [Task.Supervisor](https://elixir.hexdocs.pm/Task.Supervisor.html)
 supplies owned work. Runtime return values still require host validation.
 
-Start with compiled Elixir modules registered explicitly at build time, including
-two bundled examples. Operator configuration selects known string IDs, order,
-enabled hooks, bounded options and timeout/error policy. Do not create atoms from
-arbitrary configuration or compile/evaluate repository `.exs` automatically.
-Adding a custom module initially requires a reviewed Mix dependency/source change
-and rebuilt release. Document this limitation; do not describe it as dynamic
-third-party installation or hot reload. Defer a signed/catalogued distribution
-format until real extension needs establish its requirements.
+Compile bundled Elixir adapters into the release, including two opt-in examples.
+Their data-only metadata is available without invoking code. Disabled adapters
+must not introduce `on_load`, automatically started OTP applications or registration
+callbacks that execute during boot/discovery; prove this in the release fixture.
+Separate the adapter ID/manifest from its execution backend: a reviewed builtin
+may execute in-VM; an independently installed artifact uses an owned external
+worker. Both implement the same versioned, serializable invocation/result
+contracts. Operator configuration selects installed string IDs or instance aliases,
+order, enabled hooks, validated options and timeout/error policy. Unknown IDs
+fail without download; flags/configuration never become module names or shell
+strings. Do not create host atoms from arbitrary IDs or evaluate project `.exs`.
+
+P22 must prove a local independently built Elixir worker artifact can be imported,
+configured and used without rebuilding Ipse. A downloaded package manager,
+marketplace, signing infrastructure and automatic builder can follow later using
+the same artifact/activation contracts. A reviewed custom release remains an
+optional distribution route, rather than the only way to add an extension.
 
 Reuse P15 configuration precedence and provenance, but require explicit
 operator enablement of executable extensions. Generic project-config trust alone
@@ -67,9 +80,53 @@ An in-VM extension is **trusted executable code**, with the VM user's access.
 Allowlisted callback values and timeouts constrain the API, not arbitrary BEAM
 code: a module could call File, spawn processes or inspect VM state directly.
 Supervision does not sandbox it. Operator review is therefore essential. A
-future out-of-process adapter would need an explicit isolation/effect protocol;
-existing MCP is useful for external tools but is not a generic lifecycle-hook
-standard or automatic authorization for external effects.
+worker adapter therefore needs an explicit ownership/effect protocol. A separate
+process provides code/heap/dependency separation, not OS confinement by itself;
+trusted local workers retain the user's OS access unless a supported explicit
+policy is selected. Existing MCP remains useful for external tools but is not a
+generic lifecycle-hook standard or automatic authorization for external effects.
+
+### Worker boundary
+
+OTP code replacement operates on modules, and a VM's current exported code is
+shared across its processes. Loading code can also run `on_load` functions.
+Consequently, installing an arbitrary BEAM package into the host cannot be treated
+as passive discovery or per-session version isolation. This motivates separate
+workers for independently installed/generated packages. It is a design inference
+from [OTP code loading](https://www.erlang.org/doc/system/code_loading.html) and
+the [code server contract](https://www.erlang.org/doc/apps/kernel/code.html).
+
+Keep the SDK/worker bootstrap usable without starting Ipse's Session/provider/auth
+application tree inside the worker. Package authors depend on the SDK contract,
+not private host modules or its dependency versions. Both backends must pass the
+same invocation/result conformance fixtures before the SDK is considered stable.
+
+The SDK must avoid PIDs, refs, functions, structs and arbitrary Erlang terms in
+public values. A builtin facade translates those same JSON-shaped values to
+local calls. A worker bridge negotiates protocol/SDK versions, required/optional
+capabilities, artifact/runtime identity, schemas and limits before activation.
+Use bounded framed local stdio, request IDs, deadlines, explicit cancellation,
+late/duplicate-reply rejection, stdout protocol separation and bounded stderr.
+No distributed BEAM node, shared cookie, implicit network transport or host state
+access is needed. [OTP ports](https://www.erlang.org/doc/system/ports.html) supply
+byte-oriented owned communication; cleanup of descendants still needs Ipse's
+OS helper and verification, not an assumption that closing a port kills a tree.
+
+Evaluate existing OTP, the current stdio owner/helper, Jason/JSONSchex and
+maintained protocol packages before implementing framing/validation. Reuse
+suitable pieces behind an Ipse adapter; document any missing lifecycle semantics
+that require a small custom bridge. MCP transport ownership can inform reuse,
+but do not pretend MCP already defines prompt/settlement callbacks. Each worker
+receives purpose-specific context and explicit credential references only when
+its approved capability requires them; no inherited host credential/environment
+dump. This is API/data minimization, not a sandbox against trusted executable code.
+
+The first standalone worker targets Elixir/OTP and existing declared tooling.
+Later other-language workers can use the same wire contract, with explicit runtime
+requirements and dependency approval/inventory; no new language runtime becomes
+a silent Ipse dependency. Shared-worker reuse is deferred: default to a worker per
+extension instance/session so state, crashes and versions do not bleed across
+sessions. Preserve cross-process locking for intentionally shared durable stores.
 
 ## Lifecycle map
 
@@ -191,7 +248,7 @@ do not add a feature-name conditional to Session or the CLI to work around it.
 | --- | --- | --- |
 | Prompt preprocessing | Ordered prompt annotation/projection | Original intent, bounds, source identity, admission and durable projection |
 | Output postprocessing | Completed presentation projection | Original model message/native continuation and streaming semantics |
-| Custom tools | Static descriptor/schema registration and owned invocation | Catalog collision checks, argument validation, full approval, intent and outcomes |
+| Custom tools | Activation-pinned descriptor/schema registration and owned invocation | Catalog collision checks, argument validation, full approval, intent and outcomes |
 | Operator commands/forms | Namespaced command registration and existing structured-question API | Parsing, terminal lifecycle, stale-answer checks and permission separation |
 | Long-term memory | Bounded context contributions, namespaced storage and approved effect proposals | Scope/locks, snapshot provenance, context budget and no replay |
 | Customized workflows | Bounded host-action proposals at admission or before settlement | Cancellation, step/time budgets, child ownership, approvals and unknown-effect stop |
@@ -286,19 +343,31 @@ a mandatory pipeline.
 
 ### Installation and compatibility
 
-Initial installation means reviewing an Elixir package/source, recording its
-license/dependencies, adding it to a build manifest, rebuilding a release and
-explicitly enabling its known string ID. Document a small external example
-package so the procedure does not require edits to core modules. No implicit
-project code evaluation, startup dependency download or hot reload. Release
-verification includes enabled packages and their notices; a disabled package's
-callbacks must never run. Project `.ipse/` can configure an operator-enabled
-subset, not authorize executable loading or remote egress. Child sessions get a
-validated subset with separate storage/approval/effect identities.
+Separate immutable package artifacts, installed/trusted records and activation
+instances. Builtin precompiled examples and standalone packages use the same
+metadata/options/capability contract. P22 includes a minimal local artifact import
+and registry, plus worker execution without a core rebuild. Managed network
+download/build/install UX is a follow-on. No implicit project evaluation, startup
+dependency download, host code-path injection or hot reload. Record licenses and
+dependencies for every distributed artifact; disabled callbacks/init never run.
+Project `.ipse/` configures only an operator-approved subset; flags override
+invocation configuration within that ceiling, not executable trust or revocation.
+Children get a validated subset with separate storage/approval/effect identities.
 
-Pin SDK major/minor requirements, required capabilities, code/build digest,
-ordered configuration digest and journal projection version. Configuration
-changes affect new sessions. Resume refuses unknown mandatory versions, changed
+The authoritative [adoption contract](extension-scenarios.md#package-and-installation-contract)
+defines manifest identity, import staging, compatibility and installation
+transactions. Its [activation contract](extension-scenarios.md#configuration-lifetime-and-activation)
+distinguishes durable configuration from temporary leases, promotion, expiry and
+resume. A session pins its exact active set/generation. Initial P22 activation
+uses new sessions; live activation is a foreseen idle host transaction with a
+versioned capability, rather than arbitrary code reload. The
+[scenario matrix](extension-scenarios.md#scenario-tests) distinguishes foundation
+fixtures from deferred conversational installers/builders and remote catalogs.
+
+Pin SDK/protocol requirements, required capabilities, artifact/runtime digest,
+instance/lease/generation, ordered configuration digest and projection version.
+Configuration changes affect new sessions. Resume refuses unknown mandatory
+versions, changed
 identity, corrupt projections or missing required adapters before any callback,
 tail repair or inference. Optional diagnostic sinks may be absent only under a
 documented policy that cannot change context or effects. Provide compatibility
@@ -316,13 +385,17 @@ service is permitted.
 ### Delivery sequence and extension-only proof
 
 1. **P22A — contracts and host kernel:** finalize schemas, capability/trust and
-   version policy; implement the registry, generic owned dispatch, durable
-   projections and the lifecycle events required by exercised capabilities.
+   version policy; separate package/installed/activation identities, then implement
+   the registry, local immutable import, generic owned dispatch, worker bridge,
+   durable projections and lifecycle events required by exercised capabilities.
+   Keep SDK values serializable and backend-independent; define scoped instance
+   configuration, session leases and a versioned activation-generation boundary.
    Include generic tool/command/context/state/effect seams rather than merely
    hardwiring the two examples. Keep unexercised callbacks provisional.
 2. **P22B — two packaged examples:** opt-in prompt annotation and completed-answer
    formatter, with original/derived integrity, ordering and disabled parity.
-   Include operator install/enable/inspect/disable/recovery instructions.
+   Prove compiled-in availability with zero disabled execution, generic config/
+   flag overrides, distinct instances and operator inspect/enable/disable/recovery.
 3. **P22C — coverage gate:** build a separate local memory/workflow demonstration
    package using only the documented SDK. Exercise scoped remember/recall/forget,
    a namespaced command/tool, a structured question and one bounded approved
@@ -330,10 +403,16 @@ service is permitted.
    dependency. Freeze core before adding this package; the resulting diff must
    contain no core/native edits or feature-specific host branches. A failed gate
    sends the general SDK gap back to P22A before compatibility is declared stable.
-   Production memory stores and elaborate workflows remain follow-on extensions.
+   Run it as an independently built local worker artifact imported without
+   rebuilding Ipse, with temporary-session use and explicit persistent configuration.
+   Production memory stores, elaborate workflows, assisted download/build UI and
+   live activation remain follow-ons against these same versioned contracts.
 4. **P22D — observability and compatibility:** bounded local lifecycle sink,
    transform/event timing and drop counters; documented opt-in local BEAM tracing;
    conformance fixtures, package checks and a supervised extension-only trial.
+   Include side-by-side pinned versions, install interruption, lease expiry,
+   revocation, missing artifacts and clear unsupported-capability refusals from
+   the [scenario matrix](extension-scenarios.md#scenario-tests).
    Remote OpenTelemetry is optional follow-on work with an explicit configurable
    endpoint and separate data-transfer authorization, not a completion dependency.
 
