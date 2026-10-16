@@ -521,6 +521,7 @@ defmodule Ipse.CLI do
              model: model,
              auth_dir: auth_dir(),
              home: home(),
+             operator_home: Ipse.Skills.operator_home(),
              sandbox: sandbox,
              base_url: opts[:base_url],
              max_steps: opts[:max_steps] || 30,

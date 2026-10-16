@@ -1812,3 +1812,36 @@ developer guidance distinguish these gaps from the planned contracts. Relevant
 verification is CLI help, documentation file/anchor checks and diff whitespace;
 no new runtime tests, live inference or access to installed personal skills are
 needed for this documentation-only update.
+
+## P15 shared operator skills, 2026-10-16
+
+Stable extracted Ipse code `5759bea` implemented this change in an isolated
+worktree, using explicitly approved ChatGPT subscription analysis/edits and
+individual tool approvals. The running stable harness stayed separate from
+edited source. It added shared operator discovery, canonical-file deduplication,
+selected/shadowed provenance and isolated discovery/resource/resume fixtures.
+An independent reviewer inspected the source, completed documentation and reran
+the checks; no private transcripts, auth or installed personal skills are committed.
+
+A deliberate VM interruption occurred before a build command was approved.
+Resuming the same journal stayed idle with identical journal bytes and workspace
+diff, with no inference or tool replay. Only an explicit continuation requested
+missing work. A later operator pause likewise preserved the trial; independent
+review completed the handoff from existing edits rather than repeating effects.
+
+The build exposed inherited bundled Erlang environment interfering with system
+Mix tools. The trial explicitly selected system PATH/ERL_ROOTDIR and unset runtime
+launcher variables for those checks; this was an announced trusted-toolchain
+workaround, not sandbox enforcement. Fresh-HOME source demo also needed the
+existing Mix archive cache explicitly selected. Follow-up release-environment
+cleanup remains recorded; packaged operation itself passed the extracted verifier.
+The isolation fixture initially used a nonexistent convenience API and omitted a
+required model; tests exposed both and the fixture was corrected.
+
+Independent source build, formatting, warnings-as-errors compilation, native Linux
+suite (284 passed, 14 macOS excluded) and native credential-free demo passed.
+All 39 Markdown documents/392 local links passed. The shared-skills bundled archive
+built and passed extraction, isolated HOME/IPSE_HOME, utility-only PATH, MCP,
+delegation, helper and lifecycle checks. macOS is not claimed from these Linux
+commands; hosted checks are tracked separately. Simple one-line metadata, symlink
+limitations and source drift behavior remain explicit in developer/operator guides.

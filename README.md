@@ -62,6 +62,10 @@ instructions and `/context refresh` reloads them while idle. See
 Use `$project-orientation` to assess a repository's purpose, current changes,
 and available checks before choosing next steps; see
 [project assessment](docs/operator/usage.md#working-with-the-agent).
+Skills are discovered without copying from project `.agents/skills`, Ipse user
+`IPSE_HOME/skills`, shared operator `~/.agents/skills`, then bundled definitions
+(in that precedence order). The shared home is independent of `IPSE_HOME`;
+see [skill limits and provenance](docs/operator/usage.md#skills).
 Explicit stdio and Streamable HTTP MCP tools are available through `--mcp-config`; see
 [configuration and trust boundaries](docs/operator/mcp.md).
 Local MCP servers default to trusted execution; a per-server `"sandbox": "native"`

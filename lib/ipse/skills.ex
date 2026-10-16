@@ -3,26 +3,54 @@ defmodule Ipse.Skills do
 
   @max_skill_bytes 64 * 1024
 
-  @doc "Find project, user, and bundled skills, keeping the highest priority copy."
-  def discover(cwd, user_dir \\ nil) do
+  @doc """
+  Discover project > Ipse user > shared operator > bundled skills.
+
+  `discover/1` uses the real operator home independently of IPSE_HOME.
+  An explicit user directory in `discover/2` disables shared discovery, keeping
+  isolated callers isolated. `discover/3` accepts `:operator_home` or the more
+  specific `:shared_root` (nil disables it); neither changes authentication.
+  """
+  def discover(cwd), do: discover(cwd, nil, operator_home: operator_home())
+  def discover(cwd, user_dir), do: discover(cwd, user_dir, shared_root: nil)
+
+  def discover(cwd, user_dir, opts) do
     home = System.get_env("IPSE_HOME") || Path.expand("~/.ipse")
     user_dir = user_dir || Path.join(Path.expand(home), "skills")
+
+    shared_root =
+      Keyword.get_lazy(opts, :shared_root, fn ->
+        if opts[:operator_home], do: Path.join(opts[:operator_home], ".agents/skills")
+      end)
 
     [
       Path.join(cwd, ".agents/skills"),
       user_dir,
+      shared_root,
       bundled_dir()
     ]
+    |> Enum.reject(&is_nil/1)
     |> Enum.flat_map(&read_skill_tree/1)
-    |> Enum.reduce(%{}, fn skill, acc -> Map.put_new(acc, skill["name"], skill) end)
+    |> Enum.uniq_by(& &1["canonical_path"])
+    |> Enum.reduce(%{}, fn skill, acc ->
+      Map.update(acc, skill["name"], Map.put(skill, "shadowed_paths", []), fn selected ->
+        Map.update!(selected, "shadowed_paths", &(&1 ++ [skill["path"]]))
+      end)
+    end)
     |> Map.values()
     |> Enum.sort_by(& &1["name"])
   end
 
+  @doc "Operator home from HOME, with the VM user home as fallback; independent of IPSE_HOME."
+  def operator_home, do: System.get_env("HOME") || System.user_home!()
+
   @doc "Return a compact listing suitable for a model prompt."
   def catalog(skills) do
     Enum.map_join(skills, "\n", fn skill ->
-      "- #{skill["name"]}: #{skill["description"]}"
+      shadowed = Enum.map_join(Map.get(skill, "shadowed_paths", []), "\n", &"  Shadowed: #{&1}")
+
+      "- #{skill["name"]}: #{skill["description"]}\n  Source: #{skill["path"]}\n  SHA-256: #{skill["sha256"]}" <>
+        if(shadowed == "", do: "", else: "\n" <> shadowed)
     end)
   end
 
@@ -89,13 +117,15 @@ defmodule Ipse.Skills do
     |> Path.join("*/SKILL.md")
     |> Path.wildcard()
     |> Enum.flat_map(fn path ->
-      with {:ok, raw} <- read_limited(path),
+      with {:ok, canonical_path} <- Ipse.WorkspaceContext.canonical_path(path),
+           {:ok, raw} <- read_limited(path),
            {:ok, metadata, _body} <- extract_frontmatter(raw) do
         [
           %{
             "name" => metadata["name"],
             "description" => metadata["description"],
             "path" => Path.expand(path),
+            "canonical_path" => canonical_path,
             "sha256" => :crypto.hash(:sha256, raw) |> Base.encode16(case: :lower)
           }
         ]
