@@ -24,7 +24,7 @@ the next feature sequence on 2026-10-15:
 | [P16](#p16-explicit-model-profiles-and-task-routing) | Main/subtask model profiles and provider-specific settings | Complete within documented scope |
 | [P17](#p17-structured-operator-questions) | Validated operator questions and resumable answers | Complete within documented scope |
 | [P18](#p18-supervised-self-development-on-the-operators-mac) | Second supervised trial using the combined harness on macOS | Complete within documented supervised scope; local and hosted checks passed |
-| [P19](#p19-long-session-diagnosis-and-recovery) | Diagnose retained-context limits and improve explicit recovery | Implemented; Linux source/package verified, hosted checks pending |
+| [P19](#p19-long-session-diagnosis-and-recovery) | Diagnose retained-context limits and improve explicit recovery | Complete within documented scope; Linux and hosted Mac checks passed |
 | [P20](#p20-repeatable-supervised-self-development) | Reusable supervised development/review skill and evidence | Skill/source/package fixtures verified; live P21 verification follows |
 | [P21](#p21-larger-self-development-trial-on-serenity) | Larger supervised trial with independent Mac verification | Authorized; preparing frozen runner and candidate worktree |
 | [P22](#p22-extension-scaffold-and-lifecycle-hooks) | Typed extension scaffold, lifecycle hooks and runtime observability | Research/design recorded; implementation not started |
@@ -917,7 +917,7 @@ compaction rules stay intact; original/native data is never silently trimmed.
 Synthetic fixtures reproduce the retained-native-data failure shape, not the
 unavailable original private Mac transcript. Local source/package checks are
 recorded in [P19 evidence](developer/testing.md#p19-diagnosis-and-explicit-recovery);
-hosted completion checks follow the focused commit.
+hosted Linux/Mac completion checks passed after fixture timing synchronization.
 Reproduce the retained-context stop with synthetic fixtures and identify exact
 byte contributions before choosing a repair. Do not assume the safe refusal is
 itself a bug or solve it by silently dropping native continuation or operator intent.

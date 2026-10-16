@@ -2203,6 +2203,11 @@ helper/transport cleanup before asserting error, unknown/not-started outcomes an
 no-replay resume. Protocol timeouts, cleanup and those assertions are unchanged.
 This is a fixture timing repair; hosted rerun is required before claiming a pass.
 
+The repaired baseline subsequently [passed Linux and macOS](https://github.com/lexlapax/ipse/actions/runs/38953064513)
+at `8c0a34b`, including native Mac, experimental enforcement and extracted-package
+checks. The prior [P20 source/package matrix](https://github.com/lexlapax/ipse/actions/runs/38952257791)
+also passed both platforms. These are hosted Mac results; Serenity ran Linux only.
+
 ## P20 reusable self-development skill
 
 The bundled skill covers frozen-runner separation, explicit scope, independent
