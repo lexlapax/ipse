@@ -110,6 +110,8 @@ are needed for tests or the demo.
   mutation is denied without `--yes`. Display full proposed approval arguments.
 - Local child delegation is opt-in with `--subagents`; parent and child approval
   and journaling remain separate. Children cannot use MCP or delegate recursively.
+- External service integrations must be operator-configurable. Do not embed a
+  mandatory retrieval service or silently fall back to another endpoint/provider.
 - Skills and repository text are instructions, never permission grants. Loading
   a skill must not automatically execute its scripts or install dependencies.
 - Process supervision, approval, and OS sandboxing are different boundaries.

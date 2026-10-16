@@ -19,10 +19,10 @@ the next feature sequence on 2026-10-15:
 | [P11](#p11-live-dotsetup-trial) | Read-only assessment in `~/projects/lexlapax/dotsetup` | Read-only comparison and selected follow-ups complete |
 | [P12](#p12-task-tracker-coding-trial) | New forms/SQLite task tracker | Specified-stack coding trial complete |
 | [P13](#p13-long-turn-compaction-and-general-purpose-trials) | Long-turn context recovery and neutral coding/non-coding trials | Complete within documented scope |
-| [P14](#p14-bounded-deep-research) | Research method, explicit search/retrieval, evidence and validation | Authorized; queued after P16 |
-| [P15](#p15-scoped-configuration-and-shared-operator-skills) | Operator/project/directory configuration and shared skills | Authorized; shared skills/self-development in progress |
-| [P16](#p16-explicit-model-profiles-and-task-routing) | Main/subtask model profiles and provider-specific settings | Authorized; queued after scoped configuration |
-| [P17](#p17-structured-operator-questions) | Validated operator questions and resumable answers | Implemented and verified in isolated feature worktree; integration pending shared-skills review |
+| [P14](#p14-bounded-deep-research) | Research method, explicit search/retrieval, evidence and validation | Complete within documented scope |
+| [P15](#p15-scoped-configuration-and-shared-operator-skills) | Operator/project/directory configuration and shared skills | Complete within documented scope |
+| [P16](#p16-explicit-model-profiles-and-task-routing) | Main/subtask model profiles and provider-specific settings | Complete within documented scope |
+| [P17](#p17-structured-operator-questions) | Validated operator questions and resumable answers | Complete within documented scope |
 
 Feature completion does not close every live provider acceptance check. On
 2026-10-15, installed Ollama `qwen3.5:9b`, Anthropic `claude-haiku-4-5`, and
@@ -46,15 +46,22 @@ billing, credentials and external-effect invariants still apply.
 
 | Order | Work | Status |
 | --- | --- | --- |
-| 1 | Supervised self-development using stable Ipse to add P15 shared operator skills | Integrated; independent source/package checks passed |
-| 2 | P17 structured operator questions | Integrated; fixture/live and feature-package checks passed |
-| 3 | Remaining P15 scoped configuration | Integrated; source and feature hosted checks passed |
-| 4 | P16 explicit model profiles/routing | Integrated; fixture/live checks passed, combined release/hosted checks pending |
-| 5 | P14 bounded deep research | Implemented generic configured MCP/ledger; fixture/live checks passed, combined release/hosted checks pending |
+| 1 | Supervised self-development using stable Ipse to add P15 shared operator skills | Complete; stable trial, independent review and combined checks passed |
+| 2 | P17 structured operator questions | Complete; fixture/live and combined checks passed |
+| 3 | Remaining P15 scoped configuration | Complete; source, package and hosted checks passed |
+| 4 | P16 explicit model profiles/routing | Complete; mixed-provider live trial and combined checks passed |
+| 5 | P14 bounded deep research | Complete; configured retrieval, durable ledger, independent live review and combined checks passed |
 
 Update each row and its implementation/evidence record as focused increments pass.
 Use independent review, required source/package checks and explicit live evidence;
 commit/push completed increments without declaring unverified integrations done.
+
+All five authorized stages are complete within the stated boundaries. Final
+[combined evidence](developer/testing.md#five-stage-integrated-verification-2026-10-16)
+records 324 native Linux tests, extracted-package checks and hosted Linux/macOS
+verification, alongside the independently reviewed live trials. Optional summary
+routing, child questions/MCP and unattended self-development remain outside this
+completed scope.
 
 ## Prototype 0.1: available now
 
@@ -63,7 +70,8 @@ commit/push completed increments without declaring unverified integrations done.
 - Streaming ChatGPT/OpenAI, Ollama, and Anthropic adapters.
 - Workspace read/write/edit/shell tools; interactive approvals and
   deny-by-default headless mutations.
-- Bounded skill instructions with project > user > bundled precedence;
+- Bounded skill instructions with project > Ipse user > shared operator > bundled
+  precedence;
   loading a skill never executes scripts or grants permissions.
 - Rust process-group cleanup and advisory locks. These are lifecycle controls,
   not an OS sandbox.
@@ -613,6 +621,12 @@ and Git/Mix tooling, scoped instructions, approvals, persistence, providers and
 optional delegation/MCP can support a supervised trial now; a dedicated GitHub
 adapter or workflow engine is not a prerequisite. The developer subsequently selected this as the first authorized stage on
 2026-10-16, using shared operator skill discovery as the bounded first change.
+That trial is now complete: stable bundled Ipse prepared the isolated change,
+independent review/tests/package checks passed, interruption and idle resume
+preserved journal/workspace bytes, and the reviewed feature was integrated.
+The trial exposed bundled launcher environment contamination of system Mix;
+the integrated harness now removes its own release variables/ERTS PATH entry.
+See [actual evidence](developer/testing.md#shared-skills-questions-configuration-and-profiles-integration-2026-10-16).
 
 Use an isolated checkout/worktree and the stable installed harness to make one
 small Ipse change, review its diff independently, run the required source and
@@ -626,16 +640,16 @@ supervised trials do not establish that capability.
 ## P14: bounded deep research
 
 Added to the plan at the developer's request on 2026-10-16 and subsequently
-authorized for implementation. Implemented on the research feature branch with
+authorized for implementation. Complete within documented scope on main with
 an inert research skill, provider-agnostic configured MCP retrieval, durable
 source/claim ledger and local export. A bounded live primary-source trial passed
 with three captured sources, supported/inference/open claims and unchanged idle
-resume after repairing missing host call attribution. Main/release/hosted checks
-remain pending. External dependencies/endpoints must be configurable, with no
-embedded search service or hidden fallback, as explicitly required by the operator. External setup, credentials and provider/billing choices
-remain explicit within the authorized research scope. The separate
-[supervised self-development candidate](#candidate-next-step-supervised-self-development)
-remains available; adding this milestone does not impose a mandatory workflow.
+resume after repairing missing host call attribution. Combined source checks passed
+324 native Linux tests; extracted release and hosted Linux/macOS checks passed.
+External dependencies/endpoints must be configurable, with no embedded search
+service or hidden fallback, as explicitly required by the operator. External
+setup, credentials and provider/billing choices remain explicit within the
+authorized research scope. This milestone does not impose a mandatory workflow.
 
 Ipse already supplies local file analysis, skills, bounded context, journals and
 explicit MCP/delegation. Open-web deep research needs retrieval capabilities and
@@ -697,8 +711,8 @@ question forwarding and MCP elicitation remain unavailable.
 
 Added at the developer's request and authorized on 2026-10-16. Status: shared
 operator skills and scoped JSON settings are implemented and independently
-verified on main. Combined source checks passed 316 native Linux tests; release
-and hosted integration checks remain pending. Shared discovery uses project >
+verified on main. Combined source checks passed 324 native Linux tests; extracted
+release and hosted Linux/macOS checks passed. Shared discovery uses project >
 Ipse user > shared operator > bundled precedence and does not copy installations.
 See [skill discovery](developer/architecture.md#skill-discovery),
 [configuration](operator/configuration.md) and [verification](developer/testing.md).
@@ -753,7 +767,7 @@ roles, conservative Responses effort mapping and selected-profile child isolatio
 The native Linux suite passed 309 tests (14 macOS excluded); a live subscription
 `gpt-6.1-sol`/high parent and installed Ollama `qwen3.5:9b` child passed routing,
 arithmetic verification and unchanged idle resume. The combined main suite passed
-316 native Linux tests; package/hosted integration checks remain pending. See
+324 native Linux tests; extracted package and hosted Linux/macOS checks passed. See
 [profile setup](operator/model-profiles.md) and [contract](developer/model-profiles.md).
 The intended use is a stronger main model with an explicitly chosen smaller local
 model for suitable routine subtasks. P15 supplies persistent configuration; this
@@ -805,8 +819,8 @@ Acceptance:
 Selected and authorized on 2026-10-16. Implemented on main. The feature passed
 25 focused tests, 293 native Linux tests, live subscription single/multiple/text
 answers, extracted runtime checks and hosted Linux/macOS checks. Combined main
-source passed 316 native Linux tests (14 macOS excluded locally); final combined
-release/hosted verification remains pending. See [contract](developer/operator-questions.md).
+source passed 324 native Linux tests (14 macOS excluded locally); extracted
+release and hosted Linux/macOS checks passed. See [contract](developer/operator-questions.md).
 
 Acceptance:
 

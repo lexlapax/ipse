@@ -315,8 +315,8 @@ Use the latter for [project assessment](#working-with-the-agent).
 
 For embedding and isolated fixtures, see the explicit root inputs and session
 isolation rules in the [developer contract](../developer/architecture.md#skill-discovery).
-[P15](../plan.md#p15-scoped-configuration-and-shared-operator-skills) remains
-partial: scoped configuration is not implemented.
+[Scoped configuration](configuration.md) loads operator/project/directory JSON
+separately from skill discovery, with explicit project trust and no effect grants.
 
 ```markdown
 ---

@@ -25,7 +25,8 @@ and must not be guessed from OpenAI effort names.
 Delegation definitions advertise only configured IDs and routine/review roles.
 Validation rejects unknown routes before approval or child creation, including
 parallel groups. A selected profile child starts with an allowlist of inherited
-host policy (workspace/sandbox, instruction/skill home inputs, approval, origin),
+host policy (workspace/sandbox, instruction/skill home inputs, approval, origin
+and the parallel-child hardlink restriction),
 then selected execution fields. It drops parent API keys, endpoint, provider
 module, conversations, native payloads, profiles and MCP state. Credential lookup
 occurs in its own request task using the fixed reference for its provider; the

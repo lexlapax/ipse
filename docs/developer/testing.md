@@ -1926,8 +1926,9 @@ configuration and question checks passed on Linux/macOS. Initial profile CI
 stopped at Elixir 1.18 formatting (local toolchain is 1.20); explicit block syntax
 repairs that difference. Initial shared-skills macOS CI exposed isolated HOME
 hiding rustup's installed toolchain; fixtures now preserve RUSTUP_HOME before
-isolating operator discovery, without reading real skills/auth. Combined hosted
-checks remain pending; these failures were not successful macOS validation.
+isolating operator discovery, without reading real skills/auth. Those initial
+failures were not successful macOS validation. The repaired combined
+Linux/macOS checks subsequently [passed](https://github.com/lexlapax/ipse/actions/runs/38924648494).
 
 The stable self-development trial also exposed bundled release launcher variables
 selecting its ERTS during system Mix builds. Trusted shell launch now removes only
@@ -2007,5 +2008,33 @@ credential-free demo and extracted-package checks. The package now explicitly
 verifies scoped configuration, model profiles and durable research bookkeeping
 without authentication, inference or external retrieval. All 47 Markdown files
 and 421 local links/anchors passed. The independently inspected live report is
-485 words and all 14 referenced source/claim IDs exist. Main integration and
-hosted verification follow this focused feature commit.
+485 words and all 14 referenced source/claim IDs exist. Final main integration and
+hosted verification are recorded [below](#five-stage-integrated-verification-2026-10-16).
+
+## Five-stage integrated verification, 2026-10-16
+
+Main integrates supervised shared-skills self-development, native structured
+questions, scoped JSON configuration, explicit model profiles and bounded research.
+The final combined source baseline passed 324 native Linux tests with 14 macOS
+exclusions, build, formatting, warnings-as-errors compilation and credential-free
+demo. Local `ipse config` inspection and `ipse research --resume` export were
+verified without inference or retrieval. Mix's local lock sockets require execution
+outside the restricted shell sandbox on this host; TLS/tests were not weakened.
+All 47 Markdown files and 427 local links/anchors passed after documentation review.
+
+The research [feature Linux/macOS run](https://github.com/lexlapax/ipse/actions/runs/38928027763)
+and [profile-policy repair run](https://github.com/lexlapax/ipse/actions/runs/38927721580)
+passed. The final integrated runtime at `320b40f` also passed
+[hosted Linux/macOS checks](https://github.com/lexlapax/ipse/actions/runs/38928807090),
+including macOS native/experimental enforcement and extracted-package verification.
+macOS ran on hosted macOS runners, not on the Linux development host. The local
+Linux glibc-2.44 archive passed extraction with fresh isolated HOME/IPSE_HOME and
+a utility-only PATH. Its fixtures cover trusted-shell launcher cleanup, scoped
+configuration/profiles, durable research, questions, MCP, delegation and lifecycle
+without authentication, inference or external retrieval.
+The local live report contains three primary sources, eleven immutable claims
+(including historical open notes), 485 words and fourteen valid ledger references.
+Independent content review and unchanged idle resume passed; no exhaustive research
+or unattended self-development claim is made. Retrieval remains an optional,
+operator-selected MCP service; no external endpoint/tool name is embedded in runtime
+code and no new local dependency is introduced.
