@@ -22,14 +22,32 @@ defmodule Ipse.Delegation do
           "function" => %{
             "name" => "delegate",
             "description" =>
-              "Delegate one bounded task to a local child using the same provider, model, and workspace. " <>
+              "Delegate one bounded task to a local child in the same workspace. Configured profiles: #{Enum.join(Ipse.Profiles.ids(config), ", ")}. Choose a configured profile ID or routine/review role; omit both to use routine or inherit the parent. " <>
                 "Host approval is required for delegation and for child mutations. The child returns a bounded result; it cannot delegate or use MCP tools.",
             "parameters" => %{
               "type" => "object",
-              "properties" => %{
-                "task" => %{"type" => "string", "maxLength" => @task_limit},
-                "context" => %{"type" => "string", "maxLength" => @context_limit}
-              },
+              "properties" =>
+                Map.merge(
+                  %{
+                    "task" => %{"type" => "string", "maxLength" => @task_limit},
+                    "context" => %{"type" => "string", "maxLength" => @context_limit}
+                  },
+                  if(Ipse.Profiles.ids(config) == [],
+                    do: %{},
+                    else: %{
+                      "profile" => %{
+                        "type" => ["string", "null"],
+                        "enum" => Ipse.Profiles.ids(config) ++ [nil]
+                      },
+                      "role" => %{
+                        "type" => ["string", "null"],
+                        "enum" => ["routine", "review", nil],
+                        "description" =>
+                          "Optional configured task role. Choose role or profile, never both."
+                      }
+                    }
+                  )
+                ),
               "required" => ["task", "context"],
               "additionalProperties" => false
             }
@@ -43,7 +61,13 @@ defmodule Ipse.Delegation do
 
   @doc "Validate the exact task/context payload accepted from the model."
   def validate(args) when is_map(args) do
-    with true <- Map.keys(args) |> Enum.sort() == ["context", "task"],
+    with true <-
+           Enum.all?(Map.keys(args), &(&1 in ["context", "task", "profile", "role"])),
+         true <-
+           is_nil(args["profile"]) or
+             (is_binary(args["profile"]) and byte_size(args["profile"]) <= 64),
+         true <- args["role"] in [nil, "routine", "review"],
+         true <- is_nil(args["role"]) or is_nil(args["profile"]),
          task when is_binary(task) <- args["task"],
          context when is_binary(context) <- args["context"],
          true <- String.valid?(task) and String.trim(task) != "",
@@ -84,7 +108,7 @@ defmodule Ipse.Delegation do
           "function" => %{
             "name" => "delegate_parallel",
             "description" =>
-              "Run exactly two bounded local children concurrently. Same provider/model/workspace, separate journals and parent approvals. Mutations are serialized; cross-child conflicting file targets or shell access are denied. Children cannot delegate or use MCP.",
+              "Run exactly two bounded local children concurrently using configured profiles or routine/default routing, same workspace, separate journals and parent approvals. Mutations are serialized; cross-child conflicting file targets or shell access are denied. Children cannot delegate or use MCP.",
             "parameters" => %{
               "type" => "object",
               "properties" => %{
@@ -137,7 +161,10 @@ defmodule Ipse.Delegation do
       :context,
       :context_snapshot,
       :tools,
-      :mcp_tools
+      :mcp_tools,
+      :profiles,
+      :roles,
+      :configuration
     ])
     |> Map.put(:subagents, false)
     |> Map.put(:subagent_concurrency, 1)

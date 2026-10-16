@@ -13,9 +13,16 @@ defmodule Ipse.Provider do
 
     if adapter do
       try do
-        case apply(adapter, :complete, [config, messages, tools, emit]) do
-          {:error, message} when is_binary(message) -> error(message, config)
-          result -> result
+        with :ok <-
+               Ipse.Profiles.reasoning(
+                 to_string(config[:provider]),
+                 config[:model],
+                 config[:reasoning_effort]
+               ) do
+          case apply(adapter, :complete, [config, messages, tools, emit]) do
+            {:error, message} when is_binary(message) -> error(message, config)
+            result -> result
+          end
         end
       rescue
         _ -> {:error, "Provider request failed (invalid response or configuration)."}

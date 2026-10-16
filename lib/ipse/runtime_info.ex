@@ -8,7 +8,11 @@ defmodule Ipse.RuntimeInfo do
       provider: provider_name(config[:provider]),
       requested_model: model_name(config[:model]),
       reported_model: model_name(reported_model),
-      historical_reported_model: model_name(historical_model)
+      historical_reported_model: model_name(historical_model),
+      execution:
+        config
+        |> Map.get(:execution, %{})
+        |> then(&Map.take(&1 || %{}, [:id, :role, :reasoning_effort]))
     }
   end
 
@@ -17,6 +21,7 @@ defmodule Ipse.RuntimeInfo do
     Ipse version: #{info.version}
     Configured provider: #{info.provider || "unavailable"}
     Requested model: #{info.requested_model || "unavailable"}
+    Execution profile: #{inspect(Map.get(info, :execution, %{}))}
     Last response model (current run): #{info.reported_model || "unavailable"}
     Saved session's last response model: #{info.historical_reported_model || "unavailable"}
     Model identifiers may be aliases; the exact backend revision is unknown.

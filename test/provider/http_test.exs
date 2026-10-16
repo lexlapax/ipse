@@ -311,6 +311,71 @@ defmodule Ipse.Provider.HTTPTest do
         do: assert(Provider.HTTP.bypass_proxy?(host))
   end
 
+  test "configured child models reach each adapter without parent credentials or native continuation" do
+    for provider <- ["openai", "ollama", "anthropic"] do
+      body =
+        case provider do
+          "openai" ->
+            event(%{
+              "type" => "response.completed",
+              "response" => %{"status" => "completed", "output" => []}
+            })
+
+          "ollama" ->
+            Jason.encode!(%{
+              "message" => %{"role" => "assistant", "content" => "ok"},
+              "done" => true
+            }) <> "\n"
+
+          "anthropic" ->
+            event(%{
+              "type" => "message_start",
+              "message" => %{"id" => "m", "role" => "assistant", "content" => [], "usage" => %{}}
+            }) <>
+              event(%{
+                "type" => "message_delta",
+                "delta" => %{"stop_reason" => "end_turn"},
+                "usage" => %{}
+              }) <>
+              event(%{"type" => "message_stop"})
+        end
+
+      {base, server} = fixture(body)
+
+      parent = %{
+        provider: :chatgpt,
+        model: "parent",
+        api_key: "parent-private",
+        base_url: "https://parent.invalid",
+        profiles: %{
+          "child" => %{
+            "provider" => provider,
+            "model" => "selected-child",
+            "base_url" => base,
+            "timeout_ms" => 5000
+          }
+        }
+      }
+
+      assert {:ok, child} = Ipse.Profiles.child_config(parent, %{}, %{"profile" => "child"})
+      refute Map.has_key?(child, :api_key)
+      child = Map.put(child, :api_key, "child-fixture-key")
+
+      assert {:ok, _, _} =
+               Provider.complete(
+                 child,
+                 [%{"role" => "user", "content" => "selected task"}],
+                 [],
+                 fn _ -> :ok end
+               )
+
+      {headers, request} = Task.await(server)
+      assert request["model"] == "selected-child"
+      refute headers <> Jason.encode!(request) =~ "parent-private"
+      refute Map.has_key?(request, "reasoning")
+    end
+  end
+
   defp fixture(body, status \\ 200, response_headers \\ "") do
     {:ok, listener} =
       :gen_tcp.listen(0, [:binary, active: false, reuseaddr: true, ip: {127, 0, 0, 1}])
