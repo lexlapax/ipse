@@ -31,7 +31,8 @@ Rust owns only OS pipe/process facilities. Elixir owns MCP and JSON-RPC parsing.
 The official [2025-11-25 transport specification](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports)
 defines stdio as newline-delimited JSON-RPC with protocol output on stdout and
 optional diagnostics on stderr. Ipse uses that protocol over local pipes, with
-its own bounded native-helper framing beneath it. P10 adds the bounded Streamable HTTP slice described below. See the official
+its own bounded native-helper framing beneath it. P10 adds the bounded Streamable
+HTTP slice described below. See the official
 [resources](https://modelcontextprotocol.io/specification/2025-11-25/server/resources)
 and [prompts](https://modelcontextprotocol.io/specification/2025-11-25/server/prompts)
 specifications for the protocol surfaces Ipse selectively exposes.

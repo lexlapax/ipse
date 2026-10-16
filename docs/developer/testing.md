@@ -1408,6 +1408,10 @@ Source build, formatting, warnings-as-errors compilation, isolated demo, and
 passed. Rebuilt the exact `dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz` with
 version-matched runtime notices and passed fresh-home/utility-only-PATH verification,
 including the new bundled HTTP MCP round trip and serial/parallel delegation.
-The HTTP demo uses only OTP sockets and the extracted runtime. Hosted Linux/macOS
-source/package checks [passed at c404da5](https://github.com/lexlapax/ipse/actions/runs/38849383383);
-verification of the final worker-death ownership repair is pending.
+The HTTP demo uses only OTP sockets and the extracted runtime. Hosted
+[Linux/macOS source/package CI passed at f5fe717](https://github.com/lexlapax/ipse/actions/runs/38849973400),
+including the final worker-death ownership regression and macOS native enforcement.
+Serenity ran the local Linux checks; GitHub Actions ran the separate
+`ubuntu-latest` and `macos-14` jobs. No macOS suite or Mac live-provider request
+ran locally on Serenity. The initial transport's
+[hosted run also passed](https://github.com/lexlapax/ipse/actions/runs/38849383383).

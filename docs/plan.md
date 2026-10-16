@@ -14,7 +14,7 @@ the next feature sequence on 2026-10-15:
 | --- | --- | --- |
 | [P8](#p8-bounded-skill-resources) | Bounded explicit skill resources | Complete within documented scope |
 | [P9](#p9-parallel-local-subagents) | Parallel local subagents | Complete within documented scope |
-| [P10](#p10-network-mcp) | Explicit network MCP | Implemented; host verification in progress |
+| [P10](#p10-network-mcp) | Explicit network MCP | Complete within documented scope |
 | [P11](#p11-live-dotsetup-trial) | Live use in `~/projects/lexlapax/dotsetup` | Planned after P10 |
 
 Feature completion does not close every live provider acceptance check. On
@@ -466,7 +466,8 @@ verified HTTPS, optional per-server bearer credentials, bounded private HTTP/1
 clients, and best-effort session DELETE. Literal loopback HTTP requires an explicit
 exception. Redirects, retries, OAuth negotiation, GET streams/subscriptions, and
 reconnection/replay are excluded. Fixture and pinned independent-server checks
-passed; hosted source/package verification is in progress. See the
+passed; hosted Linux/macOS source/package verification passed, including the
+final abnormal-worker cleanup regression. See the
 [contract](developer/mcp.md#streamable-http-boundary) and
 [P10 evidence](developer/testing.md#p10-streamable-http-mcp-2026-10-15).
 Remote subagents and arbitrary remote command execution remain outside this scope.
