@@ -24,7 +24,8 @@ defmodule Ipse.Context do
     may be incomplete; inspect the journal and current workspace before repeating an effect.
     A previous approval never approves a new tool call.
     Workspace: #{cwd}
-    Shell policy requested by the host: #{sandbox_description(sandbox)}
+    Shell policy and visibility facts supplied by the host:
+    #{Ipse.Sandbox.describe(sandbox)}
     Approval is enforced separately by the host. A configured profile is not evidence
     that an individual command launched successfully; use its result as evidence.
     File tools are confined to the workspace. Do not use shell to evade a denied action.
@@ -49,12 +50,4 @@ defmodule Ipse.Context do
 
   defp workspace_instructions(nil), do: "No workspace instruction snapshot supplied."
   defp workspace_instructions(snapshot), do: Ipse.WorkspaceContext.format(snapshot)
-
-  defp sandbox_description(:native),
-    do:
-      "native workspace sandbox; unavailable enforcement fails closed, network denied, workspace writes allowed."
-
-  defp sandbox_description(_),
-    do:
-      "trusted local execution with user filesystem and network permissions, without an OS sandbox."
 end

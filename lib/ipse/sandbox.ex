@@ -39,6 +39,7 @@ defmodule Ipse.Sandbox do
       requested: mode,
       backend: if(mode == :native, do: profile(), else: nil),
       platform_supported: native_platform?(),
+      visibility: visibility(mode),
       note:
         "This reports requested policy, not activation." <>
           if(mode == :native and :os.type() == {:unix, :darwin},
@@ -47,6 +48,52 @@ defmodule Ipse.Sandbox do
             else: ""
           )
     }
+  end
+
+  @doc "Allowlisted shell visibility facts, not evidence that a command activated the policy."
+  def visibility(mode, platform \\ :os.type())
+
+  def visibility(:native, {:unix, :linux}) do
+    [
+      "Linux native workspace sandbox: only the selected workspace, private temporary storage, and fixed system tool/library/device paths are visible. Workspace and private temporary storage are writable; system paths are read-only.",
+      "Sibling repositories and host home/configuration paths are not mounted. HOME and TMPDIR refer to private temporary storage, not the operator's home. There are no extra dependency roots.",
+      "Host /proc is absent. /dev/fd and standard descriptor paths refer only to the job's private PID namespace; host process data is unavailable. Network sockets are denied.",
+      "The shell receives only system PATH, LANG, and private HOME/TMPDIR. Host environment variables and credentials are not inherited. Do not assume USER is set; fixtures can use an explicit non-secret value.",
+      visibility_warning()
+    ]
+  end
+
+  def visibility(:native, {:unix, :darwin}) do
+    [
+      "macOS native workspace sandbox: the selected workspace and private temporary storage are writable. OS-required reads and fixed Homebrew roots are permitted by the signed App Sandbox profile; other host paths may be inaccessible.",
+      "HOME and TMPDIR refer to private temporary storage, not the operator's home. The shell receives only system PATH, LANG, and private HOME/TMPDIR; host environment variables and credentials are not inherited. Do not assume USER is set.",
+      "Network access is denied. This backend has no Linux PID namespace or private procfs view. Detached descendants may survive cancellation while remaining sandboxed.",
+      visibility_warning()
+    ]
+  end
+
+  def visibility(:native, _),
+    do: ["The native workspace sandbox is unavailable on this platform; execution fails closed."]
+
+  def visibility(_, _) do
+    [
+      "Trusted local execution uses the user's filesystem and network permissions without an OS sandbox. Shell execution removes the common provider-token variables; other inherited environment and accessible files may remain available."
+    ]
+  end
+
+  @doc "Shared terminal/model description of requested shell policy and visibility."
+  def describe(mode, platform \\ :os.type()) do
+    Enum.join(
+      [
+        "Shell policy requested: #{mode}.",
+        "Requested policy is not proof of activation; inspect each command result."
+      ] ++ visibility(mode, platform),
+      "\n"
+    )
+  end
+
+  defp visibility_warning do
+    "A path lookup failure describes this sandbox's view, not host absence. Report 'not visible or inaccessible in this sandbox' unless separate host-side evidence establishes absence. Do not silently switch to trusted mode, expand roots, or clone a replacement."
   end
 
   def profile do

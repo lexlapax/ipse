@@ -66,6 +66,40 @@ defmodule Ipse.LinuxSandboxTest do
   end
 
   @tag :native_sandbox
+  test "Bash descriptor paths support nested reads and writes without exposing procfs", ctx do
+    File.write!(Path.join(ctx.cwd, "input.txt"), "workspace descriptor\n")
+
+    File.write!(Path.join(ctx.cwd, "descriptors.sh"), ~S"""
+    set -euo pipefail
+    test ! -e /proc
+    mapfile -t rows < <(printf 'one\ntwo\n')
+    test "${#rows[@]}" -eq 2
+    cmp <(printf same) <(printf same)
+    printf 'substitution output\n' > >(cat > output.txt)
+    wait
+    grep -qx 'substitution output' output.txt
+    bash -ec 'mapfile -t rows < <(printf grandchild); test "${rows[0]}" = grandchild'
+    exec 7< input.txt
+    grep -qx 'workspace descriptor' /dev/fd/7
+    exec 8> writable.txt
+    printf 'descriptor write\n' > /dev/fd/8
+    grep -qx 'descriptor write' writable.txt
+    printf 'stdin descriptor\n' | grep -qx 'stdin descriptor' /dev/stdin
+    if ls /dev/.ipse-proc; then exit 11; fi
+    if cat /dev/.ipse-proc/self/environ; then exit 12; fi
+    if cat /dev/.ipse-proc/1/status; then exit 13; fi
+    test ! -e /dev/.ipse-proc/sys
+    printf 'Bash descriptors work; procfs data denied\n'
+    """)
+
+    assert {:ok, result} = Runner.run("bash descriptors.sh", ctx.cwd, sandbox: :native)
+    assert result.exit_code == 0
+    assert result.output =~ "Bash descriptors work; procfs data denied"
+    assert File.read!(Path.join(ctx.cwd, "output.txt")) == "substitution output\n"
+    assert File.read!(Path.join(ctx.cwd, "writable.txt")) == "descriptor write\n"
+  end
+
+  @tag :native_sandbox
   test "outside fake credentials and symlink targets cannot be read, overwritten, or chmodded",
        ctx do
     secret_dir = Path.join(ctx.root, "outside/.ssh")
@@ -171,6 +205,38 @@ defmodule Ipse.LinuxSandboxTest do
   end
 
   @tag :native_sandbox
+  test "user code retains ordinary signal and exit semantics inside its PID namespace", ctx do
+    assert {:ok, result} = Runner.run("./probe signal-self", ctx.cwd, sandbox: :native)
+    assert result.exit_code == 143
+    assert result.output == ""
+    assert {:ok, result} = Runner.run("exit 37", ctx.cwd, sandbox: :native)
+    assert result.exit_code == 37
+    refute result.timed_out
+  end
+
+  @tag :native_sandbox
+  test "private descriptor view cannot reopen a live host process's anonymous pipe", ctx do
+    port =
+      Port.open({:spawn_executable, String.to_charlist(ctx.probe)}, [
+        :binary,
+        :exit_status,
+        args: ["host-pipe"]
+      ])
+
+    on_exit(fn -> if Port.info(port), do: Port.close(port) end)
+    [pid, fd] = port_line(port) |> String.trim() |> String.split(" ")
+
+    assert {:ok, result} =
+             Runner.run("./probe host-pipe-attack #{pid} #{fd}", ctx.cwd, sandbox: :native)
+
+    assert result.exit_code == 0
+    assert result.output == "host pipe is outside the descriptor namespace\n"
+    assert Port.command(port, "check")
+    assert port_line(port) == "host pipe unchanged\n"
+    assert_receive {^port, {:exit_status, 0}}, 2000
+  end
+
+  @tag :native_sandbox
   test "a disposable host child's resource limits cannot be changed through prlimit64", ctx do
     port =
       Port.open({:spawn_executable, String.to_charlist(ctx.probe)}, [
@@ -252,7 +318,7 @@ defmodule Ipse.LinuxSandboxTest do
     use std::net::TcpStream;
     use std::io::{Read,Write};
     #[repr(C)] #[derive(Default)] struct Limit {soft:u64,hard:u64}
-    extern "C" { fn kill(pid:i32, signal:i32)->i32; fn syscall(n:i64,...)->i64; fn socketpair(domain:i32,kind:i32,protocol:i32,pair:*mut i32)->i32; fn socket(domain:i32,kind:i32,protocol:i32)->i32; fn close(fd:i32)->i32; }
+    extern "C" { fn kill(pid:i32, signal:i32)->i32; fn syscall(n:i64,...)->i64; fn socketpair(domain:i32,kind:i32,protocol:i32,pair:*mut i32)->i32; fn socket(domain:i32,kind:i32,protocol:i32)->i32; fn close(fd:i32)->i32; fn pipe2(pair:*mut i32,flags:i32)->i32; fn read(fd:i32,buffer:*mut std::ffi::c_void,size:usize)->isize; }
     #[cfg(target_arch="x86_64")] const PRLIMIT:i64=302;
     #[cfg(target_arch="aarch64")] const PRLIMIT:i64=261;
     fn limits(pid:i32)->Limit {let mut out=Limit::default(); assert_eq!(unsafe{syscall(PRLIMIT,pid,7,0usize,&mut out as *mut Limit)},0);out}
@@ -273,6 +339,22 @@ defmodule Ipse.LinuxSandboxTest do
         let result=TcpStream::connect(format!("127.0.0.1:{}",args[2]));
         if args[3]=="allow" {result.unwrap(); println!("network allowed");}
         else {assert_eq!(result.unwrap_err().raw_os_error(),Some(1)); println!("network denied");}
+      } else if args[1]=="signal-self" {
+        assert!(std::process::id()>1);
+        unsafe{kill(std::process::id() as i32,15);}
+        panic!("default SIGTERM did not stop the command");
+      } else if args[1]=="host-pipe" {
+        let mut pair=[-1;2]; assert_eq!(unsafe{pipe2(pair.as_mut_ptr(),0x80000|0x800)},0);
+        println!("{} {}",std::process::id(),pair[1]); std::io::stdout().flush().unwrap();
+        let mut one=[0u8;1]; std::io::stdin().read_exact(&mut one).unwrap();
+        assert_eq!(unsafe{read(pair[0],one.as_mut_ptr().cast(),1)},-1);
+        assert_eq!(std::io::Error::last_os_error().raw_os_error(),Some(11));
+        println!("host pipe unchanged");
+      } else if args[1]=="host-pipe-attack" {
+        let path=format!("/dev/.ipse-proc/{}/fd/{}",args[2],args[3]);
+        let attempt=std::fs::OpenOptions::new().write(true).open(path);
+        assert_eq!(attempt.unwrap_err().raw_os_error(),Some(2));
+        println!("host pipe is outside the descriptor namespace");
       } else if args[1]=="host-limit" {
         let before=limits(0); println!("{} {} {}",std::process::id(),before.soft,before.hard); std::io::stdout().flush().unwrap();
         let mut one=[0u8;1];std::io::stdin().read_exact(&mut one).unwrap();
@@ -291,7 +373,9 @@ defmodule Ipse.LinuxSandboxTest do
         println!("host process mutation denied; self limits work");
       } else {
         let pid:i32=args[2].parse().unwrap();
-        denied(unsafe{kill(pid,0)} as i64);
+        // Ancestor-namespace host PIDs are not visible in the private namespace.
+        assert_eq!(unsafe{kill(pid,0)},-1);
+        assert_eq!(std::io::Error::last_os_error().raw_os_error(),Some(3));
         denied(unsafe{syscall(434,pid,0)});
         #[cfg(target_arch="x86_64")] let (shm,setsid,setpgid)=(29,112,109);
         #[cfg(target_arch="aarch64")] let (shm,setsid,setpgid)=(194,157,154);

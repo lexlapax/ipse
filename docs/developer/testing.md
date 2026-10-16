@@ -1480,3 +1480,58 @@ framework, or GitHub adapter; GitHub was not exercised. Substantive editing,
 commit/push inside dotsetup, deployment, and other provider/host project trials
 remain unverified. This completes the selected read-only assessment, not general
 coding acceptance in that live repository. See [remaining P11 work](../plan.md#p11-live-dotsetup-trial).
+
+## Native Bash and visibility repair, 2026-10-15
+
+The developer selected the first two P11 follow-ups: repair ordinary Bash
+compatibility and share precise platform-specific visibility facts. The initial
+P11 record above describes the pre-repair behavior. Extra dependency roots and
+project-orientation/Git workflow guidance remain separate proposals.
+
+On Serenity (Linux x86_64, kernel 7.2.9-arch1-1, installed Bash 5.3.20), the native
+profile now supports nested Bash read/write process substitutions, `mapfile`,
+`cmp` with two substitutions, child Bash, workspace file descriptors, and standard
+input. A fresh read-only procfs belongs to the job's private PID namespace;
+host `/proc`, procfs data/enumeration, outside files, and network remain denied.
+A live host anonymous-pipe probe confirms the command cannot reopen the host
+pipe through private procfs. The outside-PID signal probe now requires ESRCH
+because that PID is outside the namespace; other syscall denial assertions
+remain strict. Ordinary SIGTERM/exit-37 results, missing executable/interpreter
+errors, timeout, and owner-death cleanup all passed. The trusted group leader
+and namespace PID 1 reap children; user commands run as ordinary children.
+See the [descriptor design](sandbox.md#observed-bash-and-dependency-visibility-limits).
+
+Build, formatting, warnings-as-errors compilation, native demo, and **270 tests
+with Linux native enforcement included passed (14 macOS tests excluded)**.
+The focused native/stdio suite passed 31 tests (five excluded). These are actual
+local Linux checks; no macOS suite ran locally on Serenity.
+
+The real dotsetup temporary-fixture suite passed **134 tests, zero failures**
+through the native runner with explicit `USER=ipse-fixture`. Native mode
+intentionally does not inherit USER; without that fixture value the project
+script stops with `USER: unbound variable`. This is separate from the repaired
+Bash descriptor issue. Repository hygiene now reaches its checks: 52 ShellCheck
+scripts and the secret scan passed, then the unchanged existing lockfile edit
+failed its missing-changelog-entry check, matching the independent result.
+No project edits or system operations were made.
+
+CLI startup, `/session`, and model context now derive fixed platform-specific
+facts from the same `Ipse.Sandbox` functions. Tests cover Linux, macOS, unsupported
+platforms, trusted mode, and consistent session/model/CLI exposure without
+reading environment values. A live ChatGPT-subscription check used an isolated,
+entirely synthetic workspace, explicit native policy, and one exact approved
+shell call. Bash substitution counted three rows; a real sibling was hidden.
+The model correctly reported that the path was not visible/inaccessible in the
+sandbox and that this did not prove host absence. There was no provider fallback.
+Automatic approval review rejected repeating external dotsetup analysis under
+the earlier approval; the local project checks and synthetic model check
+completed verification without sending additional project content.
+
+Rebuilt the exact `dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz` with
+version-matched runtime notices. Fresh-home/utility-only-PATH package verification
+passed, including bundled MCP and serial/parallel delegation. An additional
+probe through that extracted archive passed native Bash substitution and
+confirmed host `/proc` remains absent. Hosted Linux/macOS source/package checks
+are pending for this repair. The local evidence above does not establish
+macOS descriptor behavior, Linux aarch64 execution, extra dependency-root access,
+or general live-project coding acceptance.

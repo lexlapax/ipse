@@ -19,12 +19,13 @@ temporary data, approvals, and independent enforcement evidence.
 
 The dependency-free Rust helper implements `linux-workspace-v1`. It needs Linux
 x86_64 or little-endian aarch64, Landlock ABI 6 or newer (Linux 6.12+), enabled
-unprivileged user namespaces, and permitted mount/network namespaces and modern
+unprivileged user namespaces, and permitted mount/network/PID namespaces and modern
 mount APIs. Distribution policy or a containing sandbox may deny these features.
 A supported architecture alone is not evidence that enforcement is available.
 Effective root and privileged capabilities are refused.
 
-A private user/mount/network namespace has an empty read-only root, no `/proc`,
+The private user/mount/network/PID namespace setup has an empty
+read-only root, no `/proc`,
 read-only system tool/library binds, selected runtime/device files, a writable
 workspace, and private writable temporary storage. Workspace mount sources are
 pinned and identity-checked before mounting; replacement fails closed. Recursive
@@ -57,14 +58,35 @@ kernel vulnerabilities, an administrator, or every resource-exhaustion technique
 
 ### Observed Bash and dependency visibility limits
 
-The [live project assessment](testing.md#p11-live-project-assessment-2026-10-15)
-found that ordinary Bash process substitution fails under the current Linux
-profile: `/dev/fd/63` is unavailable. A synthetic `mapfile -t lines < <(...)`
-probe passes in explicitly selected trusted mode and fails in native mode.
-Real repository hygiene and test scripts stopped before their checks completed.
-The existing confinement suite does not establish general Bash/project-script
-compatibility. Descriptor-path support needs a separate bounded design and
-regressions; do not bind the host's entire `/proc` as a workaround.
+The initial [live assessment](testing.md#p11-live-project-assessment-2026-10-15)
+exposed missing Bash descriptor paths. The repaired Linux profile provides
+`/dev/fd`, `/dev/stdin`, `/dev/stdout`, and `/dev/stderr` through a fresh read-only
+`subset=pid` procfs at `/dev/.ipse-proc`, mounted by the job's private PID namespace.
+Host `/proc` remains absent. Landlock grants neither procfs enumeration nor
+regular-file reads; descriptor magic links resolve to the job's confined files
+or anonymous pipes. Host process descriptors are outside that namespace.
+The [kernel Landlock documentation](https://www.kernel.org/doc/html/v6.12/userspace-api/landlock.html)
+explains why anonymous pipes through procfs cannot be secured by path rules alone;
+using the host's procfs would violate the intended boundary.
+
+The original pre-exec child remains the externally supervised process-group
+leader. It closes all descriptors and waits without executing user code. A
+namespace PID 1 mounts procfs, closes its descriptors, and reaps children; the
+actual command runs as an ordinary child so default signals retain their usual
+behavior. Only the command retains Rust's spawn-error pipe until exec, preserving
+startup failure reporting. Exit status propagates through both waiters, while
+existing group cancellation also stops the namespace. No public Port protocol
+or new dependency is required. See
+[PID namespace semantics](https://man7.org/linux/man-pages/man7/pid_namespaces.7.html)
+and [repair verification](testing.md#native-bash-and-visibility-repair-2026-10-15).
+
+Regressions cover nested Bash read/write substitutions, regular workspace and
+standard descriptors, denied procfs data, a live host anonymous-pipe attack,
+ordinary signals/exit codes, exec failure, compilation, timeout, and owner death.
+Bash support does not imply access to host account configuration or environment.
+The shell still receives only PATH, LANG, and private HOME/TMPDIR; USER is not
+supplied. A test fixture may explicitly set a non-secret synthetic USER without
+importing the operator's environment.
 
 A sibling source checkout also exists on the host but is not mounted into the
 shell workspace. Tests may skip source verification or report a missing path

@@ -86,7 +86,16 @@ requested model. Original journals without this optional field still work.
 A reported identifier is provider data, not evidence of an exact backend revision.
 No plugins, answer rewriting, extra model requests, or dependencies are needed.
 
+`Ipse.Sandbox.visibility/2` supplies fixed platform-specific policy facts;
+`describe/2` is shared by CLI startup and model context, and `Session.info/1`
+exposes the same list. Facts distinguish requested policy from activation,
+hidden paths from host absence, private HOME/TMPDIR from the operator's home,
+and minimal shell environment from inherited host state. They contain no
+credential/environment dumps and do not grant extra roots. See
+[Linux descriptor support and visibility](sandbox.md#observed-bash-and-dependency-visibility-limits).
+
 ## Trust and side effects
+
 
 
 The system message describes the workspace and available skill metadata.

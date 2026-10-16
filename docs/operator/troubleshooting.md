@@ -140,13 +140,20 @@ remote effects before requesting another call. See
 
 ## Bash descriptor paths and sibling repositories
 
-Under the Linux native profile, Bash process substitution such as `<(...)` or
-`mapfile ... < <(...)` currently fails with `/dev/fd/63: No such file or directory`.
-This can stop a project's own checks before they reach the application tests.
-Record the failed command and its exit status; do not call that a passing check
-or assume the project is broken. The
-[live assessment](../developer/testing.md#p11-live-project-assessment-2026-10-15)
-confirmed the difference with the same synthetic command in trusted/native modes.
+Linux native mode now supports Bash process substitution and standard descriptor
+paths through a private PID namespace. If `/dev/fd/63` is unavailable, check that
+the installed helper includes the
+[descriptor repair](../developer/testing.md#native-bash-and-visibility-repair-2026-10-15).
+The initial [live assessment](../developer/testing.md#p11-live-project-assessment-2026-10-15)
+records the older failure; do not silently rerun a failed call unsandboxed.
+
+A separate `USER: unbound variable` means a script assumed a host variable that
+native mode does not supply. For a reviewed test suite that stubs account/system
+operations, an explicit synthetic value can be used, for example
+`USER=ipse-fixture tests/run.sh`. This does not apply host changes or import an
+account environment. Real operations may need access the selected policy does
+not provide; report the limitation instead of expanding permissions.
+
 
 Native shell calls also see only the selected workspace and allowed system
 roots. A documented sibling source checkout may exist on the host while being

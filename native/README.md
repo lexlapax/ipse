@@ -80,7 +80,7 @@ supervisor creates its process group and before `/bin/sh` executes.
 
 The backend requires native little-endian Linux x86_64 or aarch64, enabled
 Landlock ABI 6 or later (Linux 6.12+), permitted unprivileged user namespaces and
-UID/GID mappings, mount/network namespaces, and the `open_tree`, `move_mount`,
+UID/GID mappings, mount/network/PID namespaces, and the `open_tree`, `move_mount`,
 `mount_setattr`, `statx`, and `close_range` interfaces. Distribution security
 policy can disable these facilities even on a recent kernel. Effective UID zero
 and effective/permitted/ambient capabilities are rejected. `/proc` is needed by
@@ -88,7 +88,7 @@ the supervisor for bounded capability/thread inspection and namespace mapping;
 it is absent from the child filesystem. Kernel setup is the capability probe:
 a successful sandboxed harmless command establishes support for that invocation.
 
-The child receives a separate user, mount, and network namespace and a private
+The child receives separate user, mount, network, and PID namespaces and a private
 read-only filesystem root. Canonical `/usr`, `/bin`, `/lib`, and `/lib64` trees
 are recursively mounted read-only when present. `/etc/ld.so.cache` and
 `/etc/localtime` are optional exact read-only files. Exact devices are
@@ -100,7 +100,18 @@ are pinned and their inode/device identities checked after namespace creation;
 replacing a source before spawn fails closed. Mounts are `nosuid`; directory
 mounts are `nodev`. Capabilities and their bounding set are dropped before exec.
 
-Landlock additionally confines file access and signal recipients to the new
+Bash descriptor paths use a fresh `subset=pid` procfs mounted at `/dev/.ipse-proc`
+inside the private PID namespace, with `/dev/fd` and standard descriptor symlinks.
+The host's procfs is never mounted. Regular procfs reads/enumeration receive no
+Landlock grant. The original group leader and namespace PID 1 are trusted
+close-all-descriptors waiters; user code runs as an ordinary child. They forward
+exit status and preserve the final command's spawn-error pipe until actual exec.
+PID 1 reaps orphaned children; default command signals remain ordinary. Existing
+supervisor cancellation kills the owned group and namespace. See
+[descriptor design and evidence](../docs/developer/sandbox.md#observed-bash-and-dependency-visibility-limits).
+
+Landlock additionally confines file access
+ and signal recipients to the new
 sandbox domain and descendants. Seccomp rejects external socket creation,
 connection, binding, listening and accepting; namespace/mount changes; tracing,
 process-memory and pidfd access; SysV IPC; io_uring; privilege/module changes;

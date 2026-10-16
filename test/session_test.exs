@@ -288,6 +288,12 @@ defmodule Ipse.SessionTest do
     :ok = Ipse.Session.prompt(resumed, "show policy")
     assert_receive {:model_input, [system | _]}, 2000
     assert system["content"] =~ "native workspace sandbox"
+
+    assert Enum.all?(
+             Ipse.Session.info(resumed).sandbox.visibility,
+             &String.contains?(system["content"], &1)
+           )
+
     assert_receive {:ipse, ^resumed, {:done, :ok}}, 2000
   end
 

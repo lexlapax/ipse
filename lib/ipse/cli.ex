@@ -174,7 +174,7 @@ defmodule Ipse.CLI do
         "Ipse · #{config.provider}/#{config.model}\nSession: #{info.id}\nWorkspace: #{info.cwd}"
       )
 
-      IO.puts(:stderr, "Shell policy requested: #{config.sandbox}.")
+      IO.puts(:stderr, Ipse.Sandbox.describe(config.sandbox))
 
       if config.subagents,
         do:
@@ -198,13 +198,6 @@ defmodule Ipse.CLI do
 
         IO.puts(:stderr, notice)
         IO.puts(:stderr, Jason.encode!(Ipse.MCP.Config.manifest(server), pretty: true))
-      end
-
-      if config.sandbox == :native and :os.type() == {:unix, :darwin} do
-        IO.puts(
-          :stderr,
-          "macOS restricts files and network. Detached child processes may survive cancellation."
-        )
       end
 
       if config.approval == :allow,

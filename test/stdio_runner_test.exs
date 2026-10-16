@@ -317,6 +317,22 @@ defmodule Ipse.StdioRunnerTest do
   end
 
   @tag :native_sandbox
+  test "native namespace worker reports exec failure without completion or a stuck spawn", %{
+    cwd: cwd
+  } do
+    broken = Path.join(cwd, "missing-interpreter")
+    File.write!(broken, "#!/no/such/fixture-interpreter\n")
+    File.chmod!(broken, 0o700)
+
+    for executable <- [Path.join(cwd, "missing-server"), broken] do
+      {:ok, port} = Runner.open_stdio(executable, [], cwd, %{}, 2000, sandbox: :native)
+      {frames, 1} = collect(port)
+      assert stream(frames, ?E) == "cannot start stdio server"
+      refute Enum.any?(frames, fn {kind, _} -> kind == ?X end)
+    end
+  end
+
+  @tag :native_sandbox
   test "selected loader environment cannot execute in the unsandboxed supervisor", %{cwd: cwd} do
     workspace = Path.join(cwd, "workspace")
     File.mkdir!(workspace)

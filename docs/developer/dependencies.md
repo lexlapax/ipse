@@ -48,7 +48,7 @@ See [agent rules](../../AGENTS.md), [setup](../operator/arch-linux.md), and
 | PlugCrypto | Hex 2.2.0, locked | Plug cryptographic helpers | Apache-2.0 |
 | Telemetry | Hex 1.4.2, locked; developer approved on 2026-10-15 | Erlang/BEAM events used by Finch/Plug; adds no outside runtime service | Apache-2.0 with upstream NOTICE |
 | Rust toolchain and standard library | Rust 1.85+; `native/build.sh` invokes `rustc --edition=2021` | Build the OS helper; no third-party Cargo packages | MIT OR Apache-2.0 |
-| Ipse native helper | `native/ipse-runner.rs`, `native/ipse-stdio.rs`, `native/ipse-linux-sandbox.rs`, `native/ipse-macos-sandbox.rs`, compiled as `priv/ipse-runner` | Runtime process groups, advisory locks, bidirectional OS pipes, optional Linux namespace/Landlock/seccomp and macOS signed App Sandbox worker policies; used by tests | MIT (project source) |
+| Ipse native helper | `native/ipse-runner.rs`, `native/ipse-stdio.rs`, `native/ipse-linux-sandbox.rs`, `native/ipse-macos-sandbox.rs`, compiled as `priv/ipse-runner` | Runtime process groups, advisory locks, bidirectional OS pipes, optional Linux user/mount/network/PID namespaces, private descriptor procfs, Landlock/seccomp and macOS signed App Sandbox worker policies; used by tests | MIT (project source) |
 
 OTP libraries are distributed with OTP rather than fetched as separate packages.
 Mix lists `logger`, `inets`, and `ssl` applications; authentication also uses OTP
@@ -65,7 +65,7 @@ No Node, JavaScript, or Python runtime is required.
 | --- | --- | --- |
 | Unix OS and C library | Runtime process groups, advisory locks, filesystem, native runtime ABI | Host distribution; libc varies by platform. Match release OS/architecture/libc |
 | OpenSSL and system CA trust | OTP TLS and verified HTTPS provider/auth connections | Host/toolchain distribution; preserve its version-specific notices |
-| `/bin/sh` | Runtime shell tool and source/release launchers | Host shell implementation and license vary; POSIX shell syntax is used |
+| `/bin/sh` | Runtime shell tool and source/release launchers; optional native Bash compatibility probes use the already-installed host Bash (5.3.20 tested), required by those project scripts, with no installation or bundled Bash runtime | Host shell implementation/licenses vary; Bash uses GPL-3.0-or-later for the recorded version |
 | C linker/toolchain | Link the Rust helper; compile synthetic loader probes for native enforcement tests (`/usr/bin/cc` on Linux, `/usr/bin/clang` on macOS) | Arch `base-devel` or macOS build toolchain; versions/licenses supplied by distribution |
 | Git | Fetch the pinned Jason dependency and repository work | Host Git package, GPL-2.0 |
 | Standard filesystem/text utilities | Scripts use `dirname`, `mkdir`, `cp`, `chmod`, `rm`, `uname`, and `tr`; setup examples use `mktemp`; helper verification uses `sleep`, and tests use `head`/`tr`. Existing bundled OTP launchers/fresh-release checks also need `basename`, `cut`, `sed`, `cat`, `grep`, `readlink`, `expr`, `awk`, and `id`; the package verifier makes that utility-only PATH explicit | Existing host utility implementation/licenses vary, commonly GNU coreutils plus GNU sed/grep and awk on Linux; OS-supplied equivalents on macOS |
@@ -90,7 +90,7 @@ was selected. See [the package decision](mcp.md#package-decision).
 The optional Linux native sandbox uses kernel APIs through the existing Rust
 helper, without bubblewrap, containers, new packages, or a separate daemon.
 It requires enabled Landlock ABI 6+ (Linux 6.12+) and permitted unprivileged
-user/mount/network namespaces and modern mount APIs. These are host capabilities,
+user/mount/network/PID namespaces and modern mount APIs. These are host capabilities,
 not automatically installed dependencies; unavailable enforcement fails closed.
 See [the fixed profile](sandbox.md).
 

@@ -107,8 +107,9 @@ does not change the OS profile into a read-only filesystem sandbox.
 
 The [live project assessment](../developer/testing.md#p11-live-project-assessment-2026-10-15)
 used this workflow without changing its target repository. Linux native mode
-currently blocks Bash process substitution and hides sibling dependency
-checkouts; see [diagnosis](troubleshooting.md#bash-descriptor-paths-and-sibling-repositories).
+supports Bash process substitution, while sibling dependency checkouts remain
+hidden and host environment variables are not inherited; see
+[diagnosis](troubleshooting.md#bash-descriptor-paths-and-sibling-repositories).
 
 Interactive chat asks before `write`, `edit`, and every `shell` call. `--yes`
 allows them for the session. Headless `run` denies mutations unless `--yes` is
@@ -136,8 +137,16 @@ App Sandbox worker: it permits workspace and sandbox data writes, selected syste
 reads, and denies network access. Approvals still apply; `--yes` changes approval
 policy only. Unsupported OS/kernel policy or failed setup stops the shell call
 without retrying outside the sandbox. Linux needs Landlock ABI 6+ and permitted
-unprivileged user, mount, and network namespaces. A configured mode is not proof
+unprivileged user, mount, network, and PID namespaces. A configured mode is not proof
 a command started.
+
+Startup, `/session`, and model context share allowlisted platform-specific
+visibility facts. Linux describes the selected workspace, private HOME/TMPDIR,
+system roots, job-private descriptor paths, and hidden siblings; macOS describes
+its signed App Sandbox and Homebrew read exceptions separately. These are policy
+facts, not a claim that a particular command activated enforcement. A failed
+lookup means a path is not visible or accessible to that tool; it does not prove
+host absence. USER and host environment values are not supplied to native shells.
 
 Root, home directories, protected credential directories, and broad system
 workspaces are refused. Secrets already inside the selected workspace remain

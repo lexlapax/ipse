@@ -230,6 +230,7 @@ defmodule Ipse.CLITest do
   test "EOF while idle exits cleanly" do
     with_fixture_and_cli(fn _fixture, cli ->
       await_input(cli.stdio)
+      assert Ipse.CLITest.IOFixture.output(cli.stderr) =~ Ipse.Sandbox.describe(:off)
       Ipse.CLITest.IOFixture.feed(cli.stdio, :eof)
       assert 0 == Task.await(cli.task, 3_000)
       refute_receive {:ollama_request, _, _, _}, 100

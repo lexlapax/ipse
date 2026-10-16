@@ -489,13 +489,18 @@ a sandbox-hidden sibling checkout was absent from the host. See the
 [comparison and actual checks](developer/testing.md#p11-live-project-assessment-2026-10-15).
 No project edits, live deployment, or coding-change acceptance are claimed.
 
-Recommended follow-up, not implementation authorization:
+The developer selected the first two repairs on 2026-10-15. Implementation and
+local verification are complete; hosted verification is in progress. See
+[repair evidence](developer/testing.md#native-bash-and-visibility-repair-2026-10-15).
+The orientation skill and multi-repository read roots remain proposals, not
+implementation authorization:
 
-1. Reproduce and repair Bash descriptor-path compatibility without exposing
-   host processes or weakening the native filesystem/network boundary. Add
-   ordinary Bash/project-script regressions alongside adversarial enforcement.
-2. Supply bounded, platform-specific sandbox visibility facts to the model and
-   operator. Distinguish hidden paths from host absence; do not silently expand
+1. Implemented and locally verified: Bash descriptor-path compatibility without
+   exposing host processes or weakening the native filesystem/network boundary.
+   Ordinary Bash/project-script regressions cover compatibility alongside
+   adversarial enforcement.
+2. Implemented and locally verified: bounded, platform-specific sandbox visibility
+   facts for the model and operator. Distinguish hidden paths from host absence; do not silently expand
    roots or retry in trusted mode. Evaluate explicit read-only dependency roots
    separately if multi-repository verification is selected.
 3. Add reusable project-orientation/Git workflow guidance: inspect existing

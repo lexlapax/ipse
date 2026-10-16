@@ -4,7 +4,7 @@ use std::ffi::CString;
 use std::fs::{self, DirBuilder, File, OpenOptions};
 use std::io::{self, Read};
 use std::os::unix::ffi::OsStrExt;
-use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
+use std::os::unix::fs::{symlink, DirBuilderExt, OpenOptionsExt};
 use std::os::unix::io::{AsRawFd, FromRawFd};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -19,6 +19,9 @@ extern "C" {
     fn getrlimit(resource: i32, limits: *mut Limit) -> i32;
     fn setrlimit(resource: i32, limits: *const Limit) -> i32;
     fn prctl(option: i32, ...) -> i32;
+    fn waitpid(pid: i32, status: *mut i32, options: i32) -> i32;
+    fn kill(pid: i32, signal: i32) -> i32;
+    fn _exit(status: i32) -> !;
 }
 #[repr(C)]
 struct Passwd {
@@ -465,6 +468,18 @@ pub fn prepare(cwd: &Path, timeout: Duration) -> Result<Sandbox, String> {
     sandbox.mount_plan(&data, Path::new("/tmp"), false, true, false)?;
     sandbox.mount_plan(&workspace, &workspace, false, true, false)?;
     sandbox.mount_plan(&data, &data, false, true, false)?;
+    // Only the fresh child PID namespace's procfs will appear here. Keep the
+    // conventional /proc path absent and grant no procfs directory/file rules.
+    let dev = root_path.join("dev");
+    fs::create_dir_all(dev.join(".ipse-proc")).map_err(|e| e.to_string())?;
+    for (name, target) in [
+        ("fd", ".ipse-proc/self/fd"),
+        ("stdin", "fd/0"),
+        ("stdout", "fd/1"),
+        ("stderr", "fd/2"),
+    ] {
+        symlink(target, dev.join(name)).map_err(|e| e.to_string())?;
+    }
     sandbox.filters = filter();
     Ok(sandbox)
 }
@@ -570,6 +585,7 @@ impl Sandbox {
         }
         checked(unsafe { syscall(SYS[2], self.root.as_ptr()) })?;
         checked(unsafe { syscall(SYS[3], self.cwd.as_ptr()) })?;
+        self.descriptor_namespace()?;
         for cap in 0..64i32 {
             let result = unsafe { prctl(24, cap as usize, 0usize, 0usize, 0usize) };
             if result < 0 && io::Error::last_os_error().raw_os_error() != Some(22) {
@@ -580,6 +596,71 @@ impl Sandbox {
         let data = [0u32; 6];
         checked(unsafe { syscall(SYS[7], header.as_ptr(), data.as_ptr()) })?;
         Ok(())
+    }
+    // pre_exec's original child remains the externally supervised group leader.
+    // It closes its copy of Rust's spawn-error pipe and waits without executing
+    // user code. The namespace child retains that pipe until its actual exec,
+    // preserving Command::spawn setup-error reporting and cancellation ownership.
+    fn descriptor_namespace(&self) -> io::Result<()> {
+        checked(unsafe { syscall(SYS[0], 0x20000000u32) })?; // CLONE_NEWPID
+        let child = Self::fork_child()?;
+        if child > 0 {
+            Self::wait_for_child(child);
+        }
+        // This procfs belongs to the new PID namespace, never the host's. Only
+        // descriptor magic links to already-confined files/pipes remain usable
+        // after Landlock; regular procfs files and enumeration are not granted.
+        checked(unsafe {
+            syscall(
+                SYS[1],
+                b"proc\0".as_ptr(),
+                b"/dev/.ipse-proc\0".as_ptr(),
+                b"proc\0".as_ptr(),
+                1usize | 2 | 4 | 8,
+                b"subset=pid\0".as_ptr(),
+            )
+        })?;
+        // PID 1 only reaps/waits. Run user code as an ordinary child so default
+        // signal handling does not acquire PID 1's special immunity.
+        let command = Self::fork_child()?;
+        if command > 0 {
+            Self::wait_for_child(command);
+        }
+        Ok(())
+    }
+    fn fork_child() -> io::Result<i32> {
+        #[cfg(target_arch = "x86_64")]
+        let child = unsafe { syscall(57) }; // fork
+        #[cfg(not(target_arch = "x86_64"))]
+        let child = unsafe { syscall(220, 17usize, 0usize, 0usize, 0usize, 0usize) }; // clone(SIGCHLD)
+        checked(child)?;
+        Ok(child as i32)
+    }
+    fn wait_for_child(child: i32) -> ! {
+        if unsafe { syscall(436, 0u32, u32::MAX, 0u32) } < 0 {
+            unsafe {
+                kill(child, 9);
+            }
+        }
+        let mut status = 0;
+        loop {
+            let reaped = unsafe { waitpid(-1, &mut status, 0) };
+            if reaped >= 0 {
+                if reaped == child {
+                    let code = if status & 0x7f == 0 {
+                        (status >> 8) & 0xff
+                    } else {
+                        128 + (status & 0x7f)
+                    };
+                    unsafe { _exit(code) }
+                }
+            } else if io::Error::last_os_error().raw_os_error() != Some(4) {
+                unsafe {
+                    kill(child, 9);
+                    _exit(125)
+                }
+            }
+        }
     }
     fn mount_plan(
         &mut self,
