@@ -234,11 +234,26 @@ EOF never authorizes a mutation. `/exit` cancels and leaves immediately.
 The UI is a line-oriented terminal client, not a full-screen TUI.
 
 
+## Saved session listings
+
 ```sh
 ./bin/ipse sessions
+./bin/ipse sessions --json
+./bin/ipse sessions --json --state-dir /path/to/isolated/sessions
 ./bin/ipse chat --resume SESSION_ID
 ./bin/ipse run --resume SESSION_ID --yes 'Continue and check the result'
 ```
+
+The default listing remains human-readable. `sessions --json` prints one JSON
+array sorted by session ID, with exactly `id`, `provider`, `model` and `cwd` on
+each entry. Missing metadata fields are `null`; an empty or missing store prints
+`[]`. It uses the existing journal listing rules: invalid journals are skipped,
+and a truncated final record can be ignored without repairing the file. There
+is no authentication, inference, network request or journal mutation. By default
+it reads `IPSE_HOME/sessions` (normally `~/.ipse/sessions`); `--state-dir` selects
+another store. `--json` applies only to `sessions`, not other commands. It does
+not export conversations or other metadata, but the allowed fields can still
+contain private workspace paths or model names; review output before sharing.
 
 Resume keeps the original workspace, provider, and model. It reconstructs history
 without replaying tools. Interrupted tool calls receive an explicit unknown

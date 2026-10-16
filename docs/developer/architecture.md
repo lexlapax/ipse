@@ -154,6 +154,16 @@ their external effects may already have happened. Calls cancelled before launch
 are recorded as not started; older unresolved history remains conservative. A final partial record may be
 repaired while holding the session lock. The full transcript remains on disk.
 
+`ipse sessions` reads listings directly through `Journal.list/1`, without starting
+or resuming sessions or authenticating. The default text output is unchanged;
+`--json` projects only `id`, `provider`, `model` and `cwd` into one ID-sorted array,
+with missing fields encoded as null. It does not export arbitrary metadata or
+messages. Empty/missing stores and skipped invalid journals retain the existing
+listing behavior, and truncated tails are read without repair. This is a local
+read, not a configuration/provider request or journal mutation. See
+[operator listing usage](../operator/usage.md#saved-session-listings) and
+[local verification](testing.md#p18-macos-supervised-self-development-evidence).
+
 ## Boundaries and current limits
 
 The line-oriented terminal client is not a full-screen TUI. Explicit opt-in

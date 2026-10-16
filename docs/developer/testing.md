@@ -2041,23 +2041,103 @@ code and no new local dependency is introduced.
 
 ## P18 macOS supervised self-development evidence
 
-Planning/runbook only as of 2026-10-16; no local operator Mac run or proposed
-`sessions --json` implementation is claimed. Follow the
-[operator procedure](../operator/self-development.md). The first Linux trial and
-hosted Mac CI above do not establish a live local Mac self-development pass.
+Local execution and independent checks passed on 2026-10-16. Ipse stopped before
+committing on `codex/trial-macos-self-development`. After receiving the results,
+the operator delegated final review and publication to the supervisor. Publication,
+Linux/macOS CI and merge remain pending. P18 is not marked complete. Follow the
+[operator procedure](../operator/self-development.md).
 
-Record the frozen baseline, candidate commit, Mac OS/architecture and toolchain,
-provider/profile/requested and reported model, actual child routing, structured
-answers, approval outcomes, independent diff review, exact source/native/package
-checks and idle-resume evidence. Separate private session artifacts from the
-public evidence record. Compare journal/workspace state before and after idle
-resume without publishing transcript contents. For the proposed JSON feature,
-review the explicit field allowlist and synthetic-secret exclusion tests, verify
-no auth/inference/journal mutation, and retain existing human listing behavior.
-Only mark P18 complete after operator review/publication and actual CI results.
+The original `main` checkout was clean and stayed unchanged. Fetch confirmed
+`origin/main` at `ee50392e87b9f9958b81066707fa777e61c0ac72`. The detached
+`ipse-stable-macos` runner and separate `ipse-selfdev-macos` candidate both began
+at that commit. The stable checkout stayed clean. Host versions were macOS 26.7.2
+build 25G325 arm64, Elixir 1.20.3, OTP 29 / ERTS 17.0.5, Rust 1.97.1 and
+Apple clang 21.0.0. The frozen source build, formatting, warnings-as-errors
+compilation and isolated demo passed; baseline tests passed 307 with 31 excluded.
 
-The planning handoff validated all eight runbook shell blocks with `sh -n`,
-resolved its JSON/profile example through the actual `Ipse.Config` loader without
-auth/inference, and checked 48 Markdown files and 438 local links/anchors.
-This is syntax/configuration/documentation validation on Linux, not execution of
-the Mac commands. No new runtime feature or dependency was introduced.
+The explicit main profile used ChatGPT subscription `gpt-6.1-sol`, high reasoning,
+and `ipse-auth`. The operator completed Ipse's own browser sign-in and authorized
+plan usage. The saved response and successful review reported `gpt-6.1-sol`;
+that identifier does not establish an exact backend revision. The `review` role
+selected the same profile. No routine profile, Ollama inference, MCP service or
+API-billing fallback was used. Private configuration, journals, snapshots and
+authorization details stayed outside Git. Trusted shell execution was explicitly
+selected with `--sandbox off`; parent and child effects received individual
+approvals, without a `--yes` trial launch.
+
+Ipse loaded project orientation and its Git resource, proposed the bounded plan,
+and asked a native single-choice scope question. `invalid-option` was rejected
+while the question remained pending; explicit `confirm` was accepted. No
+recommendation was submitted automatically, and the answer granted no effect
+permission. The first CLI edit required a separate approval.
+
+After that settled edit, the initial pre-exit journal checksum failed: idle
+`/exit` appended exactly one `cancelled` event. A cryptographic prefix comparison
+proved that all previous bytes were unchanged. Diff, status and all tracked and
+untracked file digests matched. The supervisor exited again, snapshotted the
+journal after exit, and resumed with the same runner and configuration. The
+post-exit journal hash and workspace comparisons passed before continuation.
+Resume restarted no inference or tools. The runbook now uses that timing;
+runtime cancellation behavior was not changed.
+
+Ipse authored the implementation, help, tests, usage guidance and runbook fix.
+The runtime diff is confined to `lib/ipse/cli.ex`: the existing `Journal.list/1`
+result passes through an explicit four-key allowlist and Jason. Default text
+output is unchanged. Listing has no authentication, inference, network call,
+journal repair or mutation, and adds no dependency. Eight isolated fixtures cover
+ordering, exact keys, escaping, nulls, empty/missing stores, invalid journals,
+truncated tails, explicit stores, private-data exclusion and unchanged bytes.
+
+The authoring session's focused run passed 24 tests. The supervisor inspected
+the source and tests before independently running the following checks:
+
+| Check | Local Mac result |
+| --- | --- |
+| `./scripts/build.sh` | Passed |
+| `mix format --check-formatted` | Passed |
+| `mix compile --warnings-as-errors` | Passed |
+| `mix test test/cli_sessions_test.exs test/ipse/journal_test.exs test/cli_test.exs` | 24 passed |
+| `mix test` | 315 passed, 31 excluded |
+| `mix test test/macos_sandbox_test.exs test/stdio_runner_test.exs --include macos_sandbox` | 27 passed, six Linux-native tests excluded |
+| `IPSE_HOME=<isolated directory> ./bin/ipse demo` | Passed without a model |
+| `IPSE_NOTICES_DIR=<local notices> ./scripts/package.sh` | Built `ipse-0.1.0-darwin-arm64.tar.gz` |
+| `elixir scripts/verify-package.exs dist/ipse-0.1.0-darwin-arm64.tar.gz` | Passed under a 300-second `Ipse.Runner` timeout; no timeout |
+
+The package verifier used an extracted runtime, fresh isolated HOME/IPSE_HOME
+and a utility-only PATH without Elixir, Erlang, Mix or Rust. It checked help,
+demos, default and explicit cwd, helper cleanup/locks, Mac native enforcement,
+and bundled MCP, delegation, questions, configuration and research fixtures.
+Separate actual CLI-process checks exercised both source and extracted
+`sessions --json`, compared text output with the frozen baseline, and verified
+allowlisting, nulls, escaping, private-data exclusion, unchanged journal bytes
+and missing-store noncreation. These used synthetic journals without credentials.
+Packaging included existing dependency notices and the installed Elixir/OTP
+top-level notices with provenance. This is local package verification, not a
+complete toolchain-component notice audit or a published release. Existing
+`elixir_uuid` and JSONSchex dependency warnings appeared during fresh builds;
+the project warnings-as-errors check passed.
+
+The first configured review exhausted six model steps and returned an unknown
+outcome without a final review. The private child journal and workspace were
+inspected before an explicit narrower request; no child was replayed. The second
+review loaded the review checklist, made one approved read-only shell call and
+completed after four responses with no actionable findings. Routing independently
+matched `review`/`main`, ChatGPT `gpt-6.1-sol`, high reasoning. The parent reread
+the CLI, tests and `Journal.list/1`; the supervisor independently reviewed the
+diff, coverage and actual results. No source or test repair was needed.
+
+One subscription stream ended before `response.completed` and executed no tools;
+the supervisor inspected state and explicitly continued with the same profile.
+Later, context compaction stopped twice because retained context could not fit
+safely. The original journal remained intact and no tools replayed. The supervisor
+closed Ipse and finished only evidence/status documentation. The verified source
+and tests stayed unchanged. This trial does not establish unattended operation,
+an unlimited context, or the complete live refresh/logout lifecycle on this Mac.
+
+Documentation review covered operator and developer guidance and retained the
+existing map/ownership. Local file and heading checks passed for 48 Markdown
+files and 442 links; all eight edited runbook shell blocks parsed with `sh -n`.
+Private transcripts and auth remain excluded. At the initial local handoff, no
+commit, push, PR, new hosted CI run or merge had occurred. Publication evidence
+will be recorded separately. No local Linux execution or stronger detached-process
+diagnostic is claimed.

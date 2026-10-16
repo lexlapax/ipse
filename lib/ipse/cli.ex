@@ -10,7 +10,7 @@ defmodule Ipse.CLI do
   ipse chat [options]              Interactive conversation
   ipse run [options] "task"         Run one task
   ipse demo                        Scripted demo in a temporary directory
-  ipse sessions                    List saved sessions
+  ipse sessions [--json]           List saved sessions
   ipse skills [--cwd PATH]         List available skills
   ipse config [options]            Show effective non-secret configuration
   ipse research --resume ID        Export a saved session's evidence ledger locally
@@ -22,6 +22,7 @@ defmodule Ipse.CLI do
   --yes                                Allow mutations, shell, configured MCP, and enabled delegation
   --base-url URL                       API endpoint root (API/Ollama only)
   --state-dir PATH                     Session directory
+  --json                               sessions only: JSON array of id/provider/model/cwd
   --max-steps N                        Model calls per turn (default: 30)
   --context-bytes N                    Context byte ceiling (default: 400000)
   --no-compact                         Stop at the ceiling without automatic reduction
@@ -76,6 +77,7 @@ defmodule Ipse.CLI do
           project_config: :boolean,
           timeout_ms: :integer,
           profile: :string,
+          json: :boolean,
           help: :boolean,
           demo: :boolean
         ],
@@ -112,8 +114,22 @@ defmodule Ipse.CLI do
   end
 
   defp dispatch(["sessions"], opts) do
-    for %{"id" => id, "metadata" => meta} <- Ipse.Journal.list(state_dir(opts)) do
-      IO.puts("#{id}  #{meta["provider"]}/#{meta["model"]}  #{meta["cwd"]}")
+    if opts[:json] do
+      sessions =
+        for %{"id" => id, "metadata" => meta} <- Ipse.Journal.list(state_dir(opts)) do
+          %{
+            "id" => id,
+            "provider" => meta["provider"],
+            "model" => meta["model"],
+            "cwd" => meta["cwd"]
+          }
+        end
+
+      IO.puts(Jason.encode!(sessions))
+    else
+      for %{"id" => id, "metadata" => meta} <- Ipse.Journal.list(state_dir(opts)) do
+        IO.puts("#{id}  #{meta["provider"]}/#{meta["model"]}  #{meta["cwd"]}")
+      end
     end
 
     0
