@@ -6,7 +6,8 @@ instructions apply throughout this repository.
 
 ## Product and scope
 
-Ipse is an MIT-licensed, local coding agent. Keep the agent loop, provider
+Ipse is an MIT-licensed, general-purpose local AI harness. The current prototype
+has coding-oriented tools and workflows. Keep the agent loop, provider
 adapters, skills, approvals, persistence, and orchestration in Elixir/OTP. Rust
 is for small OS helpers. Do not add JavaScript or Python runtime dependencies.
 Prefer ordinary modules, processes, and messages over a workflow framework.
@@ -23,6 +24,13 @@ scope, version/source, and license. Before adding any dependency outside Elixir
 packages or Rust packages, obtain explicit developer approval and record that
 approval and the reasons it is necessary. This includes development, staging,
 helper, test, CI, and packaging dependencies, not just runtime dependencies.
+The Elixir/OTP and Rust implementation constraints apply to Ipse and its own
+repository tooling, not to projects or tasks handled by the harness. Target
+workspaces may use TypeScript/Node, Python, Elixir, or another appropriate stack.
+Honor the user's stack choice; otherwise let the task and environment guide it.
+Do not treat an Elixir-specific coding trial as evidence of general stack choice
+or non-coding task coverage. Tool, dependency, and external-action approvals
+still apply.
 The project name is **Ipse**, executable/application `ipse`, Elixir
 namespace `Ipse`, environment prefix `IPSE_`.
 

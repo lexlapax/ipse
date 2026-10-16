@@ -337,6 +337,12 @@ discovery, persistence, and boundary details.
 
 ## Runtime and limits
 
+Ipse's harness is implemented in Elixir/OTP with Rust OS helpers. Projects and
+tasks handled by it may use other languages and installed tools, including
+TypeScript/Node or Python; the harness's implementation restrictions are not a
+project-language policy. The current bundled tools and instructions emphasize
+coding/project workflows; broader general-purpose coverage remains to be tested.
+
 One GenServer owns a session. Monitored tasks perform provider and tool work;
 session death stops them. The Rust helper kills command process groups on timeout
 or lost parent connection and provides cross-process session locks. Independent

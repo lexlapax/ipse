@@ -1,10 +1,15 @@
 # Architecture
 
-Ipse is an MIT-licensed, local coding agent built around Elixir and OTP.
+Ipse is an MIT-licensed, general-purpose local AI harness built around Elixir
+and OTP. Its current tool bundle and host prompt focus on coding/project work;
+broader task coverage is a validation goal, not an already verified capability.
 The core agent loop, provider adapters, tool policy, skills, authentication, and
 session journal are Elixir. A small Rust standard-library helper owns shell and
 configured MCP process groups and advisory session locks. There is no JavaScript or Python
-runtime dependency, and no required workflow framework.
+runtime dependency in Ipse itself, and no required workflow framework. These
+implementation constraints do not restrict target-workspace languages or the
+installed tools an approved shell/MCP call may use. A workload's dependencies
+and permissions remain separate from harness dependencies and permissions.
 
 The project's name reflects continuity and feedback; its philosophical origin
 and limits are explained in [naming.md](../naming.md).

@@ -1,6 +1,7 @@
 # Development plan
 
-Ipse is an MIT-licensed local coding agent. Keep its core in Elixir/OTP,
+Ipse is an MIT-licensed general-purpose local AI harness, currently focused on
+coding/project workflows. Keep its core in Elixir/OTP,
 with Rust limited to OS helpers. There is no JavaScript or Python runtime and
 no mandatory workflow framework. Validate changes with focused tests and the
 credential-free demo.
@@ -522,5 +523,10 @@ website with forms and a SQLite database, then chose a task tracker. Use a
 separate project. Ipse implements the app; independently review its output and
 verify create/edit/complete/delete forms, input validation, and persistent data.
 Keep provider selection and individual tool approvals explicit. Record actual
-checks and any Ipse changes indicated by this trial. Dotsetup's selected
+checks and any Ipse changes indicated by this trial. Elixir was explicitly imposed for this first
+app by the test operator; the developer chose to finish it while clarifying that
+Ipse's implementation language must not constrain its workloads. This trial
+therefore does not validate autonomous stack selection or general non-coding
+work. Future trials should preserve user choice or allow task-appropriate stack
+selection, including TypeScript/Node or Python. Dotsetup's selected
 read-only comparison is complete and its existing edits remain untouched.

@@ -1,9 +1,11 @@
 # Ipse
 
-An Elixir-native coding agent with local skills, resumable conversations, and
-a small Rust process supervisor. MIT licensed. No JavaScript or Python runtime.
+A general-purpose local AI harness built with Elixir/OTP, with local skills,
+resumable conversations, and a small Rust process supervisor. MIT licensed. No JavaScript or Python runtime.
 
-**Prototype 0.1:** a terminal application and an embeddable OTP session API.
+**Prototype 0.1:** a terminal application and an embeddable OTP session API,
+currently focused on coding and project workflows. The implementation language
+does not restrict the languages or runtimes of projects handled by Ipse.
 The agent loop, providers, skills, approvals, and journal are Elixir. Rust owns
 shell and configured MCP process groups and advisory file locks. This is an independent implementation
 informed by lessons from [Loopex](https://github.com/lexlapax/loopex) and
