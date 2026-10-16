@@ -175,6 +175,35 @@ authorization URLs, tokens, private prompts, or full transcripts.
 4. Anthropic API: test text, tool use, continuation, and a surfaced provider error
    with `--provider anthropic` and a key supplied securely.
 
+### Provider verification status
+
+Milestone completion is scoped to its recorded evidence; fixture coverage is
+not live-service acceptance. Current recorded status:
+
+| Provider | Live evidence | Outstanding |
+| --- | --- | --- |
+| ChatGPT subscription | Browser sign-in, streamed coding/tools, resume, natural-expiry rotating refresh, logout, compaction, local MCP, and serial delegation on Arch | Broader eligibility/allowance cases and other hosts remain bounded by the individual records below |
+| Ollama | `qwen3.5:9b` read-tool round trip on 2026-10-14; identity and resume checks on 2026-10-15, using the installed service | Current-checkout acceptance pass; live compaction, local MCP, and serial delegation |
+| Anthropic API | No live API acceptance recorded; local HTTP fixtures cover streamed tool calls and native content blocks | Live streamed text, approved tool round trip, continuation, idle resume, surfaced error, then separate compaction/MCP/delegation checks |
+| OpenAI API | No live paid API acceptance recorded; local Responses fixtures exist | Live text/tool acceptance with an explicitly selected API billing account |
+
+The next recommended provider task is a small scratch-workspace Ollama run
+using an installed tool-capable model, recording service/model/host versions.
+Do not download a model automatically. Follow with Anthropic only after a key
+is securely configured and paid test calls are explicitly authorized; do not
+print credentials or infer permission from an available environment variable.
+For each provider, verify streaming, one exact individually approved tool call,
+the next model request with native continuation, idle resume without replay,
+and a bounded provider failure without switching billing/provider. Keep later
+compaction, MCP, and delegation checks distinct from this basic acceptance.
+
+These are open follow-ups alongside the
+[planned P8–P10 sequence](../plan.md#current-sequence-and-provider-verification),
+not results of the latest fixture or independent-server checks. No new live
+provider request was made while recording this status. Earlier Ollama evidence
+is in [Arch local provider checks](#arch-release-and-local-provider-checks-2026-10-14)
+and [runtime identity](#p1-runtime-identity-2026-10-15).
+
 ## Current evidence and next checks
 
 ### Documentation restructure, 2026-10-14

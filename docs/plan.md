@@ -5,6 +5,33 @@ with Rust limited to OS helpers. There is no JavaScript or Python runtime and
 no mandatory workflow framework. Validate changes with focused tests and the
 credential-free demo.
 
+## Current sequence and provider verification
+
+P0–P7 are complete within their documented scopes. The developer selected
+the next feature sequence on 2026-10-15:
+
+| Milestone | Scope | Status |
+| --- | --- | --- |
+| [P8](#p8-bounded-skill-resources) | Bounded explicit skill resources | Planned; not started |
+| [P9](#p9-parallel-local-subagents) | Parallel local subagents | Planned; not started |
+| [P10](#p10-network-mcp) | Explicit network MCP | Planned; not started |
+
+Feature completion does not close every live provider acceptance check. Ollama
+passed a live `qwen3.5:9b` read-tool round trip on 2026-10-14 and runtime identity/
+resume checks on 2026-10-15. Its later compaction, MCP, and delegation paths have
+not been verified live. Anthropic and OpenAI API have local fixture coverage but
+no recorded live paid API acceptance. See the authoritative
+[provider status and outstanding checks](developer/testing.md#provider-verification-status).
+
+Recommended immediate work before starting P8 is a bounded Ollama acceptance
+pass on the installed service/model, followed by Anthropic acceptance when a
+securely supplied API key and explicit paid-test authorization are available.
+Cover streamed text, an individually approved scratch tool round trip, native
+continuation, idle resume without replay, and a safely surfaced provider error;
+then track compaction, local MCP, and serial delegation as separate checks.
+Record exact provider/model/host evidence and unresolved branches. Do not
+download a model, switch providers/billing, or make paid calls by implication.
+
 ## Prototype 0.1: available now
 
 - CLI and supervised OTP sessions; resumable JSONL conversations and demo.
@@ -374,3 +401,57 @@ no Ipse runtime or protocol policy changed. The optional verifier installs
 nothing and adds no default/CI server dependency. This is scripted-model Linux
 evidence, not current-release, live-provider, Mac, or network-transport coverage;
 see [the second-server record](developer/testing.md#second-independent-local-mcp-server-2026-10-15).
+
+## P8: bounded skill resources
+
+Selected to follow P7. Start with a concrete repository skill that needs
+supporting text files. Define explicit resource selection, paths relative to
+the skill, permitted roots, precedence, size/depth bounds, and provenance before
+extending the existing skill loader. Referenced content remains instructions or
+data; loading it never runs scripts, installs dependencies, or grants permission.
+
+Acceptance: demonstrate the real skill/resource use case; test missing,
+malformed, oversized, sensitive, symlink, and escaping targets; preserve exact
+loaded content/digests in bounded session context and deterministic resume;
+show omissions clearly. Review operator/developer guidance, run appropriate
+source and supported-host checks, and commit/push the focused implementation.
+Status: planned, not implemented. Provider verification above remains separate.
+
+## P9: parallel local subagents
+
+Selected by the developer to follow P8. Extend the existing opt-in local
+delegation contract using Elixir/OTP sessions, tasks, monitors, and messages.
+Keep serial behavior as the default. Define bounded concurrent children,
+aggregate model/work budgets, approval routing by child/call identity, and a
+shared-workspace conflict policy before permitting overlapping mutations.
+Preserve separate child journals, explicit context transfer, same selected
+provider/model, and the current prohibition on recursive delegation and child MCP.
+
+Acceptance: overlapping read-only work; individually routed approvals with
+interleaved children; deterministic result collection; conflict handling;
+bounded scheduling and budgets; parent cancellation/death stopping all owned
+children and ordinary process groups; partial failure and unknown recovery
+without replay. Update the delegation contract and operator guide, distinguish
+fixture from live provider evidence, verify supported hosts, and commit/push.
+Status: planned, not implemented; remote agents remain outside this milestone.
+
+## P10: network MCP
+
+Selected by the developer to follow P9. Start with a separate endpoint,
+authentication, privacy, and recovery design behind the existing MCP adapter.
+Select and pin the first transport/protocol combination and evaluate the
+maintained SDK's support before implementing protocol machinery. Network MCP
+stays disabled without explicit trusted configuration; model or repository text
+cannot choose endpoints, credentials, or expanded capabilities.
+
+Acceptance: verified TLS; explicit endpoint and redirect/credential-forwarding
+policy; server-specific credentials and redaction; bounded discovery, messages,
+connections, deadlines, and queues; exact allowlists, descriptor binding, full
+approval arguments, and durable intent before dispatch. Test authentication
+failures, descriptor drift, cancellation, disconnects, and incomplete results
+as potentially unknown remote effects, never automatic replay. Verify against a
+pinned independent server, update developer/operator guidance and dependency
+inventory, and commit/push the supported result. Local approvals and sandboxing
+cannot establish a remote server's isolation or guarantee remote cancellation.
+Status: planned, not implemented; this does not authorize remote subagents or
+arbitrary remote command execution.
