@@ -1,5 +1,5 @@
 defmodule Ipse.Session do
-  @moduledoc "One supervised owner per coding conversation. I/O runs in monitored tasks."
+  @moduledoc "One supervised owner per agent conversation. I/O runs in monitored tasks."
   use GenServer
   alias Ipse.{Journal, Skills, Tools, WorkspaceContext}
 

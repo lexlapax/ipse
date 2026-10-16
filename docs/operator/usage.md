@@ -353,7 +353,7 @@ discovery, persistence, and boundary details.
 Ipse's harness is implemented in Elixir/OTP with Rust OS helpers. Projects and
 tasks handled by it may use other languages and installed tools, including
 TypeScript/Node or Python; the harness's implementation restrictions are not a
-project-language policy. The host role supports general-purpose tasks; the current
+project-language policy. The CLI help and host role describe general-purpose tasks; the current
 bundled tools mainly serve local file/project work. A bounded synthetic
 document-planning trial passed, including source reconciliation and an approved
 artifact write; this does not establish arbitrary task coverage.

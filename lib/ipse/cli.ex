@@ -2,7 +2,7 @@ defmodule Ipse.CLI do
   @moduledoc "Terminal client for the Ipse session API."
 
   @help """
-  Ipse 0.1 — an Elixir coding agent
+  Ipse 0.1 — a general-purpose local AI agent
 
   ipse login                      Continue with ChatGPT
   ipse status                     Show subscription sign-in status
@@ -22,7 +22,7 @@ defmodule Ipse.CLI do
   --state-dir PATH                     Session directory
   --max-steps N                        Model calls per turn (default: 30)
   --context-bytes N                    Context byte ceiling (default: 400000)
-  --no-compact                         Stop at the ceiling without summarizing
+  --no-compact                         Stop at the ceiling without automatic reduction
   --sandbox off|native                 Shell OS policy (default: off)
   --mcp-config PATH                    Explicit stdio/HTTP servers and capability allowlists
   --subagents                          Enable bounded local delegation with parent approvals

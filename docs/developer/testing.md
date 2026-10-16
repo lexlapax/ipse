@@ -1715,3 +1715,11 @@ calendar integration, messaging, or all non-coding work. No new harness tool or
 skill was needed; explicit source paths removed the setup ambiguity. Operator
 [guidance](../operator/usage.md#runtime-and-limits) now explains this file-discovery
 boundary. The host role is neutral; approvals remain independent of instructions.
+
+P13's final CLI wording also identifies Ipse as a general-purpose local AI agent
+and explains `--no-compact` as disabling automatic reduction. After this wording
+change, the source baseline again passed **277 Linux tests** (14 macOS excluded),
+formatting, warnings-as-errors compilation, build and native demo. The rebuilt
+Linux archive passed the same extracted verification; final SHA-256:
+`f8dbc34554124b6e7a0fead819ecd7499e7673c85dd58890815d8f8d721d8a67`.
+This supersedes the earlier local archive artifact, not its recorded check result.
