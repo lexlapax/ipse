@@ -104,6 +104,9 @@ detached children can still retain pipes and workspace access. Inspect effects
 before requesting another call. Developers can use the credential-free
 [stdio load diagnostic](../developer/testing.md#stdio-cleanup-load-diagnostic)
 to distinguish these failures without connecting to a model or real MCP server.
+The cleanup fix passed local Mac load checks and Linux/macOS source/package CI;
+see the [verification record](../developer/testing.md#macos-stdio-cleanup-load-2026-10-15)
+for evidence and remaining limits.
 
 Resume with the same `--mcp-config` file. Public configuration changes—including
 allowlists or sandbox mode—refuse resume. Private environment values are not

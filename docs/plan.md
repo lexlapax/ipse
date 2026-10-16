@@ -353,7 +353,9 @@ by forty stricter CI repetitions. Subsequent [local Mac load checks](developer/t
 reproduced a drain failure with an ordinary pipe-holding descendant still alive
 after the first group signal. Bounded cleanup retries and strict regressions
 address that local reproduction without changing sandbox policy or the detached-
-descendant limit. The initial CI failure's cause remains unconfirmed.
+descendant limit. The fix at `b3db345` also passed
+[Linux and macOS source/package CI](https://github.com/lexlapax/ipse/actions/runs/38822941399),
+including actual Mac native enforcement. The initial CI failure's cause remains unconfirmed.
 Broader independent-server coverage remains recommended before designing
 authenticated network transports. See
 [actual P7 results and limits](developer/testing.md#p7-expanded-local-mcp-2026-10-15).

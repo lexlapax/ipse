@@ -1131,7 +1131,13 @@ native file denials and ordinary-child timeout cleanup passed. No archive was
 published. The documentation check passed all 295 local links and heading
 anchors across 36 tracked Markdown files.
 
-These are synthetic local lifecycle and actual Mac file-enforcement checks.
-No live provider, independent MCP server, Linux enforcement, or updated hosted
-CI result is implied. Detached descendants can still survive with workspace
-access, and OS-managed sandbox containers persist.
+Hosted [Checks run 38822941399](https://github.com/lexlapax/ipse/actions/runs/38822941399)
+subsequently passed for fix commit `b3db345` on Ubuntu and macOS 14. Both jobs
+passed source build, formatting, warnings-as-errors compilation, ordinary tests,
+demo, packaging, and fresh-package verification. The Mac job also passed native
+enforcement and the experimental App Sandbox probe.
+
+These are synthetic lifecycle and actual Mac file-enforcement checks. No live
+provider, independent MCP server, or Linux enforcement rerun is implied.
+Detached descendants can still survive with workspace access, and OS-managed
+sandbox containers persist. The original CI failure's cause remains unconfirmed.
