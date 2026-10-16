@@ -205,8 +205,15 @@ SHA-256 digest through ordinary tool journaling. Repeated explicit loads read
 current bytes and report the current digest. Idle resume uses saved messages,
 including the old resource result, without rereading disk. Normal bounded
 context/checkpoint rules apply; full original results stay in the journal.
-The bundled review skill's checklist is the first supporting-file use case.
-No additional package or resource framework was introduced.
+The bundled review skill's checklist and project-orientation skill's conditional
+Git assessment guide use this mechanism. Project orientation is instruction text,
+not a project registry or Git/GitHub adapter. It directs the selected provider to
+gather relevant implementation, current changes, and validation before operator
+steps, while preserving read-only scope when requested. It uses existing read,
+approved shell, and skill-resource tools. No automatic execution, additional
+roots, dependencies, or mandatory workflow framework is introduced. See
+[operator invocation](../operator/usage.md#working-with-the-agent).
+
 
 ## Extension guidance
 

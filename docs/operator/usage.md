@@ -97,13 +97,23 @@ Arch. Other models/hosts remain separate checks. See
 
 ## Working with the agent
 
-For a project assessment, start with `--cwd` and ask for purpose, implemented
-behavior, next steps, owners, and evidence. A useful follow-up is: "Inspect
-existing Git changes and run the documented safe checks before recommending
-operator provisioning; keep this assessment read-only." Ipse currently needs
-explicit prompting for that workflow; there is no bundled project-orientation
-or GitHub skill. Shell checks still require full approvals. A read-only request
-does not change the OS profile into a read-only filesystem sandbox.
+For a project assessment, start with `--cwd` and ask:
+
+```text
+Use $project-orientation to explain what this project does and what its next
+steps are. Keep the assessment read-only.
+```
+
+The bundled skill gathers instructions, implementation, current Git changes, and
+available validation before recommending operator provisioning. It distinguishes
+local remote-tracking refs from freshly verified external state, preserves
+existing edits, and reports failed/skipped/blocked checks. Relevant Git guidance
+loads explicitly as a bounded resource. The model can also select this skill
+from its catalog; explicit invocation makes the requested workflow clear.
+Shell checks still require full approvals. A read-only request does not change
+the OS profile into a read-only filesystem sandbox. No GitHub adapter or extra
+repository access is introduced by this skill.
+
 
 The [live project assessment](../developer/testing.md#p11-live-project-assessment-2026-10-15)
 used this workflow without changing its target repository. Linux native mode
@@ -269,7 +279,8 @@ for these host facts; a natural-language self-description can still be wrong.
 
 Put local skills under `.agents/skills/<name>/SKILL.md` or
 `~/.ipse/skills/<name>/SKILL.md`. Project definitions override user and bundled
-definitions with the same name. `review` is bundled as an example.
+definitions with the same name. `review` and `project-orientation` are bundled.
+Use the latter for [project assessment](#working-with-the-agent).
 
 ```markdown
 ---

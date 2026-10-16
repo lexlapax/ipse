@@ -15,7 +15,8 @@ the next feature sequence on 2026-10-15:
 | [P8](#p8-bounded-skill-resources) | Bounded explicit skill resources | Complete within documented scope |
 | [P9](#p9-parallel-local-subagents) | Parallel local subagents | Complete within documented scope |
 | [P10](#p10-network-mcp) | Explicit network MCP | Complete within documented scope |
-| [P11](#p11-live-dotsetup-trial) | Live use in `~/projects/lexlapax/dotsetup` | Read-only assessment complete; coding trial pending |
+| [P11](#p11-live-dotsetup-trial) | Read-only assessment in `~/projects/lexlapax/dotsetup` | Read-only comparison and selected follow-ups complete |
+| [P12](#p12-task-tracker-coding-trial) | New forms/SQLite task tracker | Implementation in progress |
 
 Feature completion does not close every live provider acceptance check. On
 2026-10-15, installed Ollama `qwen3.5:9b`, Anthropic `claude-haiku-4-5`, and
@@ -492,8 +493,10 @@ No project edits, live deployment, or coding-change acceptance are claimed.
 The developer selected the first two repairs on 2026-10-15. Implementation and
 local/bundled verification are complete; hosted Linux/macOS checks passed. See
 [repair evidence](developer/testing.md#native-bash-and-visibility-repair-2026-10-15).
-The orientation skill and multi-repository read roots remain proposals, not
-implementation authorization:
+The developer continued with bundled project-orientation guidance, now verified
+with a synthetic live project; see [skill evidence](developer/testing.md#project-orientation-skill-2026-10-15).
+Multi-repository read roots remain a separate proposal without implementation
+authorization:
 
 1. Implemented and locally verified: Bash descriptor-path compatibility without
    exposing host processes or weakening the native filesystem/network boundary.
@@ -503,10 +506,21 @@ implementation authorization:
    facts for the model and operator. Distinguish hidden paths from host absence; do not silently expand
    roots or retry in trusted mode. Evaluate explicit read-only dependency roots
    separately if multi-repository verification is selected.
-3. Add reusable project-orientation/Git workflow guidance: inspect existing
+3. Implemented and verified: reusable project-orientation/Git workflow guidance: inspect existing
    changes and validation status before operator provisioning; preserve edits,
    identify owners, and distinguish source, staged deployment, and live proof.
    Existing read/approved shell tools handled this after a neutral follow-up.
 
 GitHub was not exercised, so this trial does not establish a need for a new
-GitHub adapter. A later coding trial remains pending after the chosen repairs.
+GitHub adapter. The developer chose a new task tracker for the coding trial
+instead of modifying dotsetup; see [P12](#p12-task-tracker-coding-trial).
+
+## P12: task tracker coding trial
+
+The developer selected a new app instead of a dotsetup coding change: a local
+website with forms and a SQLite database, then chose a task tracker. Use a
+separate project. Ipse implements the app; independently review its output and
+verify create/edit/complete/delete forms, input validation, and persistent data.
+Keep provider selection and individual tool approvals explicit. Record actual
+checks and any Ipse changes indicated by this trial. Dotsetup's selected
+read-only comparison is complete and its existing edits remain untouched.

@@ -1538,3 +1538,39 @@ native suite; GitHub Actions ran `ubuntu-latest` and `macos-14`. No macOS suite
 ran locally on Serenity. The Linux descriptor repair does not establish macOS
 Bash compatibility, Linux aarch64 execution, extra dependency-root access, or
 general live-project coding acceptance.
+
+## Project orientation skill, 2026-10-15
+
+Continuing the P11 follow-ups added a bundled `project-orientation` skill and a
+conditional, explicitly loaded Git assessment resource. They use the existing
+skill loader, file reads, and approved shell tools; there is no new runtime
+logic, dependency, project registry, GitHub adapter, or expanded file root.
+The guidance gathers implementation, existing changes, and available validation
+before operator provisioning, distinguishes saved tracking refs from fresh
+external state, and preserves read-only scope when requested.
+
+Ipse's parser validated discovery, explicit invocation, source/hash provenance,
+and bounded resource loading. Existing skill/resource tests passed (six tests),
+as did formatting, warnings-as-errors compilation and the isolated source demo.
+The exact Linux archive rebuilt with runtime notices and passed the full
+fresh-home/utility-only-PATH verifier. Bundled-skill discovery and explicit resource loading also passed
+separately against that extraction.
+
+A real ChatGPT-subscription session (`gpt-6.1-sol`, explicit native policy) used
+only a disposable synthetic Git project. It explicitly loaded the Git resource
+and ran three individually reviewed shell calls. From a neutral read-only
+purpose/next-steps request, it found the pre-existing unstaged inventory change,
+identified its mismatch with implementation, reported a real failing fixture
+check separately from passing shell syntax, and prioritized repository
+validation before operator enrollment. Final status, diff, and file hashes were
+unchanged. It did not claim fresh remote state or deployment. Five journaled
+tool calls completed. The first harness post-check incorrectly expected local
+tool arguments in intent metadata; a corrected harness passed without an Ipse
+runtime change. Private journals and synthetic answers remain outside Git.
+This is scoped live skill evidence, not proof that every model will select or
+follow the skill automatically, and it sent no additional dotsetup content.
+
+The developer then selected a new forms/SQLite task-tracker app for the coding
+trial, replacing the proposed dotsetup coding trial. Dotsetup's read-only
+comparison remains complete; its existing edits are preserved. See
+[the separate coding trial](../plan.md#p12-task-tracker-coding-trial).

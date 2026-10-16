@@ -56,6 +56,9 @@ provider; see [operation and limits](docs/operator/usage.md#context-compaction).
 Run from any working directory or use `--cwd`; `/context` shows applicable saved
 instructions and `/context refresh` reloads them while idle. See
 [workspace instructions](docs/operator/usage.md#workspace-instructions).
+Use `$project-orientation` to assess a repository's purpose, current changes,
+and available checks before choosing next steps; see
+[project assessment](docs/operator/usage.md#working-with-the-agent).
 Explicit stdio and Streamable HTTP MCP tools are available through `--mcp-config`; see
 [configuration and trust boundaries](docs/operator/mcp.md).
 Local MCP servers default to trusted execution; a per-server `"sandbox": "native"`
