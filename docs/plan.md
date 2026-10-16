@@ -19,6 +19,7 @@ the next feature sequence on 2026-10-15:
 | [P11](#p11-live-dotsetup-trial) | Read-only assessment in `~/projects/lexlapax/dotsetup` | Read-only comparison and selected follow-ups complete |
 | [P12](#p12-task-tracker-coding-trial) | New forms/SQLite task tracker | Specified-stack coding trial complete |
 | [P13](#p13-long-turn-compaction-and-general-purpose-trials) | Long-turn context recovery and neutral coding/non-coding trials | Complete within documented scope |
+| [P14](#p14-bounded-deep-research) | Research method, explicit search/retrieval, evidence and validation | Planned; implementation and live research trial not started |
 
 Feature completion does not close every live provider acceptance check. On
 2026-10-15, installed Ollama `qwen3.5:9b`, Anthropic `claude-haiku-4-5`, and
@@ -598,3 +599,68 @@ A reusable repository-development skill, clearer review/test evidence, and real
 task regressions may improve this loop after demonstrated needs. Unattended
 self-development would require stronger isolation and acceptance controls; current
 supervised trials do not establish that capability.
+
+## P14: bounded deep research
+
+Added to the plan at the developer's request on 2026-10-16. Status: planned;
+implementation and end-to-end live research validation have not started. This
+records direction, not authorization to enable servers, install dependencies,
+spend through another provider, or execute the milestone now. The separate
+[supervised self-development candidate](#candidate-next-step-supervised-self-development)
+remains available; adding this milestone does not impose a mandatory workflow.
+
+Ipse already supplies local file analysis, skills, bounded context, journals and
+explicit MCP/delegation. Open-web deep research needs retrieval capabilities and
+independently verified evidence handling; selecting a model alone supplies neither.
+
+Acceptance:
+
+1. Add a bounded research skill for question/scope clarification, search planning,
+   source evaluation, primary-source preference, conflicting evidence, uncertainty
+   and a cited final report. Use ordinary modules, tools and local artifacts;
+   loading the skill grants no permission and enables no external service.
+2. Evaluate compatible, explicitly configured search and page-retrieval MCP tools
+   before adding custom retrieval machinery. Review server/schema/credential needs,
+   output bounds and dependencies/licenses. Preserve provider/billing selection,
+   individual external-call approvals and honest failed/unknown outcomes. Public
+   retrieval must use an explicitly network-capable configuration; no silent
+   fallback from a network-denying native shell/server profile.
+3. Retain a durable, bounded source ledger outside the model's transient context:
+   URL, retrieval date, publication/author data when available, content digest,
+   relevant captured excerpts and claim-to-source links. Distinguish observed
+   evidence from inference. Context reduction must not silently turn an excerpt
+   into proof of a whole source; original evidence and report references must
+   remain inspectable after resume. Do not automatically replay unknown calls.
+4. Exercise optional parallel analysis without changing existing child boundaries:
+   the parent retrieves MCP sources, children analyze collected local evidence,
+   and the parent verifies the synthesis and citations. Children currently cannot
+   use MCP or delegate recursively. A successful serial research trial suffices
+   before expanding parallel coverage.
+5. Verify controlled fixtures for missing/stale/conflicting sources, misleading
+   retrieved instructions, unsupported claims, output limits and interrupted
+   sessions. Then run a bounded live public-source question with explicit provider
+   and retrieval configuration. Independently inspect cited source contents,
+   claim support, uncertainty, completeness relative to scope, and resume behavior;
+   URL availability alone is insufficient. Keep a credential-free fixture path.
+6. Record actual tools/provider, source dates, checks and limitations in developer
+   evidence; document operator setup, approvals, source/artifact locations and
+   recovery. Update the documentation map if new guides are added. Commit/push
+   focused changes only after their relevant completion checks pass.
+
+### Related gap: structured operator questions
+
+Current interactive chat supports free-text answers, including replies to
+model-written numbered choices; action approvals are a separate yes/no mechanism.
+There is no host-native question/answer tool with single-select or multi-select
+schema, option identifiers, answer validation or a pending-question lifecycle.
+MCP elicitation is also unsupported. Skills can guide wording but cannot supply
+this runtime capability. Research scoping can initially use ordinary chat.
+
+A possible later native `ask_operator` tool should support bounded single-choice,
+multiple-choice and free-text questions, explicit responses (no auto-submitted
+recommendations/defaults), typed session/client events, journaling/resume,
+cancellation/EOF and defined headless behavior. Waiting for clarification must
+not confer approval, execute an action or leave a model request running. Keep
+questions separate from permission prompts, validate stale/duplicate answers,
+and define how child questions reach the parent operator before enabling them.
+This is a recorded candidate, not an implemented or selected feature milestone.

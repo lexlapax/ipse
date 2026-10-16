@@ -125,6 +125,16 @@ Interactive chat asks before `write`, `edit`, and every `shell` call. `--yes`
 allows them for the session. Headless `run` denies mutations unless `--yes` is
 present. Approvals display the full proposed arguments.
 
+Operator clarification currently uses ordinary chat: Ipse can ask a question and
+you can reply with text or a number from model-written options. There is no native
+single-select/multi-select question widget or validated choice-response tool.
+After Ipse finishes asking, your reply becomes a normal user turn. During a
+pending action approval, input is instead interpreted as allow/deny; do not use
+that prompt to answer a clarification question. Approvals are not a structured
+feedback mechanism. MCP elicitation is unsupported. The
+[research plan and related question gap](../plan.md#related-gap-structured-operator-questions)
+record future work; neither capability is enabled by loading a skill.
+
 With the default `--sandbox off`, shell execution is trusted local execution. Commands have
 your user permissions. The helper clears common provider credential environment
 variables, but it cannot prevent authorized commands from reading your files,

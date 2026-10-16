@@ -1777,3 +1777,21 @@ The remaining proposed next step is supervised self-development in an isolated
 checkout, using a stable harness and independent diff/test review; see the
 [plan candidate](../plan.md#candidate-next-step-supervised-self-development).
 No major new Git/GitHub subsystem was demonstrated necessary by these trials.
+
+## Research planning and operator-question audit, 2026-10-16
+
+Documentation-only update: the developer requested adding bounded deep research
+to the plan. P14 now specifies a research skill, explicitly configured retrieval,
+durable source/claim evidence, optional parent-gathered parallel analysis, and
+fixture/live acceptance. No research server, dependency, credential or runtime
+feature was added, and no open-web research trial is claimed.
+
+Audited `Ipse.Tools.definitions/1`, session tool assembly/public prompt/approval
+interfaces and the CLI input loop. Current native tools contain no structured
+question tool; CLI approval input accepts y/yes, while ordinary operator replies
+are user prompt text. MCP elicitation remains documented as unsupported.
+Operator/developer guidance now distinguishes free-text clarification, typed
+choice feedback (absent), and action approval. The related structured-question
+proposal is a candidate, not an implementation milestone selected by this audit.
+Documentation links/anchors and CLI help/examples are the relevant checks;
+no runtime tests or paid inference are required for this planning-only change.

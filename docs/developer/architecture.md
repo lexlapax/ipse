@@ -246,3 +246,17 @@ permission and recovery behavior; do not imply that process supervision is an
 OS security boundary. Keep Rust limited to OS facilities that OTP cannot
 provide directly. Preserve a credential-free demo and tests that do not require
 paid model access.
+
+## Operator clarification
+
+The current session/client interface accepts ordinary user prompt text and
+boolean decisions for pending tool approvals. The CLI reads lines and interprets
+`y`/`yes` only while an approval is pending; other idle text becomes a user turn,
+and text during active work is queued. Model-written questions/numbered options
+are presentation text, not a host-validated question schema or answer event.
+There is no native `ask_operator` tool, single-select/multi-select feedback
+protocol, or question-specific persistence/resume state. MCP elicitation is not
+implemented. Keep this distinct from approval and from any future UI integration.
+
+[P14](../plan.md#p14-bounded-deep-research) records research work and a related
+structured-question candidate. Neither adds runtime functionality by itself.
