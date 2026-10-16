@@ -20,7 +20,8 @@ defmodule Ipse.RuntimeInfoTest do
     text = Ipse.RuntimeInfo.format(info)
     assert text =~ "exact backend revision is unknown"
     refute inspect(info) <> text =~ "private"
-    assert map_size(info) == 6
+    assert map_size(info) == 7
+    assert info.execution == %{}
   end
 
   test "missing and invalid model identifiers remain unavailable without terminal controls" do

@@ -260,3 +260,10 @@ P15 uses the existing Jason JSON parser and bounded JSONSchex schema adapter.
 JSON fits the small closed data-only settings schema; no executable config, YAML
 package, new runtime or separate validation engine is introduced. Canonical paths,
 SHA-256 and journal metadata reuse existing OTP/Ipse modules.
+
+### Execution profiles
+
+P16 reuses Jason/JSONSchex, fixed provider adapters and ordinary OTP delegation.
+It adds no dependency, inference framework, model downloader or credential store.
+Reasoning effort is a small documented Responses mapping with a conservative
+model allowlist; unsupported provider settings fail explicitly.

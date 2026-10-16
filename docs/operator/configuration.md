@@ -63,4 +63,6 @@ the effective fingerprint and source digests. Changed files or execution policy
 refuse resume without replay. Restore the original configuration or start a new
 session. Old sessions without a manifest can resume only when no config file is
 newly introduced. Current action approvals are always separate from saved data.
-Named model profiles and role routing remain a separate planned feature.
+Named model profiles and main/routine/review routing are available; see
+[model profiles](model-profiles.md). Top-level `profiles` and `roles` extend this
+version-1 schema. A later same-ID profile replaces the whole earlier definition.

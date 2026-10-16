@@ -51,6 +51,11 @@ defmodule Ipse.Provider.OpenAI do
       "input" => input
     }
 
+    body =
+      if config[:reasoning_effort],
+        do: Map.put(body, "reasoning", %{"effort" => config.reasoning_effort}),
+        else: body
+
     if config[:provider] == :chatgpt,
       do: body,
       else: Map.put(body, "tools", Enum.map(tools, &function_definition/1))

@@ -193,8 +193,9 @@ Windows is future work.
 
 Local child delegation is disabled by default. Enable it explicitly with
 `--subagents`; the parent asks before starting a child and forwards each child
-mutation proposal for a separate approval. A child uses the same provider,
-requested model, workspace, and saved workspace-instruction snapshot, but has a
+mutation proposal for a separate approval. A child uses the configured routine/
+review role or explicit profile, otherwise the parent's provider/model. It shares
+the workspace and saved workspace-instruction snapshot, but has a
 separate private journal and does not receive the parent's conversation or MCP
 servers. It cannot delegate recursively. A stopped or interrupted child is
 recorded as unknown and is never replayed on resume. Child model calls have
@@ -434,8 +435,8 @@ project/directory `.ipse/config.json`. Project files require current-run
 effective non-secret settings and provenance locally, without authentication or
 inference. See [configuration](configuration.md) for fields, precedence, examples
 and resume behavior. Skills and configuration grant no effect permissions.
-Named role profiles and reasoning-effort routing remain planned under
-[P16](../plan.md#p16-explicit-model-profiles-and-task-routing).
+Named main/routine/review profiles and documented reasoning effort are available;
+see [model profiles](model-profiles.md).
 
 ## Operator questions
 

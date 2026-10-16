@@ -13,8 +13,9 @@ An explicit `--subagents` option enables one `delegate` function in the existing
 session loop. Defaults remain disabled. The parent reviews the complete task
 and selected context before a child starts. A child is another ordinary
 `Ipse.Session`, with its own conversation, lock, and private journal. It uses
-the parent's provider, requested model, workspace, shell policy, and saved
-workspace-instruction snapshot. It receives only the explicit task/context,
+a configured profile/role or the parent's provider/model, with shared workspace,
+shell policy and saved workspace-instruction snapshot. The
+[profile contract](model-profiles.md) defines mixed-provider isolation. It receives only the explicit task/context,
 never the parent's transcript or provider continuation items.
 
 Children cannot delegate recursively or use MCP in this first slice. They may

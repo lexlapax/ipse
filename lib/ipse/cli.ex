@@ -32,6 +32,7 @@ defmodule Ipse.CLI do
   --trust-project-config               Authorize scoped project settings for this run
   --no-project-config                  Ignore project/directory configuration
   --timeout-ms N                       Provider request timeout (1000..600000)
+  --profile ID                         Select an operator-configured main profile
 
   Chat asks before writes, shell, MCP, and delegation. Headless run denies them without --yes.
   Shell execution uses your user permissions unless --sandbox native is selected.
@@ -73,6 +74,7 @@ defmodule Ipse.CLI do
           trust_project_config: :boolean,
           project_config: :boolean,
           timeout_ms: :integer,
+          profile: :string,
           help: :boolean,
           demo: :boolean
         ],
@@ -207,7 +209,7 @@ defmodule Ipse.CLI do
         do:
           IO.puts(
             :stderr,
-            "Local subagents enabled: same provider/model/workspace; parent approvals apply. " <>
+            "Local subagents enabled: same workspace; configured routine/profile routing or parent provider/model; parent approvals apply. " <>
               "Concurrency #{Map.get(config, :subagent_concurrency, 1)}; up to two children per turn and six model steps per child, additional to the parent budget."
           )
 
@@ -623,25 +625,28 @@ defmodule Ipse.CLI do
              {:ok, _policy} <- Ipse.Sandbox.resolve(sandbox, opts[:cwd] || default_cwd()),
              {:ok, _key} <- credential(provider) do
           {:ok,
-           %{
-             provider: provider,
-             model: model,
-             auth_dir: auth_dir(),
-             home: home(),
-             operator_home: Ipse.Skills.operator_home(),
-             configuration: Ipse.Config.manifest(effective),
-             timeout_ms: opts[:timeout_ms],
-             sandbox: sandbox,
-             base_url: opts[:base_url],
-             max_steps: opts[:max_steps] || 30,
-             context_bytes: opts[:context_bytes] || 400_000,
-             compact: opts[:compact] != false,
-             mcp_servers: servers,
-             subagents: opts[:subagents] == true,
-             subagent_concurrency: opts[:subagent_concurrency] || 1,
-             operator_questions: interactive,
-             approval: if(opts[:yes], do: :allow, else: if(interactive, do: :ask, else: :deny))
-           }}
+           Map.merge(
+             %{
+               provider: provider,
+               model: model,
+               auth_dir: auth_dir(),
+               home: home(),
+                operator_home: Ipse.Skills.operator_home(),
+               configuration: Ipse.Config.manifest(effective),
+               timeout_ms: opts[:timeout_ms],
+               sandbox: sandbox,
+               base_url: opts[:base_url],
+               max_steps: opts[:max_steps] || 30,
+               context_bytes: opts[:context_bytes] || 400_000,
+               compact: opts[:compact] != false,
+               mcp_servers: servers,
+               subagents: opts[:subagents] == true,
+               subagent_concurrency: opts[:subagent_concurrency] || 1,
+               operator_questions: interactive,
+               approval: if(opts[:yes], do: :allow, else: if(interactive, do: :ask, else: :deny))
+             },
+             Ipse.Profiles.runtime(effective)
+           )}
         end
     end
   end
@@ -678,6 +683,7 @@ defmodule Ipse.CLI do
 
         {:ok,
          restored
+         |> Keyword.put_new(:profile, get_in(meta, ["configuration", "execution", "id"]))
          |> Keyword.put_new(:cwd, meta["cwd"])
          |> Keyword.put_new(:provider, meta["provider"])
          |> Keyword.put_new(:model, meta["model"])

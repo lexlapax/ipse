@@ -42,8 +42,8 @@ default. `Ipse.Delegation.Group` coordinates two workers when parallel mode is
 explicitly selected. Each child has a separate journal and receives only the
 selected task,
 context, and saved workspace snapshot. Required child mutation approvals return
-through the parent session. The child uses the same provider/model and shared
-workspace; it does not inherit MCP servers or parent conversation history. See
+through the parent session. The child uses a configured profile/role or inherited
+provider/model and shares the workspace; it does not inherit MCP servers or parent conversation history. See
 the [delegation contract](delegation.md).
 
 `Ipse.Provider` selects a provider adapter. Adapters stream text and
@@ -297,19 +297,12 @@ durable restore and terminal behavior. MCP elicitation remains unavailable.
 
 ## Configuration and profile boundaries
 
-
-CLI configuration resolves bounded, versioned operator/project/directory JSON,
-environment and explicit flags through `Ipse.Config`. Project files require
-explicit trust. Effective settings/source digests are persisted and compared on
-resume before inference. See the [configuration contract](configuration.md).
-The selected provider/model is copied into child policy. Shared operator skills
-use explicit isolation inputs; see [skill discovery](#skill-discovery).
-Provider-specific reasoning settings remain planned.
-
-[P15](../plan.md#p15-scoped-configuration-and-shared-operator-skills) is partial:
-shared discovery is implemented, separate scoped data configuration remains.
-Preserve `.ipse` sensitive-resource exclusions when introducing a dedicated config loader.
-[P16](../plan.md#p16-explicit-model-profiles-and-task-routing) specifies validated
-profile IDs and credential/native-continuation isolation for mixed-model children.
-Configuration, skill instructions, model suggestions and operator permissions
-remain different boundaries. Profile routing remains a planned contract.
+CLI configuration resolves bounded operator/project/directory JSON through
+`Ipse.Config`, requiring current-run project trust. Effective non-secret settings,
+source digests, configured profiles/roles and selected execution are persisted and
+checked on resume before inference. See [configuration](configuration.md) and
+[model profiles](model-profiles.md). `Ipse.Profiles` enforces configured IDs/roles,
+documented reasoning capabilities and credential/native-history isolation for
+mixed-provider children. Configuration and skills grant no effect permissions.
+Shared operator skills use explicit isolation inputs; see
+[skill discovery](#skill-discovery).

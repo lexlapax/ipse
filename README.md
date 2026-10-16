@@ -82,8 +82,9 @@ review their metadata and approval requests as untrusted data. See the
 [MCP operator guide](docs/operator/mcp.md) for limits and platform evidence.
 Opt-in local delegation is available with `--subagents`; it runs serial children
 by default or two parallel children with `--subagent-concurrency 2`,
-with the same provider/model and workspace, separate journals, and parent-mediated
-approvals. See [local subagents](docs/operator/subagents.md) for limits and
+in the same workspace with separate journals and parent-mediated approvals.
+[Named profiles and task roles](docs/operator/model-profiles.md) can route bounded
+children to an explicitly configured provider/model, including local Ollama. See [local subagents](docs/operator/subagents.md) for limits and
 recovery behavior. There is no full-screen TUI, remote-agent, or Windows support.
 See [runtime limits](docs/operator/usage.md#runtime-and-limits)
 and [architecture](docs/developer/architecture.md) for details.

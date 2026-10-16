@@ -4,20 +4,21 @@ defmodule Ipse.Delegation.Worker do
 
   def run(host, args) do
     origin = %{"parent_session_id" => host.id, "call_id" => host.call_id}
-    config = Delegation.child_config(host.config, origin)
 
-    opts = [
-      config: config,
-      cwd: host.cwd,
-      state_dir: Path.join([host.dir, "subagents", host.id]),
-      subscriber: self(),
-      owner: self(),
-      context_snapshot: host.context_snapshot
-    ]
+    with {:ok, config} <- Ipse.Profiles.child_config(host.config, origin, args) do
+      opts = [
+        config: config,
+        cwd: host.cwd,
+        state_dir: Path.join([host.dir, "subagents", host.id]),
+        subscriber: self(),
+        owner: self(),
+        context_snapshot: host.context_snapshot
+      ]
 
-    case DynamicSupervisor.start_child(Ipse.Sessions, {Session, opts}) do
-      {:ok, child} -> run_child(host, args, child)
-      _ -> {:error, "Could not start the delegated session; no child task was prompted."}
+      case DynamicSupervisor.start_child(Ipse.Sessions, {Session, opts}) do
+        {:ok, child} -> run_child(host, args, child)
+        _ -> {:error, "Could not start the delegated session; no child task was prompted."}
+      end
     end
   end
 
@@ -85,11 +86,15 @@ defmodule Ipse.Delegation.Worker do
         )
 
       {:ipse, ^child, {:done, :ok}} ->
-        final = Session.info(child).final
+        info = Session.info(child)
+        final = info.final
 
         if is_binary(final) and String.valid?(final) and
              byte_size(final) <= Delegation.result_bytes(),
-           do: {:ok, "Untrusted result from child #{id}:\n" <> final},
+           do:
+             {:ok,
+              "Host routing facts: #{Jason.encode!(info.runtime)}\nUntrusted result from child #{id}:\n" <>
+                final},
            else: unknown(id)
 
       {:ipse, ^child, {:done, _}} ->

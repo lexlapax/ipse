@@ -1891,3 +1891,29 @@ resume kept journal bytes/effects unchanged, while source drift refused startup.
 Source build, formatting, warnings-as-errors compilation, native credential-free
 demo and all 42 Markdown documents/398 local links passed. Integration, packaged
 runtime verification and hosted checks remain pending.
+
+## P16 explicit model profiles, 2026-10-16
+
+The model-profile branch passed 309 native Linux tests, with 14 macOS tests
+excluded, plus source build, format, warnings-as-errors compilation and the native
+credential-free demo. Fixtures cover main/profile selection, supported Responses
+effort, invalid provider/model/credential/endpoint combinations, routine/review
+routes, every adapter's model mapping, private parent payload/credential exclusion,
+forged-route rejection, child journals and idle resume. An initial Anthropic fixture
+omitted its required terminal stop reason; correcting the fixture restored the
+full suite. This was not a live Anthropic failure.
+
+A synthetic live subscription `gpt-6.1-sol` main profile with `high` effort delegated
+exactly once to installed local Ollama `qwen3.5:9b`, with only two arithmetic
+expressions selected for child context. Both values (391 and 43) were independently
+checked. Parent/child journals verify provider/model/profile/role and preserved
+separate conversations; the parent prompt was absent from the child transcript.
+Idle resume changed no journal bytes and performed no inference or replay. No
+model download, API billing switch, file/shell effect or MCP call occurred.
+The initial result lacked host child-identity facts, so these now accompany
+successful delegated results instead of depending on child self-description.
+
+Private staging artifacts live under `/tmp/ipse-profile-live/` and are not
+committed. This validates this account/model/host, not every reasoning model,
+remote Ollama deployment or paid-provider profile. Source package and main/hosted
+integration checks follow the first supervised self-development increment.

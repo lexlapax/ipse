@@ -13,7 +13,9 @@ unknown-version/field and escaping project aliases fail closed. Missing default
 files are optional; explicit operator paths are required. Project settings require
 explicit current-run trust. This authorization does not replace effect approvals.
 
-The result contains effective string-keyed settings, field provenance, source
+The schema also accepts validated named `profiles` and `roles`; see the
+[profile contract](model-profiles.md). All profile definitions and assignments
+participate in resume fingerprints. The result contains effective string-keyed settings, field provenance, source
 path/canonical path/scope/SHA-256 and a canonical fingerprint over effective
 settings and source descriptors. Field provenance is excluded from the fingerprint
 so equivalent explicit overrides do not invalidate resume. Source content drift,

@@ -49,7 +49,7 @@ billing, credentials and external-effect invariants still apply.
 | 1 | Supervised self-development using stable Ipse to add P15 shared operator skills | Implemented and independently verified; integrating into main |
 | 2 | P17 structured operator questions | Verified feature branch `5984d09`; integration follows shared-skills review |
 | 3 | Remaining P15 scoped configuration | Implemented and verified; integrating into main |
-| 4 | P16 explicit model profiles/routing | Pending |
+| 4 | P16 explicit model profiles/routing | Implemented and verified; integrating into main |
 | 5 | P14 bounded deep research | Pending |
 
 Update each row and its implementation/evidence record as focused increments pass.
@@ -742,10 +742,14 @@ Acceptance:
 
 ## P16: explicit model profiles and task routing
 
-Added at the developer's request and authorized on 2026-10-16. Status: queued
-after P15 scoped configuration.
-Current sessions select one provider/model from CLI/environment; children inherit
-that choice, and configurable reasoning effort is not exposed or forwarded.
+Added at the developer's request and authorized on 2026-10-16. Implemented on
+the model-profile feature branch: bounded named profiles, main/routine/review
+roles, conservative Responses effort mapping and selected-profile child isolation.
+The native Linux suite passed 309 tests (14 macOS excluded); a live subscription
+`gpt-6.1-sol`/high parent and installed Ollama `qwen3.5:9b` child passed routing,
+arithmetic verification and unchanged idle resume. Main/package/hosted integration
+checks follow the first self-development increment. See
+[profile setup](operator/model-profiles.md) and [contract](developer/model-profiles.md).
 The intended use is a stronger main model with an explicitly chosen smaller local
 model for suitable routine subtasks. P15 supplies persistent configuration; this
 milestone supplies host-enforced profiles/routing, not a mandatory task pipeline.

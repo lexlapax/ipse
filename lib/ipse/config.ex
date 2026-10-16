@@ -36,7 +36,9 @@ defmodule Ipse.Config do
       initial = %{
         settings: @defaults,
         provenance: Map.new(@defaults, fn {key, _} -> {key, "built-in"} end),
-        sources: []
+        sources: [],
+        profiles: %{},
+        roles: %{}
       }
 
       effective =
@@ -48,34 +50,69 @@ defmodule Ipse.Config do
             | settings: Map.merge(acc.settings, values),
               provenance:
                 Map.merge(acc.provenance, Map.new(values, fn {key, _} -> {key, source.path} end)),
-              sources: acc.sources ++ [Map.drop(source, [:data])]
+              sources: acc.sources ++ [Map.drop(source, [:data])],
+              profiles: Map.merge(acc.profiles, source.data["profiles"] || %{}),
+              roles: Map.merge(acc.roles, source.data["roles"] || %{})
           }
         end)
 
-      effective = overlay(effective, env, "environment")
+      with :ok <- Ipse.Profiles.validate(effective.profiles, effective.roles),
+           {:ok, profile_id, profile} <-
+             Ipse.Profiles.select(
+               effective.profiles,
+               effective.roles,
+               opts[:profile] || environment["IPSE_PROFILE"]
+             ) do
+        effective = overlay(effective, Ipse.Profiles.settings(profile), "profile #{profile_id}")
+        effective = overlay(effective, env, "environment")
 
-      cli =
-        for {field, key} <- @option_keys,
-            Keyword.has_key?(opts, key),
-            into: %{},
-            do: {field, opts[key]}
+        cli =
+          for {field, key} <- @option_keys,
+              Keyword.has_key?(opts, key),
+              into: %{},
+              do: {field, opts[key]}
 
-      effective = overlay(effective, cli, "CLI")
-      settings = Map.put_new(effective.settings, "model", @models[effective.settings["provider"]])
-      provenance = Map.put_new(effective.provenance, "model", "provider default")
+        effective = overlay(effective, cli, "CLI")
 
-      with :ok <- validate_settings(settings),
-           true <- settings["subagent_concurrency"] == 1 or settings["subagents"] do
-        fingerprint =
-          Compaction.digest([%{"settings" => settings, "sources" => effective.sources}])
+        settings =
+          Map.put_new(effective.settings, "model", @models[effective.settings["provider"]])
 
-        {:ok,
-         %{effective | settings: settings, provenance: provenance}
-         |> Map.put(:fingerprint, fingerprint)}
-      else
-        _ ->
-          {:error,
-           "Invalid effective configuration or subagent concurrency; inspect ipse config."}
+        provenance = Map.put_new(effective.provenance, "model", "provider default")
+
+        execution = Ipse.Profiles.manifest(profile_id, profile)
+
+        with :ok <- validate_settings(settings),
+             :ok <-
+               Ipse.Profiles.reasoning(
+                 settings["provider"],
+                 settings["model"],
+                 profile["reasoning_effort"]
+               ),
+             true <-
+               is_nil(profile_id) or
+                 (settings["provider"] == profile["provider"] and
+                    settings["model"] == profile["model"] and is_nil(opts[:base_url])),
+             true <- settings["subagent_concurrency"] == 1 or settings["subagents"] do
+          fingerprint =
+            Compaction.digest([
+              %{
+                "settings" => settings,
+                "sources" => effective.sources,
+                "profiles" => effective.profiles,
+                "roles" => effective.roles,
+                "execution" => execution
+              }
+            ])
+
+          {:ok,
+           %{effective | settings: settings, provenance: provenance}
+           |> Map.put(:fingerprint, fingerprint)
+           |> Map.put(:execution, execution)}
+        else
+          _ ->
+            {:error,
+             "Invalid effective configuration or subagent concurrency; inspect ipse config."}
+        end
       end
     else
       false -> {:error, "Invalid configuration workspace."}
@@ -87,7 +124,16 @@ defmodule Ipse.Config do
     do: Map.new(effective.settings, fn {key, value} -> {@option_keys[key], value} end)
 
   def manifest(effective),
-    do: Map.take(effective, [:settings, :sources, :provenance, :fingerprint])
+    do:
+      Map.take(effective, [
+        :settings,
+        :sources,
+        :provenance,
+        :fingerprint,
+        :profiles,
+        :roles,
+        :execution
+      ])
 
   def legacy_compatible?(effective), do: effective.sources == []
 
@@ -114,7 +160,9 @@ defmodule Ipse.Config do
       "type" => "object",
       "properties" => %{
         "version" => %{"type" => "integer", "enum" => [1]},
-        "settings" => settings_schema()
+        "settings" => settings_schema(),
+        "profiles" => %{"type" => "object"},
+        "roles" => %{"type" => "object"}
       },
       "required" => ["version"],
       "additionalProperties" => false
@@ -179,6 +227,7 @@ defmodule Ipse.Config do
            {:ok, raw} <- read_bounded(canonical),
            {:ok, data} <- Jason.decode(raw),
            :ok <- Schema.validate_arguments(schema(), data),
+           :ok <- Ipse.Profiles.validate(data["profiles"] || %{}, %{}),
            :ok <- validate_settings(data["settings"] || %{}) do
         {:ok,
          %{

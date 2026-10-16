@@ -11,8 +11,9 @@ checks passed on Arch; see [actual evidence](../developer/testing.md#p6-local-de
 
 The startup notice confirms the option. The model can propose one `delegate`
 call with a task and selected context. Review both fields before approving:
-starting a child makes additional model requests using the same selected
-provider, requested model, and account. There is no automatic billing or model
+starting a child makes additional model requests using the selected profile/role,
+or the parent provider/model when no routine role is configured. See
+[model profiles](model-profiles.md) for explicit mixed-provider routing. There is no automatic billing or model
 switch. A child shares the workspace and saved workspace instructions, but gets
 its own conversation and journal instead of the parent's full transcript.
 
@@ -62,8 +63,8 @@ history retains only the selected task, approval records, relationship, and
 bounded untrusted child result.
 
 See [usage](usage.md), [the developer contract](../developer/delegation.md), and
-[the plan](../plan.md#p9-parallel-local-subagents). Different provider/model
-routing, remote agents, automatic retries, and child MCP remain unavailable.
+[the plan](../plan.md#p9-parallel-local-subagents). Remote agents, automatic
+retries, and child MCP remain unavailable.
 
 ## Parallel local children
 
@@ -73,7 +74,7 @@ routing, remote agents, automatic retries, and child MCP remain unavailable.
 
 This exposes `delegate_parallel` for exactly two bounded task/context objects.
 The parent approves the complete group before either child starts. Children use
-the same provider/model, separate journals, and individually routed mutation
+configured profiles/roles or inherited provider/model, separate journals and individually routed mutation
 approvals; results return in task order. One group consumes the two-child turn
 budget, at most twelve child model calls in total. Serial delegation remains
 available. The concurrency setting is saved and must match on resume.
