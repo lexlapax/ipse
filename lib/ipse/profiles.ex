@@ -153,6 +153,7 @@ defmodule Ipse.Profiles do
             :home,
             :operator_home,
             :shared_root,
+            :parallel_child,
             :approval,
             :delegation_origin
           ])

@@ -1941,3 +1941,8 @@ helpers, MCP and delegation. Execution used isolated HOME/IPSE_HOME and a utilit
 only PATH. All 44 Markdown documents and 414 local links/anchors passed. Hosted
 checks are rerun on the integrated commits rather than treating earlier failures
 as passes.
+
+Independent final review found and repaired a selected-profile child dropping the
+parallel-child file-policy marker. A behavior regression routes through a named
+profile and verifies a hardlinked alias write is denied with both files unchanged.
+The fixed allowlist retains P9's file boundary across provider/model changes.

@@ -178,4 +178,39 @@ defmodule Ipse.ProfilesTest do
     assert :ok = Profiles.validate_profile(%{"provider" => "anthropic", "model" => "fixture"})
     assert :ok = Profiles.validate_profile(%{"provider" => "ollama", "model" => "fixture"})
   end
+
+  test "switching a parallel child profile preserves hardlink mutation denial", c do
+    target = Path.join(c.root, "original.txt")
+    alias_path = Path.join(c.root, "alias.txt")
+    File.write!(target, "original evidence")
+    File.ln!(target, alias_path)
+
+    parent = %{
+      provider: :chatgpt,
+      model: "parent",
+      sandbox: :off,
+      parallel_child: true,
+      profiles: profiles(),
+      roles: %{"routine" => "local"}
+    }
+
+    assert {:ok, child} = Profiles.child_config(parent, %{}, %{})
+
+    context = %{
+      cwd: c.root,
+      sandbox: child.sandbox,
+      parallel_child: Map.get(child, :parallel_child, false)
+    }
+
+    assert {:error, message} =
+             Ipse.Tools.execute(
+               "write",
+               %{"path" => "alias.txt", "content" => "must not change"},
+               context
+             )
+
+    assert message =~ "hardlinked"
+    assert File.read!(target) == "original evidence"
+    assert File.read!(alias_path) == "original evidence"
+  end
 end
