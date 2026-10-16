@@ -11,6 +11,7 @@ start. Use the guides below for operation, development, and project context.
 | [Usage](operator/usage.md) | Providers, login, approvals, operator clarification, project assessment and skills, resume, state, current configuration limits |
 | [Model profiles](operator/model-profiles.md) | Named models, task roles, credential references, reasoning and child routing |
 | [Configuration](operator/configuration.md) | Scoped JSON settings, precedence, project trust, local inspection and resume |
+| [Research](operator/research.md) | Configurable search/retrieval, source ledger, citations and recovery |
 | [MCP servers](operator/mcp.md) | Explicit stdio/HTTP configuration, TLS, credentials, server sandbox, approvals, recovery, and demos |
 | [Local subagents](operator/subagents.md) | Explicit delegation, child approvals, bounds, journals, and recovery |
 | [Troubleshooting](operator/troubleshooting.md) | Build, callback, account, lock, and recovery problems |
@@ -29,6 +30,7 @@ start. Use the guides below for operation, development, and project context.
 | [Workspace context](developer/workspace-context.md) | Instruction scope, source bounds, snapshots, and refresh |
 | [Native shell sandbox](developer/sandbox.md) | OS capabilities, fail-closed selection, and platform limits |
 | [Protocol proposal](developer/protocol-proposal.md) | Proposed MCP, delegation, and remote-execution trust/recovery contracts |
+| [Research contract](developer/research.md) | Provenance-bound source/claim records, bounds, compatibility and resume |
 | [MCP client contract](developer/mcp.md) | Reused packages, transport ownership, descriptor binding, schema policy, and recovery |
 | [Local delegation contract](developer/delegation.md) | Parent/child ownership, explicit context, approvals, budgets, and unknown outcomes |
 | [Dependencies](developer/dependencies.md) | Runtime/build/CI inventory, script policy, approval requirements |

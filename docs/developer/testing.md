@@ -1946,3 +1946,66 @@ Independent final review found and repaired a selected-profile child dropping th
 parallel-child file-policy marker. A behavior regression routes through a named
 profile and verifies a hardlinked alias write is denied with both files unchanged.
 The fixed allowlist retains P9's file boundary across provider/model changes.
+
+## P14 bounded research, 2026-10-16
+
+Credential-free fixtures verify literal source/result provenance, unavailable or
+fabricated evidence, ambiguous/failed/oversized calls, stale unverified metadata,
+source/claim limits, conflicts/inference/open gaps, inert retrieved instructions,
+idempotence, corrupt-record refusal, native journal ordering, actual compaction,
+local export and unchanged idle resume without inference/replay. A regression
+requires successful ledger recovery from mixed native/MCP tool history; a live
+failure exposed a boolean filter error which now has explicit session coverage.
+New result timestamps are bound to host MCP completion; legacy capture-time
+records remain valid. The default suite requires no external search service.
+
+An explicit ChatGPT subscription `gpt-6.1-sol`/high session used an operator-selected
+anonymous Exa HTTP MCP search/fetch configuration. The public question concerned
+SQLite WAL concurrency, busy conditions, sidecars and same-host constraints for
+a local tracker. Two searches and three single-page fetches stayed within the
+announced limits. Three official SQLite pages were captured with literal excerpts
+and source/result digests. Four corrected source-supported claims, one application
+inference and one residual open note explain resolution of five historical open
+notes; none of those old notes was silently deleted.
+
+The first capture could not find host call IDs and safely stayed open. The host
+now exposes bounded call attribution plus recent recorded-result references.
+The first recovery implementation failed on non-MCP results in mixed history;
+a targeted fix/regression allowed recovery using the same five original results.
+No search/fetch was repeated to repair capture. Earlier report proposals were
+denied until provenance was repaired. The reviewed final report was written,
+read back and tightened within 600 words. Unknown/pending actions were never
+replayed automatically after an operator pause or VM restart.
+
+Independent review read the captured excerpts and actual primary pages:
+[WAL](https://www.sqlite.org/wal.html), [isolation](https://www.sqlite.org/isolation.html)
+and [temporary files](https://sqlite.org/tempfiles.html). It checked claim links,
+source digests, the report's distinctions between support/inference and uncaptured
+residuals, and completeness against the bounded question. URL availability alone
+was not the check. WAL's later sections were outside the truncated fetch and their
+search-only warnings remain qualified/open. There is no claim of exhaustive SQLite
+research, performance testing, application correctness, full-page freshness or
+backup validation. Trial ledger timestamps predate completion-time metadata and
+represent host source-capture time; publication/author data remain unverified.
+
+Idle resume retained identical journal bytes and the same reconstructed ledger,
+without inference, retrieval or writes. Private staging artifacts are under
+`/tmp/ipse-research-live/` and are not committed. Linux source/package/main and
+hosted results are recorded separately as they finish. A serial research trial
+satisfies this milestone; parallel research analysis is not claimed. External
+services remain configurable and optional, with no new local runtime dependency.
+
+Final routing review also found that a selected child profile dropped the existing
+parallel-child file-policy marker. Preserving it keeps P9 hardlink mutation denial
+active across provider/model changes. A regression routes a parallel child through
+a named profile, attempts a write to a hardlinked alias and verifies both files
+remain unchanged; existing parallel ownership/conflict fixtures still apply.
+
+Final research feature verification passed 317 native Linux tests (14 macOS
+excluded), source build, formatting, warnings-as-errors compilation, native
+credential-free demo and extracted-package checks. The package now explicitly
+verifies scoped configuration, model profiles and durable research bookkeeping
+without authentication, inference or external retrieval. All 47 Markdown files
+and 421 local links/anchors passed. The independently inspected live report is
+485 words and all 14 referenced source/claim IDs exist. Main integration and
+hosted verification follow this focused feature commit.

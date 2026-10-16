@@ -311,3 +311,12 @@ Bundled trusted shell launches strip the active release's injected ERTS PATH ent
 and launcher variables before executing operator tools. This avoids contaminating
 an independent installed Erlang/Elixir toolchain. Native execution keeps its own
 fixed environment policy. This adds no filesystem or network enforcement claim.
+
+## Research ledger
+
+`Ipse.Research` binds bounded literal source excerpts and claim references to
+successful original MCP results. Native bookkeeping stays in private durable
+journal events, is revalidated on resume and survives context compaction without
+retrieval replay. Call IDs/time are explicit host provenance, while source content
+and semantic support assessments remain untrusted. Search services are operator
+MCP configuration, never embedded endpoints. See [research contract](research.md).

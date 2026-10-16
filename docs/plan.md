@@ -50,7 +50,7 @@ billing, credentials and external-effect invariants still apply.
 | 2 | P17 structured operator questions | Integrated; fixture/live and feature-package checks passed |
 | 3 | Remaining P15 scoped configuration | Integrated; source and feature hosted checks passed |
 | 4 | P16 explicit model profiles/routing | Integrated; fixture/live checks passed, combined release/hosted checks pending |
-| 5 | P14 bounded deep research | Generic configured MCP/ledger implementation and live validation in progress |
+| 5 | P14 bounded deep research | Implemented generic configured MCP/ledger; fixture/live checks passed, combined release/hosted checks pending |
 
 Update each row and its implementation/evidence record as focused increments pass.
 Use independent review, required source/package checks and explicit live evidence;
@@ -626,8 +626,13 @@ supervised trials do not establish that capability.
 ## P14: bounded deep research
 
 Added to the plan at the developer's request on 2026-10-16 and subsequently
-authorized for implementation. Status: queued after P16; end-to-end live research
-validation has not started. External setup, credentials and provider/billing choices
+authorized for implementation. Implemented on the research feature branch with
+an inert research skill, provider-agnostic configured MCP retrieval, durable
+source/claim ledger and local export. A bounded live primary-source trial passed
+with three captured sources, supported/inference/open claims and unchanged idle
+resume after repairing missing host call attribution. Main/release/hosted checks
+remain pending. External dependencies/endpoints must be configurable, with no
+embedded search service or hidden fallback, as explicitly required by the operator. External setup, credentials and provider/billing choices
 remain explicit within the authorized research scope. The separate
 [supervised self-development candidate](#candidate-next-step-supervised-self-development)
 remains available; adding this milestone does not impose a mandatory workflow.

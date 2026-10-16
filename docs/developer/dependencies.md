@@ -271,3 +271,22 @@ model allowlist; unsupported provider settings fail explicitly.
 Bundled shell environment cleanup reuses existing OTP Port environment overrides.
 Test HOME isolation preserves the existing Rustup toolchain location explicitly;
 no compiler download, new toolchain package or runtime dependency is introduced.
+
+### Optional research retrieval and evidence ledger
+
+P14 adds no package, HTTP/HTML/search engine, executable plugin or non-Elixir
+tooling dependency. Existing Jason/JSONSchex/OTP/MCP/journals implement bounded
+source/claim bookkeeping. JSONSchex's supported 2020-12 validator explicitly
+handles only the admitted identical-keyword Draft-07 subset after Ipse shape
+validation; this does not enable a remote loader or arbitrary draft machinery.
+
+The optional live interoperability trial used hosted Exa MCP, observed server
+version 3.5.0 on 2026-10-16, from its operator-selected HTTPS endpoint and exact
+search/fetch allowlist. [Official setup](https://exa.ai/docs/get-started/exa-mcp)
+documents anonymous rate-limited use; [upstream](https://github.com/exa-labs/exa-mcp-server)
+is MIT-licensed. No upstream Node package, bridge, source or executable is installed
+or redistributed. Hosted service terms/availability are separate from its source
+license. This is an optional external integration example, not a build/test/CI/
+packaging/runtime requirement. Any compatible server can be selected through
+MCP configuration; no Exa endpoint or tool name is embedded in runtime code.
+Credential-free fixtures/packages perform no external retrieval.

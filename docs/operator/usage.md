@@ -472,3 +472,12 @@ When launched from a bundled release, trusted shell tools use the operator's
 remaining PATH after Ipse removes its own bundled ERTS directory and release
 launcher variables. This prevents system Mix/Elixir commands from selecting
 Ipse's release boot files. It is environment cleanup, not a sandbox guarantee.
+
+## Research
+
+Use `$research` with an explicitly selected compatible MCP search/fetch service.
+Native source/claim tools retain auditable evidence in the private session journal
+outside compacted model context; `ipse research --resume ID` exports it locally.
+No endpoint, credential or fallback search service is embedded. See
+[research configuration and limits](research.md); recorded support kinds are
+model assessments, not automatic truth or freshness guarantees.

@@ -14,6 +14,7 @@ defmodule Ipse.MCP.Schema do
   @schema_keys ~w($schema type properties required additionalProperties items enum minLength maxLength minItems maxItems minimum maximum title description default)
   @types ~w(object string integer number boolean null array)
   @dialect "https://json-schema.org/draft/2020-12/schema"
+  @draft7 "http://json-schema.org/draft-07/schema#"
 
   @doc "Validate one bounded schema from the documented JSON Schema subset."
   def validate_schema(schema) when is_map(schema) do
@@ -49,6 +50,13 @@ defmodule Ipse.MCP.Schema do
 
   defp compile(schema) do
     # No loader is supplied: external references cannot trigger network or file access.
+    # The admitted draft-07 keywords have identical validation semantics in our
+    # subset: no refs, tuple items, dependencies, formats or other draft-specific
+    # constructs pass schema_node. Compile that checked subset with JSONSchex's
+    # supported dialect while retaining the original descriptor/digest on wire.
+    schema =
+      if schema["$schema"] == @draft7, do: Map.put(schema, "$schema", @dialect), else: schema
+
     JSONSchex.compile(schema, loader: nil)
   rescue
     _ -> {:error, :invalid}
@@ -214,6 +222,7 @@ defmodule Ipse.MCP.Schema do
     case Map.fetch(schema, "$schema") do
       :error -> :ok
       {:ok, @dialect} -> :ok
+      {:ok, @draft7} -> :ok
       _ -> {:error, :unsupported_dialect}
     end
   end

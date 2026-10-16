@@ -13,6 +13,7 @@ defmodule Ipse.CLI do
   ipse sessions                    List saved sessions
   ipse skills [--cwd PATH]         List available skills
   ipse config [options]            Show effective non-secret configuration
+  ipse research --resume ID        Export a saved session's evidence ledger locally
 
   --provider chatgpt|openai|ollama|anthropic|demo  (default: chatgpt)
   --model NAME                         Override the provider default
@@ -127,6 +128,17 @@ defmodule Ipse.CLI do
     case Ipse.Config.resolve(opts[:cwd] || default_cwd(), home(), opts) do
       {:ok, effective} ->
         IO.puts(Jason.encode!(Ipse.Config.manifest(effective), pretty: true))
+        0
+
+      {:error, reason} ->
+        report({:error, reason})
+    end
+  end
+
+  defp dispatch(["research"], opts) do
+    case Ipse.Research.load(state_dir(opts), opts[:resume]) do
+      {:ok, ledger} ->
+        IO.puts(Jason.encode!(ledger, pretty: true))
         0
 
       {:error, reason} ->
