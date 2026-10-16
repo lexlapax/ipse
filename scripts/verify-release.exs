@@ -176,6 +176,55 @@ try do
   false = Map.has_key?(handoff, "messages")
   IO.puts("Bundled diagnostics and explicit handoff export passed without inference/replay.")
 
+  artifact_bytes = Jason.encode!(handoff, pretty: true) <> "\n"
+  {:ok, imported} = Ipse.Handoff.prepare(artifact_bytes)
+  handoff_dir = Path.join(scratch, "handoff-state")
+
+  handoff_config = %{
+    provider: :demo,
+    model: "scripted",
+    approval: :deny,
+    home: Path.join(scratch, "handoff-home"),
+    sandbox: :off
+  }
+
+  handoff_opts = [
+    config: handoff_config,
+    cwd: scratch,
+    state_dir: handoff_dir,
+    subscriber: self()
+  ]
+
+  {:ok, fresh} =
+    DynamicSupervisor.start_child(
+      Ipse.Sessions,
+      {Ipse.Session, handoff_opts ++ [handoff: artifact_bytes]}
+    )
+
+  %{phase: :idle, id: fresh_id} = Ipse.Session.info(fresh)
+  :ok = Ipse.Session.close(fresh)
+  path = Path.join(handoff_dir, fresh_id <> ".jsonl")
+  saved = File.read!(path)
+  {:ok, events} = Ipse.Journal.load(handoff_dir, fresh_id)
+  [^imported] = Enum.filter(events, &(&1["type"] == "handoff_imported"))
+  {:ok, [projection]} = Ipse.Session.restore_context(events)
+  true = projection == imported["message"]
+  false = Enum.any?(events, &(&1["type"] in ["request_measured", "tool_started"]))
+
+  {:ok, resumed} =
+    DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, handoff_opts ++ [id: fresh_id]})
+
+  %{phase: :idle} = Ipse.Session.info(resumed)
+  :ok = Ipse.Session.close(resumed)
+  ^saved = File.read!(path)
+
+  {:error, :invalid_handoff} =
+    Ipse.Handoff.prepare(Jason.encode!(Map.put(handoff, "approval", "allow")))
+
+  IO.puts(
+    "Bundled fresh handoff import and unchanged idle resume passed without inference/replay."
+  )
+
   Code.require_file(Path.join(Application.app_dir(:ipse, "priv"), "self-development-demo.exs"))
   Ipse.SelfDevelopmentDemo.run()
 

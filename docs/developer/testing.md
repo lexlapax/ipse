@@ -2174,7 +2174,8 @@ separate V2 docs), official Codex, Pi declarations/guide, Claude Code, Elixir/OT
 Telemetry and OpenTelemetry documentation. Upstream references were opened on
 2026-10-16. No upstream runtime/plugin was installed, no live model or extension
 interoperability trial ran, and no callback API, trace flag, memory store or new
-dependency was implemented. P19–P21 are proposed direction; P22 has researched
+dependency was implemented by the research increment. P19–P21 were subsequently
+authorized for implementation, with their evidence below; P22 has researched
 acceptance criteria rather than an implementation-complete claim. Operator and
 developer entry points distinguish current facilities from proposed behavior.
 
@@ -2245,7 +2246,7 @@ the final P21 checks.
 
 ## P21 fresh-chat handoff authoring checks
 
-Candidate authoring continues from `b7c0ed6` with a frozen P20 runner outside the
+Candidate authoring completed from `b7c0ed6` with a frozen P20 runner outside the
 candidate. The operator-selected fresh-session handoff did not replay the retained
 private journal. The focused export-compatibility fixture now models the real
 source user/assistant tool-call messages plus `tool_started` intent; its restored
@@ -2267,3 +2268,53 @@ remain with the supervisor. No original private journal, provider/billing
 selection or dependency was changed; no commit/push/merge was performed by this
 authoring session. See [import contract](context-compaction.md#diagnostics-and-explicit-handoff)
 and [operator recovery](../operator/recovery.md).
+
+## P21 supervised Serenity trial and independent checks
+
+The live author used Ipse's own ChatGPT subscription authentication, explicitly
+selected `gpt-6.1-sol`/high and a frozen extracted P20 runner. The candidate was
+isolated in a Git worktree. The supervisor reviewed each proposed effect rather
+than enabling blanket approval. The original archive SHA-256 was
+`d45211c3325567f62a949ddd0dc492ddb61c7f2f3cb04fab5e0833d72080feba`.
+Its active ERTS was 17.1; the later staging cleanup left that frozen runner intact.
+An initial staging configuration used a provider string instead of the embedding
+API's atom and refused before inference; the harness was corrected explicitly.
+There was no silent provider/billing switch or borrowed Codex authentication.
+
+The model loaded the self-development resources, but repeated orientation and
+small edit cycles required supervisor phase narrowing. Two deliberate stops
+exercised idle resume, with journal and source-file bytes unchanged before a
+fresh continuation prompt. At one stop an edit proposal had not started; its
+source and intent were inspected before continuation, and it was not replayed.
+The original parent later stopped safely at 326694 retained request bytes,
+above its 320000 soft target but below its 400000 hard ceiling. Its content-free
+breakdown included 141053 instruction bytes, 66963 checkpoint bytes and 57388
+native-continuation bytes. This is P21 evidence, not the unavailable P18 Mac
+transcript's root cause. Journals/native continuation were preserved.
+
+The supervisor exported and reviewed a P19 handoff note, then manually supplied
+the note and remaining contract to a fresh author session: the frozen runner
+predated the new import feature. The new session completed in 21 steps. Existing
+deterministic output compaction reduced one request from 342182 to 259508 bytes.
+Its final retained context was 308493 bytes, below the 320000 target. A subsequent
+idle resume of this actual live session again proved byte-identical journal and
+workspace without inference or tool replay. These are supervised recovery and
+authoring results, not unattended development or automatic self-upgrade evidence.
+
+Independent candidate verification passed build, formatting, warnings-as-errors,
+351 native Linux tests (14 Mac-only tests excluded), and the credential-free demo.
+The integrated glibc-2.44 package passed all extracted fixtures with isolated HOME
+and utility-only PATH. A new package fixture validates exported-artifact import,
+fresh idle state, exact durable projection, rejection of an approval field and
+byte-identical idle resume, without inference or effects. API/CLI fixtures also
+cover changed/deleted artifact files and corrupt/duplicate/misplaced records.
+The supervisor audited closed-schema validation, current configuration, no source
+session lookup, no source call dispatch and validation before tail repair.
+
+The separate bounded child review remains pending: automatic approval review
+rejected its terminal approval, mistaking the independent demo's scripted effects
+for review actions. Content-free journal inspection confirmed that this distinct
+review parent had executed zero tools and created no child. The operator's
+decision was requested; no child pass or review inference is claimed. Final hosted
+checks and milestone closure also remain pending. Private transcripts, auth,
+environment values and handoff notes are retained outside Git.

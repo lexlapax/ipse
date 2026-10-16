@@ -162,6 +162,12 @@ defmodule Ipse.PackageVerifier do
 
     unless String.contains?(
              output,
+             "Bundled fresh handoff import and unchanged idle resume passed"
+           ),
+           do: raise("release handoff import verification did not print its completion marker")
+
+    unless String.contains?(
+             output,
              "Self-development skill fixture passed without inference or effects"
            ),
            do:

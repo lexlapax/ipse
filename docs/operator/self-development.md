@@ -13,6 +13,16 @@ bundled discovery, both explicit resources and journal provenance with effects
 denied. It is scripted, not live model or self-development evidence. The extracted
 package verifier runs the same fixture without a development toolchain.
 
+P21 subsequently exercised a larger Serenity/Linux handoff-import change using
+that skill and a frozen P20 package. The author completed with focused tests and
+independent Linux/package checks; final review/hosted closure is recorded in
+[P21 evidence](../developer/testing.md#p21-supervised-serenity-trial-and-independent-checks).
+Repeated orientation required supervisor narrowing, and retained-context recovery
+used a reviewed manual handoff into a fresh author session. The completed live
+session also passed unchanged idle resume. This does not establish unattended
+development. New runtimes support [fresh-chat handoff import](recovery.md);
+an older frozen runner may require manually supplying the reviewed note instead.
+
 This is the P18 operator runbook. The local Mac trial on 2026-10-16 produced an
 Ipse-authored `sessions --json` candidate with passing independent source,
 Mac native and extracted-package checks and a completed bounded review. The operator
