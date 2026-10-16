@@ -14,8 +14,9 @@ denied. It is scripted, not live model or self-development evidence. The extract
 package verifier runs the same fixture without a development toolchain.
 
 P21 subsequently exercised a larger Serenity/Linux handoff-import change using
-that skill and a frozen P20 package. The author completed with focused tests and
-independent Linux/package checks; final review/hosted closure is recorded in
+that skill and a frozen P20 package. The completed trial passed focused tests,
+independent Linux/package checks, a separate bounded live child review and hosted
+Linux/Mac checks. Its actual scope and limitations are recorded in
 [P21 evidence](../developer/testing.md#p21-supervised-serenity-trial-and-independent-checks).
 Repeated orientation required supervisor narrowing, and retained-context recovery
 used a reviewed manual handoff into a fresh author session. The completed live

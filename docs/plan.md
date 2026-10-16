@@ -26,8 +26,8 @@ the next feature sequence on 2026-10-15:
 | [P18](#p18-supervised-self-development-on-the-operators-mac) | Second supervised trial using the combined harness on macOS | Complete within documented supervised scope; local and hosted checks passed |
 | [P19](#p19-long-session-diagnosis-and-recovery) | Diagnose retained-context limits and improve explicit recovery | Complete within documented scope; Linux and hosted Mac checks passed |
 | [P20](#p20-repeatable-supervised-self-development) | Reusable supervised development/review skill and evidence | Complete: fixtures, hosted checks and supervised live use; limitations recorded |
-| [P21](#p21-larger-self-development-trial-on-serenity) | Larger supervised trial with independent Mac verification | Authoring/recovery, Linux and hosted Mac passed; bounded review decision pending |
-| [P22](#p22-extension-scaffold-and-lifecycle-hooks) | Typed extension scaffold, lifecycle hooks and runtime observability | Research/design recorded; implementation not started |
+| [P21](#p21-larger-self-development-trial-on-serenity) | Larger supervised trial with independent Mac verification | Complete within supervised scope; bounded review and Linux/hosted Mac checks passed |
+| [P22](#p22-extension-scaffold-and-lifecycle-hooks) | Typed extension scaffold, lifecycle hooks and runtime observability | Detailed extension-first plan ready; implementation not started |
 
 Feature completion does not close every live provider acceptance check. On
 2026-10-15, installed Ollama `qwen3.5:9b`, Anthropic `claude-haiku-4-5`, and
@@ -968,27 +968,28 @@ explicit continuation, and manually supplied a reviewed P19 handoff note to a
 fresh session after a safe retained-context stop. Repeated orientation required
 supervisor phase narrowing; this is not unattended development evidence.
 Implementation and independent package/evidence additions were committed and
-pushed. The separate bounded child review is waiting for the operator's decision
-after automatic approval review rejected it; zero review tools executed. The
-[full hosted Linux/Mac matrix](https://github.com/lexlapax/ipse/actions/runs/38961827683)
-passed, including native Mac and extracted packages. Milestone closure waits for
-the bounded-review decision. See
+pushed. After explicit operator approval, the separate live child review completed
+using the configured review role (`gpt-6.1-sol`/high): two targeted reads, three
+model requests, no mutations or shell calls, and no findings within the permission/
+replay/resume scope. The supervisor checked its claims against source and fixtures.
+The [full hosted Linux/Mac matrix](https://github.com/lexlapax/ipse/actions/runs/38961827683)
+passed, including native Mac and extracted packages. P21 is complete within this
+supervised scope, with intervention and retained-context limitations preserved. See
 [actual trial evidence](developer/testing.md#p21-supervised-serenity-trial-and-independent-checks).
-Select one moderately larger, reviewable Ipse change after P19/P20.
-Use a frozen stable runner, candidate worktree, explicit configured profiles and
-independent review. Verify long-session behavior and evidence completeness, then
-source/native/package checks on Linux and independent Mac/hosted checks. Preserve
-separate permission, provider and operating-system boundaries. Record actual
-failures and supervisor intervention; do not infer unattended capability. The
-selected workload is explicit validated import of P19 handoff artifacts into a
-fresh session, with source identity, unknown-effect review and no permission/
-provider/native-history transfer. This is separate from the P22 extension scaffold.
+
+The selected workload was explicit validated import of P19 handoff artifacts into
+a fresh session, with source identity, unknown-effect review and no permission/
+provider/native-history transfer. It used a frozen stable runner, separate
+candidate worktree, explicit profiles, independent review, interruption/recovery
+and source/native/package checks. Separate approval, provider and OS boundaries
+remain intact. This is separate from the P22 extension scaffold.
 
 ## P22: extension scaffold and lifecycle hooks
 
-Operator-requested research/design recorded on 2026-10-16. Implementation is not
-started by this update. Evaluate OpenCode, Codex, Pi and Claude Code primary
-documentation/source, alongside Elixir/OTP, Telemetry and OpenTelemetry. The
+Operator-requested research/design completed on 2026-10-16. Implementation is not
+started or authorized by this update. The comparison covers OpenCode, Codex, Pi
+and Claude Code primary documentation/source, alongside Elixir/OTP, Telemetry and
+OpenTelemetry. The
 resulting recommendation is a versioned Elixir behaviour with owned workers,
 explicit configuration and separate observational events/ordered transformations.
 See [research and architecture](developer/extensions.md) and
@@ -997,8 +998,8 @@ See [research and architecture](developer/extensions.md) and
 The operator selected an **extension-first** direction: new domain features,
 memory, presentation and optional workflows should use supported extension APIs
 wherever possible. Core changes should be reserved for lifecycle/trust/persistence/
-provider/OS correctness, fixes and deliberately reviewed API gaps. Refine P22
-after P19–P21 with a concrete feature-to-extension map, compatibility/versioning,
+provider/OS correctness, fixes and deliberately reviewed API gaps. The refined
+plan includes a concrete feature-to-extension map, compatibility/versioning,
 SDK/packaging and proof that another feature can be added without editing core.
 The detailed [delivery sequence and coverage gate](developer/extensions.md#delivery-sequence-and-extension-only-proof)
 now specifies P22A contracts/host kernel, P22B two examples, P22C a separate

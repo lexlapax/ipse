@@ -2221,8 +2221,9 @@ recorded source SHA-256 provenance, and issued no tools beyond those three reads
 Effect policy was denied, state/HOME were isolated and no model inference/auth
 or external service was used. The extracted glibc-2.44 package ran the same
 fixture successfully under isolated HOME and a utility-only PATH, and the full
-native Linux suite passed 340 tests (14 macOS excluded). Live P21 evidence follows;
-the fixture does not prove a model followed every instruction.
+native Linux suite passed 340 tests (14 macOS excluded). The live P21 evidence
+below records supervised use and its limitations; the fixture does not prove a
+model followed every instruction.
 
 ## Release staging cleanup after a toolchain upgrade
 
@@ -2262,9 +2263,9 @@ artifacts before auth/session creation, and conflicting modes without changing
 source state. The tests exposed a strict-boolean CLI guard crash for absent flags;
 explicit boolean checks repaired it before the passing run.
 
-This is focused authoring evidence only. Independent bounded review, the full
-suite, native/platform and extracted-package checks, hosted checks and publication
-remain with the supervisor. No original private journal, provider/billing
+These focused checks preceded the supervisor's independent review, full suite,
+native/platform and extracted-package checks, hosted checks and publication,
+recorded below. No original private journal, provider/billing
 selection or dependency was changed; no commit/push/merge was performed by this
 authoring session. See [import contract](context-compaction.md#diagnostics-and-explicit-handoff)
 and [operator recovery](../operator/recovery.md).
@@ -2311,17 +2312,32 @@ cover changed/deleted artifact files and corrupt/duplicate/misplaced records.
 The supervisor audited closed-schema validation, current configuration, no source
 session lookup, no source call dispatch and validation before tail repair.
 
-The separate bounded child review remains pending: automatic approval review
-rejected its terminal approval, mistaking the independent demo's scripted effects
-for review actions. Content-free journal inspection confirmed that this distinct
-review parent had executed zero tools and created no child. The operator's
-decision was requested; no child pass or review inference is claimed. The full
+Automatic approval review initially rejected the child-review terminal approval,
+mistaking the independent demo's scripted effects for review actions. Journal
+inspection confirmed that the distinct review parent had executed zero tools and
+created no child. Following explicit operator approval, that exact delegate call
+ran successfully; no denial was bypassed or old effect replayed.
+
+A scripted parent selected the single review task and supplied 3568 bytes of
+contract/Session diff. The separate live child used the configured `review` role,
+explicit ChatGPT `gpt-6.1-sol`/high and its normal six-step/two-minute ceiling.
+It made two targeted reads (`handoff.ex` and `cli.ex`) and three completed model
+requests, with recorded request durations 3069, 3141 and 9703 ms. It performed no
+mutations, shell calls, tests, MCP calls or further delegation. The child reported
+no findings within the permission-transfer, saved-call replay and immutable-resume
+scope. The supervisor checked its source claims and existing behavioral fixtures.
+This is a bounded code review, not a whole-repository security certification;
+saved-record consistency does not authenticate coordinated journal tampering.
+The parent and child finished and closed; private review journals remain outside Git.
+
+The full
 [hosted Linux/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/38961827683)
 passed at `6324b6b`, including native Mac, experimental enforcement and both
 extracted packages. The earlier [packaging repair matrix](https://github.com/lexlapax/ipse/actions/runs/38960841130)
 also passed. Serenity ran Linux; these are independent hosted Mac checks, not a
-local Mac live-account trial. Milestone closure awaits the bounded-review
-decision. Private transcripts, auth,
+local Mac live-account trial. P21 is complete within the supervised trial scope;
+the intervention and context-limit evidence above remain part of that result.
+Private transcripts, auth,
 environment values and handoff notes are retained outside Git.
 
 The final P22 design refinement adds a feature/SDK coverage matrix, typed return
@@ -2329,4 +2345,4 @@ contracts, context/state/effect boundaries, installation and compatibility polic
 four delivery gates and a separate memory/workflow package proof requiring no
 core/native edits. Operator/developer entry points and the plan agree that this
 is planning, with no extension implementation or dependency added. Markdown file
-and anchor validation passed across 54 tracked documents and 486 local links.
+and anchor validation passed across 54 tracked documents and 487 local links.
