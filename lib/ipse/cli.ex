@@ -13,6 +13,8 @@ defmodule Ipse.CLI do
   ipse sessions [--json]           List saved sessions
   ipse skills [--cwd PATH]         List available skills
   ipse config [options]            Show effective non-secret configuration
+  ipse extension import PATH       Copy a local inert extension artifact
+  ipse extension inspect DIGEST    Verify an installed artifact without executing it
   ipse research --resume ID        Export a saved session's evidence ledger locally
   ipse diagnose --resume ID        Inspect content-free saved context measurements
   ipse handoff --resume ID --note TEXT  Export an explicit recovery note locally
@@ -39,6 +41,8 @@ defmodule Ipse.CLI do
   --no-project-config                  Ignore project/directory configuration
   --timeout-ms N                       Provider request timeout (1000..600000)
   --profile ID                         Select an operator-configured main profile
+  --extension INSTANCE                 Select a configured temporary instance (activation pending)
+  --no-extensions                      Disable configured extension instances
 
   Chat asks before writes, shell, MCP, and delegation. Headless run denies them without --yes.
   Shell execution uses your user permissions unless --sandbox native is selected.
@@ -82,6 +86,8 @@ defmodule Ipse.CLI do
           project_config: :boolean,
           timeout_ms: :integer,
           profile: :string,
+          extension: :keep,
+          extensions: :boolean,
           json: :boolean,
           note: :string,
           help: :boolean,
@@ -163,6 +169,18 @@ defmodule Ipse.CLI do
       {:error, reason} ->
         report({:error, reason})
     end
+  end
+
+  defp dispatch(["extension", "import", source], _opts) do
+    extension_artifact(
+      Ipse.Extensions.Store.import(source, Path.join(home(), "extensions/artifacts"))
+    )
+  end
+
+  defp dispatch(["extension", "inspect", digest], _opts) do
+    extension_artifact(
+      Ipse.Extensions.Store.lookup(Path.join(home(), "extensions/artifacts"), digest)
+    )
   end
 
   defp dispatch(["research"], opts) do
@@ -249,6 +267,17 @@ defmodule Ipse.CLI do
       {:ok, []}
     end
   end
+
+  defp extension_artifact({:ok, artifact}) do
+    IO.puts(
+      Jason.encode!(%{"digest" => artifact.digest, "manifest" => artifact.manifest}, pretty: true)
+    )
+
+    0
+  end
+
+  defp extension_artifact({:error, _}),
+    do: report({:error, "Extension artifact import/verification failed; no code was activated."})
 
   defp start(opts, prompt, interactive) do
     with {:ok, handoff_opts} <- handoff_options(opts),
@@ -685,6 +714,10 @@ defmodule Ipse.CLI do
     sandbox = %{"off" => :off, "native" => :native}[sandbox_name]
 
     cond do
+      Enum.any?(effective.extensions["instances"], & &1["enabled"]) ->
+        {:error,
+         "Extension activation is not available yet; inspect selections with ipse config or disable them."}
+
       provider == nil ->
         {:error, "Unknown provider: #{name}"}
 

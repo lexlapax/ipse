@@ -67,6 +67,9 @@ instructions and `/context refresh` reloads them while idle. See
 [workspace instructions](docs/operator/usage.md#workspace-instructions).
 Operator and trusted project/directory JSON settings support explicit precedence,
 local `ipse config` inspection and resume checks; see [configuration](docs/operator/configuration.md).
+`ipse extension import PATH` and `ipse extension inspect DIGEST` provide inert,
+pinned local artifact installation. Scoped extension trust/selection is data-only;
+session activation is still pending. See [extensions](docs/operator/extensions.md).
 Use `$project-orientation` to assess a repository's purpose, current changes,
 and available checks before choosing next steps; see
 [project assessment](docs/operator/usage.md#working-with-the-agent).

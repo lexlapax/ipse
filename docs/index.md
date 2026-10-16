@@ -16,7 +16,7 @@ start. Use the guides below for operation, development, and project context.
 | [Local subagents](operator/subagents.md) | Explicit delegation, child approvals, bounds, journals, and recovery |
 | [Supervised self-development](operator/self-development.md) | Mac trial setup, frozen runner, candidate worktree, review, resume and publication |
 | [Context recovery](operator/recovery.md) | Content-free diagnostics, reviewed handoff export/fresh-chat import and unknown-effect review |
-| [Extensions](operator/extensions.md) | Current inert import status, pinned identity and safe installation/recovery limits |
+| [Extensions](operator/extensions.md) | Inert import/inspection, scoped trust/selection, temporary/disable flags and current activation limits |
 | [Troubleshooting](operator/troubleshooting.md) | Build, callback, account, lock, and recovery problems |
 
 ## Develop Ipse

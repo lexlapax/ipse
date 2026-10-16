@@ -2,7 +2,10 @@
 
 P22A1 implements inert local directory snapshots in `Ipse.Extensions.Manifest`
 and `Ipse.Extensions.Store`. The [SDK/lifecycle design](extensions.md) remains the
-target for activation; this increment does not execute extensions or alter sessions.
+target for session activation. Import remains inert; the explicit worker SDK below
+executes reviewed artifacts without changing session behavior. Scoped selection
+configuration and inert CLI commands are described in
+[operator extensions](../operator/extensions.md); enabled selections currently refuse chat/run.
 See [operator status](../operator/extensions.md) before trying installation.
 
 ## Descriptor and identity
@@ -101,8 +104,8 @@ P22A2 adds `Ipse.Extension` and `Ipse.Extensions.Worker` as a developer API.
 trusted: digest, options: options)` explicitly admits execution; omitting or
 mismatching `trusted` refuses startup. This argument is a caller assertion, not a
 persisted trust record, signature or project authorization. The session/config
-host must supply it only after operator policy validation. There is no CLI or
-automatic activation yet.
+host must supply it only after operator policy validation. Inert import/inspect
+CLI commands now exist; there is no automatic or session hook activation yet.
 
 Admission revalidates the installed snapshot, runtime compatibility and options
 schema. The worker launches the current ERTS with existing Elixir/Jason/Ipse

@@ -34,3 +34,25 @@ See [operator configuration](../operator/configuration.md) for supported fields,
 limits, flags and examples. Fixtures cover precedence, nearest-repository scope,
 project trust, aliases, malformed files, secret exclusion, local CLI inspection,
 durable metadata, source drift and idle resume without replay.
+
+## Extension selection data
+
+P22A3 adds top-level `extensions` and `extension_trust`, validated through
+`Ipse.Extensions.Config` and the existing schema adapter. Closed instance/trust
+records, bounds, whole-instance scoped replacement and deterministic ordering are
+specified in [operator extensions](../operator/extensions.md#configure-selections).
+Only operator sources may declare trust; enabled project instances require the
+matching operator artifact ceiling with `allow_project`. CLI instance selection
+is temporary, while `--no-extensions` disables selections. Validation/discovery
+never opens an artifact, invokes code or installs it. Activation must separately
+revalidate hashes/runtime/options, capabilities, child scope, trust/lease expiry
+and revocation before invoking callbacks. The CLI currently refuses enabled
+selections explicitly because session activation is still pending.
+
+Config JSON now rejects duplicate keys recursively using Jason's ordered decoder
+behind the existing artifact decoder. Fingerprints include resolved extension
+selection, options and trust when nonempty; unchanged no-extension configurations
+retain their earlier fingerprint exactly. Inspection/journal manifests replace
+option contents with a canonical SHA-256, retaining selection identity and source
+provenance. This is not credential encryption: operator configuration remains a
+data file, and credentials must not be placed in extension options.

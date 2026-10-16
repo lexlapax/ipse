@@ -35,6 +35,10 @@ the existing Elixir compiler in a separate VM. A small Ipse bootstrap implements
 the versioned length-prefixed SDK envelope; it is not a second MCP implementation.
 Its identity/capability/lifecycle contract differs from MCP, while OS pipe and
 process-group ownership are reused unchanged.
+P22A3's scoped selection/trust validator and inert CLI commands reuse the same
+schema/JSON/OTP adapters without adding dependencies. Config inspection hashes
+extension options instead of printing them; no extension runtime is started by
+configuration discovery.
 See [agent rules](../../AGENTS.md), [setup](../operator/arch-linux.md), and
 [third-party notices](../../THIRD_PARTY_NOTICES.md).
 

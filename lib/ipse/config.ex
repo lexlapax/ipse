@@ -56,7 +56,8 @@ defmodule Ipse.Config do
           }
         end)
 
-      with :ok <- Ipse.Profiles.validate(effective.profiles, effective.roles),
+      with {:ok, extensions} <- Ipse.Extensions.Config.resolve(loaded, opts),
+           :ok <- Ipse.Profiles.validate(effective.profiles, effective.roles),
            {:ok, profile_id, profile} <-
              Ipse.Profiles.select(
                effective.profiles,
@@ -93,20 +94,25 @@ defmodule Ipse.Config do
                  (settings["provider"] == profile["provider"] and
                     settings["model"] == profile["model"] and is_nil(opts[:base_url])),
              true <- settings["subagent_concurrency"] == 1 or settings["subagents"] do
-          fingerprint =
-            Compaction.digest([
-              %{
-                "settings" => settings,
-                "sources" => effective.sources,
-                "profiles" => effective.profiles,
-                "roles" => effective.roles,
-                "execution" => execution
-              }
-            ])
+          identity = %{
+            "settings" => settings,
+            "sources" => effective.sources,
+            "profiles" => effective.profiles,
+            "roles" => effective.roles,
+            "execution" => execution
+          }
+
+          identity =
+            if extensions == %{"instances" => [], "trust" => []},
+              do: identity,
+              else: Map.put(identity, "extensions", extensions)
+
+          fingerprint = Compaction.digest([identity])
 
           {:ok,
            %{effective | settings: settings, provenance: provenance}
            |> Map.put(:fingerprint, fingerprint)
+           |> Map.put(:extensions, extensions)
            |> Map.put(:execution, execution)}
         else
           _ ->
@@ -134,6 +140,7 @@ defmodule Ipse.Config do
         :roles,
         :execution
       ])
+      |> Map.put(:extensions, Ipse.Extensions.Config.inspect_config(effective.extensions))
 
   def legacy_compatible?(effective), do: effective.sources == []
 
@@ -158,12 +165,16 @@ defmodule Ipse.Config do
   defp schema do
     %{
       "type" => "object",
-      "properties" => %{
-        "version" => %{"type" => "integer", "enum" => [1]},
-        "settings" => settings_schema(),
-        "profiles" => %{"type" => "object"},
-        "roles" => %{"type" => "object"}
-      },
+      "properties" =>
+        Map.merge(
+          %{
+            "version" => %{"type" => "integer", "enum" => [1]},
+            "settings" => settings_schema(),
+            "profiles" => %{"type" => "object"},
+            "roles" => %{"type" => "object"}
+          },
+          Ipse.Extensions.Config.schema()
+        ),
       "required" => ["version"],
       "additionalProperties" => false
     }
@@ -225,9 +236,10 @@ defmodule Ipse.Config do
            {:ok, canonical} <- WorkspaceContext.canonical_path(source.path),
            true <- is_nil(source.boundary) or within?(canonical, source.boundary),
            {:ok, raw} <- read_bounded(canonical),
-           {:ok, data} <- Jason.decode(raw),
+           {:ok, data} <- Ipse.Extensions.Manifest.decode_json(raw),
            :ok <- Schema.validate_arguments(schema(), data),
            :ok <- Ipse.Profiles.validate(data["profiles"] || %{}, %{}),
+           :ok <- Ipse.Extensions.Config.validate(data),
            :ok <- validate_settings(data["settings"] || %{}) do
         {:ok,
          %{

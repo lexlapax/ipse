@@ -66,3 +66,11 @@ newly introduced. Current action approvals are always separate from saved data.
 Named model profiles and main/routine/review routing are available; see
 [model profiles](model-profiles.md). Top-level `profiles` and `roles` extend this
 version-1 schema. A later same-ID profile replaces the whole earlier definition.
+
+Extension import/inspection and data-only selections are also available through
+`extensions` and operator-only `extension_trust`; see
+[extensions](extensions.md#configure-selections) for schemas, scope, temporary
+selection, `--no-extensions` and current activation limits. Config inspection
+shows option digests rather than contents. Duplicate JSON keys, including nested
+ones, are rejected. Existing configurations without extension data keep their
+previous resume fingerprint.

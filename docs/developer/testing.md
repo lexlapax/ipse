@@ -2438,3 +2438,23 @@ and [operator status](../operator/extensions.md). This increment does not yet
 verify session activation/configuration, durable projections/resume, an OS sandbox,
 extracted-release worker startup or live providers. Hosted macOS results must be
 recorded separately once available.
+
+## Scoped extension selection and inert CLI (2026-10-16)
+
+P22A3 implements `extension import PATH`, `extension inspect DIGEST`, data-only
+scoped instances/operator-only trust ceilings, temporary `--extension INSTANCE`,
+`--no-extensions`, deterministic ordering and option-digest inspection. Enabled
+selections explicitly refuse chat/run while session activation is pending.
+Discovery never starts extension code. Tests verify project self-trust refusal,
+whole-instance precedence, typed bounds, unknown/duplicate selectors, temporary
+lifetimes, disabled parity, secret option exclusion, inert CLI verification and
+unchanged pre-extension fingerprints for configurations without extension data.
+
+On Serenity, `./scripts/build.sh`, format checking, warnings-as-errors compilation,
+`mix test --include native_sandbox` and the credential-free demo passed. The final
+full run reported **373 passed / 14 macOS tests excluded**; the focused selection,
+existing configuration and artifact tests reported **23 passed**. Runtime code
+was not changed after that full run. No paid provider, macOS or extracted-package
+extension execution was verified by this increment. See
+[selection procedures and current limits](../operator/extensions.md) and
+[configuration contract](configuration.md#extension-selection-data).

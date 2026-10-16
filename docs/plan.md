@@ -1042,8 +1042,11 @@ worker API and SDK behaviour: pinned trust assertion, separate Elixir VM, bounde
 JSON protocol, schema/capability admission, deadline/crash/owner cleanup and
 credential environment exclusion. See the
 [worker contract](developer/extension-artifacts.md#independent-worker-sdk).
-Configuration, registry/session hooks and the remaining acceptance checks below
-are still in progress; operator-facing activation and durable resume are not implemented yet.
+P22A3 adds inert import/inspect CLI commands and scoped data-only instance/trust
+configuration, temporary selection, disable flags and option-digest inspection.
+Enabled selections explicitly refuse chat/run until activation exists. Registry/
+session hooks and the remaining acceptance checks below are still in progress;
+operator-facing activation and durable extension resume are not implemented yet.
 
 Acceptance:
 

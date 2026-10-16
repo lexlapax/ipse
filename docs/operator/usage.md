@@ -549,9 +549,9 @@ lifetime identity and refuses unavailable or incompatible required code.
 A loaded skill, repository instruction or generated feature cannot grant action
 permission or trust itself. In-VM extensions and trusted local worker programs
 have the user's OS access; separate workers/timeouts are not an OS sandbox. These
-remain proposed procedures, with no extension install/enable/lease flags available
-yet. The first implementation increment provides an [inert local import API](extensions.md),
-without activation or permissions. See the [scenario analysis](../developer/extension-scenarios.md) and
+remain proposed activation procedures. [Inert import/inspection commands and scoped
+selection data](extensions.md) are available; enabled selections explicitly refuse
+chat/run until session integration exists. See the [scenario analysis](../developer/extension-scenarios.md) and
 [P22 delivery gates](../developer/extensions.md#delivery-sequence-and-extension-only-proof).
 
 Local `/diagnostics`, `ipse diagnose --resume ID` and explicit

@@ -2,8 +2,10 @@
 
 Design walkthrough reviewed on 2026-10-16 against `96369a4` and the proposed
 [P22 SDK](extensions.md). These are architectural scenario tests and future
-acceptance cases, not executable results: no extension loader, installer, worker
-or activation API exists yet. The operator requested bundled configurable
+acceptance cases, not executable scenario results. Subsequent P22A work supplies
+the [inert artifact store and explicit worker API](extension-artifacts.md), plus
+[scoped selection configuration](../operator/extensions.md). Session activation
+and the complete scenarios below remain in progress. The operator requested bundled configurable
 extensions, third-party installation, assisted setup and generated permanent or
 temporary features. The purpose is to expose foundational gaps before freezing
 the SDK, without implementing every distribution feature in P22.

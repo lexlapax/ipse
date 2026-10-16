@@ -27,7 +27,62 @@ defmodule Ipse.ConfigTest do
     assert config.settings["model"] == "gpt-6.1-sol"
     assert config.sources == []
     assert Config.legacy_compatible?(config)
+
+    assert config.fingerprint ==
+             Ipse.Compaction.digest([
+               %{
+                 "settings" => config.settings,
+                 "sources" => config.sources,
+                 "profiles" => config.profiles,
+                 "roles" => config.roles,
+                 "execution" => config.execution
+               }
+             ])
+
     refute Jason.encode!(Config.manifest(config)) =~ "must not be read"
+  end
+
+  test "extension data is scoped, inspected without options and cannot self-authorize", c do
+    artifact = String.duplicate("a", 64)
+
+    instance = %{
+      "instance" => "test",
+      "artifact" => artifact,
+      "enabled" => true,
+      "options" => %{"text" => "synthetic-private-option"},
+      "order" => 1,
+      "lifetime" => "persistent"
+    }
+
+    trust = %{
+      "artifact" => artifact,
+      "capabilities" => ["transform.prompt"],
+      "allow_project" => true,
+      "allow_children" => false
+    }
+
+    operator_path = Path.join(c.home, "config.json")
+    File.write!(operator_path, Jason.encode!(%{"version" => 1, "extension_trust" => [trust]}))
+    project_path = Path.join(c.project, ".ipse/config.json")
+    File.mkdir_p!(Path.dirname(project_path))
+    File.write!(project_path, Jason.encode!(%{"version" => 1, "extensions" => [instance]}))
+    assert {:error, _} = Config.resolve(c.cwd, c.home, [], %{})
+    assert {:ok, config} = Config.resolve(c.cwd, c.home, [trust_project_config: true], %{})
+    assert [%{"enabled" => true, "scope" => "project"}] = config.extensions["instances"]
+    refute Jason.encode!(Config.manifest(config)) =~ "synthetic-private-option"
+
+    assert {:ok, disabled} =
+             Config.resolve(c.cwd, c.home, [trust_project_config: true, extensions: false], %{})
+
+    assert [%{"enabled" => false}] = disabled.extensions["instances"]
+    refute disabled.fingerprint == config.fingerprint
+
+    File.write!(
+      project_path,
+      Jason.encode!(%{"version" => 1, "extensions" => [instance], "extension_trust" => [trust]})
+    )
+
+    assert {:error, _} = Config.resolve(c.cwd, c.home, [trust_project_config: true], %{})
   end
 
   test "precedence is built-in operator project nearer directory environment then CLI", c do

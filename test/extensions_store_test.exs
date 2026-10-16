@@ -235,4 +235,77 @@ defmodule Ipse.Extensions.StoreTest do
     assert {:ok, ^installed} = Store.lookup(c.store, installed.digest)
     refute Enum.any?(File.ls!(c.store), &String.starts_with?(&1, ".staging-"))
   end
+
+  test "CLI imports and inspects inert artifacts; selections cannot silently execute or be ignored",
+       c do
+    home = Path.join(c.root, "cli-home")
+    previous = System.get_env("IPSE_HOME")
+    System.put_env("IPSE_HOME", home)
+
+    try do
+      output =
+        ExUnit.CaptureIO.capture_io(fn ->
+          assert Ipse.CLI.run(["extension", "import", c.source]) == 0
+        end)
+
+      digest = Jason.decode!(output)["digest"]
+
+      output =
+        ExUnit.CaptureIO.capture_io(fn ->
+          assert Ipse.CLI.run(["extension", "inspect", digest]) == 0
+        end)
+
+      assert Jason.decode!(output)["manifest"] == c.manifest
+
+      File.write!(
+        Path.join(home, "config.json"),
+        Jason.encode!(%{
+          "version" => 1,
+          "extensions" => [
+            %{
+              "instance" => "test",
+              "artifact" => digest,
+              "enabled" => false,
+              "options" => %{},
+              "order" => 1,
+              "lifetime" => "persistent"
+            }
+          ],
+          "extension_trust" => [
+            %{
+              "artifact" => digest,
+              "capabilities" => ["transform.prompt"],
+              "allow_project" => false,
+              "allow_children" => false
+            }
+          ]
+        })
+      )
+
+      error =
+        ExUnit.CaptureIO.capture_io(:stderr, fn ->
+          assert Ipse.CLI.run([
+                   "run",
+                   "--provider",
+                   "demo",
+                   "--cwd",
+                   c.source,
+                   "--extension",
+                   "test",
+                   "task"
+                 ]) == 1
+        end)
+
+      assert error =~ "Extension activation is not available yet"
+
+      output =
+        ExUnit.CaptureIO.capture_io(fn ->
+          assert Ipse.CLI.run(["config", "--cwd", c.source, "--no-extensions"]) == 0
+        end)
+
+      assert [%{"enabled" => false}] = Jason.decode!(output)["extensions"]["instances"]
+    after
+      if previous, do: System.put_env("IPSE_HOME", previous), else: System.delete_env("IPSE_HOME")
+    end
+  end
 end
