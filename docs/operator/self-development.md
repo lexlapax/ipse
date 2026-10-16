@@ -1,15 +1,17 @@
 # Supervised self-development on macOS
 
-This is the P18 operator runbook. The first Linux supervised trial is complete;
-this second trial runs locally on the operator's Mac. It is planned, not verified
-on that Mac yet. Ipse prepares changes; the operator reviews approvals, tests,
-the final diff and publication. Keep the running harness separate from its target.
+This is the P18 operator runbook. The local Mac trial on 2026-10-16 produced an
+Ipse-authored `sessions --json` candidate with passing independent source,
+Mac native and extracted-package checks and a completed bounded review. The operator
+subsequently delegated final review and publication to the supervisor. CI and
+merge remain pending. Keep the running harness
+separate from its target. See the
+[local evidence](../developer/testing.md#p18-macos-supervised-self-development-evidence).
 
-## Proposed change and completion criteria
+## Selected change and completion criteria
 
-The recommended first task is **add `ipse sessions --json`**. This flag is a
-proposed feature, not currently available. It gives the trial a small runtime
-change with observable behavior and meaningful tests:
+The selected task is **add `ipse sessions --json`**. It gives the trial a small
+runtime change with observable behavior and meaningful tests:
 
 - Preserve the current human-readable `ipse sessions` output.
 - JSON mode emits one JSON array, sorted by session ID, containing only `id`,
@@ -162,8 +164,10 @@ six-step/two-minute limits; return unresolved findings to the parent. Do not use
 ## 4. Exercise interruption and resume
 
 Record the printed session ID and trial directory. At an idle boundary after a
-small settled edit, inspect `git diff`. In another terminal with the same path
-variables, replace `SESSION_ID` with the real ID and record private snapshots:
+small settled edit, inspect `git diff`, then exit the idle chat with `/exit` and
+wait for that process to finish. **Only after exit, and before launching resume,**
+record the journal and workspace snapshots from another terminal with the same
+path variables. Replace `SESSION_ID` with the real ID:
 
 ```sh
 IPSE_SESSION=SESSION_ID
@@ -172,12 +176,20 @@ git -C "$IPSE_CANDIDATE" diff --binary > "$IPSE_TRIAL/diff-before-resume.patch"
 git -C "$IPSE_CANDIDATE" status --short > "$IPSE_TRIAL/status-before-resume.txt"
 ```
 
-Exit the idle chat with `/exit`, then resume explicitly:
+A snapshot taken before `/exit` is not a valid unchanged-resume baseline: exit
+can append a `cancelled` event even while idle. The first Mac comparison failed
+for exactly that reason; the supervisor confirmed that prior bytes matched
+cryptographically, then passed the comparison with a post-exit/pre-resume snapshot.
+This corrects the verification procedure, not the runtime cancellation behavior.
+Also record private file hashes (including new/untracked files) at this same
+post-exit boundary; Git diff alone does not cover their contents.
+
+Resume explicitly, keeping the same configuration:
 
 ```sh
 "$IPSE_STABLE/bin/ipse" chat --config "$IPSE_TRIAL/config.json" \
   --no-project-config --profile main --cwd "$IPSE_CANDIDATE" \
-  --state-dir "$IPSE_TRIAL/sessions" --sandbox off --resume SESSION_ID
+  --state-dir "$IPSE_TRIAL/sessions" --sandbox off --resume "$IPSE_SESSION"
 ```
 
 Before sending another prompt, verify no model/tool call restarted and compare
@@ -223,8 +235,9 @@ structured-question behavior, actual routing and resume evidence. Keep journals,
 auth and private prompts out of commits. A separate reviewer should inspect the
 allowlist and tests; the authoring session's own approval is insufficient evidence.
 
-After that review, the operator stages the exact feature/test/doc files, inspects
-`git diff --cached`, commits the trial branch and pushes it to origin. Create a PR
+After that review and operator authorization, the operator or supervisor stages
+the exact feature/test/doc files, inspects `git diff --cached`, commits the trial
+branch and pushes it to origin. Create a PR
 through the operator's usual GitHub workflow. Wait for Linux/macOS CI, review the
 exact commit and merge deliberately; do not let the running trial replace its own
 stable checkout. Update P18 with actual local Mac evidence before declaring it

@@ -23,7 +23,7 @@ the next feature sequence on 2026-10-15:
 | [P15](#p15-scoped-configuration-and-shared-operator-skills) | Operator/project/directory configuration and shared skills | Complete within documented scope |
 | [P16](#p16-explicit-model-profiles-and-task-routing) | Main/subtask model profiles and provider-specific settings | Complete within documented scope |
 | [P17](#p17-structured-operator-questions) | Validated operator questions and resumable answers | Complete within documented scope |
-| [P18](#p18-supervised-self-development-on-the-operators-mac) | Second supervised trial using the combined harness on macOS | Runbook prepared; operator Mac execution not started |
+| [P18](#p18-supervised-self-development-on-the-operators-mac) | Second supervised trial using the combined harness on macOS | Local Mac checks and review passed; publication authorized, CI pending |
 
 Feature completion does not close every live provider acceptance check. On
 2026-10-15, installed Ollama `qwen3.5:9b`, Anthropic `claude-haiku-4-5`, and
@@ -844,11 +844,26 @@ Acceptance:
 
 ## P18: supervised self-development on the operator's Mac
 
-Selected for planning on 2026-10-16. The operator intends to run the combined
-harness locally on macOS. Status: runbook prepared; no new feature implementation
-or local Mac execution is claimed. The recommended task is `ipse sessions --json`,
-subject to operator selection. That flag is not implemented by this planning step.
-See the [Mac runbook](operator/self-development.md).
+The local supervised Mac trial ran on 2026-10-16. Ipse authored the uncommitted
+`sessions --json` implementation, eight isolated regressions, CLI help and
+operator/developer guidance from a frozen `ee50392` runner. Independent source,
+Mac native and extracted-package checks passed, as did a bounded read-only review.
+The full suite passed 315 tests with 31 excluded; the separate Mac native/stdio
+run passed 27 with six Linux-native tests excluded.
+
+Structured clarification and idle resume were exercised. The initial pre-exit
+journal checksum failed because `/exit` appended one `cancelled` event. The
+post-exit/pre-resume comparison passed without inference or tool replay; the
+runbook now uses that timing. An initial review exhausted its six-step budget
+and returned unknown; a narrower explicit review completed without findings.
+Context compaction later stopped safely, so the supervisor finished the evidence
+updates without changing Ipse's source or tests. See the
+[Mac runbook](operator/self-development.md) and
+[local evidence](developer/testing.md#p18-macos-supervised-self-development-evidence).
+
+The operator delegated final review and publication to the supervisor after the
+local results were presented. P18 remains open for publication, Linux/macOS CI
+and merge; no new hosted result is claimed yet.
 
 Acceptance:
 
