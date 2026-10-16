@@ -255,6 +255,9 @@ do not add a feature-name conditional to Session or the CLI to work around it.
 | Research integrations | Custom tools plus attributable context/source contributions | Research ledger validation, citations/provenance and effect policy |
 | Optional provider integration | Registered provider-adapter contract with capability declaration | Explicit profile/model/billing selection, credential resolution and wire continuation integrity |
 | Debugging/tracing | Sanitized lifecycle events, snapshots and diagnostic sinks | Private journal integrity, secret exclusion, quotas and owner cleanup |
+| Usage/cost reporting | Canonical request/attempt usage facts and generic command/context registration | Durable identity/normalization; future budget admission/reservations |
+| Streaming presentation | Typed private visible-content subscription | Sequence/flow control, cancellation and original provider history |
+| Voice and realtime clients | Versioned owned-resource/media/provider capabilities | Turn/transport lifetime, approvals, playback reconciliation and explicit billing |
 
 These surfaces belong in one small SDK with independently versioned contracts,
 not one arbitrary callback that receives a Session PID and private state. Publish
@@ -266,6 +269,20 @@ per extension. A provider registration is a later SDK capability: it must reuse
 the existing public-interface and explicit billing rules, and cannot redirect a
 configured request as a fallback. P22 need not rewrite existing provider adapters
 merely to demonstrate the first examples.
+
+The [runtime capability review](runtime-capabilities.md) assigns observability
+controls/local developer diagnosis to P22, cost extensions/budget enforcement to
+P23 and voice/realtime to P24. P22 establishes canonical usage facts and a bounded
+read-only visible-text channel. Diagnostic samples, durable accounting and product
+media have different delivery/privacy contracts; do not force them through one
+Telemetry handler or JSON event queue. Media/realtime are negotiated boundaries
+with explicit unsupported-operation errors until P24.
+
+The requested shipped [knowledge extension family](knowledge-extensions.md)
+belongs in P25: working/long-term memory, pluggable research, graph augmentation
+and RAG, all default-off and independently selected. P22's generic service
+composition, evidence, context/store and owned-job contracts must support these
+without making any database, embedding provider or graph engine mandatory.
 
 ### Context, state and effects
 
@@ -390,12 +407,22 @@ service is permitted.
    durable projections and lifecycle events required by exercised capabilities.
    Keep SDK values serializable and backend-independent; define scoped instance
    configuration, session leases and a versioned activation-generation boundary.
+   Include canonical request/attempt/parent identity and durable normalized usage
+   facts with explicit unknowns. Separate droppable diagnostics, durable facts and
+   private content subscriptions; stabilize bounded read-only text delivery and
+   version future media/resource capabilities without implementing voice.
+   Define versioned service `provides`/`requires`, host-mediated typed invocation,
+   scope/provenance and bounded jobs; reject unsupported dependencies, cycles and
+   reentrant calls. Use P14 evidence identities for retrieval/memory snapshots.
    Include generic tool/command/context/state/effect seams rather than merely
    hardwiring the two examples. Keep unexercised callbacks provisional.
 2. **P22B — two packaged examples:** opt-in prompt annotation and completed-answer
    formatter, with original/derived integrity, ordering and disabled parity.
    Prove compiled-in availability with zero disabled execution, generic config/
    flag overrides, distinct instances and operator inspect/enable/disable/recovery.
+   Exercise a private read-only stream consumer; completed-answer formatting does
+   not rewrite already delivered chunks. The default-off local trace sink in P22D
+   uses the same extension configuration surface with a host capture/egress gate.
 3. **P22C — coverage gate:** build a separate local memory/workflow demonstration
    package using only the documented SDK. Exercise scoped remember/recall/forget,
    a namespaced command/tool, a structured question and one bounded approved
@@ -407,6 +434,8 @@ service is permitted.
    rebuilding Ipse, with temporary-session use and explicit persistent configuration.
    Production memory stores, elaborate workflows, assisted download/build UI and
    live activation remain follow-ons against these same versioned contracts.
+   Add a small synthetic retrieval service to prove declared composition and
+   source-attributed context without building P25's production engines.
 4. **P22D — observability and compatibility:** bounded local lifecycle sink,
    transform/event timing and drop counters; documented opt-in local BEAM tracing;
    conformance fixtures, package checks and a supervised extension-only trial.
@@ -415,6 +444,10 @@ service is permitted.
    the [scenario matrix](extension-scenarios.md#scenario-tests).
    Remote OpenTelemetry is optional follow-on work with an explicit configurable
    endpoint and separate data-transfer authorization, not a completion dependency.
+   Verify off/local/export configuration and immediate sink-stop, synthetic
+   extension debugging, usage facts independent of tracing, and slow/cancelled
+   stream consumers. Cost reports/budgets and audio delivery remain
+   [P23/P24](runtime-capabilities.md#verification-and-milestone-scope).
 
 For every phase, test crash/timeout/owner death, full queues, malformed/oversized
 returns, unsupported identity, conflicting registration, cancelled/partial

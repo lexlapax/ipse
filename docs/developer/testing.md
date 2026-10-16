@@ -2369,3 +2369,30 @@ builders and live catalog replacement are explicit follow-ons; the foundational
 contracts must refuse unsupported operations without silently executing code.
 Operator/developer guidance, dependency policy and navigation were updated;
 document links/anchors and current CLI help are checked for this planning change.
+
+## P22 runtime and knowledge capability review
+
+Primary-source comparisons and current Config/CLI, Session/progress/usage,
+provider streaming and journal inspection inform the
+[runtime boundary](runtime-capabilities.md) and [knowledge family](knowledge-extensions.md).
+P22 now specifies observability on/off/local/export control, local developer
+diagnosis, durable usage facts, bounded private text subscriptions and service/
+evidence/job composition. P23 plans reports/budgets, P24 voice/realtime and P25
+independent default-off memory/research/graph/RAG packages. These entries are not
+implementation authorization or live integration evidence.
+
+The documented `mix test test/handoff_test.exs --trace` source-debugging example
+passed all eight existing synthetic handoff fixtures. No new runtime code,
+dependency, raw BEAM trace, source debugger, external
+exporter, cost service, audio device/provider, graph or RAG engine was installed
+or exercised. Future acceptance cases explicitly cover disabled parity, capture/
+egress control, unknown accounting, stream pressure/cancellation and retrieval
+scope/provenance. Operator/developer entry points, plan and dependency inventory
+are reviewed together, with file/anchor checking before publication.
+
+Zero-Mem's paper, paper-linked repository and an independent Rust implementation
+were opened as distinct research sources. No code was installed/copied and no
+reported benchmark was reproduced. The knowledge plan now requires per-capability
+research/selection gates and a tool/skill/MCP/extension/core decision before any
+production implementation. Zero-Mem is an inspiration candidate, not a selected
+dependency, and token-free maintenance does not imply zero total compute/cost.

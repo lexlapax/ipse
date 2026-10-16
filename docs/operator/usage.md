@@ -557,3 +557,27 @@ Local `/diagnostics`, `ipse diagnose --resume ID` and explicit
 `ipse handoff --resume ID --note TEXT` are now available for context diagnosis and
 reviewed recovery. See [context recovery](recovery.md) for scope, privacy and
 limitations. These local facilities do not enable general hooks or remote tracing.
+
+Observability on/off controls are planned in P22: an `off`/`local`/`export` host
+gate plus generic sink configuration/flags, default-off local tracing and explicit
+remote egress. No such mode flag is available today. Turning optional tracing off
+will preserve recovery journals, usage accounting and streamed answers. Developer
+source fixtures can be inspected with Mix test tracing; bounded BEAM tracing and
+extension-conformance procedures are part of P22, while richer viewers/IDE setup
+remain optional. See [controls and debugging](../developer/observability.md).
+
+Visible text already streams in chat. P22 will add a bounded private subscription
+for extensions/clients. P23 plans cost/report extensions over normalized usage and
+host budget enforcement; context bytes are not tokens or a bill. P24 plans
+STT/text-agent/TTS and realtime media with explicit provider/device/billing choices.
+Neither voice nor token-cost reporting is implemented today. See
+[capability boundaries](../developer/runtime-capabilities.md).
+
+P25 plans researched, shipped but disabled short-term/long-term memory, a pluggable
+research engine, graph memory and RAG. Each may be a tool/skill/MCP integration,
+extension or combination, selected after evaluation; Zero-Mem is an inspiration
+candidate rather than an installed backend. Configure each independently through
+declared tools/hooks/providers; enabling one will not silently start another store, model or
+service. Optional working memory does not replace ordinary session history, and
+RAG does not automatically persist personal memories. Existing `$research`/MCP/
+evidence tools remain available today. See [knowledge extension plan](../developer/knowledge-extensions.md).

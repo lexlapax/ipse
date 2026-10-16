@@ -28,6 +28,9 @@ the next feature sequence on 2026-10-15:
 | [P20](#p20-repeatable-supervised-self-development) | Reusable supervised development/review skill and evidence | Complete: fixtures, hosted checks and supervised live use; limitations recorded |
 | [P21](#p21-larger-self-development-trial-on-serenity) | Larger supervised trial with independent Mac verification | Complete within supervised scope; bounded review and Linux/hosted Mac checks passed |
 | [P22](#p22-extension-scaffold-and-lifecycle-hooks) | Typed extension scaffold, lifecycle hooks and runtime observability | Detailed extension-first plan ready; implementation not started |
+| [P23](#p23-usage-cost-reporting-and-budget-controls) | Usage/cost extensions and host budget admission | Planned follow-on; implementation not authorized |
+| [P24](#p24-voice-and-realtime-media) | Voice extensions and owned realtime/media capabilities | Planned follow-on; implementation not authorized |
+| [P25](#p25-optional-knowledge-extensions) | Default-off working/long-term memory, research, graph and RAG | Planned extension family; implementation not authorized |
 
 Feature completion does not close every live provider acceptance check. On
 2026-10-15, installed Ollama `qwen3.5:9b`, Anthropic `claude-haiku-4-5`, and
@@ -1016,6 +1019,15 @@ dispatch in core. These are architectural tests, not implemented runtime results
 This is a design target, not a promise that unknown future capabilities or core
 bugs will never require a core change.
 
+The subsequent [runtime capability review](developer/runtime-capabilities.md)
+keeps observability on/off controls, local developer diagnosis, canonical usage
+facts and bounded text subscriptions in P22. Cost reports/budgets become P23;
+voice/realtime becomes P24. The operator also requested a shipped default-off
+[memory/research/graph/RAG family](developer/knowledge-extensions.md), mapped to
+P25 with service composition, evidence, scope and owned-job foundations in P22.
+These are independently selected follow-ons, not a mandatory execution pipeline
+or authorization to implement them now. P25 can proceed independently of voice.
+
 Acceptance:
 
 1. Define the event taxonomy and payload/version/ordering/failure contract for
@@ -1032,6 +1044,10 @@ Acceptance:
    separately validate project/child policy, and verify disabled adapters never
    initialize. No implicit evaluation, downloads, host code-path injection or
    arbitrary host atoms. Process separation is not an OS sandbox claim.
+   Establish request/attempt/parent identity, durable normalized usage facts and
+   a private bounded visible-text subscription, distinct from droppable diagnostics.
+   Define typed service composition, evidence/context/state/job contracts for the
+   knowledge extension family; negotiate unsupported future capabilities explicitly.
 3. Ship two bounded, opt-in examples: an attributed operator prompt-context
    template and a completed-answer presentation formatter. Preserve original
    input/output, provider continuation and tool provenance; validate and journal
@@ -1051,6 +1067,10 @@ Acceptance:
    dependency; do not run transform callbacks inside Telemetry handlers. Add a
    bounded local diagnostic sink and explicit local developer tracing procedures.
    External OpenTelemetry export remains optional and separately configured.
+   Define off/local/export host gates and generic sink configuration/flags,
+   default-off local capture, effective-config inspection and immediate sink-stop.
+   Add synthetic extension-debugging/conformance inputs; evaluate existing source
+   debuggers rather than creating an IDE/runtime debugger or mandatory service.
 6. Verify ordering, bounds, timeouts/crashes, cancellation/owner death, overload,
    no approval bypass, synthetic-secret exclusion, original/derived integrity,
    child isolation policy and durable no-replay resume. Include both example
@@ -1063,3 +1083,85 @@ Acceptance:
    dependency inventory; check file links/anchors, update actual status/evidence,
    then commit/push completed focused increments. Research/design completion
    alone must not mark the extension milestone implemented.
+
+## P23: usage, cost reporting and budget controls
+
+Planned after P22; no implementation authorization implied. P22 supplies durable
+canonical usage facts and identities independently of tracing. Build an optional
+bundled report/cost extension using configurable versioned pricing, explicit
+provider/billing/model/unit attribution, unknown/incomplete estimates and dated
+rate provenance. Do not label ChatGPT subscription usage API spend or local
+inference free hardware/electricity. No mandatory rate service or hardcoded prices.
+
+Budget enforcement is a foreseen host capability, not an observational callback:
+gate covered main/summary/child/extension requests, reserve liability atomically
+across parallel work and reconcile actual/partial/unknown usage. Document the
+provider's enforceable limits and avoid promising an exact invoice ceiling for
+in-flight requests. Reports, budget displays and policies use the SDK; approval,
+provider selection, cancellation and durable accounting stay core-owned.
+
+Require fixtures for rate/version changes, unknown counts/rates, retry/revision
+deduplication, parent/child aggregation, rejected summaries, parallel reservations,
+cancellation/resume and tracing disabled. Review both documentation audiences,
+dependency/rate provenance and links, then commit/push completed increments.
+See [usage contract](developer/runtime-capabilities.md#usage-facts-and-costs).
+
+## P24: voice and realtime media
+
+Planned after P22/P23 foundations; implementation and external dependencies are
+not authorized by this entry. Start with a chained STT → admitted text agent → TTS
+extension/client. Use separately selected explicit provider profiles and bounded
+owned input/output resources. Then add a versioned realtime provider/session
+capability for bidirectional transport, interruption, turn control, playback
+acknowledgment and generated-versus-played history reconciliation.
+
+Voice choice, STT/TTS/provider/device adapters and UI stay in extensions/clients;
+resource ownership, admission, approvals, cancellation, flow control and provider
+continuation integrity stay host-owned. Use a separate media data plane, ephemeral
+raw audio by default, canonical transcripts/usage and explicit endpoint/device/
+billing choices. Never infer audio API eligibility from text subscription auth.
+
+Require synthetic split/slow/disconnected media, interim-transcript revision,
+barge-in, stale frames, unplayed output, owner death, approval waits and no-replay
+recovery before optional live provider/device checks. Evaluate maintained Elixir/
+Rust/OS facilities and inventory/approve external dependencies before adoption;
+no bundled codec, frontend runtime or service is selected by this plan. Review
+operator/developer guidance and links, then commit/push completed increments.
+See [stream/media boundaries](developer/runtime-capabilities.md#text-and-media-are-distinct-from-diagnostics).
+
+## P25: optional knowledge extensions
+
+Research the operator-requested shipped capability family, all disabled by default:
+short-term working memory, long-term memory, a robust research engine with
+pluggable providers, graph augmentation of memory and RAG. Select skill, tool/MCP,
+extension or backend implementation per use case; automatic policies may need
+hooks while explicit retrieval may need only tools. Configuration selects
+independent instances and providers; no store, worker, indexing job,
+network request or inference starts merely because the code ships with Ipse.
+This is a follow-on plan, not implementation authorization.
+
+Zero-Mem is the operator's inspiration candidate. Require thorough primary-source,
+implementation/license/dependency and alternative research for each capability
+before selection, followed by matched-budget prototypes and failure/quality/cost
+evaluation. Distinguish the paper, authors' repository and independent implementations;
+do not reproduce their performance claims as Ipse evidence. Compare deterministic
+raw-turn/lexical memory with relational/temporal retrieval; account for encoder,
+storage and final-answer costs separately. See the
+[research and selection gate](developer/knowledge-extensions.md#research-before-implementation-selection).
+
+P22 supplies scoped state/context contributions, typed service composition,
+evidence identity, owned jobs and approved effects. P23 adds optional cost reports
+and budget admission. The packages implement recall/write policies, store/retrieval
+adapters and research workflows; they do not replace core conversation recovery,
+permissions or provider integrity. Graph/RAG/research remain independently useful;
+none requires a mandatory database, embedding model, search service or framework.
+
+Deliver selected memory tools/adapters first, then research/RAG and graph capabilities
+as independently useful increments; this work need not wait for voice or cost UI.
+The operator requested a plain-English implementation sequence for approval;
+runtime implementation remains paused until that go-ahead. Require default-off parity,
+scope/provenance/retention, deletion propagation, source-supported citations,
+partial-failure/cancellation/budget handling and unchanged no-replay resume.
+Evaluate dependencies, run source/package fixtures and separate live checks,
+review operator/developer configuration/recovery guidance, check links, then
+commit/push completed increments. See [package/hook map and acceptance](developer/knowledge-extensions.md).

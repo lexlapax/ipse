@@ -294,6 +294,20 @@ explicit developer approval. See [scenario boundaries](extension-scenarios.md).
 No upstream OpenCode/Pi/
 Codex/Claude runtime, plugin or script is installed or redistributed.
 
+The follow-on [runtime](runtime-capabilities.md) and [knowledge](knowledge-extensions.md)
+reviews compare OpenAI Agents SDK/voice, LangGraph/LangSmith, ADK, ElixirLS/OTP
+debugging, LlamaIndex and Haystack primary documentation. None is adopted or
+installed. Pricing services, source-debugger/GUI dependencies, codecs, audio
+devices/transports, memory databases, embedding/rerank providers and graph/vector
+engines remain unselected. P22 uses existing OTP/helper/schema/journal facilities
+where suitable; P23–P25 must evaluate/inventory packages and obtain any required
+outside-Elixir/Rust approval before implementation. No mandatory backend or
+hardcoded service/rate is introduced by these planning entries.
+Zero-Mem's paper/authors' repository and independent Rust `zeromem` implementation
+are research candidates only. Their licenses, dependencies, model/encoder needs,
+source availability and measured suitability must be assessed before reuse;
+no memory engine, Python bindings or embedding runtime was adopted.
+
 P19 diagnostics and explicit handoff export add no dependency: existing Jason,
 OTP monotonic time, session restore, research validation and SHA-256 supply the
 implementation. This does not install Telemetry/OTLP hooks or memory services.

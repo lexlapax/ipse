@@ -55,6 +55,12 @@ revised contract has an explicit route; implementation still needs its fixtures.
 | Rollback, disable, uninstall or expired trial | Future sessions select an explicitly approved older artifact or no extension; active work is not secretly switched; referenced artifacts are not silently deleted. | Retention/reference policy, disable/revoke semantics and explicit missing-artifact resume error. | Automatic garbage collection and migration helpers. |
 | Package adds capabilities or changes bytes | New digest/capabilities invalidate prior executable approval; unknown required SDK/runtime capability refuses before startup. | Digest-bound trust, capability negotiation, compatibility diagnostics and no fallback. | Signature/catalog-based trust policies. |
 | Project contains a ready-to-run extension | Project discovery shows a data-only candidate; no `.exs`, build hook or worker runs until authorized installation/activation. | Canonical paths, bounded manifest parsing, source provenance and scope limits. | Repository extension recommendations. |
+| Turn observability off while work runs | Stop optional sinks without losing approvals, accounting, visible output or recovery evidence. | Separate host capture/egress gate, sink-stop and durable versus sampled channels. | OTLP/dashboard extensions. |
+| Inspect a failing extension | Use synthetic callback/worker inputs and sanitized correlated events; no effect-journal replay or raw-state observer access. | SDK conformance runner and bounded developer trace ownership. | Visual timeline/IDE integration. |
+| Report costs with tracing disabled | Read durable request facts, including children/compaction; missing usage stays unknown; rates carry identity. | Request/attempt IDs, canonical usage facts and generic report surface. | P23 report extension and budget host capability. |
+| Consume text while generated | Read ordered private visible-text chunks with bounded flow/cancellation; saved provider history stays unchanged. | Content subscription and slow-consumer/terminal policy, separate from diagnostics. | Stateful incremental rewrites. |
+| Add voice or duplex audio | Negotiate owned media/provider capabilities; unsupported audio refuses until implemented. | Versioned resource/data-plane boundary and explicit billing/approval ownership. | P24 voice/realtime transport/playback capability. |
+| Enable memory/research/graph/RAG independently | Select known instances/hooks/providers; disabled packages start nothing; retrieval need not create permanent memory. | Context/store/retrieval contracts, provenance, approved jobs and explicit package capabilities. | P25 default-off extension family. |
 
 All scenarios now have a defined route. The key correction is that package
 acquisition, building, executable approval, configuration and activation are
@@ -62,6 +68,11 @@ separate operations, even when a single operator-reviewed request authorizes a
 specific combination. Asking Ipse to author a feature does not make the output
 automatically trusted; the operator can authorize a concrete trial as part of
 that task without repeated approval for already authorized steps.
+
+The runtime cases are analyzed with primary-source comparisons in
+[runtime capabilities](runtime-capabilities.md). Observability/developer controls
+are specified in [observability](observability.md); the requested default-off
+knowledge extensions are mapped in [P25](knowledge-extensions.md).
 
 ## Package and installation contract
 

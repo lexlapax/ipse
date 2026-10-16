@@ -18,6 +18,53 @@ locked at 1.4.2 through Finch/Plug, but Ipse currently emits no application
 operator external trace-export interface. P19 adds content-free context accounting
 and local request measurements, not general lifecycle hooks or remote export.
 
+## Enablement and configuration
+
+P19's `/diagnostics` and saved `diagnose` are on-demand local reads. Minimal
+request-duration records live in the private recovery journal. They are not a
+continuously running exporter, and there is currently no supported observability
+mode/log-level/remote-export flag. Ordinary Logger/dependency output is also not
+a documented user-configurable trace API. Do not suggest the proposed fields
+below work with today's closed P15 schema.
+
+Observability enablement belongs in **P22**, not a separate prerequisite milestone.
+Core owns the capture/privacy policy, correlation and bounded dispatch. A bundled
+default-off local JSONL sink and later OTLP/dashboard adapters use the extension
+registry. Configuration separates permission to capture/export from the selected
+sink's options; installing a sink does not activate it.
+
+| Proposed setting/control | Default and behavior |
+| --- | --- |
+| `observability.mode` | `off`; `local` permits private local sinks; `export` additionally permits explicitly authorized remote sinks. No default collector. |
+| Event groups, level and sampling | Bounded known categories, `info` and explicit sampling; metadata only. Errors/drop counters remain visible. |
+| Queue, event and file limits | Host-validated caps/rotation; sink settings cannot disable bounds. |
+| Sink instance enable/options | Generic extension configuration/flags choose local or installed adapters, paths, filters and quotas. |
+| Remote endpoint/credential/TLS references | Operator-owned and explicitly enabled; project instructions/settings cannot authorize egress. |
+| Developer trace lease | Separate opt-in local process/function selection with duration/event caps; diagnostic mode does not grant raw-state access. |
+
+These are schema proposals, not available CLI switches. P22 should provide a
+generic startup flag for mode and generic extension instance overrides, with
+effective-config inspection explaining the gate, selected sinks, filters, sources
+and limits. `off` skips optional sink initialization/delivery and creates no trace
+files or network connection. `local` never redirects to a remote fallback.
+An explicitly selected remote sink without export authorization refuses before
+startup. Disabled optional observability must preserve model/tool results.
+
+Keep recovery intent/outcomes, required projections and canonical usage facts
+independent of sampling or sink enablement. Turning off optional diagnostics does
+not disable approvals, journals or accounting. This is also distinct from text/
+audio presentation, which must work when diagnostic sinks are off.
+
+Initial enablement/config changes apply to new sessions, as with other adapters.
+Provide a host-owned immediate sink-stop/revocation control that stops optional
+workers and discards unsent diagnostic samples without changing the tool catalog
+or waiting for a model. It cannot retract already exported data. Raising exposure,
+changing exporters or enabling raw developer tracing requires explicit operator
+authority and the supported activation boundary; it is not general hot reload.
+Test default-off, local-only, explicit export, stop, source precedence and no
+project/extension self-enablement. Remote OTLP implementation can remain a later
+extension even though its configuration/egress boundary is defined in P22.
+
 The current journal is recovery evidence, not a shareable sanitized trace. It
 can contain private prompts, tool arguments/results and provider continuation.
 Do not export it wholesale or use a blanket `inspect(state/config)` logger.
@@ -28,7 +75,7 @@ separate allowlist for operational diagnostics instead of forwarding it verbatim
 
 | Layer | Proposed use | Boundary |
 | --- | --- | --- |
-| Local diagnostic snapshot | Phase, active job category, budgets, context byte categories and last bounded failure | No inference, effects, tokens, transcript or environment dump |
+| Local diagnostic snapshot | Phase, active job category, budgets, context byte categories and last bounded failure | No inference, effects, credentials, transcript or environment dump |
 | Structured lifecycle events | Correlated durations/outcomes across session, model, approval, tool, child, compaction and extension workers | Sanitized metadata, bounded local queue/file, no automatic external export |
 | Developer BEAM tracing | Targeted process/function diagnosis on synthetic reproductions | Explicit local developer mode, narrow targets/time limits and cleanup; raw arguments/messages may be private |
 
@@ -86,6 +133,34 @@ is enabled. Raw transcript capture is outside this proposed telemetry API.
 
 ## BEAM debugging without accidental state export
 
+Developer debugging has three different deliverables. P22D includes sanitized
+runtime timelines/call correlation and local bounded tracing procedures. The SDK
+also needs a standalone synthetic invocation/conformance runner for extension
+authors, sharing callback schemas with in-VM and worker backends. A graphical
+timeline viewer can later consume sanitized events as an extension/client;
+remote debugger control and a full IDE integration are not P22 requirements.
+
+Existing source debugging starts with a focused fixture, for example:
+
+```sh
+mix test test/handoff_test.exs --trace
+```
+
+This shows test execution, not raw provider traffic or automatic journal replay.
+Build reproductions from synthetic inputs; never replay recorded effect calls
+to inspect a failure. Breakpoints should target an isolated fixture/extension
+worker rather than suspend a live session owner while effects continue.
+
+[ElixirLS](https://elixir-lsp.github.io/elixir-ls/getting-started/vscode/)
+provides a Debug Adapter Protocol integration for Mix tasks, with explicit test
+file loading and exclusions for modules that cannot be interpreted. OTP's
+[debugger](https://www.erlang.org/doc/apps/debugger/debugger_chapter.html) requires
+interpretable modules with debug information. Evaluate these existing tools
+instead of building another source debugger. Neither an IDE extension, GUI
+dependency nor debugger has been installed or verified by this research. Check
+OTP applications, source/debug information and release stripping before offering
+packaged breakpoints; an ERTS bundle alone does not establish that capability.
+
 OTP 27+ [trace sessions](https://www.erlang.org/doc/apps/kernel/trace.html) allow
 independent trace configurations and cleanup via session destruction; this fits
 Ipse's OTP floor. Evaluate a bounded local developer helper using those facilities
@@ -137,3 +212,7 @@ instrumentation-driven replay. Verify disabled parity and fixture source/package
 paths without accounts or collectors. External export and developer raw traces
 need separate evidence. See [P19](../plan.md#p19-long-session-diagnosis-and-recovery)
 and [P22](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
+
+See the [runtime comparison](runtime-capabilities.md) for why optional diagnostics,
+durable usage facts and visible text/audio use distinct channels. Cost reports and
+realtime media are P23/P24 follow-ons, with generic contracts established in P22.
