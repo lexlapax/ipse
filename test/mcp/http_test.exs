@@ -222,6 +222,50 @@ defmodule Ipse.MCP.HTTPTest do
     end
   end
 
+  test "abrupt request worker death waits for its private pool guardian before confirming cleanup",
+       ctx do
+    {server, _} = fixture(ctx, :hold)
+
+    {:ok, transport} =
+      Ipse.MCP.HTTPTransport.start_link(owner: self(), cleanup_owner: self(), server: server)
+
+    :ok =
+      Ipse.MCP.HTTPTransport.send_message(transport, %{
+        "jsonrpc" => "2.0",
+        "id" => 1,
+        "method" => "initialize",
+        "params" => %{}
+      })
+
+    assert_receive {:mcp_message, %{"id" => 1}}, 5000
+
+    :ok =
+      Ipse.MCP.HTTPTransport.send_message(transport, %{
+        "jsonrpc" => "2.0",
+        "id" => 2,
+        "method" => "tools/call",
+        "params" => %{"name" => "write", "arguments" => %{"text" => "synthetic"}}
+      })
+
+    assert_receive {:http_dispatched, handler}, 5000
+    worker = :sys.get_state(transport).task.pid
+    guardian = Ipse.HTTPProfile.finch_guardian(worker)
+    assert is_pid(guardian)
+    :erlang.suspend_process(guardian)
+
+    try do
+      Process.exit(worker, :kill)
+      assert_receive {:mcp_transport_closed, :http_worker_stopped}, 2000
+      refute_receive {:mcp_cleanup, ^transport, _}, 100
+    after
+      :erlang.resume_process(guardian)
+    end
+
+    assert_receive {:mcp_cleanup, ^transport, :ok}, 3000
+    refute Process.alive?(guardian)
+    assert_receive {:http_socket_closed, ^handler}, 3000
+  end
+
   defp session(ctx, server, approval) do
     opts = [
       cwd: ctx.root,

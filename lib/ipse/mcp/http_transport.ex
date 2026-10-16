@@ -103,7 +103,7 @@ defmodule Ipse.MCP.HTTPTransport do
       finish_close(%{s | task: nil}, false)
     else
       send(s.owner, {:mcp_transport_closed, :http_worker_stopped})
-      {:noreply, begin_close(%{s | task: nil}, nil)}
+      {:noreply, begin_close(s, nil)}
     end
   end
 

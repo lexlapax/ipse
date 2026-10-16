@@ -23,8 +23,8 @@ the [dependency inventory](dependencies.md).
 
 `Ipse.MCP.Config` accepts only an explicitly selected JSON configuration file;
 there is no workspace or `~/.ipse` discovery. `MCP.Client` performs bounded
-handshake and tool discovery, `MCP.Catalog` discovers the configured resource
-and prompt metadata, `MCP.Transport` owns bounded message framing, and
+handshake and tool discovery, `Ipse.MCP.Catalog` discovers the configured resource
+and prompt metadata, `Ipse.MCP.Transport` owns bounded stdio framing, and
 `Ipse.Session` owns approvals, intent journaling, cancellation, and recovery.
 Rust owns only OS pipe/process facilities. Elixir owns MCP and JSON-RPC parsing.
 
@@ -168,7 +168,8 @@ those flows remain unsupported. See the official
 Every request uses a private Finch HTTP/1 pool with one connection, owned by an
 `HTTPProfile` guardian. A task performs IO outside the transport GenServer;
 monitors stop the worker on transport/owner death, and the guardian closes the
-pool before releasing its fixed-name lease. Closing waits for local cleanup and
+pool before releasing its fixed-name lease. Abnormal worker exit still waits for
+its guardian; it cannot confirm cleanup early. Closing waits for local cleanup and
 makes a bounded best-effort authenticated DELETE for an assigned session. DELETE
 failure does not establish whether remote work stopped. Cancelling local IO,
 a local approval, and OS sandboxing cannot confine or undo remote effects.
@@ -197,15 +198,15 @@ external runtime was added: existing Req/Finch/Mint are listed in the
 | Servers / combined allowlist | 4 / 16 tools, resources, and prompts per server |
 | Server ID / tool name | 24 / 32 ASCII characters; all model IDs collision checked |
 | Resource URI / prompt name | 2048 bytes / 32 ASCII characters |
-| Launch args / selected env | 16 args, 16 KiB aggregate; 16 variables, 4096 bytes each |
+| Stdio launch args / selected env | 16 args, 16 KiB aggregate; 16 variables, 4096 bytes each |
 | Server lifetime | Configured 1–120,000 ms, fixed across handshake and call |
-| Native queues | Input 128 × 8192 bytes; output 32 × 8192 bytes |
-| Protocol data | 256 KiB per JSON line; 1 MiB aggregate traffic; 256 messages |
+| Stdio native queues | Input 128 × 8192 bytes; output 32 × 8192 bytes |
+| Protocol data | 256 KiB per stdio line/HTTP body; 1 MiB aggregate traffic; 256 messages |
 | Discovery | 8 pages, 64 items per catalog; 128 KiB exposed catalog |
 | Resource/prompt data | 64 KiB text; 128 content blocks |
 | Schema / arguments | 32 KiB schema, depth 8, 256 nodes; 16 KiB JSON arguments |
 | Approval display | 32 KiB pretty JSON; oversized calls denied |
-| Cancellation confirmation | One two-second helper-close deadline |
+| Local cleanup confirmation | Stdio: two-second helper close; HTTP: three-second transport-close call |
 
 The [P5 evidence](testing.md#p5-local-mcp-2026-10-15) records earlier tool-only
 fixture, bundle, and live subscription checks. P7 adds resource/prompt catalog

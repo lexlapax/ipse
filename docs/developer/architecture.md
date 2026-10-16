@@ -30,8 +30,9 @@ CLI ──prompt / approval / cancel──> Session GenServer
                                       └── append events ──> private JSONL journal
 ```
 
-When explicitly enabled, `Ipse.Delegation.Worker` starts one child `Session`
-at a time. Each child has a separate journal and receives only the selected task,
+When explicitly enabled, `Ipse.Delegation.Worker` starts serial child sessions by
+default. `Ipse.Delegation.Group` coordinates two workers when parallel mode is
+explicitly selected. Each child has a separate journal and receives only the selected task,
 context, and saved workspace snapshot. Required child mutation approvals return
 through the parent session. The child uses the same provider/model and shared
 workspace; it does not inherit MCP servers or parent conversation history. See
@@ -43,9 +44,9 @@ kept where needed to resume a provider exchange. The session enforces a
 per-turn model-call limit and runs tools sequentially. It does not use a fixed
 plan/execute workflow or require a graph framework.
 
-`Ipse.HTTPProfile` owns per-request HTTP lifetimes for authentication and
-providers. A monitored guardian starts each standalone OTP profile and retains
-its lease until the profile exits. Borrower death closes its profile and sockets;
+`Ipse.HTTPProfile` owns per-request HTTP lifetimes for authentication, providers,
+and network MCP. A monitored guardian starts a standalone OTP HTTP profile or
+private Finch HTTP/1 pool and retains its lease until the client exits. Borrower death closes its profile and sockets;
 another request cannot reuse the name during shutdown. A fixed pool of 64 names
 bounds atom usage and keeps proxy settings and connection state isolated between
 concurrent requests. Exhaustion returns a retryable error instead of creating

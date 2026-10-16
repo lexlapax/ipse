@@ -1363,7 +1363,7 @@ no dependency or external runtime was added. See the
 [transport contract](mcp.md#streamable-http-boundary) and
 [operator setup](../operator/mcp.md#configure-a-network-endpoint).
 
-Eleven network fixtures plus five HTTP profile tests passed: explicit endpoint
+Twelve network fixtures plus five HTTP profile tests passed: explicit endpoint
 and token identity/rotation, JSON/SSE handshake and private session lifecycle,
 exact resources/prompts, full approvals/headless denial, authentication errors,
 redirect rejection without another request, body/header bounds, incomplete or
@@ -1371,7 +1371,10 @@ mixed malformed streams, wrong IDs, unmatched ping, changed sessions, descriptor
 drift, post-dispatch disconnect with unknown/not-started outcomes, idle resume
 without replay, cancellation, and owner death closing the client socket. Private
 Finch root/children/guardian exit is separately confirmed on borrower death and
-normal return. HTTPS fixtures passed trusted matching-host discovery/tool calls,
+normal return. Final review found abrupt request-worker death discarded the
+worker identity before waiting for the pool guardian. The regression holds that
+guardian open: the old path incorrectly confirms cleanup and fails the assertion;
+the repair retains the identity until confirmed shutdown and passes. HTTPS fixtures passed trusted matching-host discovery/tool calls,
 untrusted-CA rejection, and trusted-certificate hostname mismatch without HTTP
 dispatch. Trust was changed/restored only inside the isolated test VM. An initial
 fixture asserted the wrong TLS alert name; the actual hostname rejection was
@@ -1401,9 +1404,10 @@ cancellation guarantee, OAuth flow, long-lived GET stream, reconnection/event
 resumption, other model/host acceptance, or general server compatibility is claimed.
 
 Source build, formatting, warnings-as-errors compilation, isolated demo, and
-**261 tests with Linux native enforcement included (14 Mac tests excluded)**
+**262 tests with Linux native enforcement included (14 Mac tests excluded)**
 passed. Rebuilt the exact `dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz` with
 version-matched runtime notices and passed fresh-home/utility-only-PATH verification,
 including the new bundled HTTP MCP round trip and serial/parallel delegation.
 The HTTP demo uses only OTP sockets and the extracted runtime. Hosted Linux/macOS
-source/package checks are pending.
+source/package checks [passed at c404da5](https://github.com/lexlapax/ipse/actions/runs/38849383383);
+verification of the final worker-death ownership repair is pending.
