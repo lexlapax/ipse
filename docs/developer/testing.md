@@ -1676,7 +1676,12 @@ Private session state and metadata-only evidence remained outside Git.
 The Linux archive passed extracted help/demo, MCP/delegation, helper/OTP, and
 long-turn checkpoint verification using a utility-only PATH. Archive SHA-256:
 `394d6166751a35ec3d337b2cb1fee968efc94dfc76d5c27299612fb82a3f8b93`.
-Hosted Linux/macOS checks are pending below;
+Hosted Ubuntu/macOS-14 source tests, native macOS enforcement, demo, packaging,
+and extracted-package/checkpoint verification passed in
+[CI run 38867833020](https://github.com/lexlapax/ipse/actions/runs/38867833020)
+for `57c9b67`. macOS checks ran on the hosted Mac runner, not Linux Serenity; the
+experimental App Sandbox step remains a separately scoped CI check.
+
 neutral coding and non-coding trial evidence will be recorded separately. The
 [compaction contract](context-compaction.md) describes output fidelity limits and
 remaining cases that cannot fit. This is host-side projection, not a native

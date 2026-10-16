@@ -18,7 +18,7 @@ the next feature sequence on 2026-10-15:
 | [P10](#p10-network-mcp) | Explicit network MCP | Complete within documented scope |
 | [P11](#p11-live-dotsetup-trial) | Read-only assessment in `~/projects/lexlapax/dotsetup` | Read-only comparison and selected follow-ups complete |
 | [P12](#p12-task-tracker-coding-trial) | New forms/SQLite task tracker | Specified-stack coding trial complete |
-| [P13](#p13-long-turn-compaction-and-general-purpose-trials) | Long-turn context recovery and neutral coding/non-coding trials | Core and bundled Linux checks passed; hosted checks and trials in progress |
+| [P13](#p13-long-turn-compaction-and-general-purpose-trials) | Long-turn context recovery and neutral coding/non-coding trials | Compaction source/package/hosted checks complete; neutral coding trial in progress |
 
 Feature completion does not close every live provider acceptance check. On
 2026-10-15, installed Ollama `qwen3.5:9b`, Anthropic `claude-haiku-4-5`, and
@@ -553,7 +553,9 @@ Selected by the developer on 2026-10-16 to complete the P12 follow-ups. Status:
 long-turn output checkpoints and specific failure diagnostics implemented; source
 build, formatting, warnings-as-errors compilation, 277 Linux tests, native demo,
 P12 transcript replay, and a live eight-read single-turn check passed. Packaging
-passed; hosted verification in progress; both new trials pending.
+passed, and hosted Linux/macOS CI [38867833020](https://github.com/lexlapax/ipse/actions/runs/38867833020) passed. The core fix is committed/pushed at `57c9b67`.
+Neutral coding trial is in progress in a separate workspace; Ipse chose Python/Flask.
+The synthetic non-coding trial is in progress after one source-path clarification.
 Update this record as each acceptance check completes.
 
 1. Improve safe context reduction during long action turns and provide specific
