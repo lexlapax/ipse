@@ -111,7 +111,11 @@ defmodule Ipse.MCP.CatalogSessionTest do
   test "lost resource response stops the prompt batch and unknown resume does not retry", ctx do
     pid = session(ctx, scenario: "resource_disconnect", approval: :allow)
     :ok = Ipse.Session.prompt(pid, "inspect catalog")
-    assert_receive {:ipse, ^pid, {:done, :error}}, 5_000
+    resource = Config.resource_id("notes", "notes://guide")
+    assert_receive {:ipse, ^pid, {:tool, ^resource, %{}}}, 5_000
+    # Startup/discovery is separate from the configured 5s call lifetime and
+    # bounded transport/helper cleanup, especially on a loaded Mac runner.
+    assert_receive {:ipse, ^pid, {:done, :error}}, 10_000
     assert Enum.map(content_calls(ctx), & &1["event"]) == ["read_resource"]
     id = Ipse.Session.info(pid).id
     {:ok, events} = Ipse.Journal.load(ctx.dir, id)

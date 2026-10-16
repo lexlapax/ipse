@@ -2195,6 +2195,14 @@ resume. The new package fixture checks saved diagnostics and explicit handoff
 export without inference or replay. Hosted Linux/Mac verification follows the
 focused commit; no local Mac run is claimed.
 
+The first P19 hosted run passed Linux but failed the existing Mac lost-resource
+fixture's five-second end-to-end receive budget after tool dispatch. It did not
+report a false successful result. The fixture now observes dispatch readiness
+separately and allows the configured five-second call lifetime plus bounded
+helper/transport cleanup before asserting error, unknown/not-started outcomes and
+no-replay resume. Protocol timeouts, cleanup and those assertions are unchanged.
+This is a fixture timing repair; hosted rerun is required before claiming a pass.
+
 ## P20 reusable self-development skill
 
 The bundled skill covers frozen-runner separation, explicit scope, independent
