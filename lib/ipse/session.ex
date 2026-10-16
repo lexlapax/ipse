@@ -83,6 +83,10 @@ defmodule Ipse.Session do
         mcp_ready: false,
         mcp_resources: %{},
         delegation_resources: %{},
+        delegation_workers: MapSet.new(),
+        delegation_queue: [],
+        delegation_effect: nil,
+        delegation_claims: %{},
         delegations: 0,
         owner_ref: owner_ref
       }
@@ -107,19 +111,51 @@ defmodule Ipse.Session do
   def handle_call(
         {:delegation_register, ref, child, id},
         {worker, _},
-        %{job_ref: ref, task: %{pid: worker}, phase: :tool} = s
+        %{job_ref: ref, task: %{pid: coordinator}, phase: phase} = s
+      )
+      when ref != nil and phase in [:tool, :delegated_approval] do
+    if worker == coordinator or MapSet.member?(s.delegation_workers, worker) do
+      record(s, %{
+        "type" => "delegation_started",
+        "child_id" => id,
+        "call_id" => hd(s.calls)["id"]
+      })
+
+      monitor = Process.monitor(child)
+      notify(s, {:subagent, id, :started})
+
+      {:reply, :ok,
+       %{
+         s
+         | delegation_resources:
+             Map.put(s.delegation_resources, child, %{monitor: monitor, id: id, worker: worker})
+       }}
+    else
+      {:reply, {:error, :cancelled}, s}
+    end
+  end
+
+  def handle_call(
+        {:delegation_worker, ref, worker},
+        {coordinator, _},
+        %{job_ref: ref, task: %{pid: coordinator}} = s
       )
       when ref != nil do
-    record(s, %{"type" => "delegation_started", "child_id" => id, "call_id" => hd(s.calls)["id"]})
-    monitor = Process.monitor(child)
-    notify(s, {:subagent, id, :started})
-
-    {:reply, :ok,
-     %{
-       s
-       | delegation_resources: Map.put(s.delegation_resources, child, %{monitor: monitor, id: id})
-     }}
+    if MapSet.size(s.delegation_workers) < 2,
+      do: {:reply, :ok, %{s | delegation_workers: MapSet.put(s.delegation_workers, worker)}},
+      else: {:reply, {:error, :worker_limit}, s}
   end
+
+  def handle_call(
+        {:delegation_children, ref},
+        {coordinator, _},
+        %{job_ref: ref, task: %{pid: coordinator}} = s
+      )
+      when ref != nil,
+      do: {:reply, Map.keys(s.delegation_resources), s}
+
+  def handle_call({:delegation_worker, _, _}, _, s), do: {:reply, {:error, :cancelled}, s}
+  def handle_call({:delegation_children, _}, _, s), do: {:reply, [], s}
 
   def handle_call({:delegation_register, _, _, _}, _from, s),
     do: {:reply, {:error, :cancelled}, s}
@@ -176,11 +212,11 @@ defmodule Ipse.Session do
   def handle_call(
         {:approve, ref, allowed},
         _from,
-        %{approval: {:delegated, ref, worker, child, child_ref, name, args}, task: %{pid: worker}} =
+        %{approval: {:delegated, ref, worker, child, child_ref, name, args}, task: %{}} =
           s
       ) do
     case s.delegation_resources[child] do
-      %{id: id} ->
+      %{id: id, worker: ^worker} ->
         record(s, %{
           "type" => "delegation_approval",
           "child_id" => id,
@@ -190,7 +226,8 @@ defmodule Ipse.Session do
         })
 
         send(worker, {:delegated_decision, child, child_ref, allowed == true})
-        {:reply, :ok, %{s | approval: nil, phase: :tool}}
+        s = if allowed == true, do: claim_delegated_effect(s, child, name, args), else: s
+        {:reply, :ok, next_delegated_approval(%{s | approval: nil, phase: :tool})}
 
       _ ->
         {:reply, {:error, :no_pending_approval}, s}
@@ -262,7 +299,11 @@ defmodule Ipse.Session do
           compaction: nil,
           tool_decision: "not_decided",
           mcp_resources: %{},
-          delegation_resources: %{}
+          delegation_resources: %{},
+          delegation_workers: MapSet.new(),
+          delegation_queue: [],
+          delegation_effect: nil,
+          delegation_claims: %{}
       }
 
     {child_cleanup ++ cleanup, next}
@@ -271,43 +312,13 @@ defmodule Ipse.Session do
   @impl true
   def handle_info(
         {:delegated_approval, ref, worker, child, child_ref, name, args},
-        %{job_ref: ref, task: %{pid: worker}, phase: :tool, approval: nil} = s
+        %{job_ref: ref, task: %{}, phase: phase} = s
       )
-      when ref != nil do
+      when ref != nil and phase in [:tool, :delegated_approval] do
     case s.delegation_resources[child] do
-      %{id: id} ->
-        mode = Map.get(s.config, :approval, :ask)
-
-        cond do
-          Ipse.Delegation.validate_approval(args) != :ok ->
-            send(worker, {:delegated_decision, child, child_ref, false})
-            {:noreply, s}
-
-          mode == :ask ->
-            approval_ref = make_ref()
-            notify(s, {:approval, approval_ref, "child #{id}/#{name}", args})
-
-            {:noreply,
-             %{
-               s
-               | phase: :delegated_approval,
-                 approval: {:delegated, approval_ref, worker, child, child_ref, name, args}
-             }}
-
-          true ->
-            allowed = mode == :allow
-
-            record(s, %{
-              "type" => "delegation_approval",
-              "child_id" => id,
-              "name" => name,
-              "arguments" => args,
-              "decision" => if(allowed, do: "session_allow", else: "policy_denied")
-            })
-
-            send(worker, {:delegated_decision, child, child_ref, allowed})
-            {:noreply, s}
-        end
+      %{worker: ^worker} when length(s.delegation_queue) < 2 ->
+        item = {worker, child, child_ref, name, args}
+        {:noreply, next_delegated_approval(%{s | delegation_queue: s.delegation_queue ++ [item]})}
 
       _ ->
         {:noreply, s}
@@ -317,12 +328,25 @@ defmodule Ipse.Session do
   def handle_info({:delegated_progress, ref, child, event}, %{job_ref: ref} = s)
       when ref != nil do
     case {s.delegation_resources[child], event} do
-      {%{id: id}, {:tool, name, args}} -> notify(s, {:tool, "child #{id}/#{name}", args})
-      {%{id: id}, {:status, status}} -> notify(s, {:subagent, id, status})
-      _ -> :ok
+      {%{id: id}, {:tool, name, args}} ->
+        notify(s, {:tool, "child #{id}/#{name}", args})
+
+      {%{id: id}, {:status, status}} ->
+        notify(s, {:subagent, id, status})
+
+      {%{id: id}, {:tool_result, name, text}} ->
+        notify(s, {:tool_result, "child #{id}/#{name}", text})
+
+      _ ->
+        :ok
     end
 
-    {:noreply, s}
+    s =
+      if match?({:tool_result, _, _}, event) and s.delegation_effect == child,
+        do: %{s | delegation_effect: nil},
+        else: s
+
+    {:noreply, next_delegated_approval(s)}
   end
 
   def handle_info({:progress, ref, event}, %{job_ref: ref} = s) when ref != nil do
@@ -408,6 +432,14 @@ defmodule Ipse.Session do
         {:noreply, fail(s, error)}
 
       {:tool, {status, text}} when is_binary(text) ->
+        s = %{
+          s
+          | delegation_workers: MapSet.new(),
+            delegation_queue: [],
+            delegation_effect: nil,
+            delegation_claims: %{}
+        }
+
         outcome = if status == :error, do: "error", else: "result_recorded"
         {:noreply, tool_result(s, hd(s.calls), text, outcome, s.tool_decision)}
 
@@ -439,7 +471,9 @@ defmodule Ipse.Session do
         _ -> s.delegation_resources
       end
 
-    {:noreply, %{s | mcp_resources: resources, delegation_resources: children}}
+    s = %{s | mcp_resources: resources, delegation_resources: children}
+    s = if s.delegation_effect == pid, do: %{s | delegation_effect: nil}, else: s
+    {:noreply, next_delegated_approval(s)}
   end
 
   def handle_info({port, {:exit_status, _}}, %{lock: port} = s) do
@@ -737,10 +771,12 @@ defmodule Ipse.Session do
       cond do
         external -> Ipse.MCP.validate_call(Ipse.MCP.tool(s.mcp_tools, name), args)
         name == "delegate" -> validate_delegation(s, call, args)
+        name == "delegate_parallel" -> validate_parallel_delegation(s, args)
         true -> :ok
       end
 
-    requires_approval = Tools.mutating?(name) or external or name == "delegate"
+    requires_approval =
+      Tools.mutating?(name) or external or name in ["delegate", "delegate_parallel"]
 
     cond do
       validation != :ok ->
@@ -784,7 +820,7 @@ defmodule Ipse.Session do
       "call_id" => call["id"],
       "name" => name,
       "approval" => decision,
-      "arguments" => if(external || name == "delegate", do: args),
+      "arguments" => if(external || name in ["delegate", "delegate_parallel"], do: args),
       "mcp" => if(external, do: Ipse.MCP.Client.manifest(external)),
       "sandbox_requested" => to_string(Map.get(s.config, :sandbox, :off))
     })
@@ -797,6 +833,7 @@ defmodule Ipse.Session do
       cwd: s.cwd,
       skills: s.skills,
       sandbox: Map.get(s.config, :sandbox, :off),
+      parallel_child: Map.get(s.config, :parallel_child, false),
       emit: fn event -> send(owner, {:progress, job_ref, event}) end
     }
 
@@ -812,8 +849,11 @@ defmodule Ipse.Session do
           name == "load_skill_resource" ->
             Skills.load_resource(s.skills, args["name"], args["path"])
 
-          name == "delegate" ->
-            Ipse.Delegation.Worker.run(
+          name in ["delegate", "delegate_parallel"] ->
+            worker =
+              if name == "delegate", do: Ipse.Delegation.Worker, else: Ipse.Delegation.Group
+
+            worker.run(
               %{
                 owner: owner,
                 job_ref: job_ref,
@@ -832,7 +872,13 @@ defmodule Ipse.Session do
         end
       end)
 
-    count = if name == "delegate", do: s.delegations + 1, else: s.delegations
+    count =
+      cond do
+        name == "delegate" -> s.delegations + 1
+        name == "delegate_parallel" -> s.delegations + 2
+        true -> s.delegations
+      end
+
     %{s | phase: :tool, task: task, job_ref: job_ref, tool_decision: decision, delegations: count}
   end
 
@@ -851,6 +897,87 @@ defmodule Ipse.Session do
         Ipse.Delegation.validate(args)
     end
   end
+
+  defp validate_parallel_delegation(s, args) do
+    if Ipse.Delegation.parallel?(s.config) and s.delegations + 2 <= Ipse.Delegation.max_calls(),
+      do: Ipse.Delegation.validate_parallel(args),
+      else: {:error, "Parallel delegation is disabled or its child budget is exhausted."}
+  end
+
+  defp next_delegated_approval(%{approval: approval} = s) when approval != nil, do: s
+  defp next_delegated_approval(%{delegation_effect: child} = s) when child != nil, do: s
+  defp next_delegated_approval(%{delegation_queue: []} = s), do: s
+
+  defp next_delegated_approval(s) do
+    [{worker, child, ref, name, args} | rest] = s.delegation_queue
+    s = %{s | delegation_queue: rest}
+
+    case s.delegation_resources[child] do
+      %{id: id, worker: ^worker} ->
+        mode = Map.get(s.config, :approval, :ask)
+        conflict = delegated_conflict?(s, child, name, args)
+
+        cond do
+          Ipse.Delegation.validate_approval(args) != :ok or conflict or mode == :deny ->
+            record(s, %{
+              "type" => "delegation_approval",
+              "child_id" => id,
+              "name" => name,
+              "arguments" => args,
+              "decision" => if(conflict, do: "conflict_denied", else: "policy_denied")
+            })
+
+            send(worker, {:delegated_decision, child, ref, false})
+            next_delegated_approval(s)
+
+          mode == :ask ->
+            approval = make_ref()
+            notify(s, {:approval, approval, "child #{id}/#{name}", args})
+
+            %{
+              s
+              | phase: :delegated_approval,
+                approval: {:delegated, approval, worker, child, ref, name, args}
+            }
+
+          true ->
+            record(s, %{
+              "type" => "delegation_approval",
+              "child_id" => id,
+              "name" => name,
+              "arguments" => args,
+              "decision" => "session_allow"
+            })
+
+            send(worker, {:delegated_decision, child, ref, true})
+            claim_delegated_effect(s, child, name, args)
+        end
+
+      _ ->
+        next_delegated_approval(s)
+    end
+  end
+
+  defp delegated_target(s, name, args) when name in ["write", "edit"] do
+    if is_binary(args["path"]), do: Path.expand(args["path"], s.cwd), else: "*"
+  end
+
+  defp delegated_target(_, _, _), do: "*"
+
+  defp delegated_conflict?(s, child, name, args) do
+    target = delegated_target(s, name, args)
+
+    Enum.any?(s.delegation_claims, fn {claimed, owner} ->
+      owner != child and (target == "*" or claimed == "*" or target == claimed)
+    end)
+  end
+
+  defp claim_delegated_effect(s, child, name, args),
+    do: %{
+      s
+      | delegation_effect: child,
+        delegation_claims: Map.put(s.delegation_claims, delegated_target(s, name, args), child)
+    }
 
   defp tool_result(s, call, text, status, approval) do
     s =
@@ -930,6 +1057,7 @@ defmodule Ipse.Session do
              "sandbox" => to_string(Map.get(config, :sandbox, :off)),
              "mcp_servers" => Ipse.MCP.fingerprints(config),
              "subagents" => Ipse.Delegation.enabled?(config),
+             "subagent_concurrency" => Map.get(config, :subagent_concurrency, 1),
              "delegation_origin" => config[:delegation_origin]
            }),
          do: {:ok, id, []}
@@ -944,6 +1072,7 @@ defmodule Ipse.Session do
              Map.get(meta, "sandbox", "off") == to_string(Map.get(config, :sandbox, :off)) and
              Map.get(meta, "mcp_servers", []) == Ipse.MCP.fingerprints(config) and
              Map.get(meta, "subagents", false) == Ipse.Delegation.enabled?(config) and
+             Map.get(meta, "subagent_concurrency", 1) == Map.get(config, :subagent_concurrency, 1) and
              meta["delegation_origin"] == config[:delegation_origin] do
       {:ok, id, events}
     else

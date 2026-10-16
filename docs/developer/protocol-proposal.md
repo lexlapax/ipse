@@ -165,7 +165,9 @@ private journals, parent-forwarded approvals, bounded results, and unknown
 outcomes without replay. Children do not inherit parent transcript or MCP
 servers, and cannot delegate recursively. See the
 [operator guide](../operator/subagents.md) and [developer contract](delegation.md).
-Parallel child execution remains unimplemented.
+P9 adds explicitly enabled two-child local groups under the current
+[delegation contract](delegation.md#parallel-groups-p9); this historical proposal
+does not define or enable that implementation.
 
 Remote execution needs its own endpoint identity, authentication, data
 minimization, authorization, transport-loss, cancellation, and outcome

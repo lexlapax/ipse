@@ -38,7 +38,7 @@ still apply. See [shell policy](usage.md#shell-policy).
 
 ## Bounds and recovery
 
-Children run serially, one at a time, with at most two delegations in one parent
+Children run serially by default, with at most two child tasks in one parent
 turn. Each child has at most six model steps and two minutes of active work;
 waiting for your approval pauses that budget. Tasks
 and selected context are each limited to 8 KiB; final child results to 16 KiB.
@@ -62,6 +62,33 @@ history retains only the selected task, approval records, relationship, and
 bounded untrusted child result.
 
 See [usage](usage.md), [the developer contract](../developer/delegation.md), and
-[the plan](../plan.md#p6-local-subagent-delegation). Parallel child execution,
-different provider/model routing, remote agents, automatic retries, and child
-MCP are outside this first slice.
+[the plan](../plan.md#p9-parallel-local-subagents). Different provider/model
+routing, remote agents, automatic retries, and child MCP remain unavailable.
+
+## Parallel local children
+
+```sh
+./bin/ipse chat --subagents --subagent-concurrency 2 --cwd /path/to/workspace
+```
+
+This exposes `delegate_parallel` for exactly two bounded task/context objects.
+The parent approves the complete group before either child starts. Children use
+the same provider/model, separate journals, and individually routed mutation
+approvals; results return in task order. One group consumes the two-child turn
+budget, at most twelve child model calls in total. Serial delegation remains
+available. The concurrency setting is saved and must match on resume.
+
+Only one child mutation executes at a time. Approved write/edit targets are
+claimed by that child for the group; another child's request for the same
+normalized path is denied. Shell claims the whole workspace and conflicts with
+every other child's mutation in either ordering. Parallel children cannot mutate
+hardlinked files. Reads/model work may overlap writes and observe changing data;
+this is not filesystem isolation or protection against unrelated processes or
+hostile path replacement. Conflict denials are journaled as `conflict_denied`
+by the parent and denied in the child's own journal.
+
+Approvals queue behind the current decision/effect, pausing the child's active
+budget. `/cancel` and parent death stop both owned children. A failed/unknown
+child stops its sibling and leaves the group unknown without replay. Run
+`mix run scripts/demo-subagents.exs` for credential-free serial/parallel demos.
+See [P9 evidence](../developer/testing.md#p9-parallel-local-delegation-2026-10-15).

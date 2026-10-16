@@ -1321,3 +1321,33 @@ seeded, not a claim about an extended natural conversation. No live allowance
 exhaustion, paid-account eligibility, token revocation, concurrent external
 writers, or Mac provider check was performed. Provider keys and private
 configuration remain outside Git; only sanitized outcomes are recorded here.
+
+## P9 parallel local delegation, 2026-10-15
+
+Added explicitly enabled two-child groups with serial defaults, exact group/child
+approvals, separate journals, and the same provider/model. Nine focused fixtures
+pass overlapping tasks, deterministic result order, recursion/MCP exclusion,
+mutation serialization, exact approval routing, file and shell wildcard conflicts,
+hardlink rejection, complete parent death/cancellation cleanup, sibling shutdown
+after failure, headless/default denial, budgets, and concurrency-bound idle resume.
+Owner-death checks wait for the coordinator, child sessions, and provider tasks
+to stop; readiness is emitted only once per child in the test provider.
+
+Live checks passed on installed Ollama `qwen3.5:9b`, Anthropic `claude-haiku-4-5`,
+and OpenAI API `gpt-4.1-mini`: one exact approved group, two real child responses,
+parent completion, separate child relationships, and idle resume without starting
+children again. OpenAI initially proposed serial calls; those were denied with
+no child start. A clearer exact parallel-tool request passed on the same model
+without changing approval policy or billing. These are synthetic-data checks,
+not arbitrary shared-workspace stress coverage.
+
+Credential-free source and bundled parallel demos verify the approved group,
+two child relationships, and idle resume. Source build, formatting,
+warnings-as-errors compilation, isolated demo, and **249 tests with Linux native
+enforcement included (14 Mac tests excluded)** passed. The exact rebuilt
+`dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz`, with version-matched runtime
+notices, passed fresh-home/utility-only-PATH verification including bundled
+serial and parallel delegation. Hosted source/package verification is pending.
+No dependency was added. Reads are not isolated from
+writes; unrelated processes and detached descendants retain the documented
+limits. Remote/recursive agents and child MCP remain unavailable.

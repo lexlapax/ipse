@@ -13,7 +13,7 @@ the next feature sequence on 2026-10-15:
 | Milestone | Scope | Status |
 | --- | --- | --- |
 | [P8](#p8-bounded-skill-resources) | Bounded explicit skill resources | Complete within documented scope |
-| [P9](#p9-parallel-local-subagents) | Parallel local subagents | Planned; not started |
+| [P9](#p9-parallel-local-subagents) | Parallel local subagents | Implemented; host verification in progress |
 | [P10](#p10-network-mcp) | Explicit network MCP | Planned; not started |
 | [P11](#p11-live-dotsetup-trial) | Live use in `~/projects/lexlapax/dotsetup` | Planned after P10 |
 
@@ -45,7 +45,8 @@ download or new runtime dependency was required.
 
 Automatic context compaction is available with a retained original journal.
 Explicit local stdio MCP tools and opt-in serial local delegation are available;
-network MCP, full-screen TUI, parallel/remote agents, and Windows are not implemented.
+network MCP, full-screen TUI, remote agents, and Windows are not implemented.
+Local parallel groups are explicitly enabled with `--subagent-concurrency 2`.
 The optional Linux and macOS native shell profiles are separate from trusted
 execution. macOS detached-descendant cleanup is best effort.
 Uncompactable context stops with recovery guidance.
@@ -437,7 +438,10 @@ bounded scheduling and budgets; parent cancellation/death stopping all owned
 children and ordinary process groups; partial failure and unknown recovery
 without replay. Update the delegation contract and operator guide, distinguish
 fixture from live provider evidence, verify supported hosts, and commit/push.
-Status: planned, not implemented; remote agents remain outside this milestone.
+Implemented opt-in two-child groups using existing OTP ownership and separate
+sessions. Source fixtures and live Ollama/Anthropic/OpenAI API checks passed;
+hosted source/package checks are in progress. Remote agents remain outside this
+milestone. See [P9 evidence](developer/testing.md#p9-parallel-local-delegation-2026-10-15).
 
 ## P10: network MCP
 

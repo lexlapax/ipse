@@ -125,6 +125,9 @@ defmodule Ipse.PackageVerifier do
       raise "release delegation verification did not print its completion marker"
     end
 
+    unless String.contains?(output, "Bundled parallel local delegation verification passed."),
+      do: raise("release parallel delegation verification did not print its completion marker")
+
     IO.puts(
       "PASS: extracted package help, demo from isolated fresh HOME/IPSE_HOME, default cwd, explicit --cwd, bundled MCP and delegation checks, and OTP/helper checks."
     )

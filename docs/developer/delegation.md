@@ -41,7 +41,7 @@ Oversized forwarded approval arguments are denied without truncation.
 
 ## Lifetime and recovery
 
-One child runs at a time. Its owner is the parent's monitored delegation worker;
+Serial mode runs one child at a time. Its owner is the parent's monitored delegation worker;
 parent loss kills the worker and child owner loss stops child work. Explicit
 parent cancellation cancels and closes registered children before reporting
 completion. Child calls use existing tool supervision and OS process cleanup.
@@ -49,7 +49,7 @@ Detached-descendant limitations of trusted/native execution remain unchanged;
 delegation does not strengthen the sandbox boundary.
 
 Children have at most six model steps, a two-minute active task budget, and a 16 KiB final
-result. A parent may start at most two delegations in one user turn. Each task
+result. A parent may start at most two child tasks in one user turn. Each task
 and selected context is at most 8 KiB; forwarded approval display is at most
 32 KiB. Child stream traffic is bounded and final child text is explicitly
 untrusted data, returned through the ordinary parent tool-result boundary.
@@ -75,3 +75,27 @@ completion requirements.
 
 See [actual evidence](testing.md#p6-local-delegation-2026-10-15), including the
 live subscription check, for completed checks and remaining limits.
+
+## Parallel groups (P9)
+
+`--subagents --subagent-concurrency 2` adds `delegate_parallel` with exactly two
+validated tasks. The coordinator authorizes at most two linked workers against
+the active parent job. Only those workers may register children and forward
+approvals; stale jobs/unrelated callers fail closed. Children remain owned
+sessions with recursion/MCP disabled. Six steps per child, two children per turn,
+two minutes of active time per child, and 16 KiB per child result bound aggregate
+work/results. Results are assembled in input order.
+
+The parent serializes child mutation decisions/effects and retains per-group
+normalized-path claims. Distinct write/edit targets may proceed after separate
+approvals; cross-child overlap is denied. Shell gets a wildcard claim, preventing
+another child's writes/shell, including a shell after a prior file claim.
+Parallel file tools reject existing hardlinks. This does not isolate reads from
+writes, other sessions, detached descendants, or hostile path replacement.
+It uses ordinary OTP tasks/messages with no new package or framework.
+
+An unknown child outcome closes its sibling before returning an unknown group
+result. Parent cancellation/death stops all children and preserves unknown-effect
+recovery. Saved concurrency binds resume; old journals default to serial.
+Source/bundled demos exercise the group. The [P9 record](testing.md#p9-parallel-local-delegation-2026-10-15)
+separates fixtures, live providers, and supported-host results.

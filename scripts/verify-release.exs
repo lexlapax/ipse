@@ -138,6 +138,9 @@ try do
   Code.require_file(Path.join(app_root, "priv/subagent-demo.exs"))
   :ok = Ipse.SubagentDemo.run()
   IO.puts("Bundled local delegation approvals and child journal verification passed.")
+  Code.require_file(Path.join(app_root, "priv/parallel-subagent-demo.exs"))
+  :ok = Ipse.ParallelSubagentDemo.run()
+  IO.puts("Bundled parallel local delegation verification passed.")
 
   if :os.type() == {:unix, :darwin} do
     workspace = Path.join(scratch, "native workspace")

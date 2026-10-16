@@ -134,8 +134,8 @@ repaired while holding the session lock. The full transcript remains on disk.
 ## Boundaries and current limits
 
 The line-oriented terminal client is not a full-screen TUI. Explicit opt-in
-serial local delegation is implemented with bounded child sessions; parallel,
-recursive, and remote agents are not implemented. Network MCP and Windows are
+serial local delegation is implemented with bounded child sessions and an
+explicit two-child parallel mode. Recursive and remote agents are not implemented. Network MCP and Windows are
 also unsupported. Native Linux and macOS sandbox profiles are optional. macOS
 does not provide reliable cleanup for descendants that detach from the process
 group; its filesystem and network enforcement do not make those descendants

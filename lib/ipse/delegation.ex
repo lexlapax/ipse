@@ -35,7 +35,7 @@ defmodule Ipse.Delegation do
             }
           }
         }
-      ]
+      ] ++ parallel_definition(config)
     else
       []
     end
@@ -60,6 +60,51 @@ defmodule Ipse.Delegation do
   end
 
   def validate(_), do: {:error, "Delegation request is invalid or exceeds its bounds."}
+
+  def parallel?(config), do: enabled?(config) and Map.get(config, :subagent_concurrency, 1) == 2
+
+  def validate_parallel(%{"tasks" => tasks} = args) when map_size(args) == 1 and is_list(tasks) do
+    if length(tasks) == 2 and Enum.all?(tasks, &(validate(&1) == :ok)) and
+         validate_approval(args) == :ok,
+       do: :ok,
+       else: {:error, "Parallel delegation requires exactly two bounded tasks."}
+  end
+
+  def validate_parallel(_),
+    do: {:error, "Parallel delegation requires exactly two bounded tasks."}
+
+  defp parallel_definition(config) do
+    if parallel?(config) do
+      [serial] = definitions(Map.put(config, :subagent_concurrency, 1))
+      task_schema = serial["function"]["parameters"]
+
+      [
+        %{
+          "type" => "function",
+          "function" => %{
+            "name" => "delegate_parallel",
+            "description" =>
+              "Run exactly two bounded local children concurrently. Same provider/model/workspace, separate journals and parent approvals. Mutations are serialized; cross-child conflicting file targets or shell access are denied. Children cannot delegate or use MCP.",
+            "parameters" => %{
+              "type" => "object",
+              "properties" => %{
+                "tasks" => %{
+                  "type" => "array",
+                  "items" => task_schema,
+                  "minItems" => 2,
+                  "maxItems" => 2
+                }
+              },
+              "required" => ["tasks"],
+              "additionalProperties" => false
+            }
+          }
+        }
+      ]
+    else
+      []
+    end
+  end
 
   @doc "Check that complete approval arguments can be safely encoded and displayed."
   def validate_approval(args) when is_map(args) do
@@ -95,6 +140,7 @@ defmodule Ipse.Delegation do
       :mcp_tools
     ])
     |> Map.put(:subagents, false)
+    |> Map.put(:subagent_concurrency, 1)
     |> Map.put(:mcp_servers, [])
     |> Map.put(:approval, :ask)
     |> Map.put(:max_steps, min(parent_max_steps(config), max_steps()))

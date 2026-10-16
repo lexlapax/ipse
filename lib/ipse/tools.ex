@@ -152,10 +152,25 @@ defmodule Ipse.Tools do
           {:error, "writing .git paths is forbidden"}
 
         true ->
-          reject_symlinks(expanded)
+          with {:ok, path} <- reject_symlinks(expanded),
+               :ok <- reject_parallel_hardlinks(path, mutation, context) do
+            {:ok, path}
+          end
       end
     end
   end
+
+  defp reject_parallel_hardlinks(path, true, %{parallel_child: true}) do
+    case File.stat(path) do
+      {:ok, %{links: links}} when links > 1 ->
+        {:error, "parallel children cannot mutate hardlinked files"}
+
+      _ ->
+        :ok
+    end
+  end
+
+  defp reject_parallel_hardlinks(_, _, _), do: :ok
 
   defp reject_symlinks(path) do
     result =

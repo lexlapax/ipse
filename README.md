@@ -64,9 +64,10 @@ The MCP allowlist can include exact tools, resource URIs, and prompt names;
 review their metadata and approval requests as untrusted data. See the
 [MCP operator guide](docs/operator/mcp.md) for limits and platform evidence.
 Opt-in local delegation is available with `--subagents`; it runs serial children
+by default or two parallel children with `--subagent-concurrency 2`,
 with the same provider/model and workspace, separate journals, and parent-mediated
 approvals. See [local subagents](docs/operator/subagents.md) for limits and
-recovery behavior. There is no full-screen TUI, network MCP, parallel or remote
+recovery behavior. There is no full-screen TUI, network MCP or remote
 agents, or Windows support. See [runtime limits](docs/operator/usage.md#runtime-and-limits)
 and [architecture](docs/developer/architecture.md) for details.
 

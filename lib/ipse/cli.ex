@@ -26,6 +26,7 @@ defmodule Ipse.CLI do
   --sandbox off|native                 Shell OS policy (default: off)
   --mcp-config PATH                    Explicit local stdio servers and capability allowlists
   --subagents                          Enable bounded local delegation with parent approvals
+  --subagent-concurrency 1|2            Permit two parallel local children (requires --subagents)
 
   Chat asks before writes, shell, MCP, and delegation. Headless run denies them without --yes.
   Shell execution uses your user permissions unless --sandbox native is selected.
@@ -62,6 +63,7 @@ defmodule Ipse.CLI do
           sandbox: :string,
           mcp_config: :string,
           subagents: :boolean,
+          subagent_concurrency: :integer,
           help: :boolean,
           demo: :boolean
         ],
@@ -179,7 +181,7 @@ defmodule Ipse.CLI do
           IO.puts(
             :stderr,
             "Local subagents enabled: same provider/model/workspace; parent approvals apply. " <>
-              "Up to two children per turn and six model steps per child, additional to the parent budget."
+              "Concurrency #{Map.get(config, :subagent_concurrency, 1)}; up to two children per turn and six model steps per child, additional to the parent budget."
           )
 
       for server <- config.mcp_servers do
@@ -503,6 +505,10 @@ defmodule Ipse.CLI do
       opts[:context_bytes] && opts[:context_bytes] < 8192 ->
         {:error, "--context-bytes must be at least 8192"}
 
+      opts[:subagent_concurrency] &&
+          (opts[:subagent_concurrency] not in [1, 2] or opts[:subagents] != true) ->
+        {:error, "--subagent-concurrency must be 1 or 2 and requires --subagents"}
+
       provider == :chatgpt && opts[:base_url] ->
         {:error, "Subscription credentials only go to the official OpenAI endpoint."}
 
@@ -523,6 +529,7 @@ defmodule Ipse.CLI do
              compact: opts[:compact] != false,
              mcp_servers: servers,
              subagents: opts[:subagents] == true,
+             subagent_concurrency: opts[:subagent_concurrency] || 1,
              approval: if(opts[:yes], do: :allow, else: if(interactive, do: :ask, else: :deny))
            }}
         end
@@ -551,7 +558,17 @@ defmodule Ipse.CLI do
          |> Keyword.put_new(:provider, meta["provider"])
          |> Keyword.put_new(:model, meta["model"])
          |> Keyword.put_new(:sandbox, Map.get(meta, "sandbox", "off"))
-         |> Keyword.put_new(:subagents, Map.get(meta, "subagents", false))}
+         |> Keyword.put_new(:subagents, Map.get(meta, "subagents", false))
+         |> then(fn restored ->
+           if restored[:subagents],
+             do:
+               Keyword.put_new(
+                 restored,
+                 :subagent_concurrency,
+                 Map.get(meta, "subagent_concurrency", 1)
+               ),
+             else: restored
+         end)}
       else
         _ -> {:error, "Session could not be loaded."}
       end
