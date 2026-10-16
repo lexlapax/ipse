@@ -353,8 +353,16 @@ discovery, persistence, and boundary details.
 Ipse's harness is implemented in Elixir/OTP with Rust OS helpers. Projects and
 tasks handled by it may use other languages and installed tools, including
 TypeScript/Node or Python; the harness's implementation restrictions are not a
-project-language policy. The current bundled tools and instructions emphasize
-coding/project workflows; broader general-purpose coverage remains to be tested.
+project-language policy. The host role supports general-purpose tasks; the current
+bundled tools mainly serve local file/project work. A bounded synthetic
+document-planning trial passed, including source reconciliation and an approved
+artifact write; this does not establish arbitrary task coverage.
+
+For document tasks, supply explicit workspace-relative source filenames and the
+expected artifact/scope. The read tool requires a file path; directory discovery
+needs a separately reviewed shell call. Ask for source citations and separate
+confirmed facts from pending items. Reading or loading instructions does not
+authorize messaging, purchases, or other effects. See [trial evidence](../developer/testing.md#p13-non-coding-document-trial-2026-10-16).
 
 One GenServer owns a session. Monitored tasks perform provider and tool work;
 session death stops them. The Rust helper kills command process groups on timeout

@@ -1686,3 +1686,32 @@ neutral coding and non-coding trial evidence will be recorded separately. The
 [compaction contract](context-compaction.md) describes output fidelity limits and
 remaining cases that cannot fit. This is host-side projection, not a native
 provider compaction endpoint or proof of unrestricted context capacity.
+
+## P13 non-coding document trial, 2026-10-16
+
+An embedded Ipse session used explicit ChatGPT subscription `gpt-6.1-sol`, native
+policy, isolated state and four wholly synthetic workshop documents. The request
+was a concise cited event plan, reconciling superseded brainstorms with approved
+scope/current venue information, without code, external research, messages or
+purchases. The initial prompt omitted filenames while forbidding shell discovery;
+Ipse's two directory-style reads failed and it requested explicit file paths.
+The same session continued after the operator supplied those paths. This is an
+honest setup clarification, not first-prompt autonomous directory discovery.
+
+Ipse read all four files, proposed one `event-plan.md` write, and read it back
+following individual approval. Independent source review verified November 21,
+2026 is Saturday; consecutive program durations total 210 minutes; setup/program/
+cleanup fit 09:00–13:30 with no buffer; 22 people fit capacity 24; $180 + 22 × $6 +
+$20 = **$332**, leaving **$28** under the $360 cap. Source citations, November 6/13
+owner deadlines, unspecified Theo deadline, unconfirmed keys/adapter/snack supplier,
+unplaced printing order, and assignment gaps were all correct. Hashes of all four
+sources were unchanged. Host records show seven read attempts (including the two
+initial failures) and one approved write, with no shell, dependency, MCP,
+delegation, external action or provider/billing switch. The artifact and private
+journal remain under `/tmp/ipse-p13-notes`, outside Git.
+
+This verifies one bounded file-based planning task, not open-ended research,
+calendar integration, messaging, or all non-coding work. No new harness tool or
+skill was needed; explicit source paths removed the setup ambiguity. Operator
+[guidance](../operator/usage.md#runtime-and-limits) now explains this file-discovery
+boundary. The host role is neutral; approvals remain independent of instructions.

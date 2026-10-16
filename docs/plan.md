@@ -555,7 +555,9 @@ build, formatting, warnings-as-errors compilation, 277 Linux tests, native demo,
 P12 transcript replay, and a live eight-read single-turn check passed. Packaging
 passed, and hosted Linux/macOS CI [38867833020](https://github.com/lexlapax/ipse/actions/runs/38867833020) passed. The core fix is committed/pushed at `57c9b67`.
 Neutral coding trial is in progress in a separate workspace; Ipse chose Python/Flask.
-The synthetic non-coding trial is in progress after one source-path clarification.
+The synthetic non-coding trial passed after one source-path clarification: source-backed
+plan, exact schedule/budget, pending owners and unchanged source hashes. Independent
+app review remains in progress.
 Update this record as each acceptance check completes.
 
 1. Improve safe context reduction during long action turns and provide specific
