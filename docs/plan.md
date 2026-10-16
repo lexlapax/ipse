@@ -26,7 +26,7 @@ the next feature sequence on 2026-10-15:
 | [P18](#p18-supervised-self-development-on-the-operators-mac) | Second supervised trial using the combined harness on macOS | Complete within documented supervised scope; local and hosted checks passed |
 | [P19](#p19-long-session-diagnosis-and-recovery) | Diagnose retained-context limits and improve explicit recovery | Complete within documented scope; Linux and hosted Mac checks passed |
 | [P20](#p20-repeatable-supervised-self-development) | Reusable supervised development/review skill and evidence | Complete: fixtures, hosted checks and supervised live use; limitations recorded |
-| [P21](#p21-larger-self-development-trial-on-serenity) | Larger supervised trial with independent Mac verification | Authoring/Linux/package/recovery passed; bounded review and final hosted closure pending |
+| [P21](#p21-larger-self-development-trial-on-serenity) | Larger supervised trial with independent Mac verification | Authoring/recovery, Linux and hosted Mac passed; bounded review decision pending |
 | [P22](#p22-extension-scaffold-and-lifecycle-hooks) | Typed extension scaffold, lifecycle hooks and runtime observability | Research/design recorded; implementation not started |
 
 Feature completion does not close every live provider acceptance check. On
@@ -969,8 +969,10 @@ fresh session after a safe retained-context stop. Repeated orientation required
 supervisor phase narrowing; this is not unattended development evidence.
 Implementation and independent package/evidence additions were committed and
 pushed. The separate bounded child review is waiting for the operator's decision
-after automatic approval review rejected it; zero review tools executed. Final
-hosted checks and milestone closure remain pending. See
+after automatic approval review rejected it; zero review tools executed. The
+[full hosted Linux/Mac matrix](https://github.com/lexlapax/ipse/actions/runs/38961827683)
+passed, including native Mac and extracted packages. Milestone closure waits for
+the bounded-review decision. See
 [actual trial evidence](developer/testing.md#p21-supervised-serenity-trial-and-independent-checks).
 Select one moderately larger, reviewable Ipse change after P19/P20.
 Use a frozen stable runner, candidate worktree, explicit configured profiles and

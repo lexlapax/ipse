@@ -2315,6 +2315,18 @@ The separate bounded child review remains pending: automatic approval review
 rejected its terminal approval, mistaking the independent demo's scripted effects
 for review actions. Content-free journal inspection confirmed that this distinct
 review parent had executed zero tools and created no child. The operator's
-decision was requested; no child pass or review inference is claimed. Final hosted
-checks and milestone closure also remain pending. Private transcripts, auth,
+decision was requested; no child pass or review inference is claimed. The full
+[hosted Linux/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/38961827683)
+passed at `6324b6b`, including native Mac, experimental enforcement and both
+extracted packages. The earlier [packaging repair matrix](https://github.com/lexlapax/ipse/actions/runs/38960841130)
+also passed. Serenity ran Linux; these are independent hosted Mac checks, not a
+local Mac live-account trial. Milestone closure awaits the bounded-review
+decision. Private transcripts, auth,
 environment values and handoff notes are retained outside Git.
+
+The final P22 design refinement adds a feature/SDK coverage matrix, typed return
+contracts, context/state/effect boundaries, installation and compatibility policy,
+four delivery gates and a separate memory/workflow package proof requiring no
+core/native edits. Operator/developer entry points and the plan agree that this
+is planning, with no extension implementation or dependency added. Markdown file
+and anchor validation passed across 54 tracked documents and 486 local links.
