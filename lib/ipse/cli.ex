@@ -14,6 +14,8 @@ defmodule Ipse.CLI do
   ipse skills [--cwd PATH]         List available skills
   ipse config [options]            Show effective non-secret configuration
   ipse research --resume ID        Export a saved session's evidence ledger locally
+  ipse diagnose --resume ID        Inspect content-free saved context measurements
+  ipse handoff --resume ID --note TEXT  Export an explicit recovery note locally
 
   --provider chatgpt|openai|ollama|anthropic|demo  (default: chatgpt)
   --model NAME                         Override the provider default
@@ -23,6 +25,7 @@ defmodule Ipse.CLI do
   --base-url URL                       API endpoint root (API/Ollama only)
   --state-dir PATH                     Session directory
   --json                               sessions only: JSON array of id/provider/model/cwd
+  --note TEXT                          handoff only: operator-written continuation note
   --max-steps N                        Model calls per turn (default: 30)
   --context-bytes N                    Context byte ceiling (default: 400000)
   --no-compact                         Stop at the ceiling without automatic reduction
@@ -39,7 +42,7 @@ defmodule Ipse.CLI do
   Chat asks before writes, shell, MCP, and delegation. Headless run denies them without --yes.
   Shell execution uses your user permissions unless --sandbox native is selected.
   Native enforcement fails closed when unavailable; approvals remain required.
-  Chat commands: /help /skills /session /info /context /context refresh /cancel /exit.
+  Chat commands: /help /skills /session /info /diagnostics /context /context refresh /cancel /exit.
   Invoke skills with $name.
   EOF finishes accepted work; errors and /cancel clear queued input.
   """
@@ -78,6 +81,7 @@ defmodule Ipse.CLI do
           timeout_ms: :integer,
           profile: :string,
           json: :boolean,
+          note: :string,
           help: :boolean,
           demo: :boolean
         ],
@@ -155,6 +159,28 @@ defmodule Ipse.CLI do
     case Ipse.Research.load(state_dir(opts), opts[:resume]) do
       {:ok, ledger} ->
         IO.puts(Jason.encode!(ledger, pretty: true))
+        0
+
+      {:error, reason} ->
+        report({:error, reason})
+    end
+  end
+
+  defp dispatch(["diagnose"], opts) do
+    case Ipse.Diagnostics.saved(state_dir(opts), opts[:resume]) do
+      {:ok, result} ->
+        IO.puts(Jason.encode!(result, pretty: true))
+        0
+
+      {:error, reason} ->
+        report({:error, reason})
+    end
+  end
+
+  defp dispatch(["handoff"], opts) do
+    case Ipse.Handoff.export(state_dir(opts), opts[:resume], opts[:note]) do
+      {:ok, result} ->
+        IO.puts(Jason.encode!(result, pretty: true))
         0
 
       {:error, reason} ->
@@ -367,6 +393,10 @@ defmodule Ipse.CLI do
 
       {:input, "/info"} ->
         IO.puts(Ipse.RuntimeInfo.format(Ipse.Session.info(s.pid).runtime))
+        client_loop(s)
+
+      {:input, "/diagnostics"} ->
+        IO.puts(Jason.encode!(Ipse.Session.diagnostics(s.pid), pretty: true))
         client_loop(s)
 
       {:input, "/context"} ->

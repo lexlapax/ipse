@@ -133,3 +133,36 @@ for fixtures and the separate live ChatGPT scratch check. The later
 also verifies live Ollama, Anthropic, and OpenAI API checkpoint requests over
 seeded synthetic history. Future changes must
 preserve failure, cancellation, checkpoint integrity, and no-replay behavior.
+
+## Diagnostics and explicit handoff
+
+`Ipse.Diagnostics.context/3` partitions the exact JSON encoding into fixed
+categories, including map/list framing, escaped field names/values, instructions,
+user/assistant text, the newest two result batches, older results, tool-call
+arguments/envelopes, provider-native data, checkpoint data and host provenance.
+Only numbers and fixed labels leave that calculation. Original field content is
+not inspected or returned. The shared `Compaction.target_bytes/2` keeps the
+diagnostic trigger consistent with the planner. Category sizes are encoded bytes,
+not model tokens or independent minimum checkpoint sizes.
+
+`Session.diagnostics/1` adds current phase/step/wait/worker facts. Saved inspection
+uses the public pure `Session.restore_context/1` restoration path and research
+ledger validation without opening a live Session, repairing a tail or inference.
+Its scope omits current system/skill instructions and labels a missing saved
+ceiling. Compaction refusals now record exact request measurements in a private
+`compaction_failed` event. Model/summary workers record bounded-category completion,
+failure/cancellation and elapsed milliseconds; approval/tool time is excluded.
+Idle resume does not add measurements or replay requests. This is a minimal
+local diagnostic foundation; broad lifecycle/OTLP tracing remains P22 work.
+
+`Ipse.Handoff.export/3` requires an explicit bounded operator note and emits a
+small versioned recovery artifact with source-event digest and unknown-call
+references. It never copies arbitrary source metadata, history, approval settings
+or native continuation into a new session. Original events stay private and
+unchanged. Export neither creates nor resumes a session. Existing compaction
+rules are unchanged: there is no undocumented trimming of required native data
+or pinned intent. Unknown outcomes still require inspection. P21 may independently
+implement explicit artifact import as a separate supervised feature.
+
+See [operator recovery](../operator/recovery.md) and
+[P19 evidence](testing.md#p19-diagnosis-and-explicit-recovery).

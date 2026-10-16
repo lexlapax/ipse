@@ -545,7 +545,8 @@ defmodule Ipse.Compaction do
   defp positive(value, _default) when is_integer(value) and value > 0, do: value
   defp positive(_, default), do: default
 
-  defp target_bytes(config, limit) do
+  @doc "The same trigger/target used by planning and content-free diagnostics."
+  def target_bytes(config, limit) do
     max_target = max(1, div(limit * 80, 100))
 
     case config[:compact_threshold_bytes] do

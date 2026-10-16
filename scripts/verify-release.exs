@@ -166,6 +166,16 @@ try do
 
   IO.puts("Bundled durable research ledger verification passed without network retrieval.")
 
+  {:ok, diagnostic} = Ipse.Diagnostics.saved(research_dir, research_id)
+  "effective_transcript_without_system" = diagnostic["context"]["scope"]
+
+  {:ok, handoff} =
+    Ipse.Handoff.export(research_dir, research_id, "Review recorded evidence before continuing.")
+
+  true = handoff["requires_effect_review"]
+  false = Map.has_key?(handoff, "messages")
+  IO.puts("Bundled diagnostics and explicit handoff export passed without inference/replay.")
+
   {:ok, question_session} =
     DynamicSupervisor.start_child(
       Ipse.Sessions,

@@ -2,8 +2,9 @@
 
 Research/design as of 2026-10-16; no new diagnostic CLI flags, trace exporter,
 extension event bus or debugger endpoint are implemented by this document.
-P19 should establish the minimal diagnostics needed for the observed Mac context
-failure. P22 can extend those same event contracts rather than introduce a second
+P19 now supplies local diagnostics, saved inspection, explicit handoff export
+and request durations; see [recovery](../operator/recovery.md). P22 can extend
+those same contracts rather than introduce a second
 incompatible instrumentation layer.
 
 ## Existing facilities and gaps
@@ -14,7 +15,8 @@ and OTP supervision. `format_status/2` limits Session's formatted state to ID an
 phase. MCP processes also implement formatted status. Dependency Telemetry is
 locked at 1.4.2 through Finch/Plug, but Ipse currently emits no application
 `:telemetry` events. There is no general extension/hook loader or supported
-operator trace-export interface.
+operator external trace-export interface. P19 adds content-free context accounting
+and local request measurements, not general lifecycle hooks or remote export.
 
 The current journal is recovery evidence, not a shareable sanitized trace. It
 can contain private prompts, tool arguments/results and provider continuation.

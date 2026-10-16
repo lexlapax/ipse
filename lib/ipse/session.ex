@@ -36,6 +36,7 @@ defmodule Ipse.Session do
 
   def refresh_context(pid), do: GenServer.call(pid, :refresh_context)
   def info(pid), do: GenServer.call(pid, :info)
+  def diagnostics(pid), do: GenServer.call(pid, :diagnostics)
 
   @impl true
   def init(opts) do
@@ -98,7 +99,8 @@ defmodule Ipse.Session do
         delegation_effect: nil,
         delegation_claims: %{},
         delegations: 0,
-        owner_ref: owner_ref
+        owner_ref: owner_ref,
+        request_started_at: nil
       }
 
       state = if context_is_new, do: persist_context(state, context_snapshot, true), else: state
@@ -197,6 +199,20 @@ defmodule Ipse.Session do
       |> Map.put(:question, if(s.question, do: Map.take(s.question, [:id, :arguments])))
 
     {:reply, info, s}
+  end
+
+  def handle_call(:diagnostics, _from, s) do
+    {:reply,
+     %{
+       "version" => 1,
+       "phase" => Atom.to_string(s.phase),
+       "steps" => s.steps,
+       "max_steps" => Map.get(s.config, :max_steps, 30),
+       "approval_waiting" => not is_nil(s.approval),
+       "question_waiting" => not is_nil(s.question),
+       "active_worker" => not is_nil(s.task),
+       "context" => Ipse.Diagnostics.context(s.messages, s.config, system_message(s))
+     }, s}
   end
 
   def handle_call(:refresh_context, _from, %{phase: phase} = s) when phase != :idle,
@@ -328,6 +344,7 @@ defmodule Ipse.Session do
   end
 
   defp stop_work(s, record_cancel \\ true) do
+    if s.task, do: measure_request(s, :cancelled)
     s = close_question(s)
     child_cleanup = Enum.map(Map.keys(s.delegation_resources), &close/1)
 
@@ -413,6 +430,7 @@ defmodule Ipse.Session do
   end
 
   def handle_info({ref, result}, %{task: %{ref: ref}} = s) do
+    measure_request(s, result)
     Process.demonitor(ref, [:flush])
     phase = if s.phase == :delegated_approval, do: :tool, else: s.phase
     s = %{s | task: nil}
@@ -526,6 +544,8 @@ defmodule Ipse.Session do
   end
 
   def handle_info({:DOWN, ref, :process, _pid, _reason}, %{task: %{ref: ref}} = s) do
+    measure_request(s, :worker_down)
+
     {:noreply,
      fail(
        %{s | task: nil},
@@ -684,6 +704,7 @@ defmodule Ipse.Session do
                 phase: :compaction,
                 compaction: plan,
                 steps: s.steps + 1,
+                request_started_at: System.monotonic_time(:millisecond),
                 job_ref: nil
             }
 
@@ -715,7 +736,15 @@ defmodule Ipse.Session do
       end)
 
     notify(s, {:status, "Thinking"})
-    %{s | task: task, phase: :model, steps: s.steps + 1, job_ref: job_ref}
+
+    %{
+      s
+      | task: task,
+        phase: :model,
+        steps: s.steps + 1,
+        job_ref: job_ref,
+        request_started_at: System.monotonic_time(:millisecond)
+    }
   end
 
   defp request(config, messages, tools, emit) do
@@ -776,7 +805,12 @@ defmodule Ipse.Session do
   end
 
   defp compaction_failed(s, reason, stage) do
-    record(s, %{"type" => "compaction_failed", "stage" => stage, "reason" => reason})
+    record(s, %{
+      "type" => "compaction_failed",
+      "stage" => stage,
+      "reason" => reason,
+      "diagnostics" => Ipse.Diagnostics.context(s.messages, s.config, system_message(s))
+    })
 
     fail(
       s,
@@ -1186,6 +1220,25 @@ defmodule Ipse.Session do
 
   defp notify(s, event), do: send(s.subscriber, {:ipse, self(), event})
 
+  defp measure_request(%{phase: phase, request_started_at: started} = s, result)
+       when phase in [:model, :compaction] and is_integer(started) do
+    outcome =
+      cond do
+        result == :cancelled -> "cancelled"
+        match?({:ok, _, _}, result) -> "completed"
+        true -> "failed"
+      end
+
+    record(s, %{
+      "type" => "request_measured",
+      "kind" => Atom.to_string(phase),
+      "outcome" => outcome,
+      "duration_ms" => max(System.monotonic_time(:millisecond) - started, 0)
+    })
+  end
+
+  defp measure_request(_, _), do: :ok
+
   defp open(dir, nil, cwd, config) do
     with {:ok, id} <-
            Journal.create(dir, %{
@@ -1262,6 +1315,11 @@ defmodule Ipse.Session do
   end
 
   defp restore(events) do
+    restore_context(events)
+  end
+
+  @doc "Validate saved effective context without starting inference, tools or a session."
+  def restore_context(events) do
     Enum.reduce_while(events, {:ok, []}, fn
       %{"type" => type, "message" => message}, {:ok, messages}
       when type in ["message", "operator_answer", "operator_question_closed"] and is_map(message) ->

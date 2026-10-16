@@ -24,8 +24,8 @@ the next feature sequence on 2026-10-15:
 | [P16](#p16-explicit-model-profiles-and-task-routing) | Main/subtask model profiles and provider-specific settings | Complete within documented scope |
 | [P17](#p17-structured-operator-questions) | Validated operator questions and resumable answers | Complete within documented scope |
 | [P18](#p18-supervised-self-development-on-the-operators-mac) | Second supervised trial using the combined harness on macOS | Complete within documented supervised scope; local and hosted checks passed |
-| [P19](#p19-long-session-diagnosis-and-recovery) | Diagnose retained-context limits and improve explicit recovery | Authorized; diagnosis/implementation in progress |
-| [P20](#p20-repeatable-supervised-self-development) | Reusable supervised development/review skill and evidence | Authorized; queued after P19 |
+| [P19](#p19-long-session-diagnosis-and-recovery) | Diagnose retained-context limits and improve explicit recovery | Implemented; Linux source/package verified, hosted checks pending |
+| [P20](#p20-repeatable-supervised-self-development) | Reusable supervised development/review skill and evidence | Authorized; skill/fixture implementation in progress |
 | [P21](#p21-larger-self-development-trial-on-serenity) | Larger supervised trial with independent Mac verification | Authorized; queued after P20 |
 | [P22](#p22-extension-scaffold-and-lifecycle-hooks) | Typed extension scaffold, lifecycle hooks and runtime observability | Research/design recorded; implementation not started |
 
@@ -911,7 +911,13 @@ Acceptance:
 
 ## P19: long-session diagnosis and recovery
 
-Authorized after the Mac trial; diagnosis/implementation is in progress.
+Implemented after the Mac trial: exact content-free live/saved context accounting,
+model/summary request duration records and explicit bounded handoff export. Existing
+compaction rules stay intact; original/native data is never silently trimmed.
+Synthetic fixtures reproduce the retained-native-data failure shape, not the
+unavailable original private Mac transcript. Local source/package checks are
+recorded in [P19 evidence](developer/testing.md#p19-diagnosis-and-explicit-recovery);
+hosted completion checks follow the focused commit.
 Reproduce the retained-context stop with synthetic fixtures and identify exact
 byte contributions before choosing a repair. Do not assume the safe refusal is
 itself a bug or solve it by silently dropping native continuation or operator intent.
@@ -954,7 +960,9 @@ independent review. Verify long-session behavior and evidence completeness, then
 source/native/package checks on Linux and independent Mac/hosted checks. Preserve
 separate permission, provider and operating-system boundaries. Record actual
 failures and supervisor intervention; do not infer unattended capability. The
-specific workload remains to be selected, not silently bundled with P22.
+selected workload is explicit validated import of P19 handoff artifacts into a
+fresh session, with source identity, unknown-effect review and no permission/
+provider/native-history transfer. This is separate from the P22 extension scaffold.
 
 ## P22: extension scaffold and lifecycle hooks
 

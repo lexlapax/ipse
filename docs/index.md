@@ -15,6 +15,7 @@ start. Use the guides below for operation, development, and project context.
 | [MCP servers](operator/mcp.md) | Explicit stdio/HTTP configuration, TLS, credentials, server sandbox, approvals, recovery, and demos |
 | [Local subagents](operator/subagents.md) | Explicit delegation, child approvals, bounds, journals, and recovery |
 | [Supervised self-development](operator/self-development.md) | Mac trial setup, frozen runner, candidate worktree, review, resume and publication |
+| [Context recovery](operator/recovery.md) | Content-free diagnostics, explicit handoff export and unknown-effect review |
 | [Troubleshooting](operator/troubleshooting.md) | Build, callback, account, lock, and recovery problems |
 
 ## Develop Ipse

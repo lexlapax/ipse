@@ -2175,3 +2175,22 @@ interoperability trial ran, and no callback API, trace flag, memory store or new
 dependency was implemented. P19–P21 are proposed direction; P22 has researched
 acceptance criteria rather than an implementation-complete claim. Operator and
 developer entry points distinguish current facilities from proposed behavior.
+
+## P19 diagnosis and explicit recovery
+
+Implementation verification in progress. Synthetic fixtures reproduce a long
+single turn whose required native continuation alone exceeds the context ceiling;
+compaction refuses without altering it and exact byte categories explain why.
+The original P18 private Mac transcript is unavailable here, so that live failure's
+dominant category/root cause is not claimed. Context accounting, secret exclusion,
+saved inspection, unknown outcomes, explicit handoff, cancelled requests,
+corruption refusal and unchanged idle resume passed focused local fixtures.
+Final local verification passed 340 native Linux tests (14 macOS exclusions),
+build, formatting, warnings-as-errors compilation, the credential-free demo and
+the extracted glibc-2.44 package. Eight diagnostics/recovery tests include the
+actual Session refusal path, exact escaped JSON byte accounting, native/content
+secret exclusion, unknown-effect references, complete printed artifact bounds,
+no tail repair, corrupted checkpoint refusal, cancellation and unchanged idle
+resume. The new package fixture checks saved diagnostics and explicit handoff
+export without inference or replay. Hosted Linux/Mac verification follows the
+focused commit; no local Mac run is claimed.

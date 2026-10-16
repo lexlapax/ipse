@@ -285,6 +285,10 @@ licenses and explicit export configuration before adoption. Memory storage and
 third-party extension distribution remain unselected. No upstream OpenCode/Pi/
 Codex/Claude runtime, plugin or script is installed or redistributed.
 
+P19 diagnostics and explicit handoff export add no dependency: existing Jason,
+OTP monotonic time, session restore, research validation and SHA-256 supply the
+implementation. This does not install Telemetry/OTLP hooks or memory services.
+
 ### Optional research retrieval and evidence ledger
 
 P14 adds no package, HTTP/HTML/search engine, executable plugin or non-Elixir

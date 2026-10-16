@@ -211,6 +211,7 @@ Chat commands:
 | `/skills` | Show available skill metadata |
 | `/session` | Show the current session ID and state |
 | `/info` | Show local application/provider/model facts without inference |
+| `/diagnostics` | Show content-free phase/budget and exact effective-context byte categories |
 | `/context` | Show saved workspace instruction sources, digests, and diagnostics |
 | `/context refresh` | Reload workspace instructions while idle, without inference |
 | `/cancel` | Stop current work and clear queued input; started effects may already have happened |
@@ -504,7 +505,12 @@ lifecycle extensions, prompt/output transform configuration, cross-session memor
 adapters and an operator trace-export interface are proposed in
 [P22](../plan.md#p22-extension-scaffold-and-lifecycle-hooks), not available CLI
 options. The [extension research](../developer/extensions.md) distinguishes those
-proposals from current behavior. P19 proposes local diagnostics for long-session
+proposals from current behavior. P19 supplies local diagnostics for long-session
 recovery; the [observability design](../developer/observability.md) separates
 sanitized diagnostics from private session journals and raw developer traces.
 No extension script, service, exporter or dependency is installed by this roadmap.
+
+Local `/diagnostics`, `ipse diagnose --resume ID` and explicit
+`ipse handoff --resume ID --note TEXT` are now available for context diagnosis and
+reviewed recovery. See [context recovery](recovery.md) for scope, privacy and
+limitations. These local facilities do not enable general hooks or remote tracing.
