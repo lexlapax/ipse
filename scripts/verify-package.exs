@@ -152,6 +152,15 @@ defmodule Ipse.PackageVerifier do
     unless String.contains?(output, "Bundled diagnostics and explicit handoff export passed"),
       do: raise("release diagnostics/recovery verification did not print its completion marker")
 
+    unless String.contains?(
+             output,
+             "Self-development skill fixture passed without inference or effects"
+           ),
+           do:
+             raise(
+               "release self-development skill verification did not print its completion marker"
+             )
+
     IO.puts(
       "PASS: extracted package help, demo from isolated fresh HOME/IPSE_HOME, default cwd, explicit --cwd, bundled MCP and delegation checks, and OTP/helper checks."
     )

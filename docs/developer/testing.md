@@ -2194,3 +2194,16 @@ no tail repair, corrupted checkpoint refusal, cancellation and unchanged idle
 resume. The new package fixture checks saved diagnostics and explicit handoff
 export without inference or replay. Hosted Linux/Mac verification follows the
 focused commit; no local Mac run is claimed.
+
+## P20 reusable self-development skill
+
+The bundled skill covers frozen-runner separation, explicit scope, independent
+review, real child budgets, content-free diagnostics, reviewed handoff and honest
+source/package/platform evidence. Its two resources remain inert. The scripted
+source fixture passed: the real Session loaded the skill and both resources,
+recorded source SHA-256 provenance, and issued no tools beyond those three reads.
+Effect policy was denied, state/HOME were isolated and no model inference/auth
+or external service was used. The extracted glibc-2.44 package ran the same
+fixture successfully under isolated HOME and a utility-only PATH, and the full
+native Linux suite passed 340 tests (14 macOS excluded). Live P21 evidence follows;
+the fixture does not prove a model followed every instruction.

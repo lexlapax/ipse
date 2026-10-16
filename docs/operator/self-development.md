@@ -1,5 +1,18 @@
 # Supervised self-development on macOS
 
+The bundled `$self-development` skill now supplies the reusable supervision,
+bounded review and evidence checklist used for subsequent trials. It is inert
+instruction, not permission to execute scripts or publish. Explicitly load its
+`references/evidence-checklist.md` and `references/review-request.md` resources as
+directed. The Mac procedure below still defines its own concrete task/authority;
+other hosts follow their repository/platform checks. Use the local
+[context recovery tools](recovery.md) for diagnosis or explicit handoff.
+
+The credential-free fixture `mix run scripts/demo-self-development.exs` verifies
+bundled discovery, both explicit resources and journal provenance with effects
+denied. It is scripted, not live model or self-development evidence. The extracted
+package verifier runs the same fixture without a development toolchain.
+
 This is the P18 operator runbook. The local Mac trial on 2026-10-16 produced an
 Ipse-authored `sessions --json` candidate with passing independent source,
 Mac native and extracted-package checks and a completed bounded review. The operator

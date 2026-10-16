@@ -176,6 +176,9 @@ try do
   false = Map.has_key?(handoff, "messages")
   IO.puts("Bundled diagnostics and explicit handoff export passed without inference/replay.")
 
+  Code.require_file(Path.join(Application.app_dir(:ipse, "priv"), "self-development-demo.exs"))
+  Ipse.SelfDevelopmentDemo.run()
+
   {:ok, question_session} =
     DynamicSupervisor.start_child(
       Ipse.Sessions,

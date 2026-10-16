@@ -289,6 +289,11 @@ P19 diagnostics and explicit handoff export add no dependency: existing Jason,
 OTP monotonic time, session restore, research validation and SHA-256 supply the
 implementation. This does not install Telemetry/OTLP hooks or memory services.
 
+P20 adds inert bundled skill/resources and an Elixir scripted fixture at
+`priv/self-development-demo.exs`, invoked by `scripts/demo-self-development.exs`
+and extracted-package verification. It reuses existing Session/Jason/journals and
+adds no dependency, model service, workflow framework or automatic script loading.
+
 ### Optional research retrieval and evidence ledger
 
 P14 adds no package, HTTP/HTML/search engine, executable plugin or non-Elixir

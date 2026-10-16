@@ -25,8 +25,8 @@ the next feature sequence on 2026-10-15:
 | [P17](#p17-structured-operator-questions) | Validated operator questions and resumable answers | Complete within documented scope |
 | [P18](#p18-supervised-self-development-on-the-operators-mac) | Second supervised trial using the combined harness on macOS | Complete within documented supervised scope; local and hosted checks passed |
 | [P19](#p19-long-session-diagnosis-and-recovery) | Diagnose retained-context limits and improve explicit recovery | Implemented; Linux source/package verified, hosted checks pending |
-| [P20](#p20-repeatable-supervised-self-development) | Reusable supervised development/review skill and evidence | Authorized; skill/fixture implementation in progress |
-| [P21](#p21-larger-self-development-trial-on-serenity) | Larger supervised trial with independent Mac verification | Authorized; queued after P20 |
+| [P20](#p20-repeatable-supervised-self-development) | Reusable supervised development/review skill and evidence | Skill/source/package fixtures verified; live P21 verification follows |
+| [P21](#p21-larger-self-development-trial-on-serenity) | Larger supervised trial with independent Mac verification | Authorized; preparing frozen runner and candidate worktree |
 | [P22](#p22-extension-scaffold-and-lifecycle-hooks) | Typed extension scaffold, lifecycle hooks and runtime observability | Research/design recorded; implementation not started |
 
 Feature completion does not close every live provider acceptance check. On
@@ -940,7 +940,9 @@ See the [diagnostics proposal](developer/observability.md).
 
 ## P20: repeatable supervised self-development
 
-Authorized, queued after P19. Turn demonstrated procedures into a bounded repository-development
+Implemented as the bundled `self-development` skill with evidence/review resources
+and a credential-free real Session fixture. Source/package fixtures and 340
+native Linux tests passed; live P21 verification follows. Turn demonstrated procedures into a bounded repository-development
 skill with supporting review/evidence resources. Reuse existing questions,
 configuration, profiles, approvals and journals; do not require P22 or build a
 workflow engine. Scope child reviews to their real six-step/time limits.

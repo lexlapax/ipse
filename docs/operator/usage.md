@@ -329,6 +329,10 @@ as separate shadows. Selection is deterministic; malformed/oversized/invalid
 UTF-8 documents are skipped. `review` and `project-orientation` are bundled.
 Use the latter for [project assessment](#working-with-the-agent).
 
+`$self-development` supplies a reusable supervised change/review/evidence procedure
+with explicitly loaded supporting resources; see [self-development](self-development.md).
+It grants no publication, installation or action permission.
+
 For embedding and isolated fixtures, see the explicit root inputs and session
 isolation rules in the [developer contract](../developer/architecture.md#skill-discovery).
 [Scoped configuration](configuration.md) loads operator/project/directory JSON

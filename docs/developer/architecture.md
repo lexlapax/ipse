@@ -330,3 +330,13 @@ journal events, is revalidated on resume and survives context compaction without
 retrieval replay. Call IDs/time are explicit host provenance, while source content
 and semantic support assessments remain untrusted. Search services are operator
 MCP configuration, never embedded endpoints. See [research contract](research.md).
+
+## Supervised development skill
+
+P20's bundled `self-development` skill and two inert resources compose existing
+orientation, questions, profiles, review, diagnostics and approvals. No workflow
+engine or executable hook is loaded by the skill. A deterministic provider fixture
+loads it and both resources through the real Session/journal with effect policy
+denied; the source and extracted-package checks run that fixture explicitly.
+Live application is separately verified in P21. See the
+[operator procedure](../operator/self-development.md).
