@@ -26,7 +26,7 @@ the next feature sequence on 2026-10-15:
 | [P18](#p18-supervised-self-development-on-the-operators-mac) | Second supervised trial using the combined harness on macOS | Complete within documented supervised scope; local and hosted checks passed |
 | [P19](#p19-long-session-diagnosis-and-recovery) | Diagnose retained-context limits and improve explicit recovery | Complete within documented scope; Linux and hosted Mac checks passed |
 | [P20](#p20-repeatable-supervised-self-development) | Reusable supervised development/review skill and evidence | Skill/source/package fixtures verified; live P21 verification follows |
-| [P21](#p21-larger-self-development-trial-on-serenity) | Larger supervised trial with independent Mac verification | Authorized; preparing frozen runner and candidate worktree |
+| [P21](#p21-larger-self-development-trial-on-serenity) | Larger supervised trial with independent Mac verification | Live authoring/recovery trial in progress; independent completion checks pending |
 | [P22](#p22-extension-scaffold-and-lifecycle-hooks) | Typed extension scaffold, lifecycle hooks and runtime observability | Research/design recorded; implementation not started |
 
 Feature completion does not close every live provider acceptance check. On
@@ -956,7 +956,15 @@ then commit/push.
 
 ## P21: larger self-development trial on Serenity
 
-Authorized, queued after P20. Select one moderately larger, reviewable Ipse change after P19/P20.
+Live supervised authoring is in progress from frozen P20 runtime `b7c0ed6` in a
+separate candidate worktree. The import implementation builds; an independent
+initial test run passed seven of eight new fixtures and identified a malformed
+unknown-call source fixture. The supervisor exercised byte-identical idle resume,
+inspected an unstarted proposal before explicit continuation, and used a bounded
+P19 handoff note for a fresh session after a safe retained-context refusal.
+Repeated orientation required supervisor phase narrowing; this is not unattended
+development evidence. Completion review, full checks and publication remain pending.
+Select one moderately larger, reviewable Ipse change after P19/P20.
 Use a frozen stable runner, candidate worktree, explicit configured profiles and
 independent review. Verify long-session behavior and evidence completeness, then
 source/native/package checks on Linux and independent Mac/hosted checks. Preserve
