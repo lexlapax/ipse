@@ -17,7 +17,7 @@ the next feature sequence on 2026-10-15:
 | [P9](#p9-parallel-local-subagents) | Parallel local subagents | Complete within documented scope |
 | [P10](#p10-network-mcp) | Explicit network MCP | Complete within documented scope |
 | [P11](#p11-live-dotsetup-trial) | Read-only assessment in `~/projects/lexlapax/dotsetup` | Read-only comparison and selected follow-ups complete |
-| [P12](#p12-task-tracker-coding-trial) | New forms/SQLite task tracker | Implementation in progress |
+| [P12](#p12-task-tracker-coding-trial) | New forms/SQLite task tracker | Specified-stack coding trial complete; broader harness validation pending |
 
 Feature completion does not close every live provider acceptance check. On
 2026-10-15, installed Ollama `qwen3.5:9b`, Anthropic `claude-haiku-4-5`, and
@@ -496,19 +496,19 @@ local/bundled verification are complete; hosted Linux/macOS checks passed. See
 [repair evidence](developer/testing.md#native-bash-and-visibility-repair-2026-10-15).
 The developer continued with bundled project-orientation guidance, now verified
 with a synthetic live project; see [skill evidence](developer/testing.md#project-orientation-skill-2026-10-15).
-Multi-repository read roots remain a separate proposal without implementation
-authorization:
+The three selected follow-ups are complete; multi-repository read roots remain
+a separate proposal without implementation authorization:
 
 1. Implemented and locally verified: Bash descriptor-path compatibility without
    exposing host processes or weakening the native filesystem/network boundary.
    Ordinary Bash/project-script regressions cover compatibility alongside
    adversarial enforcement.
 2. Implemented and locally verified: bounded, platform-specific sandbox visibility
-   facts for the model and operator. Distinguish hidden paths from host absence; do not silently expand
-   roots or retry in trusted mode. Evaluate explicit read-only dependency roots
+   facts for the model and operator. Distinguish hidden paths from host absence;
+   do not silently expand roots or retry in trusted mode. Evaluate explicit read-only dependency roots
    separately if multi-repository verification is selected.
-3. Implemented and verified: reusable project-orientation/Git workflow guidance: inspect existing
-   changes and validation status before operator provisioning; preserve edits,
+3. Implemented and verified: reusable project-orientation/Git workflow guidance:
+   inspect existing changes and validation status before operator provisioning; preserve edits,
    identify owners, and distinguish source, staged deployment, and live proof.
    Existing read/approved shell tools handled this after a neutral follow-up.
 
@@ -523,10 +523,25 @@ website with forms and a SQLite database, then chose a task tracker. Use a
 separate project. Ipse implements the app; independently review its output and
 verify create/edit/complete/delete forms, input validation, and persistent data.
 Keep provider selection and individual tool approvals explicit. Record actual
-checks and any Ipse changes indicated by this trial. Elixir was explicitly imposed for this first
+checks and any Ipse changes indicated by this trial. Elixir was explicitly
+imposed for this first
 app by the test operator; the developer chose to finish it while clarifying that
 Ipse's implementation language must not constrain its workloads. This trial
 therefore does not validate autonomous stack selection or general non-coding
 work. Future trials should preserve user choice or allow task-appropriate stack
 selection, including TypeScript/Node or Python. Dotsetup's selected
 read-only comparison is complete and its existing edits remain untouched.
+
+Completed in `~/projects/lexlapax/ipse-task-tracker` through Ipse's embedded OTP
+session API, ChatGPT subscription, and individually approved trusted local tools.
+The app and independent review passed 16 tests, real HTTP CRUD/validation/security
+checks, SQLite persistence after restart, and desktop/narrow Chromium layout
+inspection. Source is committed locally; no new GitHub repository or deployment
+was created. See [P12 evidence](developer/testing.md#p12-task-tracker-coding-trial-2026-10-15).
+
+The long session exposed an existing compaction limitation: one or two retained
+user turns can exceed the trigger without an eligible older prefix. A short
+continuation made the completed first turn eligible; live compaction and local
+commit then succeeded without replay. Improving long-turn compaction and its
+cause-specific recovery diagnostics is proposed follow-up, not implemented here.
+A later neutral stack-selection/non-coding trial remains separate from this pass.

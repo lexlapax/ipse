@@ -253,8 +253,16 @@ Use `--context-bytes N` to adjust the conservative ceiling (minimum 8192), or
 `--no-compact` to stop at the ceiling without summarizing. `/cancel` also stops
 an active compaction. These settings can be supplied again when resuming.
 If pinned user history, recent exchanges, or the summary cannot fit, Ipse stops
-with recovery guidance. Review the journal and supply necessary context to a new
-session. Compaction is not unlimited memory or a provider token-count guarantee.
+with recovery guidance. The latest two user turns are retained in full, so a
+long session with only one or two turns can stop before the hard ceiling.
+Inspect the journal and actual tool effects first. A short continuation may make
+an older completed turn eligible, as in the
+[task-tracker trial](../developer/testing.md#p12-task-tracker-coding-trial-2026-10-15);
+it does not authorize or require repeating completed effects. If retained
+history still cannot fit, supply necessary context to a new session or explicitly
+choose a suitable `--context-bytes` ceiling. Compaction is not unlimited memory
+or a provider token-count guarantee.
+
 
 ## Runtime identity
 

@@ -1576,3 +1576,74 @@ The developer then selected a new forms/SQLite task-tracker app for the coding
 trial, replacing the proposed dotsetup coding trial. Dotsetup's read-only
 comparison remains complete; its existing edits are preserved. See
 [the separate coding trial](../plan.md#p12-task-tracker-coding-trial).
+
+## P12 task tracker coding trial, 2026-10-15
+
+The developer selected a new forms/SQLite task tracker instead of modifying
+dotsetup. Ipse built it in the separate local project
+`~/projects/lexlapax/ipse-task-tracker`. This used the real embedded
+`Ipse.Session` OTP API, not the terminal CLI, with explicit ChatGPT subscription
+selection, requested `gpt-6.1-sol`, and trusted shell mode `off`. Trusted execution
+was selected openly for public package fetching and local HTTP tests; it was not
+a fallback from native mode. Each mutation/shell call was individually reviewed
+and approved. There was no provider/billing fallback, delegation, MCP call,
+private existing-project transfer, deployment, or new GitHub publication.
+State/auth ownership stayed separate; private journals remained outside Git.
+
+The test operator explicitly imposed Elixir/OTP and no Node/Python for this
+first app. The developer clarified that Ipse is a general-purpose AI harness
+written in Elixir, while its workloads may use other languages or tools, then
+selected finishing this app. Repository instructions, entry points, architecture,
+and operator guidance now distinguish harness implementation constraints from
+workload choices. This specified-stack trial does not verify autonomous stack
+selection or broad non-coding coverage. Current host instructions and bundled
+tools remain coding/project-oriented; broader coverage is still a validation goal.
+
+Ipse implemented server-rendered create/edit/complete/reopen/delete forms using
+Bandit, Plug, Ecto SQL/SQLite and Phoenix HTML escaping, with a locked dependency
+inventory, explicit migration/setup commands, loopback/Host restrictions, CSRF,
+inline validation, and responsive CSS. Initial failures in test fixtures, pool
+setup, unsupported SQLite constraint DDL, and blank-title validation were
+reported and repaired. Independent review reproduced null-value crashes in the
+domain API; Ipse's subsequent trim guards addressed them and seven added domain
+regressions prove invalid changesets, normalization, and no partial writes.
+
+Both Ipse and independent Serenity checks passed formatting, warnings-as-errors
+compilation, and **16 tests**. Ipse's real Bandit HTTP smoke passed CRUD,
+validation, escaping, CSRF/Host checks, GET mutation denial, process restart
+persistence, and fresh versus stale forms. A separate independent HTTP client
+also verified these key effects against an isolated database across an actual
+server stop/restart. Installed Chromium 153.0.8010.52 rendered a 1280 × 900 task
+list and a 390 × 844 new-task form; both captures were inspected for layout and
+clipping. Screenshots and test state stayed outside Git. No full browser
+interaction, screen-reader, load/fault-injection, macOS app, or SSH-forwarding
+check is claimed. SSH local forwarding is documented, not configured or tested.
+
+The first implementation turn completed successfully. The review turn stopped
+at the compaction trigger after successful tests and Git staging: the transcript
+had only two user turns, so there was no older complete prefix outside the two
+retained turns. The embedding harness initially discarded the error notification;
+metadata-only diagnosis reproduced the planner's "not enough complete user
+history" result. A short third user turn successfully compacted **348,382 to
+270,175 bytes**, covering 52 earlier messages, then inspected staged state and
+committed without replaying implementation/setup/tests. The original journal
+remained intact. All 37 tool intents had recorded outcomes: 31 individually
+approved mutations/shell calls and six read/skill calls requiring no approval.
+This exposes a long-turn usability limit and a need for clearer recovery causes;
+no compaction-policy change is claimed. See the
+[current contract](context-compaction.md#bounds-and-failure-behavior).
+
+The app source was committed locally at `5d1ebb0`; independent verification docs
+were committed at `b55c478`. Its worktree is clean and no remote is configured.
+A normal development instance was started on Serenity at `127.0.0.1:4100` with
+`var/tasks.db`, separate from the cleaned-up synthetic verification database,
+and returned HTTP 200. First creation logged one transient pooled SQLite
+connection-lock error before migration/startup succeeded; no request failure
+was observed. The source app README owns its operating procedures and limitations.
+Dotsetup's original status/diff/lockfile hashes remained unchanged.
+
+This completes the selected local coding trial. Proposed next harness work is
+safe compaction for long action turns and cause-specific recovery diagnostics;
+a later trial should allow task-appropriate stack selection and separately
+exercise non-coding work. This evidence does not require a project registry,
+new language-specific runtime dependency in Ipse, or a new GitHub adapter.

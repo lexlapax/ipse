@@ -100,7 +100,11 @@ requesting another mutation.
 
 If automatic compaction cannot fit the pinned user history, recent exchanges,
 or a valid summary, work stops and the original journal is retained. Review it
-and start a new session with necessary context supplied explicitly.
+and inspect actual effects before continuing. With only one or two user turns,
+a short continuation may make an older completed turn eligible for compaction;
+large retained history can still require a new session with necessary context
+supplied explicitly. Never repeat a completed effect solely because the turn
+stopped.
 `--no-compact` disables summary requests; `--context-bytes` adjusts the conservative
 byte ceiling. See [compaction behavior](usage.md#context-compaction).
 A damaged committed checkpoint stops resume; keep the original journal for

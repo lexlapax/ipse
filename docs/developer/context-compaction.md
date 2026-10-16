@@ -38,6 +38,17 @@ trigger threshold. Pinned ledgers and recent exchanges are never silently trimme
 to make this work. Oversized user input, recent tool results, or an ever-growing
 intent ledger can therefore stop work with recovery guidance.
 
+Because the latest two user turns are retained in full, a conversation with
+only one or two turns has no eligible older prefix. A long coding/action turn
+can stop at the 80% trigger even before the hard ceiling. In the
+[live task-tracker trial](testing.md#p12-task-tracker-coding-trial-2026-10-15), a
+short third user turn made the completed first turn eligible, and compaction
+then succeeded without replay. This is conditional recovery, not a guarantee:
+large retained turns or pinned ledgers can still prevent a safe checkpoint.
+Safe compaction within a long turn and cause-specific diagnostics remain
+follow-up work; the current implementation still uses complete user-turn cuts.
+
+
 `--context-bytes` adjusts the ceiling (minimum 8192); `--no-compact` retains
 hard-ceiling behavior without summarization. These byte bounds are not model
 token counts or a guarantee that any provider accepts a request of that size.
