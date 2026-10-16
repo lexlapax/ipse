@@ -15,7 +15,7 @@ the next feature sequence on 2026-10-15:
 | [P8](#p8-bounded-skill-resources) | Bounded explicit skill resources | Complete within documented scope |
 | [P9](#p9-parallel-local-subagents) | Parallel local subagents | Complete within documented scope |
 | [P10](#p10-network-mcp) | Explicit network MCP | Complete within documented scope |
-| [P11](#p11-live-dotsetup-trial) | Live use in `~/projects/lexlapax/dotsetup` | Planned after P10 |
+| [P11](#p11-live-dotsetup-trial) | Live use in `~/projects/lexlapax/dotsetup` | Read-only assessment complete; coding trial pending |
 
 Feature completion does not close every live provider acceptance check. On
 2026-10-15, installed Ollama `qwen3.5:9b`, Anthropic `claude-haiku-4-5`, and
@@ -481,4 +481,27 @@ current needs; retain explicit provider selection, full tool approvals, and
 unknown-outcome recovery. Record the actual task, provider/model, checks, and
 limitations without credentials or private transcripts. Do not infer successful
 live use from Ipse fixtures or earlier scratch-workspace checks.
-Status: planned after P10; the repository has not been changed for this trial.
+Status: the developer-selected read-only project/next-steps assessment completed
+with the real CLI, ChatGPT subscription, and Linux native shell profile on
+Serenity. The existing worktree change was preserved. A follow-up health check
+exposed native Bash process-substitution incompatibility and a model claim that
+a sandbox-hidden sibling checkout was absent from the host. See the
+[comparison and actual checks](developer/testing.md#p11-live-project-assessment-2026-10-15).
+No project edits, live deployment, or coding-change acceptance are claimed.
+
+Recommended follow-up, not implementation authorization:
+
+1. Reproduce and repair Bash descriptor-path compatibility without exposing
+   host processes or weakening the native filesystem/network boundary. Add
+   ordinary Bash/project-script regressions alongside adversarial enforcement.
+2. Supply bounded, platform-specific sandbox visibility facts to the model and
+   operator. Distinguish hidden paths from host absence; do not silently expand
+   roots or retry in trusted mode. Evaluate explicit read-only dependency roots
+   separately if multi-repository verification is selected.
+3. Add reusable project-orientation/Git workflow guidance: inspect existing
+   changes and validation status before operator provisioning; preserve edits,
+   identify owners, and distinguish source, staged deployment, and live proof.
+   Existing read/approved shell tools handled this after a neutral follow-up.
+
+GitHub was not exercised, so this trial does not establish a need for a new
+GitHub adapter. A later coding trial remains pending after the chosen repairs.

@@ -1415,3 +1415,68 @@ Serenity ran the local Linux checks; GitHub Actions ran the separate
 `ubuntu-latest` and `macos-14` jobs. No macOS suite or Mac live-provider request
 ran locally on Serenity. The initial transport's
 [hosted run also passed](https://github.com/lexlapax/ipse/actions/runs/38849383383).
+
+## P11 live project assessment, 2026-10-15
+
+The developer selected a read-only assessment of the live dotsetup checkout:
+ask what the project does and what its next steps are, independently read it,
+then compare the answers and identify needed Ipse changes. Ran the actual
+interactive source CLI with explicit ChatGPT subscription selection, requested
+`gpt-6.1-sol`, `--cwd` pointing to that checkout, `--sandbox native`, and an
+isolated temporary state directory. Project-content transfer to OpenAI received
+explicit developer approval after automatic review required it. There was no
+provider/billing fallback. Private journals and visible answer copies remained
+owner-only outside Git; no transcript, account data, or repository secret values
+are recorded here.
+
+The first answer used file reads only. It correctly identified the project's
+purpose, implemented command surface, file-link versus system-copy behavior,
+completed core work, staged deployment pilot, and explicitly deferred work.
+It distinguished repository records from fresh live verification and named the
+operator approval/credential gates. Independent code/document review agreed.
+It did not inspect current Git state or run checks and said so, but recommended
+operator provisioning before doing the available repository preflight.
+
+A neutral follow-up requested current Git state and documented safe checks
+before provisioning. The same session performed 27 file reads and nine exact
+individually approved shell calls across both turns. No write/edit, Git sync,
+installation, real credential provisioning, live system change, delegation, or
+MCP call occurred. The follow-up found the existing unrelated lockfile edit,
+reported local remote-tracking parity without claiming a fresh fetch, and revised
+its recommendation to validation first. The existing worktree and diff hashes
+were unchanged afterward. No private project content was added to Ipse docs.
+
+| Check | Inside Ipse's Linux native shell | Independent Serenity check |
+| --- | --- | --- |
+| Git state and whitespace | Existing change preserved; checks passed; no fetch | Same status and unchanged diff hash |
+| Standalone ShellCheck | 52 scripts passed | 52 scripts passed through the normal hygiene command |
+| Core sandboxed project suite | Stopped at the first Bash process-substitution failure | 134 passed, 0 failed |
+| Full repository hygiene | Stopped before checks at `/dev/fd/63` | Secret scan passed; failed on the pre-existing change's missing changelog entry |
+| Repository consistency check | Passed | Passed |
+| Integration suite | Five passed, one source-comparison test skipped | All six passed |
+| Pinned source verification | Sibling checkout not visible; failed | Existing sibling clone found; all six pinned artifacts matched |
+
+A separate synthetic `mapfile -t lines < <(...)` probe through `Ipse.Runner`
+returned exit 0 in explicitly chosen trusted mode and exit 1 with
+`/dev/fd/63: No such file or directory` in native mode. The native profile
+intentionally has no `/proc` or descriptor-path view. This is a reproduced
+compatibility gap, not a reason to expose host processes or silently weaken
+confinement. The project's own temporary-fixture tests passed independently;
+Ipse correctly reported their native failures rather than claiming success.
+
+The follow-up also called a sandbox-hidden sibling source checkout "absent"
+without qualifying host visibility. It exists on Serenity, and independent
+pin/integration checks passed. This shows a need for explicit, platform-specific
+sandbox visibility facts in model/operator context. Optional extra read-only
+roots would require a separate trusted configuration and boundary review; the
+trial did not expand roots or retry project commands in trusted mode.
+
+Recommended next work: repair/retest ordinary Bash compatibility while retaining
+adversarial enforcement; supply precise sandbox visibility guidance; then add
+reusable project-orientation/Git workflow instructions that gather repository
+health before operator-only steps. Existing tools handled the workflow after
+prompting. There is no evidence here requiring a project registry, workflow
+framework, or GitHub adapter; GitHub was not exercised. Substantive editing,
+commit/push inside dotsetup, deployment, and other provider/host project trials
+remain unverified. This completes the selected read-only assessment, not general
+coding acceptance in that live repository. See [remaining P11 work](../plan.md#p11-live-dotsetup-trial).

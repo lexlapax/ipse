@@ -97,6 +97,19 @@ Arch. Other models/hosts remain separate checks. See
 
 ## Working with the agent
 
+For a project assessment, start with `--cwd` and ask for purpose, implemented
+behavior, next steps, owners, and evidence. A useful follow-up is: "Inspect
+existing Git changes and run the documented safe checks before recommending
+operator provisioning; keep this assessment read-only." Ipse currently needs
+explicit prompting for that workflow; there is no bundled project-orientation
+or GitHub skill. Shell checks still require full approvals. A read-only request
+does not change the OS profile into a read-only filesystem sandbox.
+
+The [live project assessment](../developer/testing.md#p11-live-project-assessment-2026-10-15)
+used this workflow without changing its target repository. Linux native mode
+currently blocks Bash process substitution and hides sibling dependency
+checkouts; see [diagnosis](troubleshooting.md#bash-descriptor-paths-and-sibling-repositories).
+
 Interactive chat asks before `write`, `edit`, and every `shell` call. `--yes`
 allows them for the session. Headless `run` denies mutations unless `--yes` is
 present. Approvals display the full proposed arguments.

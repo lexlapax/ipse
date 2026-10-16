@@ -138,6 +138,23 @@ Cancelling the local connection cannot confirm that remote work stopped; inspect
 remote effects before requesting another call. See
 [network setup and limits](mcp.md#configure-a-network-endpoint).
 
+## Bash descriptor paths and sibling repositories
+
+Under the Linux native profile, Bash process substitution such as `<(...)` or
+`mapfile ... < <(...)` currently fails with `/dev/fd/63: No such file or directory`.
+This can stop a project's own checks before they reach the application tests.
+Record the failed command and its exit status; do not call that a passing check
+or assume the project is broken. The
+[live assessment](../developer/testing.md#p11-live-project-assessment-2026-10-15)
+confirmed the difference with the same synthetic command in trusted/native modes.
+
+Native shell calls also see only the selected workspace and allowed system
+roots. A documented sibling source checkout may exist on the host while being
+invisible to the command. A skipped dependency check is not a verification pass
+or proof of host absence. Report that limitation and retain the selected policy;
+Ipse never automatically reruns an unsuccessful call outside the sandbox.
+See [native policy and current limits](../developer/sandbox.md#observed-bash-and-dependency-visibility-limits).
+
 ## Sharing diagnostics
 
 Report the command, toolchain, sanitized error, and whether it ran in a sandbox.

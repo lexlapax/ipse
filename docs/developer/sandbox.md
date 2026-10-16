@@ -55,6 +55,23 @@ cleanup remains necessary. See [native protocol and exact limits](../../native/R
 This profile reduces specified OS capabilities; it is not protection against
 kernel vulnerabilities, an administrator, or every resource-exhaustion technique.
 
+### Observed Bash and dependency visibility limits
+
+The [live project assessment](testing.md#p11-live-project-assessment-2026-10-15)
+found that ordinary Bash process substitution fails under the current Linux
+profile: `/dev/fd/63` is unavailable. A synthetic `mapfile -t lines < <(...)`
+probe passes in explicitly selected trusted mode and fails in native mode.
+Real repository hygiene and test scripts stopped before their checks completed.
+The existing confinement suite does not establish general Bash/project-script
+compatibility. Descriptor-path support needs a separate bounded design and
+regressions; do not bind the host's entire `/proc` as a workaround.
+
+A sibling source checkout also exists on the host but is not mounted into the
+shell workspace. Tests may skip source verification or report a missing path
+inside that namespace. This is not evidence that the checkout is absent from
+the host. The current profile has no extra dependency-root option; do not
+silently broaden roots, clone replacements, or switch to trusted execution.
+
 ## macOS production boundary
 
 On 2026-10-15, after reviewing the descendant escapes below, the developer
