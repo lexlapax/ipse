@@ -174,7 +174,9 @@ defmodule Ipse.Extensions.Registry do
             entry.identity["capabilities"]
           ) == :ok and
           Ipse.Extensions.Subscriptions.digest(entry.subscriptions) ==
-            entry.identity["subscriptions_sha256"]
+            entry.identity["subscriptions_sha256"] and
+          Ipse.Extensions.Subscriptions.validate_handlers(entry.subscriptions, entry.exports) ==
+            :ok
       end) and
       entries == Enum.sort_by(entries, &{&1.identity["order"], &1.identity["instance"]}) and
       length(entries) == length(Enum.uniq_by(entries, & &1.identity["instance"])) and
@@ -266,6 +268,7 @@ defmodule Ipse.Extensions.Registry do
       Ipse.Lifecycle.Source,
       Ipse.Lifecycle.Event,
       Ipse.Extensions.Subscriptions,
+      Ipse.Extensions.EventJob,
       Ipse.Session
     ]
     |> Enum.map(fn module ->

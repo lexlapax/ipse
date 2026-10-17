@@ -1,7 +1,8 @@
 # Extension host calls and scoped state
 
-Host calls let an explicitly invoked extension request a finite, separately
-admitted operation and continue from its committed receipt. Workers return an
+Host calls let an explicit invocation or a source-bound
+[event job](extension-event-jobs.md) request a finite, separately admitted
+operation and continue from its committed receipt. Workers return an
 outer `host_call`; ordinary `kind: result` fields remain data. Session owns
 capability, approval, lifetime and journal admission. The owned task performs IO
 outside Session, keeping cancellation and operator input responsive.
@@ -14,7 +15,7 @@ foundation remains in progress; no production memory algorithm is selected here.
 ## Negotiation and protocol
 
 Artifacts declare `host.actions` and the operation capabilities they need,
-alongside their `invoke.*` exports:
+alongside their `invoke.*` or `event.job` exports:
 
 | Capability | Operation family | Contract |
 | --- | --- | --- |

@@ -90,6 +90,7 @@ trust ceiling must cover every declared capability:
 | `host.services` | Calls through explicit operator service bindings | [Composition](#service-composition) |
 | `host.context` | Bounded caller-scoped context publications | [Context/evidence](#context-and-evidence) |
 | `stream.text` | Acknowledged private visible-text delivery through a scoped worker handle | [Text clients](#visible-text-clients) |
+| `event.job` | Source-bound prompt handlers using normal finite approved actions, before requests or after answers | [Event jobs](#event-jobs) |
 | `event.notify` | Declared read-only original/effective prompt event notifications; metadata only without a private read capability | [Event subscribers](#prompt-event-subscribers) |
 | `event.prompt.original`, `event.prompt.effective` | The selected original or final-effective user-text view | [Event subscribers](#prompt-event-subscribers) |
 
@@ -183,8 +184,9 @@ model calls. The separate explicit invocation/action contracts below support
 scoped effects.
 
 Read-only prompt subscribers use their own manifest declarations and trust grants,
-as described below. Automatic graph/memory actions remain pending; notification
-access does not authorize storage, model requests or transfer to another system.
+as described below. Separate event jobs can propose approved storage and recall
+actions; notification access alone does not authorize them, model requests or
+transfer to another system.
 
 ## Prompt event subscribers
 
@@ -207,7 +209,38 @@ automatically. A new explicit input creates new occurrence/delivery IDs. Live
 diagnostics show admitted/pending delivery and unconfirmed cleanup without prompt
 content. A timeout may stop the VM without confirming final cleanup; close/cancel
 reports that uncertainty. Notifications cannot perform host actions or alter the
-current prompt. Event-triggered jobs and awaited memory recall remain P22 work.
+current prompt.
+
+## Event jobs
+
+Reviewed artifacts may separately declare `event.job` handlers for the same
+original/effective prompt facts. Select them through the ordinary trust/configuration
+and `--extension` mechanisms. Review the handler, schedule, private view and each
+requested host capability; an enabled notification never silently becomes an
+effectful job. Jobs do not appear in the model tool catalog or `/ext` commands.
+See the [job SDK contract](../developer/extension-event-jobs.md).
+
+`before_request` runs after prompt transforms and before inference. A recall job
+can read scoped state or a bound service, then publish bounded attributed context
+for the frozen request snapshot. Required failure stops that attempt before
+inference. `after_turn` runs after the answer/presentation is saved; its work
+cannot revise that answer, and published context is available only to a later
+request. The session stays busy until this serial maintenance lane settles;
+fully concurrent background turns are not supported.
+
+Writes and other effects retain normal full approval, including headless denial
+without explicit enabling. A question answer is not write approval. The host
+computes completion from action receipts: denied/conflicting/failed actions
+produce a failed delivery even if the callback claims success. Optional known
+failure may continue; any unknown job outcome stops the lane because effects may
+have occurred. Diagnostics report content-free delivery outcome counts.
+
+An explicitly answered pending question can resume its saved continuation and
+remaining plan without rerunning the event callback or earlier effects. Ordinary
+idle resume starts no jobs, and interrupted work is never automatically retried.
+Store deletion does not erase original journals or prior provider transfers.
+Production memory/graph policy and the independent installed-package proof remain
+separate plan requirements.
 
 ## Scoped state host calls
 

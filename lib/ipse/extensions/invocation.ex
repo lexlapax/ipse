@@ -127,6 +127,7 @@ defmodule Ipse.Extensions.Invocation do
         started: %{},
         bound: MapSet.new(),
         session_id: nil,
+        delivery: nil,
         requests: %{}
       }
 
@@ -247,6 +248,12 @@ defmodule Ipse.Extensions.Invocation do
   defp validate_event(%{"type" => type}, state, _, _) when type in ~w(cancelled turn_finished),
     do: {:ok, %{state | active: nil}}
 
+  defp validate_event(%{"type" => "extension_event_intent"} = event, state, _, _),
+    do: {:ok, %{state | delivery: event}}
+
+  defp validate_event(%{"type" => "extension_event_result"}, state, _, _),
+    do: {:ok, %{state | delivery: nil}}
+
   defp validate_event(%{"type" => type}, _, _, _) when type in @types, do: @error
 
   defp validate_event(event, state, _, _) do
@@ -280,6 +287,19 @@ defmodule Ipse.Extensions.Invocation do
     end
   end
 
+  defp valid_origin?(%{"descriptor" => %{"stage" => "event.job"}} = event, state) do
+    delivery = state.delivery
+    trigger = event["event_trigger"]
+
+    is_map(delivery) and delivery["declaration"]["mode"] == "job" and
+      delivery["identity"] == event["identity"] and
+      delivery["declaration"]["handler"] == event["descriptor"]["id"] and
+      trigger["delivery_id"] == delivery["delivery_id"] and
+      trigger["intent_sha256"] == Ipse.Compaction.digest([delivery]) and
+      Ipse.Compaction.digest([event["payload"]["arguments"]["event"]]) ==
+        delivery["payload_sha256"]
+  end
+
   defp valid_origin?(_, _), do: true
 
   defp valid_intent?(event) do
@@ -287,7 +307,7 @@ defmodule Ipse.Extensions.Invocation do
     descriptor = event["descriptor"]
     identity = event["identity"]
 
-    Enum.sort(Map.keys(event)) == Enum.sort(@intent_keys) and
+    Enum.sort(Map.keys(event)) == Enum.sort(intent_keys(event)) and
       event["type"] == "extension_invocation_intent" and event["version"] === 1 and
       Identity.valid?(identity) and id?(event["invocation_id"]) and
       Catalog.validate_snapshot(%{"version" => 1, "entries" => [descriptor]}) == :ok and
@@ -295,7 +315,10 @@ defmodule Ipse.Extensions.Invocation do
       descriptor["instance"] == identity["instance"] and
       Ipse.Extension.validate(payload) == :ok and
       Enum.sort(Map.keys(payload)) ==
-        ~w(api_version arguments id invocation_id session_id turn_id) and
+        Enum.sort(
+          ~w(api_version arguments id invocation_id session_id turn_id) ++
+            if(Map.has_key?(event, "event_trigger"), do: ["trigger"], else: [])
+        ) and
       payload["api_version"] === 1 and payload["invocation_id"] == event["invocation_id"] and
       Enum.all?(~w(session_id turn_id), &id?(payload[&1])) and payload["id"] == descriptor["id"] and
       Catalog.validate_call(descriptor, payload["arguments"]) == :ok and
@@ -306,18 +329,29 @@ defmodule Ipse.Extensions.Invocation do
   end
 
   defp valid_parent?(%{"descriptor" => %{"stage" => "invoke.tool"}} = event) do
-    is_binary(event["parent_call_id"]) and String.valid?(event["parent_call_id"]) and
+    not Map.has_key?(event, "event_trigger") and is_binary(event["parent_call_id"]) and
+      String.valid?(event["parent_call_id"]) and
       byte_size(event["parent_call_id"]) in 1..512 and id?(event["parent_request_id"]) and
       event["approval"] in ~w(approved session_allow)
+  end
+
+  defp valid_parent?(%{"descriptor" => %{"stage" => "event.job"}} = event) do
+    is_nil(event["parent_call_id"]) and is_nil(event["parent_request_id"]) and
+      event["approval"] == "event_trigger" and
+      "event.job" in event["identity"]["capabilities"] and
+      Ipse.Extensions.EventJob.valid_trigger?(event["event_trigger"]) and
+      event["payload"]["trigger"] ==
+        Ipse.Extensions.EventJob.public_trigger(event["event_trigger"])
   end
 
   defp valid_parent?(event),
     do:
       is_nil(event["parent_call_id"]) and is_nil(event["parent_request_id"]) and
+        not Map.has_key?(event, "event_trigger") and
         event["approval"] == "operator_request"
 
   defp valid_result?(event) do
-    with true <- Enum.sort(Map.keys(event)) == Enum.sort(@intent_keys ++ @result_keys),
+    with true <- Enum.sort(Map.keys(event)) == Enum.sort(intent_keys(event) ++ @result_keys),
          true <- event["type"] == "extension_invocation_result",
          true <- valid_intent?(result_intent(event)),
          true <- is_integer(event["action_count"]) and event["action_count"] in 0..16,
@@ -345,6 +379,9 @@ defmodule Ipse.Extensions.Invocation do
 
   def result_intent(event),
     do: event |> Map.drop(@result_keys) |> Map.put("type", "extension_invocation_intent")
+
+  defp intent_keys(event),
+    do: @intent_keys ++ if(Map.has_key?(event, "event_trigger"), do: ["event_trigger"], else: [])
 
   defp find_call(%{"tool_calls" => calls}, id) when is_list(calls) do
     Enum.find(calls, &(&1["id"] == id))

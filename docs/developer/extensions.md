@@ -20,9 +20,9 @@ Current contracts are organized by responsibility:
 | Durable request facts and embedded/worker private delivery | [Usage accounting](usage-accounting.md), [text channel](text-streams.md) |
 | Internal journal occurrence identity and typed prompt views | [Lifecycle source/view adapter](lifecycle-events.md#internal-journal-source-and-prompt-views); private journal pages remain host-only |
 | Declared read-only prompt delivery | [Event subscriptions](extension-events.md), with separate metadata/private authority and required/optional receipts |
+| Source-bound prompt actions and recall | [Event jobs](extension-event-jobs.md), with finite approved actions, before-request contributions and after-turn maintenance |
 
-Broader lifecycle subscriptions, event-triggered jobs,
-observability/developer controls and the
+Broader lifecycle subscriptions, observability/developer controls and the
 independent installed-package/supervised proofs remain open. The
 [plan](../plan.md#p22-extension-scaffold-and-lifecycle-hooks) owns current status;
 [testing](testing.md#current-evidence-and-next-checks) owns actual results.
@@ -173,8 +173,8 @@ Neither private access nor metadata includes hidden reasoning or auth.
 | Stage | Useful observations | Proposed transformation/effect boundary |
 | --- | --- | --- |
 | Configuration and session | Resolution, validation, start, resume, explicit close | Inspect selected extension manifest; executable activation remains operator-owned |
-| Prompt admission | Original received, effective projection committed or failed | Existing bounded transform; pending private subscriptions and separately admitted extraction jobs |
-| Context assembly | Instruction/skill sources and sizes, retrieval contributions | Existing bounded publications; pending ordered recall hook that freezes its snapshot before request dispatch |
+| Prompt admission | Original received, effective projection committed or failed | Bounded transforms, selected private notifications and separately admitted prompt jobs |
+| Context assembly | Instruction/skill sources and sizes, retrieval contributions | Bounded publications and before-request recall jobs with frozen main-request snapshots |
 | Model request | Start, first visible token, completion, error, cancellation, usage | P22 observes metadata; provider/model/billing and native continuation stay host-owned |
 | Stream and completed answer | Visible output counts, final response saved, presentation ready | Initial postprocessor affects completed display only, not individual stream chunks |
 | Tool lifecycle | Proposed, validated, approval requested/answered, intent synced, started, recorded/unknown/denied | P22 observes; future veto can restrict, never grant approval or rewrite a reviewed call |
@@ -342,7 +342,7 @@ interpreted as effects. Current interfaces and remaining proposals are distinct:
 | Context contribution | Implemented `context.publish` sets with provenance | Accept/refuse within budgets, then pin exact main-request snapshots |
 | Tool/command/service | Implemented declared result schemas or explicit `host_call` proposals | Owned invocation; full tool approval and finite separately admitted actions |
 | Lifecycle subscriptions | Stable journal sources and declared read-only original/final-effective prompt notifications | Exact acknowledgment; separate private-view authority, required/optional receipts and no replay |
-| Triggered work and ordered recall | Pending generic event-to-job and pre-request hook contracts | Separate action admission; committed source/provenance and deterministic request snapshots |
+| Triggered work and ordered recall | Implemented prompt jobs with before-request/after-turn schedules; broader lifecycle jobs remain pending | Separate action admission; committed source/provenance and deterministic request snapshots |
 | Before-settlement scheduling | Future explicitly negotiated capability | Must validate remaining budgets/phase; no arbitrary auto-continuation exists |
 
 The linked operation guides own exact implemented envelope fields and bounds.

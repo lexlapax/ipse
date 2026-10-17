@@ -19,7 +19,10 @@ separate from invocation host actions.
 `extension.json` optionally adds `exports`. Its presence is required when
 declaring the corresponding `invoke.tool`, `invoke.command` or `invoke.service`
 capability. Discovery/import validates data without calling extension code.
-The closed version-1 object always has `version`, `tools`, `commands`, `services`:
+The version-1 object has `version`, `tools`, `commands`, `services` and an optional
+`jobs` group. Omitted/empty jobs preserve legacy catalog digests.
+[Event jobs](extension-event-jobs.md) use separate `event.job` admission; they are
+not model tools or manually callable exports. A catalog without jobs looks like:
 
 ```json
 {

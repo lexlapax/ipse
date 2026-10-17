@@ -1,7 +1,7 @@
 defmodule Ipse.Extensions.Subscriptions do
   @moduledoc "Inert prompt subscriptions and pure no-replay delivery receipts."
   alias Ipse.Journal
-  alias Ipse.Extensions.{Identity, Manifest}
+  alias Ipse.Extensions.{Identity, Manifest, EventJob, Catalog}
   alias Ipse.Lifecycle.{Source, Event}
   @error {:error, :invalid_extension_subscription}
   @types ~w(extension_event_intent extension_event_result)
@@ -10,6 +10,19 @@ defmodule Ipse.Extensions.Subscriptions do
     "prompt.effective_committed" => ~w(metadata prompt.effective)
   }
   def types, do: @types
+
+  def summary(events) do
+    outcomes =
+      for %{"type" => "extension_event_result", "outcome" => outcome} <- events, do: outcome
+
+    admitted = Enum.count(events, &(&1["type"] == "extension_event_intent"))
+
+    Map.new(
+      ~w(acknowledged completed failed unknown not_started),
+      &{&1, Enum.count(outcomes, fn outcome -> outcome == &1 end)}
+    )
+    |> Map.merge(%{"admitted" => admitted, "incomplete" => admitted - length(outcomes)})
+  end
 
   def digest(declarations),
     do: Ipse.Compaction.digest([Enum.sort_by(declarations || [], & &1["id"])])
@@ -20,7 +33,9 @@ defmodule Ipse.Extensions.Subscriptions do
     with true <- is_list(declarations) and length(declarations) <= 4,
          true <- Enum.all?(declarations, &declaration?/1),
          true <- length(declarations) == length(Enum.uniq_by(declarations, & &1["id"])),
-         true <- declarations != [] == "event.notify" in capabilities,
+         true <-
+           Enum.any?(declarations, &(&1["mode"] == "notify")) == "event.notify" in capabilities,
+         true <- Enum.any?(declarations, &(&1["mode"] == "job")) == "event.job" in capabilities,
          true <-
            Enum.all?(
              [
@@ -40,11 +55,31 @@ defmodule Ipse.Extensions.Subscriptions do
   end
 
   def declarations(config) do
-    for event <- ~w(prompt.received prompt.effective_committed),
+    for schedule <- ~w(before_request after_turn),
+        event <- ~w(prompt.received prompt.effective_committed),
         entry <- Map.get(config, :extensions, []),
         declaration <- Enum.sort_by(entry.subscriptions, & &1["id"]),
         declaration["event"] == event,
+        EventJob.schedule(declaration) == schedule,
         do: %{instance: entry.identity["instance"], declaration: declaration}
+  end
+
+  def declarations(config, schedule),
+    do: Enum.filter(declarations(config), &(EventJob.schedule(&1.declaration) == schedule))
+
+  def validate_handlers(declarations, exports) do
+    exports = Catalog.normalize(exports)
+
+    if Enum.all?(declarations || [], fn declaration ->
+         declaration["mode"] != "job" or
+           Enum.any?(exports["jobs"], &(&1["id"] == declaration["handler"]))
+       end) do
+      :ok
+    else
+      @error
+    end
+  rescue
+    _ -> @error
   end
 
   def snapshot(config),
@@ -138,20 +173,30 @@ defmodule Ipse.Extensions.Subscriptions do
   def valid_result?(event, intent),
     do:
       event == result(intent, event["outcome"], event["cleanup_confirmed"]) and
-        event["outcome"] in ~w(acknowledged unknown not_started) and
+        event["outcome"] in if(intent["declaration"]["mode"] == "job",
+          do: ~w(completed failed unknown not_started),
+          else: ~w(acknowledged unknown not_started)
+        ) and
         is_boolean(event["cleanup_confirmed"]) and
         (event["outcome"] == "unknown" or event["cleanup_confirmed"] == true) and
         (intent["payload_sha256"] != nil or event["outcome"] == "not_started")
 
   def validate_sources(directory, session, events) do
     events
-    |> Enum.filter(
-      &(&1["type"] == "extension_event_intent" or &1["type"] == "lifecycle_prompt_committed")
-    )
-    |> Enum.map(fn event ->
-      if event["type"] == "extension_event_intent",
-        do: event["source"],
-        else: event["received_source"]
+    |> Enum.flat_map(fn event ->
+      case event["type"] do
+        "extension_event_intent" ->
+          [event["source"]]
+
+        "lifecycle_prompt_committed" ->
+          [event["received_source"]]
+
+        "extension_invocation_intent" ->
+          if(event["event_trigger"], do: Map.values(event["event_trigger"]["sources"]), else: [])
+
+        _ ->
+          []
+      end
     end)
     |> Enum.uniq()
     |> Enum.reduce_while(:ok, fn source, :ok ->
@@ -179,7 +224,14 @@ defmodule Ipse.Extensions.Subscriptions do
         turns: MapSet.new(),
         bound: %{},
         session: nil,
-        count: 0
+        count: 0,
+        job: nil,
+        job_completed: false,
+        job_actions: [],
+        unsafe: false,
+        settling: false,
+        request: nil,
+        presentation: nil
       }
 
       Enum.reduce_while(events, {:ok, initial}, fn event, {:ok, state} ->
@@ -216,7 +268,8 @@ defmodule Ipse.Extensions.Subscriptions do
          true <-
            snapshot["entries"] ==
              Enum.sort_by(snapshot["entries"], fn row ->
-               {if(row["declaration"]["event"] == "prompt.received", do: 0, else: 1),
+               {if(EventJob.schedule(row["declaration"]) == "before_request", do: 0, else: 1),
+                if(row["declaration"]["event"] == "prompt.received", do: 0, else: 1),
                 identities[row["instance"]]["order"], row["instance"], row["declaration"]["id"]}
              end),
          true <-
@@ -226,6 +279,16 @@ defmodule Ipse.Extensions.Subscriptions do
 
              Identity.valid?(identity) and validate(records, identity["capabilities"]) == :ok and
                digest(records) == identity["subscriptions_sha256"]
+           end),
+         {:ok, catalog} <- Catalog.from_metadata(metadata),
+         true <-
+           Enum.all?(snapshot["entries"], fn row ->
+             row["declaration"]["mode"] != "job" or
+               Enum.any?(
+                 catalog["entries"],
+                 &(&1["stage"] == "event.job" and &1["instance"] == row["instance"] and
+                     &1["id"] == row["declaration"]["handler"])
+               )
            end) do
       {:ok, snapshot["entries"], identities}
     else
@@ -243,6 +306,13 @@ defmodule Ipse.Extensions.Subscriptions do
            marker: nil,
            active: nil,
            bound: %{},
+           job: nil,
+           job_completed: false,
+           job_actions: [],
+           unsafe: false,
+           settling: false,
+           request: nil,
+           presentation: nil,
            turns: MapSet.put(s.turns, event["turn_id"])
        }}
     else
@@ -287,7 +357,8 @@ defmodule Ipse.Extensions.Subscriptions do
            ),
          true <-
            event["version"] === 1 and id?(event["delivery_id"]) and s.active == nil and
-             s.marker != nil,
+             s.marker != nil and not s.unsafe,
+         true <- EventJob.schedule(declaration) == "after_turn" == s.settling,
          true <- identities[identity["instance"]] == identity,
          true <-
            Enum.at(declarations, map_size(s.bound)) == %{
@@ -312,16 +383,41 @@ defmodule Ipse.Extensions.Subscriptions do
            event["payload_sha256"] ==
              if(expected_payload, do: Ipse.Compaction.digest([expected_payload])) do
       {:ok,
-       %{s | active: event, seen: MapSet.put(s.seen, event["delivery_id"]), count: s.count + 1}}
+       %{
+         s
+         | active: event,
+           seen: MapSet.put(s.seen, event["delivery_id"]),
+           count: s.count + 1,
+           job: nil,
+           job_completed: false,
+           job_actions: []
+       }}
     else
       _ -> @error
     end
   end
 
   defp reduce(%{"type" => "extension_event_result"} = event, s, _, _) do
-    with intent when is_map(intent) <- s.active, true <- valid_result?(event, intent) do
+    with intent when is_map(intent) <- s.active,
+         true <- valid_result?(event, intent),
+         true <- event["outcome"] not in ~w(completed failed) or s.job_completed,
+         true <-
+           event["outcome"] not in ~w(completed failed) or
+             event["outcome"] == EventJob.outcome(s.job_actions),
+         true <- event["outcome"] != "not_started" or s.job == nil do
       key = {intent["identity"]["instance"], intent["declaration"]["id"]}
-      {:ok, %{s | active: nil, bound: Map.put(s.bound, key, event["outcome"])}}
+
+      {:ok,
+       %{
+         s
+         | active: nil,
+           bound: Map.put(s.bound, key, event["outcome"]),
+           job: nil,
+           job_completed: false,
+           unsafe:
+             s.unsafe or
+               (intent["declaration"]["mode"] == "job" and event["outcome"] == "unknown")
+       }}
     else
       _ -> @error
     end
@@ -330,10 +426,97 @@ defmodule Ipse.Extensions.Subscriptions do
   defp reduce(%{"type" => "request_admitted", "kind" => "model"} = event, s, declarations, _) do
     if declarations == [] or
          (s.marker != nil and s.marker["turn_id"] == event["turn_id"] and
-            s.session == event["session_id"] and s.active == nil and
+            s.session == event["session_id"] and s.active == nil and not s.unsafe and
+            not s.settling and
+            Enum.all?(
+              Enum.filter(
+                declarations,
+                &(EventJob.schedule(&1["declaration"]) == "before_request")
+              ),
+              fn row ->
+                outcome = s.bound[{row["instance"], row["declaration"]["id"]}]
+
+                outcome != nil and
+                  (not row["declaration"]["required"] or
+                     outcome ==
+                       if(row["declaration"]["mode"] == "job",
+                         do: "completed",
+                         else: "acknowledged"
+                       ))
+              end
+            )) do
+      {:ok, %{s | request: event["request_id"]}}
+    else
+      @error
+    end
+  end
+
+  defp reduce(%{"type" => "request_finished", "request_id" => id}, %{request: id} = s, _, _),
+    do: {:ok, %{s | request: nil}}
+
+  defp reduce(
+         %{
+           "type" => "extension_transform_result",
+           "stage" => "transform.presentation",
+           "output" => output
+         },
+         s,
+         _,
+         _
+       ),
+       do: {:ok, %{s | presentation: output}}
+
+  defp reduce(%{"type" => "lifecycle_turn_settling"} = event, s, _, _) do
+    final = s.presentation || s.last["content"]
+
+    if keys?(event, ~w(type version turn_id assistant_sha256 final_sha256)) and
+         event["version"] === 1 and s.marker != nil and
+         event["turn_id"] == s.marker["turn_id"] and s.last["role"] == "assistant" and
+         s.last["tool_calls"] in [nil, []] and
+         s.active == nil and not s.unsafe and s.request == nil and not s.settling and
+         is_binary(final) and
+         event["assistant_sha256"] == Ipse.Compaction.digest([s.last]) and
+         event["final_sha256"] == Manifest.sha256(final) do
+      {:ok, %{s | settling: true}}
+    else
+      @error
+    end
+  end
+
+  defp reduce(%{"type" => "extension_invocation_intent"} = parent, %{active: intent} = s, _, _)
+       when intent != nil do
+    if s.job == nil and EventJob.matches?(parent, intent, s.received, s.marker),
+      do: {:ok, %{s | job: parent}},
+      else: @error
+  end
+
+  defp reduce(%{"type" => "extension_invocation_result"} = result, %{job: parent} = s, _, _)
+       when parent != nil do
+    if Ipse.Extensions.Invocation.result_intent(result) == parent and not s.job_completed,
+      do: {:ok, %{s | job_completed: true}},
+      else: @error
+  end
+
+  defp reduce(%{"type" => "extension_action_result"} = result, %{job: parent} = s, _, _)
+       when parent != nil do
+    if result["parent_invocation_id"] == parent["invocation_id"] and length(s.job_actions) < 16,
+      do: {:ok, %{s | job_actions: s.job_actions ++ [result]}},
+      else: @error
+  end
+
+  defp reduce(%{"type" => "turn_finished", "status" => "ok"}, s, declarations, _) do
+    if s.active == nil and not s.unsafe and
+         (s.marker == nil or
             Enum.all?(declarations, fn row ->
               outcome = s.bound[{row["instance"], row["declaration"]["id"]}]
-              outcome != nil and (not row["declaration"]["required"] or outcome == "acknowledged")
+
+              outcome != nil and
+                (not row["declaration"]["required"] or
+                   outcome ==
+                     if(row["declaration"]["mode"] == "job",
+                       do: "completed",
+                       else: "acknowledged"
+                     ))
             end)) do
       {:ok, s}
     else
@@ -348,9 +531,17 @@ defmodule Ipse.Extensions.Subscriptions do
 
   defp declaration?(record),
     do:
-      keys?(record, ~w(id event event_version view mode required)) and
+      keys?(
+        record,
+        ~w(id event event_version view mode required) ++
+          if(record["mode"] == "job", do: ~w(handler schedule), else: [])
+      ) and
         text?(record["id"]) and Regex.match?(~r/\A[a-z][a-z0-9_-]{0,31}\z/, record["id"]) and
-        record["event_version"] === 1 and record["mode"] == "notify" and
+        record["event_version"] === 1 and record["mode"] in ~w(notify job) and
+        (record["mode"] != "job" or
+           (is_binary(record["handler"]) and
+              Regex.match?(~r/\A[a-z][a-z0-9_-]{0,31}\z/, record["handler"]) and
+              record["schedule"] in ~w(before_request after_turn))) and
         is_boolean(record["required"]) and
         record["view"] in Map.get(@views, record["event"], [])
 

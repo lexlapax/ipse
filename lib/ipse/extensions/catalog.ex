@@ -5,21 +5,27 @@ defmodule Ipse.Extensions.Catalog do
   @groups %{
     "tools" => "invoke.tool",
     "commands" => "invoke.command",
-    "services" => "invoke.service"
+    "services" => "invoke.service",
+    "jobs" => "event.job"
   }
   @error {:error, :invalid_extension_catalog}
 
   def capabilities,
     do:
-      ~w(transform.prompt transform.presentation invoke.tool invoke.command invoke.service host.actions host.state.read host.state.write host.question host.tools host.services host.context stream.text event.notify event.prompt.original event.prompt.effective)
+      ~w(transform.prompt transform.presentation invoke.tool invoke.command invoke.service host.actions host.state.read host.state.write host.question host.tools host.services host.context stream.text event.notify event.job event.prompt.original event.prompt.effective)
 
-  def empty, do: %{"version" => 1, "tools" => [], "commands" => [], "services" => []}
+  def empty,
+    do: %{"version" => 1, "tools" => [], "commands" => [], "services" => []}
+
+  def normalize(nil), do: Map.put(empty(), "jobs", [])
+  def normalize(exports) when is_map(exports), do: Map.put_new(exports, "jobs", [])
+  def normalize(exports), do: exports
 
   def validate(exports, capabilities) do
-    exports = exports || empty()
+    exports = normalize(exports)
 
     with :ok <- Schema.validate_object(exports),
-         true <- Enum.sort(Map.keys(exports)) == ~w(commands services tools version),
+         true <- Enum.sort(Map.keys(exports)) == ~w(commands jobs services tools version),
          true <- exports["version"] === 1,
          true <-
            not Enum.any?(
@@ -54,7 +60,7 @@ defmodule Ipse.Extensions.Catalog do
     entries =
       for entry <- Map.get(config, :extensions, []),
           {group, stage} <- Enum.sort(@groups),
-          descriptor <- entry.exports[group] do
+          descriptor <- Map.get(entry.exports, group, []) do
         Map.merge(descriptor, %{
           "instance" => entry.identity["instance"],
           "stage" => stage,
@@ -202,7 +208,13 @@ defmodule Ipse.Extensions.Catalog do
   end
 
   def external?(name), do: is_binary(name) and String.starts_with?(name, "ext__")
-  def digest(exports), do: Ipse.Compaction.digest([exports || empty()])
+
+  def digest(exports) do
+    exports = normalize(exports)
+    exports = if exports["jobs"] == [], do: Map.delete(exports, "jobs"), else: exports
+    Ipse.Compaction.digest([exports])
+  end
+
   defp name(instance, id), do: "ext__" <> instance <> "__" <> id
 
   defp descriptor?(descriptor) when is_map(descriptor) do

@@ -539,7 +539,10 @@ negotiated host operations support scoped state, structured questions,
 file/shell workflows, operator-bound value services and contextual evidence.
 Selected artifacts can also receive separately granted
 [read-only original/effective prompt events](extensions.md#prompt-event-subscribers);
-notification replies cannot request effects.
+notification replies cannot request effects. Separately admitted
+[event jobs](extensions.md#event-jobs) can use normal approved actions for
+before-request recall or after-turn maintenance. After-turn work leaves the saved
+answer intact and keeps the session busy until that serial lane settles.
 Normal mutation approval applies. For selection flags, limits and recovery,
 use the [capability procedures](extensions.md#configure-selections).
 

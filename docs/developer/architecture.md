@@ -285,7 +285,9 @@ reviewed general contracts. The [lifecycle foundation](lifecycle-events.md)
 uses shared event identity with separate metadata/private views and delivery
 contracts for notifications, ordered hooks and triggered jobs. Event delivery
 does not grant effects, and background work cannot change an admitted request.
-Broader private subscriptions, job admission, ordered recall, lifecycle observability
+[Prompt jobs](extension-event-jobs.md) use this contract for finite approved
+actions, before-request recall and after-turn maintenance in one serial lane.
+Broader private subscriptions, lifecycle observability
 and the independent installed-package proof remain [P22 gates](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
 
 The internal lifecycle Source/Event adapter now binds committed journal facts to

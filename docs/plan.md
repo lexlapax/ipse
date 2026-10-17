@@ -1024,6 +1024,7 @@ persistent use. They are design walkthroughs, not execution proofs.
 | Context and evidence (A12) | Caller-scoped bounded publications, assertion/receipt distinctions and exact cached request snapshots | [Context](developer/extension-context.md) |
 | Lifecycle source/views (A14) | Internal stable journal occurrence IDs, bounded read-only source pages and distinct metadata/private prompt projections; no subscriber activation | [Lifecycle events](developer/lifecycle-events.md#internal-journal-source-and-prompt-views) |
 | Prompt subscriptions (A15) | Inert declarations, scoped metadata/private views, final-effective user-text marker and finite owned notifications with required/optional no-replay receipts | [Subscriptions](developer/extension-events.md) |
+| Prompt jobs and recall (A16) | Source-bound typed handlers use finite approved actions; before-request context, after-turn maintenance, host-derived failures and explicit question continuation | [Event jobs](developer/extension-event-jobs.md) |
 
 The [verification guide](developer/testing.md#current-evidence-and-next-checks)
 distinguishes source fixtures, extracted-package baselines, hosted platform
@@ -1033,8 +1034,9 @@ extension-only package proof or complete P22.
 ### Remaining completion work
 
 The [shared lifecycle event foundation](developer/lifecycle-events.md) still needs
-broader private lifecycle subscriptions, full causal links, event-triggered owned
-jobs and an ordered pre-request recall seam. Diagnostic observation is one
+broader private lifecycle subscriptions, full causal links and explicit bounded
+history catch-up. Prompt jobs and the pre-request recall seam are implemented;
+fully concurrent effectful scheduling remains a negotiated enhancement. Diagnostic observation is one
 separate metadata view, with off/local/export controls, bounded sinks and developer
 conformance/debugging also pending. Core must then be frozen for the independent
 installed memory/workflow/retrieval package proof, followed by supervised independent

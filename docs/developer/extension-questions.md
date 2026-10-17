@@ -1,15 +1,16 @@
 # Structured extension questions and continuation
 
 P22A9 adds `host.question` to the [finite host-call protocol](extension-host-calls.md).
-Tools, operator commands and standalone services can ask bounded single-choice,
-multiple-choice and text questions. Workers close before questions appear.
+Tools, operator commands, standalone services and
+[event jobs](extension-event-jobs.md#questions-cancellation-and-recovery) can ask
+bounded single-choice, multiple-choice and text questions. Workers close before questions appear.
 Pending questions restore without code execution; only an explicit answer admits
 a fresh journaled continuation. This does not complete P22 or install a workflow
 framework.
 
 ## Contract
 
-An artifact declares `host.actions` and `host.question` alongside `invoke.*`;
+An artifact declares `host.actions` and `host.question` alongside `invoke.*` or `event.job`;
 operator trust must allow them. Its callback can return:
 
 ```elixir

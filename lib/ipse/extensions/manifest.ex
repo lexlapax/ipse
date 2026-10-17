@@ -76,6 +76,11 @@ defmodule Ipse.Extensions.Manifest do
              manifest["capabilities"]
            ),
          :ok <-
+           Ipse.Extensions.Subscriptions.validate_handlers(
+             manifest["subscriptions"],
+             manifest["exports"]
+           ),
+         :ok <-
            Ipse.Extensions.Services.validate_requirements(
              manifest["requires"],
              manifest["capabilities"]

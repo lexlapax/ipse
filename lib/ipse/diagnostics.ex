@@ -54,6 +54,7 @@ defmodule Ipse.Diagnostics do
        %{
          "version" => 1,
          "accounting" => Ipse.Usage.snapshot(accounting),
+         "event_deliveries" => Ipse.Extensions.Subscriptions.summary(events),
          "context" => context(messages, %{context_bytes: limit}),
          "limit_source" =>
            if(saved_limit, do: "saved_configuration", else: "default_not_recorded"),

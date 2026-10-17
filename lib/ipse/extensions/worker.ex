@@ -220,8 +220,8 @@ defmodule Ipse.Extensions.Worker do
   defp description_valid?(state, result),
     do:
       result["sdk"] === 1 and result["capabilities"] === state.manifest["capabilities"] and
-        (result["exports"] || Ipse.Extensions.Catalog.empty()) ==
-          (state.manifest["exports"] || Ipse.Extensions.Catalog.empty()) and
+        Ipse.Extensions.Catalog.normalize(result["exports"]) ==
+          Ipse.Extensions.Catalog.normalize(state.manifest["exports"]) and
         (result["requires"] || Ipse.Extensions.Services.empty()) ==
           (state.manifest["requires"] || Ipse.Extensions.Services.empty()) and
         (result["subscriptions"] || []) == (state.manifest["subscriptions"] || [])

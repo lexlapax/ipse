@@ -2,7 +2,7 @@ defmodule Ipse.Session do
   @moduledoc "One supervised owner per agent conversation. I/O runs in monitored tasks."
   use GenServer
   alias Ipse.{Journal, Skills, Tools, WorkspaceContext, Questions}
-  alias Ipse.Extensions.{Host, Projection, Catalog, Invocation, Actions, Subscriptions}
+  alias Ipse.Extensions.{Host, Projection, Catalog, Invocation, Actions, Subscriptions, EventJob}
 
   def start_link(opts) do
     config = Keyword.fetch!(opts, :config)
@@ -92,6 +92,7 @@ defmodule Ipse.Session do
          {:ok, question, messages} <- restore_question(events, messages),
          {:ok, question, messages} <- restore_extension_question(events, messages, question),
          :ok <- question_available(question, config),
+         {:ok, event_question} <- EventJob.restore_question(question, dir, id, events),
          {:ok, context_snapshot, context_is_new} <-
            workspace_snapshot(events, cwd, home, opts[:context_snapshot]) do
       state = %{
@@ -142,13 +143,19 @@ defmodule Ipse.Session do
         extension_text_count: Ipse.Extensions.TextResources.count(events),
         extension_text_turn: nil,
         extension_text_cleanup_failed: false,
-        event_received: nil,
-        event_committed: nil,
-        event_turn: nil,
-        event_intent: nil,
+        event_received: if(event_question, do: event_question.received),
+        event_committed: if(event_question, do: event_question.effective),
+        event_turn: if(event_question, do: event_question.turn),
+        event_intent: if(event_question, do: event_question.intent),
+        event_schedule: if(event_question, do: event_question.schedule, else: "before_request"),
+        event_after_started: event_question != nil and event_question.schedule == "after_turn",
         event_count: Enum.count(events, &(&1["type"] == "extension_event_intent")),
         event_cleanup_failed: false,
-        final: Projection.presentation(events),
+        final:
+          if(event_question && event_question.schedule == "after_turn",
+            do: saved_event_final(events, messages),
+            else: Projection.presentation(events)
+          ),
         extension_intent: nil,
         extension_invocation: if(question && question[:kind] == :extension, do: question.parent),
         extension_action:
@@ -281,6 +288,7 @@ defmodule Ipse.Session do
          declaration when is_map(declaration) <-
            Enum.find(entry.subscriptions, &(&1["id"] == subscription)),
          true <- s.event_count < 10_000 and Ipse.Extensions.Registry.live?(entry.identity),
+         true <- EventJob.schedule(declaration) == s.event_schedule,
          fact =
            if(declaration["event"] == "prompt.received",
              do: s.event_received,
@@ -290,9 +298,32 @@ defmodule Ipse.Session do
          {intent, payload} =
            Subscriptions.intent(entry.identity, declaration, fact.source, fact.record, s.turn_id) do
       record(s, intent)
+      s = %{s | event_intent: intent, event_count: s.event_count + 1}
 
-      {:reply, {:ok, intent, entry, payload},
-       %{s | event_intent: intent, event_count: s.event_count + 1}}
+      if declaration["mode"] == "job" do
+        facts = %{received: s.event_received, effective: s.event_committed}
+
+        case EventJob.prepare(s.config, entry, intent, payload, facts, s.id, s.turn_id) do
+          {:ok, parent} when s.extension_invocations < 10_000 ->
+            record(s, parent)
+
+            {:reply, {:job, intent, entry, parent},
+             %{
+               s
+               | extension_invocation: parent,
+                 extension_invocations: s.extension_invocations + 1,
+                 extension_actions: 0,
+                 extension_action_results: [],
+                 extension_action_unknown: false,
+                 extension_action: nil
+             }}
+
+          _ ->
+            {:reply, {:ok, intent, entry, nil}, s}
+        end
+      else
+        {:reply, {:ok, intent, entry, payload}, s}
+      end
     else
       _ -> {:reply, {:error, :event_admission_refused}, s}
     end
@@ -305,6 +336,8 @@ defmodule Ipse.Session do
       )
       when ref != nil and intent != nil do
     if Subscriptions.valid_result?(result, intent) and
+         result["outcome"] not in ~w(completed failed) and
+         (result["outcome"] != "not_started" or is_nil(s.extension_invocation)) and
          (result["outcome"] != "acknowledged" or
             Ipse.Extensions.Registry.live?(intent["identity"])) do
       record(s, result)
@@ -330,6 +363,22 @@ defmodule Ipse.Session do
 
   def handle_call({:extension_event_begin, _, _, _}, _, s), do: {:reply, {:error, :cancelled}, s}
   def handle_call({:extension_event_commit, _, _}, _, s), do: {:reply, {:error, :cancelled}, s}
+
+  def handle_call(
+        {:extension_event_job_commit, ref, result},
+        {caller, _},
+        %{job_ref: ref, task: %{pid: caller}, phase: :extension_events, event_intent: delivery} =
+          s
+      )
+      when ref != nil and delivery != nil do
+    case commit_event_job(s, result) do
+      {:ok, next, outcome} -> {:reply, {:ok, outcome}, next}
+      _ -> {:reply, {:error, :event_job_result_refused}, s}
+    end
+  end
+
+  def handle_call({:extension_event_job_commit, _, _}, _, s),
+    do: {:reply, {:error, :cancelled}, s}
 
   def handle_call({:mcp_register, ref, resource}, _from, %{job_ref: ref} = s) when ref != nil do
     monitor = Process.monitor(resource)
@@ -574,7 +623,8 @@ defmodule Ipse.Session do
         {caller, _},
         %{job_ref: ref, task: %{pid: caller}, extension_invocation: nil, phase: phase} = s
       )
-      when ref != nil and phase in [:tool, :extension_command, :extension_service] do
+      when ref != nil and
+             phase in [:tool, :extension_command, :extension_service, :extension_events] do
     origin =
       if phase == :tool do
         call = hd(s.calls)
@@ -634,7 +684,8 @@ defmodule Ipse.Session do
         {caller, _},
         %{job_ref: ref, task: %{pid: caller}, extension_action: nil, phase: phase} = s
       )
-      when ref != nil and phase in [:tool, :extension_command, :extension_service] do
+      when ref != nil and
+             phase in [:tool, :extension_command, :extension_service, :extension_events] do
     with parent when is_map(parent) <- s.extension_invocation,
          true <- Ipse.Extensions.Registry.live?(parent["identity"]),
          {:ok, _} <-
@@ -657,7 +708,8 @@ defmodule Ipse.Session do
         {caller, _},
         %{job_ref: ref, task: %{pid: caller}, extension_action: nil, phase: phase} = s
       )
-      when ref != nil and phase in [:tool, :extension_command, :extension_service] do
+      when ref != nil and
+             phase in [:tool, :extension_command, :extension_service, :extension_events] do
     with true <- old_hash == Ipse.Compaction.digest([s.context_snapshot]),
          true <- WorkspaceContext.valid?(snapshot),
          true <-
@@ -694,7 +746,8 @@ defmodule Ipse.Session do
         from = {caller, _},
         %{job_ref: ref, task: %{pid: caller}, extension_action: nil, phase: phase} = s
       )
-      when ref != nil and phase in [:tool, :extension_command, :extension_service] do
+      when ref != nil and
+             phase in [:tool, :extension_command, :extension_service, :extension_events] do
     mode = Map.get(s.config, :approval, :ask)
     mutation = Ipse.Extensions.Operation.mutating?(request)
 
@@ -780,7 +833,8 @@ defmodule Ipse.Session do
         %{job_ref: ref, task: %{pid: caller}, extension_action: %{intent: intent}, phase: phase} =
           s
       )
-      when ref != nil and phase in [:tool, :extension_command, :extension_service] do
+      when ref != nil and
+             phase in [:tool, :extension_command, :extension_service, :extension_events] do
     with true <- Actions.result_intent(event) == intent and Actions.valid_result?(event),
          true <- Ipse.Extensions.Registry.live?(s.extension_invocation["identity"]),
          true <-
@@ -875,7 +929,9 @@ defmodule Ipse.Session do
           event_received: nil,
           event_committed: nil,
           event_turn: nil,
-          event_intent: nil
+          event_intent: nil,
+          event_schedule: "before_request",
+          event_after_started: false
       }
 
       text =
@@ -1170,6 +1226,11 @@ defmodule Ipse.Session do
           extension_action_unknown: false,
           extension_request: nil,
           event_intent: nil,
+          event_received: nil,
+          event_committed: nil,
+          event_turn: nil,
+          event_schedule: "before_request",
+          event_after_started: false,
           extension_text: %{},
           extension_text_turn: nil,
           tool_decision: "not_decided",
@@ -1260,7 +1321,7 @@ defmodule Ipse.Session do
 
     case {phase, result} do
       {invocation_phase, {:extension_question, action}}
-      when invocation_phase in [:tool, :extension_command, :extension_service] ->
+      when invocation_phase in [:tool, :extension_command, :extension_service, :extension_events] ->
         with %{intent: ^action} <- s.extension_action,
              true <- questions_enabled?(s.config),
              true <- Ipse.Extensions.Registry.live?(s.extension_invocation["identity"]) do
@@ -1309,8 +1370,30 @@ defmodule Ipse.Session do
              )}
         end
 
+      {:extension_events, {:extension_invocation_result, event}} ->
+        delivery = s.event_intent
+
+        case commit_event_job(s, event) do
+          {:ok, next, outcome} ->
+            if outcome == "completed" or not delivery["declaration"]["required"],
+              do: {:noreply, continue_event_plan(next, delivery)},
+              else:
+                {:noreply,
+                 fail(
+                   next,
+                   "Required event job had a refused or failed action; inspect its receipts."
+                 )}
+
+          _ ->
+            {:noreply,
+             fail(
+               s,
+               "Event job result was invalid or expired; inspect its saved receipts before retrying."
+             )}
+        end
+
       {invocation_phase, {:extension_invocation_result, event}}
-      when invocation_phase in [:tool, :extension_command, :extension_service] ->
+      when invocation_phase in [:tool, :extension_command, :extension_service, :extension_events] ->
         with intent when is_map(intent) <- s.extension_invocation,
              true <- is_nil(s.extension_action),
              true <- not s.extension_action_unknown,
@@ -1349,6 +1432,10 @@ defmodule Ipse.Session do
              )}
         end
 
+      {:extension_events, {:unknown, error}} ->
+        if s.event_intent, do: record(s, Subscriptions.result(s.event_intent, "unknown", false))
+        {:noreply, fail(%{s | event_intent: nil, event_cleanup_failed: true}, error)}
+
       {invocation_phase, {:unknown, error}}
       when invocation_phase in [:extension_command, :extension_service] ->
         {:noreply, fail(s, error)}
@@ -1357,7 +1444,7 @@ defmodule Ipse.Session do
         {:noreply, model(%{s | extension_intent: nil})}
 
       {:extension_events, :ok} ->
-        {:noreply, model(s)}
+        {:noreply, if(s.event_schedule == "after_turn", do: finish(s, :ok), else: model(s))}
 
       {:extension_events, {:error, error}} ->
         {:noreply, fail(s, error)}
@@ -1773,9 +1860,14 @@ defmodule Ipse.Session do
 
       owner = self()
       ref = make_ref()
-      plans = Subscriptions.declarations(s.config)
-      task = owned_task(fn -> Host.notify_events(plans, owner, ref) end)
-      %{s | task: task, job_ref: ref, phase: :extension_events}
+      plans = Subscriptions.declarations(s.config, "before_request")
+
+      if plans == [] do
+        model(s)
+      else
+        task = owned_task(fn -> Host.notify_events(plans, owner, ref) end)
+        %{s | task: task, job_ref: ref, phase: :extension_events}
+      end
     else
       fail(
         s,
@@ -2374,24 +2466,137 @@ defmodule Ipse.Session do
   end
 
   defp finish(s, status) do
-    record(s, %{"type" => "turn_finished", "status" => to_string(status)})
-    notify(s, {:done, status})
+    after_plans = Subscriptions.declarations(s.config, "after_turn")
 
-    %{
-      s
-      | phase: :idle,
-        task: nil,
-        approval: nil,
-        job_ref: nil,
-        compaction: nil,
-        extension_intent: nil,
-        extension_invocation: nil,
-        extension_action: nil,
-        extension_action_results: [],
-        extension_action_unknown: false,
-        extension_request: nil,
-        tool_decision: "not_decided"
-    }
+    if status == :ok and s.event_received != nil and s.event_turn == s.turn_id and
+         not s.event_after_started and after_plans != [] do
+      record(s, %{
+        "type" => "lifecycle_turn_settling",
+        "version" => 1,
+        "turn_id" => s.turn_id,
+        "assistant_sha256" => Ipse.Compaction.digest([List.last(s.messages)]),
+        "final_sha256" => Ipse.Extensions.Manifest.sha256(s.final)
+      })
+
+      owner = self()
+      ref = make_ref()
+      task = owned_task(fn -> Host.notify_events(after_plans, owner, ref) end)
+
+      %{
+        s
+        | task: task,
+          job_ref: ref,
+          phase: :extension_events,
+          event_schedule: "after_turn",
+          event_after_started: true
+      }
+    else
+      record(s, %{"type" => "turn_finished", "status" => to_string(status)})
+      notify(s, {:done, status})
+
+      %{
+        s
+        | phase: :idle,
+          task: nil,
+          approval: nil,
+          job_ref: nil,
+          compaction: nil,
+          extension_intent: nil,
+          extension_invocation: nil,
+          extension_action: nil,
+          extension_action_results: [],
+          extension_action_unknown: false,
+          extension_request: nil,
+          event_received: nil,
+          event_committed: nil,
+          event_turn: nil,
+          event_intent: nil,
+          event_schedule: "before_request",
+          event_after_started: false,
+          tool_decision: "not_decided"
+      }
+    end
+  end
+
+  defp commit_event_job(s, event) do
+    with parent when is_map(parent) <- s.extension_invocation,
+         delivery when is_map(delivery) <- s.event_intent,
+         true <- is_nil(s.extension_action) and not s.extension_action_unknown,
+         true <-
+           EventJob.matches?(parent, delivery, s.event_received.record, s.event_committed.record),
+         true <- Ipse.Extensions.Registry.live?(parent["identity"]),
+         {:ok, expected} <-
+           Invocation.build_result(
+             parent,
+             %{"api_version" => 1, "kind" => "result", "value" => event["value"]},
+             s.extension_action_results
+           ),
+         true <- expected == event do
+      record(s, event)
+      outcome = EventJob.outcome(s.extension_action_results)
+      record(s, Subscriptions.result(delivery, outcome, true))
+
+      if outcome == "failed" and not delivery["declaration"]["required"],
+        do:
+          notify(
+            s,
+            {:status,
+             "Optional event job had a refused or failed action; inspect its saved receipts."}
+          )
+
+      {:ok,
+       %{
+         s
+         | extension_invocation: nil,
+           extension_request: nil,
+           extension_action_results: [],
+           extension_action: nil,
+           extension_action_unknown: false,
+           extension_actions: 0,
+           event_intent: nil
+       }, outcome}
+    else
+      _ -> {:error, :event_job_result_refused}
+    end
+  end
+
+  defp continue_event_plan(s, delivery) do
+    plans = Subscriptions.declarations(s.config, s.event_schedule)
+
+    index =
+      Enum.find_index(
+        plans,
+        &(&1.instance == delivery["identity"]["instance"] and
+            &1.declaration == delivery["declaration"])
+      )
+
+    if index == nil do
+      fail(s, "Event job continuation no longer matches the selected plan.")
+    else
+      remaining = Enum.drop(plans, index + 1)
+
+      if remaining == [] do
+        if s.event_schedule == "after_turn", do: finish(s, :ok), else: model(s)
+      else
+        owner = self()
+        ref = make_ref()
+        task = owned_task(fn -> Host.notify_events(remaining, owner, ref) end)
+        %{s | task: task, job_ref: ref, phase: :extension_events}
+      end
+    end
+  end
+
+  defp saved_event_final(events, messages) do
+    presentation = Projection.presentation(events)
+
+    if presentation != "",
+      do: presentation,
+      else:
+        Enum.reverse(messages)
+        |> Enum.find_value("", fn message ->
+          if message["role"] == "assistant" and message["tool_calls"] in [nil, []],
+            do: message["content"]
+        end)
   end
 
   defp append_message(s, message) do
@@ -2779,6 +2984,7 @@ defmodule Ipse.Session do
       "invoke.tool" -> :tool
       "invoke.command" -> :extension_command
       "invoke.service" -> :extension_service
+      "event.job" -> :extension_events
     end
   end
 

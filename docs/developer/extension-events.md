@@ -4,8 +4,9 @@ Selected extensions can receive bounded, read-only prompt notifications through
 the independent worker SDK. The host records original input and a final effective
 user-text boundary, then delivers selected views before MCP discovery, compaction
 or inference for that input. This implements the first subscription seams in the
-[lifecycle design](lifecycle-events.md); event-triggered actions, background jobs
-and general lifecycle observation remain pending.
+[lifecycle design](lifecycle-events.md). Separately admitted
+[event jobs](extension-event-jobs.md) support finite actions and awaited recall;
+this guide covers read-only delivery. Broader lifecycle observation remains pending.
 
 Use [operator selection](../operator/extensions.md#prompt-event-subscribers) for
 trust/configuration and [artifacts](extension-artifacts.md) for installation.
@@ -35,9 +36,10 @@ inside an otherwise complete artifact manifest:
 }
 ```
 
-Every declaration has exactly these fields. IDs use the existing lowercase
+Every notification declaration has exactly these six fields. Job declarations
+add a handler and schedule under the separate job contract. IDs use the existing lowercase
 ASCII identifier convention and are at most 32 characters. Event version is 1;
-`notify` is currently the only mode. Unknown stages, versions, modes, views,
+this guide's mode is `notify`. Unknown stages, versions, modes, views,
 wildcards and executable filters refuse during inert validation. `describe/0`
 must return the same declarations as the manifest. Discovery/import/inspection
 executes no callback.
@@ -48,7 +50,7 @@ executes no callback.
 | `prompt.effective_committed` | `metadata` or `prompt.effective` | `event.notify`; private view also needs `event.prompt.effective` |
 
 The declared capability set must match these views. `event.notify` is present
-exactly when subscriptions exist; each private read capability is present exactly
+exactly when notifications exist (`event.job` is separate); each private read capability is present exactly
 when a declaration uses it. Operator trust must cover all declared capabilities.
 Project/child selection retains the ordinary operator ceilings; a child receives
 only its own prompt facts, never the parent's conversation feed. There are at
@@ -169,8 +171,9 @@ actual VM shutdown, byte-identical idle resume, fresh identical prompts and
 coherently forged physical references before repair. See
 [actual platform/package evidence](testing.md#current-evidence-and-next-checks).
 
-The remaining foundation includes event-triggered action jobs, awaited context
-recall, broader lifecycle types/causal links, bounded diagnostic sinks and explicit
+The separate [job contract](extension-event-jobs.md) now provides finite host
+actions, pre-request recall and after-turn maintenance. Remaining foundation work
+includes broader lifecycle types/causal links, bounded diagnostic sinks and explicit
 catch-up. Continuous private feeds and external adapters need their own negotiated
 ownership/flow/egress contract. Notification acknowledgments must not silently
 gain effectful semantics in a future implementation. Production graph extraction

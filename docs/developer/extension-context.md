@@ -1,11 +1,12 @@
 # Extension context and evidence
 
 P22A12 adds the `host.context` capability to the existing
-[finite host-action protocol](extension-host-calls.md). An explicitly invoked
-tool, command or standalone service can publish bounded context for subsequent
-model requests in its own session. This is a generic contribution API; it does
+[finite host-action protocol](extension-host-calls.md). An explicit invocation or
+[event job](extension-event-jobs.md) can publish bounded context for subsequent
+model requests in its own session. Before-request jobs provide an awaited recall
+seam; after-turn contributions become eligible only for a later request. This API does
 not select a memory algorithm, retrieval provider, embedding model or database.
-Automatic recall scheduling remains extension policy. The existing prompt hook
+Selection, retrieval and scheduling policy remain explicit extension declarations. The existing prompt hook
 continues to support attributed annotations independently.
 
 ## Publishing and clearing

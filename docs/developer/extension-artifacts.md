@@ -48,10 +48,12 @@ Import permits incompatible artifacts for storage; activation must call
 The optional `requires` object declares [typed service requirements](extension-services.md),
 not executable dependency discovery. Import validates aliases/version/schemas;
 activation resolves only explicit operator routes to already selected targets.
-Optional `subscriptions` declare bounded read-only original/final-effective prompt
-notifications, with exact event/view/version/mode and required policy. Unknown
-modes or widened read declarations refuse inert validation; see
-[prompt subscriptions](extension-events.md).
+Optional `subscriptions` declare bounded original/final-effective prompt delivery,
+with exact event/view/version/mode and required policy. Read-only
+[notifications](extension-events.md) use exact acknowledgment;
+[event jobs](extension-event-jobs.md) additionally name a typed job export and
+before-request/after-turn schedule. Private read and host-action grants remain
+separate. Unknown modes or widened declarations refuse inert validation.
 
 Artifact identity is SHA-256 of the **original manifest bytes**, which bind every
 declared file's hash and length. Whitespace changes create a different identity.

@@ -1,8 +1,9 @@
 # Lifecycle events, hooks and subscribers
 
 P22 lifecycle design with implemented journal-source/prompt-view adapters and
-[bounded read-only prompt subscriptions](extension-events.md). Event-triggered
-actions, background jobs and broader lifecycle subscriptions remain pending.
+[bounded read-only prompt subscriptions](extension-events.md) plus separate
+[event jobs](extension-event-jobs.md) for approved actions, awaited recall and
+after-turn maintenance. Broader lifecycle subscriptions remain pending.
 Existing [transforms](extension-hooks.md),
 [invocations/actions](extension-host-calls.md), [context](extension-context.md)
 and [visible-text delivery](text-streams.md) retain their current wire contracts.
@@ -38,11 +39,11 @@ building block for selected prompt notifications and the remaining delivery cont
 | Needed by a prompt-driven knowledge graph | Current support | Remaining foundation |
 | --- | --- | --- |
 | Read prompt text | Selected transforms and read-only original/final-effective subscriptions with explicit capabilities | Broader lifecycle views and continuous feeds |
-| Extract entities | Extension code can compute on its callback input | Event-triggered owned job; optional model work needs a separately admitted request capability |
-| Store derived facts | Explicit invocations can propose scoped state writes | Event-to-job admission that can use the same action path |
-| Add recalled evidence to an answer | Invocations can publish bounded attributed context | Ordered pre-request retrieval hook with a committed snapshot |
+| Extract entities | Owned prompt jobs can run deterministic extraction | Model work needs a separately admitted, accounted request capability |
+| Store derived facts | Prompt jobs use normal approved state actions with source-bound invocation receipts | Production storage adapters and complete forgetting policies |
+| Add recalled evidence to an answer | Before-request jobs publish bounded attributed context into a frozen request snapshot | Broader context lifecycle seams and explicit catch-up |
 | Consume generated text | Selected workers receive acknowledged visible-text frames | Keep this loss-aware content channel separate from sampled diagnostics |
-| Recover without duplicate effects | Invocation/action receipts and cached projections already exist | Bind triggered jobs, outcomes and deduplication to their source event |
+| Recover without duplicate effects | Source-bound job/action receipts, question checkpoints and no automatic replay | Independent package proof of domain deduplication and reindex policy |
 
 The current prompt transform cannot return `host_call` to store entities. A text
 consumer acknowledgment also cannot request effects. Implementing a graph by
@@ -137,7 +138,7 @@ private content must not acquire it by subscribing to a metadata topic.
 | Diagnostic notification | Independent bounded queues; sampling/drop counts are visible; sink failures do not fail the turn | Acknowledge metadata only; no host actions or context changes |
 | Private content feed | Per-subscription sequence, bounded bytes/in-flight delivery, acknowledgment and explicit gaps/incomplete closure | Acknowledge the selected content view; effects require separate job admission |
 | Ordered boundary hook | Host awaits handlers in configured order at a named seam; deadline or invalid required result stops that transition | Schema-checked projection, context contribution or restrictive decision permitted at that seam |
-| Event-triggered job | Host admits a bounded owned job against a committed source event; action proposals use the ordinary approval/intent/outcome path | Finite negotiated host actions; no recursive turn launch or implicit provider call |
+| Implemented prompt job | Host admits a bounded owned job against a committed source event; action proposals use the ordinary approval/intent/outcome path | Finite negotiated host actions; no recursive turn launch or implicit provider call |
 
 An acknowledgment means the delivery was accepted, not that a graph write or
 model request succeeded. Job admission, action completion and job completion
@@ -145,7 +146,7 @@ have separate receipts. Subscriber failure cannot turn an unknown action into a
 successful one. Mandatory cleanup and recovery facts never depend on optional
 subscriber delivery, including a final close/owner-death notification.
 
-The first triggered-job implementation uses a bounded queue and one effectful
+The implemented prompt-job plan is finite and uses one effectful
 extension action lane per session, admitted at documented safe boundaries.
 Slow computation runs outside Session. A callback cannot synchronously reenter
 the Session waiting for it. Work needing interactive approval or clarification
@@ -213,9 +214,10 @@ and requested capabilities. Bind the effective selection to artifact/options,
 operator trust, project/session/child scope, activation generation and expiry.
 No executable filter, arbitrary topic wildcard or worker-selected scope runs in
 Session. Unknown declarations fail validation. The implemented
-[prompt declaration schema](extension-events.md#inert-declaration-and-authority)
-supports only read-only `notify`; other delivery modes and lifecycle types remain
-negotiated design targets.
+[notification schema](extension-events.md#inert-declaration-and-authority)
+supports read-only `notify`; [job declarations](extension-event-jobs.md#declarations-and-handlers)
+add a typed handler and before-request/after-turn schedule. Other lifecycle types
+and delivery modes remain negotiated design targets.
 
 Prompt access, persistent writes, external transfer and model inference are
 separate grants. Installing or enabling a graph extension does not imply all
@@ -289,8 +291,11 @@ Before freezing P22 core, extend the independent installed-package proof:
    catch-up, scoped child refusal and a synthetic external adapter without an
    actual network service or new core feature-name dispatch.
 
-These are pending executable acceptance cases. Passing the design walkthrough
-does not complete P22 or establish production graph quality. P25 owns researched
+Source fixtures now cover prompt-job admission, deterministic extraction, approved
+CAS writes, required recall, after-turn request isolation, question recovery and a
+delayed write rejected after concurrent forget. The complete independent installed
+package proof above, including deduplication and bounded catch-up, remains pending.
+These fixtures do not complete P22 or establish production graph quality. P25 owns researched
 entity extraction, graph storage/retrieval and quality comparisons.
 
 ## Reuse decisions and sources

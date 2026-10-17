@@ -50,21 +50,60 @@ defmodule Ipse.Extensions.Host do
 
   def notify_events(plans, owner, ref) do
     Enum.reduce_while(plans, :ok, fn plan, :ok ->
-      with {:ok, intent, entry, payload} <-
-             GenServer.call(
-               owner,
-               {:extension_event_begin, ref, plan.instance, plan.declaration["id"]}
-             ),
-           {outcome, cleanup} <- notify_event(entry, payload),
-           result = Ipse.Extensions.Subscriptions.result(intent, outcome, cleanup),
-           :ok <- GenServer.call(owner, {:extension_event_commit, ref, result}) do
-        if outcome == "acknowledged" or not plan.declaration["required"],
-          do: {:cont, :ok},
-          else:
-            {:halt,
-             {:error, "Required event subscriber did not acknowledge; no delivery was replayed."}}
-      else
-        _ -> {:halt, {:error, "Event subscription admission failed; no delivery was replayed."}}
+      admission =
+        GenServer.call(
+          owner,
+          {:extension_event_begin, ref, plan.instance, plan.declaration["id"]}
+        )
+
+      case admission do
+        {:job, intent, entry, parent} ->
+          case execute_export(entry, parent, "event.job", parent["payload"], owner, ref, []) do
+            {:extension_invocation_result, result} ->
+              case GenServer.call(owner, {:extension_event_job_commit, ref, result}) do
+                {:ok, "completed"} ->
+                  {:cont, :ok}
+
+                {:ok, "failed"} ->
+                  if not plan.declaration["required"],
+                    do: {:cont, :ok},
+                    else:
+                      {:halt,
+                       {:error,
+                        "Required event job had a refused or failed action; inspect its receipts."}}
+
+                _ ->
+                  {:halt,
+                   {:error, "Event job result could not be committed; inspect its saved intent."}}
+              end
+
+            {:extension_question, action} ->
+              {:halt, {:extension_question, action}}
+
+            _ ->
+              result = Ipse.Extensions.Subscriptions.result(intent, "unknown", false)
+              GenServer.call(owner, {:extension_event_commit, ref, result})
+
+              {:halt,
+               {:error,
+                "Event job outcome is unknown; earlier effects may have occurred. No job was replayed."}}
+          end
+
+        _ ->
+          with {:ok, intent, entry, payload} <- admission,
+               {outcome, cleanup} <- notify_event(entry, payload),
+               result = Ipse.Extensions.Subscriptions.result(intent, outcome, cleanup),
+               :ok <- GenServer.call(owner, {:extension_event_commit, ref, result}) do
+            if outcome == "acknowledged" or not plan.declaration["required"],
+              do: {:cont, :ok},
+              else:
+                {:halt,
+                 {:error,
+                  "Required event subscriber did not acknowledge; no delivery was replayed."}}
+          else
+            _ ->
+              {:halt, {:error, "Event subscription admission failed; no delivery was replayed."}}
+          end
       end
     end)
   catch
