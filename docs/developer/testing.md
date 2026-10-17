@@ -208,6 +208,7 @@ and [runtime identity](#p1-runtime-identity-2026-10-15).
 | --- | --- | --- |
 | Developer tracing, Linux Serenity, 2026-10-17 | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters, twenty focused trace/conformance fixtures and 558 native-suite tests with 14 macOS exclusions passed | Includes nine trace, eleven author-runner and twenty diagnostic fixtures; synthetic fixed-arity dispatcher samples, no live provider or source-debugger integration |
 | Hosted conformance baseline `1ac694b` | [Ubuntu/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39018696102) passed build, format, compile, tests, demo and extracted packages; macOS native and default experimental sandbox steps passed | Job/step conclusions inspected; this precedes dispatcher tracing and does not prove its hosted behavior or stronger descendant containment |
+| Hosted tracing `22ac9e1` | [Ubuntu/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39019657244): Ubuntu passed all steps; macOS build/format/compile passed, then one trace deadline-reason assertion failed | macOS capture had stopped, but concurrent report collection could label the outcome `stopped`; its later native/demo/package steps were skipped. This is not a passing macOS tracing checkpoint |
 | Source/extracted compatibility | Credential-free demo, bundled extension/accounting/text/shared-source/local-ring/conformance fixtures and actual traced conformance CLI passed in Linux glibc-2.44 package verification with matching OTP 29.1.1 notices and utility-only PATH | Bundled trace API available without system toolchain; source-debugger modules/debug information absent in this package. Independently installed subscriber proof remains a P22 gate |
 | Provider acceptance | [Explicit live provider checks](#live-provider-acceptance-follow-up-2026-10-15) | Recorded account/model/platform combinations only; fixtures do not establish billing, hardware or arbitrary-model support |
 
@@ -232,6 +233,14 @@ controls outside synthetic checks. These establish bounded dispatcher samples,
 not a complete timeline, source-debugger integration or production tracing safety.
 The extracted verifier invokes the same trace CLI with only bundled runtime and
 utility executables available.
+
+The hosted deadline-reason failure exposed a race between watchdog destruction
+and notification of the collector. The repair claims one closing reason in a
+shared atomic latch before either participant destroys settings. Report collection
+can therefore perform its own cleanup without relabeling a deadline or mistaking
+the watchdog's normal exit for failure. Capture bounds and wire fields are unchanged;
+all nine cleanup fixtures passed 51 consecutive executions locally. Hosted macOS
+success must be established by a later actual run.
 
 Diagnostic fixtures cover default-off parity, private/hash exclusion, shared source
 identity, operator/export scope, immediate stop, bounded overload, rotation and

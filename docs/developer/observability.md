@@ -211,8 +211,11 @@ settings. Watchdog loss also fails closed. Destruction does not affect other OTP
 trace sessions. A stopped capture retains only its bounded report until the case
 collects it or its owner dies; it does not keep tracing.
 
-Normal stop/time/event limits are visible report reasons. Missing capture,
-watchdog/trace errors or unconfirmed cleanup make the conformance check fail.
+Normal stop/time/event limits are visible report reasons. The collector and
+watchdog claim one shared closing reason before destroying settings, so a
+simultaneous report request cannot replace a deadline outcome with `stopped`,
+or mislabel a normal watchdog exit as failure. Missing capture, watchdog/trace
+errors or unconfirmed cleanup make the conformance check fail.
 Disabled tracing creates no collector or trace session. Flags apply only to
 `extension check`, cannot be requested by fixtures and are independent of
 `--observability`. OTP 27's session API is required; unavailable support refuses

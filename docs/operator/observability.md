@@ -113,7 +113,8 @@ network sandbox.
 For a reproducible extension issue, use a dedicated synthetic
 [conformance fixture](../developer/extension-conformance.md). Its optional
 `--developer-trace` flag samples only newly created synthetic Session dispatchers,
-with bounded time/event limits and no arguments or message contents. This is
+with bounded time/event limits and no arguments or message contents. The report
+retains the first closing cause when a deadline and explicit stop race. Capture is
 independent of sink capture and does not attach to an existing account session.
 The [developer contract](../developer/observability.md#synthetic-dispatcher-tracing)
 owns tracing and source-debugging details. [Recovery](recovery.md) owns saved

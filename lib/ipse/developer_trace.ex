@@ -4,6 +4,7 @@ defmodule Ipse.DeveloperTrace do
 
   @points [{Ipse.Session, :handle_call, 3}, {Ipse.Session, :handle_info, 2}]
   @pattern [{:_, [], [{:disable_trace, :call}]}]
+  @reasons ~w(stopped event_limit duration_limit target_down owner_down collector_down watchdog_down trace_error collector_stopped)
 
   def policy(opts) do
     enabled = Keyword.get(opts, :developer_trace, false)
@@ -62,9 +63,10 @@ defmodule Ipse.DeveloperTrace do
       deadline = started + System.convert_time_unit(duration, :millisecond, :native)
       collector = self()
       weak = elem(session, 1)
+      closure = :atomics.new(1, signed: false)
       owner_ref = Process.monitor(owner)
       1 = :trace.process(session, target, true, [:call, :arity, :monotonic_timestamp])
-      guardian = spawn(fn -> guard(weak, collector, owner, target, deadline) end)
+      guardian = spawn(fn -> guard(weak, collector, owner, target, deadline, closure) end)
       guardian_ref = Process.monitor(guardian)
 
       {:ok,
@@ -74,6 +76,7 @@ defmodule Ipse.DeveloperTrace do
          owner_ref: owner_ref,
          guardian: guardian,
          guardian_ref: guardian_ref,
+         closure: closure,
          started: started,
          deadline: deadline,
          duration: duration,
@@ -163,9 +166,19 @@ defmodule Ipse.DeveloperTrace do
   defp close(%{session: nil} = state, _), do: state
 
   defp close(state, reason) do
+    reason = claim_reason(state.closure, reason)
     cleanup = destroy(state.session)
     send(state.guardian, :stop)
     %{state | session: nil, reason: reason, cleanup: cleanup}
+  end
+
+  defp claim_reason(closure, reason) do
+    value = Enum.find_index(@reasons, &(&1 == reason)) + 1
+
+    case :atomics.compare_exchange(closure, 1, 0, value) do
+      :ok -> reason
+      existing -> Enum.at(@reasons, existing - 1)
+    end
   end
 
   defp destroy(session) do
@@ -176,7 +189,7 @@ defmodule Ipse.DeveloperTrace do
 
   # Only a weak handle crosses to this watchdog. Its own deadline and monitors
   # keep capture bounded even if the collector is suspended or killed.
-  defp guard(weak, collector, owner, target, deadline) do
+  defp guard(weak, collector, owner, target, deadline, closure) do
     refs =
       Map.new(
         [{collector, "collector_down"}, {owner, "owner_down"}, {target, "target_down"}],
@@ -194,6 +207,7 @@ defmodule Ipse.DeveloperTrace do
         wait -> "duration_limit"
       end
 
+    reason = claim_reason(closure, reason)
     cleanup = destroy(weak)
     send(collector, {:trace_closed, reason, cleanup})
   end
