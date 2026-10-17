@@ -213,8 +213,17 @@ The service commit's hosted run stopped at formatting; the context increment
 repairs it. The [context hosted run](https://github.com/lexlapax/ipse/actions/runs/39000762785)
 passed the full Ubuntu build/test/demo/package checks. On macOS, formatting and
 compilation passed, but the suite failed at the existing MCP lost-response recovery
-fixture's five-second wait. Native enforcement, demo and packaging were skipped
-on that job. The full macOS completion gate remains open.
+fixture's five-second wait. The mailbox contained only `discovering_mcp`, so the
+assertion was still covering VM/catalog startup, not resource-call execution.
+Native enforcement, demo and packaging were skipped on that job.
+
+The fixture now waits for its explicit model/catalog-ready event within fifteen
+seconds before the existing five-second tool-progress and ten-second outcome
+waits. The configured five-second server/RPC limit, unknown/not-started outcomes, prompt
+batch stop and no-replay resume assertions are unchanged. **14 focused catalog/
+session tests** and both actual formatter checks passed on Linux. This fixture
+coordination repair adds no runtime dependency or production timeout change.
+The full macOS completion gate still needs a new hosted run.
 
 P22 still needs worker stream access, observability/debugging, the independent
 installed-package proof and supervised review. P23–P25 and the final license

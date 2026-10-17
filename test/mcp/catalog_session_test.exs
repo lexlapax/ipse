@@ -112,9 +112,12 @@ defmodule Ipse.MCP.CatalogSessionTest do
     pid = session(ctx, scenario: "resource_disconnect", approval: :allow)
     :ok = Ipse.Session.prompt(pid, "inspect catalog")
     resource = Config.resource_id("notes", "notes://guide")
+
+    # Catalog discovery includes a fresh VM, multiple RPCs and transport cleanup.
+    # Wait for its explicit completion before measuring resource-call progress.
+    assert_receive {:catalog_model_input, _, _}, 15_000
     assert_receive {:ipse, ^pid, {:tool, ^resource, %{}}}, 5_000
-    # Startup/discovery is separate from the configured 5s call lifetime and
-    # bounded transport/helper cleanup, especially on a loaded Mac runner.
+    # The configured 5s call lifetime and bounded cleanup remain separate.
     assert_receive {:ipse, ^pid, {:done, :error}}, 10_000
     assert Enum.map(content_calls(ctx), & &1["event"]) == ["read_resource"]
     id = Ipse.Session.info(pid).id

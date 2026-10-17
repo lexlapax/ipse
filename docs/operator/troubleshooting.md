@@ -24,20 +24,6 @@ children, which can retain workspace write access. See
 
 ## Build and sockets
 
-If an early P22 checkout fails only `mix format --check-formatted` on Elixir 1.18,
-update to the formatter compatibility repair. Elixir 1.18 and 1.20 laid out two
-guarded extension clauses differently; their portable `do`/`end` forms preserve
-behavior. This was a formatting gate, not evidence that macOS runtime tests ran.
-See [the hosted check record](../developer/testing.md#extension-formatter-compatibility-2026-10-16).
-The workflow increment also exposed short multiline `if`/`with` layout differences.
-Use explicit `do`/`end` blocks and check both supported formatters when developing
-on a newer toolchain. See [workflow floor verification](../developer/testing.md#workflow-formatter-floor-compatibility-2026-10-16).
-When checking an extracted Elixir toolchain, `bin/mix` uses
-`#!/usr/bin/env elixir` and may still select the system version. Invoke the
-intended Elixir explicitly: `EXTRACTED/bin/elixir EXTRACTED/bin/mix format --check-formatted`,
-replacing `EXTRACTED` with its actual directory. The service increment exposed
-another multiline `if` layout; its explicit block is compatible with both versions.
-
 - Missing `mix` or `rustc`: check packages and `PATH` against the
   [prerequisites](arch-linux.md#install-the-toolchain).
 - Missing or incompatible native helper: run `./scripts/build.sh` on this machine.
@@ -46,6 +32,20 @@ another multiline `if` layout; its explicit block is compatible with both versio
   tool's permission flow or a local terminal. Do not disable TLS verification
   or weaken tests to bypass sandbox failures.
 - Dependency fetch fails: check GitHub access. Jason is pinned in `mix.lock`.
+
+If formatting fails only on an older supported Elixir version, compare the
+actual formatter executables before diagnosing a runtime problem. Elixir 1.18
+and 1.20 differ on some guarded clauses and short multiline `if`/`with` forms;
+portable explicit `do`/`end` blocks avoid those differences. Update an early P22
+checkout to the compatibility repair and check both versions. A formatting gate
+failure means later runtime/package checks were skipped, not that they passed.
+See [the verification record](../developer/testing.md#workflow-formatter-floor-compatibility-2026-10-16).
+
+An extracted `bin/mix` uses `#!/usr/bin/env elixir`, so calling it by absolute
+path can still select the system Elixir. To check another toolchain reliably,
+run `EXTRACTED/bin/elixir EXTRACTED/bin/mix format --check-formatted`, replacing
+`EXTRACTED` with its actual directory. This changes the formatter executable;
+it does not establish runtime or OS coverage for that toolchain.
 
 ## Browser callback refused
 
