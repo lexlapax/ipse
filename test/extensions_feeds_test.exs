@@ -590,7 +590,8 @@ defmodule Ipse.Extensions.FeedsTest do
     assert_receive {:feed_model, _, _}, 3_000
     assert_receive {:ipse, ^pid, {:approval, ref, "ext__feed__clarify", _}}, 3_000
     :ok = Session.approve(pid, ref, true)
-    assert_receive {:ipse, ^pid, {:question, question, _}}, 3_000
+    # This starts and initializes a fresh worker before publishing the question.
+    assert_receive {:ipse, ^pid, {:question, question, _}}, 15_000
     eventually(fn -> settled(pid) end)
     [intent] = Enum.filter(rows(c, id), &(&1["type"] == "lifecycle_tool_intent"))
     monitor = Process.monitor(pid)

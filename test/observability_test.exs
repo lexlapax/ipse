@@ -528,7 +528,8 @@ defmodule Ipse.ObservabilityTest do
     refused = start(c, cfg)
     :ok = Session.prompt(refused, "refused-private")
     done(refused)
-    eventually(fn -> Enum.any?(sinks(refused), & &1["closed"]) end)
+    # Startup and initialize each have a five-second worker deadline.
+    eventually(fn -> Enum.any?(sinks(refused), & &1["closed"]) end, 1500)
     assert File.read!(second_path) == before
     assert File.read!(Path.join(ring(c), "catalog.json")) == catalog
     :ok = Session.close(first)

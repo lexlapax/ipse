@@ -5,6 +5,22 @@ defmodule Ipse.Extensions.Registry do
   @host_capabilities Ipse.Extensions.Catalog.capabilities()
   @text %{"type" => "string", "maxLength" => 4096}
   @builtins %{
+    "builtin:cost-summary:1" => %{
+      module: Ipse.Extensions.Examples.CostSummary,
+      modules: [
+        Ipse.Extensions.Examples.CostSummary,
+        Ipse.Extensions.CostSummary,
+        Ipse.Extensions.Costs
+      ],
+      capabilities: ~w(invoke.command host.actions host.usage host.usage.scan),
+      exports: Ipse.Extensions.Examples.CostSummary.exports(),
+      schema: %{
+        "type" => "object",
+        "additionalProperties" => false,
+        "required" => ["rate_card"],
+        "properties" => %{"rate_card" => Ipse.Extensions.Costs.schema()}
+      }
+    },
     "builtin:cost-report:1" => %{
       module: Ipse.Extensions.Examples.CostReport,
       modules: [Ipse.Extensions.Examples.CostReport, Ipse.Extensions.Costs],

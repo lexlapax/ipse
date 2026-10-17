@@ -50,7 +50,9 @@ defmodule Ipse.Extensions.Invocation do
   def build_result(intent, response, actions \\ []) do
     with true <- valid_intent?(intent),
          {:ok, value} <- Catalog.validate_response(intent["descriptor"], response),
-         true <- is_list(actions) and length(actions) <= Ipse.Extensions.Actions.limit(),
+         true <-
+           is_list(actions) and
+             length(actions) <= Ipse.Extensions.Actions.limit(intent["identity"]),
          true <- Enum.all?(actions, &Ipse.Extensions.Actions.valid_result?/1),
          text = Jason.encode!(value),
          event =
@@ -354,7 +356,9 @@ defmodule Ipse.Extensions.Invocation do
     with true <- Enum.sort(Map.keys(event)) == Enum.sort(intent_keys(event) ++ @result_keys),
          true <- event["type"] == "extension_invocation_result",
          true <- valid_intent?(result_intent(event)),
-         true <- is_integer(event["action_count"]) and event["action_count"] in 0..16,
+         true <-
+           is_integer(event["action_count"]) and
+             event["action_count"] in 0..Ipse.Extensions.Actions.limit(event["identity"]),
          true <-
            is_binary(event["actions_sha256"]) and
              Regex.match?(~r/\A[a-f0-9]{64}\z/, event["actions_sha256"]),

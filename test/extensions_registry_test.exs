@@ -53,7 +53,7 @@ defmodule Ipse.Extensions.RegistryTest do
              )
 
     refute File.exists?(home)
-    assert length(Registry.builtins()) == 4
+    assert length(Registry.builtins()) == 5
   end
 
   test "exact built-in code, runtime and options are bound into immutable identities" do

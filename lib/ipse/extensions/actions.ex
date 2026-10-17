@@ -6,8 +6,17 @@ defmodule Ipse.Extensions.Actions do
   @types ~w(extension_action_intent extension_action_result)
   @error {:error, :invalid_extension_action}
   @limit 16
+  @read_limit 10_000
   def types, do: @types
   def limit, do: @limit
+
+  def limit(identity) do
+    if "host.usage.scan" in identity["capabilities"], do: @read_limit, else: @limit
+  end
+
+  def limit(identity, request) do
+    if Operation.usage?(request), do: limit(identity), else: @limit
+  end
 
   def proposal(response, identity) do
     with :ok <- Ipse.Extension.validate(response),
@@ -113,7 +122,8 @@ defmodule Ipse.Extensions.Actions do
          true <- event["type"] == "extension_action_intent" and event["version"] === 1,
          true <- event["parent_invocation_id"] == parent["invocation_id"],
          true <-
-           id?(event["operation_id"]) and is_integer(event["step"]) and event["step"] in 1..@limit,
+           id?(event["operation_id"]) and is_integer(event["step"]) and
+             event["step"] in 1..limit(parent["identity"], event["request"]),
          true <- event["identity_sha256"] == Ipse.Compaction.digest([parent["identity"]]),
          {:ok, request} <-
            proposal(

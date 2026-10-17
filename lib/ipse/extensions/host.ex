@@ -170,6 +170,13 @@ defmodule Ipse.Extensions.Host do
   end
 
   defp execute_export(entry, intent, stage, payload, owner, job_ref, prior_actions) do
+    entry =
+      if "host.usage.scan" in entry.identity["capabilities"] do
+        Map.put(entry, :read_deadline, System.monotonic_time(:millisecond) + 120_000)
+      else
+        entry
+      end
+
     with {:ok, worker} <-
            Worker.start(
              owner: self(),
@@ -218,9 +225,12 @@ defmodule Ipse.Extensions.Host do
       {:unknown,
        "Extension outcome unknown after refusal, failure or interruption. Inspect its receipt before retrying; no callback was replayed."}
 
-  defp continue(worker, %{"kind" => "host_call"} = response, entry, owner, job_ref, actions)
-       when length(actions) < 16 do
-    with {:ok, request} <- Actions.proposal(response, entry.identity) do
+  defp continue(worker, %{"kind" => "host_call"} = response, entry, owner, job_ref, actions) do
+    with {:ok, request} <- Actions.proposal(response, entry.identity),
+         true <- length(actions) < Actions.limit(entry.identity, request),
+         true <-
+           not Map.has_key?(entry, :read_deadline) or
+             System.monotonic_time(:millisecond) < entry.read_deadline do
       if Operation.question?(request) do
         GenServer.call(owner, {:extension_action_begin, job_ref, request}, :infinity)
       else
@@ -228,9 +238,6 @@ defmodule Ipse.Extensions.Host do
       end
     end
   end
-
-  defp continue(_, %{"kind" => "host_call"}, _, _, _, _),
-    do: {:error, :extension_action_limit}
 
   defp continue(_, response, _, _, _, actions), do: {:ok, response, actions}
 

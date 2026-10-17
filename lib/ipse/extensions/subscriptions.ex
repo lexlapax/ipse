@@ -684,9 +684,11 @@ defmodule Ipse.Extensions.Subscriptions do
 
   defp reduce(%{"type" => "extension_action_result"} = result, %{job: parent} = s, _, _)
        when parent != nil do
-    if result["parent_invocation_id"] == parent["invocation_id"] and length(s.job_actions) < 16,
-      do: {:ok, %{s | job_actions: s.job_actions ++ [result]}},
-      else: @error
+    if result["parent_invocation_id"] == parent["invocation_id"] and
+         length(s.job_actions) <
+           Ipse.Extensions.Actions.limit(parent["identity"], result["request"]),
+       do: {:ok, %{s | job_actions: s.job_actions ++ [result]}},
+       else: @error
   end
 
   defp reduce(%{"type" => "turn_finished", "status" => "ok"}, s, declarations, _) do

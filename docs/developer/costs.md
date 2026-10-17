@@ -4,11 +4,12 @@ P23 starts with `Ipse.Extensions.Costs`, a pure extension-side calculator over
 explicit data. It validates a versioned rate card and estimates one canonical
 cumulative request snapshot. It performs no IO, pricing lookup, model request,
 state mutation, subscription or request admission. No rates ship enabled and no
-provider/model price is embedded. The default-off `builtin:cost-report:1` extension
-now uses the granted accounting-read SDK for explicit own-session pages. See
+provider/model price is embedded. Default-off report and summary extensions
+use the granted accounting-read SDK for explicit own-session pages and captured
+session totals. See
 [operator selection](../operator/usage-accounting.md#enable-the-optional-report).
-Whole-session/child aggregation, accounted model operations and budget enforcement
-remain P23 delivery work.
+Child aggregation, accounted model operations and budget enforcement remain P23
+delivery work.
 
 ## Rate identity and selection
 
@@ -92,7 +93,7 @@ report caller must retain request/attempt identity, replace revisions and avoid
 counting a child twice. Card changes produce a different digest and estimate;
 they do not rewrite saved request facts or retrospectively certify a bill.
 
-## Report extension and evidence
+## Reports, cumulative aggregation and evidence
 
 `Ipse.Extensions.Examples.CostReport` declares one operator command and no model
 tool or lifecycle subscription. `host.actions` plus `host.usage` permits a bounded
@@ -109,11 +110,39 @@ per report, with row/input policy, components and model attribution per request.
 Repeated/overlapping pages must not be added blindly. The report never claims a
 whole-session or child balance, and old cached reports do not reprice on resume.
 
+`Ipse.Extensions.Examples.CostSummary` supplies the separate
+`builtin:cost-summary:1` command, with the explicit `host.usage.scan` capability.
+It follows every page of one snapshot and passes each canonical row to the pure
+`Ipse.Extensions.CostSummary` accumulator. The accumulator keys contributions by
+session/request/attempt identity, replacing a cumulative revision instead of
+adding it. Admission identity must stay unchanged. Callers supply revisions in
+authoritative order; token values or timestamps do not establish revision order.
+Repeated or overlapping pages do not multiply a request. Separate attempts remain
+separate liability. Each command starts a fresh accumulator and one rate card;
+rate revisions are never mixed in a total.
+
+Groups retain billing/basis separation, known monetary subtotals, unknown-cost/
+outcome counts and normalized counter summaries. Each counter has `total`,
+`known_subtotal`, `unknown_count` and `overflow`; partial outcomes prevent a final
+total even when their observed counts are known. Each dimension is summed
+independently, preserving cache/reasoning subsets without double counting them.
+Exact intermediate integers may exceed SDK-safe precision; overflowing output
+totals/subtotals become null with an explicit flag.
+
+`enumeration_complete` requires the entire captured own-session request count.
+`cost_estimate_complete` additionally excludes unmetered history and unknown or
+overflowing monetary totals. Neither is an invoice guarantee or a child-journal
+claim. A result too large for the SDK returns `summary_bounds`, without a
+truncated success; a failed read returns `summary_incomplete`. Deadline,
+cancellation or worker interruption retains the ordinary unknown invocation
+semantics and never causes automatic replay.
+
 Semantic card errors return `invalid_rate_card`; malformed snapshots return
 `invalid_arguments` or the host's fixed failure code. A report exceeding the SDK
 object bound returns `report_bounds` with an unchanged retry cursor and snapshot,
 without silently dropping requests. Bundled artifact identity pins the report
-and calculator BEAM files, while host identity pins the read implementation.
+and calculator BEAM files; the summary also pins its accumulator. Host identity
+pins the read implementation. All pricing/grouping behavior stays in extensions.
 
 Fifteen focused fixtures cover exact arithmetic/rounding, cache/TTL partitions,
 reasoning inclusion, missing/zero/contradictory counters, partial work, subscription/
@@ -122,12 +151,15 @@ matching, revision provenance, invalid schemas/decimal inputs and overflow. They
 use synthetic rates and no service/account. Independent-worker reader fixtures
 cover private exclusion, stable pages beyond sixteen requests, caller/session
 refusal, unknown/legacy usage, snapshot limits, source/page forgery, cancellation
-and inert resume. Report fixtures cover real callbacks, separated billing groups,
-unknown totals, group overflow and known invalid-card results. The credential-free
-`priv/cost-report-demo.exs` also runs in extracted-package verification. See
+and inert resume. Report/summary fixtures cover real callbacks, separated billing
+groups, unknown totals, cost/counter overflow, cumulative replacement, immutable
+admission and known invalid-card results. A 70-request worker scenario reads 18
+pages and validates byte-identical idle resume; it crosses the ordinary 16-step
+limit under a separate read grant. The credential-free `priv/cost-report-demo.exs`
+also runs both extensions in extracted-package verification. See
 [actual checks](testing.md#current-evidence-and-next-checks).
 
-P23 next needs complete request-revision/parent-child aggregation. Atomic covered
+P23 next needs explicit parent/child aggregation. Atomic covered
 request reservations, partial/unknown liability and provider-enforceable output
 bounds belong in host admission. Generic accounted extraction/embedding requests
 are required for P25. A calculator or event observer cannot supply those guarantees.

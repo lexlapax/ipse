@@ -112,6 +112,18 @@ historical incomplete/unknown. Failed requests retain fixed `usage_snapshot`,
 `usage_cursor`, `usage_bounds` or `usage_limit` codes. No write authority or budget
 reservation follows from a read acknowledgment.
 
+The separately negotiated `host.usage.scan` capability requires `host.usage` and
+`host.actions`. Only `usage.read` may occupy steps 17 through 10,000 of an
+invocation. Other operations still require their individual capabilities and
+remain within the first 16 steps; interleaved reads consume those steps too.
+Invocation receipts and restore validate the same per-operation bound, including
+event-job receipts. A scan-enabled worker admits no further host call after
+120 seconds; an in-flight call and cleanup keep their existing finite deadlines.
+The five-second callback and 64 MiB worker-output traffic limits remain. This
+is a finite read allowance, not a new concurrent job, content/child grant or
+mutation authority. The optional summary extension follows these pages; an
+interrupted scan does not become a complete balance or restart on resume.
+
 ## Recovery and bounds
 
 The reducer rejects unsupported versions, unknown accounting fields, orphaned

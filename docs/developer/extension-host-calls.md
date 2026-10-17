@@ -8,9 +8,10 @@ capability, approval, lifetime and journal admission. The owned task performs IO
 outside Session, keeping cancellation and operator input responsive.
 
 This guide owns the common continuation protocol and scoped state contract.
-Questions, tools, services, history and context use the same action chain; their linked
-guides own operation-specific schemas and failure behavior. The full extension
-foundation remains in progress; no production memory algorithm is selected here.
+Questions, tools, services, history, accounting and context use the same action
+chain; their linked guides own operation-specific schemas and failure behavior.
+P22's foundation is complete within its documented coverage. Production knowledge
+algorithms and the remaining P23 accounting capabilities are separate work.
 
 ## Negotiation and protocol
 
@@ -25,6 +26,7 @@ alongside their `invoke.*` or `event.job` exports:
 | `host.services` | Operator-bound typed value calls | [Services](extension-services.md) |
 | `host.context` | Caller-scoped contextual evidence | [Context](extension-context.md) |
 | `host.history`, `host.history.*` | Bounded own-session recorded views with separate private grants | [History/catch-up](extension-history.md) |
+| `host.usage`, optional `host.usage.scan` | Own-session canonical accounting pages and extended read allowance | [Accounting reads](usage-accounting.md#extension-accounting-reads) |
 
 An operation capability without `host.actions` refuses inert validation.
 Operator trust must allow every capability; project configuration cannot grant
@@ -58,11 +60,16 @@ receives stage `host.actions`:
 ```
 
 IDs above are illustrative. The worker retains private state and may return
-another proposal or its final value. At most 16 host calls fit an invocation,
+another proposal or its final value. Ordinarily at most 16 host calls fit an invocation,
 with existing five-second initialization/callback deadlines and bounded native
 lock acquisition. No callback runs while approval is pending. Approval wait is
 operator-controlled; interruption never automatically resumes code. No Session
 PID, provider/credential configuration or storage path crosses the SDK.
+
+Explicit `host.usage.scan` selection permits only accounting reads beyond step
+16, up to 10,000 steps, with a two-minute boundary-admission deadline. It changes
+neither other operation bounds nor their approvals. The accounting guide owns
+that allowance; existing workers retain the original finite contract.
 
 Put/delete need separate full approval even if the command was explicitly
 requested or the enclosing model tool approved. `--yes` supplies session-wide

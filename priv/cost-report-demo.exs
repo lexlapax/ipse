@@ -39,12 +39,19 @@ defmodule Ipse.CostReportDemo do
     }
   end
 
-  def config(home, enabled \\ true, rates \\ card()) do
+  def config(home, enabled \\ true, rates \\ card(), kind \\ :page) do
+    {artifact, capabilities} =
+      if kind == :summary do
+        {"builtin:cost-summary:1", ~w(invoke.command host.actions host.usage host.usage.scan)}
+      else
+        {"builtin:cost-report:1", ~w(invoke.command host.actions host.usage)}
+      end
+
     data = %{
       "extensions" => [
         %{
           "instance" => "costs",
-          "artifact" => "builtin:cost-report:1",
+          "artifact" => artifact,
           "enabled" => enabled,
           "options" => %{"rate_card" => rates},
           "order" => 0,
@@ -53,8 +60,8 @@ defmodule Ipse.CostReportDemo do
       ],
       "extension_trust" => [
         %{
-          "artifact" => "builtin:cost-report:1",
-          "capabilities" => ~w(invoke.command host.actions host.usage),
+          "artifact" => artifact,
+          "capabilities" => capabilities,
           "allow_project" => false,
           "allow_children" => false
         }
@@ -118,8 +125,39 @@ defmodule Ipse.CostReportDemo do
       ^before = File.read!(path)
       :ok = Session.close(resumed)
 
+      summary_config = config(home, true, card(), :summary)
+      {:ok, summary} = start(summary_config, root, dir)
+
+      for n <- 1..5 do
+        :ok = Session.prompt(summary, "Synthetic summary input #{n}")
+        :ok = done(summary)
+      end
+
+      :ok = Session.invoke_export(summary, :command, "ext__costs__summary", %{})
+      :ok = done(summary)
+      summarized = Session.info(summary).extension_result["value"]
+
+      %{
+        "status" => "summarized",
+        "request_count" => 5,
+        "enumeration_complete" => true,
+        "cost_estimate_complete" => true,
+        "groups" => [%{"amount_nanos" => 2_000_000}]
+      } = summarized
+
+      false = Jason.encode!(summarized) =~ "Synthetic summary input"
+      summary_id = Session.info(summary).id
+      :ok = Session.close(summary)
+      {:ok, _} = Ipse.Diagnostics.saved(dir, summary_id)
+      summary_path = Path.join(dir, summary_id <> ".jsonl")
+      summary_bytes = File.read!(summary_path)
+      {:ok, summary_resumed} = start(summary_config, root, dir, summary_id)
+      ^summarized = Session.info(summary_resumed).extension_result["value"]
+      ^summary_bytes = File.read!(summary_path)
+      :ok = Session.close(summary_resumed)
+
       IO.puts(
-        "Cost report fixture: explicit selection/rates, frozen own-session page and inert resume passed."
+        "Cost report fixture: configured pages, full own-session summary and inert resume passed."
       )
 
       :ok
