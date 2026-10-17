@@ -56,6 +56,10 @@ P22A10 workflow tool actions add no dependency. They reuse existing file tools,
 native Runner/sandbox, workspace-context loader, JSONSchex and linked OTP tasks.
 Runner's bounded result now includes drained-byte/truncation facts; no duplicate
 shell supervisor or workflow framework is introduced.
+Formatter compatibility is also checked with the existing Elixir dependency's
+official [1.18.4 OTP-27 archive](https://github.com/elixir-lang/elixir/releases/tag/v1.18.4)
+in an isolated temporary directory, extracted with OTP `:zip`. This installs no
+new system package and does not replace Serenity's 1.20.4/OTP-29 toolchain.
 P22A2's worker bridge reuses the current ERTS, Elixir, Jason and native stdio
 helper, adding no dependency. The synthetic independent artifact fixture uses
 the existing Elixir compiler in a separate VM. A small Ipse bootstrap implements

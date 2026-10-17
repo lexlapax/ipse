@@ -29,6 +29,9 @@ update to the formatter compatibility repair. Elixir 1.18 and 1.20 laid out two
 guarded extension clauses differently; their portable `do`/`end` forms preserve
 behavior. This was a formatting gate, not evidence that macOS runtime tests ran.
 See [the hosted check record](../developer/testing.md#extension-formatter-compatibility-2026-10-16).
+The workflow increment also exposed short multiline `if`/`with` layout differences.
+Use explicit `do`/`end` blocks and check both supported formatters when developing
+on a newer toolchain. See [workflow floor verification](../developer/testing.md#workflow-formatter-floor-compatibility-2026-10-16).
 
 - Missing `mix` or `rustc`: check packages and `PATH` against the
   [prerequisites](arch-linux.md#install-the-toolchain).

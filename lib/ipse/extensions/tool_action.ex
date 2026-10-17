@@ -97,7 +97,11 @@ defmodule Ipse.Extensions.ToolAction do
            "operation_id" => String.duplicate("0", 32),
            "step" => 16,
            "outcome" => %{"status" => "ok", "value" => value}
-         }) == :ok, do: {:ok, value}, else: incomplete(request)
+         }) == :ok do
+      {:ok, value}
+    else
+      incomplete(request)
+    end
   end
 
   defp incomplete(%{"name" => "read"}), do: {:failed, %{"reason" => "result_limit"}}

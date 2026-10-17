@@ -190,7 +190,8 @@ defmodule Ipse.Extensions.Host do
   defp nested_context(snapshot, %{"name" => "shell"}), do: {:ok, snapshot}
 
   defp nested_context(snapshot, request) do
-    with {:ok, updated, _} <- Ipse.WorkspaceContext.nested(snapshot, request["arguments"]["path"]),
-         do: {:ok, updated}
+    with {:ok, updated, _} <- Ipse.WorkspaceContext.nested(snapshot, request["arguments"]["path"]) do
+      {:ok, updated}
+    end
   end
 end

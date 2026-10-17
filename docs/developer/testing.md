@@ -2741,3 +2741,24 @@ passed extracted-package verification using fresh homes and a utility-only PATH.
 It covers existing bundled hooks/accounting/text and runtime/helper behavior;
 the custom workflow artifact remains source-only evidence. This is a local
 verification archive, not a published release or live-account/macOS local check.
+
+## Workflow formatter floor compatibility (2026-10-16)
+
+[The workflow run](https://github.com/lexlapax/ipse/actions/runs/38996976329)
+for `c752f07` stopped at formatting on both Ubuntu and macOS-14. Runtime tests,
+native enforcement and package verification were skipped; they are not hosted
+workflow evidence. Two short multiline `if`/`with` expressions format differently
+under Elixir 1.18 and 1.20. Explicit block equivalents preserve behavior.
+
+The official Elixir 1.18.4 OTP-27 archive was downloaded to `/tmp` and extracted
+using OTP `:zip`, without replacing the system toolchain. Its formatter runs on
+Serenity's OTP 29. Both the 1.18.4 and 1.20.4 format checks pass after the repair.
+This is local floor-formatter validation, not local OTP-27/macOS runtime evidence.
+The next hosted run must establish those platform checks independently. See
+[operator recovery](../operator/troubleshooting.md#build-and-sockets).
+
+Warnings-as-errors compilation and **48 focused workflow/Runner/service tests**
+passed in the current worktree, including ongoing service-composition fixtures.
+The focused compatibility commit preserves that unfinished service work outside
+its staged diff. Documentation checks passed **67 Markdown files / 668 local
+file and heading links**.
