@@ -13,15 +13,16 @@ checks and matching runtime. Use the local
 Next comes P24's external adversarial architecture validation and baseline OpenAI
 security audit, followed by P25's larger independent Codex/Ipse research and
 self-development comparison. The first partial static critique has returned;
-[verification and repairs](../developer/architecture-review-dispositions.md) are
-in progress. No security scan or larger trial has run. The
+[repair verification and remaining review coverage](../developer/architecture-review-dispositions.md)
+are recorded separately. The prepared follow-up brief targets the repaired source
+and first-pass omissions. No security scan or larger trial has run. The
 [review and evaluation protocol](../developer/self-hosting-evaluation.md) defines
 the critique, dispositions, source-based comparison, Ipse-authored repairs,
 held-out reruns and final architecture/security reviews. The
 [plan](../plan.md#current-priorities-and-status) owns scope and order; former-P24
 voice/media is deferred to P28 and does not block this text/research work.
 
-Use the [prepared architecture-review handoff](architecture-review.md) for the
+Use the [follow-up architecture-review handoff](architecture-review.md) for the
 operator's selected Claude subscription route in the existing Serenity project
 directory. Its pinned Git revision and source exclusions replace a required
 packet download or separate checkout. Use a passing candidate from
@@ -34,9 +35,9 @@ files, private journals and unrelated projects; retain raw findings privately.
 This runbook provisions no service and installs no external review/scan tooling.
 
 Triage counterexamples and scan findings against actual code, repair applicable
-blockers and refresh affected reviews on the changed revision. Wait for the
-independent initial critique and its triage before scanning, architecture repairs
-or P25 execution. Freeze P25's runner
+blockers and refresh affected reviews on the changed revision. Obtain the
+independent delta/omitted-surface critique and disposition its findings before
+the baseline scan or P25 execution. Freeze P25's runner
 only after its checks and P24 gates pass. Brief preparation/access checks can
 proceed earlier; earlier passing releases do not verify later runtime changes.
 Keep the external critique separate from the initial A/B research inputs, record

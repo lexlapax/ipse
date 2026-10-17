@@ -21,7 +21,7 @@ start. Use the guides below for operation, development, and project context.
 | [Shared admission budgets](operator/budgets.md) | Operator-only session-tree reservations, supported bounds, inspection, refusal and unknown-liability recovery |
 | [Extensions](operator/extensions.md) | Review/import, operator trust and selection, capability procedures, limits and recovery |
 | [Independent extension lab](operator/extension-lab.md) | Build, review and select synthetic artifacts against an existing checkout or unchanged release |
-| [Independent architecture-review handoff](operator/architecture-review.md) | Pinned P24 commit and first-pass Claude subscription prompt for the existing Serenity checkout |
+| [Independent architecture-review handoff](operator/architecture-review.md) | Pinned repaired P24 source and phased follow-up Claude subscription prompt covering the delta and first-pass omissions in the existing Serenity checkout |
 | [Troubleshooting](operator/troubleshooting.md) | Build, callback, account, lock, and recovery problems |
 
 ## Develop Ipse

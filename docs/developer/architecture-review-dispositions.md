@@ -24,7 +24,7 @@ invocation/service/accounting-read validators, context/compaction/auth plumbing,
 MCP HTTP, OS sandbox implementations, observability or the independent examples.
 Those omissions remain explicit coverage work; this report does not close P24.
 
-## Findings requiring verification and repair
+## Findings and verified repairs
 
 “Accepted source defect” means the supervisor checked the described path against
 current code. It is not a claim of a reproduced impact. Severity and reachability
@@ -45,7 +45,7 @@ must follow evidence; the review's labels are initial assessments.
 | ID | Assessment | Required disposition |
 | --- | --- | --- |
 | S1 | Controlled suspended Sessions reproduced uncaught 5-second approval and 10-second cancellation exits. A separate killed-client fixture reproduced the unowned root Session. Repair at `fe54206` registers ownership, catches request exits without printing private reasons/retrying, stops the reader and attempts bounded cleanup. Source/native/demo/package/both installed proofs and hosted Ubuntu/macOS passed | Closed within exercised caller/owner scope. Sequential cleanup or slow storage may still exceed a caller deadline; unconfirmed cleanup remains explicit rather than extending deadlines or asserting effects failed |
-| S2 | Source confirms numeric group IDs remained usable after leader reaping in shell, stdio and native Mac signature-check cleanup; no PID-reuse incident is reproduced. A retained inert group owner, default child-status handling and mutex-bound signals pin identity until release. Forty-nine process/native fixtures, 771 full native-inclusive tests, demo/package/both installed proofs passed, covering ignored-SIGCHLD ownership, late signal refusal and EOF-confirmed ordinary-child exit after abrupt owner death | Hosted validation pending. One extra owned process per invocation; no new dependency or detached-descendant containment claim. See the native lifetime contract |
+| S2 | Source confirms numeric group IDs remained usable after leader reaping in shell, stdio and native Mac signature-check cleanup; no PID-reuse incident is reproduced. Repair at `b570ef8` pins identity with a retained inert group owner, default child-status handling and mutex-bound signals. Process/native, 771 full native-inclusive tests, demo/package/both installed proofs and hosted Ubuntu/macOS passed, including native Mac signature checks and sandbox enforcement | Closed within exercised group-identity scope. Covers ignored-SIGCHLD ownership, late signal refusal and EOF-confirmed ordinary-child exit after abrupt owner death. One extra owned process per invocation; no new dependency or detached-descendant containment claim |
 | S3 | A gated 138 KB valid Unicode delta reproduced `invalid_chunk` closure after start acknowledgment. Repair at `fe54206` reuses UTF-8 boundaries and sequential bounded pushes; fixtures verify exact text, one original UI delta, contiguous v2 ranges and unchanged private native response. Direct oversize pushes still refuse. Source/native/demo/package/both installed proofs and hosted Ubuntu/macOS passed, including the extracted-runtime large-delta probe | Closed within exercised visible-text scope. Buffer/deadline bounds and failure under genuine backpressure remain unchanged; this is fragmentation, not media support |
 
 Supervisor verification also found a recurring Mac CI concern outside the critique:
@@ -70,17 +70,18 @@ Exact failed/passing runs are retained in the testing record.
 
 ## Execution order and completion
 
-Repair the demonstrated display and configuration-authority defects first, then
-durability, performance and recovery/alias issues in focused increments. Each
-increment needs a regression or measured counterexample, coherent operator/developer
-guidance and its own required checks before commit/push. Passing old baselines
-does not verify repairs. The [testing record](testing.md#current-evidence-and-next-checks)
-owns actual full-suite/package/platform results and revisions.
+The scoped F1–F7 and S1–S3 repairs have passed their own source/native/package/
+installed and hosted gates through `b570ef8`. The
+[testing record](testing.md#current-evidence-and-next-checks) owns exact results,
+revisions and remaining verification limits. Future repairs still need a
+regression or measured counterexample, coherent operator/developer guidance and
+their own checks before commit/push; an earlier green baseline does not cover them.
 
-After repairs, request an independent delta/coverage pass covering the original
-omissions, particularly Session extension begin/commit/question restore,
-subscriptions/jobs, compaction/workspace context and MCP HTTP. Retain original
-findings and check each disposition; no automatic approval follows from agreement
-between agents. The baseline security audit and P25 remain gated by the initial
-critique's triage, applicable repairs and adequate architecture coverage. No
-security scan has run and P24 remains incomplete.
+The [prepared follow-up brief](../operator/architecture-review.md) now targets
+`b570ef8`, covering the repair delta and first-pass omissions, particularly Session
+extension begin/commit/question restore, subscriptions/jobs, compaction/workspace
+context and MCP HTTP. The reviewer records an independent source assessment before
+checking this register and later verification evidence. Preserve the original
+critique and challenge every disposition. The baseline security audit and P25
+remain gated by adequate independent coverage and any resulting applicable
+repairs. No security scan has run and P24 remains incomplete.

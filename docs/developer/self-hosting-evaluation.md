@@ -99,7 +99,12 @@ The first pass sees requirements, implementation, contracts and known platform
 limits, but not our preferred conclusions or either A/B report. Ask it to build
 an assumption register and attack invariants with concrete sequences, expected
 versus actual behavior, source references and falsifiable tests. Retain this first
-critique before offering rebuttals or requesting follow-up. Use these scenarios:
+critique before offering rebuttals or requesting follow-up. Later passes inspect
+the repair delta and omitted surfaces at a new pinned source revision. Preserve
+a fresh independent assessment before checking supervisor dispositions. Pin the
+committed evidence-document revision separately when hosted results postdate
+the source; evidence for later changed code does not certify the earlier target.
+Use these scenarios:
 
 | Area | Adversarial questions |
 | --- | --- |

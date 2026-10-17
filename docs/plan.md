@@ -23,7 +23,8 @@ quality. Subscription, API and installed Ollama checks have separate
 [provider verification](developer/testing.md#provider-verification-status).
 
 P23 is complete within its one-shot text/accounting scope. P24 is the active gate,
-triaging the returned independent Claude review. The operator's 2026-10-17 direction
+with scoped repairs verified and independent follow-up coverage still required.
+The operator's 2026-10-17 direction
 puts independent architectural challenge, security review and a large supervised
 self-development trial ahead of media. P24 now owns architecture/security
 readiness; the former P24 voice/media scope moves to deferred P28. P25 compares
@@ -35,7 +36,7 @@ new source transfer or dependency, or select a production engine.
 | Milestone or gate | Current state | Next result |
 | --- | --- | --- |
 | [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within selected scope; source/native/package/installed and hosted Linux/macOS passed | Retain accounting invariants through P24/P25 review and repairs |
-| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | First static critique returned; supervisor reproductions/repairs in progress; no scan yet | Verified dispositions, applicable repairs, independent delta/coverage review and triaged baseline OpenAI security audit |
+| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | First critique triaged; scoped repairs verified through `b570ef8`; follow-up brief prepared; no scan yet | Independent delta/omitted-surface review, any resulting repairs and triaged baseline OpenAI security audit |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Planned revised scope; unstarted | Independent Codex/Ipse research, Ipse-authored repairs, fresh acceptance runs and final architecture/security review |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Deferred; proposed scope subject to P25 decisions | Independently selectable working/long-term memory tools and optional lifecycle policies |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; proposed scope subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
@@ -149,15 +150,19 @@ visible-delta repairs also passed those local and hosted gates at `fe54206`.
 The final process-group repair retains a separate waitable group owner through
 all signaling and cleanup paths, including native Mac signature checks. Its
 focused and full native-inclusive checks, demo/package/both installed proofs pass;
-hosted validation remains open.
+hosted Ubuntu/macOS verification also passed at `b570ef8`, including native Mac
+signature and sandbox enforcement.
 Design-contract fixtures confirm inert inspection/handoff after extension expiry
 and whole-tree overdraw refusal even for a completed request within its own
 reservation. Keep that refusal and document the lack of private response quarantine;
 future memory identity/migration/deletion proposals must distinguish retained host
 evidence from retrieval state.
 
-After repair verification, obtain the independent delta/omitted-surface review,
-then the triaged baseline security scan on the resulting exact revision. P24 and
+Use the [prepared follow-up brief](operator/architecture-review.md), pinned to
+`b570ef8`, for the independent delta/omitted-surface review. It preserves the
+initial source assessment before checking repair dispositions; the original brief
+is archived with provenance. Then run the triaged baseline security scan on the
+resulting exact revision. P24 and
 P25 execution remain gated; repaired findings do not certify omitted surfaces.
 Read-only Security Cloud access checks found the repository and available scan
 credits; no matching environment was found and no scan or billing change was
