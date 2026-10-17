@@ -62,7 +62,7 @@ revised contract has an explicit route; implementation still needs its fixtures.
 | Inspect a failing extension | Use synthetic callback/worker inputs and sanitized correlated events; no effect-journal replay or raw-state observer access. | SDK conformance runner and bounded developer trace ownership. | Visual timeline/IDE integration. |
 | Report costs with tracing disabled | Read durable request facts, including children/compaction; missing usage stays unknown; rates carry identity. | Request/attempt IDs, canonical usage facts and generic report surface. | P23 report extension and budget host capability. |
 | Consume text while generated | Read ordered private visible-text chunks with bounded flow/cancellation; saved provider history stays unchanged. | Content subscription and slow-consumer/terminal policy, separate from diagnostics. | Stateful incremental rewrites. |
-| Add voice or duplex audio | Negotiate owned media/provider capabilities; unsupported audio refuses until implemented. | Versioned resource/data-plane boundary and explicit billing/approval ownership. | P24 voice/realtime transport/playback capability. |
+| Add voice or duplex audio | Negotiate owned media/provider capabilities; unsupported audio refuses until implemented. | Versioned resource/data-plane boundary and explicit billing/approval ownership. | Deferred P28 voice/realtime transport/playback capability. |
 | Maintain a graph from prompts | Original/final-effective subscriptions and boundary-scheduled extraction jobs are implemented; a job proposes scoped writes separately. | Shared event IDs, private-view authority, separate action approval, bounded job admission, causation and duplicate/gap handling; exercised in the independent installed lab. | P25 researches extraction/graph choices; production algorithms defer to P26/P27. Fully concurrent effectful jobs need negotiated core support. |
 | Recall memory for the current answer | Await a selected pre-request hook and commit its bounded evidence snapshot before inference. | Ordered recall seam; background completion cannot alter an admitted request. | Retrieval/ranking quality and production backends. |
 | Resume or catch up a subscriber | Restore committed receipts without executable startup/replay; explicit bounded catch-up is a new approved job over authorized history. | Source IDs, unknown outcomes, retention gaps and tombstone/revision checks against delayed resurrection. | Durable external broker/cursor integrations, if separately justified. |
@@ -80,7 +80,10 @@ The runtime cases are analyzed with primary-source comparisons in
 [runtime capabilities](runtime-capabilities.md). Observability/developer controls
 are specified in [observability](observability.md); the requested default-off
 knowledge extensions are mapped in the [knowledge design](knowledge-extensions.md),
-with proposed P25 research and deferred P26/P27 production delivery.
+with planned P25 research and deferred P26/P27 production delivery. P24's
+[independent adversarial review](self-hosting-evaluation.md#independent-adversarial-architecture-validation)
+challenges these routes before the trial, without assuming every future feature
+already fits the current SDK.
 
 ## Package and installation contract
 

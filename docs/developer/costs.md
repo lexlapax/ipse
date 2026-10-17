@@ -195,7 +195,7 @@ setting. Optional [host-owned shared reservations](budgets.md) cover main,
 summary and local-child requests, retaining partial/unknown liability independently
 of these reports. Generic accounted extraction
 requests are needed before a selected knowledge package can call a model;
-embeddings need their own supported provider/accounting contract. The proposed
+embeddings need their own supported provider/accounting contract. The planned
 P25 research trial can use existing explicit provider/tools without implementing
 a production engine. A calculator or event observer cannot enforce admission.
 

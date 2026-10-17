@@ -22,21 +22,23 @@ provider/account combinations, unattended self-development or production knowled
 quality. Subscription, API and installed Ollama checks have separate
 [provider verification](developer/testing.md#provider-verification-status).
 
-P23 is the active implementation milestone. P24 remains authorized. The operator's
-2026-10-17 input proposes making P25 a larger comparative research and supervised
-self-development evaluation, with security reviews before and after its changes.
-Production knowledge features move to later P26/P27 work. The protocol and split
-below are proposals for review; recording them does not launch scans, authorize
-new dependencies or start production engine implementation.
+P23 is the active implementation milestone. The operator's 2026-10-17 direction
+puts independent architectural challenge, security review and a large supervised
+self-development trial ahead of media. P24 now owns architecture/security
+readiness; the former P24 voice/media scope moves to deferred P28. P25 compares
+independent Codex and Ipse research, then uses Ipse to repair demonstrated gaps.
+Production knowledge packages remain deferred P26/P27 work selected from those
+findings. Recording these reviews does not launch external analysis, approve a
+new source transfer or dependency, or select a production engine.
 
 | Milestone or gate | Current state | Next result |
 | --- | --- | --- |
 | [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | In progress; reports, output caps and verified shared main/summary/child reservations | Accounted extension model operations |
-| [P24: voice and media](#p24-voice-and-realtime-media) | Authorized; unimplemented | Chained STT/text/TTS, then explicit realtime/media capability |
-| [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Proposed revised scope; unstarted | Independent Codex/Ipse research, measured discrepancies, Ipse-authored repairs and fresh acceptance runs |
-| P25 security gates | Proposed; no service access or scan verified | Baseline audit before broad self-development and final-candidate review/rescan afterward |
+| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Planned; no external review or scan run | Independent adversarial architecture review, evidence-based dispositions and triaged baseline OpenAI security audit |
+| [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Planned revised scope; unstarted | Independent Codex/Ipse research, Ipse-authored repairs, fresh acceptance runs and final architecture/security review |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Deferred; proposed scope subject to P25 decisions | Independently selectable working/long-term memory tools and optional lifecycle policies |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; proposed scope subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
+| [P28: voice and media](#p28-voice-and-realtime-media) | Deferred; former P24 scope, unimplemented | Chained STT/text/TTS, then explicit realtime/media capability; no prerequisite for P24/P25 |
 | [Apache-2.0 transition](#license-transition) | Requested; unimplemented | Separate verified license/package/documentation change after the agreed delivery scope |
 
 Feature status and runner readiness are separate. Shared-budget candidate
@@ -46,14 +48,26 @@ Later runtime changes need their own baseline before P25's runner is frozen.
 Actual revisions, platform results and investigation belong in
 [testing](developer/testing.md#current-evidence-and-next-checks).
 
-Recommended order: finish P23; deliver P24 as
-already requested; freeze the P25 candidate and run its baseline security audit;
-then execute the comparative research/repair/rerun cycle and final security review.
-P25's text/research trial has no technical dependency on audio devices or a live
-voice account. If those need operator action, independent P25 preparation can
-proceed without representing P24 as complete. P26/P27 wait for the research outcome
-and a selected implementation scope. A material new defect is addressed when
-found rather than deferred merely to preserve milestone numbering.
+Execution order:
+
+1. Finish P23's accounted extension model operations and verify the candidate.
+2. Freeze the P24 review packet. Have an independent external agent, such as
+   Claude, challenge the architecture; triage and repair blocking design defects,
+   then run the baseline OpenAI security audit on the resulting revision.
+3. Execute P25's independent research, discrepancy comparison, Ipse-authored
+   repairs and fresh same-input/held-out reruns. Finish with an external
+   architecture delta review and security review/rescan of the final candidate.
+4. Select later P26/P27 production increments from the evidence. Keep P28 media
+   deferred until explicitly scheduled; neither audio devices nor voice accounts
+   block P24/P25. Resolve the separate license-transition placement before that
+   change rather than allowing deferred features to hide its outstanding status.
+
+Brief preparation and review-service access checks can proceed while P23 is open.
+Architecture review normally precedes the baseline scan to sharpen its threat
+model; a recorded reason may reverse that order. Material repairs require review
+of affected surfaces on the new revision. Address a new defect when found rather
+than postponing it to preserve numbering. Earlier dated records retain their
+original milestone names; current scheduling follows this plan.
 
 ## Completion rules
 
@@ -123,30 +137,48 @@ Remaining acceptance:
    reports and the independent installed extension lab on the changed candidate,
    and close source/package/supported-platform checks with actual evidence.
 
-## P24: voice and realtime media
+## P24: independent architecture validation and baseline security
 
-**Authorized; unimplemented.** Build on the owned text/provider and P23 accounting
-foundation. Start with a chained STT → admitted text agent → TTS extension/client;
-then add a versioned realtime provider/session capability for bidirectional
-transport, interruption, turn control, playback acknowledgment and reconciliation
-of generated versus played history.
+**Planned; unstarted.** Challenge the foundation before the large self-development
+trial. An external agent, such as Claude, reviews a pinned repository/design
+packet independently of the implementation author and the Codex/Ipse research
+tracks. The first pass does not receive our preferred verdict or either track's
+report. This is an adversarial design review, distinct from a vulnerability scan
+and from the later knowledge-design comparison.
 
-Voice choice, STT/TTS/device adapters and UI belong in extensions/clients. Core
-owns resource lifetime, admission, approvals, cancellation, flow control and
-provider continuation integrity. Use a separate media data plane, ephemeral raw
-audio by default, canonical transcripts/usage and explicit endpoint/device/billing
-choices. Text subscription authentication does not establish audio eligibility.
+Require concrete counterexamples and failure sequences against core/extension
+boundaries; lifecycle ordering, subscriptions and backpressure; trust, private
+grants and project/operator scope; ownership, cancellation, locking and no-replay
+recovery; persistence/SDK evolution; accounting and unknown liability; and the
+foreseen memory, research, graph/RAG and media seams. Test whether realistic
+features fit existing extension APIs, need a justified generic enhancement, or
+reveal a foundational defect. Do not add speculative core abstractions merely to
+make every hypothetical feature possible without a future versioned enhancement.
 
-Acceptance: synthetic split/slow/disconnected media, revised interim transcripts,
-barge-in, stale/unplayed frames, owner death, approval waits and no-replay recovery;
-source/package checks and separately recorded opt-in live account/device checks.
-Evaluate maintained Elixir/Rust/OS facilities and approve/inventory external
-dependencies before adoption. No codec, frontend runtime or service is selected.
-See [media boundaries](developer/runtime-capabilities.md#text-and-media-are-distinct-from-diagnostics).
+Pin the brief, revision, packet manifest, model/provider, access and resource
+limits. Select an available public interface and obtain any required source-share,
+credential, billing or dependency approval before execution. Exclude secrets,
+private journals and unrelated workspaces. An unavailable reviewer/service keeps
+the gate open; another provider is an explicit choice, never a silent fallback.
+
+Acceptance requires a retained critique and assumption/counterexample register,
+independently checked findings, accepted/rejected-with-evidence/deferred
+dispositions, regression or evaluation cases for applicable repairs, and a
+triaged baseline OpenAI security audit on the resulting exact revision. Applicable
+critical/high findings and foundational correctness gaps block affected execution
+until repaired. Escalate unresolved material design choices to the operator.
+Record residual risks and coverage limits; an agent's verdict is evidence to
+evaluate, not authority to rewrite core or declare the design safe.
+
+The [review and trial protocol](developer/self-hosting-evaluation.md) owns the
+architecture-review procedure and security execution constraints. Prefer external
+architecture review before scanning, then repair/refreeze as needed. P25 closes
+the loop with a final architecture delta review and security review/rescan; P24's
+baseline cannot certify later changes. No external review or scan has run.
 
 ## P25: comparative research and supervised self-development
 
-**Proposed revised milestone; unstarted.** Replace P25's production-engine delivery
+**Planned revised milestone; unstarted.** Replace P25's production-engine delivery
 with a large supervised evaluation using those engines as a research/planning
 problem. Track A uses Codex; Track B uses stable installed Ipse. Both research
 working/long-term memory, configurable research providers, graph and RAG, including
@@ -154,36 +186,36 @@ Zero-Mem and alternatives, then propose implementable P26/P27 designs. Each work
 independently before comparison, with common requirements and recorded resource,
 provider/model, retrieval and assistance differences.
 
-The [evaluation protocol](developer/self-hosting-evaluation.md) owns the proposed
-rubric, artifact manifest, round limits, held-out cases and security process.
+The [evaluation protocol](developer/self-hosting-evaluation.md) owns the rubric,
+artifact manifest, proposed round limits, held-out cases and review process.
 The [knowledge design](developer/knowledge-extensions.md) owns domain questions and
 selection gates. Existing P14 tools/skills/ledger and P22 SDK are available; engine
 installation or production implementation is not required by this milestone.
 
 Execution readiness requires a passing frozen runner, reviewed task/resource
-limits, usable explicit research access for both tracks and a triaged baseline
-audit. Brief preparation and service-access checks can proceed earlier. P24 live
-audio is not a prerequisite for this text/research experiment. Scope the trial
+limits, usable explicit research access for both tracks and P24's architecture
+dispositions and triaged baseline audit. Brief preparation and service-access
+checks can proceed earlier. P28 live audio is not a prerequisite. Scope the trial
 as several reviewable work packages with retained intermediate artifacts, so
 research, long-task recovery and actual self-development have separate evidence.
 
 | Phase | Deliverable and gate |
 | --- | --- |
-| A — freeze and baseline audit | Pin task/rubric, source packet, runner/candidate, profiles, tools and resource limits; run and triage OpenAI security audit before broad self-development |
+| A — freeze and verify readiness | Pin task/rubric, source packet, runner/candidate, profiles, tools and resource limits; confirm P24 architecture/security coverage matches the actual baseline and refresh affected reviews if it changed |
 | B — independent research | Frozen A/B reports, primary-source/claim ledgers, alternatives, architecture, dependency/license review and implementation proposals; common-packet and live-research comparisons |
 | C — evidence-based comparison | Codex reviews both reports against the sources and common rubric; record material discrepancies, root-cause hypotheses, uncertainty and supervisor assistance |
 | D — Ipse-authored repairs | Stable Ipse develops meaningful harness/extension/skill fixes with regressions and documentation in a separate candidate; Codex independently reviews and verifies |
 | E — fresh reruns | Clean same-input and held-out evaluations after fixes; real behavior change, context pressure, operator question, interruption/resume and independent review, plus source/native/package/platform checks |
-| F — final security and acceptance | Review/rescan the exact final candidate, disposition findings, publish sanitized evidence and the researched P26/P27 proposal |
+| F — final architecture, security and acceptance | External architecture delta review and OpenAI security review/rescan of the exact final candidate; disposition findings, verify repairs, publish sanitized evidence and the researched P26/P27 proposal |
 
 Research acceptance means source-supported correctness, required coverage and a
 useful implementation plan at comparable declared limits. Codex's report is a
 reviewed reference, not unquestionable truth or a wording template. Both tracks
 must satisfy minimum criteria; justified alternative decisions can pass. Proposed
 bounds are three repair rounds and two independent final Ipse runs, with no material
-factual/citation errors or unresolved critical/high security issues. Pin actual
-limits before execution; exhausted limits produce a residual-gap report, not an
-unbounded attempt to force agreement.
+factual/citation errors, unresolved applicable critical/high findings or foundational
+correctness gaps. Pin actual limits before execution; exhausted limits produce a
+residual-gap report, not an unbounded attempt to force agreement.
 
 Self-development acceptance additionally requires at least one meaningful
 Ipse-authored behavior change and independently verified regression tests. Record
@@ -192,12 +224,15 @@ alone, copied Codex conclusions or a synthetic extension lab cannot close this g
 Promote a new frozen runner only after independent review and checks; preserve old
 reports/runtimes and validate held-out cases rather than tuning a single answer.
 
-Use OpenAI Codex Security for baseline and final reviews. The hosted route is
+Use P24's external architectural challenge and OpenAI Codex Security baseline as
+separate inputs; repeat architecture review for material design changes and
+security review on the final candidate. The hosted security route is
 preferred to adding local tooling, subject to actual account/repository access
 and revision coverage. Scan status and coverage are separate; findings need
 triage and fixes need regression evidence. Raw findings stay private. No scan has
 run, no recurring monitoring is enabled and no new dependency is approved by this
-plan. See [security execution constraints](developer/self-hosting-evaluation.md#security-review-before-and-after-the-trial).
+plan. See [architecture validation](developer/self-hosting-evaluation.md#independent-adversarial-architecture-validation)
+and [security execution constraints](developer/self-hosting-evaluation.md#security-review-before-and-after-the-trial).
 
 ## P26: optional working and long-term memory
 
@@ -236,14 +271,38 @@ then separate opt-in live evidence from credential-free source/package fixtures.
 No framework, database or provider is mandated. P25's findings determine delivery
 order and any justified generic host enhancement before implementation selection.
 
+## P28: voice and realtime media
+
+**Deferred; unimplemented. Formerly P24.** Keep the requested scope for a future
+delivery; it is no longer ahead of architecture/security review or self-development.
+Build on the owned text/provider and P23 accounting foundation. Start with a
+chained STT → admitted text agent → TTS extension/client; then add a versioned
+realtime provider/session capability for bidirectional transport, interruption,
+turn control, playback acknowledgment and reconciliation of generated versus
+played history.
+
+Voice choice, STT/TTS/device adapters and UI belong in extensions/clients. Core
+owns resource lifetime, admission, approvals, cancellation, flow control and
+provider continuation integrity. Use a separate media data plane, ephemeral raw
+audio by default, canonical transcripts/usage and explicit endpoint/device/billing
+choices. Text subscription authentication does not establish audio eligibility.
+
+Acceptance: synthetic split/slow/disconnected media, revised interim transcripts,
+barge-in, stale/unplayed frames, owner death, approval waits and no-replay recovery;
+source/package checks and separately recorded opt-in live account/device checks.
+Evaluate maintained Elixir/Rust/OS facilities and approve/inventory external
+dependencies before adoption. No codec, frontend runtime or service is selected.
+See [media boundaries](developer/runtime-capabilities.md#text-and-media-are-distinct-from-diagnostics).
+
 ## License transition
 
 The operator requested MIT → Apache-2.0 after the extension work. That request
-remains open. With production knowledge implementation now deferred, the proposed
-placement is after the agreed P23/P24/P25 delivery and audit gates, before a later
-P26/P27 implementation campaign. Confirm that revised placement with the operator
-when finalizing the revised delivery scope; do not silently reinterpret “after
-all this” or change the license during this planning edit.
+remains open. Production knowledge implementation and former-P24 media are now
+deferred, so the exact transition point needs to be settled against that changed
+scope. The proposed placement is after P23 and the P24/P25 review/trial gates,
+before a later optional-feature campaign. Confirm that placement with the operator
+before changing the license; do not silently interpret “after all this” as either
+including or excluding deferred P26–P28 work. This planning edit changes no license.
 
 The eventual separate change must replace Ipse's license and bundled copies,
 reconcile current README/contribution/operator/developer guidance and packaging

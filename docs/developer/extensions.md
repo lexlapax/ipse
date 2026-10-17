@@ -269,7 +269,7 @@ and validated contracts; the examples are not a fixed mandatory workflow.
 ## Long-term memory and customized workflows
 
 The [independent lab](extension-proof.md) exercises synthetic memory/workflow
-adapters through the generic SDK. The proposed P25 comparison researches their
+adapters through the generic SDK. The planned P25 comparison researches their
 design; production knowledge adapters are deferred to P26/P27 selection gates.
 The two hook examples do not implement those systems. Session journals, research
 ledgers and compaction checkpoints are not cross-session long-term memory.
@@ -334,14 +334,14 @@ merely to demonstrate the first examples.
 
 The [runtime capability review](runtime-capabilities.md) assigns observability
 controls/local developer diagnosis to P22, cost extensions/budget enforcement to
-P23 and voice/realtime to P24. P22 establishes canonical usage facts and a bounded
-read-only visible-text channel. Diagnostic samples, durable accounting and product
-media have different delivery/privacy contracts; do not force them through one
+P23 and deferred voice/realtime to P28. P22 establishes canonical usage facts and
+a bounded read-only visible-text channel. Diagnostic samples, durable accounting
+and product media have different delivery/privacy contracts; do not force them through one
 Telemetry handler or JSON event queue. Media/realtime are negotiated boundaries
-with explicit unsupported-operation errors until P24.
+with explicit unsupported-operation errors until that capability is implemented.
 
 The requested shipped [knowledge extension family](knowledge-extensions.md)
-is researched in the proposed P25 comparison, with production working/long-term
+is researched in the planned P25 comparison, with production working/long-term
 memory deferred to P26 and research/graph/RAG to P27. All remain default-off and
 independently selected. P22's generic service
 composition, evidence, context/store and owned-job contracts must support these
@@ -527,7 +527,7 @@ service is permitted.
    Verify off/local/export configuration and immediate sink-stop, synthetic
    extension debugging, usage facts independent of tracing, and slow/cancelled
    stream consumers. Cost reports/budgets and audio delivery remain
-   [P23/P24](runtime-capabilities.md#verification-and-milestone-scope).
+   [P23/P28](runtime-capabilities.md#verification-and-milestone-scope).
 
 For every phase, test crash/timeout/owner death, full queues, malformed/oversized
 returns, unsupported identity, conflicting registration, cancelled/partial

@@ -29,7 +29,9 @@ P19 context measurements are encoded JSON bytes, not tokens. P23 adds a pure
 [configured rate-card estimator and opt-in page/session/child reports](costs.md)
 through separately granted accounting reads. Supported
 [provider output ceilings](provider-limits.md) are an explicit per-request control.
-Shared monetary/token reservation enforcement and P24 audio usage remain work.
+Optional [shared monetary/token reservations](budgets.md) now cover main,
+summary and local-child requests. Accounted extension model operations remain
+open P23 work; audio usage belongs to deferred P28.
 
 P19's local on-demand diagnostics and request timing are available. Optional
 metadata capture, bounded sink workers, stop controls and opt-in synthetic
@@ -64,8 +66,8 @@ No external framework is selected as an Ipse runtime dependency.
 | Monetary/token limits | Request admission, atomic parallel reservations, cancellation and unknown-charge handling | Policy configuration and displays; extension may request stricter limits | P23 main/summary/child reservations implemented; accounted extension model operations remain open |
 | Visible text streaming | Ordered content channel, sequence/completion identity, flow control and cancellation | Terminal/web renderers and stream consumers | Existing CLI; P22 bounded subscription proof |
 | Stateful stream rewriting | Preserve original messages, enforce required filter/failure policy and buffering limits | Parser/formatter/filter algorithm | Later explicit capability, not the completed-answer hook |
-| Chained voice | Managed input/output resources, admitted text turn, profiles, approval/control separation | STT/TTS adapters, microphone/speaker/client UI | P24 |
-| Realtime speech-to-speech | Session/transport/media lifetime, barge-in, played-output reconciliation and tool gating | Provider adapter and voice experience | P24 foreseen host enhancement |
+| Chained voice | Managed input/output resources, admitted text turn, profiles, approval/control separation | STT/TTS adapters, microphone/speaker/client UI | Deferred P28 |
+| Realtime speech-to-speech | Session/transport/media lifetime, barge-in, played-output reconciliation and tool gating | Provider adapter and voice experience | Deferred P28 host enhancement |
 
 An extension cannot reconstruct authoritative accounting, reliably cancel a
 transport or enforce a budget merely by watching callbacks. Those are host
@@ -149,9 +151,9 @@ alone does not redact private journals or provider context. Test every channel
 before claiming a privacy feature. Partial tool arguments are never actionable
 tool calls or approval requests; execute only validated complete calls.
 
-For P24, use the same generic owned-resource model for input streams and output
-sinks, with explicit start/stop/interrupt and bounded lifetimes. Voice pipeline
-extensions select STT/TTS separately from the main model, using approved profiles,
+For deferred P28, use the same generic owned-resource model for input streams and
+output sinks, with explicit start/stop/interrupt and bounded lifetimes. Voice
+pipeline extensions select STT/TTS separately from the main model, using approved profiles,
 endpoints and credential references. Final admitted transcripts become ordinary
 user turns; interim hypotheses/revisions do not repeatedly trigger inference or
 grant approvals. Record provenance and a deliberate operator decision through
@@ -173,7 +175,7 @@ underrun/gaps, endpoint/device consent, raw-media retention and cleanup on owner
 death. Canonical transcripts, tool outcomes and usage remain durable; raw media
 is ephemeral by default. P22 defines/negotiates the boundary and refuses unsupported
 media capabilities. Actual microphone, codec, WebRTC/WebSocket or STT/TTS packages
-are evaluated/inventoried in P24, with required dependency approval before adoption.
+are evaluated/inventoried in P28, with required dependency approval before adoption.
 
 ## Verification and milestone scope
 
@@ -186,15 +188,17 @@ trace CLI runs in source and extracted packages; source breakpoints remain a
 separate development procedure with existing debuggers. No audio provider or
 remote tracing account is needed for P22 fixtures.
 
-P23 adds cost/report extensions and foreseen budget admission/reservation support,
-with parallel child/summary accounting, rate changes, missing/partial usage and
-resume cases. P24 adds chained voice first, then explicit realtime capability with
-synthetic media/backpressure/interrupt/playback tests before opt-in live account
-checks. A rich visual debugger can be an independently selected extension/client;
-it does not require adopting a graph engine or become a P22 completion dependency.
-The operator authorized the earlier P22–P25 sequence on 2026-10-16. On 2026-10-17
-they requested reconsidering P25 as a larger comparative research/self-development
-trial and deferring production knowledge packages. The [current plan](../plan.md)
-records that proposed P25/P26/P27 split. Implemented cost reports are documented
-separately; budget/model-operation and media contracts remain delivery targets
-until their evidence is recorded.
+P23 supplies cost reports and shared main/summary/child reservations; accounted
+extension model operations remain open. Its evidence distinguishes rate changes,
+missing/partial usage, concurrency and resume from live billing guarantees.
+P24 now challenges these runtime boundaries through independent external
+architecture validation and baseline security review. P25 compares Codex/Ipse
+research and exercises supervised self-development, then requires final
+architecture/security review. Production knowledge packages defer to P26/P27.
+
+The former P24 media scope moves to deferred P28: chained voice first, then
+explicit realtime capability with synthetic media/backpressure/interrupt/playback
+tests before opt-in live account checks. It does not block P24/P25. A rich visual
+debugger can be an independently selected extension/client; it does not require
+a graph engine or become a P22 completion dependency. The [current plan](../plan.md)
+owns this revised order; older dated evidence retains contemporary numbering.

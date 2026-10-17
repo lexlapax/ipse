@@ -8,9 +8,13 @@ seams, including prompt-driven graph capture and explicit catch-up. Those are
 foundations, not production memory, graph, RAG or a pluggable research engine.
 
 The [revised plan](../plan.md#p25-comparative-research-and-supervised-self-development)
-proposes P25 as independent Codex/Ipse research, comparison and supervised harness
+places P24's external adversarial architecture validation and baseline security
+before P25's independent Codex/Ipse research, comparison and supervised harness
 improvement. This guide owns the domain questions and selection requirements;
-the [evaluation protocol](self-hosting-evaluation.md) owns the experiment.
+the [review and evaluation protocol](self-hosting-evaluation.md) owns the independent
+critique and experiment. The critique challenges scope, deletion, event and
+retrieval assumptions without preselecting a backend or contaminating the two
+research tracks; material architectural changes receive a final delta review.
 Production packages are deferred to proposed P26 memory and P27 research/graph/RAG,
 subject to the research outcome. The earlier implementation authorization does
 not override the operator's 2026-10-17 request to reconsider that scope. P23 reports

@@ -205,10 +205,13 @@ and [runtime identity](#p1-runtime-identity-2026-10-15).
 ## Current evidence and next checks
 
 The [plan](../plan.md#current-priorities-and-status) owns current milestone scopes.
-Older dated records retain their contemporary numbering: their P25 production
-knowledge references predate the proposed P25 comparison and P26/P27 deferral.
-No comparative P25 run or OpenAI security-service scan has executed as part of
-the planning review.
+Older dated records retain their contemporary numbering: P24 media is now deferred
+P28, and old P25 production-knowledge references predate the P25 comparison and
+P26/P27 deferral. P24 now owns external adversarial architecture validation and
+baseline security; P25 requires final architecture/security review after repairs.
+No external architecture review, comparative P25 run or OpenAI security-service
+scan has executed as part of this planning work. No external reviewer access or
+source transfer is established by documenting that gate.
 
 During P23E2 iteration, a full run overlapped a focused recompile and produced
 eight artifact-admission failures; that run was discarded. Final verification
@@ -217,7 +220,7 @@ weakened to obtain the passing result below.
 
 | Checkpoint | Evidence | Scope and remaining limits |
 | --- | --- | --- |
-| P23E2 hosted `a815d06` | [Completed Ubuntu/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39052820111) passed every applicable build/format/compile/test/demo/package/installed-lab step, plus both macOS enforcement steps | Exact commit and terminal job/step conclusions inspected: eight required shared steps on Ubuntu and ten on macOS. Confirms this budget/auth candidate on hosted systems, not live paid billing, local Mac device use or P25 self-development. Accounted extension model operations and P24 remain open |
+| P23E2 hosted `a815d06` | [Completed Ubuntu/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39052820111) passed every applicable build/format/compile/test/demo/package/installed-lab step, plus both macOS enforcement steps | Exact commit and terminal job/step conclusions inspected: eight required shared steps on Ubuntu and ten on macOS. Confirms this budget/auth candidate on hosted systems, not live paid billing, local Mac device use or P25 self-development. Accounted extension model operations remain open; reviews and deferred media are not exercised |
 | P23E2 shared admission, Linux Serenity, 2026-10-17 | Final frozen build, actual Elixir 1.18.4/1.20.4 formatters, warnings-as-errors compilation and 709 native-inclusive tests passed (14 macOS exclusions). Final budget/config/profile/child-SDK set: 50 passed. The earlier 19-case concurrency set passed 31 consecutive runs. Published operator JSON and actual CLI budget inspection/saved-policy resume passed with zero model requests; isolated demo passed | Atomic parallel booking, main/compaction/child quotas, known release, uncertain holds, observed/final-only overdraw, final counters despite unconfirmed settlement, money basis/currency/overflow, profile inheritance, live/resumed rollback and pre-repair refusal. New parent/child historical-peak cases failed before the validator repair and passed afterward. Refusals cannot conceal canonical usage. No paid inference, operator-wide quota or invoice-ceiling claim; accounted extension model operations remain open |
 | P23E2 extracted package and installed compatibility | Ordinary verifier passed archive SHA-256 `5835224ef54a31ae3c3c1b93a3fc14e1a7972f7f27a1486d251237b773c6410c`, including the shared source/release budget fixture. Previously built independent artifacts passed all 41 installed-lab assertions against this archive; archive/host bytes stayed unchanged, temporary CLI selection ran and no system development toolchain was available | Real synthetic parallel parent/child requests share three admissions and the parent follow-up refuses; separate last-slot fixtures retain bookings under fail-fast sibling cancellation. Default-off and direct idle resume preserve state. The lab's deliberate terminal service crash still has unconfirmed cleanup and `safe_to_continue: false`. Hosted Linux/macOS follow-up passed as recorded above |
 | P23E1 provider output ceilings, Linux Serenity, 2026-10-17 | Build, actual Elixir 1.18.4/1.20.4 formatters, warnings-as-errors compilation and final 685-test native baseline passed (14 macOS exclusions). Final provider/config/profile/report compatibility set: 54 passed. Actual CLI help/demo, both published JSON examples, output-cap inspection and saved-policy resume passed in isolated state with zero model requests | Supported wire caps, lower summary/child bounds, explicit subscription refusal, Ollama length termination retaining usage without tools, strict numeric/removed/changed policy refusal before tail repair and absent legacy cap recovery. No paid inference or live provider enforcement claim; shared reservations and accounted extension model operations remain open |

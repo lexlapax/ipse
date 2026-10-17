@@ -14,7 +14,7 @@ start. Use the guides below for operation, development, and project context.
 | [Research](operator/research.md) | Configurable search/retrieval, source ledger, citations and recovery |
 | [MCP servers](operator/mcp.md) | Explicit stdio/HTTP configuration, TLS, credentials, server sandbox, approvals, recovery, and demos |
 | [Local subagents](operator/subagents.md) | Explicit delegation, child approvals, bounds, journals, and recovery |
-| [Supervised self-development](operator/self-development.md) | Frozen runner/candidate operation, completed Mac runbook, review, resume and publication |
+| [Supervised self-development](operator/self-development.md) | P24 review readiness, P25 trial preparation, frozen runner/candidate operation and completed Mac runbook |
 | [Context recovery](operator/recovery.md) | Content-free diagnostics, reviewed handoff export/fresh-chat import and unknown-effect review |
 | [Diagnostic capture](operator/observability.md) | Default-off local/export policy, selected sinks, immediate stop, limits and recovery |
 | [Usage and cost reports](operator/usage-accounting.md) | Durable counters, default-off own-session/child reports, explicit read grants, unknown coverage and recovery |
@@ -63,7 +63,7 @@ start. Use the guides below for operation, development, and project context.
 | [Shared budget contract](developer/budgets.md) | Atomic main/summary/child reservations, protected ledger, live ownership, source validation and conservative settlement |
 | [Private text streams](developer/text-streams.md) | Embedded/worker enrollment, opaque resource handles, acknowledgment, pressure and ephemeral recovery |
 | [Ephemeral text events](developer/stream-events.md) | Negotiated v2 frame sources, shared stream/range identity, distinct delivery sequence and metadata/private projections |
-| [Comparative self-development evaluation](developer/self-hosting-evaluation.md) | Proposed P25 independent Codex/Ipse research, rubric, Ipse-authored repairs, held-out reruns and before/after security gates |
+| [Architecture review and self-development evaluation](developer/self-hosting-evaluation.md) | P24 external adversarial architecture validation/baseline security; P25 independent Codex/Ipse research, repairs, held-out reruns and final reviews |
 | [Knowledge extension family](developer/knowledge-extensions.md) | P25 research questions and deferred P26/P27 default-off memory, research, graph/RAG selection and acceptance |
 | [Observability contract](developer/observability.md) | Shared metadata capture, bounded owned sinks, ring quotas, lease recovery, synthetic dispatcher tracing and source-debugging boundaries |
 | [MCP client contract](developer/mcp.md) | Reused packages, transport ownership, descriptor binding, schema policy, and recovery |

@@ -44,8 +44,10 @@ implemented, documented extension APIs for new domain behavior, memory,
 presentation and optional workflows. Reserve core changes for host invariants,
 correctness and explicitly reviewed extension-API gaps; do not bypass approvals or execute
 untrusted code to avoid a necessary core change. P22's documented foundation and
-proof gates are complete. Cost and media remain P23/P24 work; the proposed P25
-evaluation informs deferred P26/P27 knowledge capabilities. Earlier milestones
+proof gates are complete. Cost remains P23 work; P24 now owns independent
+architecture validation and baseline security, and P25 the comparative
+self-development evaluation. Knowledge capabilities defer to P26/P27 and the
+former P24 media scope moves to deferred P28. Earlier milestones
 did not require mechanisms unavailable when they shipped.
 
 ## Start here

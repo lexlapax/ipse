@@ -6,7 +6,7 @@ entirely under [examples/extension-lab](../../examples/extension-lab/README.md),
 with an integration test and package-verification workflow. No domain feature
 branch, runtime module, native helper change or project dependency is required.
 This is one layer of P22 completion evidence. Production knowledge engines remain
-unselected; the proposed P25 evaluation researches later P26/P27 delivery.
+unselected; the planned P25 evaluation researches later P26/P27 delivery.
 
 ## Build and execution boundary
 
@@ -123,6 +123,8 @@ event publication, concurrent effectful jobs, remote installation and media stay
 explicit negotiated enhancements, not silently available callbacks. The
 [plan](../plan.md#p22-extension-scaffold-and-lifecycle-hooks) records the completion
 scope and future capabilities.
-P23's remaining work includes accounted model operations/budgets; P24 targets
-media. The proposed P25 evaluation researches knowledge designs and exercises
-self-development; production adapters are deferred to P26/P27.
+P23's remaining work includes accounted extension model operations. P24 now
+challenges the architecture externally and establishes baseline security review;
+P25 researches knowledge designs and exercises self-development, including final
+architecture/security review. Production adapters defer to P26/P27; media moves
+to deferred P28.

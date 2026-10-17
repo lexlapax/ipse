@@ -205,5 +205,5 @@ Fixtures in `usage_normalizer_test.exs`, `usage_test.exs`, `usage_session_test.e
 tests cover normalization, revisions/deduplication, final versus partial facts,
 crash outcomes, pre-repair refusal, rejected summaries, parent attribution and
 native integrity without paid accounts. P23 reports and [shared budgets](budgets.md)
-have separate contracts/fixtures; accounted extension model operations and P24
-audio usage remain open.
+have separate contracts/fixtures; accounted extension model operations and
+deferred P28 audio usage remain open.

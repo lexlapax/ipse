@@ -1,8 +1,9 @@
-# Comparative research and supervised self-development
+# Architecture review and supervised self-development
 
-Proposed P25 protocol, revised 2026-10-17. This guide defines the experiment;
-the [plan](../plan.md#p25-comparative-research-and-supervised-self-development)
-owns scheduling and acceptance status. No comparative run or security scan is
+P24/P25 review and evaluation protocol, revised 2026-10-17. This guide defines
+independent architectural challenge, security gates and the supervised experiment;
+the [plan](../plan.md#current-priorities-and-status) owns scheduling and acceptance
+status. No external architecture review, comparative run or security scan is
 claimed here. Use the [operator runbook](../operator/self-development.md) for
 runner/candidate separation and the [knowledge design](knowledge-extensions.md)
 for the research questions. Production knowledge packages are deferred to P26/P27.
@@ -21,12 +22,13 @@ toolchain/OS, skills, extension artifacts and supported capabilities. Keep priva
 run state outside the candidate and out of Git. Freeze a baseline runner and a
 separate candidate worktree; the author never replaces its running executable.
 
-Require a passing runner baseline before scored execution, including resolution
-of applicable failures recorded in [current verification](testing.md#current-evidence-and-next-checks).
+Require a passing runner baseline and P24's architecture/security dispositions
+before scored execution, including resolution of applicable failures recorded in
+[current verification](testing.md#current-evidence-and-next-checks).
 Preparing the brief, checking service access and choosing resources can proceed
-while a prerequisite is open. Audio/device acceptance is not a prerequisite for
-this text/research trial. Separate an unavailable capability from a failed trial;
-neither can be recorded as a pass.
+while a prerequisite is open. Deferred P28 audio/device acceptance is not a
+prerequisite for this text/research trial. Separate an unavailable capability from
+a failed trial; neither can be recorded as a pass.
 
 The brief covers working and long-term memory, configurable research providers,
 graph augmentation and RAG. Each track must inspect current Ipse contracts,
@@ -70,6 +72,61 @@ remain separate. Include compaction, review, retries and helper/model work in th
 resource record. If P23 lacks a required hard limit for the selected operation,
 close that prerequisite or document a supervisor-enforced limit before starting.
 Do not describe a report estimate as an invoice ceiling.
+
+## Independent adversarial architecture validation
+
+P24 uses an external agent, such as Claude, to challenge the current design before
+the large self-development trial. Its purpose is to find incorrect assumptions,
+unworkable extension seams and failure modes as well as security weaknesses. A
+vulnerability scan and the Codex/Ipse knowledge-research comparison answer
+different questions; neither substitutes for this independent critique.
+
+Freeze a review brief, exact revision and sanitized source/design manifest. Record
+the external model/provider/version as reported, settings, public interface,
+tool/file/network access, limits and supervisor interventions. Do not infer
+external-agent access from installed API keys or a prior ChatGPT approval. Before
+execution establish the source-sharing scope, selected authentication/billing and
+any necessary dependency approval. No particular external CLI, model, account or
+subscription is assumed available; changing reviewer/provider is explicit.
+
+The first pass sees requirements, implementation, contracts and known platform
+limits, but not our preferred conclusions or either A/B report. Ask it to build
+an assumption register and attack invariants with concrete sequences, expected
+versus actual behavior, source references and falsifiable tests. Retain this first
+critique before offering rebuttals or requesting follow-up. Use these scenarios:
+
+| Area | Adversarial questions |
+| --- | --- |
+| Core and extension boundary | Can bundled, third-party and temporary operator-created features use generic APIs? Which gaps need a versioned host enhancement rather than feature-specific core branches? |
+| Events and execution | What happens with delayed, duplicate, missing or reordered delivery, slow subscribers, feedback loops, concurrent ingestion and same-turn recall? Are metadata, private delivery, acknowledgment and effect authority distinct? |
+| Trust and isolation | Can project text, skills, retrieved content or extension input widen operator grants, select egress, bypass approval or cross session/project scopes? Which trusted-code and OS boundaries remain unenforced? |
+| Ownership and recovery | What happens when an owner/worker dies during a lock, approval, request or write; when shutdown is unconfirmed; or when a journal is torn, forged or resumed? Are unknown effects retained without replay? |
+| Compatibility and resources | Can upgrades or mismatched artifacts reinterpret durable records? Do parallel children/helper requests escape admission, double count, reset quota or convert unknown liability to zero? |
+| Foreseen extensions | Can scoped working/long-term memory, concurrent forget/graph/RAG indexing, pluggable research and later text/media clients fit without replacing core? Which limitations can safely wait for a future enhancement? |
+
+For each finding retain severity/impact, affected assumption/invariant, evidence,
+reproduction or counterexample, affected revision and recommended regression or
+evaluation. Distinguish existing defects, generic SDK gaps, extension/workflow
+choices, accepted limitations and speculative future concerns. Independently
+inspect claims; reject unsupported conclusions with reasons. Do not install an
+engine or expand core merely to satisfy a hypothetical concern.
+
+The supervisor maintains accepted, rejected-with-evidence, deferred and unresolved
+dispositions, plus repaired revisions and test results. Applicable critical/high
+findings and foundational correctness gaps block affected execution/acceptance
+until repaired. Material unresolved design tradeoffs go to the operator. Retain
+other residual risks with their rationale; an agent's approval is not proof.
+Store raw findings privately and publish only sanitized summaries.
+
+Default order is architecture challenge → triage/repair/refreeze → baseline
+security scan → P25 trial. This lets the critique sharpen the scan's threat model.
+A recorded reason may put scanning first; repairs then require affected security
+coverage to be refreshed. Before P25 acceptance, commission an external delta
+review of material architectural changes and disposition its findings. A no-change
+review still records the compared revisions and rationale. Any later relevant
+change invalidates affected conclusions; baseline review never certifies the final
+candidate automatically. Keep reviewer output away from independent research
+tracks and held-out cases until their initial outputs are frozen.
 
 ## Independent tracks and review
 
@@ -171,8 +228,11 @@ compatibility run; P22's historical frozen proof cannot certify later commits.
 
 ## Security review before and after the trial
 
-Use OpenAI's Codex Security for a baseline repository audit before broad
-self-development, then review the final changes and rescan the final candidate.
+Use OpenAI's Codex Security for P24's baseline repository audit before broad
+self-development, then review the final changes and rescan P25's final candidate.
+Normally scan after the independent architecture critique and any baseline
+repairs. Pin the scanned revision separately from the architectural review packet;
+record any changed surfaces and refresh affected coverage.
 Prefer [Codex Security Cloud](https://learn.chatgpt.com/docs/security/setup): it
 scans connected GitHub repositories in a cloud environment. Workspace entitlement,
 the caller's GitHub connection and repository access must be verified at execution;
@@ -228,12 +288,16 @@ coverage limitations and dispositions alongside the experiment evidence.
 Retain a versioned manifest tying together the common brief/rubric, source packet,
 private artifact references, actual provider/tool settings, immutable A/B reports,
 claim ledgers, scores, discrepancy register, operator interventions, Ipse-authored
-commits, runner upgrades, tests/packages/CI, held-out reruns and both security
-reviews. Public evidence must be sanitized; artifact existence is not a claim
+commits, runner upgrades, tests/packages/CI, held-out reruns, external architecture
+brief/critique, assumption/counterexample and disposition registers, final delta
+review and both security reviews. Identify every review's exact revision and
+coverage. Public evidence must be sanitized; artifact existence is not a claim
 that its private contents were reviewed.
 
-P25 completes only after both research and self-development gates, security
-dispositions and relevant platform/package checks pass, the operator has reviewed
-material choices, and documentation/links are reconciled. Publish a conclusion
-that states supported capabilities, remaining gaps and assistance. The resulting
+P24 completes only after its external architecture review, applicable repairs and
+triaged baseline security audit have evidence on the pinned candidate. P25
+completes only after both research and self-development gates, final architecture
+and security dispositions and relevant platform/package checks pass, the operator
+has reviewed material choices, and documentation/links are reconciled. Publish a
+conclusion that states supported capabilities, remaining gaps and assistance. The resulting
 P26/P27 design is a deliverable; production engine implementation remains deferred.

@@ -10,19 +10,31 @@ repeating its already integrated feature. Other hosts use their repository/platf
 checks and matching runtime. Use the local
 [context recovery tools](recovery.md) for diagnosis or explicit handoff.
 
-The proposed larger P25 comparison has a separate
-[evaluation protocol](../developer/self-hosting-evaluation.md): independent Codex
-and Ipse research, source-based review, Ipse-authored fixes, fresh held-out runs
-and security review before/after. It has not run. Its provider/tool/resource
-choices and security-service access must be established before execution; this
-runbook does not provision that service or install scan tooling. Freeze a runner
-only after its applicable baseline checks pass and the baseline audit is triaged;
-use the [verification record](../developer/testing.md#current-evidence-and-next-checks)
-to select a passing candidate. Earlier passing releases do not verify later
-runtime changes. Brief preparation and access
-checks can proceed independently. P25's text/research trial does not require
-live audio acceptance. The
-[plan](../plan.md#current-priorities-and-status) owns current scope and scheduling.
+Next comes P24's external adversarial architecture validation and baseline OpenAI
+security audit, followed by P25's larger independent Codex/Ipse research and
+self-development comparison. Neither review nor the trial has run. The
+[review and evaluation protocol](../developer/self-hosting-evaluation.md) defines
+the critique, dispositions, source-based comparison, Ipse-authored repairs,
+held-out reruns and final architecture/security reviews. The
+[plan](../plan.md#current-priorities-and-status) owns scope and order; former-P24
+voice/media is deferred to P28 and does not block this text/research work.
+
+Prepare a pinned, sanitized repository/design packet and a passing candidate from
+the [verification record](../developer/testing.md#current-evidence-and-next-checks).
+Normally ask an independent external reviewer, such as Claude, to challenge it
+before scanning. Establish reviewer/service access, source-sharing authority,
+authentication, billing and resource limits before sending material. Prior
+ChatGPT permission does not authorize another provider. Exclude `.env`, auth
+files, private journals and unrelated projects; retain raw findings privately.
+This runbook provisions no service and installs no external review/scan tooling.
+
+Triage counterexamples and scan findings against actual code, repair applicable
+blockers and refresh affected reviews on the changed revision. Freeze P25's runner
+only after its checks and P24 gates pass. Brief preparation/access checks can
+proceed earlier; earlier passing releases do not verify later runtime changes.
+Keep the external critique separate from the initial A/B research inputs, record
+operator decisions and assistance, and review architecture deltas plus security
+again on the final candidate before accepting the trial.
 
 The credential-free fixture `mix run scripts/demo-self-development.exs` verifies
 bundled discovery, both explicit resources and journal provenance with effects
