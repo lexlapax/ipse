@@ -11,6 +11,10 @@ task starts the independent worker VM. Validated receipts reconstruct tool
 messages on resume without running code; standalone command/service values are
 separate from assistant messages. The CLI is a generic catalog/invocation client.
 No host action, state or workflow is inferred from returned domain JSON.
+Separately negotiated [host calls](extension-host-calls.md) admit finite scoped
+state requests with normal mutation approval, intent-before-IO and ordered
+receipts. The native lock/JSON CAS store runs in the owned task, outside Session.
+Unknown outcomes stop without replay; no workflow framework is introduced.
 
 Ipse is an MIT-licensed, general-purpose local AI harness built around Elixir
 and OTP. The host role supports general-purpose tasks, with focused changes

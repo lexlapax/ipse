@@ -3,7 +3,7 @@ defmodule Ipse.Extensions.Invocation do
   alias Ipse.Extensions.{Catalog, Identity, Manifest}
 
   @intent_keys ~w(type version invocation_id identity descriptor payload payload_sha256 parent_call_id parent_request_id approval)
-  @result_keys ~w(value text text_sha256)
+  @result_keys ~w(value text text_sha256 action_count actions_sha256)
   @types ~w(extension_invocation_intent extension_invocation_result)
   @limit 10_000
   @error {:error, :invalid_extension_invocation}
@@ -47,14 +47,18 @@ defmodule Ipse.Extensions.Invocation do
     }
   end
 
-  def build_result(intent, response) do
+  def build_result(intent, response, actions \\ []) do
     with true <- valid_intent?(intent),
          {:ok, value} <- Catalog.validate_response(intent["descriptor"], response),
+         true <- is_list(actions) and length(actions) <= Ipse.Extensions.Actions.limit(),
+         true <- Enum.all?(actions, &Ipse.Extensions.Actions.valid_result?/1),
          text = Jason.encode!(value),
          event =
            Map.merge(intent, %{
              "type" => "extension_invocation_result",
              "value" => value,
+             "action_count" => length(actions),
+             "actions_sha256" => Ipse.Compaction.digest(actions),
              "text" => text,
              "text_sha256" => Manifest.sha256(text)
            }),
@@ -316,6 +320,10 @@ defmodule Ipse.Extensions.Invocation do
     with true <- Enum.sort(Map.keys(event)) == Enum.sort(@intent_keys ++ @result_keys),
          true <- event["type"] == "extension_invocation_result",
          true <- valid_intent?(result_intent(event)),
+         true <- is_integer(event["action_count"]) and event["action_count"] in 0..16,
+         true <-
+           is_binary(event["actions_sha256"]) and
+             Regex.match?(~r/\A[a-f0-9]{64}\z/, event["actions_sha256"]),
          {:ok, _} <-
            Catalog.validate_response(event["descriptor"], %{
              "api_version" => 1,

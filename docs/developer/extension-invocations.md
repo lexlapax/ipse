@@ -3,9 +3,11 @@
 P22A7 adds inert manifest-declared tools, operator commands and standalone typed
 services. They share the independent worker SDK and owner chain used by the
 [prompt/presentation hooks](extension-hooks.md). This increment does not complete
-P22: scoped storage/context contributions, worker-to-host service composition,
-approved action proposals, workflows, worker text handles and observability
+P22: context contributions, worker-to-host service composition, general tool/question
+actions, workflows, worker text handles and observability
 controls remain separate work. No provider or store is selected implicitly.
+P22A8 adds [finite host state calls](extension-host-calls.md) with explicit
+capability negotiation and separate mutation approval.
 
 ## Inert declarations
 
@@ -94,13 +96,14 @@ No Session PID, provider settings, auth, transcript, workspace instructions or
 native continuation crosses this boundary. Arguments must fit the full 16 KiB
 payload envelope, not just their own object.
 
-The only implemented reply is
+The final value reply is
 `%{"api_version" => 1, "kind" => "result", "value" => object}`.
 `value` must satisfy the declared result schema; the whole reply obeys SDK bounds.
-Action-looking fields inside `value` remain data. Unknown reply kinds, including
-host-action proposals, are refused. New action capabilities must explicitly
-negotiate a typed outer protocol and reuse approval/intent boundaries; they cannot
-retroactively reinterpret domain JSON or command strings as executable actions.
+Action-looking fields inside `value` remain data. A separately negotiated
+`host_call` supports only [documented state operations](extension-host-calls.md).
+Unknown reply kinds/operations are refused. New actions must negotiate the typed
+outer protocol and reuse approval/intent boundaries; they cannot reinterpret
+domain JSON or command strings as executable actions.
 
 After confirmed normal worker cleanup, Session validates the exact result and
 current lease, then syncs `extension_invocation_result`. Tool text is the saved
@@ -116,7 +119,7 @@ the turn with an unknown outcome; callbacks are never automatically retried.
 The pure `Invocation` validator checks closed records, versions, pinned metadata
 catalog/identities, descriptor/argument/output digests, unique invocation IDs,
 native parent request/call provenance, matching reviewed arguments/approval,
-reply schemas and tool receipts. Orphaned, replayed or inconsistent records refuse
+reply schemas, action count/chain digest and tool receipts. Orphaned, replayed or inconsistent records refuse
 recovery. Historical expiry is not reinterpreted as a successful callback; current
 activation leases must still be valid. These are integrity checks, not signatures.
 

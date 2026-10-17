@@ -2,7 +2,7 @@ defmodule Ipse.Session do
   @moduledoc "One supervised owner per agent conversation. I/O runs in monitored tasks."
   use GenServer
   alias Ipse.{Journal, Skills, Tools, WorkspaceContext, Questions}
-  alias Ipse.Extensions.{Host, Projection, Catalog, Invocation}
+  alias Ipse.Extensions.{Host, Projection, Catalog, Invocation, Actions}
 
   def start_link(opts) do
     config = Keyword.fetch!(opts, :config)
@@ -128,6 +128,10 @@ defmodule Ipse.Session do
         final: Projection.presentation(events),
         extension_intent: nil,
         extension_invocation: nil,
+        extension_action: nil,
+        extension_actions: 0,
+        extension_action_unknown: false,
+        extension_action_results: [],
         extension_request: nil,
         extension_result: Invocation.latest_display(events),
         extension_catalog: extension_catalog(config),
@@ -397,7 +401,14 @@ defmodule Ipse.Session do
       record(s, intent)
 
       {:reply, {:ok, intent, entry},
-       %{s | extension_invocation: intent, extension_invocations: s.extension_invocations + 1}}
+       %{
+         s
+         | extension_invocation: intent,
+           extension_invocations: s.extension_invocations + 1,
+           extension_actions: 0,
+           extension_action_unknown: false,
+           extension_action_results: []
+       }}
     else
       _ -> {:reply, {:error, :extension_admission_refused}, s}
     end
@@ -405,6 +416,89 @@ defmodule Ipse.Session do
 
   def handle_call({:extension_invoke_begin, _, _, _, _}, _, s),
     do: {:reply, {:error, :cancelled}, s}
+
+  def handle_call(
+        {:extension_action_begin, ref, request},
+        from = {caller, _},
+        %{job_ref: ref, task: %{pid: caller}, extension_action: nil, phase: phase} = s
+      )
+      when ref != nil and phase in [:tool, :extension_command, :extension_service] do
+    mode = Map.get(s.config, :approval, :ask)
+    mutation = Ipse.Extensions.State.mutating?(request)
+
+    approval =
+      if mutation,
+        do: if(mode == :deny, do: "denied", else: "session_allow"),
+        else: "not_required"
+
+    with parent when is_map(parent) <- s.extension_invocation,
+         true <- not s.extension_action_unknown,
+         true <- Ipse.Extensions.Registry.live?(parent["identity"]),
+         {:ok, intent} <-
+           Actions.intent(parent, request, s.extension_actions + 1, approval, s.cwd) do
+      if mutation and mode == :ask do
+        approval_ref = make_ref()
+
+        proposed = %{
+          "extension" => parent["identity"]["instance"],
+          "artifact_sha256" => parent["identity"]["artifact_sha256"],
+          "namespace" => intent["namespace"],
+          "request" => request
+        }
+
+        notify(s, {:approval, approval_ref, "extension:" <> request["op"], proposed})
+
+        {:noreply,
+         %{
+           s
+           | phase: :extension_approval,
+             approval: {:extension, approval_ref},
+             extension_action: %{intent: intent, from: from, phase: phase}
+         }}
+      else
+        record(s, intent)
+
+        reply =
+          if approval == "denied",
+            do: {:denied, intent},
+            else: {:ok, intent, %{root: Path.join(s.context_home, "extension-state-v1")}}
+
+        {:reply, reply,
+         %{s | extension_action: %{intent: intent}, extension_actions: s.extension_actions + 1}}
+      end
+    else
+      _ -> {:reply, {:error, :extension_action_refused}, s}
+    end
+  end
+
+  def handle_call({:extension_action_begin, _, _}, _, s),
+    do: {:reply, {:error, :extension_action_refused}, s}
+
+  def handle_call(
+        {:extension_action_commit, ref, event},
+        {caller, _},
+        %{job_ref: ref, task: %{pid: caller}, extension_action: %{intent: intent}, phase: phase} =
+          s
+      )
+      when ref != nil and phase in [:tool, :extension_command, :extension_service] do
+    if Actions.result_intent(event) == intent and Actions.valid_result?(event) and
+         Ipse.Extensions.Registry.live?(s.extension_invocation["identity"]) do
+      record(s, event)
+
+      {:reply, {:ok, Actions.resume(event)},
+       %{
+         s
+         | extension_action: nil,
+           extension_action_unknown: event["outcome"]["status"] == "unknown",
+           extension_action_results: s.extension_action_results ++ [event]
+       }}
+    else
+      {:reply, {:error, :invalid_extension_action}, s}
+    end
+  end
+
+  def handle_call({:extension_action_commit, _, _}, _, s),
+    do: {:reply, {:error, :extension_action_refused}, s}
 
   def handle_call(:diagnostics, _from, s) do
     {:reply,
@@ -498,6 +592,38 @@ defmodule Ipse.Session do
 
       _ ->
         {:reply, {:error, :no_pending_approval}, s}
+    end
+  end
+
+  def handle_call(
+        {:approve, ref, allowed},
+        _from,
+        %{approval: {:extension, ref}, extension_action: action, phase: :extension_approval} = s
+      ) do
+    intent =
+      Map.put(action.intent, "approval", if(allowed == true, do: "approved", else: "denied"))
+
+    if Ipse.Extensions.Registry.live?(s.extension_invocation["identity"]) do
+      record(s, intent)
+
+      reply =
+        if allowed == true,
+          do: {:ok, intent, %{root: Path.join(s.context_home, "extension-state-v1")}},
+          else: {:denied, intent}
+
+      GenServer.reply(action.from, reply)
+
+      {:reply, :ok,
+       %{
+         s
+         | approval: nil,
+           phase: action.phase,
+           extension_action: %{intent: intent},
+           extension_actions: s.extension_actions + 1
+       }}
+    else
+      GenServer.reply(action.from, {:error, :extension_action_expired})
+      {:reply, :ok, %{s | approval: nil, phase: action.phase, extension_action: nil}}
     end
   end
 
@@ -598,6 +724,9 @@ defmodule Ipse.Session do
           compaction: nil,
           extension_intent: nil,
           extension_invocation: nil,
+          extension_action: nil,
+          extension_action_results: [],
+          extension_action_unknown: false,
           extension_request: nil,
           tool_decision: "not_decided",
           mcp_resources: %{},
@@ -684,12 +813,18 @@ defmodule Ipse.Session do
       {invocation_phase, {:extension_invocation_result, event}}
       when invocation_phase in [:tool, :extension_command, :extension_service] ->
         with intent when is_map(intent) <- s.extension_invocation,
+             true <- is_nil(s.extension_action),
+             true <- not s.extension_action_unknown,
              {:ok, expected} <-
-               Invocation.build_result(intent, %{
-                 "api_version" => 1,
-                 "kind" => "result",
-                 "value" => event["value"]
-               }),
+               Invocation.build_result(
+                 intent,
+                 %{
+                   "api_version" => 1,
+                   "kind" => "result",
+                   "value" => event["value"]
+                 },
+                 s.extension_action_results
+               ),
              true <- expected == event and Ipse.Extensions.Registry.live?(intent["identity"]) do
           record(s, event)
           s = %{s | extension_invocation: nil, extension_request: nil}
@@ -1566,7 +1701,7 @@ defmodule Ipse.Session do
     s.calls
     |> Enum.with_index()
     |> Enum.reduce(s, fn {call, index}, state ->
-      started = index == 0 and s.phase in [:tool, :delegated_approval]
+      started = index == 0 and s.phase in [:tool, :delegated_approval, :extension_approval]
       approval = if started, do: s.tool_decision, else: "not_decided"
       status = if started, do: "unknown", else: "not_started"
       outcome = if started, do: text, else: "Not executed: work stopped before this call started."
@@ -1602,6 +1737,9 @@ defmodule Ipse.Session do
         compaction: nil,
         extension_intent: nil,
         extension_invocation: nil,
+        extension_action: nil,
+        extension_action_results: [],
+        extension_action_unknown: false,
         extension_request: nil,
         tool_decision: "not_decided"
     }

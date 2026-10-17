@@ -2,7 +2,7 @@ defmodule Ipse.Extensions.Registry do
   @moduledoc "Inert built-in metadata and explicit pinned session admission."
   alias Ipse.Extensions.{Manifest, Store}
   @error {:error, :extension_admission_refused}
-  @host_capabilities ~w(transform.prompt transform.presentation invoke.tool invoke.command invoke.service)
+  @host_capabilities Ipse.Extensions.Catalog.capabilities()
   @text %{"type" => "string", "maxLength" => 4096}
   @builtins %{
     "builtin:prompt-annotation:1" => %{
@@ -200,6 +200,8 @@ defmodule Ipse.Extensions.Registry do
       Ipse.Extensions.Identity,
       Ipse.Extensions.Catalog,
       Ipse.Extensions.Invocation,
+      Ipse.Extensions.Actions,
+      Ipse.Extensions.State,
       Ipse.Extensions.Manifest,
       Ipse.Extensions.Store,
       __MODULE__,

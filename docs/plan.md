@@ -27,7 +27,7 @@ the next feature sequence on 2026-10-15:
 | [P19](#p19-long-session-diagnosis-and-recovery) | Diagnose retained-context limits and improve explicit recovery | Complete within documented scope; Linux and hosted Mac checks passed |
 | [P20](#p20-repeatable-supervised-self-development) | Reusable supervised development/review skill and evidence | Complete: fixtures, hosted checks and supervised live use; limitations recorded |
 | [P21](#p21-larger-self-development-trial-on-serenity) | Larger supervised trial with independent Mac verification | Complete within supervised scope; bounded review and Linux/hosted Mac checks passed |
-| [P22](#p22-extension-scaffold-and-lifecycle-hooks) | Typed extension scaffold, lifecycle hooks and runtime observability | In progress; artifacts/workers/config and two durable session hooks implemented |
+| [P22](#p22-extension-scaffold-and-lifecycle-hooks) | Typed extension scaffold, lifecycle hooks and runtime observability | In progress; artifacts/workers/config, hooks, usage/text, typed invocations and scoped host state implemented |
 | [P23](#p23-usage-cost-reporting-and-budget-controls) | Usage/cost extensions and host budget admission | Authorized; follows P22 accounting foundation |
 | [P24](#p24-voice-and-realtime-media) | Voice extensions and owned realtime/media capabilities | Authorized; follows owned stream/provider foundation |
 | [P25](#p25-optional-knowledge-extensions) | Default-off working/long-term memory, research, graph and RAG | Authorized; research gates precede implementation selection |
@@ -1086,6 +1086,15 @@ validated; commands/services need no model request. The terminal's `/ext` lists
 the catalog and `/ext NAME JSON_OBJECT` invokes an operator command. See the
 [invocation contract](developer/extension-invocations.md). Host action proposals,
 state/context, service composition, workflows and observability remain P22 work.
+
+P22A8 implements [bounded host-call continuations and scoped state](developer/extension-host-calls.md).
+Host-derived namespaces, compare-and-swap revisions, retained deletion tombstones,
+cross-process locks and separate mutation approval constrain the initial get/list/
+put/delete operations. Final results bind their complete action receipt chain;
+unknown operations stop without continuation or replay. This small store does
+not select a production memory backend. Context/evidence, questions/tool actions,
+service composition, worker stream handles, observability and the independent
+memory/workflow package proof remain required P22 work.
 
 Acceptance:
 

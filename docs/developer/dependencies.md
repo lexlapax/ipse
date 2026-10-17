@@ -41,6 +41,13 @@ Jason (including the existing duplicate-key-safe manifest decoder), JSONSchex
 through the bounded schema adapter, OTP maps/crypto/owned tasks and the existing
 worker supervisor. Custom code handles static namespaced registration and
 journal-specific source/approval/result binding, not a general plugin framework.
+P22A8 finite host-call/scoped state adds no dependency. It reuses OTP file/crypto,
+Jason's duplicate-key decoder, shared JSON bounds and native advisory locks.
+[DETS](https://www.erlang.org/doc/apps/stdlib/dets.html) was evaluated: it still
+needs concurrency coordination/named tables, while this bounded 256-record/1 MiB
+contract needs exact JSON snapshots, cross-VM CAS and refusal instead of repair.
+Custom code implements namespace/approval/receipt policy and a small atomic store,
+not a production memory database. See [storage decision and limits](extension-host-calls.md#scope-storage-and-recovery).
 P22A2's worker bridge reuses the current ERTS, Elixir, Jason and native stdio
 helper, adding no dependency. The synthetic independent artifact fixture uses
 the existing Elixir compiler in a separate VM. A small Ipse bootstrap implements

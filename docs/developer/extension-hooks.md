@@ -33,6 +33,7 @@ ordered capabilities, order/lifetime/earliest expiry, child ceiling,
 VM components (Elixir version, OTP major, ERTS version, architecture), host API
 digest and generation 1. The host digest binds `Ipse.Extension`, Identity, Catalog,
 Invocation, Manifest, Store, Registry, Worker, Bootstrap, Host, Projection,
+Actions, State,
 the shared schema adapter, usage normalizer/
 ledger, private text channel and Session BEAM bytes. It is an exact API
 implementation pin, not a signature or full operating-system/toolchain digest.
@@ -105,8 +106,9 @@ continues unchanged. The CLI prints the completed presentation separately.
 Prompt-transform failure prevents the model call; presentation failure retains
 the already completed original assistant. Previously committed projections remain
 available in either case. Initialize/private VM state lasts for the job; it is
-not durable session state. Generic state/composed services/jobs remain subsequent
-P22 increments; static catalogs and standalone invocations are implemented.
+not durable session state. [Host-mediated scoped state](extension-host-calls.md)
+is available from typed invocations. Context/composed services/jobs remain
+subsequent P22 increments; static catalogs and standalone invocations are implemented.
 
 ## Persistence and recovery
 

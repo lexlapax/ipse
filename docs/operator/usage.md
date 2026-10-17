@@ -561,6 +561,8 @@ selection data](extensions.md) are available. Explicit selections can now run
 bounded prompt annotation/completed presentation hooks and typed value-only
 tools/commands/services with pinned no-replay resume. `/ext` lists the catalog;
 `/ext NAME JSON_OBJECT` invokes a declared operator command without a model request.
+Separately trusted [host-state calls](extensions.md#scoped-state-host-calls)
+support scoped CAS storage and require normal approval for writes.
 Broader SDK capabilities and live controls remain in progress. See the [scenario analysis](../developer/extension-scenarios.md) and
 [P22 delivery gates](../developer/extensions.md#delivery-sequence-and-extension-only-proof).
 

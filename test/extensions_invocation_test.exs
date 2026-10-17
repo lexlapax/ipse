@@ -61,7 +61,9 @@ defmodule Ipse.Extensions.InvocationTest do
         "properties" => %{
           "text" => %{"type" => "string", "maxLength" => 1024},
           "wait" => %{"type" => "boolean"},
-          "wrong" => %{"type" => "boolean"}
+          "wrong" => %{"type" => "boolean"},
+          "host_request" => %{"type" => "object"},
+          "repeat" => %{"type" => "boolean"}
         },
         "required" => ["text"]
       },
@@ -79,7 +81,8 @@ defmodule Ipse.Extensions.InvocationTest do
         {group, _} -> {group, [descriptor]}
       end)
 
-    capabilities = ~w(invoke.tool invoke.command invoke.service)
+    capabilities =
+      ~w(invoke.tool invoke.command invoke.service host.actions host.state.read host.state.write)
 
     code = """
     defmodule #{entrypoint} do
@@ -88,13 +91,26 @@ defmodule Ipse.Extensions.InvocationTest do
       def loaded, do: (File.write!(#{inspect(marker)}, "loaded\\n", [:append]); :ok)
       def describe, do: %{"sdk" => 1, "capabilities" => #{inspect(capabilities)}, "exports" => #{inspect(exports)}}
       def init(options), do: {:ok, options}
+      def handle("host.actions", payload, state) do
+        File.write!(#{inspect(called)}, Jason.encode!(payload) <> "\\n", [:append])
+        response = if state["repeat"],
+          do: %{"api_version" => 1, "kind" => "host_call", "request" => state["request"]},
+          else: %{"api_version" => 1, "kind" => "result", "value" => %{"text" => Jason.encode!(payload["outcome"]), "input_id" => payload["invocation_id"]}}
+        {:ok, response, state}
+      end
       def handle(stage, payload, state) do
         File.write!(#{inspect(called)}, Jason.encode!(payload) <> "\\n", [:append])
         File.write!(#{inspect(pid_file)}, System.pid())
         if payload["arguments"]["wait"], do: Process.sleep(:infinity)
         value = if payload["arguments"]["wrong"], do: %{"wrong" => true},
           else: %{"text" => stage <> ": " <> payload["arguments"]["text"], "input_id" => payload["invocation_id"]}
-        {:ok, %{"api_version" => 1, "kind" => "result", "value" => value}, state}
+        if payload["arguments"]["host_request"] do
+          request = payload["arguments"]["host_request"]
+          {:ok, %{"api_version" => 1, "kind" => "host_call", "request" => request},
+            %{"request" => request, "repeat" => payload["arguments"]["repeat"]}}
+        else
+          {:ok, %{"api_version" => 1, "kind" => "result", "value" => value}, state}
+        end
       end
     end
     """
@@ -166,6 +182,7 @@ defmodule Ipse.Extensions.InvocationTest do
 
   setup ctx do
     for path <- [ctx.marker, ctx.called, ctx.pid_file], do: File.rm(path)
+    File.rm_rf!(Path.join(ctx.home, "extension-state-v1"))
     root = Path.join(ctx.artifact_root, "session-#{Ipse.Usage.id()}")
     File.mkdir_p!(root)
 
@@ -441,6 +458,245 @@ defmodule Ipse.Extensions.InvocationTest do
     refute File.exists?(ctx.marker)
     {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
     assert Invocation.count(events) == 0
+  end
+
+  defp host_command(pid, request, extra \\ %{}) do
+    Session.invoke_export(
+      pid,
+      :command,
+      "ext__sdk__echo",
+      Map.merge(%{"text" => "state fixture", "host_request" => request}, extra)
+    )
+  end
+
+  defp host_outcome(pid),
+    do: Session.info(pid).extension_result["value"]["text"] |> Jason.decode!()
+
+  test "host writes need their own full approval and reads recover without executing callbacks",
+       ctx do
+    pid = start(ctx)
+
+    put = %{
+      "op" => "state.put",
+      "scope" => "project",
+      "key" => "note",
+      "expected_revision" => 0,
+      "value" => %{"text" => "remembered"}
+    }
+
+    assert :ok = host_command(pid, put)
+    assert_receive {:ipse, ^pid, {:approval, ref, "extension:state.put", proposed}}, 3000
+    assert proposed["request"] == put
+    assert proposed["extension"] == "sdk"
+    refute File.exists?(Path.join(ctx.home, "extension-state-v1"))
+    assert Session.info(pid).phase == :extension_approval
+    assert :ok = Session.approve(pid, ref, true)
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+    assert host_outcome(pid)["status"] == "ok"
+    assert host_outcome(pid)["value"]["record"]["revision"] == 1
+
+    assert :ok = host_command(pid, %{"op" => "state.get", "scope" => "project", "key" => "note"})
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+    refute_receive {:ipse, ^pid, {:approval, _, _, _}}, 20
+    assert host_outcome(pid)["value"]["record"]["value"] == put["value"]
+    info = Session.info(pid)
+    {:ok, events} = Journal.load(ctx.dir, info.id)
+    assert :ok = Ipse.Extensions.Actions.validate_events(events)
+    assert Enum.count(events, &(&1["type"] == "extension_action_result")) == 2
+    assert info.accounting["request_count"] == 0
+    :ok = Session.close(pid)
+    called = File.read!(ctx.called)
+    path = Path.join(ctx.dir, info.id <> ".jsonl")
+    before = File.read!(path)
+    resumed = start(ctx, info.id)
+    assert Session.info(resumed).extension_result == info.extension_result
+    assert File.read!(ctx.called) == called
+    assert File.read!(path) == before
+  end
+
+  test "denied host state proposals never create business records", ctx do
+    request = %{
+      "op" => "state.delete",
+      "scope" => "operator",
+      "key" => "note",
+      "expected_revision" => 0
+    }
+
+    pid = start(ctx)
+    :ok = host_command(pid, request)
+    assert_receive {:ipse, ^pid, {:approval, ref, "extension:state.delete", _}}, 3000
+    :ok = Session.approve(pid, ref, false)
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+    assert host_outcome(pid) == %{"status" => "denied", "value" => %{}}
+    refute File.exists?(Path.join(ctx.home, "extension-state-v1"))
+    readonly = start(%{ctx | config: Map.put(ctx.config, :approval, :deny)})
+    :ok = host_command(readonly, request)
+    assert_receive {:ipse, ^readonly, {:done, :ok}}, 3000
+    refute_receive {:ipse, ^readonly, {:approval, _, _, _}}, 20
+    assert host_outcome(readonly)["status"] == "denied"
+    refute File.exists?(Path.join(ctx.home, "extension-state-v1"))
+  end
+
+  test "cancel during separate host approval stops the real VM and leaves no write", ctx do
+    request = %{
+      "op" => "state.put",
+      "scope" => "project",
+      "key" => "note",
+      "expected_revision" => 0,
+      "value" => %{}
+    }
+
+    pid = start(ctx)
+    :ok = host_command(pid, request)
+    assert_receive {:ipse, ^pid, {:approval, ref, _, _}}, 3000
+    actual_pid = await_pid(ctx.pid_file)
+    :ok = Session.cancel(pid)
+    await_exit(actual_pid, ctx.root)
+    assert {:error, :no_pending_approval} = Session.approve(pid, ref, true)
+    refute File.exists?(Path.join(ctx.home, "extension-state-v1"))
+    {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+    assert Enum.count(events, &(&1["type"] == "extension_action_intent")) == 0
+    assert :ok = Ipse.Extensions.Projection.validate_events(events)
+  end
+
+  test "finite continuation budget stops a callback loop without a seventeenth host action",
+       ctx do
+    pid = start(ctx)
+
+    :ok =
+      host_command(pid, %{"op" => "state.get", "scope" => "session", "key" => "note"}, %{
+        "repeat" => true
+      })
+
+    assert_receive {:ipse, ^pid, {:done, :error}}, 15_000
+    {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+    assert Enum.count(events, &(&1["type"] == "extension_action_result")) == 16
+    refute Enum.any?(events, &(&1["type"] == "extension_invocation_result"))
+    assert :ok = Ipse.Extensions.Projection.validate_events(events)
+  end
+
+  test "deleted or replayed host receipts refuse recovery before repairing tail", ctx do
+    pid = start(ctx)
+    :ok = host_command(pid, %{"op" => "state.get", "scope" => "project", "key" => "note"})
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+    id = Session.info(pid).id
+    :ok = Session.close(pid)
+    {:ok, events} = Journal.load(ctx.dir, id)
+    event = Enum.find(events, &(&1["type"] == "extension_action_result"))
+
+    for corrupted <- [
+          List.delete(events, event),
+          Enum.reject(events, &(&1["type"] in Ipse.Extensions.Actions.types())),
+          events ++ [event],
+          Enum.map(events, fn e ->
+            if e == event, do: put_in(e, ["outcome", "value", "record", "revision"], 99), else: e
+          end)
+        ] do
+      bytes = Enum.map_join(corrupted, "", &(Jason.encode!(&1) <> "\n")) <> "{partial"
+      path = Path.join(ctx.dir, id <> ".jsonl")
+      File.write!(path, bytes)
+
+      assert {:error, _} =
+               DynamicSupervisor.start_child(
+                 Ipse.Sessions,
+                 {Session,
+                  [
+                    config: ctx.config,
+                    cwd: ctx.root,
+                    state_dir: ctx.dir,
+                    subscriber: self(),
+                    id: id
+                  ]}
+               )
+
+      assert File.read!(path) == bytes
+    end
+  end
+
+  test "project-scoped extension cannot select operator state", ctx do
+    entries = Enum.map(ctx.config.extensions, &put_in(&1, [:identity, "scope"], "project"))
+    pid = start(%{ctx | config: Map.put(ctx.config, :extensions, entries)})
+    :ok = host_command(pid, %{"op" => "state.get", "scope" => "operator", "key" => "note"})
+    assert_receive {:ipse, ^pid, {:done, :error}}, 3000
+    refute File.exists?(Path.join(ctx.home, "extension-state-v1"))
+    {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+    refute Enum.any?(events, &(&1["type"] == "extension_action_intent"))
+  end
+
+  test "host namespaces isolate session, project, instance, artifact and configuration source",
+       ctx do
+    identity = hd(ctx.config.extensions).identity
+    id = Ipse.Usage.id()
+
+    namespace = fn ident, scope, cwd, session ->
+      {:ok, namespace} = Ipse.Extensions.State.namespace(ident, scope, cwd, session)
+      namespace
+    end
+
+    assert namespace.(identity, "operator", ctx.root, id) ==
+             namespace.(identity, "operator", ctx.root <> "/other", Ipse.Usage.id())
+
+    assert namespace.(identity, "project", ctx.root, id) ==
+             namespace.(identity, "project", ctx.root, Ipse.Usage.id())
+
+    refute namespace.(identity, "project", ctx.root, id) ==
+             namespace.(identity, "project", ctx.root <> "/other", id)
+
+    refute namespace.(identity, "session", ctx.root, id) ==
+             namespace.(identity, "session", ctx.root, Ipse.Usage.id())
+
+    for changed <- [
+          Map.put(identity, "instance", "other"),
+          Map.put(identity, "artifact_sha256", String.duplicate("e", 64)),
+          Map.put(identity, "source_sha256", String.duplicate("f", 64))
+        ] do
+      refute namespace.(identity, "operator", ctx.root, id) ==
+               namespace.(changed, "operator", ctx.root, id)
+    end
+  end
+
+  test "unknown host operation commits no continuation or final callback and never replays on resume",
+       ctx do
+    pid = start(ctx)
+    info = Session.info(pid)
+
+    {:ok, namespace} =
+      Ipse.Extensions.State.namespace(
+        hd(ctx.config.extensions).identity,
+        "project",
+        ctx.root,
+        info.id
+      )
+
+    root = Path.join(ctx.home, "extension-state-v1")
+
+    {:ok, _} =
+      Ipse.Extensions.State.execute(
+        root,
+        namespace,
+        %{"op" => "state.get", "scope" => "project", "key" => "note"},
+        Ipse.Usage.id()
+      )
+
+    file = Path.join([root, namespace, "state.json"])
+    File.write!(file, "{broken")
+    File.chmod!(file, 0o600)
+    :ok = host_command(pid, %{"op" => "state.get", "scope" => "project", "key" => "note"})
+    assert_receive {:ipse, ^pid, {:done, :error}}, 3000
+    {:ok, events} = Journal.load(ctx.dir, info.id)
+    result = Enum.find(events, &(&1["type"] == "extension_action_result"))
+    assert result["outcome"] == %{"status" => "unknown", "value" => %{}}
+    refute Enum.any?(events, &(&1["type"] == "extension_invocation_result"))
+    assert length(String.split(File.read!(ctx.called), "\n", trim: true)) == 1
+    :ok = Session.close(pid)
+    calls = File.read!(ctx.called)
+    path = Path.join(ctx.dir, info.id <> ".jsonl")
+    before = File.read!(path)
+    resumed = start(ctx, info.id)
+    assert Session.info(resumed).phase == :idle
+    assert File.read!(ctx.called) == calls
+    assert File.read!(path) == before
+    assert File.read!(file) == "{broken"
   end
 
   defp await_pid(path, attempts \\ 150)

@@ -2618,3 +2618,45 @@ passed `scripts/verify-package.exs` under extracted-runtime isolation, a
 utility-only PATH and fresh homes. This is a local archive, not a release or
 live-account/macOS check. Documentation review checked **64 Markdown files /
 619 local file and heading links** with no broken targets.
+
+[Hosted SDK verification](https://github.com/lexlapax/ipse/actions/runs/38992510651)
+for `a8e907d` passed the Ubuntu/macOS-14 Elixir 1.18 / OTP 27 jobs: format, compile,
+default tests, demo, package and extracted checks on both, plus macOS native
+enforcement. This is hosted evidence for catalogs/invocations, not local macOS
+execution on Serenity or verification of later host-state changes.
+
+## P22 host-call continuations and scoped state (2026-10-16)
+
+On Linux Serenity, the source build, format check and warnings-as-errors compile
+passed. The final `mix test --include native_sandbox` run passed **448 tests, 14
+macOS excluded**, including the complete action-chain and namespace checks.
+**38 focused state/invocation/catalog/session tests** also passed. An earlier
+20-test run exposed shared synthetic state between fixtures, a linked failed
+startup assertion and an undersized large-file fixture; these test setup issues
+were repaired before the successful runs. No paid/provider/device check ran.
+
+Fixtures cover separate full write approval/denial, denied headless proposals,
+actual VM cleanup while awaiting approval, retained tombstones/stale CAS refusal,
+generation-pinned pagination, metadata-only listings, cross-process native lock
+contention/inode preservation, scope/source/artifact/instance isolation, quota/
+JSON/symlink/corruption refusal, finite 16-operation loops and unknown host-call
+shutdown without callback continuation. Recovery rejects altered, orphaned,
+replayed and deleted action receipts, including deletion of the whole operation
+chain, before tail repair. Committed and unknown receipts restore idle without
+callbacks/storage replay or journal changes. See [host contract](extension-host-calls.md)
+and [operator controls](../operator/extensions.md#scoped-state-host-calls).
+
+The credential-free demo and existing source hook/accounting/text fixture passed.
+The new independent state-calling artifact is a source fixture; it is not yet
+the separately installed package coverage proof required to finish P22. This
+increment adds no database, automatic memory adapter, general workflow/question
+actions, remote exporter or release publication.
+
+After explicitly excluding pending-approval phases from receipt commits,
+**22 focused invocation/state tests** and the full **448-test native suite**
+(14 macOS excluded) passed. The final Linux glibc-2.44 archive
+rebuilt with matching OTP 29.1.1 notices and passed extracted-package verification
+on a utility-only PATH and fresh homes. Its fixture covers the existing bundled
+hooks/accounting/text capabilities; the independent custom state artifact remains
+source-only evidence. Documentation review checked **65 Markdown files / 635
+local file and heading links** with no broken targets.

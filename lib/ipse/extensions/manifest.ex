@@ -91,7 +91,11 @@ defmodule Ipse.Extensions.Manifest do
   def decode(_), do: {:error, :invalid_extension_manifest}
 
   @doc false
-  def decode_json(bytes) when is_binary(bytes) and byte_size(bytes) <= 32_768 do
+  def decode_json(bytes, limit \\ 32_768)
+
+  def decode_json(bytes, limit)
+      when is_binary(bytes) and is_integer(limit) and limit in 1..1_048_576 and
+             byte_size(bytes) <= limit do
     with {:ok, ordered} <- Jason.decode(bytes, objects: :ordered_objects),
          {:ok, value} <- unique_object(ordered, 0) do
       {:ok, value}
@@ -100,7 +104,7 @@ defmodule Ipse.Extensions.Manifest do
     _ -> {:error, :invalid_json}
   end
 
-  def decode_json(_), do: {:error, :invalid_json}
+  def decode_json(_, _), do: {:error, :invalid_json}
 
   @doc "Compatibility is explicit; admission must recheck it before activation."
   def compatible?(manifest) do

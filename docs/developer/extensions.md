@@ -5,7 +5,10 @@ design proposal; implementation was subsequently authorized for P22–P25.
 The [artifact contract](extension-artifacts.md) documents the first implemented
 API. The implemented [hooks](extension-hooks.md), [typed invocations](extension-invocations.md),
 [usage ledger](usage-accounting.md) and [private text channel](text-streams.md)
-document subsequent increments. Other names and limits below remain proposed contracts. Existing skills, explicit
+document subsequent increments.
+[Finite host state calls](extension-host-calls.md) implement the first scoped
+state/effect seam; general actions, composition and context remain provisional.
+Other names and limits below remain proposed contracts. Existing skills, explicit
 MCP tools and provider adapters remain available alongside the
 [initial session hooks](extension-hooks.md).
 The operator's subsequent bundled, third-party and generated-feature scenarios

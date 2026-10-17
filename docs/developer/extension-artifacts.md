@@ -163,8 +163,9 @@ native helper's cleanup result. Worker status formatting includes only readiness
 sequence and traffic counters, never options/payloads. P22A4's
 [session host](extension-hooks.md) adds pinned activation identity and durable
 prompt/display projections; P22A7 adds [static catalogs and value-only
-invocations](extension-invocations.md). Host action proposals, service composition
-and scoped state/jobs remain later P22 increments.
+invocations](extension-invocations.md). P22A8 adds [host-mediated state
+operations](extension-host-calls.md). Tool/question actions, service composition,
+context and jobs remain later P22 increments.
 
 `test/extensions_worker_test.exs` compiles a uniquely named independent artifact
 with the existing Elixir compiler in a separate VM. It verifies inert import,

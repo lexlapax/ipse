@@ -80,7 +80,8 @@ Merge these top-level fields into the operator's version-1
 For independent code, replace the built-in reference with its reviewed 64-character
 digest and supply its declared options/capabilities. Supported capabilities are
 `transform.prompt`, `transform.presentation`, `invoke.tool`, `invoke.command`
-and `invoke.service`; unsupported capabilities fail explicitly. Invocation
+and `invoke.service`, plus `host.actions` with `host.state.read`/`host.state.write`;
+unsupported capabilities fail explicitly. Invocation
 exports require inert argument/result schemas in the artifact manifest. Do not
 put credentials in extension options. No automatic memory backend is selected.
 
@@ -170,8 +171,8 @@ Workers inherit no credential environment. Trusted executable code still has
 the operator's OS/filesystem access; ownership, deadlines and process-group
 cancellation do not themselves provide an OS sandbox. Initialize/transform
 callbacks must follow the SDK's effect-free contract; arbitrary trusted programs
-cannot be constrained by a return-value schema alone. Host action proposals,
-state/context, worker service composition, broader lifecycle observation,
+cannot be constrained by a return-value schema alone. General tool/question
+actions, context contributions, worker service composition, broader lifecycle observation,
 live controls and the extension-only
 memory/workflow proof remain [P22 work](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
 See the [implemented hook contract](../developer/extension-hooks.md).
@@ -190,10 +191,39 @@ and does not overwrite the assistant answer. Embedded callers can invoke a typed
 service with `Session.invoke_export/4`; worker-to-worker composition is not yet
 available. Commands/services are admitted only while idle.
 
-These callbacks return schema-checked values, not executable host actions.
+These callbacks return schema-checked values. An artifact explicitly trusted for
+host state capabilities can also propose the finite operations below.
 Intent is synced before executable startup; result is synced after validation
 and confirmed worker cleanup. Invalid output/crash/interruption has an unknown
 outcome and is never retried automatically. Resume restores committed receipts
 without callback execution, including a result committed just before its ordinary
 tool-message record. Up to 10,000 invocations fit one session; overflow refuses
 admission. See [SDK schemas, bounds and recovery](../developer/extension-invocations.md).
+
+## Scoped state host calls
+
+Reviewed artifacts may declare `host.actions` plus `host.state.read` and/or
+`host.state.write`. These capabilities are default-off and require operator trust.
+There is no shipped automatic memory adapter in this increment. Workers can
+request get/list/put/delete in host-derived operator/project/session namespaces.
+Project-configured code cannot select operator scope. State is not automatically
+sent to a model or another extension.
+
+Every put/delete asks for separate full approval unless execution was explicitly
+enabled for the session. Invoking a command or approving its enclosing model tool
+does not authorize a later write. Headless/interactive denial creates no business
+record. Reads need the read capability. Up to 16 host calls fit one invocation;
+invalid/unknown outcomes stop it.
+
+Data lives in `IPSE_HOME/extension-state-v1` with private files/native locks. Each
+identity/scope has a 1 MiB/256-record quota including tombstones; values are at
+most 8 KiB. Writes require the current revision. Delete removes the current value
+and retains its revision to prevent stale resurrection. Historical journals and
+delivered text remain.
+
+Resume restores receipts without running callbacks/storage actions. After an
+interrupted write, inspect its namespace/key revision and operation ID before
+explicitly deciding what to do next; it may have committed. Tampered receipts or
+corrupt state refuse recovery/access without repair. Artifact/config-source
+changes isolate new namespaces; no automatic migration or collector is available.
+Do not remove lock files. See [protocol, paging and recovery](../developer/extension-host-calls.md).

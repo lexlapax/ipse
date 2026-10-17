@@ -10,7 +10,8 @@ defmodule Ipse.Extensions.Catalog do
   @error {:error, :invalid_extension_catalog}
 
   def capabilities,
-    do: ~w(transform.prompt transform.presentation invoke.tool invoke.command invoke.service)
+    do:
+      ~w(transform.prompt transform.presentation invoke.tool invoke.command invoke.service host.actions host.state.read host.state.write)
 
   def empty, do: %{"version" => 1, "tools" => [], "commands" => [], "services" => []}
 
@@ -20,6 +21,9 @@ defmodule Ipse.Extensions.Catalog do
     with :ok <- Schema.validate_object(exports),
          true <- Enum.sort(Map.keys(exports)) == ~w(commands services tools version),
          true <- exports["version"] === 1,
+         true <-
+           not Enum.any?(~w(host.state.read host.state.write), &(&1 in capabilities)) or
+             "host.actions" in capabilities,
          true <-
            Enum.all?(@groups, fn {group, capability} ->
              records = exports[group]
