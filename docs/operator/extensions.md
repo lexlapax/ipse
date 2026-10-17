@@ -5,6 +5,15 @@ presentation hooks. Both shipped examples are **disabled by default**. Independe
 local artifacts use the same SDK in separate Elixir VMs. Import and discovery
 remain inert; configuration trust and activation are separate.
 
+## Visible-text clients
+
+Embedded clients can explicitly use a bounded private visible-text subscription;
+there is no new stream CLI flag or installed-worker subscription capability yet.
+It receives raw visible model text; completed-answer formatting remains separate.
+Slow consumers can backpressure their request and receive explicit incomplete
+shutdown on timeout/cancel. Subscriptions are ephemeral and do not replay on
+resume. See the [embedded contract](../developer/text-streams.md).
+
 ## Import and inspect
 
 ```sh

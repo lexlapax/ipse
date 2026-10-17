@@ -30,7 +30,8 @@ Identities contain instance/reference/artifact SHA-256, options digest, SDK and
 protocol 1, ordered capabilities, order/lifetime/earliest expiry, child ceiling,
 VM components (Elixir version, OTP major, ERTS version, architecture), host API
 digest and generation 1. The host digest binds `Ipse.Extension`, Registry,
-Worker, Bootstrap, Host, Projection and Session BEAM bytes. It is an exact API
+Worker, Bootstrap, Host, Projection, the shared schema adapter, usage normalizer/
+ledger, private text channel and Session BEAM bytes. It is an exact API
 implementation pin, not a signature or full operating-system/toolchain digest.
 Startup checks current VM components and code; resume requires identical pinned
 identities. No migration or hot activation is implemented.

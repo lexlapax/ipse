@@ -2547,3 +2547,35 @@ passed `scripts/verify-package.exs` in extracted runtime isolation, including th
 extended hook/accounting fixture. The archive remains a local artifact; this
 increment has no new hosted macOS or live-account evidence yet. Documentation
 review checked **62 Markdown files / 590 local file and heading links**.
+
+[Hosted verification](https://github.com/lexlapax/ipse/actions/runs/38987855108)
+for accounting commit `a9c1f02` subsequently passed the existing Ubuntu/macOS-14
+Elixir 1.18 / OTP 27 jobs, including formatting, tests, demo and extracted-package
+verification on both, plus macOS native checks. This is hosted evidence for
+accounting, not a local macOS run on Serenity or proof of later text-channel edits.
+
+## P22 private visible-text channel (2026-10-16)
+
+On Linux Serenity, the source build, format check and warnings-as-errors compile
+passed. The full `mix test --include native_sandbox` run passed **419 tests, 14
+macOS excluded**. An early focused run exposed an on-exit fixture cleanup race
+against the broker's already-correct owner monitor; removing redundant stop
+eliminated it. The final native suite includes the repaired fixture.
+
+Private-channel fixtures cover exact Unicode concatenation, bounded escaped
+JSON frames, caller-bound acknowledgment, cumulative sequence checks, producer
+backpressure/deadline, control overload, invalid/stale chunks, consumer/owner death,
+responsive cancellation, native/summary exclusion and ephemeral no-replay resume.
+The source extension fixture consumes raw visible text while completed formatting
+and accounting remain intact. After adding schema/usage/text modules to the pinned
+host digest, **22 focused registry/session/schema tests** and the source fixture
+passed. Installed-worker subscription handles and audio are not implemented by
+this increment. See the [embedded contract](text-streams.md) and
+[operator limits](../operator/extensions.md#visible-text-clients).
+
+The current Linux archive rebuilt and passed extracted-package verification with
+the private-stream fixture on a utility-only PATH and fresh isolated homes.
+An additional **9 focused channel tests** passed after strengthening the escaped
+text fixture to include a full 2048-byte NUL frame. No paid provider, audio device,
+release publication or new hosted macOS text-channel verification ran locally.
+Documentation review checked **63 Markdown files / 597 local file and heading links**.

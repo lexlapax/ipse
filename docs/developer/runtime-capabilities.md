@@ -11,8 +11,10 @@ Recommendations below are architectural inferences, not interoperability results
 Provider adapters already emit visible `{:text, delta}` events. Session forwards
 progress from its current job and CLI writes text as it arrives. The saved
 assistant message/native continuation remains separate from the live display.
-HTTP/SSE request handling and cancellation exist. There is no supported extension
-stream-subscription API, multimodal session interface or audio device/backend.
+HTTP/SSE request handling and cancellation exist. P22 now adds an explicit
+[private embedded subscription](text-streams.md) with bounded coalescing and
+acknowledgments. Installed-worker SDK access is still pending; there is no
+multimodal session interface or audio device/backend yet.
 Text deltas are chunks, not necessarily individual tokens.
 
 P22 now implements [durable request accounting](usage-accounting.md): request/

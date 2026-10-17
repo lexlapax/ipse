@@ -175,6 +175,10 @@ defmodule Ipse.Extensions.Registry do
       Ipse.Extensions.Bootstrap,
       Ipse.Extensions.Host,
       Ipse.Extensions.Projection,
+      Ipse.MCP.Schema,
+      Ipse.Usage,
+      Ipse.Usage.Normalizer,
+      Ipse.TextStream,
       Ipse.Session
     ]
     |> Enum.map(fn module ->

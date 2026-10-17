@@ -84,8 +84,10 @@ defmodule Ipse.ExtensionDemo do
       ]
 
       {:ok, session} = DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, opts})
+      {:ok, text_handle} = Ipse.Session.subscribe_text(session)
       :ok = Ipse.Session.prompt(session, "original fixture task")
       await(session)
+      "fixture answer" = visible_text(text_handle)
 
       receive do
         {:extension_fixture_context, [_system, user]} ->
@@ -149,6 +151,23 @@ defmodule Ipse.ExtensionDemo do
       {:ipse, ^session, _} -> await(session)
     after
       15_000 -> raise "Extension fixture timed out"
+    end
+  end
+
+  defp visible_text(handle, text \\ "") do
+    receive do
+      {:ipse_text, server, %{"sequence" => sequence} = frame} when server == handle.server ->
+        :ok = Ipse.TextStream.ack(handle, sequence)
+        text = text <> (frame["text"] || "")
+
+        if frame["kind"] == "end" do
+          true = frame["complete"]
+          text
+        else
+          visible_text(handle, text)
+        end
+    after
+      1000 -> raise "Private visible-text fixture timed out"
     end
   end
 end

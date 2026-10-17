@@ -56,6 +56,7 @@ defmodule Ipse.Session do
   def refresh_context(pid), do: GenServer.call(pid, :refresh_context)
   def info(pid), do: GenServer.call(pid, :info)
   def diagnostics(pid), do: GenServer.call(pid, :diagnostics)
+  def subscribe_text(pid), do: GenServer.call(pid, :subscribe_text)
 
   @impl true
   def init(opts) do
@@ -116,6 +117,8 @@ defmodule Ipse.Session do
         active_request: nil,
         last_request_id: saved_request(events, "request_id"),
         turn_id: saved_request(events, "turn_id") || Ipse.Usage.id(),
+        text_stream: nil,
+        text_stream_monitor: nil,
         final: Projection.presentation(events),
         extension_intent: nil,
         mcp_tools: [],
@@ -299,6 +302,20 @@ defmodule Ipse.Session do
 
     {:reply, info, s}
   end
+
+  def handle_call(:subscribe_text, {consumer, _}, %{phase: :idle} = s) do
+    s =
+      if s.text_stream do
+        s
+      else
+        {:ok, stream} = Ipse.TextStream.start(self(), s.id)
+        %{s | text_stream: stream, text_stream_monitor: Process.monitor(stream)}
+      end
+
+    {:reply, Ipse.TextStream.subscribe(s.text_stream, consumer), s}
+  end
+
+  def handle_call(:subscribe_text, _, s), do: {:reply, {:error, :busy}, s}
 
   def handle_call(:diagnostics, _from, s) do
     {:reply,
@@ -712,6 +729,11 @@ defmodule Ipse.Session do
   end
 
   def handle_info({:DOWN, ref, :process, pid, _}, s) do
+    s =
+      if ref == s.text_stream_monitor,
+        do: %{s | text_stream: nil, text_stream_monitor: nil},
+        else: s
+
     resources =
       if s.mcp_resources[pid] == ref, do: Map.delete(s.mcp_resources, pid), else: s.mcp_resources
 
@@ -854,34 +876,15 @@ defmodule Ipse.Session do
 
           {:ok, plan} ->
             config = Ipse.Compaction.request_config(s.config)
-            s = admit_request(s, config, "compaction")
-            owner = self()
-            job_ref = make_ref()
-
-            task =
-              owned_task(fn ->
-                request(
-                  config,
-                  plan.summary_messages,
-                  [],
-                  fn
-                    {:provider_usage, _} = event -> send(owner, {:progress, job_ref, event})
-                    _ -> :ok
-                  end
-                )
-              end)
-
             notify(s, {:status, :compacting})
 
-            %{
-              s
-              | task: task,
-                phase: :compaction,
-                compaction: plan,
-                steps: s.steps + 1,
-                request_started_at: System.monotonic_time(:millisecond),
-                job_ref: job_ref
-            }
+            launch_request(
+              %{s | compaction: plan},
+              config,
+              plan.summary_messages,
+              [],
+              :compaction
+            )
 
           {:tool_results, messages, event} ->
             record(s, event)
@@ -895,32 +898,84 @@ defmodule Ipse.Session do
   end
 
   defp launch_model(s, messages) do
-    s = admit_request(s, s.config, "model")
+    notify(s, {:status, "Thinking"})
+
+    launch_request(
+      s,
+      s.config,
+      messages,
+      definitions(s.config) ++ Ipse.MCP.definitions(s.mcp_tools),
+      :model
+    )
+  end
+
+  defp launch_request(s, config, messages, tools, phase) do
+    s = admit_request(s, config, Atom.to_string(phase))
     owner = self()
     job_ref = make_ref()
+    request_id = s.active_request["request_id"]
+    stream = if phase == :model, do: s.text_stream
 
     task =
       owned_task(fn ->
-        request(
-          s.config,
-          messages,
-          definitions(s.config) ++ Ipse.MCP.definitions(s.mcp_tools),
-          fn event ->
-            send(owner, {:progress, job_ref, event})
-          end
-        )
+        receive do
+          :provider_start ->
+            request(config, messages, tools, fn event ->
+              case event do
+                {:text, text} when phase == :model ->
+                  :ok = Ipse.TextStream.push(stream, request_id, text)
+                  send(owner, {:progress, job_ref, event})
+
+                {:provider_usage, _} ->
+                  send(owner, {:progress, job_ref, event})
+
+                _ ->
+                  if phase == :model, do: send(owner, {:progress, job_ref, event})
+              end
+            end)
+        after
+          5_000 -> {:error, "Provider dispatch was not admitted."}
+        end
       end)
 
-    notify(s, {:status, "Thinking"})
-
-    %{
+    s = %{
       s
       | task: task,
-        phase: :model,
+        phase: phase,
         steps: s.steps + 1,
         job_ref: job_ref,
         request_started_at: System.monotonic_time(:millisecond)
     }
+
+    case begin_text(stream, request_id, task.pid) do
+      :ok ->
+        send(task.pid, :provider_start)
+        s
+
+      _ ->
+        Task.shutdown(task, :brutal_kill)
+
+        fail(
+          measure_request(s, :worker_down),
+          "Visible-text subscription could not admit this request."
+        )
+    end
+  end
+
+  defp begin_text(nil, _, _), do: :ok
+
+  defp begin_text(stream, id, producer) do
+    Ipse.TextStream.begin(stream, id, producer)
+  catch
+    :exit, _ -> {:error, :text_stream_unavailable}
+  end
+
+  defp finish_text(nil, _, _), do: :ok
+
+  defp finish_text(stream, id, outcome) do
+    Ipse.TextStream.finish(stream, id, outcome)
+  catch
+    :exit, _ -> {:error, :text_stream_unavailable}
   end
 
   defp launch_extensions(s, phase) do
@@ -1465,6 +1520,7 @@ defmodule Ipse.Session do
       )
 
     s = account(s, event)
+    if phase == :model, do: finish_text(s.text_stream, admission["request_id"], outcome)
     %{s | active_request: nil, request_started_at: nil}
   end
 

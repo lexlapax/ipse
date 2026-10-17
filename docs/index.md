@@ -41,6 +41,7 @@ start. Use the guides below for operation, development, and project context.
 | [Extension adoption scenarios](developer/extension-scenarios.md) | Bundled/third-party/generated feature walkthroughs, artifact installation, temporary use and deferred host capabilities |
 | [Runtime capability boundaries](developer/runtime-capabilities.md) | Framework comparison, usage/cost facts, text/voice streams and core versus extension ownership |
 | [Usage accounting](developer/usage-accounting.md) | Implemented identities, normalized usage snapshots and recovery validation |
+| [Private text streams](developer/text-streams.md) | Embedded text subscriptions, acknowledgments, pressure limits and ephemeral recovery |
 | [Knowledge extension family](developer/knowledge-extensions.md) | Default-off working/long-term memory, pluggable research, graph/RAG and composition/evidence contracts |
 | [Observability proposal](developer/observability.md) | P19/P22 diagnostics, lifecycle telemetry, optional export and BEAM debugging |
 | [MCP client contract](developer/mcp.md) | Reused packages, transport ownership, descriptor binding, schema policy, and recovery |

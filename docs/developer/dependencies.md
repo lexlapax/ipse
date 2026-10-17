@@ -33,6 +33,9 @@ P22A5 request accounting adds no dependency. It reuses the bounded plain-JSON
 adapter, Jason, OTP crypto/clock and owned provider tasks. Its small pure reducer
 implements journal-specific admission, cumulative revisions and no-replay recovery;
 it does not implement a general accounting framework or pricing service.
+P22A6's private text channel adds no dependency. It reuses OTP GenServer calls,
+owner/consumer monitors, bounded maps/queues and timers; it does not install a
+streaming framework, codec or media runtime.
 P22A2's worker bridge reuses the current ERTS, Elixir, Jason and native stdio
 helper, adding no dependency. The synthetic independent artifact fixture uses
 the existing Elixir compiler in a separate VM. A small Ipse bootstrap implements

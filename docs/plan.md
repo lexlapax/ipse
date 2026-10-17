@@ -1051,7 +1051,7 @@ projections are journaled, preserve original/native data and restore without cal
 Resume pins artifact/options/runtime/host identity and refuses corruption/missing code
 before journal repair. Child scope, expiry and actual worker cancellation are tested.
 Source and extracted-package fixtures exercise both examples. Broader lifecycle/
-tools/commands/state/services/jobs, stream foundations, live controls and the
+tools/commands/state/services/jobs, worker subscription access, live controls and the
 extension-only memory/workflow proof remain in progress. See the
 [implemented hook contract](developer/extension-hooks.md).
 
@@ -1062,6 +1062,14 @@ pre-repair resume validation. Linux native-suite and focused recovery/provider t
 pass; counters remain independent of optional tracing. P23 estimates/budgets and
 the remaining P22 contracts are still in progress. See
 [operator inspection](operator/usage-accounting.md).
+
+P22A6 implements the [private visible-text host channel](developer/text-streams.md):
+bounded coalescing/acknowledgment, producer/request correlation and explicit
+incomplete shutdown on cancellation, owner death, slow consumers or overload.
+Source/package fixtures consume raw visible output alongside completed formatting.
+It is separate from droppable diagnostics and excludes summaries/native reasoning.
+Installed-worker SDK access follows the generic host capability work; no audio
+interface is claimed by a text-only channel. Broader P22 and P23–P25 remain active.
 
 Acceptance:
 

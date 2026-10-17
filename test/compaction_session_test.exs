@@ -167,6 +167,24 @@ defmodule Ipse.CompactionSessionTest do
     assert File.read!(Path.join(ctx.root, "kept.txt")) == "manual edit"
   end
 
+  test "private text excludes summary streams and identifies only the main request", ctx do
+    {:ok, pid} = start(ctx)
+    {:ok, handle} = Ipse.Session.subscribe_text(pid)
+    :ok = Ipse.Session.prompt(pid, "Continue.")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 2000
+    {:ok, events} = Ipse.Journal.load(ctx.dir, ctx.id)
+    model = Enum.find(events, &(&1["type"] == "request_admitted" and &1["kind"] == "model"))
+
+    assert_receive {:ipse_text, _, %{"kind" => "start", "request_id" => id, "sequence" => 1}},
+                   1000
+
+    assert id == model["request_id"]
+    :ok = Ipse.TextStream.ack(handle, 1)
+    assert_receive {:ipse_text, _, %{"kind" => "end", "request_id" => ^id, "sequence" => 2}}, 1000
+    :ok = Ipse.TextStream.ack(handle, 2)
+    refute_receive {:ipse_text, _, %{"kind" => "text"}}, 20
+  end
+
   test "cancelled compaction stops its worker without saving a partial checkpoint", ctx do
     {:ok, pid} = start(ctx, %{summary_mode: :wait})
     :ok = Ipse.Session.prompt(pid, "Continue.")
