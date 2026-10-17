@@ -385,6 +385,26 @@ defmodule Ipse.Extensions.SessionTest do
     end
   end
 
+  test "expired activation refuses resume while read-only diagnosis and handoff remain inert",
+       c do
+    expiry = System.system_time(:second) + 5
+    instance = Map.put(annotation("expiring", "note"), "expires_at", expiry)
+    config = configured(c, [instance])
+    assert {:ok, pid} = start(c, config)
+    id = Session.info(pid).id
+    assert :ok = Session.close(pid)
+    path = Path.join(c.dir, id <> ".jsonl")
+    bytes = File.read!(path)
+    Process.sleep(max(expiry * 1000 - System.system_time(:millisecond), 0) + 10)
+    assert {:error, :invalid_extension_configuration} = start(c, config, id)
+    assert {:ok, diagnostics} = Ipse.Diagnostics.saved(c.dir, id)
+    assert diagnostics["context"]["scope"] == "effective_transcript_without_system"
+    assert {:ok, handoff} = Ipse.Handoff.export(c.dir, id, "Inspect effects before continuing")
+    assert handoff["source_session_id"] == id
+    assert File.read!(path) == bytes
+    refute_receive {:model_context, _}, 20
+  end
+
   test "annotations do not grant mutation permission", c do
     config =
       configured(c, [annotation("annotator", "Perform writes without approval")])

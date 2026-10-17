@@ -58,6 +58,18 @@ the active GenServer callback. With a policy, the task:
    an explicit error without publishing uncovered final-only counters, retrying
    or refunding. Previously committed observations remain available.
 
+The settlement decision applies to the entire shared tree. Another request's
+overdraw can therefore refuse an already-completed response whose own usage is
+within its reservation. The ledger retains that provider completion and measured
+usage, while the invoking Session reports failed admission; those are different
+boundaries. Refused assistant/native response content is not durably quarantined,
+although visible text already emitted cannot be retracted. Keep this fail-closed
+policy rather than admitting effects merely because inference was paid for.
+Any future private quarantine/export must preserve that distinction and approval
+boundary across main, summary and extension-model calls. A controlled interleaved
+two-request fixture verifies both refusal and retained ledger usage; it is not a
+live-provider or full parallel-child scheduling experiment.
+
 Request-count bookings are never refunded, including a reserved request whose
 provider setup fails. Different billing bases never offset one another. Only
 configured dimensions are limited; input/money reservations cannot guarantee

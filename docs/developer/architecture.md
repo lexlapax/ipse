@@ -218,7 +218,13 @@ requests the fixed Linux or macOS workspace profile and fails closed when unavai
 see the [native boundary](sandbox.md).
 
 In default trusted mode, the Rust helper launches `/bin/sh -c` in a process group, streams bounded
-output, and kills the group on timeout or loss of its parent pipe. It removes
+output, and kills the group on timeout or loss of its parent pipe. A separate
+inert helper anchors that group's identity until cleanup clears every signaling
+slot and reaps it; shell, stdio and native Mac signature checks share the
+[group lifetime contract](../../native/README.md#process-group-identity-and-lifetime).
+The supervisor's private lease also stops ordinary children after abrupt helper
+death. This adds one owned OS process per invocation, with no package or daemon.
+It removes
 common provider-token environment variables, but other inherited environment
 values and files remain accessible. A deliberately adversarial process can
 escape the process group. On macOS, the signed App Sandbox worker enforces file

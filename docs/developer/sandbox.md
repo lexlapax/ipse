@@ -69,8 +69,10 @@ The [kernel Landlock documentation](https://www.kernel.org/doc/html/v6.12/usersp
 explains why anonymous pipes through procfs cannot be secured by path rules alone;
 using the host's procfs would violate the intended boundary.
 
-The original pre-exec child remains the externally supervised process-group
-leader. It closes all descriptors and waits without executing user code. A
+The original pre-exec child joins the helper's separately anchored process group.
+It closes all descriptors and waits without executing user code. The anchor
+retains group identity through command reaping and output draining; it stays
+outside the sandbox and runs no user code. A
 namespace PID 1 mounts procfs, closes its descriptors, and reaps children; the
 actual command runs as an ordinary child so default signals retain their usual
 behavior. Only the command retains Rust's spawn-error pipe until exec, preserving

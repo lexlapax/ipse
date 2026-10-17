@@ -20,15 +20,45 @@ Pure validation, helper setup and explicit pre-dispatch refusals remain known
 errors. Keep helper and Elixir Runner from the same installed build; an uncertain
 effect must be inspected rather than replayed.
 
-The caller keeps the helper's stdin pipe open. EOF kills the shell's process
-group. The helper starts `/bin/sh -c COMMAND` in a fresh process group and kills
-that group on timeout, parent-pipe EOF, failed output delivery, and shell exit.
+The caller keeps the helper's stdin pipe open. EOF kills the owned process group.
+The helper starts `/bin/sh -c COMMAND` as a member of that fresh group and kills
+it on timeout, parent-pipe EOF, failed output delivery, and shell exit.
 The timeout includes the shell and its ordinary descendants. A deliberately
 adversarial process can escape by creating a new session; this is **not a
 sandbox**. Shell runs with the user's local filesystem and network access.
 Provider credentials OPENAI_API_KEY, ANTHROPIC_API_KEY, and
 IPSE_CHATGPT_ACCESS_TOKEN are removed from the shell environment. Other
 inherited environment values remain available.
+
+## Process-group identity and lifetime
+
+`ipse-process-group.rs` owns one extra inert copy of the helper per shell/stdio
+invocation or native macOS signature-check command. This anchor leads the group;
+the actual command joins before sandbox setup/exec. The anchor's PID is kept
+unreaped through command completion, output draining and final group cleanup.
+It cannot be reused for an unrelated group while signals still reference it.
+All signaling threads lock the shared slot through the signal; release kills
+the anchored group, clears that slot, and reaps the anchor under the same mutex.
+Late input/watchdog/owner events therefore find no signaling target after release.
+
+The supervisor restores default child-status handling before launch, including
+when its launcher ignored `SIGCHLD`; automatic reaping would invalidate the guard.
+The anchor has a cleared environment, null output and a private stdin lease held
+by the supervisor. A child joins the group before closing its inherited copy of
+that lease, before any lengthy sandbox setup. Abrupt supervisor death closes the
+lease and the anchor kills its own group, including itself. `--group-anchor` is
+an internal role of this same helper, not an external executable dependency or
+a configurable command. Failure to create the owner refuses command launch.
+The OS helper's existing trust, sandbox and detached-descendant limits still apply.
+
+This uses Rust's stable process/pipe facilities plus the existing narrow POSIX
+boundary. `Child::try_wait` [reaps an exited Unix child](https://doc.rust-lang.org/std/process/struct.Child.html#method.try_wait),
+so retaining only that child's numeric ID through later cleanup was insufficient.
+A retained anchor avoids a new package, platform-specific `waitid` layouts or
+reliance on unstable/Linux-only process-handle APIs. Regression probes establish
+unreaped ownership after command exit, refused late signals and EOF-confirmed
+ordinary-child exit after abrupt owner death. They do not force PID wraparound
+or certify stronger descendant containment.
 
 ## Session locks
 
@@ -113,7 +143,7 @@ mounts are `nodev`. Capabilities and their bounding set are dropped before exec.
 Bash descriptor paths use a fresh `subset=pid` procfs mounted at `/dev/.ipse-proc`
 inside the private PID namespace, with `/dev/fd` and standard descriptor symlinks.
 The host's procfs is never mounted. Regular procfs reads/enumeration receive no
-Landlock grant. The original group leader and namespace PID 1 are trusted
+Landlock grant. The original pre-exec child and namespace PID 1 are trusted
 close-all-descriptors waiters; user code runs as an ordinary child. They forward
 exit status and preserve the final command's spawn-error pipe until actual exec.
 PID 1 reaps orphaned children; default command signals remain ordinary. Existing
@@ -141,7 +171,7 @@ observed real-UID thread count plus 1024, clamped to the caller's existing hard
 limit; exhausted hard limits or failed bounded `/proc` scans fail setup. These
 are OS resource ceilings, not an aggregate per-command memory, disk, or process
 quota; NPROC is shared by the real UID and its count is a snapshot. The existing
-supervisor timeout and group cleanup still bound command lifetime. The guard
+supervisor timeout and anchored group cleanup still bound command lifetime. The guard
 kills the group before releasing the private-directory owner.
 
 The helper rejects `/`, `/tmp`, overlap with protected system roots, the real

@@ -457,7 +457,11 @@ authorize messaging, purchases, or other effects. See [trial evidence](../develo
 
 One GenServer owns a session. Monitored tasks perform provider and tool work;
 session death stops them. The Rust helper kills command process groups on timeout
-or lost parent connection and provides cross-process session locks. Independent
+or lost parent connection and provides cross-process session locks. Each shell or
+stdio invocation owns an extra inert helper that retains the group identity
+through cleanup; abrupt supervisor loss closes its private lease and stops
+ordinary children. This does not capture deliberately detached descendants.
+Independent
 sessions can run concurrently; tools within a turn execute sequentially.
 
 Credentials are stored separately from journals in owner-only files. Default

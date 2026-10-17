@@ -58,6 +58,8 @@ defmodule Ipse.Extensions.RegistryTest do
 
   test "exact built-in code, runtime and options are bound into immutable identities" do
     assert {:ok, [entry]} = Registry.prepare(catalog(), "/fixture/home")
+    assert {:ok, [unchanged]} = Registry.prepare(catalog(), "/fixture/home")
+    assert unchanged.identity == entry.identity
     assert Registry.valid_entries?(%{extensions: [entry]})
     assert entry.identity["artifact"] == "builtin:prompt-annotation:1"
     assert entry.identity["options_sha256"] == Ipse.Compaction.digest([%{"text" => "note"}])

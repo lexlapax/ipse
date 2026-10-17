@@ -162,8 +162,21 @@ source/version/digest, timestamps, excerpt/reference and provenance. Optional
 scores indicate ranking, not truth. Keep entities/index IDs linked to original
 evidence, and extension content below the instruction/permission boundary.
 Record source event and extractor version; reject stale writes after forget so
-queued extraction/reindex cannot resurrect deleted facts. Deleting a derived
-store does not erase journals, backups or prior remote/provider transfers.
+queued extraction/reindex cannot resurrect deleted facts. Current SDK state is
+namespaced by artifact and configuration-source identity. P25 must distinguish
+that execution identity from stable logical memory identity and propose explicit
+export, migration and collection across upgraded artifacts and moved configs.
+Never silently reassign old state to new code. Forget/no-resurrection and retention
+must cover retained namespace versions and derivative graph/RAG indexes.
+
+Deleting a derived store does not erase journals, backups or prior remote/provider
+transfers. Separately specify retrieval tombstones, history-access/redaction
+projections, raw journal retention and secure erasure. The present private history
+grant can expose original prompts/tool inputs/results; it does not implement
+redacted history or true forgetting. A requirement to hide/redact retained host
+evidence needs a reviewed generic core contract, not an extension's deletion claim.
+P25 should propose the boundary and assess its cost without implementing speculative
+erasure or weakening mandatory recovery records.
 
 Typed options select store/search/fetch/embedding/rerank/graph instances and
 profiles; no backend or endpoint is mandatory. Project selections may narrow

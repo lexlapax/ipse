@@ -6,12 +6,18 @@ use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
 #[path = "ipse-environment.rs"]
 mod child_environment;
+
+#[cfg(test)]
+#[path = "ipse-process-group.rs"]
+mod process_group;
+#[cfg(not(test))]
+use crate::process_group;
 
 pub const PROFILE: &str = "macos-workspace-v1";
 #[repr(C)]
@@ -20,8 +26,6 @@ extern "C" {
     fn getrlimit(resource: i32, limit: *mut Limit) -> i32;
     fn setrlimit(resource: i32, limit: *const Limit) -> i32;
     fn geteuid() -> u32;
-    fn setpgid(pid: i32, pgid: i32) -> i32;
-    fn kill(pid: i32, signal: i32) -> i32;
 }
 
 fn xml(value: &str) -> String {
@@ -128,14 +132,11 @@ pub fn codesign_exec(args: &[String]) -> io::Error {
 fn codesign(args: &[&str], cancelled: &AtomicBool) -> Result<Vec<u8>, String> {
     let mut command = codesign_command();
     command.args(args).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
-    unsafe { command.pre_exec(|| {
-        if setpgid(0, 0) == -1 { return Err(io::Error::last_os_error()); }
-        Ok(())
-    }); }
+    let slot = Arc::new(Mutex::new(None));
+    let cleanup = process_group::GroupGuard::start(slot.clone())
+        .map_err(|_| "cannot start codesign process-group owner")?;
+    cleanup.attach(&mut command);
     let mut child = command.spawn().map_err(|e| format!("cannot start codesign: {e}"))?;
-    struct Guard(i32);
-    impl Drop for Guard { fn drop(&mut self) { unsafe { kill(-self.0, 9); } } }
-    let _guard = Guard(child.id() as i32);
     let (tx, rx) = mpsc::sync_channel(16);
     fn read(mut stream: impl Read + Send + 'static, stdout: bool,
             tx: mpsc::SyncSender<(bool, Vec<u8>)>) {
@@ -174,7 +175,7 @@ fn codesign(args: &[&str], cancelled: &AtomicBool) -> Result<Vec<u8>, String> {
             Err(mpsc::RecvTimeoutError::Timeout) => (),
         }
     };
-    if result.is_err() { let _ = child.kill(); let _ = child.wait(); }
+    if result.is_err() { process_group::signal_group(&slot); let _ = child.wait(); }
     result
 }
 

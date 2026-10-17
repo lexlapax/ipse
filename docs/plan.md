@@ -135,36 +135,30 @@ and arbitrary trusted out-of-band calls cannot establish an invoice ceiling.
 
 ## P24: independent architecture validation and baseline security
 
-**In progress; first static critique received.** The operator returned the
-independent Claude review of `21e59fe`, conducted through Git objects in the
-existing Serenity checkout. The [disposition register](developer/architecture-review-dispositions.md)
-records the seven findings, three unverified concerns, nine design items and
-partial coverage. Its proposed runtime regressions were unrun by the reviewer.
-The terminal display defect is reproduced and repaired, with local and hosted
-Linux/macOS source/package/installed gates passed. The project endpoint/credential
-issue is also reproduced; its authority/disclosure repair passed local source/
-native/package/installed and hosted Linux/macOS checks. The operator selected
-project-only sandbox tightening; its floor/provenance regressions reproduce the
-old downgrade; its enforcement passed source/native/demo/package/installed and
-hosted Linux/macOS checks. Budget observation/resume failure is
-now reproduced with a real lock; its write-ahead repair passed source/native/
-demo/package/installed and hosted Linux/macOS checks. Uncertain-tool-outcome and
-duplicate-ID recovery repairs also passed those local and hosted gates. The owned
-journal writer, protected ledger-state cache and linear usage-admission repair
-passed source/native/demo/package/installed checks, Btrfs timing probes and the
-hosted Linux/macOS gates at `200640e`. Startup/retention and prefix-check costs
-remain explicit. Filesystem alias regressions now reproduce the metadata/parallel-claim
-gaps; conservative Unicode comparisons pass focused/full native-inclusive local
-checks, the demo, package verification, both installed proofs and hosted
-Ubuntu/macOS at `be11890`, including actual Mac alias inode controls.
-Controlled fixtures also reproduce CLI
-acknowledgment/ownership failures and oversized visible-delta rejection; their
-repairs passed 50 related focused tests, 768 native-inclusive tests, the demo,
-package verification and both installed proofs; hosted validation remains open.
-The process-group identity concern and omitted coverage require their own
-evidence and dispositions.
-The security scan and P25 execution remain behind triage and applicable
-repairs; omitted architectural surfaces need a follow-up pass.
+**In progress; applicable repairs and independent coverage gate.** The first
+partial static critique reviewed committed Git objects at `21e59fe`; its proposed
+runtime regressions were unrun by the reviewer. The
+[disposition register](developer/architecture-review-dispositions.md) owns the
+seven findings, three additional concerns, nine design items and coverage limits.
+All seven concrete findings now have scoped repairs and local source/native/
+demo/package/installed plus hosted Ubuntu/macOS evidence. This includes actual
+Mac filesystem alias controls, protected operator sandbox authority and explicit
+persistence growth/prefix-check limits. CLI acknowledgment/ownership and large
+visible-delta repairs also passed those local and hosted gates at `fe54206`.
+
+The final process-group repair retains a separate waitable group owner through
+all signaling and cleanup paths, including native Mac signature checks. Its
+focused and full native-inclusive checks, demo/package/both installed proofs pass;
+hosted validation remains open.
+Design-contract fixtures confirm inert inspection/handoff after extension expiry
+and whole-tree overdraw refusal even for a completed request within its own
+reservation. Keep that refusal and document the lack of private response quarantine;
+future memory identity/migration/deletion proposals must distinguish retained host
+evidence from retrieval state.
+
+After repair verification, obtain the independent delta/omitted-surface review,
+then the triaged baseline security scan on the resulting exact revision. P24 and
+P25 execution remain gated; repaired findings do not certify omitted surfaces.
 Read-only Security Cloud access checks found the repository and available scan
 credits; no matching environment was found and no scan or billing change was
 started. Access readiness does not close either review gate.
@@ -275,8 +269,10 @@ Choose a configurable local baseline through the research gate; Zero-Mem is
 inspiration, not a selected package or reproduced benchmark result.
 
 Acceptance: default-off parity; explicit namespace/project/operator scopes;
-provenance, retention/TTL and conflicts; approved bounded writes; concurrent
-forget without resurrection; derivative deletion/export and clear journal/backup
+stable logical identity with explicit export/migration/collection across artifact
+and configuration-source versions; provenance, retention/TTL and conflicts;
+approved bounded writes; concurrent forget without resurrection; derivative
+deletion/export and distinct history-access/redaction, journal/backup and erasure
 limits; cancellation and unchanged resumed recall. No mandatory store, embedding
 model, remote service or silent promotion. Keep core conversation/recovery intact
 when optional memory is off. Measure quality and resources separately from

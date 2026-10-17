@@ -11,6 +11,23 @@ defmodule Ipse.RunnerTest do
     %{cwd: cwd}
   end
 
+  test "group ownership survives command reaping and helper loss closes the child's lease",
+       %{cwd: cwd} do
+    probe = Path.join(cwd, "process-group-probe")
+
+    assert {_, 0} =
+             System.cmd(
+               "rustc",
+               ["--edition=2021", "test/support/process_group_probe.rs", "-o", probe],
+               stderr_to_stdout: true
+             )
+
+    assert {output, 0} = System.cmd(probe, [], stderr_to_stdout: true)
+    assert output =~ "anchor identity retained until release"
+    assert output =~ "late signals refused"
+    assert output =~ "abrupt owner loss closes child pipes"
+  end
+
   test "advisory lock excludes another owner and unlocks without deleting its inode", %{cwd: cwd} do
     path = Path.join(cwd, "session.lock")
     assert {:ok, lock} = Runner.lock(path)

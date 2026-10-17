@@ -701,6 +701,40 @@ defmodule Ipse.BudgetTest do
     refute_receive :unexpected_budget_dispatch, 20
   end
 
+  test "shared overdraw refuses another completed response without erasing its ledger usage", c do
+    {id, config} = attached(c)
+    first = admission(config, id)
+    second = admission(config, id)
+    owner = self()
+    emit = &send(owner, &1)
+
+    assert {:error, error} =
+             Budget.run(config, first, emit, fn _, _ ->
+               assert {:error, _} =
+                        Budget.run(config, second, emit, fn _, _ -> response(120, 3) end)
+
+               {:ok,
+                %{
+                  "role" => "assistant",
+                  "content" => "completed-within-own-reservation",
+                  "provider_data" => %{"private" => "synthetic-native"}
+                }, %{"input_tokens" => 7, "output_tokens" => 3}}
+             end)
+
+    assert error =~ "no assistant or tool result was admitted"
+    refute error =~ "completed-within-own-reservation"
+    assert_receive {:provider_usage, %{"input_tokens" => 120, "output_tokens" => 3}}
+    assert_receive {:provider_usage, %{"input_tokens" => 7, "output_tokens" => 3}}
+
+    assert {:ok, state} =
+             Store.transaction(config.budget_root, config.budget, &{:read, &1}, false)
+
+    assert state.requests[first["request_id"]].completion["outcome"] == "completed"
+    assert state.requests[second["request_id"]].completion["outcome"] == "completed"
+    assert Ledger.liability(state, first["request_id"])["input_tokens"] == 7
+    assert Ledger.overdrawn?(state)
+  end
+
   test "final-only overdraw keeps actual counters and refuses assistant admission", c do
     {id, config} = attached(c, Map.put(policy(), "max_input_tokens", 50))
     owner = self()

@@ -113,7 +113,11 @@ liability. Parallel delegation's existing failure policy can cancel a reserved
 sibling when another child refuses admission; its booking remains conservative
 even if it never reaches the provider. A live overdraw stops the provider path; an overdraw discovered only
 in final usage refuses assistant/tool admission and preserves the counters.
-Already streamed text cannot be retracted. Future admissions refuse while the
+Shared-tree overdraw can also reject another completed response that stayed
+within its own reservation. Its provider completion/usage remain in the budget
+ledger, but refused assistant/native content has no saved quarantine/export;
+the session records failed admission. Already streamed text cannot be retracted.
+Future admissions refuse while the
 tree is overdrawn or another configured dimension is exhausted.
 
 With a budget enabled, the ledger must durably accept a usage observation before

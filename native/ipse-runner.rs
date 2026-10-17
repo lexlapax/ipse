@@ -4,7 +4,9 @@ use std::fs::{OpenOptions, Permissions};
 use std::io::{self, Read, Write};
 use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::os::unix::io::AsRawFd;
-use std::os::unix::process::{CommandExt, ExitStatusExt};
+#[cfg(target_os = "linux")]
+use std::os::unix::process::CommandExt;
+use std::os::unix::process::ExitStatusExt;
 use std::process::{Command, Stdio};
 use std::sync::{mpsc, Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -18,17 +20,13 @@ mod ipse_linux_sandbox;
 mod ipse_macos_sandbox;
 #[path = "ipse-stdio.rs"]
 mod ipse_stdio;
+#[path = "ipse-process-group.rs"]
+mod process_group;
+use process_group::{signal_group, GroupGuard};
 
 extern "C" {
-    fn setpgid(pid: i32, pgid: i32) -> i32;
-    fn kill(pid: i32, signal: i32) -> i32;
     fn flock(fd: i32, operation: i32) -> i32;
     fn geteuid() -> u32;
-}
-fn kill_group(pid: i32) { unsafe { kill(-pid, 9); } }
-struct GroupGuard(i32);
-impl Drop for GroupGuard {
-    fn drop(&mut self) { kill_group(self.0); }
 }
 fn frame(kind: u8, bytes: &[u8]) -> io::Result<()> {
     let mut out = io::stdout().lock();
@@ -83,6 +81,9 @@ fn lock_file(path: &str) -> Result<(), String> {
 }
 fn run() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
+    if args.len() == 2 && args[1] == "--group-anchor" {
+        return process_group::run_anchor().map_err(|_| "process-group owner failed".into());
+    }
     if args.len() == 2 && args[1] == "--uid" { println!("{}", unsafe { geteuid() }); return Ok(()); }
     #[cfg(target_os = "macos")]
     {
@@ -133,7 +134,7 @@ fn run() -> Result<(), String> {
             }
         }
         owner_cancelled.store(true, Ordering::SeqCst);
-        if let Some(pid) = *owner_child.lock().unwrap() { kill_group(pid); }
+        signal_group(&owner_child);
     });
     // Declared before the group guard: reverse drop order kills descendants
     // before removing the sandbox's private directories on every return path.
@@ -167,23 +168,22 @@ fn run() -> Result<(), String> {
             command.env_remove(key);
         }
     }
+    let cleanup = GroupGuard::start(child_slot.clone())
+        .map_err(|_| "cannot start process-group owner")?;
+    cleanup.attach(command);
     #[cfg(target_os = "linux")]
     let child_sandbox = sandbox.clone();
+    #[cfg(target_os = "linux")]
     unsafe {
         command.pre_exec(move || {
-            if setpgid(0, 0) == -1 { return Err(io::Error::last_os_error()); }
-            #[cfg(target_os = "linux")]
             if let Some(policy) = &child_sandbox {policy.apply()?;}
             Ok(())
         });
     }
-    let mut slot = child_slot.lock().unwrap();
+    let slot = child_slot.lock().unwrap();
     if cancelled.load(Ordering::SeqCst) { return Err("shell owner disconnected before launch".into()); }
     let mut child = command.spawn().map_err(|e| format!("cannot start shell: {e}"))?;
-    let pid = child.id() as i32;
-    *slot = Some(pid);
     drop(slot);
-    let _cleanup = GroupGuard(pid);
     // The owner watcher kills this group even while output delivery is blocked.
     let (tx, rx) = mpsc::sync_channel(32);
     reader(child.stdout.take().unwrap(), tx.clone());
@@ -198,7 +198,7 @@ fn run() -> Result<(), String> {
         if status.is_none() {
             if start.elapsed() >= Duration::from_millis(timeout) {
                 timed_out = true;
-                kill_group(pid);
+                signal_group(&child_slot);
             }
             status = match child.try_wait() {
                 Ok(status) => status,
@@ -209,7 +209,7 @@ fn run() -> Result<(), String> {
             };
             // Stop remaining group members when the initial child exits.
             if status.is_some() {
-                kill_group(pid);
+                signal_group(&child_slot);
                 drain_deadline = Some(Instant::now() + Duration::from_millis(500));
             }
         }
@@ -218,7 +218,7 @@ fn run() -> Result<(), String> {
         if status.is_some() && disconnected { break; }
         match rx.recv_timeout(Duration::from_millis(10)) {
             Ok(bytes) => if frame(b'O', &bytes).is_err() {
-                kill_group(pid);
+                signal_group(&child_slot);
                 let _ = child.wait();
                 return Ok(());
             },

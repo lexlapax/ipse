@@ -542,6 +542,11 @@ session, or export a reviewed handoff and start fresh. Exact host API pinning ca
 require a fresh session after a harness upgrade; no projection migration is
 implemented yet.
 
+An expired instance also refuses activation/resume; disabling it cannot rewrite
+the saved active set. The read-only `diagnose` and operator-written `handoff`
+commands remain available without activating extension code, subject to valid
+saved journal/source records. See [saved inspection and fresh-session recovery](recovery.md).
+
 Missing/corrupt/extra installed files refuse verification; import will not
 overwrite an invalid digest directory. A busy import lock fails safely; retry
 after the other importer exits. Preserve lock files for inode identity. After

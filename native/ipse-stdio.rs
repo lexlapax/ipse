@@ -1,7 +1,9 @@
 //! Bidirectional pipes and process-group lifetime for directly executed servers.
-use super::{frame, kill_group, setpgid, GroupGuard};
+use super::{frame, signal_group, GroupGuard};
 use std::io::{self, Read, Write};
-use std::os::unix::process::{CommandExt, ExitStatusExt};
+#[cfg(target_os = "linux")]
+use std::os::unix::process::CommandExt;
+use std::os::unix::process::ExitStatusExt;
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::{mpsc, Arc};
@@ -118,9 +120,7 @@ fn input_reader() -> (
             match owner.read(&mut header[..1]) {
                 Ok(0) => {
                     reader_cancelled.store(true, Ordering::SeqCst);
-                    if let Some(pid) = *reader_slot.lock().unwrap() {
-                        kill_group(pid);
-                    }
+                    signal_group(&reader_slot);
                     break;
                 }
                 Ok(_) => (),
@@ -128,35 +128,27 @@ fn input_reader() -> (
                 Err(_) => {
                     input_failure.store(2, Ordering::Release);
                     reader_cancelled.store(true, Ordering::SeqCst);
-                    if let Some(pid) = *reader_slot.lock().unwrap() {
-                        kill_group(pid);
-                    }
+                    signal_group(&reader_slot);
                     break;
                 }
             }
             if owner.read_exact(&mut header[1..]).is_err() {
                 input_failure.store(2, Ordering::Release);
                 reader_cancelled.store(true, Ordering::SeqCst);
-                if let Some(pid) = *reader_slot.lock().unwrap() {
-                    kill_group(pid);
-                }
+                signal_group(&reader_slot);
                 break;
             }
             let mut remaining =
                 u32::from_be_bytes([header[1], header[2], header[3], header[4]]) as usize;
             if header[0] == b'C' && remaining == 0 {
                 reader_cancelled.store(true, Ordering::SeqCst);
-                if let Some(pid) = *reader_slot.lock().unwrap() {
-                    kill_group(pid);
-                }
+                signal_group(&reader_slot);
                 break;
             }
             if header[0] != b'I' || remaining > 1_048_576 {
                 input_failure.store(2, Ordering::Release);
                 reader_cancelled.store(true, Ordering::SeqCst);
-                if let Some(pid) = *reader_slot.lock().unwrap() {
-                    kill_group(pid);
-                }
+                signal_group(&reader_slot);
                 break;
             }
             while remaining > 0 {
@@ -164,9 +156,7 @@ fn input_reader() -> (
                 if owner.read_exact(&mut bytes[..count]).is_err() {
                     input_failure.store(2, Ordering::Release);
                     reader_cancelled.store(true, Ordering::SeqCst);
-                    if let Some(pid) = *reader_slot.lock().unwrap() {
-                        kill_group(pid);
-                    }
+                    signal_group(&reader_slot);
                     break 'frames;
                 }
                 match input_tx.try_send(bytes[..count].to_vec()) {
@@ -174,16 +164,12 @@ fn input_reader() -> (
                     Err(mpsc::TrySendError::Full(_)) => {
                         input_failure.store(1, Ordering::Release);
                         reader_cancelled.store(true, Ordering::SeqCst);
-                        if let Some(pid) = *reader_slot.lock().unwrap() {
-                            kill_group(pid);
-                        }
+                        signal_group(&reader_slot);
                         break 'frames;
                     }
                     Err(mpsc::TrySendError::Disconnected(_)) => {
                         reader_cancelled.store(true, Ordering::SeqCst);
-                        if let Some(pid) = *reader_slot.lock().unwrap() {
-                            kill_group(pid);
-                        }
+                        signal_group(&reader_slot);
                         break 'frames;
                     }
                 }
@@ -270,33 +256,30 @@ pub fn run(args: &[String]) -> Result<(), String> {
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+    let cleanup = GroupGuard::start(slot.clone()).map_err(|_| "cannot start process-group owner")?;
+    cleanup.attach(command);
     #[cfg(target_os = "linux")]
     let child_sandbox = sandbox.clone();
+    #[cfg(target_os = "linux")]
     unsafe {
         command.pre_exec(move || {
-            if setpgid(0, 0) < 0 {
-                return Err(io::Error::last_os_error());
-            }
-            #[cfg(target_os = "linux")]
             if let Some(policy) = &child_sandbox {
                 policy.apply()?;
             }
             Ok(())
         });
     }
-    let mut child_slot = slot.lock().unwrap();
+    let child_slot = slot.lock().unwrap();
     if cancelled.load(Ordering::SeqCst) {
         return Err("stdio owner disconnected before launch".into());
     }
     let mut child = command.spawn().map_err(|_| "cannot start stdio server")?;
-    let pid = child.id() as i32;
-    *child_slot = Some(pid);
     drop(child_slot);
-    let _cleanup = GroupGuard(pid);
     let finished = Arc::new(AtomicBool::new(false));
     let timed_out = Arc::new(AtomicBool::new(false));
     let watchdog_finished = finished.clone();
     let watchdog_timeout = timed_out.clone();
+    let watchdog_group = slot.clone();
     let started = Instant::now();
     // A separate watchdog owns the deadline even if stdout delivery is blocked.
     thread::spawn(move || {
@@ -309,24 +292,25 @@ pub fn run(args: &[String]) -> Result<(), String> {
             return;
         }
         watchdog_timeout.store(true, Ordering::Release);
-        kill_group(pid);
+        signal_group(&watchdog_group);
         let grace = Instant::now();
         while !watchdog_finished.load(Ordering::Acquire) && grace.elapsed() < Duration::from_secs(1)
         {
             thread::sleep(Duration::from_millis(5));
         }
         if !watchdog_finished.load(Ordering::Acquire) {
-            kill_group(pid);
+            signal_group(&watchdog_group);
             std::process::exit(1);
         }
     });
     let mut child_input = child.stdin.take().ok_or("stdio server input unavailable")?;
     let write_failure = failure.clone();
+    let input_group = slot.clone();
     thread::spawn(move || {
         for bytes in input_rx {
             if child_input.write_all(&bytes).is_err() {
                 let _ = write_failure.compare_exchange(0, 2, Ordering::AcqRel, Ordering::Acquire);
-                kill_group(pid);
+                signal_group(&input_group);
                 break;
             }
         }
@@ -358,7 +342,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                 .try_wait()
                 .map_err(|_| "cannot wait for stdio server")?;
             if status.is_some() {
-                cleanup_pending = unsafe { super::kill(-pid, 9) } == 0;
+                cleanup_pending = signal_group(&slot);
                 drain_deadline = Some(Instant::now() + DRAIN);
             }
         }
@@ -374,12 +358,12 @@ pub fn run(args: &[String]) -> Result<(), String> {
         match output_rx.recv_timeout(Duration::from_millis(5)) {
             Ok((kind, bytes)) => {
                 if frame(kind, &bytes).is_err() {
-                    kill_group(pid);
+                    signal_group(&slot);
                     let _ = child.wait();
                     return Ok(());
                 }
                 if kind == b'E' {
-                    kill_group(pid);
+                    signal_group(&slot);
                     finished.store(true, Ordering::Release);
                     return Ok(());
                 }
@@ -395,7 +379,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                 // delivered. Retry only during the original bounded drain and
                 // stop once the group is gone; detached children remain outside it.
                 if cleanup_pending {
-                    cleanup_pending = unsafe { super::kill(-pid, 9) } == 0;
+                    cleanup_pending = signal_group(&slot);
                 }
             }
         }
