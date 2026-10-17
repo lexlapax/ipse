@@ -277,10 +277,18 @@ defmodule Ipse.LifecycleTest do
           {:ok, event} <- [Event.project(source, record, "metadata")],
           do: event
 
-    assert Enum.map(events, & &1["type"]) ==
+    prompts = Enum.filter(events, &String.starts_with?(&1["type"], "prompt."))
+
+    assert Enum.map(prompts, & &1["type"]) ==
              ~w(prompt.received prompt.expanded_committed prompt.projection_committed)
 
-    [_, _, projection] = events
+    assert Enum.any?(events, &(&1["type"] == "session.created"))
+    assert Enum.any?(events, &(&1["type"] == "context.workspace_committed"))
+    assert Enum.any?(events, &(&1["type"] == "model.admitted"))
+    assert Enum.any?(events, &(&1["type"] == "model.finished"))
+    assert Enum.any?(events, &(&1["type"] == "assistant.committed"))
+    assert Enum.any?(events, &(&1["type"] == "turn.finished"))
+    [_, _, projection] = prompts
     entry = Enum.find(records, &(&1.source["event_id"] == projection["event_id"]))
     assert {:ok, private} = Event.project(entry.source, entry.record, "prompt.projection")
     assert String.contains?(private["data"]["text"], "synthetic annotation")

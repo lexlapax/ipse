@@ -154,8 +154,19 @@ defmodule Ipse.ExtensionDemo do
           {:ok, event} <- [Ipse.Lifecycle.Event.project(source, record, "metadata")],
           do: event
 
+    prompts = Enum.filter(metadata, &String.starts_with?(&1["type"], "prompt."))
+
     ~w(prompt.received prompt.expanded_committed prompt.projection_committed) =
-      Enum.map(metadata, & &1["type"])
+      Enum.map(prompts, & &1["type"])
+
+    for type <-
+          ~w(session.created model.admitted model.finished assistant.committed turn.finished) do
+      true = Enum.any?(metadata, &(&1["type"] == type))
+    end
+
+    admitted = Enum.find(metadata, &(&1["type"] == "model.admitted"))
+    finished = Enum.find(metadata, &(&1["type"] == "model.finished"))
+    true = admitted["correlations"]["request_id"] == finished["correlations"]["request_id"]
 
     false =
       String.contains?(Jason.encode!(metadata), [
@@ -164,7 +175,7 @@ defmodule Ipse.ExtensionDemo do
         "synthetic-private-native"
       ])
 
-    for event <- metadata do
+    for event <- prompts do
       entry = Enum.find(records, &(&1.source["event_id"] == event["event_id"]))
 
       view =

@@ -299,6 +299,25 @@ defmodule Ipse.Extensions.EventJobTest do
     assert parent["event_trigger"]["event_id"] == put["request"]["value"]["source_event_id"]
     assert Subscriptions.validate_events(events(c, pid)) == :ok
     assert Actions.validate_events(events(c, pid)) == :ok
+
+    assert {:ok, %{records: records, next: nil}} =
+             Journal.source_page(c.dir, Session.info(pid).id, 0, 64)
+
+    parent_record = Enum.find(records, &(&1.record == parent))
+
+    assert {:ok, metadata} =
+             Ipse.Lifecycle.Event.project(parent_record.source, parent, "metadata")
+
+    assert metadata["correlations"]["causing_event_id"] == parent["event_trigger"]["event_id"]
+    assert metadata["correlations"]["delivery_id"] == parent["event_trigger"]["delivery_id"]
+    assert metadata["correlations"]["invocation_id"] == parent["invocation_id"]
+
+    refute String.contains?(Jason.encode!(metadata), [
+             "Meridian",
+             "record_sha256",
+             "intent_sha256"
+           ])
+
     assert {:error, _} = Session.invoke_export(pid, :job, "ext__graph__maintain", %{})
     :ok = Session.close(pid)
   end

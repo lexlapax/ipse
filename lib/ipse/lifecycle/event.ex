@@ -5,7 +5,7 @@ defmodule Ipse.Lifecycle.Event do
 
   @doc "Project one supported occurrence into metadata or its explicit private prompt view. No callbacks run."
   def project(source, record, view) do
-    with true <- Source.matches?(source, record),
+    with true <- is_binary(view) and Source.matches?(source, record),
          {:ok, type, private_view, text, metrics, correlations} <- describe(record),
          {:ok, reference, data} <- data(source, view, private_view, text, metrics),
          envelope = %{
@@ -86,7 +86,7 @@ defmodule Ipse.Lifecycle.Event do
     end
   end
 
-  defp describe(_), do: {:error, :unsupported_lifecycle_record}
+  defp describe(record), do: Ipse.Lifecycle.Metadata.describe(record)
 
   defp data(source, "metadata", _private, _text, metrics) do
     with {:ok, reference} <- Source.metadata(source) do

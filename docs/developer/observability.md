@@ -3,8 +3,8 @@
 This guide owns proposed diagnostic capture, sinks/export and developer tracing.
 P19's local diagnostics, saved inspection, explicit handoff export and request
 durations are implemented; see [recovery](../operator/recovery.md). P22 also
-implements shared journal-source/prompt views and selected read-only prompt
-notifications. Those [lifecycle contracts](lifecycle-events.md) are independent
+implements shared journal-source/metadata/prompt views and selected prompt
+notifications/jobs. Those [lifecycle contracts](lifecycle-events.md) are independent
 of sampled diagnostics. General lifecycle capture, off/local/export controls,
 trace sinks and developer leases remain pending; no diagnostic mode flag or
 debugger endpoint is available yet.
@@ -17,10 +17,12 @@ and OTP supervision. `format_status/1` limits Session's formatted state to ID an
 phase. MCP processes also implement formatted status. Dependency Telemetry is
 locked at 1.4.2 through Finch/Plug, but Ipse currently emits no application
 `:telemetry` events. The extension host runs reviewed independent workers for
-prompt/presentation, typed invocations and [read-only prompt subscriptions](extension-events.md).
-Shared source identity correlates private/metadata prompt views; source paging
+prompt/presentation, typed invocations and [prompt jobs](extension-event-jobs.md).
+Shared source identity correlates private/metadata prompt views and allowlisted
+committed model/tool/context/question/extension/turn metadata; source paging
 itself executes no callback. Prompt subscribers are explicitly selected bounded
-callbacks, not a continuously running diagnostic bus. P19 provides content-free
+callbacks, not a continuously running diagnostic bus. The wider metadata projector
+is not an exporter or authorization for broader subscription types. P19 provides content-free
 context accounting and local request measurements, but no general lifecycle
 capture or supported operator external trace-export interface.
 

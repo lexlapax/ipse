@@ -206,8 +206,8 @@ and [runtime identity](#p1-runtime-identity-2026-10-15).
 
 | Checkpoint | Evidence | Scope and remaining limits |
 | --- | --- | --- |
-| Prompt jobs, Linux Serenity, 2026-10-17 | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters and 514 native-suite tests with 14 macOS exclusions passed | Includes ten job fixtures plus ten notification fixtures using independently compiled workers; broader lifecycle subscriptions remain pending |
-| Hosted notification baseline `da5c496` | [Ubuntu/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39009216649) passed build, format, compile, tests, demo and extracted packages; macOS native and default experimental sandbox steps passed | Job/step conclusions inspected; this precedes event jobs and does not prove their hosted behavior or stronger descendant containment |
+| Committed metadata and prompt jobs, Linux Serenity, 2026-10-17 | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters and 518 native-suite tests with 14 macOS exclusions passed | Includes four metadata, ten job and ten notification fixtures; broader lifecycle subscriptions remain pending |
+| Hosted prompt-job baseline `40f94bf` | [Ubuntu/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39012273008) passed build, format, compile, tests, demo and extracted packages; macOS native and default experimental sandbox steps passed | Job/step conclusions inspected; this precedes the broader metadata adapter and does not prove its hosted behavior or stronger descendant containment |
 | Source/extracted compatibility | Credential-free CLI demo, bundled extension/accounting/text/source-view fixture and Linux glibc-2.44 package verification passed with matching OTP 29.1.1 notices and utility-only PATH | General bundled-runtime compatibility; independently installed subscriber proof remains a P22 gate |
 | Provider acceptance | [Explicit live provider checks](#live-provider-acceptance-follow-up-2026-10-15) | Recorded account/model/platform combinations only; fixtures do not establish billing, hardware or arbitrary-model support |
 
@@ -219,6 +219,16 @@ idle replay, and a delayed write's captured revision conflicting with concurrent
 forget. Metadata-only jobs receive neither prompt text nor private source hashes.
 See the [job contract](extension-event-jobs.md). These are generic SDK fixtures,
 not a production extraction algorithm or independent installed-package proof.
+
+Committed-fact metadata fixtures cover model, tool, context, question, child,
+extension and turn boundaries with fixed dimensions and stable source IDs.
+Admission fixtures retain actual parent request/session IDs. Real sessions establish
+request and source-to-delivery-to-invocation links, private/native/hash exclusion
+and byte-identical idle resume. Arbitrary
+extension business values cannot relabel host action outcomes. The bundled
+source/extracted fixture checks model boundary correlation alongside private
+prompt projections. These are projection checks, not a broader delivery service,
+complete journal authentication or an active diagnostic exporter.
 
 Notification fixtures exercise separately granted original/final-effective views,
 metadata secret exclusion, final transformed text, synced ordered receipts,
@@ -237,7 +247,7 @@ inference is manufactured. The nine [source/view fixtures](lifecycle-events.md#i
 and existing worker-text/context/service tests remain in the full suite. Source
 and extracted baselines, independent artifacts and hosted results are separate
 claims; no new live provider, audio device, exporter or remote service was used.
-Documentation checks passed 77 Markdown documents / 952 local file and heading
+Documentation checks passed 77 Markdown documents / 953 local file and heading
 links with no errors.
 
 P22 still needs broader lifecycle types/feeds and causal links, explicit bounded

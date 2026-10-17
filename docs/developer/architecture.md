@@ -282,7 +282,8 @@ receipts without loading callbacks or retrieving again. Mandatory instructions,
 messages and native continuation remain intact. Domain algorithms belong in
 extensions where the supported SDK permits; missing host capabilities require
 reviewed general contracts. The [lifecycle foundation](lifecycle-events.md)
-uses shared event identity with separate metadata/private views and delivery
+uses shared source/event identity across allowlisted committed-fact metadata,
+private prompt views and separate delivery
 contracts for notifications, ordered hooks and triggered jobs. Event delivery
 does not grant effects, and background work cannot change an admitted request.
 [Prompt jobs](extension-event-jobs.md) use this contract for finite approved

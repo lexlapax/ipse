@@ -218,7 +218,10 @@ original/effective prompt facts. Select them through the ordinary trust/configur
 and `--extension` mechanisms. Review the handler, schedule, private view and each
 requested host capability; an enabled notification never silently becomes an
 effectful job. Jobs do not appear in the model tool catalog or `/ext` commands.
-See the [job SDK contract](../developer/extension-event-jobs.md).
+See the [job SDK contract](../developer/extension-event-jobs.md). The wider internal
+metadata vocabulary does not enable extra subscription types: current manifest
+delivery remains limited to these two prompt facts. Diagnostic sinks/export controls
+remain pending separately.
 
 `before_request` runs after prompt transforms and before inference. A recall job
 can read scoped state or a bound service, then publish bounded attributed context

@@ -1,6 +1,6 @@
 # Lifecycle events, hooks and subscribers
 
-P22 lifecycle design with implemented journal-source/prompt-view adapters and
+P22 lifecycle design with implemented journal-source/metadata/prompt-view adapters and
 [bounded read-only prompt subscriptions](extension-events.md) plus separate
 [event jobs](extension-event-jobs.md) for approved actions, awaited recall and
 after-turn maintenance. Broader lifecycle subscriptions remain pending.
@@ -31,8 +31,9 @@ unordered broadcast, or make diagnostics the only way to receive lifecycle data.
 Existing journals remain the recovery authority; this does not require replacing
 Session with a new event-sourcing or workflow framework.
 
-The current internal adapter provides stable source references and typed prompt
-views without changing the journal format or initializing any subscriber. The
+The internal adapter provides stable source references, typed prompt views and
+allowlisted metadata for other saved boundaries without changing the journal
+format or initializing any subscriber. The
 [implemented source API](#internal-journal-source-and-prompt-views) below is the
 building block for selected prompt notifications and the remaining delivery contracts.
 
@@ -85,7 +86,7 @@ reference. Legacy records are readable within these bounds; unsupported large
 records refuse rather than being skipped or truncated.
 
 `Ipse.Lifecycle.Event.project/3` checks source/content binding and creates a closed
-version-1 envelope for the currently exercised prompt facts:
+version-1 envelope. Prompt facts have explicit metadata and private views:
 
 | Existing journal source | Event type | Private view |
 | --- | --- | --- |
@@ -103,29 +104,63 @@ continuation. Both use the existing 16 KiB SDK-object bound; private strings ret
 the 8 KiB limit and overflow refuses without truncation. Larger future private
 feeds need negotiated resource handles/flow control.
 
+Other committed facts have metadata-only projections through
+`Ipse.Lifecycle.Metadata`. They use the same source ID, envelope and bounds:
+
+| Source family | Event vocabulary | Selected metadata |
+| --- | --- | --- |
+| Session header | `session.created` | No configuration, credentials or paths |
+| Request admission, usage observation, completion and measurement | `model.admitted`, `model.usage_observed`, `model.finished`, `model.measured` | Existing request/attempt/turn/parent IDs, kind, sequence, duration, outcome and finality where saved |
+| Saved assistant/tool text and tool start | `assistant.committed`, `tool.result_recorded`, `tool.started` | Text byte count, existing assistant request ID or approval category; no arguments, result text or raw provider call IDs |
+| Workspace/catalog/extension context and compaction | `context.workspace_committed`, `context.catalog_committed`, `context.extensions_committed`, `context.compaction_committed`, `context.compaction_failed` | Source/tool counts or existing request ID; no paths, contributions, summaries or error strings |
+| Native questions and child start | `question.waiting`, `question.answered`, `question.closed`, `child.started` | Existing host child ID where present; no question/answer or arbitrary call ID |
+| Extension receipts | `extension.invocation_admitted/recorded`, `extension.action_admitted/recorded`, `extension.question_waiting`, `extension.continuation_admitted`, `extension.delivery_admitted/recorded`, `extension.text_admitted/ready/closed` (each slash denotes separate types) | Existing invocation/operation/continuation/delivery/resource IDs, action count and host action/delivery outcomes where saved |
+| Turn settlement, completion and cancellation | `turn.settling`, `turn.finished`, `turn.cancelled` | Existing settlement turn ID or bounded status category |
+
+The projector selects fixed fields and rejects invalid selected identifiers,
+numeric values and enum dimensions instead of coercing them. Other private fields
+are never copied. An invocation result is **recorded**, not necessarily a successful
+business operation; its arbitrary returned value cannot set the metadata outcome.
+Event-job invocation metadata includes its delivery ID and `causing_event_id`
+from the validated private trigger, excluding trigger digests and source hashes.
+Request admission retains actual parent request/session links. Missing legacy
+links remain absent: the projector does not guess a turn, hash arbitrary call IDs
+into public identifiers or invent a cause from adjacent records.
+
+This is a display projection, not a complete journal validator, authentication,
+subscriber admission or an exporter. Owned Session recovery validation and physical
+source resolution remain prerequisites for actions. Unknown source types refuse;
+session process resume/close, approval waiting/resolution, child completion and
+ephemeral stream occurrences still need their own documented source contracts.
+The session header describes creation, not each new process startup. A saved tool
+message proves that a result was recorded, not the success of its underlying effect.
+
 These stages describe the actual saved facts: `expanded_committed` precedes
 transforms, and a projection may precede another configured transform. Neither is
 advertised as the final request prompt. Selected subscriptions add a distinct
 final-effective user-text marker after all prompt transforms, with received-source
 and turn bindings. Original input is recorded when transforms or prompt subscriptions
 are selected. Legacy bare prompt records do not carry a turn ID, so the adapter
-does not invent one. Full causal links, ephemeral event identity and other lifecycle
-types remain pending. The [subscription contract](extension-events.md) grants
+does not invent one. Full causal links, ephemeral event identity and broader
+lifecycle delivery remain pending. The [subscription contract](extension-events.md) grants
 selected views through the host; projecting a view in host code alone grants no
-authority. The host API digest pins Journal, Source, Event and Subscriptions
+authority. The host API digest pins Journal, Source, Event, Metadata and Subscriptions
 alongside existing extension contracts.
 Neither `Source.valid?/1` nor `Event.project/3` authenticates a worker-supplied
 record/reference pair. Host admission resolves saved references against its
 owned validated journal; workers cannot manufacture authoritative host facts.
 
-Nine Linux source fixtures in `test/lifecycle_test.exs` exercise stable identities,
+Nine source fixtures in `test/lifecycle_test.exs` exercise stable identities,
 repeated prompts, legacy/noncanonical JSON byte positions, paging/record limits,
 tail/duplicate-key/scalar refusal, forged bindings, private-view bounds and secret
-exclusion. A real selected prompt-transform session verifies the three committed
-stages and byte-identical idle resume of the original session ID. The bundled
-`priv/extension-demo.exs` additionally checks those views/source IDs in source and
-extracted-runtime verification. See [actual verification scope](testing.md#current-evidence-and-next-checks);
-these fixtures do not establish subscriber admission or graph-job behavior.
+exclusion. Four `test/lifecycle_metadata_test.exs` fixtures cover the wider closed
+vocabulary, request/parent correlation, malformed dimensions and exclusion of
+business assertions. A real selected prompt-transform session verifies prompt and
+model boundaries plus byte-identical idle resume; the job fixture checks actual
+source-to-delivery-to-invocation causation. The bundled `priv/extension-demo.exs`
+checks shared prompt/model source IDs and request correlation in source and
+extracted-runtime verification. See [actual verification scope](testing.md#current-evidence-and-next-checks).
+Projection fixtures alone do not establish broader subscriber delivery or production graph behavior.
 
 ## Delivery contracts
 

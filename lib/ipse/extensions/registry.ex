@@ -267,6 +267,7 @@ defmodule Ipse.Extensions.Registry do
       Ipse.Journal,
       Ipse.Lifecycle.Source,
       Ipse.Lifecycle.Event,
+      Ipse.Lifecycle.Metadata,
       Ipse.Extensions.Subscriptions,
       Ipse.Extensions.EventJob,
       Ipse.Session
