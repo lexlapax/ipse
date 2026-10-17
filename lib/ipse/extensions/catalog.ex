@@ -12,7 +12,7 @@ defmodule Ipse.Extensions.Catalog do
 
   def capabilities,
     do:
-      ~w(transform.prompt transform.presentation invoke.tool invoke.command invoke.service host.actions host.state.read host.state.write host.question host.tools host.services host.context stream.text event.notify event.job event.prompt.original event.prompt.effective)
+      ~w(transform.prompt transform.presentation invoke.tool invoke.command invoke.service host.actions host.state.read host.state.write host.question host.tools host.services host.context stream.text event.notify event.job event.prompt.original event.prompt.effective observe.local observe.export)
 
   def empty,
     do: %{"version" => 1, "tools" => [], "commands" => [], "services" => []}

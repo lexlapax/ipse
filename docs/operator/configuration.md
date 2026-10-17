@@ -74,3 +74,11 @@ selection, `--no-extensions` and current activation limits. Config inspection
 shows option digests rather than contents. Duplicate JSON keys, including nested
 ones, are rejected. Existing configurations without extension data keep their
 previous resume fingerprint.
+
+Operator-only top-level `observability` controls optional metadata capture.
+`IPSE_OBSERVABILITY` and `--observability off|local|export` override its mode;
+project files cannot set it. Sink selection still uses separate extension trust
+and instances. See [capture and stop procedures](observability.md) for the closed
+policy schema, privacy/retention limits and `/observability off`. Capture mode
+overrides do not change the tool fingerprint; changing the file still changes its
+source identity.

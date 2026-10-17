@@ -57,6 +57,7 @@ defmodule Ipse.Config do
         end)
 
       with {:ok, extensions} <- Ipse.Extensions.Config.resolve(loaded, opts),
+           {:ok, observation} <- Ipse.Observability.Config.resolve(loaded, opts, environment),
            :ok <- Ipse.Profiles.validate(effective.profiles, effective.roles),
            {:ok, profile_id, profile} <-
              Ipse.Profiles.select(
@@ -113,6 +114,7 @@ defmodule Ipse.Config do
            %{effective | settings: settings, provenance: provenance}
            |> Map.put(:fingerprint, fingerprint)
            |> Map.put(:extensions, extensions)
+           |> Map.put(:observability, observation)
            |> Map.put(:execution, execution)}
         else
           _ ->
@@ -141,6 +143,7 @@ defmodule Ipse.Config do
         :execution
       ])
       |> Map.put(:extensions, Ipse.Extensions.Config.inspect_config(effective.extensions))
+      |> Map.put(:observability, effective.observability)
 
   def legacy_compatible?(effective), do: effective.sources == []
 
@@ -171,7 +174,8 @@ defmodule Ipse.Config do
             "version" => %{"type" => "integer", "enum" => [1]},
             "settings" => settings_schema(),
             "profiles" => %{"type" => "object"},
-            "roles" => %{"type" => "object"}
+            "roles" => %{"type" => "object"},
+            "observability" => Ipse.Observability.Config.schema()
           },
           Ipse.Extensions.Config.schema()
         ),

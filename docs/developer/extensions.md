@@ -21,8 +21,9 @@ Current contracts are organized by responsibility:
 | Journal occurrence identity, metadata and typed prompt views | [Lifecycle source/view adapter](lifecycle-events.md#internal-journal-source-and-prompt-views); private journal pages remain host-only |
 | Declared read-only prompt delivery | [Event subscriptions](extension-events.md), with separate metadata/private authority and required/optional receipts |
 | Source-bound prompt actions and recall | [Event jobs](extension-event-jobs.md), with finite approved actions, before-request contributions and after-turn maintenance |
+| Optional diagnostic capture | [Observability](observability.md), with operator policy, bounded owned sinks, local rotation and immediate stop |
 
-Broader lifecycle subscriptions, observability/developer controls and the
+Broader lifecycle subscriptions, aggregate trace retention, developer controls and the
 independent installed-package/supervised proofs remain open. The
 [plan](../plan.md#p22-extension-scaffold-and-lifecycle-hooks) owns current status;
 [testing](testing.md#current-evidence-and-next-checks) owns actual results.

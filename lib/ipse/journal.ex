@@ -41,6 +41,24 @@ defmodule Ipse.Journal do
 
   def append(_state_dir, _id, _event), do: {:error, :event_must_be_a_map}
 
+  @doc "Sync exactly one record; a refused optional source never prevents the recovery append. Caller holds the lock."
+  def append_observed(state_dir, id, event) when is_map(event) do
+    with :ok <- validate_id(id),
+         {:ok, encoded} <- Jason.encode(event),
+         path = journal_path(state_dir, id),
+         {:ok, contents} <- File.read(path),
+         :ok <- validate_complete_journal(contents),
+         source =
+           (case Ipse.Lifecycle.Source.build(id, byte_size(contents), event) do
+              {:ok, reference} -> reference
+              _ -> nil
+            end),
+         :ok <- ensure_state_dir(state_dir),
+         :ok <- append_sync(path, encoded <> "\n") do
+      {:ok, source}
+    end
+  end
+
   @doc "Append and sync a record before returning its private, stable lifecycle source. Caller holds the session lock."
   def append_with_source(state_dir, id, event) when is_map(event) do
     with :ok <- validate_id(id),

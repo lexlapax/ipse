@@ -173,8 +173,9 @@ coherently forged physical references before repair. See
 
 The separate [job contract](extension-event-jobs.md) now provides finite host
 actions, pre-request recall and after-turn maintenance. Remaining foundation work
-includes broader lifecycle types/causal links, bounded diagnostic sinks and explicit
-catch-up. Continuous private feeds and external adapters need their own negotiated
+includes broader lifecycle types/causal links and explicit catch-up.
+[Diagnostic sinks](observability.md) have separate metadata capture/stop controls.
+Continuous private feeds and external adapters need their own negotiated
 ownership/flow/egress contract. Notification acknowledgments must not silently
 gain effectful semantics in a future implementation. Production graph extraction
 and stores remain P25 work; the extension-only P22 graph proof is still required.

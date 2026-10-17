@@ -44,11 +44,12 @@ defmodule Ipse.CLI do
   --profile ID                         Select an operator-configured main profile
   --extension INSTANCE                 Activate a configured temporary extension instance
   --no-extensions                      Disable configured extension instances
+  --observability off|local|export      Operator diagnostic capture policy (default off)
 
   Chat asks before writes, shell, MCP, and delegation. Headless run denies them without --yes.
   Shell execution uses your user permissions unless --sandbox native is selected.
   Native enforcement fails closed when unavailable; approvals remain required.
-  Chat commands: /help /skills /session /info /diagnostics /context /context refresh /ext [NAME JSON] /cancel /exit.
+  Chat commands: /help /skills /session /info /diagnostics /observability off /context /context refresh /ext [NAME JSON] /cancel /exit.
   Invoke skills with $name.
   EOF finishes accepted work; errors and /cancel clear queued input.
   """
@@ -89,6 +90,7 @@ defmodule Ipse.CLI do
           profile: :string,
           extension: :keep,
           extensions: :boolean,
+          observability: :string,
           json: :boolean,
           note: :string,
           help: :boolean,
@@ -383,9 +385,19 @@ defmodule Ipse.CLI do
         })
 
       if reader && Process.alive?(reader), do: Process.exit(reader, :kill)
-      if Process.alive?(pid), do: DynamicSupervisor.terminate_child(Ipse.Sessions, pid)
+      cleanup = if Process.alive?(pid), do: Ipse.Session.close(pid), else: :ok
       Process.demonitor(ref, [:flush])
-      result
+
+      if cleanup == :ok do
+        result
+      else
+        IO.puts(
+          :stderr,
+          "Owned work cleanup could not be confirmed; inspect saved receipts and running processes."
+        )
+
+        max(result, 1)
+      end
     else
       {:error, reason} ->
         IO.puts(:stderr, "Cannot start: #{format_error(reason)}")
@@ -467,6 +479,15 @@ defmodule Ipse.CLI do
 
       {:input, "/diagnostics"} ->
         IO.puts(Jason.encode!(Ipse.Session.diagnostics(s.pid), pretty: true))
+        client_loop(s)
+
+      {:input, "/observability off"} ->
+        :ok = Ipse.Session.stop_observability(s.pid)
+
+        IO.puts(
+          "Diagnostic capture stopped; recovery journaling and usage accounting remain active."
+        )
+
         client_loop(s)
 
       {:input, "/ext"} ->
@@ -797,6 +818,7 @@ defmodule Ipse.CLI do
                operator_home: Ipse.Skills.operator_home(),
                configuration: Ipse.Config.manifest(effective),
                extensions: extensions,
+               observability: effective.observability.policy,
                timeout_ms: opts[:timeout_ms],
                sandbox: sandbox,
                base_url: opts[:base_url],

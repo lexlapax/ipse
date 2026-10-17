@@ -1,7 +1,7 @@
 # Extensions
 
-Extensions add selected hooks, tools, commands and services to Ipse. Both
-shipped examples—prompt annotation and completed-answer formatting—are
+Extensions add selected hooks, tools, commands, services and diagnostic sinks.
+The bundled prompt annotation, answer formatter and local trace sink are all
 **disabled by default**. Independently built local artifacts use the same SDK
 in separate Elixir VMs; they can be imported without rebuilding Ipse.
 
@@ -90,6 +90,7 @@ trust ceiling must cover every declared capability:
 | `host.services` | Calls through explicit operator service bindings | [Composition](#service-composition) |
 | `host.context` | Bounded caller-scoped context publications | [Context/evidence](#context-and-evidence) |
 | `stream.text` | Acknowledged private visible-text delivery through a scoped worker handle | [Text clients](#visible-text-clients) |
+| `observe.local`, `observe.export` | Read-only metadata sink with separate operator capture policy | [Diagnostic capture](observability.md) |
 | `event.job` | Source-bound prompt handlers using normal finite approved actions, before requests or after answers | [Event jobs](#event-jobs) |
 | `event.notify` | Declared read-only original/effective prompt event notifications; metadata only without a private read capability | [Event subscribers](#prompt-event-subscribers) |
 | `event.prompt.original`, `event.prompt.effective` | The selected original or final-effective user-text view | [Event subscribers](#prompt-event-subscribers) |
@@ -220,8 +221,9 @@ requested host capability; an enabled notification never silently becomes an
 effectful job. Jobs do not appear in the model tool catalog or `/ext` commands.
 See the [job SDK contract](../developer/extension-event-jobs.md). The wider internal
 metadata vocabulary does not enable extra subscription types: current manifest
-delivery remains limited to these two prompt facts. Diagnostic sinks/export controls
-remain pending separately.
+delivery remains limited to these two prompt facts. Separate
+[diagnostic capture](observability.md) consumes metadata without granting private
+views or actions.
 
 `before_request` runs after prompt transforms and before inference. A recall job
 can read scoped state or a bound service, then publish bounded attributed context

@@ -1,232 +1,161 @@
-# Runtime diagnostics and tracing proposal
+# Diagnostic capture and developer tracing
 
-This guide owns proposed diagnostic capture, sinks/export and developer tracing.
-P19's local diagnostics, saved inspection, explicit handoff export and request
-durations are implemented; see [recovery](../operator/recovery.md). P22 also
-implements shared journal-source/metadata/prompt views and selected prompt
-notifications/jobs. Those [lifecycle contracts](lifecycle-events.md) are independent
-of sampled diagnostics. General lifecycle capture, off/local/export controls,
-trace sinks and developer leases remain pending; no diagnostic mode flag or
-debugger endpoint is available yet.
+The implemented path projects committed journal facts into shared metadata,
+then dispatches it through bounded owned sink workers. Capture defaults to off;
+operator policy, selection and export capability are separate gates.
+[Operator procedures](../operator/observability.md) own configuration and stop.
+Raw developer tracing and the SDK conformance runner remain P22 work. The
+[dated proposal](../archive/2026-10-17-observability-proposal/observability.md)
+preserves the earlier design.
 
-## Existing facilities and gaps
+## Ownership and source identity
 
-Session has a private durable JSONL journal, client status/progress events,
-allowlisted runtime/configuration/context information, compaction-failure reasons
-and OTP supervision. `format_status/1` limits Session's formatted state to ID and
-phase. MCP processes also implement formatted status. Dependency Telemetry is
-locked at 1.4.2 through Finch/Plug, but Ipse currently emits no application
-`:telemetry` events. The extension host runs reviewed independent workers for
-prompt/presentation, typed invocations and [prompt jobs](extension-event-jobs.md).
-Shared source identity correlates private/metadata prompt views and allowlisted
-committed model/tool/context/question/extension/turn metadata; source paging
-itself executes no callback. Prompt subscribers are explicitly selected bounded
-callbacks, not a continuously running diagnostic bus. The wider metadata projector
-is not an exporter or authorization for broader subscription types. P19 provides content-free
-context accounting and local request measurements, but no general lifecycle
-capture or supported operator external trace-export interface.
+Session owns conversation, approvals, effects and the mandatory journal.
+`Observability.Config` resolves operator-only policy; `Resources` owns leases and
+receipts. Each `Channel` owns an independent worker, finite queue and counters.
+`builtin:local-trace:1` is a default-off example using the ordinary worker SDK.
 
-## Enablement and configuration
-
-P19's `/diagnostics` and saved `diagnose` are on-demand local reads. Minimal
-request-duration records live in the private recovery journal. They are not a
-continuously running exporter, and there is currently no supported observability
-mode/log-level/remote-export flag. Ordinary Logger/dependency output is also not
-a documented user-configurable trace API. Do not suggest the proposed fields
-below work with today's closed P15 schema.
-
-Observability enablement belongs in **P22**, not a separate prerequisite milestone.
-Core owns the capture/privacy policy, correlation and bounded dispatch. A bundled
-default-off local JSONL sink and later OTLP/dashboard adapters use the extension
-registry. Configuration separates permission to capture/export from the selected
-sink's options; installing a sink does not activate it.
-
-| Proposed setting/control | Default and behavior |
-| --- | --- |
-| `observability.mode` | `off`; `local` permits private local sinks; `export` additionally permits explicitly authorized remote sinks. No default collector. |
-| Event groups, level and sampling | Bounded known categories, `info` and explicit sampling; metadata only. Errors/drop counters remain visible. |
-| Queue, event and file limits | Host-validated caps/rotation; sink settings cannot disable bounds. |
-| Sink instance enable/options | Generic extension configuration/flags choose local or installed adapters, paths, filters and quotas. |
-| Remote endpoint/credential/TLS references | Operator-owned and explicitly enabled; project instructions/settings cannot authorize egress. |
-| Developer trace lease | Separate opt-in local process/function selection with duration/event caps; diagnostic mode does not grant raw-state access. |
-
-These are schema proposals, not available CLI switches. P22 should provide a
-generic startup flag for mode and generic extension instance overrides, with
-effective-config inspection explaining the gate, selected sinks, filters, sources
-and limits. `off` skips optional sink initialization/delivery and creates no trace
-files or network connection. `local` never redirects to a remote fallback.
-An explicitly selected remote sink without export authorization refuses before
-startup. Disabled optional observability must preserve model/tool results.
-
-Keep recovery intent/outcomes, required projections and canonical usage facts
-independent of sampling or sink enablement. Turning off optional diagnostics does
-not disable approvals, journals or accounting. This is also distinct from text/
-audio presentation, which must work when diagnostic sinks are off.
-
-Initial enablement/config changes apply to new sessions, as with other adapters.
-Provide a host-owned immediate sink-stop/revocation control that stops optional
-workers and discards unsent diagnostic samples without changing the tool catalog
-or waiting for a model. It cannot retract already exported data. Raising exposure,
-changing exporters or enabling raw developer tracing requires explicit operator
-authority and the supported activation boundary; it is not general hot reload.
-Test default-off, local-only, explicit export, stop, source precedence and no
-project/extension self-enablement. Remote OTLP implementation can remain a later
-extension even though its configuration/egress boundary is defined in P22.
-
-The current journal is recovery evidence, not a shareable sanitized trace. It
-can contain private prompts, tool arguments/results and provider continuation.
-Do not export it wholesale or use a blanket `inspect(state/config)` logger.
-Even `Session.info/1` includes final response/question data and paths: build a
-separate allowlist for operational diagnostics instead of forwarding it verbatim.
-
-## Three layers
-
-| Layer | Proposed use | Boundary |
-| --- | --- | --- |
-| Local diagnostic snapshot | Phase, active job category, budgets, context byte categories and last bounded failure | No inference, effects, credentials, transcript or environment dump |
-| Structured lifecycle events | Correlated durations/outcomes across session, model, approval, tool, child, compaction and extension workers | Sanitized metadata, bounded local queue/file, no automatic external export |
-| Developer BEAM tracing | Targeted process/function diagnosis on synthetic reproductions | Explicit local developer mode, narrow targets/time limits and cleanup; raw arguments/messages may be private |
-
-Instrumentation must identify waiting for approval/question separately from
-provider/tool latency. Record request kind (agent/compaction), selected profile,
-provider/requested and reported model separately, step/child budget, elapsed time,
-error category and original/effective/context-contribution byte counts. P19's
-implemented categories are instructions, user/assistant text, recent/older tool
-results, calls, native continuation, checkpoints, provenance and JSON envelope.
-P22 adds attribution within instruction/context contributions, including optional
-memory and extensions, rather than claiming those categories already exist.
-Count bytes without displaying the text or hidden reasoning. Derive metrics labels
-from bounded categories; keep unique session/call IDs for trace correlation rather
-than unbounded metric-cardinality labels. Record parent/child links explicitly
-across tasks/processes instead of relying on inherited process dictionaries.
-
-## Reuse Telemetry, keep transformations separate
-
-[Telemetry's contract](https://telemetry.hexdocs.pm/telemetry.html) runs handlers
-in the dispatching process, does not guarantee handler order and detaches failing
-handlers. Use a small internal adapter with fast trusted instrumentation handlers;
-handoff slow sinks through a bounded owner-managed channel. Merely sending to a
-process mailbox does not bound its queue. Define overload/drop accounting and
-shutdown behavior. Never use Telemetry handler results to rewrite prompts, approve
-tools or run memory I/O. P22's ordered hooks and event-triggered jobs are different
-delivery contracts over the shared lifecycle vocabulary; neither executes in a
-Telemetry handler.
-
-If Ipse calls Telemetry directly, promote locked 1.4.2 to a declared direct
-dependency and update its inventory/scope. No promotion/install is performed in
-this research step. Existing OTP and Jason suffice for a first private local JSONL
-diagnostic sink. Host-created fields use an allowlist; prompts, tool payloads,
-authorization/headers, hidden reasoning, raw exceptions and stack locals stay out.
-Sanitize failure categories before Logger/trace output, not after collection.
-
-Diagnostics can drop samples with visible counters; recovery/effect events in the
-durable journal cannot be silently dropped or replaced by the trace stream.
-Keep file quota/rotation, owner-only permissions, bounded per-event bytes and a
-known retention policy. Observation disabled must not change action results.
-
-## Optional OpenTelemetry
-
-[OpenTelemetry Erlang/Elixir](https://opentelemetry.io/docs/languages/erlang/)
-provides API/SDK/OTLP-exporter packages; its documentation currently marks traces
-stable and metrics/logs in development. Evaluate its packages behind an Ipse sink
-adapter when external tracing is requested; do not implement OTLP from scratch.
-Package versions/licenses/configuration must be inventoried before adoption.
-No collector, cloud account or network endpoint should be mandatory.
-
-For comparison, Codex exposes configurable OTLP trace exporters and a separate
-raw-prompt logging opt-in in its
-[official configuration reference](https://learn.chatgpt.com/docs/config-file/config-reference).
-For Ipse, remote export is a separately authorized data transfer with explicit
-endpoint/credential references, verified TLS and no fallback. Project text or a
-loaded skill cannot enable it. Keep initial traces content-free even when export
-is enabled. Raw transcript capture is outside this proposed telemetry API.
-
-## BEAM debugging without accidental state export
-
-Developer debugging has three different deliverables. P22D includes sanitized
-runtime timelines/call correlation and local bounded tracing procedures. The SDK
-also needs a standalone synthetic invocation/conformance runner for extension
-authors, sharing callback schemas with in-VM and worker backends. A graphical
-timeline viewer can later consume sanitized events as an extension/client;
-remote debugger control and a full IDE integration are not P22 requirements.
-
-Existing source debugging starts with a focused fixture, for example:
-
-```sh
-mix test test/handoff_test.exs --trace
+```mermaid
+flowchart LR
+  fact[Synced fact] --> view[Shared metadata]
+  view --> gate[Policy and atomic capacity]
+  gate --> channel[Owned channel and worker]
+  gate --> drops[Visible filter/drop counters]
 ```
 
-This shows test execution, not raw provider traffic or automatic journal replay.
-Build reproductions from synthetic inputs; never replay recorded effect calls
-to inspect a failure. Breakpoints should target an isolated fixture/extension
-worker rather than suspend a live session owner while effects continue.
+`Journal.append_observed/3` appends exactly once with an optional stable source.
+Source overflow cannot lose/duplicate the recovery append; refused observations
+are counted. Required prompt admission retains `append_with_source/3` and its
+stricter bounds. Both require existing journal lock ownership. Off bypasses optional
+projection work. `Lifecycle.Event.project/3` supplies the
+[shared metadata envelope](lifecycle-events.md#internal-journal-source-and-prompt-views),
+preserving source IDs and actual host correlation, without new random IDs per view
+or guessed legacy links. Projection is not authentication or action authority.
 
-[ElixirLS](https://elixir-lsp.github.io/elixir-ls/getting-started/vscode/)
-provides a Debug Adapter Protocol integration for Mix tasks, with explicit test
-file loading and exclusions for modules that cannot be interpreted. OTP's
-[debugger](https://www.erlang.org/doc/apps/debugger/debugger_chapter.html) requires
-interpretable modules with debug information. Evaluate these existing tools
-instead of building another source debugger. Neither an IDE extension, GUI
-dependency nor debugger has been installed or verified by this research. Check
-OTP applications, source/debug information and release stripping before offering
-packaged breakpoints; an ERTS bundle alone does not establish that capability.
+Only new supported records written after enrollment are offered. Headers and old
+records are not replayed. Enabled resume creates fresh leases; unfinished old ones
+remain historical unknown, never reinitialized. Lease intent/ready/closed records
+are mandatory recovery facts, independent of sample delivery.
 
-OTP 27+ [trace sessions](https://www.erlang.org/doc/apps/kernel/trace.html) allow
-independent trace configurations and cleanup via session destruction; this fits
-Ipse's OTP floor. Evaluate a bounded local developer helper using those facilities
-or `dbg`, scoped to selected workers/functions and a fixed duration/event budget.
-Test cancellation, trace-owner death and explicit disable. No distributed node,
-remote shell, debugger HTTP listener or credential-bearing trace is enabled by
-default. Check that required OTP applications/debug info are actually available
-in each development/release profile before documenting commands as supported.
+## SDK contract
 
+Artifacts declare exactly one of `observe.local` or `observe.export`, using normal
+manifest/description, identity/options/runtime pins, operator trust and expiry.
+No invocation export is needed. Import/inspection and mode `off` execute no sink
+code. Export additionally needs an operator-scope instance; project configuration
+cannot set capture policy.
+
+Before startup, Session syncs `diagnostic_sink_intent`: fresh resource/session IDs,
+exact activation identity, stage and complete bounded policy. Channel registers its
+worker, initializes outside Session, then reports ready. Session syncs
+`diagnostic_sink_ready` before drain. Samples during initialization use the same
+finite capacity. Closure records cleanup confirmation and intent digest.
+
+`handle("observe.local", payload, state)` or `observe.export` receives:
+
+| Field | Value |
+| --- | --- |
+| `api_version` | Integer 1 |
+| `handle` | Host resource ID, 32 lowercase hexadecimal characters |
+| `event` | Wrapper: version 1, sequence, elapsed milliseconds, group, level and shared metadata `event` |
+| `limits` | Host-pinned `file_bytes` and `retained_files` |
+
+Sequence counts attempted observations in this capture epoch; unsupported,
+filtered and dropped positions can create gaps. Elapsed time is monotonic since
+epoch start, not an operation duration or wall clock. Request durations remain
+separate facts. Completed assistant metadata uses group `stream`; compaction uses
+`compaction`. Known group names do not imply sources for every proposed seam.
+
+The only accepted response echoes actual values in a closed acknowledgment:
+
+```elixir
+%{"api_version" => 1, "kind" => "ack", "handle" => payload["handle"],
+  "event_id" => payload["event"]["event"]["event_id"],
+  "sequence" => payload["event"]["sequence"]}
+```
+
+Replies cannot transform prompts, publish context, approve tools, propose host
+actions or infer. Initialization/callback deadlines are five seconds; ordinary
+16 KiB SDK-object bounds apply. Wrapper validation accepts only known metadata,
+fixed dimensions/counts and bounded host IDs; private hashes/text are refused.
+
+## Bounds, stop and recovery
+
+At most four channels coexist. Atomic capacity reservation precedes mailbox
+admission; pending includes queued and in-flight callbacks. Configurable ceilings
+are 256 samples per sink and 16 KiB per encoded sample. Sink IO/acknowledgment waits
+run outside Session; mandatory journal sync retains its durability behavior.
+
+Category/level/sampling rejection increments `filtered`; size/capacity rejection
+and revoked pending work increment `dropped`. Errors bypass sampling/level, but
+obey category/size/capacity; error counts remain visible on delivery failure.
+Unsupported projections are separate counters. Invalid replies, crashes, timeout
+or expiry stop that sink while agent work continues. Cleanup uncertainty remains
+visible and can make explicit close fail; VM disappearance alone is insufficient.
+
+`Session.stop_observability/1` revokes new admission immediately and discards pending
+work. An in-flight callback may finish; existing transfers cannot be retracted.
+Channel then closes its worker. Explicit close gives an idle active capture up to
+500 ms to settle, then performs bounded parallel worker cleanup. This grace never
+gates inference or action admission. Concurrent close paths share one cleanup result;
+owner/channel death uses existing monitor/native ownership. No
+diagnostic acknowledgment gates approvals, usage, effects or private subscriptions.
+
+The local sink creates a private leaf under an existing canonical parent, refuses
+leaf symlinks/non-private existing paths, and writes owner-only JSONL. Each lease
+has a unique filename and at most two rotated files, each at most 10 MiB. Old lease
+files are not globally pruned; aggregate retention remains a foundation follow-up
+before unattended use. Host capability checks do not restrict ordinary worker OS
+permissions.
+
+Recovery validates declared identity, stage/capture authority, policy bounds,
+intent hashes, receipt order/uniqueness and session binding before repair/work.
+The 10,000-intent session ceiling refuses new leases without suppressing mandatory
+work. Mode flags/environment are independent of the tool fingerprint; file edits
+still participate in scoped-configuration source identity.
+
+## Reuse and exporters
+
+OTP atomics, monitors, tasks and filesystem IO plus existing Worker/Runner/Journal/
+Source/JSON adapters suffice. No package or service is added. Finite admission,
+privacy projection and independent receipts are harness policy, not a broker.
+[Telemetry](https://telemetry.hexdocs.pm/telemetry.html) runs handlers in the caller,
+provides no ordering guarantee and detaches failing handlers. Locked through
+Finch/Plug, it is not promoted to a direct dependency and Ipse emits no application
+Telemetry events. It cannot replace owned queues or action-bearing hooks.
+
+For future OTLP export, evaluate maintained
+[OpenTelemetry packages](https://opentelemetry.io/docs/languages/erlang/) behind
+`observe.export`; inventory versions/licenses before adoption. Use explicit
+endpoints, credential references and verified TLS, with no fallback or mandatory
+collector. No OTLP adapter or live exporter is verified. Comparisons remain in
+[runtime capabilities](runtime-capabilities.md).
+
+## Developer diagnosis and remaining gates
+
+Start with synthetic fixtures, `/diagnostics` and the metadata timeline:
+`mix test test/observability_test.exs --trace` uses local workers without accounts
+or collectors. Test output is not raw provider tracing. Never replay effects to
+investigate failure.
+
+P22 still needs a synthetic SDK conformance runner and bounded local BEAM tracing.
+Evaluate [ElixirLS DAP](https://elixir-lsp.github.io/elixir-ls/getting-started/vscode/)
+and [OTP debugger](https://www.erlang.org/doc/apps/debugger/debugger_chapter.html)
+before adding source-debugging infrastructure.
+[OTP trace sessions](https://www.erlang.org/doc/apps/kernel/trace.html) need narrow
+targets, duration/event budgets and destruction on cancellation/tracer-owner
+death. Verify runtime applications/debug information in development and extracted
+releases before offering commands.
+
+Formatted status redaction does not protect
 [`sys.get_state`](https://www.erlang.org/doc/apps/stdlib/sys.html#get_state/2)
-returns callback state; formatted status redaction does not make raw state or
-message tracing safe. The modern
-[`GenServer.format_status/1`](https://elixir.hexdocs.pm/GenServer.html#c:format_status/1)
-supports status/error redaction. Review Session's older callback and transport
-error paths with synthetic secrets, while keeping the supported OTP/Elixir matrix.
-This is an implementation review item, not a claim that current logs leaked data.
+or raw messages/arguments. Never trace all processes or suspend a live Session
+while effects continue. No raw tracing command, debugger listener, distributed node
+or GUI dependency is enabled here. Approval/question wait spans, ephemeral identity,
+broader lifecycle delivery, aggregate retention and the independent package proof
+remain open in [P22](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
 
-Prefer synthetic reproductions for raw BEAM inspection. Avoid printing real
-provider payloads, tracing all processes or suspending a live owning session
-during effects. Optional visual tools must not introduce unapproved host/UI
-dependencies into packaged operation.
-
-## Acceptance
-
-P22's local event schema should version a fixed stage/outcome vocabulary and
-bounded correlation IDs, elapsed monotonic duration, request kind, phase and
-byte/count measurements. Record approval/question wait separately from active
-provider/tool/extension work. Do not log model text, tool payloads, filesystem
-contents, arbitrary extension labels or raw exceptions. Diagnostic subscribers
-see only the allowlisted metadata view. Private prompt/context/tool subscriptions
-have separately granted schemas, scopes and
-delivery contracts; their content must not enter the diagnostic sink. Turning
-diagnostics off does not revoke an independently selected private subscriber or
-stop mandatory job/action receipts. Stopping that subscriber is a separate
-owned-resource operation.
-
-Start with proposed configurable caps: 256 queued events, 16 KiB encoded event,
-10 MiB local trace rotation and two retained files, owner-only permissions and
-visible drop/disabled-handler counters. Validate these defaults against stress
-fixtures before freezing the contract. The channel must enforce capacity before
-enqueue, include bounded shutdown/drain behavior, and never block journal sync
-or effect cleanup. No tracing consumer is required for ordinary operation.
-Sanitized local debugging should expose current worker category, correlation and
-elapsed wait, without exposing Session state or suspending the owner. Raw BEAM
-tracing is a separate opt-in synthetic-development procedure with time/event caps
-and automatic trace-session destruction on cancellation or owner death. Verify
-required runtime apps and release debug information before offering that mode.
-
-Prove known lifecycle ordering and correlation, separate approval wait time,
-exact context-category accounting, synthetic-secret exclusion, valid bounded
-JSON, timeout/cancel/owner-death cleanup, observer-overload behavior and no
-instrumentation-driven replay. Verify disabled parity and fixture source/package
-paths without accounts or collectors. External export and developer raw traces
-need separate evidence. See [P19](../plan.md#p19-long-session-diagnosis-and-recovery)
-and [P22](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
-
-See the [runtime comparison](runtime-capabilities.md) for why optional diagnostics,
-durable usage facts and visible text/audio use distinct channels. Cost reports and
-realtime media are P23/P24 follow-ons, with generic contracts established in P22.
+Thirteen focused fixtures cover off parity, privacy/source identity, stop, export
+scope, blocked/invalid sinks, owner-death VM cleanup, rotation, filtering, historical
+resume and corruption. [Testing](testing.md#current-evidence-and-next-checks)
+distinguishes source, hosted and extracted evidence.

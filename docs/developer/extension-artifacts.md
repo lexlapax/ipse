@@ -69,10 +69,15 @@ Options reuse the bounded JSON Schema subset in
 [MCP schema policy](mcp.md#schema-subset), backed by existing JSONSchex with no
 external loader. Capability strings are declarations, not grants. The session
 host negotiates its supported capabilities explicitly. The optional `exports`
-field declares inert version-1 tool/command/service descriptors and is required
-for the corresponding `invoke.*` capability; see the
+field declares inert version-1 tool/command/service/job descriptors and is required
+for the corresponding invocation/job capability; see the
 [catalog contract](extension-invocations.md#inert-declarations). Imported artifacts
 cannot claim the built-in backend or cause arbitrary host atom creation.
+
+Diagnostic artifacts need no invocation export. They declare exactly one of
+`observe.local` or `observe.export`, with separate operator capture permission;
+see the [sink SDK and lease contract](observability.md#sdk-contract). This grants
+neither private prompt views nor effectful host continuations.
 
 ## Store behavior
 

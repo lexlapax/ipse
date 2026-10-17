@@ -44,6 +44,7 @@ defmodule Ipse.Diagnostics do
   def saved(dir, id) do
     with {:ok, events} <- Journal.load(dir, id),
          {:ok, messages} <- Session.restore_context(events),
+         :ok <- Ipse.Observability.Resources.validate(events, id),
          :ok <- Ipse.Extensions.Subscriptions.validate_sources(dir, id, events),
          {:ok, accounting} <- Ipse.Usage.restore(events, id),
          {:ok, _} <- Ipse.Research.restore(events) do

@@ -25,7 +25,8 @@ P19 context measurements are encoded JSON bytes, not tokens. Pricing, monetary
 budget enforcement and audio usage remain P23/P24 implementation work.
 
 P19's local on-demand diagnostics and request timing are available. Optional
-observability controls and developer tracing remain planned; their authoritative
+metadata capture, bounded sink workers and stop controls are implemented; developer
+tracing remains planned. Their authoritative
 [configuration/debugging contract](observability.md) distinguishes recovery
 journals from optional sinks and raw developer inspection.
 

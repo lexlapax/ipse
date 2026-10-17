@@ -188,5 +188,6 @@ See [actual verification scope](testing.md#current-evidence-and-next-checks).
 
 This is a generic host contract and synthetic coverage, not a production graph
 engine or the frozen-core independent installed-package proof. Explicit history
-catch-up, broader lifecycle views, full causal taxonomy, observability/developer
-controls and P23's model/budget admission remain separate completion work.
+catch-up, broader lifecycle views, full causal taxonomy, developer controls and
+P23's model/budget admission remain separate completion work. Optional
+[diagnostic capture](observability.md) does not gate these jobs or their receipts.

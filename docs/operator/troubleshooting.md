@@ -186,6 +186,14 @@ See [native policy and current limits](../developer/sandbox.md#observed-bash-and
 
 ## Sharing diagnostics
 
+For optional capture, inspect `/diagnostics` mode, readiness, drops, filters and
+cleanup status. Mode `off` starts no sink; selecting one is a separate step.
+`/observability off` revokes new samples without stopping journals or usage.
+A fast shutdown can discard remaining samples after its bounded grace, and the
+CLI reports unconfirmed cleanup separately from turn success. See
+[diagnostic capture](observability.md) for private directory requirements,
+per-lease rotation and retention limits. Never share the private journal wholesale.
+
 Report the command, toolchain, sanitized error, and whether it ran in a sandbox.
 Redact credentials, authorization URLs/codes, account identity, and private
 transcripts. Never share `~/.ipse/auth/` or environment dumps.

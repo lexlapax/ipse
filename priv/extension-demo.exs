@@ -136,13 +136,98 @@ defmodule Ipse.ExtensionDemo do
       ^lifecycle = lifecycle_views(opts[:state_dir], info.id)
       :ok = Ipse.Session.close(resumed)
 
+      local_trace(root, config)
+
       IO.puts(
-        "Extension prompt/presentation and unchanged idle resume fixture passed without inference."
+        "Extension prompt/presentation and unchanged idle resume fixture passed without inference. Local diagnostic sink fixture passed without network inference."
       )
 
       :ok
     after
       File.rm_rf!(root)
+    end
+  end
+
+  defp local_trace(root, config) do
+    artifact = "builtin:local-trace:1"
+
+    data = %{
+      "extension_trust" => [
+        %{
+          "artifact" => artifact,
+          "capabilities" => ["observe.local"],
+          "allow_project" => false,
+          "allow_children" => false
+        }
+      ],
+      "extensions" => [
+        %{
+          "instance" => "trace",
+          "artifact" => artifact,
+          "enabled" => true,
+          "options" => %{"directory" => Path.join(root, "trace")},
+          "order" => 0,
+          "lifetime" => "session"
+        }
+      ]
+    }
+
+    {:ok, selected} =
+      Ipse.Extensions.Config.resolve(
+        [%{scope: "operator", path: "/fixture/trace.json", data: data}],
+        []
+      )
+
+    {:ok, entries} = Ipse.Extensions.Registry.prepare(selected, config.home)
+
+    config =
+      %{config | extensions: entries}
+      |> Map.put(:observability, Map.put(Ipse.Observability.Config.defaults(), "mode", "local"))
+
+    directory = Path.join(root, "trace-sessions")
+
+    {:ok, session} =
+      DynamicSupervisor.start_child(
+        Ipse.Sessions,
+        {Ipse.Session, [config: config, cwd: root, state_dir: directory, subscriber: self()]}
+      )
+
+    :ok = Ipse.Session.prompt(session, "synthetic-diagnostic-private-prompt")
+    await(session)
+    drain_trace(session, 500)
+    [sink] = Ipse.Session.diagnostics(session)["observability"]["sinks"]
+    path = Path.join([root, "trace", sink["resource_id"] <> ".jsonl"])
+    bytes = File.read!(path)
+
+    false =
+      String.contains?(bytes, [
+        "synthetic-diagnostic-private-prompt",
+        "synthetic-private-native",
+        "fixture answer",
+        "record_sha256"
+      ])
+
+    true = String.contains?(bytes, "model.admitted")
+    0 = Bitwise.band(File.stat!(path).mode, 0o077)
+    id = Ipse.Session.info(session).id
+    :ok = Ipse.Session.stop_observability(session)
+    "off" = Ipse.Session.diagnostics(session)["observability"]["mode"]
+    :ok = Ipse.Session.close(session)
+    {:ok, events} = Ipse.Journal.load(directory, id)
+    :ok = Ipse.Observability.Resources.validate(events, id)
+  end
+
+  defp drain_trace(_, 0), do: raise("Local trace fixture did not settle")
+
+  defp drain_trace(session, remaining) do
+    if Enum.all?(
+         Ipse.Session.diagnostics(session)["observability"]["sinks"],
+         &(&1["ready"] and &1["pending"] == 0 and &1["delivered"] > 0)
+       ) do
+      :ok
+    else
+      Process.sleep(20)
+      drain_trace(session, remaining - 1)
     end
   end
 

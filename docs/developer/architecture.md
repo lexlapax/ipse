@@ -288,8 +288,10 @@ contracts for notifications, ordered hooks and triggered jobs. Event delivery
 does not grant effects, and background work cannot change an admitted request.
 [Prompt jobs](extension-event-jobs.md) use this contract for finite approved
 actions, before-request recall and after-turn maintenance in one serial lane.
-Broader private subscriptions, lifecycle observability
-and the independent installed-package proof remain [P22 gates](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
+Optional [diagnostic capture](observability.md) wraps shared metadata in bounded
+owned sink channels, with separate off/local/export policy and immediate stop.
+Broader private subscriptions, aggregate trace retention, developer tracing and the
+independent installed-package proof remain [P22 gates](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
 
 The internal lifecycle Source/Event adapter now binds committed journal facts to
 stable occurrence IDs and projects explicit metadata/private prompt views.

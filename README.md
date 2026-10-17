@@ -96,8 +96,10 @@ or after-turn maintenance.
 `/ext` inspects the active catalog
 and invokes operator commands.
 Effects retain normal approval; cached receipts/projections restore without
-replay. The full SDK, observability controls and independent package proof
-remain [P22 work](docs/plan.md#p22-extension-scaffold-and-lifecycle-hooks).
+replay. Default-off [diagnostic capture](docs/operator/observability.md) supports
+bounded local sink workers and separate export authority. The full SDK,
+developer tracing and independent package proof remain
+[P22 work](docs/plan.md#p22-extension-scaffold-and-lifecycle-hooks).
 
 Explicit stdio and Streamable HTTP [MCP tools](docs/operator/mcp.md) use
 `--mcp-config`. Local servers have their own trusted/native sandbox setting;

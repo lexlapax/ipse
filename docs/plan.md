@@ -945,7 +945,7 @@ Acceptance direction:
 4. Verify cancellation, refusal/corruption paths, idle resume and source/package
    behavior; update operator/developer docs and actual evidence, then commit/push.
 
-See the [diagnostics proposal](developer/observability.md).
+See the [diagnostic capture and tracing contract](developer/observability.md).
 
 ## P20: repeatable supervised self-development
 
@@ -1026,6 +1026,7 @@ persistent use. They are design walkthroughs, not execution proofs.
 | Prompt subscriptions (A15) | Inert declarations, scoped metadata/private views, final-effective user-text marker and finite owned notifications with required/optional no-replay receipts | [Subscriptions](developer/extension-events.md) |
 | Prompt jobs and recall (A16) | Source-bound typed handlers use finite approved actions; before-request context, after-turn maintenance, host-derived failures and explicit question continuation | [Event jobs](developer/extension-event-jobs.md) |
 | Shared committed metadata (A17) | Allowlisted model/tool/context/question/child/extension/turn projections retain stable source IDs and existing host causal links; no broader delivery or exporter activation | [Lifecycle events](developer/lifecycle-events.md#internal-journal-source-and-prompt-views) |
+| Diagnostic capture (A18) | Operator-only off/local/export policy, default-off local sink, bounded owned worker queues, visible drops/failures, rotation, immediate stop and independent recovery receipts | [Controls](operator/observability.md), [contract](developer/observability.md) |
 
 The [verification guide](developer/testing.md#current-evidence-and-next-checks)
 distinguishes source fixtures, extracted-package baselines, hosted platform
@@ -1037,9 +1038,10 @@ extension-only package proof or complete P22.
 The [shared lifecycle event foundation](developer/lifecycle-events.md) still needs
 broader private lifecycle subscriptions, full causal links and explicit bounded
 history catch-up. Prompt jobs and the pre-request recall seam are implemented;
-fully concurrent effectful scheduling remains a negotiated enhancement. Diagnostic observation is one
-separate metadata view, with off/local/export controls, bounded sinks and developer
-conformance/debugging also pending. Core must then be frozen for the independent
+fully concurrent effectful scheduling remains a negotiated enhancement. Diagnostic
+capture and bounded sinks are implemented; aggregate trace retention, missing
+live lifecycle/wait spans and developer conformance/debugging remain open. Core
+must then be frozen for the independent
 installed memory/workflow/retrieval package proof, followed by supervised independent
 review and the required source/package/platform checks. See the
 [delivery sequence and coverage gate](developer/extensions.md#delivery-sequence-and-extension-only-proof).

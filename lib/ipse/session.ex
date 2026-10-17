@@ -11,6 +11,9 @@ defmodule Ipse.Session do
       not Ipse.Extensions.Registry.valid_entries?(config) ->
         {:error, :invalid_extension_configuration}
 
+      Ipse.Observability.Config.runtime(config) != :ok ->
+        {:error, :invalid_observability_policy}
+
       Map.get(config, :extensions, []) == [] ->
         GenServer.start_link(__MODULE__, opts)
 
@@ -34,6 +37,7 @@ defmodule Ipse.Session do
 
   def close(pid) do
     monitor = Process.monitor(pid)
+    drain_observations(pid, System.monotonic_time(:millisecond) + 500)
 
     result =
       try do
@@ -53,9 +57,29 @@ defmodule Ipse.Session do
     result
   end
 
+  defp drain_observations(pid, deadline) do
+    try do
+      %{idle: idle, capture: capture} = GenServer.call(pid, :observation_drain_state, 500)
+
+      if idle and capture["mode"] != "off" and
+           Enum.any?(
+             capture["sinks"],
+             &(&1["closed"] == false and
+                 (not &1["ready"] or &1["pending"] > 0))
+           ) and
+           System.monotonic_time(:millisecond) < deadline do
+        Process.sleep(10)
+        drain_observations(pid, deadline)
+      end
+    catch
+      :exit, _ -> :ok
+    end
+  end
+
   def refresh_context(pid), do: GenServer.call(pid, :refresh_context)
   def info(pid), do: GenServer.call(pid, :info)
   def diagnostics(pid), do: GenServer.call(pid, :diagnostics)
+  def stop_observability(pid), do: GenServer.call(pid, :stop_observability)
   def subscribe_text(pid), do: GenServer.call(pid, :subscribe_text)
   def exports(pid), do: GenServer.call(pid, :exports)
 
@@ -73,6 +97,7 @@ defmodule Ipse.Session do
 
     with {:ok, handoff} <- handoff_option(opts),
          :ok <- extension_configuration(config),
+         :ok <- Ipse.Observability.Config.runtime(config),
          :ok <- Ipse.Usage.configuration(config),
          {:ok, cwd} <- WorkspaceContext.canonical_path(requested_cwd),
          true <- File.dir?(cwd),
@@ -81,6 +106,7 @@ defmodule Ipse.Session do
          {:ok, lock} <- acquire_lock(Path.join(dir, id <> ".lock"), 10),
          {:ok, locked_events} <- Journal.load(dir, id),
          {:ok, _} <- restore_context(locked_events),
+         :ok <- Ipse.Observability.Resources.validate(locked_events, id),
          :ok <- Ipse.Extensions.TextResources.validate_events(locked_events, id),
          :ok <- Subscriptions.validate_sources(dir, id, locked_events),
          :ok <- Journal.repair_tail(dir, id),
@@ -180,9 +206,20 @@ defmodule Ipse.Session do
         delegation_claims: %{},
         delegations: 0,
         owner_ref: owner_ref,
-        request_started_at: nil
+        request_started_at: nil,
+        observation: nil
       }
 
+      capture =
+        Ipse.Observability.Resources.prepare(
+          self(),
+          config,
+          id,
+          &record(state, &1),
+          Enum.count(events, &(&1["type"] == "diagnostic_sink_intent"))
+        )
+
+      state = %{state | observation: capture}
       state = if context_is_new, do: persist_context(state, context_snapshot, true), else: state
 
       state =
@@ -873,6 +910,7 @@ defmodule Ipse.Session do
      %{
        "version" => 1,
        "phase" => Atom.to_string(s.phase),
+       "observability" => Ipse.Observability.Resources.snapshot(s.observation),
        "steps" => s.steps,
        "max_steps" => Map.get(s.config, :max_steps, 30),
        "approval_waiting" => not is_nil(s.approval),
@@ -894,6 +932,31 @@ defmodule Ipse.Session do
          "unconfirmed_cleanup" => s.extension_text_cleanup_failed
        }
      }, s}
+  end
+
+  def handle_call(:stop_observability, _from, s) do
+    capture = Ipse.Observability.Resources.stop(s.observation)
+    {:reply, :ok, %{s | observation: capture}}
+  end
+
+  def handle_call(:observation_drain_state, _from, s),
+    do:
+      {:reply,
+       %{idle: s.phase == :idle, capture: Ipse.Observability.Resources.snapshot(s.observation)},
+       s}
+
+  def handle_call({:observer_worker, id, worker}, {caller, _}, s) when is_pid(worker) do
+    case s.observation.resources[id] do
+      %{pid: ^caller, worker: nil, closed: false} = resource ->
+        if s.observation.policy["mode"] != "off" do
+          {:reply, :ok, put_in(s, [:observation, :resources, id], %{resource | worker: worker})}
+        else
+          {:reply, {:error, :observation_revoked}, s}
+        end
+
+      _ ->
+        {:reply, {:error, :observation_refused}, s}
+    end
   end
 
   def handle_call(:refresh_context, _from, %{phase: phase} = s) when phase != :idle,
@@ -1153,6 +1216,8 @@ defmodule Ipse.Session do
 
   def handle_call(:close, _from, s) do
     {cleanup, next} = stop_work(s, s.phase != :idle)
+    observer_cleanup = Ipse.Observability.Resources.close(s.observation, &record(s, &1))
+    cleanup = cleanup ++ observer_cleanup
     result = if Enum.all?(cleanup, &(&1 == :ok)), do: :ok, else: {:error, :cleanup_unconfirmed}
     {:stop, :normal, result, next}
   end
@@ -1621,6 +1686,25 @@ defmodule Ipse.Session do
   end
 
   def handle_info({:DOWN, ref, :process, pid, _}, s) do
+    observation =
+      Enum.reduce(s.observation.resources, s.observation, fn {id, resource}, capture ->
+        if resource.monitor == ref and resource.pid == pid and not resource.closed do
+          Ipse.Observability.Channel.revoke(resource)
+          record(s, Ipse.Observability.Resources.receipt(resource.intent, "closed", false))
+
+          notify(
+            s,
+            {:status, "Diagnostic sink exited; inspect /diagnostics for unconfirmed cleanup."}
+          )
+
+          put_in(capture, [:resources, id], %{resource | closed: true, cleanup: false})
+        else
+          capture
+        end
+      end)
+
+    s = %{s | observation: observation}
+
     unconfirmed_text =
       Enum.any?(s.extension_text, fn {_, resource} ->
         resource.monitor == ref and resource.pid == pid and not resource.closed
@@ -1670,6 +1754,43 @@ defmodule Ipse.Session do
     {:stop, :normal, s}
   end
 
+  def handle_info({:observer_ready, pid, id}, s) do
+    case s.observation.resources[id] do
+      %{pid: ^pid, ready: false, closed: false} = resource ->
+        if s.observation.policy["mode"] != "off" do
+          record(s, Ipse.Observability.Resources.receipt(resource.intent, "ready"))
+          resource = %{resource | ready: true}
+          Ipse.Observability.Channel.admit(resource)
+          {:noreply, put_in(s, [:observation, :resources, id], resource)}
+        else
+          Ipse.Observability.Channel.stop(resource)
+          {:noreply, s}
+        end
+
+      _ ->
+        {:noreply, s}
+    end
+  end
+
+  def handle_info({:observer_closed, pid, id, cleanup}, s) when is_boolean(cleanup) do
+    case s.observation.resources[id] do
+      %{pid: ^pid, closed: false} = resource ->
+        record(s, Ipse.Observability.Resources.receipt(resource.intent, "closed", cleanup))
+
+        notify(
+          s,
+          {:status,
+           "Diagnostic sink stopped; inspect /diagnostics for bounded delivery counters."}
+        )
+
+        {:noreply,
+         put_in(s, [:observation, :resources, id], %{resource | closed: true, cleanup: cleanup})}
+
+      _ ->
+        {:noreply, s}
+    end
+  end
+
   def handle_info(_, s), do: {:noreply, s}
 
   @impl true
@@ -1679,6 +1800,11 @@ defmodule Ipse.Session do
     Enum.each(s.extension_text, fn {_, resource} ->
       if is_pid(resource.pid) and Process.alive?(resource.pid),
         do: Process.exit(resource.pid, :kill)
+    end)
+
+    Enum.each(s.observation.resources, fn {_, resource} ->
+      Ipse.Observability.Channel.revoke(resource)
+      if Process.alive?(resource.pid), do: Process.exit(resource.pid, :kill)
     end)
 
     Ipse.Runner.unlock(s.lock)
@@ -2612,16 +2738,26 @@ defmodule Ipse.Session do
   end
 
   defp record(s, event) do
-    case Journal.append(s.dir, s.id, event) do
+    result =
+      if s.observation && s.observation.policy["mode"] != "off",
+        do: Journal.append_observed(s.dir, s.id, event),
+        else: Journal.append(s.dir, s.id, event)
+
+    case result do
       :ok -> :ok
+      {:ok, source} -> Ipse.Observability.Resources.offer(s.observation, source, event)
       {:error, reason} -> raise "Journal write failed: #{inspect(reason)}"
     end
   end
 
   defp record_source(s, event) do
     case Journal.append_with_source(s.dir, s.id, event) do
-      {:ok, source} -> source
-      {:error, reason} -> raise "Journal write failed: #{inspect(reason)}"
+      {:ok, source} ->
+        if s.observation, do: Ipse.Observability.Resources.offer(s.observation, source, event)
+        source
+
+      {:error, reason} ->
+        raise "Journal write failed: #{inspect(reason)}"
     end
   end
 
@@ -2785,6 +2921,7 @@ defmodule Ipse.Session do
   @doc "Validate saved effective context without starting inference, tools or a session."
   def restore_context(events) do
     with :ok <- Ipse.Handoff.validate_events(events),
+         :ok <- Ipse.Observability.Resources.validate(events),
          {:ok, _} <- Ipse.Usage.restore(events),
          :ok <- Projection.validate_events(events) do
       restore_validated_context(events)

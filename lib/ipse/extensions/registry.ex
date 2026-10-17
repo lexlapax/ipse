@@ -5,6 +5,18 @@ defmodule Ipse.Extensions.Registry do
   @host_capabilities Ipse.Extensions.Catalog.capabilities()
   @text %{"type" => "string", "maxLength" => 4096}
   @builtins %{
+    "builtin:local-trace:1" => %{
+      module: Ipse.Extensions.Examples.LocalTrace,
+      capabilities: ["observe.local"],
+      schema: %{
+        "type" => "object",
+        "additionalProperties" => false,
+        "required" => ["directory"],
+        "properties" => %{
+          "directory" => %{"type" => "string", "minLength" => 1, "maxLength" => 1024}
+        }
+      }
+    },
     "builtin:prompt-annotation:1" => %{
       module: Ipse.Extensions.Examples.PromptAnnotation,
       capabilities: ["transform.prompt"],
@@ -268,6 +280,10 @@ defmodule Ipse.Extensions.Registry do
       Ipse.Lifecycle.Source,
       Ipse.Lifecycle.Event,
       Ipse.Lifecycle.Metadata,
+      Ipse.Observability.Config,
+      Ipse.Observability.Event,
+      Ipse.Observability.Channel,
+      Ipse.Observability.Resources,
       Ipse.Extensions.Subscriptions,
       Ipse.Extensions.EventJob,
       Ipse.Session
