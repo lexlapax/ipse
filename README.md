@@ -95,6 +95,8 @@ evidence and private visible-text consumption. Prompt delivery has separate
 or after-turn maintenance.
 Completed-answer subscribers can separately select original or presented text;
 native provider continuation remains private.
+Explicit [history reads](docs/operator/extensions.md#explicit-history-and-catch-up) provide bounded
+own-session recorded views for catch-up, with separate private grants and no replay.
 `/ext` inspects the active catalog
 and invokes operator commands.
 Effects retain normal approval; cached receipts/projections restore without

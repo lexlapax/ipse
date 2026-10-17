@@ -282,6 +282,15 @@ defmodule Ipse.Extensions.Host do
   defp execute_action(context, intent, %{"op" => "context.publish"}),
     do: Ipse.Extensions.Contributions.execute(context, intent)
 
+  defp execute_action(context, intent, %{"op" => "history.read"}) do
+    task = Task.async(fn -> Ipse.Extensions.History.execute(context, intent) end)
+
+    case Task.yield(task, 5000) || Task.shutdown(task, :brutal_kill) do
+      {:ok, result} -> result
+      _ -> {:failed, %{"code" => "history_timeout"}}
+    end
+  end
+
   defp execute_action(context, intent, request),
     do: State.execute(context.root, intent["namespace"], request, intent["operation_id"])
 

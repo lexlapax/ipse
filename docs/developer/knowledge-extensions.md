@@ -125,8 +125,8 @@ seams before choosing a production memory, graph or retrieval engine:
 | Composition | Operator-bound typed value services, pinned dependencies and acyclic routing | Independent synthetic retriever proof; nested effectful services remain a negotiated enhancement |
 | Evidence/context | Bounded attributed publications, assertion/receipt provenance and awaited pre-request recall into exact snapshots | Domain records mapped to P14 source/claim identity and independently installed retriever proof |
 | State/deletion | Scoped CAS records, revision/generation checks, locks, tombstones and fixture rejection of delayed prompt writes after forget | Domain TTL, derivative deletion/export policy and complete concurrent-forget proofs |
-| Owned work | Explicit invocations and prompt/answer-triggered finite jobs, cancellation, durable receipts and structured questions | Bounded ingestion/catch-up, domain source-event deduplication and independent package proof; fully concurrent effectful jobs remain a negotiated enhancement |
-| Event source/views | Stable journal references, bounded host-only pages, selected original/effective prompt and original/presented answer delivery | Full causal links, broader lifecycle/continuous feeds and explicit authorized catch-up |
+| Owned work | Explicit invocations, prompt/answer-triggered finite jobs, fixed-range history reads, cancellation, durable receipts and structured questions | Domain ingestion/deduplication and independent catch-up package proof; fully concurrent effectful jobs remain a negotiated enhancement |
+| Event source/views | Stable journal references, scoped historical projections, selected original/effective prompt and original/presented answer delivery | Full causal links, broader lifecycle/continuous feeds and cross-session history authorization |
 | Optional model work | Existing explicit provider/profile and delegation paths | A negotiated accounted host request capability for extraction/embedding; current callbacks cannot silently call a model |
 
 The [lifecycle event design](lifecycle-events.md) makes prompt-driven graph

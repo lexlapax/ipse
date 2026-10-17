@@ -16,6 +16,9 @@ defmodule Ipse.Extensions.Actions do
          true <- response["api_version"] === 1 and response["kind"] == "host_call",
          :ok <- Operation.validate(response["request"]),
          true <- "host.actions" in identity["capabilities"],
+         true <-
+           not Operation.history?(response["request"]) or
+             "host.history" in identity["capabilities"],
          true <- Operation.capability(response["request"]) in identity["capabilities"] do
       {:ok, response["request"]}
     else
@@ -98,7 +101,9 @@ defmodule Ipse.Extensions.Actions do
         outcome["value"],
         event["operation_id"],
         event["service"]
-      ) and Ipse.Extension.validate(resume(event)) == :ok and bounded?(event)
+      ) and
+      (not Operation.history?(event["request"]) or Ipse.Extensions.History.bound_outcome?(event)) and
+      Ipse.Extension.validate(resume(event)) == :ok and bounded?(event)
   rescue
     _ -> false
   end

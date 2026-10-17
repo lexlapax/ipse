@@ -218,6 +218,10 @@ defmodule Ipse.Extensions.Subscriptions do
         _ -> {:halt, @error}
       end
     end)
+    |> case do
+      :ok -> Ipse.Extensions.History.validate_sources(directory, session, events)
+      error -> error
+    end
   rescue
     _ -> @error
   end

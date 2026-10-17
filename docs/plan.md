@@ -1031,6 +1031,7 @@ persistent use. They are design walkthroughs, not execution proofs.
 | SDK conformance (A20) | Explicit synthetic CLI checks reuse Sessions, trust/approval and recovery schemas; support prompt/tool/command/service scenarios, structured answers, scratch state and content-free assertions | [Author runner](developer/extension-conformance.md) |
 | Developer tracing (A21) | Opt-in synthetic dispatcher samples use isolated OTP sessions, one-in-flight VM admission, fixed arities, bounded reports and independent cleanup/deadline monitors | [Trace and source-debugging boundaries](developer/observability.md#synthetic-dispatcher-tracing) |
 | Completed-answer events (A22) | Original/presented private views, shared metadata/source identity and after-turn notify/job delivery bind final presentation to native history and effective prompt; normal approvals and question/no-replay recovery remain separate | [Subscriptions](developer/extension-events.md), [jobs](developer/extension-event-jobs.md) |
+| Explicit history (A23) | Own-session fixed-range reads share source/view identities, separate private history grants, bounded pages and skipped/gap outcomes; SDK catch-up uses normal actions, questions and no-replay recovery | [History contract](developer/extension-history.md) |
 
 The [verification guide](developer/testing.md#current-evidence-and-next-checks)
 distinguishes source fixtures, extracted-package baselines, hosted platform
@@ -1040,8 +1041,9 @@ extension-only package proof or complete P22.
 ### Remaining completion work
 
 The [shared lifecycle event foundation](developer/lifecycle-events.md) still needs
-broader private lifecycle subscriptions, full causal links and explicit bounded
-history catch-up. Prompt/answer jobs and the pre-request recall seam are implemented;
+broader private lifecycle subscriptions and full causal links. Bounded own-session
+history reads are implemented; domain catch-up/deduplication still needs the
+independent package proof. Prompt/answer jobs and the pre-request recall seam are implemented;
 fully concurrent effectful scheduling remains a negotiated enhancement. Diagnostic
 capture, bounded sinks, aggregate local retention and synthetic dispatcher tracing
 are implemented; missing live lifecycle/wait spans remain open. Core

@@ -95,6 +95,7 @@ trust ceiling must cover every declared capability:
 | `host.tools` | Existing bounded read/write/edit/shell calls | [Workflow tools](#workflow-tools) |
 | `host.services` | Calls through explicit operator service bindings | [Composition](#service-composition) |
 | `host.context` | Bounded caller-scoped context publications | [Context/evidence](#context-and-evidence) |
+| `host.history`, `host.history.*` | Explicit reads of this session's metadata or separately granted private views | [History](#explicit-history-and-catch-up) |
 | `stream.text` | Acknowledged private visible-text delivery through a scoped worker handle | [Text clients](#visible-text-clients) |
 | `observe.local`, `observe.export` | Read-only metadata sink with separate operator capture policy | [Diagnostic capture](observability.md) |
 | `event.job` | Source-bound prompt handlers using normal finite approved actions, before requests or after answers | [Event jobs](#event-jobs) |
@@ -308,6 +309,31 @@ If interruption occurs after an answer/continuation intent, resume stays idle
 with unknown work and does not rerun the callback. Inspect receipts before
 explicitly choosing a fresh action. See
 [SDK checkpoint and recovery details](../developer/extension-questions.md).
+
+## Explicit history and catch-up
+
+Reviewed tools/commands/jobs may request `history.read` with `host.actions` and
+`host.history`. Metadata access alone reveals no raw text; historical original,
+expanded or effective prompt and original/presented answer views each need their
+own `host.history.*` grant. Live `event.*` read grants do not grant past access.
+Select only the views the artifact needs, using ordinary operator trust and
+temporary/persistent instance configuration. No scan starts merely on import,
+selection or resume.
+
+Each read is limited to this session. A returned snapshot fixes the range;
+extensions explicitly pass it to continue, so newer appends do not change that
+scan. Pages are small, show skipped/unavailable records, and never silently
+substitute another view or truncated text. Older sessions may lack original,
+effective or completed-answer boundaries; a completed scan is not proof of complete
+conversation coverage. Read/view errors return fixed codes without private paths.
+See the [request, bounds and gap contract](../developer/extension-history.md).
+
+An extension supplies the actual catch-up/reindex workflow. Its writes still need
+separate normal approval, and forgetting needs the store's revision/tombstone
+policy. Historical text does not automatically enter provider context. Explicitly
+answered questions can continue a pinned range; idle resume never scans, retries
+or replays past effects. This API does not enable cross-project or other-session
+access, a database or an automatic memory service.
 
 ## Workflow tools
 

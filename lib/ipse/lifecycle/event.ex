@@ -123,4 +123,48 @@ defmodule Ipse.Lifecycle.Event do
 
   defp data(_, _, _, _, _), do: {:error, :lifecycle_view_unavailable}
   defp text?(value), do: is_binary(value) and String.valid?(value)
+
+  def valid_metadata?(event) do
+    reference = event["source"]
+
+    Enum.sort(Map.keys(event)) ==
+      ~w(correlations data data_version event_id origin source type version view) and
+      event["version"] === 1 and event["data_version"] === 1 and event["origin"] == "host" and
+      event["view"] == "metadata" and
+      Ipse.Lifecycle.Source.valid_metadata?(reference) and
+      event["event_id"] == reference["event_id"] and
+      event["type"] in ~w(session.created prompt.received prompt.expanded_committed prompt.projection_committed prompt.effective_committed answer.committed model.admitted model.usage_observed model.finished model.measured tool.started assistant.committed tool.result_recorded context.workspace_committed context.catalog_committed context.extensions_committed context.compaction_committed context.compaction_failed question.waiting question.answered question.closed child.started turn.settling turn.finished turn.cancelled extension.invocation_admitted extension.invocation_recorded extension.action_admitted extension.action_recorded extension.question_waiting extension.continuation_admitted extension.delivery_admitted extension.delivery_recorded extension.text_admitted extension.text_ready extension.text_closed) and
+      Enum.all?(event["data"], fn
+        {key, number}
+        when key in ~w(input_bytes output_bytes original_bytes presented_bytes source_count tool_count sequence duration_ms action_count) ->
+          uint?(number)
+
+        {"kind", kind} ->
+          kind in ~w(model compaction)
+
+        {"finality", finality} ->
+          finality in ~w(final partial)
+
+        {key, outcome} when key in ~w(outcome status approval) ->
+          outcome in ~w(ok error completed failed cancelled unknown denied conflict answered not_started acknowledged approved session_allow not_decided not_required)
+
+        _ ->
+          false
+      end) and
+      Enum.all?(event["correlations"], fn
+        {"artifact_sha256", hash} ->
+          is_binary(hash) and Regex.match?(~r/\A[0-9a-f]{64}\z/, hash)
+
+        {key, id}
+        when key in ~w(request_id attempt_id session_id turn_id parent_session_id parent_request_id invocation_id parent_invocation_id operation_id continuation_id delivery_id resource_id causing_event_id child_id) ->
+          is_binary(id) and Regex.match?(~r/\A[0-9a-f]{32}\z/, id)
+
+        _ ->
+          false
+      end)
+  rescue
+    _ -> false
+  end
+
+  defp uint?(value), do: is_integer(value) and value in 0..9_007_199_254_740_991
 end

@@ -12,7 +12,8 @@ defmodule Ipse.Extensions.Catalog do
 
   def capabilities,
     do:
-      ~w(transform.prompt transform.presentation invoke.tool invoke.command invoke.service host.actions host.state.read host.state.write host.question host.tools host.services host.context stream.text event.notify event.job event.prompt.original event.prompt.effective event.answer.original event.answer.presented observe.local observe.export)
+      ~w(transform.prompt transform.presentation invoke.tool invoke.command invoke.service host.actions host.state.read host.state.write host.question host.tools host.services host.context stream.text event.notify event.job event.prompt.original event.prompt.effective event.answer.original event.answer.presented observe.local observe.export) ++
+        Ipse.Extensions.History.capabilities()
 
   def empty,
     do: %{"version" => 1, "tools" => [], "commands" => [], "services" => []}
@@ -29,10 +30,17 @@ defmodule Ipse.Extensions.Catalog do
          true <- exports["version"] === 1,
          true <-
            not Enum.any?(
-             ~w(host.state.read host.state.write host.question host.tools host.services host.context),
+             ~w(host.state.read host.state.write host.question host.tools host.services host.context) ++
+               Ipse.Extensions.History.capabilities(),
              &(&1 in capabilities)
            ) or
              "host.actions" in capabilities,
+         true <-
+           not Enum.any?(
+             Ipse.Extensions.History.capabilities() -- ["host.history"],
+             &(&1 in capabilities)
+           ) or
+             "host.history" in capabilities,
          true <-
            Enum.all?(@groups, fn {group, capability} ->
              records = exports[group]

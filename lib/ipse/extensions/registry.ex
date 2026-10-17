@@ -260,6 +260,7 @@ defmodule Ipse.Extensions.Registry do
       Ipse.Extensions.Contributions,
       Ipse.Extensions.ToolAction,
       Ipse.Extensions.State,
+      Ipse.Extensions.History,
       Ipse.Questions,
       Ipse.Tools,
       Ipse.Runner,

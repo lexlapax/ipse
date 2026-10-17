@@ -8,7 +8,7 @@ capability, approval, lifetime and journal admission. The owned task performs IO
 outside Session, keeping cancellation and operator input responsive.
 
 This guide owns the common continuation protocol and scoped state contract.
-Questions, tools, services and context use the same action chain; their linked
+Questions, tools, services, history and context use the same action chain; their linked
 guides own operation-specific schemas and failure behavior. The full extension
 foundation remains in progress; no production memory algorithm is selected here.
 
@@ -24,6 +24,7 @@ alongside their `invoke.*` or `event.job` exports:
 | `host.tools` | Existing bounded file/shell tools | [Workflow tools](extension-tool-actions.md) |
 | `host.services` | Operator-bound typed value calls | [Services](extension-services.md) |
 | `host.context` | Caller-scoped contextual evidence | [Context](extension-context.md) |
+| `host.history`, `host.history.*` | Bounded own-session recorded views with separate private grants | [History/catch-up](extension-history.md) |
 
 An operation capability without `host.actions` refuses inert validation.
 Operator trust must allow every capability; project configuration cannot grant
@@ -130,6 +131,10 @@ outcomes. Conflict/denial are known; invalid storage, IO failure or interrupted
 effects stop with an unknown outcome. Resume never executes an operation/callback,
 including a write committed before its journal result. Inspect revision/operation
 ID before explicit recovery. These hashes are integrity checks, not signatures.
+History reads use the owning session ID as their action namespace rather than a
+state-store hash; their fixed range and private-view scope are independently
+validated under the linked history contract. Their successful pages are cached
+receipts, not an instruction to re-read on resume.
 
 State is private data, not automatic model context. Delete removes the current
 value, not historical journals or delivered text. Artifact/config-source changes

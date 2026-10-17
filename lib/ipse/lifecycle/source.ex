@@ -40,6 +40,17 @@ defmodule Ipse.Lifecycle.Source do
 
   def valid?(_), do: false
 
+  @doc "Validate a content-free source reference. This is identity, not data-access authority."
+  def valid_metadata?(source) when is_map(source) do
+    Enum.sort(Map.keys(source)) == ~w(byte_offset event_id session_id version) and
+      source["version"] === 1 and id?(source["session_id"]) and offset?(source["byte_offset"]) and
+      source["event_id"] == event_id(source["session_id"], source["byte_offset"])
+  rescue
+    _ -> false
+  end
+
+  def valid_metadata?(_), do: false
+
   def matches?(source, record) do
     with true <- valid?(source),
          {:ok, expected} <- build(source["session_id"], source["byte_offset"], record) do

@@ -44,6 +44,7 @@ start. Use the guides below for operation, development, and project context.
 | [Event jobs and recall](developer/extension-event-jobs.md) | Typed prompt/answer handlers, approved actions, before-request context, after-turn maintenance and source-bound question recovery |
 | [Extension invocations](developer/extension-invocations.md) | Inert tools/commands/services, scoped catalog identity, owned callbacks and durable result receipts |
 | [Extension host calls](developer/extension-host-calls.md) | Finite continuations, separate write approval, scoped CAS state/tombstones and action-chain recovery |
+| [Extension history](developer/extension-history.md) | Explicit own-session recorded views, private grants, fixed-range pagination, skipped/gap records and no-replay catch-up primitives |
 | [Extension questions](developer/extension-questions.md) | Structured clarification, bounded checkpoints, explicit answered continuations and inert recovery |
 | [Extension tool actions](developer/extension-tool-actions.md) | Approved bounded file/shell workflows, instruction preflight, output completeness and durable receipts |
 | [Extension services](developer/extension-services.md) | Typed requirements, explicit operator routes, acyclic activation pins and owned value-service jobs |

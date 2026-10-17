@@ -18,9 +18,9 @@ Current contracts are organized by responsibility:
 | Explicit continuation and approved effects | [Questions](extension-questions.md), [workflow tools](extension-tool-actions.md) |
 | Typed dependency composition and contextual evidence | [Services](extension-services.md), [context](extension-context.md) |
 | Durable request facts and embedded/worker private delivery | [Usage accounting](usage-accounting.md), [text channel](text-streams.md) |
-| Journal occurrence identity, metadata and typed prompt views | [Lifecycle source/view adapter](lifecycle-events.md#internal-journal-source-and-prompt-views); private journal pages remain host-only |
-| Declared read-only prompt delivery | [Event subscriptions](extension-events.md), with separate metadata/private authority and required/optional receipts |
-| Source-bound prompt actions and recall | [Event jobs](extension-event-jobs.md), with finite approved actions, before-request contributions and after-turn maintenance |
+| Journal identity and typed recorded views | [Lifecycle adapter](lifecycle-events.md#internal-journal-source-and-prompt-views); raw pages stay host-only, while [history reads](extension-history.md) expose scoped projections |
+| Declared read-only prompt/answer delivery | [Event subscriptions](extension-events.md), with separate metadata/private authority and required/optional receipts |
+| Source-bound prompt/answer actions and recall | [Event jobs](extension-event-jobs.md), with finite approved actions, before-request contributions and after-turn maintenance |
 | Optional diagnostic capture | [Observability](observability.md), with operator policy, bounded owned sinks, aggregate local ring retention and immediate stop |
 | Author conformance inputs | [Synthetic checks](extension-conformance.md), with normal trust/approval, scratch Sessions, explicit answers and content-free assertions |
 

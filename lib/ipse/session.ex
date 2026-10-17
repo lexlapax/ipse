@@ -846,12 +846,21 @@ defmodule Ipse.Session do
            }}
 
         true ->
-          record(s, intent)
+          context =
+            if Ipse.Extensions.Operation.history?(request) and request["snapshot"] == nil do
+              source = record_source(s, intent)
+
+              extension_execution_context(s, intent)
+              |> Map.put(:history_snapshot, Ipse.Extensions.History.snapshot(source, intent))
+            else
+              record(s, intent)
+              extension_execution_context(s, intent)
+            end
 
           reply =
             if approval == "denied",
               do: {:denied, intent},
-              else: {:ok, intent, extension_execution_context(s, intent)}
+              else: {:ok, intent, context}
 
           if Ipse.Extensions.Operation.tool?(request) and approval != "denied",
             do: notify(s, {:tool, "extension:tool.call", request})
@@ -3206,6 +3215,11 @@ defmodule Ipse.Session do
       identity: s.extension_invocation["identity"],
       actions: s.extension_action_results
     }
+
+    context =
+      if Ipse.Extensions.Operation.history?(intent["request"]),
+        do: Map.merge(context, %{history_dir: s.dir, history_session: s.id}),
+        else: context
 
     if intent["service"] do
       target = Enum.find(s.config.extensions, &(&1.identity == intent["service"]["identity"]))

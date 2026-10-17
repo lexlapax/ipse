@@ -139,6 +139,7 @@ defmodule Ipse.ExtensionDemo do
       local_trace(root, config)
       conformance(catalog, config.home)
       answer_views()
+      history_views(root)
 
       IO.puts(
         "Extension prompt/presentation and unchanged idle resume fixture passed without inference. Local diagnostic sink fixture passed without network inference."
@@ -186,6 +187,70 @@ defmodule Ipse.ExtensionDemo do
         "fixture presented",
         "sha256"
       ])
+  end
+
+  # Primitive compatibility fixture; installed SDK execution is exercised by the
+  # independent-worker source tests and the later frozen-core package proof.
+  defp history_views(root) do
+    directory = Path.join(root, "history-unit")
+    {:ok, id} = Ipse.Journal.create(directory, %{})
+    {:ok, lock} = Ipse.Runner.lock(Path.join(directory, id <> ".lock"))
+
+    try do
+      :ok =
+        Ipse.Journal.append(directory, id, %{
+          "type" => "message",
+          "message" => %{"role" => "user", "content" => "synthetic history text"}
+        })
+
+      identity = %{"instance" => "primitive-fixture"}
+
+      for view <- ["metadata", "prompt.expanded"] do
+        request = %{
+          "op" => "history.read",
+          "view" => view,
+          "cursor" => 0,
+          "snapshot" => nil,
+          "limit" => 8
+        }
+
+        intent = %{
+          "type" => "extension_action_intent",
+          "version" => 1,
+          "operation_id" => Ipse.Usage.id(),
+          "namespace" => id,
+          "identity_sha256" => Ipse.Compaction.digest([identity]),
+          "approval" => "not_required",
+          "request" => request
+        }
+
+        {:ok, source} = Ipse.Journal.append_with_source(directory, id, intent)
+
+        context = %{
+          identity: identity,
+          history_dir: directory,
+          history_session: id,
+          history_snapshot: Ipse.Extensions.History.snapshot(source, intent)
+        }
+
+        {:ok, page} = Ipse.Extensions.History.execute(context, intent)
+        true = Ipse.Extensions.History.valid_outcome?(request, "ok", page, intent["operation_id"])
+        nil = page["next"]
+
+        if view == "metadata" do
+          false =
+            String.contains?(Jason.encode!(page), ["synthetic history text", "record_sha256"])
+        else
+          true =
+            Enum.any?(
+              page["records"],
+              &(&1["kind"] == "event" and &1["event"]["data"]["text"] == "synthetic history text")
+            )
+        end
+      end
+    after
+      :ok = Ipse.Runner.unlock(lock)
+    end
   end
 
   defp conformance(catalog, home) do

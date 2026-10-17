@@ -78,17 +78,22 @@ defmodule Ipse.Journal do
   def append_with_source(_, _, _), do: {:error, :event_must_be_a_map}
 
   @doc "Read a bounded page of complete source records without replay or tail repair. Cursor is a record's byte offset."
-  def source_page(state_dir, id, cursor \\ 0, limit \\ 32)
+  def source_page(state_dir, id, cursor \\ 0, limit \\ 32),
+    do: source_page(state_dir, id, cursor, limit, nil)
 
-  def source_page(state_dir, id, cursor, limit)
+  @doc "Optional exclusive upper byte boundary prevents a frozen history read from examining later records."
+  def source_page(state_dir, id, cursor, limit, upper)
       when is_integer(cursor) and cursor in 0..9_007_199_254_740_991 and
-             is_integer(limit) and limit in 1..64 do
+             is_integer(limit) and limit in 1..64 and
+             (is_nil(upper) or
+                (is_integer(upper) and upper >= cursor and upper <= 9_007_199_254_740_991)) do
     with :ok <- validate_id(id),
          {:ok, file} <-
            :file.open(String.to_charlist(journal_path(state_dir, id)), [:read, :binary, :raw]) do
       try do
-        with :ok <- source_boundary(file, cursor) do
-          read_sources(file, id, cursor, limit, 0, [])
+        with :ok <- source_boundary(file, cursor),
+             :ok <- if(upper == nil, do: :ok, else: source_boundary(file, upper)) do
+          read_sources(file, id, cursor, limit, 0, [], upper)
         end
       after
         :file.close(file)
@@ -96,7 +101,7 @@ defmodule Ipse.Journal do
     end
   end
 
-  def source_page(_, _, _, _), do: {:error, :invalid_source_page}
+  def source_page(_, _, _, _, _), do: {:error, :invalid_source_page}
 
   def load(state_dir, id) do
     with :ok <- validate_id(id),
@@ -283,11 +288,15 @@ defmodule Ipse.Journal do
     end
   end
 
-  defp read_sources(_file, _id, cursor, 0, _bytes, records),
+  defp read_sources(_file, _id, cursor, _, _bytes, records, upper)
+       when is_integer(upper) and cursor >= upper,
+       do: {:ok, %{records: Enum.reverse(records), next: nil}}
+
+  defp read_sources(_file, _id, cursor, 0, _bytes, records, _upper),
     do: {:ok, %{records: Enum.reverse(records), next: cursor}}
 
-  defp read_sources(file, id, cursor, remaining, bytes, records) do
-    case source_line(file, cursor, <<>>) do
+  defp read_sources(file, id, cursor, remaining, bytes, records, upper) do
+    case source_line(file, cursor, <<>>, upper) do
       :eof ->
         {:ok, %{records: Enum.reverse(records), next: nil}}
 
@@ -305,7 +314,8 @@ defmodule Ipse.Journal do
               cursor + byte_size(line) + 1,
               remaining - 1,
               bytes + byte_size(line),
-              [%{source: source, record: record} | records]
+              [%{source: source, record: record} | records],
+              upper
             )
           else
             _ -> {:error, :invalid_source_record}
@@ -317,11 +327,15 @@ defmodule Ipse.Journal do
     end
   end
 
-  defp source_line(file, cursor, acc) do
+  defp source_line(file, cursor, acc, upper) do
     limit = Ipse.Lifecycle.Source.record_bytes()
     remaining = limit + 1 - byte_size(acc)
 
-    case :file.pread(file, cursor + byte_size(acc), min(16_384, remaining)) do
+    read = min(16_384, remaining)
+    read = if upper == nil, do: read, else: min(read, upper - cursor - byte_size(acc))
+    result = if read <= 0, do: :eof, else: :file.pread(file, cursor + byte_size(acc), read)
+
+    case result do
       {:ok, chunk} ->
         case :binary.match(chunk, "\n") do
           {index, 1} ->
@@ -332,7 +346,7 @@ defmodule Ipse.Journal do
             {:error, :source_record_too_large}
 
           :nomatch ->
-            source_line(file, cursor, acc <> chunk)
+            source_line(file, cursor, acc <> chunk, upper)
         end
 
       :eof when acc == <<>> ->

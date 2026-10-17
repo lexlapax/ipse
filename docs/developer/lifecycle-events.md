@@ -43,7 +43,7 @@ building block for selected notifications and the remaining delivery contracts.
 | Read prompt text | Selected transforms and read-only original/final-effective subscriptions with explicit capabilities | Broader lifecycle views and continuous feeds |
 | Extract entities | Owned prompt jobs can run deterministic extraction | Model work needs a separately admitted, accounted request capability |
 | Store derived facts | Prompt jobs use normal approved state actions with source-bound invocation receipts | Production storage adapters and complete forgetting policies |
-| Add recalled evidence to an answer | Before-request jobs publish bounded attributed context into a frozen request snapshot | Broader context lifecycle seams and explicit catch-up |
+| Add recalled evidence to an answer | Before-request jobs publish bounded attributed context into a frozen request snapshot; explicit history reads expose recorded views | Broader context seams and independent domain catch-up proof |
 | Consume generated text | Selected workers receive acknowledged visible-text frames or completed original/presented answer events | Keep these explicit content channels separate from sampled diagnostics |
 | Recover without duplicate effects | Source-bound job/action receipts, question checkpoints and no automatic replay | Independent package proof of domain deduplication and reindex policy |
 
@@ -79,6 +79,13 @@ transactional catch-up snapshot or retry a changing tail automatically.
 Page reads validate the selected records, not the entire journal or its session
 metadata. Full Session recovery validation and scope checks remain prerequisites
 for admitting any work from those facts.
+
+The optional fifth `source_page/5` argument is an exclusive, validated byte
+boundary. Bounded line reads do not parse later records, and reaching that fixed
+boundary returns `next: nil`. The four-argument API retains its existing open-tail
+semantics. The [history operation](extension-history.md) adds the missing SDK
+admission: own-session anchor/view validation, separate private grants, bounded
+pages and explicit skipped/gap rows. It does not forward raw journal pages.
 
 Pages are **private journal data**, including records unsupported by the event
 adapter. Do not forward them wholesale to workers or diagnostics. A source
@@ -183,11 +190,11 @@ private content must not acquire it by subscribing to a metadata topic.
 
 | Contract | Ordering and overload | Permitted response |
 | --- | --- | --- |
-| Implemented prompt notification | Finite ordered post-transform plan, one active callback, explicit required/optional outcomes | Exact acknowledgment only; metadata or separately granted private view |
+| Implemented prompt/answer notification | Finite ordered boundary plan, one active callback, explicit required/optional outcomes | Exact acknowledgment only; metadata or separately granted private view |
 | Diagnostic notification | Independent bounded queues; sampling/drop counts are visible; sink failures do not fail the turn | Acknowledge metadata only; no host actions or context changes |
 | Private content feed | Per-subscription sequence, bounded bytes/in-flight delivery, acknowledgment and explicit gaps/incomplete closure | Acknowledge the selected content view; effects require separate job admission |
 | Ordered boundary hook | Host awaits handlers in configured order at a named seam; deadline or invalid required result stops that transition | Schema-checked projection, context contribution or restrictive decision permitted at that seam |
-| Implemented prompt job | Host admits a bounded owned job against a committed source event; action proposals use the ordinary approval/intent/outcome path | Finite negotiated host actions; no recursive turn launch or implicit provider call |
+| Implemented prompt/answer job | Host admits a bounded owned job against a committed source event; action proposals use the ordinary approval/intent/outcome path | Finite negotiated host actions; no recursive turn launch or implicit provider call |
 
 An acknowledgment means the delivery was accepted, not that a graph write or
 model request succeeded. Job admission, action completion and job completion
@@ -195,7 +202,7 @@ have separate receipts. Subscriber failure cannot turn an unknown action into a
 successful one. Mandatory cleanup and recovery facts never depend on optional
 subscriber delivery, including a final close/owner-death notification.
 
-The implemented prompt-job plan is finite and uses one effectful
+The implemented event-job plan is finite and uses one effectful
 extension action lane per session, admitted at documented safe boundaries.
 Slow computation runs outside Session. A callback cannot synchronously reenter
 the Session waiting for it. Work needing interactive approval or clarification
@@ -305,6 +312,15 @@ Explicit catch-up/reindex is a separate approved bounded job over an authorized
 source range, preserving original source IDs and its own new job identity. It
 does not replay tools or assume old data-access/model authority. Retention limits,
 partial history and unavailable private content produce an explicit gap/refusal.
+The implemented [own-session history primitive](extension-history.md) supplies
+that recorded-view range to selected SDK code; source fixtures exercise an
+explicit catch-up command, question continuation and separate write approval.
+Domain deduplication/reindex policy and independent installed-package proof remain
+required. Reaching the range end does not establish complete original/effective
+coverage in legacy history.
+Cached history receipts also resolve physical anchors/projections and contiguous
+source spans during recovery, diagnostics and handoff validation. These checks do
+not rerun history operations or replace their cached pages.
 Tombstones/revisions must prevent a delayed extraction or reindex job from
 resurrecting forgotten facts; deletion of derived stores does not erase original
 journals or prior provider transfers.
@@ -342,7 +358,9 @@ Before freezing P22 core, extend the independent installed-package proof:
 
 Source fixtures now cover prompt-job admission, deterministic extraction, approved
 CAS writes, required recall, after-turn request isolation, question recovery and a
-delayed write rejected after concurrent forget. The complete independent installed
+delayed write rejected after concurrent forget. Additional SDK fixtures cover
+fixed-range history pagination, private grants, gaps and inert catch-up resume.
+The complete independent installed
 package proof above, including deduplication and bounded catch-up, remains pending.
 These fixtures do not complete P22 or establish production graph quality. P25 owns researched
 entity extraction, graph storage/retrieval and quality comparisons.
