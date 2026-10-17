@@ -10,7 +10,8 @@ document subsequent increments.
 state/effect seam; general actions, composition and context remain provisional.
 [Structured question checkpoints](extension-questions.md) now support explicit
 answered continuation; [approved workflow tools](extension-tool-actions.md) cover
-the existing file/shell tools. Service composition and context remain open.
+the existing file/shell tools. [Typed value services](extension-services.md) now
+compose through explicit operator bindings. Context and broader nested jobs remain open.
 Other names and limits below remain proposed contracts. Existing skills, explicit
 MCP tools and provider adapters remain available alongside the
 [initial session hooks](extension-hooks.md).

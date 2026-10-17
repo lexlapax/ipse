@@ -1,6 +1,6 @@
 defmodule Ipse.Extensions.Identity do
   @moduledoc "Closed activation identity shared by transforms, catalogs and owned invocations."
-  @keys ~w(instance artifact artifact_sha256 options_sha256 exports_sha256 scope source_sha256 sdk protocol capabilities order lifetime expires_at runtime host_sha256 generation allow_children)
+  @keys ~w(instance artifact artifact_sha256 options_sha256 exports_sha256 requires_sha256 services scope source_sha256 sdk protocol capabilities order lifetime expires_at runtime host_sha256 generation allow_children)
 
   def valid?(identity) when is_map(identity) do
     Enum.sort(Map.keys(identity)) == Enum.sort(@keys) and
@@ -13,9 +13,10 @@ defmodule Ipse.Extensions.Identity do
         identity["artifact"]
       ) and
       Enum.all?(
-        ~w(artifact_sha256 options_sha256 exports_sha256 source_sha256 host_sha256),
+        ~w(artifact_sha256 options_sha256 exports_sha256 requires_sha256 source_sha256 host_sha256),
         &hash?(identity[&1])
       ) and
+      Ipse.Extensions.Services.public_bindings?(identity["services"]) and
       identity["scope"] in ~w(operator project) and
       identity["sdk"] === 1 and identity["protocol"] === 1 and identity["generation"] === 1 and
       is_list(identity["capabilities"]) and

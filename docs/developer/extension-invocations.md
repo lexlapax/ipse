@@ -3,13 +3,14 @@
 P22A7 adds inert manifest-declared tools, operator commands and standalone typed
 services. They share the independent worker SDK and owner chain used by the
 [prompt/presentation hooks](extension-hooks.md). This increment does not complete
-P22: context contributions, worker-to-host service composition, broader
+P22: context contributions, broader nested job contracts,
 workflows, worker text handles and observability
 controls remain separate work. No provider or store is selected implicitly.
 P22A8 adds [finite host state calls](extension-host-calls.md) with explicit
 capability negotiation and separate mutation approval.
 P22A9 adds [structured questions and explicit continuations](extension-questions.md).
 P22A10 adds [approved file/shell workflow actions](extension-tool-actions.md).
+P22A11 adds [typed operator-bound value-service composition](extension-services.md).
 
 ## Inert declarations
 
@@ -72,8 +73,8 @@ An explicit idle embedded call
 command/service without a model request. `Session.exports/1` is inert inspection.
 The terminal exposes commands through `/ext NAME JSON_OBJECT` and lists the
 active catalog with `/ext`. Calling a command authorizes its selected callback,
-not arbitrary host effects. Service composition from another worker is not yet
-implemented by this standalone embedding interface.
+not arbitrary host effects. Worker composition uses the separately negotiated
+[service contract](extension-services.md), with explicit operator routes.
 
 The Session verifies the owned task PID/job reference, exact reviewed arguments,
 descriptor and lease. It syncs `extension_invocation_intent` before opening the
@@ -105,6 +106,7 @@ Action-looking fields inside `value` remain data. A separately negotiated
 `host_call` supports [documented state operations](extension-host-calls.md) and
 [structured questions](extension-questions.md) and
 [bounded file/shell calls](extension-tool-actions.md).
+It can also call [explicitly bound value services](extension-services.md).
 Unknown reply kinds/operations are refused. New actions must negotiate the typed
 outer protocol and reuse approval/intent boundaries; they cannot reinterpret
 domain JSON or command strings as executable actions.

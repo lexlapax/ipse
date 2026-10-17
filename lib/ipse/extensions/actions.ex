@@ -2,7 +2,7 @@ defmodule Ipse.Extensions.Actions do
   @moduledoc "Typed finite host-call continuations with source-bound durable operation receipts."
   alias Ipse.Extensions.Operation
 
-  @keys ~w(type version parent_invocation_id operation_id step identity_sha256 namespace context_sha256 request request_sha256 approval)
+  @keys ~w(type version parent_invocation_id operation_id step identity_sha256 namespace context_sha256 service request request_sha256 approval)
   @types ~w(extension_action_intent extension_action_result)
   @error {:error, :invalid_extension_action}
   @limit 16
@@ -25,7 +25,7 @@ defmodule Ipse.Extensions.Actions do
     _ -> @error
   end
 
-  def intent(parent, request, step, approval, cwd, context_sha256 \\ nil) do
+  def intent(parent, request, step, approval, cwd, context_sha256 \\ nil, service \\ nil) do
     with {:ok, namespace} <-
            Operation.namespace(
              parent["identity"],
@@ -42,6 +42,7 @@ defmodule Ipse.Extensions.Actions do
         "identity_sha256" => Ipse.Compaction.digest([parent["identity"]]),
         "namespace" => namespace,
         "context_sha256" => context_sha256,
+        "service" => service,
         "request" => request,
         "request_sha256" => Ipse.Compaction.digest([request]),
         "approval" => approval
@@ -73,7 +74,7 @@ defmodule Ipse.Extensions.Actions do
       "outcome" => event["outcome"]
     }
 
-    if Operation.question?(event["request"]),
+    if Operation.question?(event["request"]) or Operation.service?(event["request"]),
       do: Map.put(payload, "checkpoint", event["request"]["checkpoint"]),
       else: payload
   end
@@ -95,7 +96,8 @@ defmodule Ipse.Extensions.Actions do
         event["request"],
         outcome["status"],
         outcome["value"],
-        event["operation_id"]
+        event["operation_id"],
+        event["service"]
       ) and Ipse.Extension.validate(resume(event)) == :ok and bounded?(event)
   rescue
     _ -> false
@@ -123,6 +125,16 @@ defmodule Ipse.Extensions.Actions do
            ),
          true <- event["namespace"] == namespace,
          true <-
+           if(Operation.service?(request),
+             do:
+               Ipse.Extensions.Services.valid_binding?(
+                 parent["identity"],
+                 request,
+                 event["service"]
+               ),
+             else: is_nil(event["service"])
+           ),
+         true <-
            if(Operation.tool?(request),
              do: hash?(event["context_sha256"]),
              else: is_nil(event["context_sha256"])
@@ -149,6 +161,9 @@ defmodule Ipse.Extensions.Actions do
   end
 
   def restore([%{"metadata" => metadata} | _] = events) do
+    {:ok, catalog} = Ipse.Extensions.Catalog.from_metadata(metadata)
+    :ok = Ipse.Extensions.Services.validate_metadata(Map.get(metadata, "extensions", []), catalog)
+
     initial = %{
       parent: nil,
       action: nil,
@@ -158,7 +173,9 @@ defmodule Ipse.Extensions.Actions do
       results: [],
       question: nil,
       resume_needed: nil,
-      context_sha256: nil
+      context_sha256: nil,
+      identities: Map.new(Map.get(metadata, "extensions", []), &{&1["instance"], &1}),
+      catalog: catalog
     }
 
     Enum.reduce_while(events, {:ok, initial}, fn event, {:ok, state} ->
@@ -229,7 +246,8 @@ defmodule Ipse.Extensions.Actions do
          event["step"] == state.step + 1 and
          not MapSet.member?(state.seen, event["operation_id"]) and
          valid_intent?(event, state.parent, cwd) do
-      if not Operation.tool?(event["request"]) or event["context_sha256"] == state.context_sha256 do
+      if (not Operation.tool?(event["request"]) or event["context_sha256"] == state.context_sha256) and
+           service_source?(event, state) do
         {:ok,
          %{
            state
@@ -325,6 +343,18 @@ defmodule Ipse.Extensions.Actions do
   end
 
   defp keys?(map, keys), do: is_map(map) and Enum.sort(Map.keys(map)) == Enum.sort(keys)
+
+  defp service_source?(event, state) do
+    if Operation.service?(event["request"]) do
+      context = event["service"]
+
+      state.identities[context["identity"]["instance"]] == context["identity"] and
+        context["descriptor"] in state.catalog["entries"]
+    else
+      true
+    end
+  end
+
   defp id?(id), do: is_binary(id) and Regex.match?(~r/\A[a-f0-9]{32}\z/, id)
   defp hash?(hash), do: is_binary(hash) and Regex.match?(~r/\A[a-f0-9]{64}\z/, hash)
   defp bounded?(event), do: byte_size(Jason.encode!(event)) <= 65_536

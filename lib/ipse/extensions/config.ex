@@ -80,6 +80,16 @@ defmodule Ipse.Extensions.Config do
         "capabilities" => %{"type" => "array", "maxItems" => 32, "items" => @identifier},
         "allow_project" => %{"type" => "boolean"},
         "allow_children" => %{"type" => "boolean"},
+        "service_bindings" => %{
+          "type" => "array",
+          "maxItems" => 64,
+          "items" => %{
+            "type" => "object",
+            "additionalProperties" => false,
+            "required" => ~w(caller alias target artifact service),
+            "properties" => Map.new(~w(caller alias target artifact service), &{&1, @identifier})
+          }
+        },
         "expires_at" => %{"type" => "integer", "minimum" => 0}
       }
     }
@@ -142,6 +152,7 @@ defmodule Ipse.Extensions.Config do
 
   defp valid_trust?(trust) do
     artifact?(trust["artifact"]) and unique?(trust["capabilities"]) and
+      Ipse.Extensions.Services.validate_bindings(Map.get(trust, "service_bindings", [])) and
       Enum.all?(trust["capabilities"], &Regex.match?(~r/\A[a-z][a-z0-9_.-]{0,127}\z/, &1)) and
       (not Map.has_key?(trust, "expires_at") or is_integer(trust["expires_at"]))
   end

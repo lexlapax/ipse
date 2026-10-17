@@ -23,6 +23,11 @@ it never grants later mutation approval or manufactures a native provider call.
 linked leaf task. Session owns full approval and a request/job/identity/workspace
 gate; new nested instructions stop admission. Durable results preserve output
 completeness and native tool provenance without synthetic assistant calls.
+[Service composition](extension-services.md) resolves manifest requirements only
+through operator routes. OTP acyclic graph ordering pins complete dependency
+identities before startup; owned value jobs journal intent before target loading
+and result after schema/lease/cleanup checks. Nested effects are not inferred from
+returned data, and idle restore never executes either artifact.
 
 Ipse is an MIT-licensed, general-purpose local AI harness built around Elixir
 and OTP. The host role supports general-purpose tasks, with focused changes

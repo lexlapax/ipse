@@ -1,7 +1,8 @@
 # Extensions
 
 Ipse supports explicitly selected prompt/presentation hooks and manifest-declared
-tools, operator commands and standalone typed services. Both shipped hook examples
+tools, operator commands, standalone services and explicitly bound value-service
+composition. Both shipped hook examples
 are **disabled by default**. Independent local artifacts use the same SDK in
 separate Elixir VMs. Import and discovery remain inert; configuration trust and
 activation are separate.
@@ -81,7 +82,7 @@ For independent code, replace the built-in reference with its reviewed 64-charac
 digest and supply its declared options/capabilities. Supported capabilities are
 `transform.prompt`, `transform.presentation`, `invoke.tool`, `invoke.command`
 and `invoke.service`, plus `host.actions` with `host.state.read`/`host.state.write`
-or `host.question`/`host.tools`;
+or `host.question`/`host.tools`/`host.services`;
 unsupported capabilities fail explicitly. Invocation
 exports require inert argument/result schemas in the artifact manifest. Do not
 put credentials in extension options. No automatic memory backend is selected.
@@ -173,7 +174,7 @@ the operator's OS/filesystem access; ownership, deadlines and process-group
 cancellation do not themselves provide an OS sandbox. Initialize/transform
 callbacks must follow the SDK's effect-free contract; arbitrary trusted programs
 cannot be constrained by a return-value schema alone. Context contributions,
-worker service composition, broader lifecycle observation,
+broader nested service contracts, lifecycle observation,
 live controls and the extension-only
 memory/workflow proof remain [P22 work](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
 See the [implemented hook contract](../developer/extension-hooks.md).
@@ -188,9 +189,9 @@ Malformed arguments and duplicate native call IDs refuse code initialization.
 In interactive chat, `/ext` lists the active catalog locally. Invoke a declared
 command explicitly with `/ext ext__INSTANCE__ID {"text":"example"}` using its
 actual schema. This needs no model request, displays the returned JSON separately
-and does not overwrite the assistant answer. Embedded callers can invoke a typed
-service with `Session.invoke_export/4`; worker-to-worker composition is not yet
-available. Commands/services are admitted only while idle.
+and does not overwrite the assistant answer. Embedded callers invoke standalone
+services with `Session.invoke_export/4`. Worker composition uses the explicit
+operator bindings below. Commands/standalone services are admitted only while idle.
 
 These callbacks return schema-checked values. An artifact explicitly trusted for
 host state capabilities can also propose the finite operations below.
@@ -272,3 +273,29 @@ failure stops with an unknown outcome; inspect before retrying. Cancellation kil
 the owned tool task and ordinary shell process group, with existing macOS cleanup
 limits. Committed receipts restore without rerunning effects. See
 [protocol and limits](../developer/extension-tool-actions.md).
+
+## Service composition
+
+Reviewed artifacts can declare typed required service aliases with `host.actions`
+and `host.services`. Add `service_bindings` only to the caller artifact's operator
+trust record, selecting exact caller/target instances, target artifact and local
+service ID. Project configuration or a skill cannot grant a route. The target
+must already be imported, trusted and explicitly selected; there is no automatic
+dependency install/enable or fallback. See the [complete data contract](../developer/extension-services.md).
+
+Both required schemas must exactly match the selected service export. Missing
+routes, incompatible schemas and cycles refuse startup without running callbacks.
+Child sessions require an explicitly allowed dependency subset as well. Disabled
+instances stay inert; a route by itself starts nothing. No retrieval provider or
+memory backend is installed by this capability.
+
+Value-service contract 1 returns a typed result plus host provenance. Its worker
+has normal callback deadlines and must close before result commit. Returned
+actions/questions/nested calls are refused by this value contract; future
+interactive contracts need separate negotiation. Standalone services retain
+their explicitly declared invocation capabilities.
+
+Caller and target identity/lease are pinned. Expiry, failure or interruption stops
+with unknown outcome, without replay. Idle resume restores committed values without
+initializing either artifact. Config/code changes require the usual frozen-runner
+or reviewed fresh-session recovery. See [SDK ownership and limits](../developer/extension-services.md#owned-value-calls).

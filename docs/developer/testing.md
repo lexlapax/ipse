@@ -2762,3 +2762,39 @@ passed in the current worktree, including ongoing service-composition fixtures.
 The focused compatibility commit preserves that unfinished service work outside
 its staged diff. Documentation checks passed **67 Markdown files / 668 local
 file and heading links**.
+
+[The repaired workflow run](https://github.com/lexlapax/ipse/actions/runs/38998415023)
+for `8d7fad9` passed Ubuntu/macOS-14 on Elixir 1.18 / OTP 27: formatting,
+compilation, default tests, demo, packaging and extracted checks on both, plus
+macOS native enforcement. This establishes hosted workflow evidence, not local
+macOS execution on Serenity or verification of the subsequent service changes.
+
+## P22 typed service composition (2026-10-16)
+
+On Linux Serenity, source build passed. **50 focused service/invocation/registry/
+configuration tests** passed after using OTP graph utilities. The full
+`mix test --include native_sandbox` passed **471 tests, 14 macOS excluded**.
+Both Elixir 1.18.4 and 1.20.4 format checks pass locally; the floor formatter runs
+on Serenity's OTP 29, not a separate local OTP-27/macOS environment.
+
+Two independently compiled artifacts exercise inert requirements/operator route
+resolution, exact schemas/target activation pins, missing routes/targets and cycle
+refusal, project trust denial, owned value jobs with host provenance, no model
+requests or manufactured native messages, and byte-identical cached idle restore.
+An attempted host action in a value reply is refused without execution. Cancellation
+checks the actual target VM exits; interrupted service work stays idle/unknown on
+resume. Altered provenance with a recomputed outcome hash and deleted service
+receipts refuse restore before tail repair. See [contract](extension-services.md)
+and [operator procedure](../operator/extensions.md#service-composition).
+
+These are credential-free source fixtures. Nested interactive/effectful service
+contracts, context/evidence contributions, worker streams, observability and the
+independent installed package coverage proof remain separate work. No provider,
+database, downloader, paid account or release is selected by this increment.
+
+The Linux glibc-2.44 archive rebuilt with matching OTP 29.1.1 notices and passed
+`scripts/verify-package.exs` from the extracted runtime with isolated homes and
+a utility-only PATH. Help, demo, default/explicit workspaces, bundled MCP,
+delegation and hook/accounting/text fixtures passed. This checks the current
+package baseline; the independently installed service/workflow coverage proof
+remains pending. It is not macOS or live-provider evidence for this increment.

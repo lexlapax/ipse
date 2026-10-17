@@ -221,7 +221,9 @@ defmodule Ipse.Extensions.Worker do
     do:
       result["sdk"] === 1 and result["capabilities"] === state.manifest["capabilities"] and
         (result["exports"] || Ipse.Extensions.Catalog.empty()) ==
-          (state.manifest["exports"] || Ipse.Extensions.Catalog.empty())
+          (state.manifest["exports"] || Ipse.Extensions.Catalog.empty()) and
+        (result["requires"] || Ipse.Extensions.Services.empty()) ==
+          (state.manifest["requires"] || Ipse.Extensions.Services.empty())
 
   defp launch(artifact) do
     root = to_string(:code.root_dir())

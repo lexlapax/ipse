@@ -79,6 +79,8 @@ Trusted extensions can ask structured questions and resume from bounded checkpoi
 only after explicit answers; idle recovery never starts their callbacks.
 An explicit workflow-tool capability reuses bounded file/shell tools, workspace
 instruction checks and normal mutation approval.
+Typed service requirements use explicit operator bindings and owned value jobs;
+unknown routes, schema mismatches and cycles refuse activation.
 Resume pins code/configuration and restores committed projections without replay.
 See [extensions](docs/operator/extensions.md) for bounds and current SDK scope.
 Use `$project-orientation` to assess a repository's purpose, current changes,

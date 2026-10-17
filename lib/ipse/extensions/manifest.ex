@@ -20,6 +20,7 @@ defmodule Ipse.Extensions.Manifest do
       "license_file" => @text,
       "options_schema" => %{"type" => "object"},
       "exports" => %{"type" => "object"},
+      "requires" => %{"type" => "object"},
       "capabilities" => %{"type" => "array", "maxItems" => 32, "items" => @text},
       "files" => %{
         "type" => "array",
@@ -68,6 +69,11 @@ defmodule Ipse.Extensions.Manifest do
          :ok <- Schema.validate_schema(manifest["options_schema"]),
          true <- manifest["options_schema"]["type"] == "object",
          :ok <- Ipse.Extensions.Catalog.validate(manifest["exports"], manifest["capabilities"]),
+         :ok <-
+           Ipse.Extensions.Services.validate_requirements(
+             manifest["requires"],
+             manifest["capabilities"]
+           ),
          true <- valid_files?(manifest),
          true <- unique?(manifest["capabilities"]),
          true <-

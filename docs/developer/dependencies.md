@@ -60,6 +60,11 @@ Formatter compatibility is also checked with the existing Elixir dependency's
 official [1.18.4 OTP-27 archive](https://github.com/elixir-lang/elixir/releases/tag/v1.18.4)
 in an isolated temporary directory, extracted with OTP `:zip`. This installs no
 new system package and does not replace Serenity's 1.20.4/OTP-29 toolchain.
+P22A11 service composition adds no dependency. OTP `:digraph`/`:digraph_utils`
+provide acyclic checking/topological order with private temporary tables cleaned
+afterward. JSONSchex/Jason and the existing Worker handle schemas/transport.
+Custom code is limited to Ipse's operator routes, activation hashes and durable
+job receipts; no graph package, resolver framework or downloader is introduced.
 P22A2's worker bridge reuses the current ERTS, Elixir, Jason and native stdio
 helper, adding no dependency. The synthetic independent artifact fixture uses
 the existing Elixir compiler in a separate VM. A small Ipse bootstrap implements

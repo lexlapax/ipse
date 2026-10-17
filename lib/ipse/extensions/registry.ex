@@ -83,6 +83,8 @@ defmodule Ipse.Extensions.Registry do
           "artifact_sha256" => artifact.digest,
           "options_sha256" => Ipse.Compaction.digest([instance["options"]]),
           "exports_sha256" => Ipse.Extensions.Catalog.digest(artifact.manifest["exports"]),
+          "requires_sha256" => Ipse.Extensions.Services.digest(artifact.manifest["requires"]),
+          "services" => [],
           "scope" => instance["scope"],
           "source_sha256" => Manifest.sha256(instance["source"]),
           "sdk" => 1,
@@ -105,7 +107,13 @@ defmodule Ipse.Extensions.Registry do
                 identity: identity,
                 options: instance["options"],
                 store: store,
-                exports: artifact.manifest["exports"] || Ipse.Extensions.Catalog.empty()
+                exports: artifact.manifest["exports"] || Ipse.Extensions.Catalog.empty(),
+                requires: artifact.manifest["requires"] || Ipse.Extensions.Services.empty(),
+                bindings:
+                  Enum.filter(
+                    Map.get(ceiling, "service_bindings", []),
+                    &(&1["caller"] == instance["instance"])
+                  )
               }
             ]}}
       else
@@ -114,7 +122,12 @@ defmodule Ipse.Extensions.Registry do
     end)
     |> case do
       {:ok, entries} ->
-        if valid_entries?(%{extensions: entries}, now), do: {:ok, entries}, else: @error
+        with {:ok, entries} <- Ipse.Extensions.Services.resolve(entries),
+             true <- valid_entries?(%{extensions: entries}, now) do
+          {:ok, entries}
+        else
+          _ -> @error
+        end
 
       _ ->
         @error
@@ -133,7 +146,15 @@ defmodule Ipse.Extensions.Registry do
 
     is_list(entries) and length(entries) <= 8 and
       Enum.all?(entries, fn entry ->
-        is_map(entry) and Enum.sort(Map.keys(entry)) == [:exports, :identity, :options, :store] and
+        is_map(entry) and
+          Enum.sort(Map.keys(entry)) == [
+            :bindings,
+            :exports,
+            :identity,
+            :options,
+            :requires,
+            :store
+          ] and
           Ipse.Extensions.Projection.identity_valid?(entry.identity) and
           live?(entry.identity, now) and
           Enum.all?(entry.identity["capabilities"], &(&1 in @host_capabilities)) and
@@ -145,6 +166,7 @@ defmodule Ipse.Extensions.Registry do
       end) and
       entries == Enum.sort_by(entries, &{&1.identity["order"], &1.identity["instance"]}) and
       length(entries) == length(Enum.uniq_by(entries, & &1.identity["instance"])) and
+      Ipse.Extensions.Services.resolve(entries) == {:ok, entries} and
       match?({:ok, _}, Ipse.Extensions.Catalog.snapshot(config))
   rescue
     _ -> false
@@ -164,6 +186,9 @@ defmodule Ipse.Extensions.Registry do
                   true <-
                     Ipse.Extensions.Catalog.digest(artifact.manifest["exports"]) ==
                       entry.identity["exports_sha256"],
+                  true <-
+                    (artifact.manifest["requires"] || Ipse.Extensions.Services.empty()) ==
+                      entry.requires,
                   :ok <-
                     Ipse.MCP.Schema.validate_arguments(
                       artifact.manifest["options_schema"],
@@ -202,6 +227,8 @@ defmodule Ipse.Extensions.Registry do
       Ipse.Extensions.Invocation,
       Ipse.Extensions.Actions,
       Ipse.Extensions.Operation,
+      Ipse.Extensions.Services,
+      Ipse.Extensions.ServiceCall,
       Ipse.Extensions.ToolAction,
       Ipse.Extensions.State,
       Ipse.Questions,

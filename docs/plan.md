@@ -1111,6 +1111,14 @@ incomplete/ambiguous effect outcomes stop the callback
 chain without replay. Service composition, context/evidence, worker streams,
 observability and the independent package proof remain required P22 work.
 
+P22A11 implements [typed requirements and explicit operator service routes](developer/extension-services.md).
+Value contract 1 pins full dependency identities/schema, rejects missing/cyclic
+dependencies before activation, and journals owned jobs with typed result
+provenance. Idle restore runs no code. Nested interactive/effectful services
+require a separately negotiated future contract; value replies cannot acquire
+host effects. Context/evidence, worker streams, observability and the independent
+package coverage proof remain P22 work.
+
 Acceptance:
 
 1. Define the event taxonomy and payload/version/ordering/failure contract for

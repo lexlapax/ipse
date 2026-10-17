@@ -567,6 +567,8 @@ Explicit [extension questions](extensions.md#structured-questions) reuse the sam
 terminal forms and require a validated answer before starting a new continuation.
 [Workflow tool calls](extensions.md#workflow-tools) reuse file/shell policy and
 need separate mutation approval, even after a question was answered.
+[Value services](extensions.md#service-composition) compose only through explicit
+operator routes; bindings never install or enable dependencies implicitly.
 Broader SDK capabilities and live controls remain in progress. See the [scenario analysis](../developer/extension-scenarios.md) and
 [P22 delivery gates](../developer/extensions.md#delivery-sequence-and-extension-only-proof).
 

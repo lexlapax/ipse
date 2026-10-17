@@ -45,6 +45,9 @@ strings; inspect the target rather than copying the illustration. OTP admission
 uses major versions, not an ABI promise. Elixir requirements use `Version`.
 Import permits incompatible artifacts for storage; activation must call
 `Manifest.compatible?/1` again and refuse incompatible code.
+The optional `requires` object declares [typed service requirements](extension-services.md),
+not executable dependency discovery. Import validates aliases/version/schemas;
+activation resolves only explicit operator routes to already selected targets.
 
 Artifact identity is SHA-256 of the **original manifest bytes**, which bind every
 declared file's hash and length. Whitespace changes create a different identity.
@@ -166,7 +169,8 @@ prompt/display projections; P22A7 adds [static catalogs and value-only
 invocations](extension-invocations.md). P22A8 adds [host-mediated state
 operations](extension-host-calls.md); P22A9 adds [question checkpoints](extension-questions.md).
 P22A10 adds [bounded workflow tool actions](extension-tool-actions.md). Service composition,
-context and jobs remain later P22 increments.
+via [owned value jobs](extension-services.md) is implemented in P22A11. Context,
+broader nested job contracts and observations remain later P22 work.
 
 `test/extensions_worker_test.exs` compiles a uniquely named independent artifact
 with the existing Elixir compiler in a separate VM. It verifies inert import,

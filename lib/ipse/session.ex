@@ -509,8 +509,17 @@ defmodule Ipse.Session do
          true <- Ipse.Extensions.Registry.live?(parent["identity"]),
          true <- not Ipse.Extensions.Operation.question?(request) or questions_enabled?(s.config),
          {:ok, context_hash} <- extension_action_context(s, request),
+         {:ok, service} <- extension_service_context(s, request),
          {:ok, intent} <-
-           Actions.intent(parent, request, s.extension_actions + 1, approval, s.cwd, context_hash) do
+           Actions.intent(
+             parent,
+             request,
+             s.extension_actions + 1,
+             approval,
+             s.cwd,
+             context_hash,
+             service
+           ) do
       cond do
         Ipse.Extensions.Operation.question?(request) ->
           record(s, intent)
@@ -545,7 +554,7 @@ defmodule Ipse.Session do
           reply =
             if approval == "denied",
               do: {:denied, intent},
-              else: {:ok, intent, extension_execution_context(s)}
+              else: {:ok, intent, extension_execution_context(s, intent)}
 
           if Ipse.Extensions.Operation.tool?(request) and approval != "denied",
             do: notify(s, {:tool, "extension:tool.call", request})
@@ -574,7 +583,9 @@ defmodule Ipse.Session do
       )
       when ref != nil and phase in [:tool, :extension_command, :extension_service] do
     if Actions.result_intent(event) == intent and Actions.valid_result?(event) and
-         Ipse.Extensions.Registry.live?(s.extension_invocation["identity"]) do
+         Ipse.Extensions.Registry.live?(s.extension_invocation["identity"]) and
+         (is_nil(intent["service"]) or
+            Ipse.Extensions.Registry.live?(intent["service"]["identity"])) do
       record(s, event)
 
       if Ipse.Extensions.Operation.tool?(intent["request"]),
@@ -703,7 +714,7 @@ defmodule Ipse.Session do
 
       reply =
         if allowed == true,
-          do: {:ok, intent, extension_execution_context(s)},
+          do: {:ok, intent, extension_execution_context(s, intent)},
           else: {:denied, intent}
 
       GenServer.reply(action.from, reply)
@@ -2338,13 +2349,38 @@ defmodule Ipse.Session do
     end
   end
 
-  defp extension_execution_context(s) do
-    %{
+  defp extension_service_context(s, request) do
+    if Ipse.Extensions.Operation.service?(request) do
+      with {:ok, entry, context} <-
+             Ipse.Extensions.Services.lookup(
+               s.config,
+               s.extension_invocation["identity"],
+               request
+             ),
+           true <- Ipse.Extensions.Registry.live?(entry.identity) do
+        {:ok, context}
+      else
+        _ -> {:error, :service_unavailable}
+      end
+    else
+      {:ok, nil}
+    end
+  end
+
+  defp extension_execution_context(s, intent) do
+    context = %{
       root: Path.join(s.context_home, "extension-state-v1"),
       cwd: s.cwd,
       sandbox: Map.get(s.config, :sandbox, :off),
       parallel_child: Map.get(s.config, :parallel_child, false)
     }
+
+    if intent["service"] do
+      target = Enum.find(s.config.extensions, &(&1.identity == intent["service"]["identity"]))
+      Map.merge(context, %{service_entry: target, session_id: s.id, turn_id: s.turn_id})
+    else
+      context
+    end
   end
 
   defp restore_extension_question(events, messages, native) do
