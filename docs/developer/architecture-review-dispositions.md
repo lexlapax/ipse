@@ -30,7 +30,8 @@ The operator returned a second report for source
 session, retaining the first critique. It is a same-reviewer follow-up, not the
 requested fresh independent assessment. Reported settings were Opus 5.5,
 subscription, effort auto, no subagents or billing change; inspection lasted about
-six minutes plus writing. No code or tests were executed. The reviewer accepted
+six minutes plus writing. The one reported operator decision retained that existing
+session. No code or tests were executed. The reviewer accepted
 the scoped F/S repairs and explicit D policies, while identifying adjacent gaps
 and explicitly withholding architectural acceptance because of omissions.
 
@@ -91,8 +92,11 @@ Exact failed/passing runs are retained in the testing record.
 
 These A identifiers belong to the `b570ef8` follow-up, separate from F1–F7.
 Local regressions use synthetic content and isolated homes; no live model service
-or operator credentials are involved. Completion still requires the candidate's
-full handoff and hosted platform checks recorded in [testing](testing.md).
+or operator credentials are involved. Candidate `b5297be` passed its full local
+handoff and hosted Ubuntu/macOS source/package/installed checks, including both
+Mac enforcement steps. A1–A5 are addressed within that exercised scope; A6/A7 remain
+explicit limits. Exact evidence belongs in [testing](testing.md#current-evidence-and-next-checks),
+and these repairs do not close independent architectural coverage.
 
 | ID | Assessment and repair | Verification and remaining limits |
 | --- | --- | --- |
@@ -114,9 +118,10 @@ regression or measured counterexample, coherent operator/developer guidance and
 their own checks before commit/push; an earlier green baseline does not cover them.
 
 The `b570ef8` follow-up does not supply the required fresh-session coverage.
-After verifying these new repairs, refresh the
-[review brief](../operator/architecture-review.md) to pin the resulting source and
-prioritize the omissions above. The next reviewer must start without prior review
+The [new brief](../operator/architecture-review.md) pins repair source `b5297be`
+and prioritizes the omissions above. Its local and hosted handoffs passed.
+Both older briefs are preserved with provenance in the
+[archive](../archive/index.md). The next reviewer must start without prior review
 context, preserve its own source assessment before reading this register and
 record inspected test bodies and specific uncovered paths. Preserve both earlier
 critiques and challenge every disposition. Baseline security and P25 remain gated

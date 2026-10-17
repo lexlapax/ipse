@@ -23,9 +23,9 @@ quality. Subscription, API and installed Ollama checks have separate
 [provider verification](developer/testing.md#provider-verification-status).
 
 P23 is complete within its one-shot text/accounting scope. P24 is the active gate:
-the same-reviewer follow-up accepts earlier repairs but identifies adjacent gaps
-with local repairs verified and hosted checks pending. Fresh-session coverage of
-omitted surfaces is still required.
+the same-reviewer follow-up accepted earlier repairs and identified adjacent gaps,
+now repaired and verified at `b5297be`. Fresh-session coverage of omitted surfaces
+is still required.
 The operator's 2026-10-17 direction
 puts independent architectural challenge, security review and a large supervised
 self-development trial ahead of media. P24 now owns architecture/security
@@ -38,7 +38,7 @@ new source transfer or dependency, or select a production engine.
 | Milestone or gate | Current state | Next result |
 | --- | --- | --- |
 | [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within selected scope; source/native/package/installed and hosted Linux/macOS passed | Retain accounting invariants through P24/P25 review and repairs |
-| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Earlier repairs verified through `b570ef8`; A1–A5 local handoff passed; hosted checks and fresh independent coverage pending; no scan yet | Hosted repair verification, fresh independent omitted-surface review, then triaged baseline OpenAI security audit |
+| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Scoped repairs verified through `b5297be`, including A1–A5; fresh-session brief prepared; no scan yet | Fresh independent omitted-surface review, applicable repairs, then triaged baseline OpenAI security audit |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Planned revised scope; unstarted | Independent Codex/Ipse research, Ipse-authored repairs, fresh acceptance runs and final architecture/security review |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Deferred; proposed scope subject to P25 decisions | Independently selectable working/long-term memory tools and optional lifecycle policies |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; proposed scope subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
@@ -49,8 +49,8 @@ Feature status and runner readiness are separate. Accounted-model candidate
 `21e59fe` passed hosted Linux/macOS source, package and both independent installed
 proofs, including both Mac enforcement steps. The first review targeted that
 revision; the same-reviewer follow-up targeted repaired source `b570ef8` with
-documentation at `d14d6ac`. New repairs need their own baseline and refreshed
-independent coverage before P25's runner is frozen.
+documentation at `d14d6ac`. Repair candidate `b5297be` passed its local and hosted
+baseline; refreshed independent coverage is still needed before P25's runner is frozen.
 Actual revisions, platform results and investigation belong in
 [testing](developer/testing.md#current-evidence-and-next-checks).
 
@@ -140,45 +140,37 @@ and arbitrary trusted out-of-band calls cannot establish an invoice ceiling.
 
 ## P24: independent architecture validation and baseline security
 
-**In progress; follow-up repairs and independent coverage gate.** The follow-up
-source review at `b570ef8`, checked against documentation at `d14d6ac`, accepts the
-earlier scoped repairs but identified approval interleaving, journal acknowledgment
-timeouts and inconsistent call-ID bounds. These now have reproduced local fixtures
-and verified repairs, alongside missing-parent write refusal and corrected native
-cleanup guidance. Hosted verification is pending. The report came from
-the original reviewer's existing session, so it supplies follow-up evidence rather
-than the required fresh independent coverage. No tests were run by that reviewer.
-Journal growth and linear ledger hashing remain explicit residual limits.
+**In progress; fresh independent coverage and baseline security remain open.**
+Repair candidate `b5297be` passed its local source/native/demo/package/installed
+handoff and hosted Ubuntu/macOS matrix, including both Mac enforcement steps.
+It repairs the follow-up
+approval-interleaving, journal-acknowledgment and call-ID gaps, makes missing-parent
+write refusal definite before the write, and corrects native cleanup guidance.
+The [disposition register](developer/architecture-review-dispositions.md) owns
+F1–F7, S1–S3, D1–D9 and A1–A7; [testing](developer/testing.md#current-evidence-and-next-checks)
+owns exact revisions, counts and platform receipts.
 
-The first partial static critique reviewed committed Git objects at `21e59fe`; its proposed
-runtime regressions were unrun by the reviewer. The
-[disposition register](developer/architecture-review-dispositions.md) owns the
-seven findings, three additional concerns, nine design items and coverage limits.
-All seven concrete findings now have scoped repairs and local source/native/
-demo/package/installed plus hosted Ubuntu/macOS evidence. This includes actual
-Mac filesystem alias controls, protected operator sandbox authority and explicit
-persistence growth/prefix-check limits. CLI acknowledgment/ownership and large
-visible-delta repairs also passed those local and hosted gates at `fe54206`.
+Both returned critiques were partial static reviews with unrun regression
+proposals. The first targeted `21e59fe`; the follow-up targeted `b570ef8` with
+documentation at `d14d6ac`. The follow-up retained the original reviewer's context,
+accepted the earlier scoped repairs and explicitly withheld acceptance because
+of omissions. It does not satisfy the fresh-session requirement.
 
-The final process-group repair retains a separate waitable group owner through
-all signaling and cleanup paths, including native Mac signature checks. Its
-focused and full native-inclusive checks, demo/package/both installed proofs pass;
-hosted Ubuntu/macOS verification also passed at `b570ef8`, including native Mac
-signature and sandbox enforcement.
-Design-contract fixtures confirm inert inspection/handoff after extension expiry
-and whole-tree overdraw refusal even for a completed request within its own
-reservation. Keep that refusal and document the lack of private response quarantine;
-future memory identity/migration/deletion proposals must distinguish retained host
-evidence from retrieval state.
+Use the [fresh-session handoff](operator/architecture-review.md), pinned to
+`b5297be`. Prioritize unread validators, text/feed
+consumers, context/skills/auth, MCP client/schema/config, lifecycle/observability,
+sandbox code and their test bodies. Start without either earlier critique and
+preserve the independent source assessment before checking dispositions. If a
+session cannot cover the remaining work, retain a precise coverage checkpoint;
+do not substitute elapsed time or accepted repair claims for substantive inspection.
 
-Verify the A1–A5 repairs, then refresh the [review handoff](operator/architecture-review.md)
-to pin the resulting source and prioritize unread validators, text/feed consumers,
-context/skills/auth, MCP client/schema/config, lifecycle/observability, sandbox code
-and their test bodies. Require a fresh session without either prior critique;
-preserve its own source assessment before checking dispositions. The same-session
-report does not close that gate. Then run the triaged baseline scan on the
-resulting exact revision. P24 and
-P25 execution remain gated; repaired findings do not certify omitted surfaces.
+Retain explicit limits: journal growth/startup cost and same-size rewrite checks,
+linear ledger reads/hashes, unknown liability, fail-closed shared overdraw and
+unquarantined paid-response loss, pinned extension compatibility, and macOS
+detached-descendant cleanup. Future memory migration/deletion proposals must
+distinguish retrieval state from retained host evidence. Then run the triaged
+baseline scan on the resulting exact revision. P25 execution remains gated;
+repaired findings do not certify omitted surfaces.
 Read-only Security Cloud access checks found the repository and available scan
 credits; no matching environment was found and no scan or billing change was
 started. Access readiness does not close either review gate.

@@ -15,8 +15,9 @@ security audit, followed by P25's larger independent Codex/Ipse research and
 self-development comparison. The first critique and a same-session follow-up have returned;
 [repair verification and remaining review coverage](../developer/architecture-review-dispositions.md)
 are recorded separately. The follow-up accepted the earlier repairs but found
-adjacent gaps with local repairs now verified and hosted checks pending. A fresh review session must cover remaining
-omissions and the repaired candidate; the same-session report does not satisfy
+adjacent gaps repaired at `b5297be`, with local and hosted Linux/macOS handoffs
+passed. A fresh review session must cover remaining omissions and the repaired
+candidate; the same-session report does not satisfy
 that requirement. No security scan or larger trial has run. The
 [review and evaluation protocol](../developer/self-hosting-evaluation.md) defines
 the critique, dispositions, source-based comparison, Ipse-authored repairs,
@@ -24,7 +25,7 @@ held-out reruns and final architecture/security reviews. The
 [plan](../plan.md#current-priorities-and-status) owns scope and order; former-P24
 voice/media is deferred to P28 and does not block this text/research work.
 
-Use the [follow-up architecture-review handoff](architecture-review.md) for the
+Use the [fresh-session architecture-review handoff](architecture-review.md) for the
 operator's selected Claude subscription route in the existing Serenity project
 directory. Its pinned Git revision and source exclusions replace a required
 packet download or separate checkout. Use a passing candidate from

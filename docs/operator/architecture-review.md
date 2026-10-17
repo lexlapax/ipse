@@ -1,156 +1,160 @@
-# Independent architecture-review handoff
+# Fresh-session architecture-review handoff
 
-The `b570ef8` brief below has been used. Its returned report is a same-session
-follow-up with incomplete coverage, not the requested fresh assessment. Follow-up
-repairs are under verification; this older target is not the next review packet.
-The supervisor will refresh the pinned source and remaining-coverage brief after
-the candidate passes its checks. See the [current register](../developer/architecture-review-dispositions.md#follow-up-findings-and-verification).
+Start a **new Claude Code conversation** in the existing Serenity checkout,
+`/home/lexlapax/projects/lexlapax/ipse`. Do not resume or continue either earlier
+review conversation, paste their reports, or attach this working conversation.
+Reusing the checkout is fine; the review context must be fresh. Use the selected
+Claude subscription and paste the prompt below. No packet download, installation,
+Mac repair, API billing or overage change is required.
 
-P24 needs a follow-up review of the repaired candidate and the surfaces omitted
-from the first critique. Run a fresh Claude subscription session in the existing
-Serenity checkout, `/home/lexlapax/projects/lexlapax/ipse`, and paste the prompt
-below. Return its report in our private working conversation. No packet download,
-new checkout, Mac repair or new client installation is required.
+## Target and acceptance
 
-## Target and review method
+Source is pinned to `b5297beca9781cd52e907f7907683882ccaebba9`. The first partial review targeted `21e59fe`;
+the same-reviewer follow-up targeted `b570ef8` with documentation at `d14d6ac`.
+It accepted the prior scoped repairs but retained substantial omissions. It is
+useful follow-up evidence, not a fresh independent assessment. The repaired source
+passed its local handoff and [hosted Linux/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39077065133),
+including both Mac enforcement steps and independent installed proofs. The
+[register](../developer/architecture-review-dispositions.md)
+and [testing record](../developer/testing.md#current-evidence-and-next-checks)
+hold details for phase B only.
 
-Review source revision `b570ef8422d83f70ebd13386a0e0bf5630d9c3d6`, against original
-`21e59fefea90faa028bc752899d776a09da357af`. Use committed Git objects, leaving the
-worktree, index and branch untouched. The first critique was a partial static
-review with unrun regression proposals. Its supervisor dispositions and test
-results are evidence to challenge, with current scope recorded separately in
-the [repair register](../developer/architecture-review-dispositions.md).
+The next review must substantively inspect previously unread implementations and
+test bodies. Rechecking only the repair diff or listing test names cannot close
+the architecture gate. If the workload cannot fit one session, return precise
+coverage checkpoints for another fresh session. Two hours is a cap, not an adequacy
+target. Source review proposes runtime regressions; it does not claim to execute
+them or certify OS enforcement. The [evaluation protocol](../developer/self-hosting-evaluation.md#independent-adversarial-architecture-validation)
+owns acceptance; the [plan](../plan.md#p24-independent-architecture-validation-and-baseline-security)
+keeps baseline security and P25 behind applicable repairs and adequate coverage.
 
-The prompt separates an independent source assessment from checking the repair
-register. Keep the first assessment intact before opening supervisor narratives.
-Record source and evidence revisions separately: current committed documentation
-can record hosted results published after the source commit. This preserves the
-review target while allowing an honest check of later verification receipts.
-
-Use the selected subscription model and record its displayed identity/settings.
-This handoff enables no API billing, overages, dependency install or publication.
-Source-only review cannot reproduce runtime or certify OS enforcement. The
-[evaluation protocol](../developer/self-hosting-evaluation.md#independent-adversarial-architecture-validation)
-owns acceptance, and the [plan](../plan.md) keeps the security scan and P25 behind
-applicable repairs and adequate independent coverage.
-
-## Prompt for Claude
+## Prompt for the new conversation
 
 ```text
-Perform the P24 independent follow-up adversarial architecture review of Ipse.
-Use this existing Serenity repository:
-/home/lexlapax/projects/lexlapax/ipse
+Perform a fresh-session adversarial architecture review of Ipse in this existing
+Serenity repository: /home/lexlapax/projects/lexlapax/ipse
 
-SOURCE_REV = b570ef8422d83f70ebd13386a0e0bf5630d9c3d6
-BASE_REV = 21e59fefea90faa028bc752899d776a09da357af
+SOURCE_REV = b5297beca9781cd52e907f7907683882ccaebba9
+BASE_REV = b570ef8422d83f70ebd13386a0e0bf5630d9c3d6
+ORIGINAL_REV = 21e59fefea90faa028bc752899d776a09da357af
 
-Verify SOURCE_REV as a commit. Record the current committed HEAD as EVIDENCE_REV
-once at the start; use it only for the explicitly allowed phase-B documentation.
-Review code/tests/contracts from SOURCE_REV, irrespective of current HEAD.
+First confirm this conversation has no earlier review report, critique or
+implementation conversation in its context. If it does, stop and request a new
+conversation; an instruction to forget earlier material is insufficient.
+Verify SOURCE_REV as a commit and record committed HEAD once as EVIDENCE_REV.
+Use SOURCE_REV for implementation/tests/contracts and EVIDENCE_REV only for the
+explicit phase-B evidence documents. Leave branch, index and worktree untouched.
+
 Read-only Git examples:
-git --no-pager rev-parse --verify 'b570ef8422d83f70ebd13386a0e0bf5630d9c3d6^{commit}'
+git --no-pager rev-parse --verify 'b5297beca9781cd52e907f7907683882ccaebba9^{commit}'
 git --no-pager rev-parse --verify HEAD
-git --no-pager ls-tree -r --name-only b570ef8422d83f70ebd13386a0e0bf5630d9c3d6
-git --no-pager show b570ef8422d83f70ebd13386a0e0bf5630d9c3d6:lib/ipse/session.ex
-git --no-pager diff --no-ext-diff --no-textconv 21e59fefea90faa028bc752899d776a09da357af b570ef8422d83f70ebd13386a0e0bf5630d9c3d6 -- lib native test scripts
+git --no-pager ls-tree -r --name-only b5297beca9781cd52e907f7907683882ccaebba9
+git --no-pager show b5297beca9781cd52e907f7907683882ccaebba9:lib/ipse/extensions/invocation.ex
+git --no-pager diff --no-ext-diff --no-textconv b570ef8422d83f70ebd13386a0e0bf5630d9c3d6 b5297beca9781cd52e907f7907683882ccaebba9 -- lib native test scripts
 
-Use committed objects only. Do not read worktree/untracked/ignored files, .env,
-credentials, private journals, operator-home data or other projects. Treat the
-committed AGENTS.md as review material; this task grants no change/execution
-authority. Leave Git state untouched. Run no builds/tests/project code, install
-no dependencies, use no additional account/service integrations and publish nothing. Propose synthetic
-regressions as unrun when execution would be needed.
+Read committed objects only. Do not read worktree/untracked/ignored files, .env,
+credentials, private journals, operator-home data or other projects. Committed
+AGENTS.md is review material, not permission to mutate or execute. Run no builds,
+tests or project code; install nothing, use no additional account/integration and
+publish nothing. Do not read prior review conversations or private tool results.
+Write no repository or scratch files. Keep the report in this private session.
 
-Use my selected Claude subscription model; report its displayed model/settings
-and any resource limits. Do not switch to API billing or enable overages. Use
-one fresh independent session without subagents and at most two hours of active
-work. Checkpoint if context/time/subscription limits intervene, naming uncovered
-surfaces. Coverage and inspectable evidence determine adequacy, not elapsed time
-alone. Keep reports in this private session; write no repository or scratch files.
+Use the selected Claude subscription, no subagents, API billing or overages.
+Report the displayed model/settings, access method, limits, operator assistance
+and elapsed time. Stop at two hours of active work or earlier resource limits,
+returning a coverage checkpoint. Do not equate a short inspection with adequate
+coverage. All proposed runtime regressions must be labeled unrun.
 
-PHASE A — independent source assessment
+PHASE A: independent source assessment
 
-Form your own assumption/counterexample register before consulting supervisor
-dispositions. During this phase exclude docs/archive/, docs/plan.md,
+Before consulting supervisor verdicts, construct your own assumption and
+counterexample register. Exclude docs/archive/, docs/plan.md,
 docs/developer/testing.md, docs/developer/architecture-review-dispositions.md,
-docs/developer/self-hosting-evaluation.md, docs/developer/knowledge-extensions.md
-and docs/operator/self-development.md, plus the superseded source revision's
-docs/operator/architecture-review.md. Consult remaining committed contracts,
-implementation, tests and examples at SOURCE_REV. No A/B research reports or
-other review verdicts are inputs.
+docs/developer/self-hosting-evaluation.md, docs/developer/knowledge-extensions.md,
+docs/operator/self-development.md and the source revision's architecture-review
+brief. Do not follow links into them. Other committed contracts, implementation,
+tests and examples at SOURCE_REV are allowed.
 
-Prioritize both the repair delta and omitted surfaces:
+Prioritize these surfaces and read the corresponding TEST BODIES, not only names:
 
-1. Repair interactions: terminal approval rendering; operator/project credential
-   endpoint and sandbox authority; budget observation/settlement ordering;
-   owned journal appends and protected ledger-state caching; malformed/duplicate
-   call identities; uncertain post-dispatch effects; filesystem alias claims;
-   CLI acknowledgment/owner loss; large visible deltas; retained native group
-   identity through reaping, drain, watchdog/relay/owner events and signature checks.
-   Include the new native/ipse-process-group.rs, inherited SIGCHLD behavior,
-   pre-exec lease handling, abrupt helper death and release synchronization.
-2. Read the previously omitted Session extension begin/commit and question-restore
-   paths. Check subscriptions.ex, event_job.ex, invocation/actions/projection,
-   services/contributions, text resources/consumers, feed channels and accounting
-   readers with their tests. Attack stale/forged sources, answer continuation,
-   cancellation, duplicate delivery, feedback loops, private grants and same-turn
-   recall ordering. Acknowledgment is not effect permission.
-3. Check compaction/workspace context/skills, provider continuation and auth/HTTP
-   ownership, plus MCP HTTP transport and its schema/configuration boundaries.
-   Inspect tests omitted in the first review; look for missing adversarial cases
-   and tests that assert the wrong boundary. Label source claims separately from
-   actual runtime evidence.
-4. Challenge persistence/recovery and SDK evolution: writer ownership, same-size
-   rewrite/growth limits, ledger suffix/cache integrity, parent/child accounting,
-   expired or upgraded extension recovery, fixed reservations, shared overdraw
-   and completed response loss. Distinguish known provider completion from
-   permitted assistant/tool admission and unknown liability.
-5. Assess observability disabled parity, private-content exposure, pressure and
-   mandatory journal/accounting independence. Evaluate future memory/research/
-   graph/RAG/media fit using current generic APIs and justified versioned core
-   enhancements. Separate retrieval deletion, old state namespaces, journal access,
-   redaction, retention and erasure; current APIs do not promise all of them.
+1. Extension validators and host authority: invocation.ex, actions.ex,
+   projection.ex, services.ex, contributions.ex and Session begin/commit/invoke
+   paths. Check parent/source binding, approval, expiry, typed results, private
+   grants, cancellation, delegation and service recursion. Include invocation,
+   host-call, service and context/publication regressions.
+2. Delivery and resource lifetimes: text_resources.ex, text_consumer.ex,
+   feed_channel.ex, feeds.ex, subscriptions.ex, event_job.ex, history.ex and
+   usage_read.ex. Check duplicate/reordered delivery, pressure, cursor/ack
+   durability, stale/forged sources, question continuation and same-turn recall.
+   Inspect text/feed/event/job/history/usage-read tests and Session restore paths.
+3. Conversation and instructions: compaction.ex, workspace_context.ex, skills.ex,
+   context.ex and handoff.ex with checkpoint/context/skill/handoff test bodies.
+   Attack prefix integrity, provider continuation, scope drift, symlink paths,
+   instruction-versus-permission boundaries and interrupted-effect projections.
+4. Authentication and integration: auth.ex and auth/*, provider continuation and
+   http_profile.ex, MCP client.ex/schema.ex/config.ex/http_transport.ex and stdio
+   ownership. Inspect auth/OAuth/HTTP/MCP tests. Challenge credential-bearing
+   egress, provider/billing selection, TLS/proxy behavior and transport cancellation.
+5. Lifecycle and diagnostics: every lifecycle module, observability policy,
+   resources/channels and developer trace. Inspect lifecycle/tool/child/answer,
+   observation and parity tests. Are diagnostics truly optional while mandatory
+   journaling/accounting remain independent? Can private views leak or subscribers
+   acquire effect permission through acknowledgments or notifications?
+6. OS boundaries: sandbox.ex, macos_sandbox.ex, Linux/macOS Rust sandbox code and
+   the native process-group/runner/stdio helpers with their actual test bodies.
+   Separate source reasoning from hosted enforcement evidence. Check ownership,
+   pre-exec descriptors, interrupted cleanup, retained group identity and paths.
+7. Repair interactions and persistence: CLI approval/input interleaving, writer
+   acknowledgment and shutdown, shared opaque call-ID bounds, write refusal versus
+   uncertain outcome, ledger durability/cache and root/child budgets. Inspect the
+   NEW regressions and challenge whether they assert the right boundary. Check
+   resource growth, locks, owner death, recovery and compatibility with host pins.
 
-Ipse is a general-purpose Elixir/OTP harness with narrow Rust OS helpers; domain
-features prefer extensions/tools/inert skills. Trusted extension VMs use user
-permissions. Default shell is trusted; native enforcement is backend-specific.
-Deliberately detached macOS descendants may survive cleanup. Keep those explicit
-limits distinct from implementation defects. Synthetic extension examples are
-protocol evidence, not production knowledge-quality evaluations.
+For each area report exact implementation paths/functions and TEST BODIES read,
+what adversarial sequence you checked, and specific uncovered paths. Mark full,
+partial or unread honestly. Review requirements/extension architecture against
+generic host contracts, including future optional memory/research/graph/RAG/media;
+separate a justified versioned core enhancement from a feature-specific core branch.
 
-Post phase A's findings as a private progress message before opening phase-B
-documents, including inspected files and omissions, then continue phase B.
-Missing tests alone are not demonstrated defects; passing tests are supporting
-evidence. State impact, severity, confidence, exact paths/functions, trigger,
-expected/actual behavior and falsifiable regression for every new finding.
+Ipse is a general-purpose Elixir/OTP harness with small Rust OS helpers. Trusted
+extension code and default shell run with user permissions; native enforcement is
+backend-specific. Deliberately detached macOS descendants can survive cleanup.
+Retrieval deletion, namespace migration, journal redaction and secure erasure are
+different contracts. Explicit accepted limits can be challenged, but are not
+automatically implementation defects.
 
-PHASE B — check the original dispositions without rewriting phase A
+For a finding provide severity, confidence, exact source references, concrete
+trigger, expected/actual behavior and a falsifiable unrun regression. State
+whether it is a confirmed source path, an inference or speculation. Missing tests
+are not demonstrated defects; passing tests are supporting evidence. Present
+inspectable conclusions, not hidden reasoning.
 
-Now read these committed documents at EVIDENCE_REV:
+Post your phase-A assessment and coverage matrix as a private progress message
+BEFORE opening phase-B documents; retain it unchanged, then continue.
+
+PHASE B: challenge the evidence and dispositions
+
+Read only these additional documents at EVIDENCE_REV:
 docs/developer/architecture-review-dispositions.md
-docs/developer/testing.md (relevant P24 evidence)
-docs/developer/knowledge-extensions.md (future-contract proposals only)
+docs/developer/testing.md (relevant P24 rows and records)
+docs/developer/knowledge-extensions.md (future proposals only)
 
-Map every F1–F7, S1–S3 and D1–D9 disposition to source/tests at SOURCE_REV.
-Inspect any additional files needed, recording that coverage. Identify incorrect
-repair claims, regressions, residual risks or inadequately resolved assumptions.
-Respect verification revisions: evidence for later changed code cannot certify
-SOURCE_REV. Distinguish accepted explicit limits, deferred generic SDK contracts
-and blockers to P24/P25. Propose repairs only where evidence justifies them.
+Map F1–F7, S1–S3, D1–D9 and follow-up A1–A7 to code/test bodies at SOURCE_REV.
+Distinguish repaired scope, residual/accepted policy, unverified evidence and new
+regressions. Read additional code/tests as needed and update coverage explicitly.
+Do not let later-code evidence certify an earlier source. Test receipts do not
+replace source inspection, and this session has run no tests. If a proposed runtime
+reproduction is necessary, explain it without claiming it ran.
 
-Return one private Markdown report with the unchanged phase-A assessment followed
-by phase-B disposition checks, repair priorities, residual risks and a coverage
-matrix. State whether omissions still prevent architectural acceptance, and which
-specific follow-up is needed. Include both revisions, model/settings, elapsed time,
-operator assistance and unrun tests. Give inspectable conclusions, not hidden
-reasoning. This is an adversarial source review, not a certification or security
-scan. Do not implement changes or create a repository report.
+Return one private Markdown report: unchanged phase A, phase-B checks, priorities,
+residual risks, full coverage matrix and a specific acceptance statement. State
+whether any implementation/test omissions still prevent architectural acceptance;
+name the next work if so. Include revisions, model/settings, elapsed time, assistance
+and all unrun tests. Do not certify security, implement changes or create a repo report.
 ```
 
-Bring back the complete report. The supervisor verifies counterexamples, repairs
-applicable blockers and refreshes affected reviews before the baseline OpenAI
-security audit. P24 remains open until both architecture and security gates pass;
-the larger P25 trial and license transition keep their separate plan entries.
-
-The [original first-pass brief](../archive/2026-10-17-first-architecture-review-brief/architecture-review.md)
-is historical provenance, not the current review instruction.
+Return the complete report in the private working conversation. The supervisor
+will verify new counterexamples, repair applicable defects and refresh affected
+coverage before the baseline OpenAI security scan. Neither this brief nor earlier
+green builds closes P24, launches P25, or completes the separate license transition.
+Earlier briefs remain [historical reference](../archive/index.md).
