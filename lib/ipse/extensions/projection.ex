@@ -174,7 +174,7 @@ defmodule Ipse.Extensions.Projection do
   end
 
   defp validate_event(%{"type" => type}, state, _registered)
-       when type in ~w(extension_invocation_intent extension_invocation_result extension_action_intent extension_action_result extension_question extension_continuation_intent) do
+       when type in ~w(extension_invocation_intent extension_invocation_result extension_action_intent extension_action_result extension_question extension_continuation_intent extension_context_snapshot) do
     if is_nil(state.active), do: {:ok, state}, else: @invalid
   end
 

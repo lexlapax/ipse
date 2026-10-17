@@ -84,6 +84,7 @@ defmodule Ipse.Session do
          :ok <- Journal.repair_tail(dir, id),
          {:ok, events} <- Journal.load(dir, id),
          {:ok, accounting} <- Ipse.Usage.restore(events, id),
+         {:ok, extension_state} <- Actions.restore(events),
          {:ok, messages} <- restore(events),
          {:ok, _research} <- Ipse.Research.restore(events),
          {:ok, question, messages} <- restore_question(events, messages),
@@ -109,6 +110,7 @@ defmodule Ipse.Session do
             skill_discovery_options(config)
           ),
         messages: messages,
+        extension_contributions: extension_state.contributions,
         compaction: nil,
         tool_decision:
           if(question && question[:kind] == :extension,
@@ -582,10 +584,18 @@ defmodule Ipse.Session do
           s
       )
       when ref != nil and phase in [:tool, :extension_command, :extension_service] do
-    if Actions.result_intent(event) == intent and Actions.valid_result?(event) and
-         Ipse.Extensions.Registry.live?(s.extension_invocation["identity"]) and
-         (is_nil(intent["service"]) or
-            Ipse.Extensions.Registry.live?(intent["service"]["identity"])) do
+    with true <- Actions.result_intent(event) == intent and Actions.valid_result?(event),
+         true <- Ipse.Extensions.Registry.live?(s.extension_invocation["identity"]),
+         true <-
+           is_nil(intent["service"]) or
+             Ipse.Extensions.Registry.live?(intent["service"]["identity"]),
+         {:ok, contributions} <-
+           Ipse.Extensions.Contributions.apply_result(
+             s.extension_contributions,
+             s.extension_invocation,
+             s.extension_action_results,
+             event
+           ) do
       record(s, event)
 
       if Ipse.Extensions.Operation.tool?(intent["request"]),
@@ -595,11 +605,12 @@ defmodule Ipse.Session do
        %{
          s
          | extension_action: nil,
+           extension_contributions: contributions,
            extension_action_unknown: event["outcome"]["status"] == "unknown",
            extension_action_results: s.extension_action_results ++ [event]
        }}
     else
-      {:reply, {:error, :invalid_extension_action}, s}
+      _ -> {:reply, {:error, :invalid_extension_action}, s}
     end
   end
 
@@ -617,7 +628,8 @@ defmodule Ipse.Session do
        "question_waiting" => not is_nil(s.question),
        "active_worker" => not is_nil(s.task),
        "accounting" => Ipse.Usage.snapshot(s.accounting),
-       "context" => Ipse.Diagnostics.context(s.messages, s.config, system_message(s))
+       "context" => Ipse.Diagnostics.context(s.messages, s.config, system_message(s)),
+       "extension_context" => Ipse.Extensions.Contributions.summary(s.extension_contributions)
      }, s}
   end
 
@@ -1259,7 +1271,9 @@ defmodule Ipse.Session do
           runtime(s),
           s.context_snapshot,
           Map.get(s.config, :sandbox, :off)
-        ) <> delegation_instructions(s.config)
+        ) <>
+          delegation_instructions(s.config) <>
+          Ipse.Extensions.Contributions.render(s.extension_contributions)
     }
   end
 
@@ -1385,6 +1399,14 @@ defmodule Ipse.Session do
 
   defp launch_request(s, config, messages, tools, phase) do
     s = admit_request(s, config, Atom.to_string(phase))
+
+    if phase == :model and map_size(s.extension_contributions) > 0,
+      do:
+        record(
+          s,
+          Ipse.Extensions.Contributions.snapshot(s.extension_contributions, s.active_request)
+        )
+
     owner = self()
     job_ref = make_ref()
     request_id = s.active_request["request_id"]
@@ -2372,7 +2394,10 @@ defmodule Ipse.Session do
       root: Path.join(s.context_home, "extension-state-v1"),
       cwd: s.cwd,
       sandbox: Map.get(s.config, :sandbox, :off),
-      parallel_child: Map.get(s.config, :parallel_child, false)
+      parallel_child: Map.get(s.config, :parallel_child, false),
+      contributions: s.extension_contributions,
+      identity: s.extension_invocation["identity"],
+      actions: s.extension_action_results
     }
 
     if intent["service"] do

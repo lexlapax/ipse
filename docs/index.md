@@ -43,6 +43,7 @@ start. Use the guides below for operation, development, and project context.
 | [Extension questions](developer/extension-questions.md) | Structured clarification, bounded checkpoints, explicit answered continuations and inert recovery |
 | [Extension tool actions](developer/extension-tool-actions.md) | Approved bounded file/shell workflows, instruction preflight, output completeness and durable receipts |
 | [Extension services](developer/extension-services.md) | Typed requirements, explicit operator routes, acyclic activation pins and owned value-service jobs |
+| [Extension context](developer/extension-context.md) | Bounded session contributions, assertion/evidence provenance, request snapshots and cached recovery |
 | [Extension adoption scenarios](developer/extension-scenarios.md) | Bundled/third-party/generated feature walkthroughs, artifact installation, temporary use and deferred host capabilities |
 | [Runtime capability boundaries](developer/runtime-capabilities.md) | Framework comparison, usage/cost facts, text/voice streams and core versus extension ownership |
 | [Usage accounting](developer/usage-accounting.md) | Implemented identities, normalized usage snapshots and recovery validation |

@@ -174,6 +174,8 @@ defmodule Ipse.Extensions.Actions do
       question: nil,
       resume_needed: nil,
       context_sha256: nil,
+      contributions: %{},
+      context_request: nil,
       identities: Map.new(Map.get(metadata, "extensions", []), &{&1["instance"], &1}),
       catalog: catalog
     }
@@ -266,19 +268,50 @@ defmodule Ipse.Extensions.Actions do
   defp validate_event(%{"type" => "extension_action_result"} = event, state, _) do
     question = Operation.question?(event["request"])
 
-    if state.action != nil and result_intent(event) == state.action and valid_result?(event) and
-         (not question or not is_nil(state.question)),
-       do:
-         {:ok,
-          %{
-            state
-            | action: nil,
-              unknown: event["outcome"]["status"] in ~w(unknown cancelled),
-              results: state.results ++ [event],
-              question: nil,
-              resume_needed: if(event["outcome"]["status"] == "answered", do: event)
-          }},
+    with true <-
+           state.action != nil and result_intent(event) == state.action and valid_result?(event),
+         true <- not question or not is_nil(state.question),
+         {:ok, contributions} <-
+           Ipse.Extensions.Contributions.apply_result(
+             state.contributions,
+             state.parent,
+             state.results,
+             event
+           ) do
+      {:ok,
+       %{
+         state
+         | action: nil,
+           unknown: event["outcome"]["status"] in ~w(unknown cancelled),
+           results: state.results ++ [event],
+           question: nil,
+           resume_needed: if(event["outcome"]["status"] == "answered", do: event),
+           contributions: contributions
+       }}
+    else
+      _ -> @error
+    end
+  end
+
+  defp validate_event(%{"type" => "request_admitted", "kind" => "model"} = event, state, _) do
+    if is_nil(state.context_request) and is_nil(state.question) do
+      request = if map_size(state.contributions) > 0, do: event
+      {:ok, %{state | context_request: request}}
+    else
+      @error
+    end
+  end
+
+  defp validate_event(%{"type" => "extension_context_snapshot"} = event, state, _) do
+    if state.context_request != nil and
+         event ==
+           Ipse.Extensions.Contributions.snapshot(state.contributions, state.context_request),
+       do: {:ok, %{state | context_request: nil}},
        else: @error
+  end
+
+  defp validate_event(%{"type" => "request_finished"}, state, _) do
+    if is_nil(state.context_request) and is_nil(state.question), do: {:ok, state}, else: @error
   end
 
   defp validate_event(%{"type" => "extension_question"} = event, state, _) do
@@ -320,12 +353,13 @@ defmodule Ipse.Extensions.Actions do
   end
 
   defp validate_event(%{"type" => type}, state, _) when type in ~w(cancelled turn_finished) do
-    {:ok, %{state | parent: nil, action: nil, question: nil, resume_needed: nil}}
+    {:ok,
+     %{state | parent: nil, action: nil, question: nil, resume_needed: nil, context_request: nil}}
   end
 
   defp validate_event(%{"type" => "message", "message" => %{"role" => "user"}}, state, _) do
     if is_nil(state.question),
-      do: {:ok, %{state | parent: nil, action: nil, resume_needed: nil}},
+      do: {:ok, %{state | parent: nil, action: nil, resume_needed: nil, context_request: nil}},
       else: @error
   end
 

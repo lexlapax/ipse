@@ -4,7 +4,9 @@ P22A4 implements a generic registry/host for two stable capabilities:
 `transform.prompt` and `transform.presentation`. The two compiled examples and
 independent worker artifacts share the same JSON SDK. P22A7 also implements
 [typed tool/command/service invocation](extension-invocations.md). Broader
-[lifecycle/state/composition/workflow contracts](extensions.md) remain targets;
+[lifecycle contracts](extensions.md) remain targets; scoped state, questions,
+workflow tools, value services and [context publications](extension-context.md)
+are now implemented as separately negotiated invocation host calls;
 this increment does not freeze the complete SDK or complete P22.
 See [operator procedures](../operator/extensions.md) and
 [artifact/worker SDK](extension-artifacts.md).

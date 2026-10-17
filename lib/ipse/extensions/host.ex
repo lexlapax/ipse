@@ -173,6 +173,9 @@ defmodule Ipse.Extensions.Host do
   defp execute_action(context, intent, %{"op" => "service.call"}),
     do: Ipse.Extensions.ServiceCall.execute(context, intent)
 
+  defp execute_action(context, intent, %{"op" => "context.publish"}),
+    do: Ipse.Extensions.Contributions.execute(context, intent)
+
   defp execute_action(context, intent, request),
     do: State.execute(context.root, intent["namespace"], request, intent["operation_id"])
 

@@ -82,7 +82,7 @@ For independent code, replace the built-in reference with its reviewed 64-charac
 digest and supply its declared options/capabilities. Supported capabilities are
 `transform.prompt`, `transform.presentation`, `invoke.tool`, `invoke.command`
 and `invoke.service`, plus `host.actions` with `host.state.read`/`host.state.write`
-or `host.question`/`host.tools`/`host.services`;
+or `host.question`/`host.tools`/`host.services`/`host.context`;
 unsupported capabilities fail explicitly. Invocation
 exports require inert argument/result schemas in the artifact manifest. Do not
 put credentials in extension options. No automatic memory backend is selected.
@@ -299,3 +299,26 @@ Caller and target identity/lease are pinned. Expiry, failure or interruption sto
 with unknown outcome, without replay. Idle resume restores committed values without
 initializing either artifact. Config/code changes require the usual frozen-runner
 or reviewed fresh-session recovery. See [SDK ownership and limits](../developer/extension-services.md#owned-value-calls).
+
+## Context and evidence
+
+An artifact trusted for `host.actions` and `host.context` can explicitly publish
+context from its tool, command or standalone service. Publications replace only
+that instance's current session set; publishing an empty set clears it. Fresh
+sessions and children inherit no sets. This does not enable automatic memory,
+select a retrieval backend or grant mutation/provider permission.
+
+Each set has at most eight items with IDs, version labels, text, priority and a
+source. Assertions remain unverified. Receipt-backed excerpts must match literal
+text from an earlier successful host action in that invocation; provenance proves
+recorded text, not truth or freshness. Main requests use attributed JSON context
+after mandatory instructions. Global rendered context is limited to 16 KiB and
+full SDK envelopes must fit; refusal preserves existing context without eviction
+or truncation. See [request examples and exact limits](../developer/extension-context.md).
+
+Idle resume restores committed contributions and request snapshots without
+running callbacks or fetching again. A committed publication survives cancellation
+of the remaining callback. Updating/clearing is explicit; clearing does not erase
+old journals or already delivered provider text. Diagnostic inspection reports
+only counts, bytes and digest. Saved data has no automatic freshness/TTL guarantee.
+Changes to pinned code/config still require the documented recovery path.

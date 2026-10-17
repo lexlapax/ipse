@@ -1119,6 +1119,14 @@ require a separately negotiated future contract; value replies cannot acquire
 host effects. Context/evidence, worker streams, observability and the independent
 package coverage proof remain P22 work.
 
+P22A12 implements [session context and receipt-bound evidence](developer/extension-context.md).
+Explicit publications replace only the caller's bounded set. Assertions remain
+unverified; literal excerpts can bind successful prior action receipts. Main
+requests pin exact context snapshots before dispatch; idle resume uses committed
+data without callbacks or retrieval. No mandatory instructions/history are
+discarded. Worker streams, observability/debugging, the independent installed
+package coverage proof and supervised review remain required P22 work.
+
 Acceptance:
 
 1. Define the event taxonomy and payload/version/ordering/failure contract for

@@ -184,7 +184,11 @@ defmodule Ipse.Extensions.Services do
                  d["name"] == binding["name"]
              end)
          end)
-       end), do: :ok, else: @error
+       end) do
+      :ok
+    else
+      @error
+    end
   rescue
     _ -> @error
   end

@@ -83,6 +83,8 @@ Typed service requirements use explicit operator bindings and owned value jobs;
 unknown routes, schema mismatches and cycles refuse activation.
 Resume pins code/configuration and restores committed projections without replay.
 See [extensions](docs/operator/extensions.md) for bounds and current SDK scope.
+Explicit context publications support bounded assertions or receipt-backed
+excerpts, with cached request snapshots and separate mandatory instructions.
 Use `$project-orientation` to assess a repository's purpose, current changes,
 and available checks before choosing next steps; see
 [project assessment](docs/operator/usage.md#working-with-the-agent).

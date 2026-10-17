@@ -28,6 +28,11 @@ through operator routes. OTP acyclic graph ordering pins complete dependency
 identities before startup; owned value jobs journal intent before target loading
 and result after schema/lease/cleanup checks. Nested effects are not inferred from
 returned data, and idle restore never executes either artifact.
+[Context contributions](extension-context.md) replace only the caller's session
+set, with bounded asserted data or excerpts bound to earlier successful action
+receipts. Main requests sync exact snapshots before dispatch; cached sets survive
+idle resume without retrieval. Mandatory instructions/messages/native data remain
+intact, and diagnostic summaries expose counts/bytes/digests rather than text.
 
 Ipse is an MIT-licensed, general-purpose local AI harness built around Elixir
 and OTP. The host role supports general-purpose tasks, with focused changes

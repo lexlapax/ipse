@@ -2751,10 +2751,11 @@ workflow evidence. Two short multiline `if`/`with` expressions format differentl
 under Elixir 1.18 and 1.20. Explicit block equivalents preserve behavior.
 
 The official Elixir 1.18.4 OTP-27 archive was downloaded to `/tmp` and extracted
-using OTP `:zip`, without replacing the system toolchain. Its formatter runs on
-Serenity's OTP 29. Both the 1.18.4 and 1.20.4 format checks pass after the repair.
-This is local floor-formatter validation, not local OTP-27/macOS runtime evidence.
-The next hosted run must establish those platform checks independently. See
+using OTP `:zip`, without replacing the system toolchain. A later P22A12 audit
+found the initial `bin/mix` invocation resolved Elixir through the default PATH,
+so that local invocation did not independently prove the 1.18 formatter ran.
+The hosted result below establishes compatibility for the workflow repair. Use
+an explicit Elixir executable with the Mix script as described in
 [operator recovery](../operator/troubleshooting.md#build-and-sockets).
 
 Warnings-as-errors compilation and **48 focused workflow/Runner/service tests**
@@ -2774,8 +2775,13 @@ macOS execution on Serenity or verification of the subsequent service changes.
 On Linux Serenity, source build passed. **50 focused service/invocation/registry/
 configuration tests** passed after using OTP graph utilities. The full
 `mix test --include native_sandbox` passed **471 tests, 14 macOS excluded**.
-Both Elixir 1.18.4 and 1.20.4 format checks pass locally; the floor formatter runs
-on Serenity's OTP 29, not a separate local OTP-27/macOS environment.
+The initial local floor-formatter claim was invalid because the Mix launcher
+resolved Elixir from the default PATH. The
+[service hosted run](https://github.com/lexlapax/ipse/actions/runs/38999961420)
+for `ea0565b` stopped at a short multiline `if` layout on both platforms; runtime
+and package checks were skipped. P22A12 replaces that expression with an explicit
+block and validates both actual formatters; this does not retroactively establish
+hosted service runtime evidence.
 
 Two independently compiled artifacts exercise inert requirements/operator route
 resolution, exact schemas/target activation pins, missing routes/targets and cycle
@@ -2798,3 +2804,38 @@ a utility-only PATH. Help, demo, default/explicit workspaces, bundled MCP,
 delegation and hook/accounting/text fixtures passed. This checks the current
 package baseline; the independently installed service/workflow coverage proof
 remains pending. It is not macOS or live-provider evidence for this increment.
+
+## P22 session context and evidence (2026-10-16)
+
+On Linux Serenity, build, warnings-as-errors compilation and credential-free demo
+passed. **Six new independently compiled worker fixtures** passed, alongside
+**55 existing extension regression tests**. The full
+`mix test --include native_sandbox` passed **477 tests, 14 macOS excluded**.
+Elixir 1.20.4 formatting and the actual 1.18.4 formatter passed; the latter was
+invoked with its explicit Elixir executable and Mix script, on Serenity's OTP 29.
+The service metadata expression now uses a portable explicit block. The prior
+hosted formatting failure is recorded above, not counted as runtime verification.
+
+Fixtures exercise asserted context and literal receipt-backed excerpts, invalid
+evidence refusal with previous context preserved, caller-only clearing, fresh
+session isolation, deterministic priority order/global byte bounds, exact provider
+request projections, original/native message preservation, private diagnostic
+summaries, inert byte-identical resume and committed publications surviving
+interrupted callbacks without replay. Missing/altered request snapshots and changed
+source proofs with recomputed outer hashes refuse before partial-tail repair.
+See [contract](extension-context.md) and
+[operator procedure](../operator/extensions.md#context-and-evidence).
+
+These are source fixtures using a synthetic provider, not live inference or
+freshness/semantic-truth evaluation. The independent installed-package proof,
+worker stream access, observability/debugging and supervised review remain P22
+gates. Production knowledge adapters remain P25; no provider/store is selected.
+
+The source hook/accounting/private-text fixture passed through its explicit
+`Ipse.ExtensionDemo.run/0` entry point. The Linux glibc-2.44 archive rebuilt with
+matching OTP 29.1.1 notices and passed `scripts/verify-package.exs`: isolated
+homes, default/explicit workspace paths, utility-only PATH, help/demo and bundled
+MCP/delegation/extension checks. This is the package baseline, not an extracted
+independent context artifact proof or hosted macOS evidence for this increment.
+Documentation validation passed **69 Markdown files / 705 local file and heading
+links**, with no errors.

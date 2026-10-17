@@ -229,6 +229,7 @@ defmodule Ipse.Extensions.Registry do
       Ipse.Extensions.Operation,
       Ipse.Extensions.Services,
       Ipse.Extensions.ServiceCall,
+      Ipse.Extensions.Contributions,
       Ipse.Extensions.ToolAction,
       Ipse.Extensions.State,
       Ipse.Questions,

@@ -32,6 +32,11 @@ See [the hosted check record](../developer/testing.md#extension-formatter-compat
 The workflow increment also exposed short multiline `if`/`with` layout differences.
 Use explicit `do`/`end` blocks and check both supported formatters when developing
 on a newer toolchain. See [workflow floor verification](../developer/testing.md#workflow-formatter-floor-compatibility-2026-10-16).
+When checking an extracted Elixir toolchain, `bin/mix` uses
+`#!/usr/bin/env elixir` and may still select the system version. Invoke the
+intended Elixir explicitly: `EXTRACTED/bin/elixir EXTRACTED/bin/mix format --check-formatted`,
+replacing `EXTRACTED` with its actual directory. The service increment exposed
+another multiline `if` layout; its explicit block is compatible with both versions.
 
 - Missing `mix` or `rustc`: check packages and `PATH` against the
   [prerequisites](arch-linux.md#install-the-toolchain).

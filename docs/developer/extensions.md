@@ -7,11 +7,13 @@ API. The implemented [hooks](extension-hooks.md), [typed invocations](extension-
 [usage ledger](usage-accounting.md) and [private text channel](text-streams.md)
 document subsequent increments.
 [Finite host state calls](extension-host-calls.md) implement the first scoped
-state/effect seam; general actions, composition and context remain provisional.
+state/effect seam; broader contracts remain provisional.
 [Structured question checkpoints](extension-questions.md) now support explicit
 answered continuation; [approved workflow tools](extension-tool-actions.md) cover
 the existing file/shell tools. [Typed value services](extension-services.md) now
-compose through explicit operator bindings. Context and broader nested jobs remain open.
+compose through explicit operator bindings. [Session context](extension-context.md)
+now supports bounded publications and receipt-bound excerpts. Broader nested jobs,
+worker stream access, observability and the installed-package proof remain open.
 Other names and limits below remain proposed contracts. Existing skills, explicit
 MCP tools and provider adapters remain available alongside the
 [initial session hooks](extension-hooks.md).

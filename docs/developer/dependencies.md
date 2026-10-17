@@ -65,6 +65,10 @@ provide acyclic checking/topological order with private temporary tables cleaned
 afterward. JSONSchex/Jason and the existing Worker handle schemas/transport.
 Custom code is limited to Ipse's operator routes, activation hashes and durable
 job receipts; no graph package, resolver framework or downloader is introduced.
+P22A12 context/evidence adds no dependency. Existing JSON validators and owned
+host-action/journal machinery enforce bounds and source identity. Literal
+excerpts use bounded ordinary map/list access, not a new retrieval or JSON-path
+runtime. Publication/snapshot rules are Ipse-specific context/recovery policy.
 P22A2's worker bridge reuses the current ERTS, Elixir, Jason and native stdio
 helper, adding no dependency. The synthetic independent artifact fixture uses
 the existing Elixir compiler in a separate VM. A small Ipse bootstrap implements

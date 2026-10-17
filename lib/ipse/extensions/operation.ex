@@ -2,6 +2,9 @@ defmodule Ipse.Extensions.Operation do
   @moduledoc "Closed host-operation contracts; proposals are not permission grants."
   alias Ipse.Extensions.State
 
+  def validate(%{"op" => "context.publish"} = request),
+    do: Ipse.Extensions.Contributions.validate(request)
+
   def validate(%{"op" => "service.call"} = request),
     do: Ipse.Extensions.Services.validate_request(request)
 
@@ -25,6 +28,7 @@ defmodule Ipse.Extensions.Operation do
   def question?(request), do: is_map(request) and request["op"] == "operator.question"
   def tool?(request), do: is_map(request) and request["op"] == "tool.call"
   def service?(request), do: is_map(request) and request["op"] == "service.call"
+  def capability(%{"op" => "context.publish"}), do: "host.context"
   def capability(%{"op" => "service.call"}), do: "host.services"
   def capability(%{"op" => "tool.call"}), do: "host.tools"
   def capability(%{"op" => "operator.question"}), do: "host.question"
@@ -35,6 +39,7 @@ defmodule Ipse.Extensions.Operation do
   def namespace(_identity, %{"op" => "operator.question"}, _cwd, _id), do: {:ok, nil}
   def namespace(_identity, %{"op" => "tool.call"}, _cwd, _id), do: {:ok, nil}
   def namespace(_identity, %{"op" => "service.call"}, _cwd, _id), do: {:ok, nil}
+  def namespace(_identity, %{"op" => "context.publish"}, _cwd, _id), do: {:ok, nil}
 
   def namespace(identity, request, cwd, id),
     do: State.namespace(identity, request["scope"], cwd, id)
@@ -47,6 +52,9 @@ defmodule Ipse.Extensions.Operation do
 
   def valid_outcome?(%{"op" => "tool.call"} = request, status, value, _),
     do: Ipse.Extensions.ToolAction.valid_outcome?(request, status, value)
+
+  def valid_outcome?(%{"op" => "context.publish"} = request, status, value, id),
+    do: Ipse.Extensions.Contributions.valid_outcome?(request, status, value, id)
 
   def valid_outcome?(%{"op" => "operator.question"} = request, "answered", value, _) do
     Enum.sort(Map.keys(value)) == ["answers"] and
