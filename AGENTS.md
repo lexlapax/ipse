@@ -102,7 +102,7 @@ are needed for tests or the demo.
 | Profile-bound extension inference | `lib/ipse/extensions/model_call.ex`, `lib/ipse/provider/request.ex` |
 | Scoped workspace instruction snapshots | `lib/ipse/workspace_context.ex` |
 | Allowlisted application/provider/model facts | `lib/ipse/runtime_info.ex` |
-| Terminal client and option parsing | `lib/ipse/cli.ex` |
+| Terminal client, option parsing and display escaping | `lib/ipse/cli.ex`, `lib/ipse/cli/terminal.ex` |
 | Provider selection and wire formats | `lib/ipse/provider.ex`, `lib/ipse/provider/` |
 | Isolated HTTP profile ownership | `lib/ipse/http_profile.ex` |
 | Authentication and protected storage | `lib/ipse/auth.ex`, `lib/ipse/auth/` |

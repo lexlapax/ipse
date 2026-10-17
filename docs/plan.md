@@ -23,7 +23,7 @@ quality. Subscription, API and installed Ollama checks have separate
 [provider verification](developer/testing.md#provider-verification-status).
 
 P23 is complete within its one-shot text/accounting scope. P24 is the active gate,
-awaiting the operator's independent Claude review. The operator's 2026-10-17 direction
+triaging the returned independent Claude review. The operator's 2026-10-17 direction
 puts independent architectural challenge, security review and a large supervised
 self-development trial ahead of media. P24 now owns architecture/security
 readiness; the former P24 voice/media scope moves to deferred P28. P25 compares
@@ -35,7 +35,7 @@ new source transfer or dependency, or select a production engine.
 | Milestone or gate | Current state | Next result |
 | --- | --- | --- |
 | [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within selected scope; source/native/package/installed and hosted Linux/macOS passed | Retain accounting invariants through P24/P25 review and repairs |
-| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Local review handoff prepared; operator runs Claude subscription on Serenity; no critique or scan yet | Independent adversarial architecture review, evidence-based dispositions and triaged baseline OpenAI security audit |
+| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | First static critique returned; supervisor reproductions/repairs in progress; no scan yet | Verified dispositions, applicable repairs, independent delta/coverage review and triaged baseline OpenAI security audit |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Planned revised scope; unstarted | Independent Codex/Ipse research, Ipse-authored repairs, fresh acceptance runs and final architecture/security review |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Deferred; proposed scope subject to P25 decisions | Independently selectable working/long-term memory tools and optional lifecycle policies |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; proposed scope subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
@@ -51,9 +51,10 @@ Actual revisions, platform results and investigation belong in
 
 Execution order:
 
-1. Collect the independent Claude critique of P24's pinned revision; independently
-   triage and repair blocking design defects, then run the baseline OpenAI security
-   audit on the resulting revision.
+1. Independently verify and disposition the returned critique using the
+   [repair register](developer/architecture-review-dispositions.md). Reproduce and
+   repair applicable defects, refresh independent delta/omitted-surface coverage,
+   then run the baseline OpenAI security audit on the resulting revision.
 2. Execute P25's independent research, discrepancy comparison, Ipse-authored
    repairs and fresh same-input/held-out reruns. Finish with an external
    architecture delta review and security review/rescan of the final candidate.
@@ -134,11 +135,16 @@ and arbitrary trusted out-of-band calls cannot establish an invoice ceiling.
 
 ## P24: independent architecture validation and baseline security
 
-**Prepared; external review unstarted.** The operator selected a Claude
-subscription review in the existing Serenity project directory using the
-[pinned-commit handoff](operator/architecture-review.md). No download/extraction or
-new checkout is required. Wait for the initial critique and its triage before
-the security scan, architecture repairs or P25 execution.
+**In progress; first static critique received.** The operator returned the
+independent Claude review of `21e59fe`, conducted through Git objects in the
+existing Serenity checkout. The [disposition register](developer/architecture-review-dispositions.md)
+records the seven findings, three unverified concerns, nine design items and
+partial coverage. Its proposed runtime regressions were unrun by the reviewer.
+Supervisor verification reproduced the terminal display defect; its repair passed
+local source/native/package/installed checks and awaits hosted Linux/macOS results.
+Other source-consistent findings require their own evidence
+and repairs. The security scan and P25 execution remain behind triage and applicable
+repairs; omitted architectural surfaces need a follow-up pass.
 Read-only Security Cloud access checks found the repository and available scan
 credits; no matching environment was found and no scan or billing change was
 started. Access readiness does not close either review gate.
@@ -178,7 +184,8 @@ The [review and trial protocol](developer/self-hosting-evaluation.md) owns the
 architecture-review procedure and security execution constraints. Prefer external
 architecture review before scanning, then repair/refreeze as needed. P25 closes
 the loop with a final architecture delta review and security review/rescan; P24's
-baseline cannot certify later changes. No external review or scan has run.
+baseline cannot certify later changes. The first external static review has run;
+no security scan or completed architectural acceptance is claimed.
 
 ## P25: comparative research and supervised self-development
 

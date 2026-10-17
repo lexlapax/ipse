@@ -12,7 +12,9 @@ checks and matching runtime. Use the local
 
 Next comes P24's external adversarial architecture validation and baseline OpenAI
 security audit, followed by P25's larger independent Codex/Ipse research and
-self-development comparison. Neither review nor the trial has run. The
+self-development comparison. The first partial static critique has returned;
+[verification and repairs](../developer/architecture-review-dispositions.md) are
+in progress. No security scan or larger trial has run. The
 [review and evaluation protocol](../developer/self-hosting-evaluation.md) defines
 the critique, dispositions, source-based comparison, Ipse-authored repairs,
 held-out reruns and final architecture/security reviews. The

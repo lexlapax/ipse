@@ -225,6 +225,12 @@ Chat commands:
 
 The CLI reports running, waiting for approval, finished, failed, and cancelled
 states. New messages entered during a turn are queued for the next turn.
+Terminal rendering shows control and invisible format characters as literal
+escapes, including in model/tool output and full approval arguments. Ordinary
+Unicode, newlines and tabs remain readable; ANSI styling and cursor/clipboard
+commands from returned content do not execute. This is a display transformation:
+saved messages, tool arguments and provider-native content retain their originals.
+JSON commands remain valid JSON and decode to the original field values.
 An error clears queued input with a visible message, preventing further queued
 requests after an account or usage-limit failure. Review the error and send a
 fresh task when ready.
@@ -576,7 +582,7 @@ Current delivery and remaining work follow this sequence:
 | Milestone | Scope | Status and boundary |
 | --- | --- | --- |
 | P23 | Complete within selected scope | Own-session/child reports, optional [shared reservations](budgets.md) and explicit [extension text calls](extensions.md#accounted-model-calls); source/package/platform gates passed. Context bytes are not tokens or an invoice |
-| P24 | Independent architecture validation and baseline security | [Claude subscription handoff](architecture-review.md) prepared, followed by triaged OpenAI security audit; no critique or scan yet |
+| P24 | Independent architecture validation and baseline security | First static critique returned; [verification and repairs](../developer/architecture-review-dispositions.md) in progress. Security audit remains gated; no scan yet |
 | P25 | Larger supervised comparative research/self-development trial | Independent Codex/Ipse study, repairs, held-out reruns and final architecture/security review; unstarted |
 | P26/P27 | Optional working/long-term memory, research engine, graph and RAG | Production packages deferred pending P25 selection; independently configurable and default-off |
 | P28 | STT/text-agent/TTS and realtime media | Deferred former-P24 scope, with explicit device/provider/billing selection; text authentication does not imply audio access |

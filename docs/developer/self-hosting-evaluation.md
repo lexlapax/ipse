@@ -3,8 +3,10 @@
 P24/P25 review and evaluation protocol, revised 2026-10-17. This guide defines
 independent architectural challenge, security gates and the supervised experiment;
 the [plan](../plan.md#current-priorities-and-status) owns scheduling and acceptance
-status. No external architecture review, comparative run or security scan is
-claimed here. Use the [operator runbook](../operator/self-development.md) for
+status. The first partial static architecture critique has returned; the
+[disposition register](architecture-review-dispositions.md) owns verification and
+repair status. No comparative run or security scan has executed. Use the
+[operator runbook](../operator/self-development.md) for
 runner/candidate separation and the [knowledge design](knowledge-extensions.md)
 for the research questions. Production knowledge packages are deferred to P26/P27.
 

@@ -20,7 +20,7 @@ defmodule Ipse.CLISessionsTest do
   test "JSON is one sorted array with only public listing fields", c do
     first = String.duplicate("1", 32)
     last = String.duplicate("f", 32)
-    cwd = "/synthetic/quoted \"workspace\"/雪\nnext"
+    cwd = "/synthetic/quoted \"workspace\"/雪\nnext\e[8m\u202E\u{E0001}"
 
     put_journal(c.dir, last, %{"provider" => "demo", "model" => "last", "cwd" => "/last"})
 
@@ -48,6 +48,9 @@ defmodule Ipse.CLISessionsTest do
            ]
 
     assert length(String.split(output, "\n", trim: true)) == 1
+    refute output =~ "\e"
+    refute output =~ "\u202E"
+    refute output =~ "\u{E0001}"
     refute output =~ "synthetic-private"
     refute output =~ "metadata-cannot-replace-id"
     assert snapshot(c.dir) == before

@@ -1,6 +1,11 @@
 # Independent architecture-review handoff
 
-Run a fresh Claude subscription session from the existing Ipse project directory
+The first critique has returned; use the
+[disposition register](../developer/architecture-review-dispositions.md) for
+verification, repairs and the follow-up coverage gate. The original first-pass
+prompt below retains its scope and target. It does not request another first pass.
+
+For that review, run a fresh Claude subscription session from the existing Ipse project directory
 on Serenity: `/home/lexlapax/projects/lexlapax/ipse`. No packet download,
 extraction, new checkout or Mac repair session is required. This is P24's
 independent design challenge, separate from security scanning and the later

@@ -31,6 +31,7 @@ start. Use the guides below for operation, development, and project context.
 | [Contributing](../CONTRIBUTING.md) | Contribution scope and handoff requirements |
 | [Agent instructions](../AGENTS.md) | Rules, code map, documentation and commit requirements |
 | [Architecture](developer/architecture.md) | Modules, ownership, persistence, trust boundaries |
+| [Architecture review dispositions](developer/architecture-review-dispositions.md) | Sanitized P24 finding register, independent verification, repairs and remaining coverage gates |
 | [Model-profile contract](developer/model-profiles.md) | Host routing, provider settings and child credential/native-history boundaries |
 | [Configuration contract](developer/configuration.md) | Bounded loader, scope, schema reuse, provenance and resume policy |
 | [Operator questions](developer/operator-questions.md) | Native question schema, explicit answers, approvals and durable recovery |

@@ -363,6 +363,78 @@ defmodule Ipse.CLITest do
     end)
   end
 
+  test "untrusted terminal views cannot carry controls into a real approval" do
+    with_fixture_and_cli(false, fn fixture, cli ->
+      await_input(cli.stdio)
+      id = session_id(cli.stderr)
+      session = lookup_session(cli.state_dir, id)
+      tainted = "visible\e[8m\r\b\a\u009B\u202E\u2066\u200B\u2028tail"
+
+      for event <- [
+            {:presentation, tainted},
+            {:extension_result, %{"name" => tainted, "value" => %{"text" => tainted}}},
+            {:tool_output, tainted},
+            {:tool_result, tainted, tainted},
+            {:skill, tainted},
+            {:error, tainted}
+          ] do
+        send(cli.task.pid, {:ipse, session, event})
+      end
+
+      Ipse.CLITest.IOFixture.feed(cli.stdio, "propose a write")
+      {server, 1, _} = await_request(fixture)
+
+      body =
+        Jason.encode!(%{
+          "message" => %{
+            "role" => "assistant",
+            "content" => tainted,
+            "tool_calls" => [
+              %{
+                "function" => %{
+                  "name" => "write",
+                  "arguments" => %{"path" => "should-not-exist.txt", "content" => tainted}
+                }
+              }
+            ]
+          },
+          "done" => true
+        }) <> "\n"
+
+      Ipse.CLITest.HTTPFixture.reply(server, 1, body)
+      await_text(cli.stderr, "Type y to allow, anything else to deny.")
+
+      for device <- [cli.stdio, cli.stderr] do
+        output = Ipse.CLITest.IOFixture.output(device)
+
+        for control <- ["\e", "\r", "\b", "\a", "\u009B", "\u202E", "\u2066", "\u200B", "\u2028"] do
+          refute output =~ control
+        end
+      end
+
+      output = Ipse.CLITest.IOFixture.output(cli.stderr)
+      assert output =~ "Waiting for approval: write"
+      assert output =~ "should-not-exist.txt"
+      assert output =~ "\\u202e"
+      assert output =~ "\\u2066"
+      assert output =~ "\\u200b"
+
+      {:ok, events} = Ipse.Journal.load(cli.state_dir, id)
+
+      assert Enum.any?(events, fn event ->
+               get_in(event, ["message", "role"]) == "assistant" and
+                 get_in(event, ["message", "content"]) == tainted
+             end)
+
+      Ipse.CLITest.IOFixture.feed(cli.stdio, :eof)
+      {^server, 2, request} = await_request(fixture)
+      assert Enum.any?(request["messages"], &(&1["content"] == tainted))
+      Ipse.CLITest.HTTPFixture.reply(server, 2, Ipse.CLITest.HTTPFixture.final_body())
+      assert 0 == Task.await(cli.task, 5_000)
+      refute File.exists?(Path.join(cli.cwd, "should-not-exist.txt"))
+    end)
+  end
+
   test "EOF during approval denies the tool and waits for model completion" do
     with_fixture_and_cli(false, fn fixture, cli ->
       await_input(cli.stdio)

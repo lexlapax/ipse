@@ -24,6 +24,14 @@ and can also start the deterministic, credential-free demo. A session is one
 cross-process lock. Provider and tool work runs in monitored tasks, with events
 sent back to the owning session and its CLI subscriber.
 
+`Ipse.CLI.Terminal` escapes terminal controls and invisible format characters at
+every CLI-owned output write, preserving ordinary Unicode/newline/tab display.
+Its visible escapes also retain JSON round-trip values, including supplementary
+format characters. Encoding-aware writes preserve UTF-8 values on Unicode and
+latin1 IO devices, including the installed verifier's restricted locale. Source
+messages, arguments and native/provider data are not
+rewritten; the renderer is not a content-authenticity or permission boundary.
+
 ```text
 CLI ──prompt / approval / cancel──> Session GenServer
                                       │

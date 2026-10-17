@@ -1,5 +1,6 @@
 defmodule Ipse.CLI do
   @moduledoc "Terminal client for the Ipse session API."
+  alias Ipse.CLI.Terminal
 
   @help """
   Ipse 0.1 — a general-purpose local AI agent
@@ -68,7 +69,7 @@ defmodule Ipse.CLI do
     if code != 0, do: System.halt(code)
   rescue
     e in [ArgumentError, File.Error] ->
-      IO.puts(:stderr, "Error: #{Exception.message(e)}")
+      Terminal.puts(:stderr, "Error: #{Exception.message(e)}")
       System.halt(1)
   end
 
@@ -115,7 +116,7 @@ defmodule Ipse.CLI do
 
     cond do
       invalid != [] ->
-        IO.puts(:stderr, "Unknown options: #{inspect(invalid)}")
+        Terminal.puts(:stderr, "Unknown options: #{inspect(invalid)}")
         1
 
       Enum.any?(
@@ -134,7 +135,7 @@ defmodule Ipse.CLI do
         )
 
       opts[:help] ->
-        IO.puts(@help)
+        Terminal.puts(@help)
         0
 
       true ->
@@ -148,7 +149,7 @@ defmodule Ipse.CLI do
     if opts[:resume] do
       case Ipse.Budget.saved(state_dir(opts), opts[:resume]) do
         {:ok, snapshot} ->
-          IO.puts(Jason.encode!(snapshot))
+          Terminal.puts(Jason.encode!(snapshot))
           0
 
         _ ->
@@ -164,11 +165,11 @@ defmodule Ipse.CLI do
   defp dispatch(["status"], _opts) do
     case Ipse.Auth.status(auth_dir()) do
       {:ok, status} ->
-        IO.puts(inspect(status))
+        Terminal.puts(inspect(status))
         0
 
       {:error, error} ->
-        IO.puts(:stderr, to_string(error))
+        Terminal.puts(:stderr, to_string(error))
         1
     end
   end
@@ -185,10 +186,10 @@ defmodule Ipse.CLI do
           }
         end
 
-      IO.puts(Jason.encode!(sessions))
+      Terminal.puts(Jason.encode!(sessions))
     else
       for %{"id" => id, "metadata" => meta} <- Ipse.Journal.list(state_dir(opts)) do
-        IO.puts("#{id}  #{meta["provider"]}/#{meta["model"]}  #{meta["cwd"]}")
+        Terminal.puts("#{id}  #{meta["provider"]}/#{meta["model"]}  #{meta["cwd"]}")
       end
     end
 
@@ -203,7 +204,7 @@ defmodule Ipse.CLI do
   defp dispatch(["config"], opts) do
     case Ipse.Config.resolve(opts[:cwd] || default_cwd(), home(), opts) do
       {:ok, effective} ->
-        IO.puts(Jason.encode!(Ipse.Config.manifest(effective), pretty: true))
+        Terminal.puts(Jason.encode!(Ipse.Config.manifest(effective), pretty: true))
         0
 
       {:error, reason} ->
@@ -212,7 +213,7 @@ defmodule Ipse.CLI do
   end
 
   defp dispatch(["extension", "list"], _opts) do
-    IO.puts(Jason.encode!(Ipse.Extensions.Registry.builtins(), pretty: true))
+    Terminal.puts(Jason.encode!(Ipse.Extensions.Registry.builtins(), pretty: true))
     0
   end
 
@@ -236,7 +237,7 @@ defmodule Ipse.CLI do
          {:ok, _} <- Ipse.DeveloperTrace.policy(opts),
          {:ok, fixture, digest} <- Ipse.Extensions.Conformance.read(opts[:fixture]),
          {:ok, effective} <- Ipse.Config.resolve(opts[:cwd] || default_cwd(), home(), opts) do
-      IO.puts(
+      Terminal.puts(
         :stderr,
         "Synthetic SDK check: selected trusted workers use your OS permissions. Host mutations require --yes; context and state use a scratch workspace."
       )
@@ -254,7 +255,7 @@ defmodule Ipse.CLI do
 
       case Ipse.Extensions.Conformance.run(effective.extensions, home(), fixture, check_opts) do
         {:ok, result} ->
-          IO.puts(Jason.encode!(Map.put(result, "fixture_sha256", digest), pretty: true))
+          Terminal.puts(Jason.encode!(Map.put(result, "fixture_sha256", digest), pretty: true))
           if result["passed"], do: 0, else: 1
 
         _ ->
@@ -273,7 +274,7 @@ defmodule Ipse.CLI do
   defp dispatch(["research"], opts) do
     case Ipse.Research.load(state_dir(opts), opts[:resume]) do
       {:ok, ledger} ->
-        IO.puts(Jason.encode!(ledger, pretty: true))
+        Terminal.puts(Jason.encode!(ledger, pretty: true))
         0
 
       {:error, reason} ->
@@ -284,7 +285,7 @@ defmodule Ipse.CLI do
   defp dispatch(["diagnose"], opts) do
     case Ipse.Diagnostics.saved(state_dir(opts), opts[:resume]) do
       {:ok, result} ->
-        IO.puts(Jason.encode!(result, pretty: true))
+        Terminal.puts(Jason.encode!(result, pretty: true))
         0
 
       {:error, reason} ->
@@ -295,7 +296,7 @@ defmodule Ipse.CLI do
   defp dispatch(["handoff"], opts) do
     case Ipse.Handoff.export(state_dir(opts), opts[:resume], opts[:note]) do
       {:ok, result} ->
-        IO.puts(Jason.encode!(result, pretty: true))
+        Terminal.puts(Jason.encode!(result, pretty: true))
         0
 
       {:error, reason} ->
@@ -313,7 +314,9 @@ defmodule Ipse.CLI do
 
     File.mkdir_p!(cwd)
 
-    IO.puts("Scripted demo workspace: #{cwd}\nThis demo creates ipse-demo.txt and runs printf.")
+    Terminal.puts(
+      "Scripted demo workspace: #{cwd}\nThis demo creates ipse-demo.txt and runs printf."
+    )
 
     start(
       Keyword.merge(opts, cwd: cwd, provider: "demo", yes: true),
@@ -329,7 +332,7 @@ defmodule Ipse.CLI do
       do: start(opts, prompt, false),
       else:
         (
-          IO.puts(:stderr, "Provide a task after run, or on stdin.")
+          Terminal.puts(:stderr, "Provide a task after run, or on stdin.")
           1
         )
   end
@@ -340,7 +343,7 @@ defmodule Ipse.CLI do
   defp dispatch(_, _),
     do:
       (
-        IO.puts(@help)
+        Terminal.puts(@help)
         1
       )
 
@@ -356,7 +359,7 @@ defmodule Ipse.CLI do
   end
 
   defp extension_artifact({:ok, artifact}) do
-    IO.puts(
+    Terminal.puts(
       Jason.encode!(%{"digest" => artifact.digest, "manifest" => artifact.manifest}, pretty: true)
     )
 
@@ -385,32 +388,35 @@ defmodule Ipse.CLI do
       ref = Process.monitor(pid)
       info = Ipse.Session.info(pid)
 
-      IO.puts(
+      Terminal.puts(
         :stderr,
         "Ipse · #{config.provider}/#{config.model}\nSession: #{info.id}\nWorkspace: #{info.cwd}"
       )
 
-      IO.puts(:stderr, Ipse.Sandbox.describe(config.sandbox))
+      Terminal.puts(:stderr, Ipse.Sandbox.describe(config.sandbox))
 
       if config.configuration.sources != [],
         do:
-          IO.puts(
+          Terminal.puts(
             :stderr,
             "Effective configuration:\n" <> Jason.encode!(config.configuration, pretty: true)
           )
 
       if config.extensions != [] do
-        IO.puts(
+        Terminal.puts(
           :stderr,
           "Extensions enabled: trusted worker programs use your OS permissions outside the shell sandbox."
         )
 
-        IO.puts(:stderr, Jason.encode!(Ipse.Extensions.Registry.manifests(config), pretty: true))
+        Terminal.puts(
+          :stderr,
+          Jason.encode!(Ipse.Extensions.Registry.manifests(config), pretty: true)
+        )
       end
 
       if config.subagents,
         do:
-          IO.puts(
+          Terminal.puts(
             :stderr,
             "Local subagents enabled: same workspace; configured routine/profile routing or parent provider/model; parent approvals apply. " <>
               "Concurrency #{Map.get(config, :subagent_concurrency, 1)}; up to two children per turn and six model steps per child. Child requests share a configured session-tree budget."
@@ -418,7 +424,7 @@ defmodule Ipse.CLI do
 
       if config[:budget],
         do:
-          IO.puts(
+          Terminal.puts(
             :stderr,
             "Shared session-tree reservations enabled; unknown liability is retained. " <>
               "Fresh sessions have separate quotas. Inspect with ipse budget --resume #{info.id} using the same --state-dir."
@@ -436,25 +442,26 @@ defmodule Ipse.CLI do
               "MCP network server (explicit endpoint; remote effects and cancellation are outside the local sandbox):",
             else: "MCP local server (#{policy}):"
 
-        IO.puts(:stderr, notice)
-        IO.puts(:stderr, Jason.encode!(Ipse.MCP.Config.manifest(server), pretty: true))
+        Terminal.puts(:stderr, notice)
+        Terminal.puts(:stderr, Jason.encode!(Ipse.MCP.Config.manifest(server), pretty: true))
       end
 
       if config.approval == :allow,
         do:
-          IO.puts(
+          Terminal.puts(
             :stderr,
             "Mutations, shell, configured MCP, and enabled delegation are allowed for this session (--yes)."
           )
 
-      if handoff_opts != [], do: IO.puts(:stderr, Ipse.Handoff.notice(handoff_opts[:handoff]))
+      if handoff_opts != [],
+        do: Terminal.puts(:stderr, Ipse.Handoff.notice(handoff_opts[:handoff]))
 
       client = self()
       reader = if interactive, do: spawn(fn -> read_input(client) end), else: nil
       if prompt, do: Ipse.Session.prompt(pid, prompt)
 
       if interactive,
-        do: IO.puts("Type a task, $review, or /help. Use /cancel while work is running.")
+        do: Terminal.puts("Type a task, $review, or /help. Use /cancel while work is running.")
 
       result =
         client_loop(%{
@@ -478,7 +485,7 @@ defmodule Ipse.CLI do
       if cleanup == :ok do
         result
       else
-        IO.puts(
+        Terminal.puts(
           :stderr,
           "Owned work cleanup could not be confirmed; inspect saved receipts and running processes."
         )
@@ -487,7 +494,7 @@ defmodule Ipse.CLI do
       end
     else
       {:error, reason} ->
-        IO.puts(:stderr, "Cannot start: #{format_error(reason)}")
+        Terminal.puts(:stderr, "Cannot start: #{format_error(reason)}")
         1
     end
   end
@@ -527,11 +534,11 @@ defmodule Ipse.CLI do
       {:input, "/cancel"} ->
         cond do
           s.cancelling ->
-            IO.puts(:stderr, "Cancellation already requested.")
+            Terminal.puts(:stderr, "Cancellation already requested.")
             client_loop(s)
 
           s.busy ->
-            IO.puts(:stderr, "Cancelling active work…")
+            Terminal.puts(:stderr, "Cancelling active work…")
             Ipse.Session.cancel(s.pid)
 
             client_loop(%{
@@ -544,12 +551,12 @@ defmodule Ipse.CLI do
             })
 
           true ->
-            IO.puts(:stderr, "No active work to cancel.")
+            Terminal.puts(:stderr, "No active work to cancel.")
             client_loop(s)
         end
 
       {:input, "/help"} ->
-        IO.puts(@help)
+        Terminal.puts(@help)
         client_loop(s)
 
       {:input, "/skills"} ->
@@ -557,21 +564,21 @@ defmodule Ipse.CLI do
         client_loop(s)
 
       {:input, "/session"} ->
-        IO.puts(inspect(Ipse.Session.info(s.pid)))
+        Terminal.puts(inspect(Ipse.Session.info(s.pid)))
         client_loop(s)
 
       {:input, "/info"} ->
-        IO.puts(Ipse.RuntimeInfo.format(Ipse.Session.info(s.pid).runtime))
+        Terminal.puts(Ipse.RuntimeInfo.format(Ipse.Session.info(s.pid).runtime))
         client_loop(s)
 
       {:input, "/diagnostics"} ->
-        IO.puts(Jason.encode!(Ipse.Session.diagnostics(s.pid), pretty: true))
+        Terminal.puts(Jason.encode!(Ipse.Session.diagnostics(s.pid), pretty: true))
         client_loop(s)
 
       {:input, "/observability off"} ->
         :ok = Ipse.Session.stop_observability(s.pid)
 
-        IO.puts(
+        Terminal.puts(
           "Diagnostic capture stopped; recovery journaling and usage accounting remain active."
         )
 
@@ -579,14 +586,19 @@ defmodule Ipse.CLI do
 
       {:input, "/events off"} ->
         case Ipse.Session.stop_feeds(s.pid) do
-          :ok -> IO.puts("Live event feeds stopped; inspect /diagnostics for coverage.")
-          _ -> IO.puts("Live event feeds stopped with unconfirmed cleanup; inspect /diagnostics.")
+          :ok ->
+            Terminal.puts("Live event feeds stopped; inspect /diagnostics for coverage.")
+
+          _ ->
+            Terminal.puts(
+              "Live event feeds stopped with unconfirmed cleanup; inspect /diagnostics."
+            )
         end
 
         client_loop(s)
 
       {:input, "/ext"} ->
-        IO.puts(Jason.encode!(Ipse.Session.exports(s.pid), pretty: true))
+        Terminal.puts(Jason.encode!(Ipse.Session.exports(s.pid), pretty: true))
         client_loop(s)
 
       {:input, "/ext " <> input} ->
@@ -598,7 +610,7 @@ defmodule Ipse.CLI do
               client_loop(%{s | busy: true})
             else
               _ ->
-                IO.puts(
+                Terminal.puts(
                   :stderr,
                   "Extension command unavailable, invalid, or busy. Use /ext to inspect names and schemas."
                 )
@@ -607,7 +619,11 @@ defmodule Ipse.CLI do
             end
 
           _ ->
-            IO.puts(:stderr, "Use /ext NAME JSON_OBJECT; use {} for an empty argument object.")
+            Terminal.puts(
+              :stderr,
+              "Use /ext NAME JSON_OBJECT; use {} for an empty argument object."
+            )
+
             client_loop(s)
         end
 
@@ -618,11 +634,11 @@ defmodule Ipse.CLI do
       {:input, "/context refresh"} ->
         case Ipse.Session.refresh_context(s.pid) do
           :ok ->
-            IO.puts(:stderr, "Refreshing workspace instructions…")
+            Terminal.puts(:stderr, "Refreshing workspace instructions…")
             client_loop(%{s | busy: true})
 
           {:error, :busy} ->
-            IO.puts(:stderr, "Finish or cancel active work before refreshing instructions.")
+            Terminal.puts(:stderr, "Finish or cancel active work before refreshing instructions.")
             client_loop(s)
         end
 
@@ -630,7 +646,7 @@ defmodule Ipse.CLI do
         client_loop(s)
 
       {:input, _text} when s.cancelling ->
-        IO.puts(
+        Terminal.puts(
           :stderr,
           "Input received during cancellation was discarded. Send it again after cancellation finishes."
         )
@@ -651,16 +667,16 @@ defmodule Ipse.CLI do
                   client_loop(%{s | question: nil, question_answers: %{}, busy: true})
 
                 {:error, reason} ->
-                  IO.puts(:stderr, "Answer rejected: #{inspect(reason)}")
+                  Terminal.puts(:stderr, "Answer rejected: #{inspect(reason)}")
                   client_loop(s)
               end
             else
-              IO.puts(:stderr, Ipse.Questions.render(hd(rest)))
+              Terminal.puts(:stderr, Ipse.Questions.render(hd(rest)))
               client_loop(%{s | question: {id, arguments, rest}, question_answers: answers})
             end
 
           _ ->
-            IO.puts(:stderr, "Invalid answer. " <> Ipse.Questions.render(question))
+            Terminal.puts(:stderr, "Invalid answer. " <> Ipse.Questions.render(question))
             client_loop(s)
         end
 
@@ -669,7 +685,7 @@ defmodule Ipse.CLI do
         client_loop(%{s | approval: nil})
 
       {:input, text} when s.busy ->
-        IO.puts(:stderr, "Queued for the next turn. /cancel interrupts current work.")
+        Terminal.puts(:stderr, "Queued for the next turn. /cancel interrupts current work.")
         client_loop(%{s | queued: s.queued ++ [text]})
 
       {:input, text} ->
@@ -678,12 +694,12 @@ defmodule Ipse.CLI do
 
       {:ipse, ^pid, {:status, :compacting}} ->
         unless s.cancelling,
-          do: IO.puts(:stderr, "Compacting context with the selected provider…")
+          do: Terminal.puts(:stderr, "Compacting context with the selected provider…")
 
         client_loop(s)
 
       {:ipse, ^pid, {:compacted, before_bytes, after_bytes}} ->
-        IO.puts(
+        Terminal.puts(
           :stderr,
           "Context compacted: #{before_bytes} → #{after_bytes} bytes. Original journal retained."
         )
@@ -695,43 +711,43 @@ defmodule Ipse.CLI do
         client_loop(s)
 
       {:ipse, ^pid, {:status, _status}} ->
-        unless s.cancelling, do: IO.puts(:stderr, "Running…")
+        unless s.cancelling, do: Terminal.puts(:stderr, "Running…")
         client_loop(s)
 
       {:ipse, ^pid, {:subagent, id, status}} ->
-        unless s.cancelling, do: IO.puts(:stderr, "Subagent #{id}: #{status}")
+        unless s.cancelling, do: Terminal.puts(:stderr, "Subagent #{id}: #{status}")
         client_loop(s)
 
       {:ipse, ^pid, {:text, delta}} ->
-        IO.write(delta)
+        Terminal.write(delta)
         client_loop(s)
 
       {:ipse, ^pid, {:presentation, text}} ->
-        IO.puts("\n" <> text)
+        Terminal.puts("\n" <> text)
         client_loop(s)
 
       {:ipse, ^pid, {:extension_result, display}} ->
-        IO.puts("\nExtension #{display["name"]}: #{Jason.encode!(display["value"])}")
+        Terminal.puts("\nExtension #{display["name"]}: #{Jason.encode!(display["value"])}")
         client_loop(s)
 
       {:ipse, ^pid, {:tool_output, delta}} ->
-        IO.write(:stderr, delta)
+        Terminal.write(:stderr, delta)
         client_loop(s)
 
       {:ipse, ^pid, {:tool, name, args}} ->
-        IO.puts(:stderr, "\n→ #{name} #{preview(args)}")
+        Terminal.puts(:stderr, "\n→ #{name} #{preview(args)}")
         client_loop(s)
 
       {:ipse, ^pid, {:tool_result, name, text}} ->
-        IO.puts(:stderr, "← #{name}: #{String.slice(text, 0, 800)}")
+        Terminal.puts(:stderr, "← #{name}: #{String.slice(text, 0, 800)}")
         client_loop(s)
 
       {:ipse, ^pid, {:skill, name}} ->
-        IO.puts(:stderr, "Skill: #{name}")
+        Terminal.puts(:stderr, "Skill: #{name}")
         client_loop(s)
 
       {:ipse, ^pid, {:mcp_approval_context, manifest}} ->
-        IO.puts(:stderr, "External MCP target:\n" <> Jason.encode!(manifest, pretty: true))
+        Terminal.puts(:stderr, "External MCP target:\n" <> Jason.encode!(manifest, pretty: true))
         client_loop(s)
 
       {:ipse, ^pid, {:question, id, arguments}} ->
@@ -739,8 +755,8 @@ defmodule Ipse.CLI do
           Ipse.Session.cancel(s.pid)
           client_loop(%{s | question: nil, question_answers: %{}})
         else
-          IO.puts(:stderr, "Waiting for operator clarification (not action approval):")
-          IO.puts(:stderr, Ipse.Questions.render(hd(arguments["questions"])))
+          Terminal.puts(:stderr, "Waiting for operator clarification (not action approval):")
+          Terminal.puts(:stderr, Ipse.Questions.render(hd(arguments["questions"])))
 
           client_loop(%{
             s
@@ -755,7 +771,7 @@ defmodule Ipse.CLI do
           Ipse.Session.approve(s.pid, ref, false)
           client_loop(s)
         else
-          IO.puts(
+          Terminal.puts(
             :stderr,
             "\nWaiting for approval: #{name}\nAllow #{name}?\n#{Jason.encode!(args, pretty: true)}\nType y to allow, anything else to deny."
           )
@@ -764,16 +780,16 @@ defmodule Ipse.CLI do
         end
 
       {:ipse, ^pid, {:error, error}} ->
-        IO.puts(:stderr, "\nError: #{error}")
+        Terminal.puts(:stderr, "\nError: #{error}")
         client_loop(s)
 
       {:ipse, ^pid, {:done, status}} when s.cancelling and status != :cancelled ->
         client_loop(s)
 
       {:ipse, ^pid, {:done, status}} ->
-        IO.puts("")
+        Terminal.puts("")
 
-        IO.puts(
+        Terminal.puts(
           :stderr,
           case status do
             :cancelled ->
@@ -794,7 +810,7 @@ defmodule Ipse.CLI do
           status == :error ->
             if s.queued != [],
               do:
-                IO.puts(
+                Terminal.puts(
                   :stderr,
                   "Queued input was discarded after the error. Review the failure and send it again."
                 )
@@ -836,7 +852,7 @@ defmodule Ipse.CLI do
         client_loop(s)
 
       {:DOWN, ref, _, _, _reason} when ref == s.ref ->
-        IO.puts(
+        Terminal.puts(
           :stderr,
           "Session stopped unexpectedly. Resume the saved session to inspect its history."
         )
@@ -999,16 +1015,16 @@ defmodule Ipse.CLI do
   defp auth_dir, do: Path.join(home(), "auth")
   defp default_cwd, do: System.get_env("IPSE_WORKSPACE") || File.cwd!()
   defp home, do: System.get_env("IPSE_HOME") || Path.expand("~/.ipse")
-  defp print_skills(cwd), do: IO.puts(Ipse.Skills.catalog(Ipse.Skills.discover(cwd)))
+  defp print_skills(cwd), do: Terminal.puts(Ipse.Skills.catalog(Ipse.Skills.discover(cwd)))
 
-  defp print_context(manifest), do: IO.puts(Jason.encode!(manifest, pretty: true))
+  defp print_context(manifest), do: Terminal.puts(Jason.encode!(manifest, pretty: true))
   defp preview(args), do: args |> Jason.encode!() |> String.slice(0, 600)
   defp report(:ok), do: 0
 
   defp report({:error, reason}),
     do:
       (
-        IO.puts(:stderr, format_error(reason))
+        Terminal.puts(:stderr, format_error(reason))
         1
       )
 

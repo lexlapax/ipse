@@ -24,6 +24,49 @@ defmodule Ipse.PackageVerifier do
     raise "usage: elixir scripts/verify-package.exs /path/to/ipse-*.tar.gz"
   end
 
+  defp verify_terminal!(wrapper, release, env, root) do
+    state = Path.join(root, "terminal-listing")
+    File.mkdir_p!(state)
+    File.chmod!(state, 0o700)
+    id = String.duplicate("a", 32)
+    path = Path.join(state, id <> ".jsonl")
+    cwd = "/synthetic/雪\n\e[8m\u202E\u200B\u{E0001}"
+    metadata = %{"provider" => "demo", "model" => "fixture", "cwd" => cwd}
+
+    bytes =
+      IO.iodata_to_binary([:json.encode(%{"type" => "session", "metadata" => metadata}), "\n"])
+
+    File.write!(path, bytes)
+    File.chmod!(path, 0o600)
+
+    json =
+      run!(
+        wrapper,
+        ["sessions", "--state-dir", state, "--json"],
+        release,
+        env,
+        "terminal JSON",
+        false
+      )
+
+    expected = [Map.put(metadata, "id", id)]
+
+    unless :json.decode(json) == expected,
+      do: raise("terminal JSON did not retain original values")
+
+    text = run!(wrapper, ["sessions", "--state-dir", state], release, env, "terminal listing")
+
+    for output <- [json, text], control <- ["\e", "\u202E", "\u200B", "\u{E0001}"] do
+      if String.contains?(output, control), do: raise("terminal listing emitted a raw control")
+    end
+
+    unless String.contains?(text, "\\u001b[8m") and String.contains?(text, "\\u202e") and
+             String.contains?(text, "\\u200b") and File.read!(path) == bytes,
+           do: raise("terminal display escaping or read-only listing failed")
+
+    IO.puts("PASS: bundled CLI terminal escaping, original JSON values and unchanged journal.")
+  end
+
   defp verify!(archive, root, tar) do
     release = Path.join(root, "release")
     home = Path.join(root, "home")
@@ -68,6 +111,7 @@ defmodule Ipse.PackageVerifier do
     require_executable!(otp_launcher)
 
     run!(wrapper, ["--help"], release, env, "bundled CLI help")
+    verify_terminal!(wrapper, release, env, root)
 
     [app] = Path.wildcard(Path.join([release, "lib", "ipse-*"]))
 
@@ -258,12 +302,12 @@ defmodule Ipse.PackageVerifier do
     cleared ++ allowed
   end
 
-  defp run!(executable, args, cwd, env, label) do
+  defp run!(executable, args, cwd, env, label, merge_stderr \\ true) do
     {output, status} =
       System.cmd(executable, args,
         cd: cwd,
         env: env,
-        stderr_to_stdout: true
+        stderr_to_stdout: merge_stderr
       )
 
     if status != 0 do
