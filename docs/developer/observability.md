@@ -3,6 +3,9 @@
 The implemented path projects committed journal facts into shared metadata,
 then dispatches it through bounded owned sink workers. Capture defaults to off;
 operator policy, selection and export capability are separate gates.
+Separate [live metadata feeds](extension-feeds.md) use exact subscriptions and
+durable acknowledgments with visible incomplete closure on pressure. Diagnostic
+sampling/drop policy does not control them; feed replies retain read-only authority.
 [Operator procedures](../operator/observability.md) own configuration and stop.
 The [synthetic conformance runner](extension-conformance.md) also supports
 bounded local dispatcher tracing, independently of diagnostic sink selection. The
@@ -254,7 +257,7 @@ Formatted status redaction does not protect
 or raw messages/arguments. Use synthetic inputs for breakpoints, and never suspend
 a live Session while effects continue. No debugger listener or distributed node
 is enabled. Committed runtime epoch/wait sources are implemented; ephemeral identity,
-broader lifecycle delivery and the independent package proof remain open in
+broader private lifecycle delivery/causal links and the independent package proof remain open in
 [P22](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
 
 Twenty diagnostic fixtures cover off parity, privacy/source identity, stop, export scope,

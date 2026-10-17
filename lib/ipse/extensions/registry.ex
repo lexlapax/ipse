@@ -161,7 +161,7 @@ defmodule Ipse.Extensions.Registry do
     entries = Map.get(config, :extensions, [])
 
     is_list(entries) and length(entries) <= 8 and
-      length(Ipse.Extensions.Subscriptions.declarations(config)) <= 8 and
+      length(Ipse.Extensions.Subscriptions.all_declarations(config)) <= 8 and
       Enum.count(entries, &("stream.text" in &1.identity["capabilities"])) <= 4 and
       Enum.all?(entries, fn entry ->
         is_map(entry) and
@@ -269,6 +269,9 @@ defmodule Ipse.Extensions.Registry do
       Ipse.Extensions.Store,
       __MODULE__,
       Ipse.Extensions.Worker,
+      Ipse.Extensions.WorkerLease,
+      Ipse.Extensions.FeedChannel,
+      Ipse.Extensions.Feeds,
       Ipse.Extensions.Bootstrap,
       Ipse.Extensions.Host,
       Ipse.Extensions.Projection,

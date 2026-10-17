@@ -342,6 +342,12 @@ engines remain unselected. P22 uses existing OTP/helper/schema/journal facilitie
 where suitable; P23–P25 must evaluate/inventory packages and obtain any required
 outside-Elixir/Rust approval before implementation. No mandatory backend or
 hardcoded service/rate is introduced by these planning entries.
+Live lifecycle metadata feeds reuse the existing independent Worker bridge,
+Journal/source/schema adapters, OTP processes/monitors, atomics and private ETS.
+They share worker cleanup with diagnostic channels and add no package or broker.
+The owner-managed admission/receipt queue supplies the permission, finite-capacity
+and recovery guarantees that the earlier PubSub/Telemetry review found insufficient
+on their own; it is not a general workflow or distribution framework.
 Zero-Mem's paper/authors' repository and independent Rust `zeromem` implementation
 are research candidates only. Their licenses, dependencies, model/encoder needs,
 source availability and measured suitability must be assessed before reuse;

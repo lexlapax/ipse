@@ -99,6 +99,8 @@ Explicit [history reads](docs/operator/extensions.md#explicit-history-and-catch-
 own-session recorded views for catch-up, with separate private grants and no replay.
 Optional [runtime metadata](docs/developer/lifecycle-events.md#runtime-epochs-and-operator-waits)
 records session epochs and operator waits, preserving incomplete spans across restart.
+Selected [live metadata feeds](docs/operator/extensions.md#live-metadata) observe
+supported activity with bounded queues and visible incomplete coverage on failure.
 `/ext` inspects the active catalog
 and invokes operator commands.
 Effects retain normal approval; cached receipts/projections restore without

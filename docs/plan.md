@@ -1033,6 +1033,7 @@ persistent use. They are design walkthroughs, not execution proofs.
 | Completed-answer events (A22) | Original/presented private views, shared metadata/source identity and after-turn notify/job delivery bind final presentation to native history and effective prompt; normal approvals and question/no-replay recovery remain separate | [Subscriptions](developer/extension-events.md), [jobs](developer/extension-event-jobs.md) |
 | Explicit history (A23) | Own-session fixed-range reads share source/view identities, separate private history grants, bounded pages and skipped/gap outcomes; SDK catch-up uses normal actions, questions and no-replay recovery | [History contract](developer/extension-history.md) |
 | Runtime epochs/waits (A24) | Opt-in durable session start/resume/logical close and approval/question waits, bounded recording, process-local duration, actual host links and incomplete restart semantics; no broader subscriber activation | [Runtime facts](developer/lifecycle-events.md#runtime-epochs-and-operator-waits) |
+| Live metadata feeds (A25) | Selected committed activity after explicit enrollment, source-bound intents/acknowledgments, bounded serial queues, visible incomplete closure, independent diagnostic policy and inert idle resume | [Feed contract](developer/extension-feeds.md) |
 
 The [verification guide](developer/testing.md#current-evidence-and-next-checks)
 distinguishes source fixtures, extracted-package baselines, hosted platform
@@ -1047,8 +1048,8 @@ history reads are implemented; domain catch-up/deduplication still needs the
 independent package proof. Prompt/answer jobs and the pre-request recall seam are implemented;
 fully concurrent effectful scheduling remains a negotiated enhancement. Diagnostic
 capture, bounded sinks, aggregate local retention and synthetic dispatcher tracing
-are implemented, including committed runtime epoch/wait sources; broader live
-delivery, child completion and ephemeral identity remain open. Core
+are implemented, including runtime epoch/wait sources and live committed metadata
+feeds. Broader private delivery, child completion and ephemeral identity remain open. Core
 must then be frozen for the independent
 installed memory/workflow/retrieval package proof, followed by supervised independent
 review and the required source/package/platform checks. See the

@@ -133,7 +133,7 @@ defmodule Ipse.Lifecycle.Event do
       event["view"] == "metadata" and
       Ipse.Lifecycle.Source.valid_metadata?(reference) and
       event["event_id"] == reference["event_id"] and
-      event["type"] in ~w(session.created session.started session.resumed session.close_committed session.recording_stopped wait.started wait.finished prompt.received prompt.expanded_committed prompt.projection_committed prompt.effective_committed answer.committed model.admitted model.usage_observed model.finished model.measured tool.started assistant.committed tool.result_recorded context.workspace_committed context.catalog_committed context.extensions_committed context.compaction_committed context.compaction_failed question.waiting question.answered question.closed child.started turn.settling turn.finished turn.cancelled extension.invocation_admitted extension.invocation_recorded extension.action_admitted extension.action_recorded extension.question_waiting extension.continuation_admitted extension.delivery_admitted extension.delivery_recorded extension.text_admitted extension.text_ready extension.text_closed) and
+      event["type"] in metadata_types() and
       Enum.all?(event["data"], fn
         {key, number}
         when key in ~w(input_bytes output_bytes original_bytes presented_bytes source_count tool_count sequence duration_ms action_count) ->
@@ -182,4 +182,8 @@ defmodule Ipse.Lifecycle.Event do
   end
 
   defp uint?(value), do: is_integer(value) and value in 0..9_007_199_254_740_991
+
+  def metadata_types,
+    do:
+      ~w(session.created session.started session.resumed session.close_committed session.recording_stopped wait.started wait.finished prompt.received prompt.expanded_committed prompt.projection_committed prompt.effective_committed answer.committed model.admitted model.usage_observed model.finished model.measured tool.started assistant.committed tool.result_recorded context.workspace_committed context.catalog_committed context.extensions_committed context.compaction_committed context.compaction_failed question.waiting question.answered question.closed child.started turn.settling turn.finished turn.cancelled extension.invocation_admitted extension.invocation_recorded extension.action_admitted extension.action_recorded extension.question_waiting extension.continuation_admitted extension.delivery_admitted extension.delivery_recorded extension.text_admitted extension.text_ready extension.text_closed)
 end

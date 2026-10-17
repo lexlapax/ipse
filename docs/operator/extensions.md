@@ -1,6 +1,6 @@
 # Extensions
 
-Extensions add selected hooks, tools, commands, services and diagnostic sinks.
+Extensions add selected hooks, tools, commands, services and read-only consumers.
 The bundled prompt annotation, answer formatter and local trace sink are all
 **disabled by default**. Independently built local artifacts use the same SDK
 in separate Elixir VMs; they can be imported without rebuilding Ipse.
@@ -101,6 +101,7 @@ trust ceiling must cover every declared capability:
 | `observe.local`, `observe.export` | Read-only metadata sink with separate operator capture policy | [Diagnostic capture](observability.md) |
 | `event.job` | Source-bound prompt handlers using normal finite approved actions, before requests or after answers | [Event jobs](#event-jobs) |
 | `event.notify` | Declared read-only prompt/answer notifications; metadata only without a private read capability | [Event subscribers](#event-subscribers) |
+| `event.feed` | Supported live metadata after explicit enrollment, bounded queue and visible incomplete closure; acknowledgments only | [Live metadata](#live-metadata) |
 | `event.prompt.original`, `event.prompt.effective` | The selected original or final-effective user-text view | [Event subscribers](#event-subscribers) |
 | `event.answer.original`, `event.answer.presented` | The selected original or completed presented answer text | [Event subscribers](#event-subscribers) |
 
@@ -202,6 +203,13 @@ transfer to another system.
 
 ## Event subscribers
 
+Choose a boundary notification for prompt/answer processing or a live metadata
+feed for ongoing observation. They have separate declarations and controls;
+neither grants storage, tools or inference. Ordinary extension trust, selection,
+project/child ceilings and disabled behavior apply to both.
+
+### Prompt and answer boundaries
+
 An imported artifact may declare notifications for original input, final
 effective user text or a completed answer. Select it with the existing extension configuration/flags,
 after reviewing its code and declared capabilities. `event.notify` alone receives
@@ -229,6 +237,31 @@ Live diagnostics show admitted/pending delivery and unconfirmed cleanup without
 private text. A timeout may stop the VM without confirming final cleanup; close/cancel
 reports that uncertainty. Notifications cannot perform host actions or alter the
 current prompt or completed answer.
+
+### Live metadata
+
+Reviewed artifacts may separately declare `event.feed` for supported model,
+tool, context, question, wait, child, extension and turn metadata. Their workers
+see allowlisted counts/categories and source IDs; they receive no arguments or
+private text. Wait sources additionally need `lifecycle.record`. Use the ordinary
+import, trust, enable/disable and `--extension` selection controls. Diagnostic
+capture can remain off. See the [feed author contract](../developer/extension-feeds.md).
+
+Workers enroll once on accepted new work or an explicitly validated answer;
+opening/resuming an idle session starts none. Earlier facts are outside enrollment.
+Each declared feed has 1..32 queued/in-flight events and exact acknowledgments.
+Overload, invalid replies, timeout or lost resources close coverage visibly while
+agent work proceeds. Installing a feed does not approve graph storage, model
+requests or external transfer. Historical reads and later writes retain their
+separate grants and approvals.
+
+`/diagnostics` shows readiness, admitted/acknowledged counts, pending capacity,
+closing reason and cleanup confirmation. `/events off` revokes feeds and performs
+bounded cleanup; `/cancel` and session close also stop them. A stopped feed stays
+stopped for this process. Use reviewed configuration in a new invocation to enroll
+on new work; idle resume never replays old callbacks. Incomplete deliveries need
+explicit bounded catch-up and deduplication. Cleanup uncertainty is reported
+separately from turn success, and an acknowledgment alone is no storage-success claim.
 
 ## Event jobs
 

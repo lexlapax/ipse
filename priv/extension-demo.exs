@@ -141,6 +141,7 @@ defmodule Ipse.ExtensionDemo do
       answer_views()
       history_views(root)
       runtime_epochs(root, config)
+      feed_primitives()
 
       IO.puts(
         "Extension prompt/presentation and unchanged idle resume fixture passed without inference. Local diagnostic sink fixture passed without network inference."
@@ -222,6 +223,45 @@ defmodule Ipse.ExtensionDemo do
       end
 
     ~w(session.started session.close_committed session.resumed session.close_committed) = types
+  end
+
+  defp feed_primitives do
+    declaration = %{
+      "id" => "requests",
+      "event" => "model.admitted",
+      "event_version" => 1,
+      "view" => "metadata",
+      "mode" => "feed",
+      "queue_events" => 8
+    }
+
+    :ok = Ipse.Extensions.Subscriptions.validate([declaration], ["event.feed"])
+    session = Ipse.Usage.id()
+
+    record =
+      Ipse.Usage.admission(
+        session,
+        %{provider: :demo, model: "fixture"},
+        "model",
+        Ipse.Usage.id()
+      )
+
+    {:ok, source} = Ipse.Lifecycle.Source.build(session, 1, record)
+    {:ok, anchor} = Ipse.Lifecycle.Source.build(session, 0, %{"type" => "synthetic-enrollment"})
+    {:ok, event} = Ipse.Lifecycle.Event.project(source, record, "metadata")
+
+    payload =
+      Ipse.Extensions.Feeds.payload(
+        %{"resource_id" => Ipse.Usage.id(), "declaration" => declaration},
+        anchor,
+        1,
+        event
+      )
+
+    :ok = Ipse.Extension.validate(payload)
+    true = payload["event"]["event_id"] == source["event_id"]
+    false = String.contains?(Jason.encode!(payload), "sha256")
+    %{"kind" => "ack", "sequence" => 1} = Ipse.Extensions.Feeds.ack(payload)
   end
 
   # Primitive compatibility fixture; installed SDK execution is exercised by the

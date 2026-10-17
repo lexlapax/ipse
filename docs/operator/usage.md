@@ -212,6 +212,7 @@ Chat commands:
 | `/session` | Show the current session ID and state |
 | `/info` | Show local application/provider/model facts without inference |
 | `/diagnostics` | Show content-free phase/budget and exact effective-context byte categories |
+| `/events off` | Stop selected live metadata feeds and report cleanup uncertainty; no in-session re-enable |
 | `/context` | Show saved workspace instruction sources, digests, and diagnostics |
 | `/context refresh` | Reload workspace instructions while idle, without inference |
 | `/cancel` | Stop current work and clear queued input; started effects may already have happened |
@@ -560,11 +561,14 @@ embedded clients and selected `stream.text` workers use the
 Default-off [diagnostic capture](observability.md) separately selects metadata sink
 workers with `--observability off|local|export`; `/observability off` revokes new
 samples immediately. Journals and usage remain active.
+Selected [live metadata feeds](extensions.md#live-metadata) enroll on explicit
+work with separate bounded queues and durable receipts. `/events off` stops them;
+idle resume starts no feed, and incomplete coverage needs explicit catch-up.
 These available facilities are distinct from the planned capabilities below.
 
 | Milestone | Remaining capability | Status and boundary |
 | --- | --- | --- |
-| P22 | Broader lifecycle seams, raw developer tracing and the independent package proof | In progress; synthetic SDK checks, bounded capture/local retention and off/local/export mode are available |
+| P22 | Broader private lifecycle seams/causal links and the independent package proof | In progress; bounded live metadata feeds, diagnostic capture/local retention and synthetic dispatcher tracing are available |
 | P23 | Cost reports and budget admission | Planned over durable usage facts; context bytes are not tokens or an invoice |
 | P24 | STT/text-agent/TTS and realtime media | Planned with explicit device/provider/billing selection; text authentication does not imply audio access |
 | P25 | Optional working/long-term memory, research engine, graph and RAG | Research/selection gates remain; each adapter will be independently configured and default-off |

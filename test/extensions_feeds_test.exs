@@ -1,0 +1,629 @@
+defmodule Ipse.Extensions.FeedsTest do
+  use ExUnit.Case, async: false
+  alias Ipse.{Session, Journal}
+  alias Ipse.Extensions.{Feeds, Subscriptions, Store, Manifest, Registry, Config}
+
+  defmodule Model do
+    def complete(config, messages, _tools, _emit) do
+      send(config.test_pid, {:feed_model, self(), messages})
+      first = not Enum.any?(messages, &(&1["role"] == "tool"))
+
+      if first and config[:gate_model],
+        do:
+          (receive do
+             :release -> :ok
+           end)
+
+      calls =
+        if first do
+          case config[:scenario] do
+            :write ->
+              [
+                %{
+                  "id" => "private-call",
+                  "function" => %{
+                    "name" => "write",
+                    "arguments" =>
+                      Jason.encode!(%{"path" => "effect.txt", "content" => "private arguments"})
+                  }
+                }
+              ]
+
+            :question ->
+              [
+                %{
+                  "id" => "private-question",
+                  "function" => %{
+                    "name" => "ask_operator",
+                    "arguments" =>
+                      Jason.encode!(%{
+                        "questions" => [
+                          %{"id" => "choice", "kind" => "text", "prompt" => "private question"}
+                        ]
+                      })
+                  }
+                }
+              ]
+
+            _ ->
+              []
+          end
+        else
+          []
+        end
+
+      {:ok,
+       %{
+         "role" => "assistant",
+         "content" => "private answer",
+         "tool_calls" => calls,
+         "provider_data" => %{"native" => "private native continuation"}
+       }, %{}}
+    end
+  end
+
+  setup_all do
+    root = Path.join(System.tmp_dir!(), "ipse-feed-artifacts-#{Ipse.Usage.id()}")
+
+    artifacts =
+      for kind <- [:normal, :single, :mixed, :question], into: %{} do
+        events =
+          if kind == :normal,
+            do: ~w(model.admitted wait.started question.waiting turn.finished),
+            else: if(kind == :question, do: ~w(question.waiting), else: ~w(model.admitted))
+
+        declarations =
+          for {event, index} <- Enum.with_index(events),
+              do: %{
+                "id" => "feed#{index}",
+                "event" => event,
+                "event_version" => 1,
+                "view" => "metadata",
+                "mode" => "feed",
+                "queue_events" => if(kind == :single, do: 1, else: 8)
+              }
+
+        declarations =
+          if kind in [:mixed, :question],
+            do:
+              declarations ++
+                [
+                  %{
+                    "id" => "notify",
+                    "event" => "prompt.effective_committed",
+                    "event_version" => 1,
+                    "view" => "metadata",
+                    "mode" => "notify",
+                    "required" => true
+                  }
+                ],
+            else: declarations
+
+        caps =
+          ["event.feed"] ++
+            if(kind == :normal, do: ["lifecycle.record"], else: []) ++
+            if(kind in [:mixed, :question], do: ["event.notify"], else: [])
+
+        directory = Path.join(root, Atom.to_string(kind))
+        File.mkdir_p!(Path.join(directory, "ebin"))
+        module = "Independent.Feed#{System.unique_integer([:positive])}"
+
+        code = """
+        defmodule #{module} do
+          @behaviour Ipse.Extension
+          def describe, do: %{"sdk" => 1, "capabilities" => #{inspect(caps)}, "subscriptions" => #{inspect(declarations)}}
+          def init(options) do
+            log(options, %{"initialized" => true})
+            {:ok, options}
+          end
+          def handle("event.feed", payload, state) do
+            log(state, payload)
+            if state["mode"] == "hang" do
+              File.write!(state["pid"], System.pid())
+              Process.sleep(:infinity)
+            end
+            reply = if state["mode"] == "host_call" do
+              %{"api_version" => 1, "kind" => "host_call", "request" => %{"op" => "state.put", "key" => "unapproved", "value" => %{}, "expected_revision" => 0}}
+            else
+              %{"api_version" => 1, "kind" => "ack", "handle" => payload["handle"], "sequence" => payload["sequence"], "event_id" => payload["event"]["event_id"]}
+            end
+            {:ok, reply, state}
+          end
+          def handle("event.notify", payload, state) do
+            log(state, payload)
+            {:ok, %{"api_version" => 1, "kind" => "ack", "delivery_id" => payload["delivery_id"], "event_id" => payload["event"]["event_id"]}, state}
+          end
+          defp log(state, payload), do: File.write!(state["trace"], Jason.encode!(payload) <> "\\n", [:append])
+        end
+        """
+
+        file = Path.join(directory, "fixture.ex")
+        File.write!(file, code)
+
+        {output, status} =
+          System.cmd(
+            System.find_executable("elixirc"),
+            ["-pa", Application.app_dir(:ipse, "ebin"), "-o", Path.join(directory, "ebin"), file],
+            stderr_to_stdout: true
+          )
+
+        assert status == 0, output
+        File.write!(Path.join(directory, "LICENSE"), "MIT synthetic fixture")
+
+        manifest = %{
+          "format" => 1,
+          "id" => "fixture/feed",
+          "version" => "0.1.0",
+          "sdk" => 1,
+          "protocol" => 1,
+          "backend" => "elixir_worker",
+          "entrypoint" => module,
+          "license_file" => "LICENSE",
+          "capabilities" => caps,
+          "subscriptions" => declarations,
+          "options_schema" => %{
+            "type" => "object",
+            "additionalProperties" => false,
+            "required" => ~w(trace pid mode),
+            "properties" => Map.new(~w(trace pid mode), &{&1, %{"type" => "string"}})
+          },
+          "runtime" => %{
+            "elixir" => ">= 1.18.0",
+            "otp" => [String.to_integer(System.otp_release())],
+            "platforms" => [to_string(:erlang.system_info(:system_architecture))]
+          },
+          "files" =>
+            Enum.map(["LICENSE", "ebin/Elixir.#{module}.beam"], fn path ->
+              bytes = File.read!(Path.join(directory, path))
+              %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Manifest.sha256(bytes)}
+            end)
+        }
+
+        File.write!(Path.join(directory, "extension.json"), Jason.encode!(manifest))
+        {kind, %{directory: directory, manifest: manifest}}
+      end
+
+    on_exit(fn -> File.rm_rf!(root) end)
+    %{artifacts: artifacts}
+  end
+
+  setup do
+    root = Path.join(System.tmp_dir!(), "ipse-feed-#{Ipse.Usage.id()}")
+    File.mkdir_p!(root)
+    on_exit(fn -> File.rm_rf!(root) end)
+
+    %{
+      root: root,
+      home: Path.join(root, "home"),
+      dir: Path.join(root, "sessions"),
+      trace: Path.join(root, "trace.jsonl"),
+      pid_file: Path.join(root, "worker.pid")
+    }
+  end
+
+  defp config(c, kind, options \\ []) do
+    {:ok, artifact} =
+      Store.import(c.artifacts[kind].directory, Path.join(c.home, "extensions/artifacts"))
+
+    data = %{
+      "extension_trust" => [
+        %{
+          "artifact" => artifact.digest,
+          "capabilities" => artifact.manifest["capabilities"],
+          "allow_project" => false,
+          "allow_children" => false
+        }
+      ],
+      "extensions" => [
+        %{
+          "instance" => "feed",
+          "artifact" => artifact.digest,
+          "enabled" => Keyword.get(options, :enabled, true),
+          "options" => %{
+            "trace" => c.trace,
+            "pid" => c.pid_file,
+            "mode" => options[:mode] || "record"
+          },
+          "order" => 0,
+          "lifetime" => "session"
+        }
+      ]
+    }
+
+    {:ok, catalog} =
+      Config.resolve([%{scope: "operator", path: "/synthetic/feed.json", data: data}], [])
+
+    {:ok, entries} = Registry.prepare(catalog, c.home)
+
+    %{
+      provider: :demo,
+      model: "fixture",
+      provider_module: Model,
+      test_pid: self(),
+      home: c.home,
+      approval: :ask,
+      extensions: entries,
+      gate_model: options[:gate],
+      scenario: options[:scenario]
+    }
+  end
+
+  defp start(c, config, id \\ nil, owner \\ nil) do
+    result =
+      DynamicSupervisor.start_child(
+        Ipse.Sessions,
+        {Session,
+         config: config, cwd: c.root, state_dir: c.dir, id: id, subscriber: self(), owner: owner}
+      )
+
+    case result do
+      {:ok, pid} -> on_exit(fn -> if Process.alive?(pid), do: Session.close(pid) end)
+      _ -> :ok
+    end
+
+    result
+  end
+
+  defp eventually(fun, attempts \\ 1000)
+  defp eventually(fun, 0), do: assert(fun.())
+
+  defp eventually(fun, n) do
+    if fun.(),
+      do: :ok,
+      else:
+        (
+          Process.sleep(10)
+          eventually(fun, n - 1)
+        )
+  end
+
+  defp trace(c) do
+    if File.exists?(c.trace),
+      do: File.read!(c.trace) |> String.split("\n", trim: true) |> Enum.map(&Jason.decode!/1),
+      else: []
+  end
+
+  defp rows(c, id), do: elem(Journal.load(c.dir, id), 1)
+  defp status(pid), do: Session.diagnostics(pid)["extension_feeds"]
+  defp settled(pid), do: Enum.all?(status(pid)["feeds"], &(&1["ready"] and &1["pending"] == 0))
+  defp done(pid), do: assert_receive({:ipse, ^pid, {:done, :ok}}, 10_000)
+  defp alive?(pid), do: elem(System.cmd("kill", ["-0", pid], stderr_to_stdout: true), 1) == 0
+
+  test "declarations are inert, exact and independent of notification and effect grants" do
+    d = %{
+      "id" => "model",
+      "event" => "model.admitted",
+      "event_version" => 1,
+      "view" => "metadata",
+      "mode" => "feed",
+      "queue_events" => 1
+    }
+
+    assert :ok = Subscriptions.validate([d], ["event.feed"])
+
+    for bad <- [
+          Map.put(d, "event", "*"),
+          Map.put(d, "event_version", 2),
+          Map.put(d, "required", true),
+          Map.put(d, "view", "prompt.original"),
+          Map.put(d, "queue_events", 33),
+          Map.put(d, "event", "session.resumed")
+        ] do
+      assert {:error, _} = Subscriptions.validate([bad], ["event.feed"])
+    end
+
+    assert {:error, _} = Subscriptions.validate([d], ["event.notify"])
+    assert {:error, _} = Subscriptions.validate([], ["event.feed"])
+    wait = Map.put(d, "event", "wait.started")
+    assert {:error, _} = Subscriptions.validate([wait], ["event.feed"])
+    assert :ok = Subscriptions.validate([wait], ~w(event.feed lifecycle.record))
+  end
+
+  test "metadata feeds start on explicit work, preserve source identity and do not approve tools",
+       c do
+    {:ok, pid} = start(c, config(c, :normal, scenario: :write))
+    id = Session.info(pid).id
+    refute File.exists?(c.trace)
+    assert status(pid)["enrolled"] == false
+    :ok = Session.prompt(pid, "private prompt")
+    assert_receive {:ipse, ^pid, {:approval, ref, "write", _}}, 3_000
+    refute File.exists?(Path.join(c.root, "effect.txt"))
+    :ok = Session.approve(pid, ref, false)
+    done(pid)
+    eventually(fn -> settled(pid) end)
+    frames = Enum.filter(trace(c), &Map.has_key?(&1, "handle"))
+
+    assert Enum.map(frames, & &1["event"]["type"]) |> Enum.sort() ==
+             ~w(model.admitted model.admitted turn.finished wait.started)
+
+    refute String.contains?(Jason.encode!(frames), ["private", "sha256", c.root])
+    all = rows(c, id)
+    assert {:ok, _} = Session.restore_context(all)
+    assert :ok = Subscriptions.validate_sources(c.dir, id, all)
+    assert Enum.count(all, &(&1["type"] == "extension_feed_delivery_intent")) == 4
+    assert Enum.count(all, &(&1["type"] == "extension_feed_delivery_result")) == 4
+
+    for frame <- frames do
+      source = frame["event"]["source"]
+
+      assert {:ok, %{records: [%{source: actual}]}} =
+               Journal.source_page(c.dir, id, source["byte_offset"], 1)
+
+      assert source["event_id"] == actual["event_id"]
+      assert frame["after"]["byte_offset"] < source["byte_offset"]
+    end
+
+    :ok = Session.close(pid)
+    assert {:ok, saved} = Feeds.validate(rows(c, id), id)
+    assert Enum.all?(saved.resources, fn {_, r} -> r.closed end)
+  end
+
+  test "queue pressure closes incomplete coverage and stops the blocked owned VM", c do
+    {:ok, pid} = start(c, config(c, :single, scenario: :write, gate: true, mode: "hang"))
+    id = Session.info(pid).id
+    :ok = Session.prompt(pid, "private prompt")
+    assert_receive {:feed_model, model, _}, 3_000
+    eventually(fn -> File.exists?(c.pid_file) end)
+    worker = File.read!(c.pid_file)
+    send(model, :release)
+    assert_receive {:ipse, ^pid, {:approval, ref, "write", _}}, 3_000
+    :ok = Session.approve(pid, ref, false)
+    done(pid)
+    eventually(fn -> match?([%{"closed" => true}], status(pid)["feeds"]) end)
+    [feed] = status(pid)["feeds"]
+    assert feed["reason"] == "capacity" and feed["admitted"] == 1 and feed["acknowledged"] == 0
+    eventually(fn -> not alive?(worker) end)
+    closed = Enum.find(rows(c, id), &(&1["type"] == "extension_feed_closed"))
+    assert Ipse.Lifecycle.Source.valid?(closed["gap_source"])
+    assert :ok = Subscriptions.validate_sources(c.dir, id, rows(c, id))
+    :ok = Session.close(pid)
+  end
+
+  test "invalid effect replies stop a feed while the agent remains usable", c do
+    {:ok, pid} = start(c, config(c, :single, gate: true, mode: "host_call"))
+    id = Session.info(pid).id
+    :ok = Session.prompt(pid, "private prompt")
+    assert_receive {:feed_model, model, _}, 3_000
+    eventually(fn -> match?([%{"closed" => true}], status(pid)["feeds"]) end)
+    [feed] = status(pid)["feeds"]
+    assert feed["reason"] == "callback_failed"
+    refute Enum.any?(rows(c, id), &(&1["type"] == "extension_action_intent"))
+    send(model, :release)
+    done(pid)
+    :ok = Session.close(pid)
+    assert {:ok, _} = Session.restore_context(rows(c, id))
+  end
+
+  test "callback deadline retains unconfirmed cleanup without failing successful inference", c do
+    {:ok, pid} = start(c, config(c, :single, gate: true, mode: "hang"))
+    id = Session.info(pid).id
+    :ok = Session.prompt(pid, "private prompt")
+    assert_receive {:feed_model, model, _}, 3_000
+    eventually(fn -> File.exists?(c.pid_file) end)
+    worker = File.read!(c.pid_file)
+    eventually(fn -> match?([%{"closed" => true}], status(pid)["feeds"]) end)
+    [feed] = status(pid)["feeds"]
+    assert feed["reason"] == "callback_failed" and feed["cleanup_confirmed"] == false
+    eventually(fn -> not alive?(worker) end)
+    assert Process.alive?(model)
+    send(model, :release)
+    done(pid)
+    assert {:error, :cleanup_unconfirmed} = Session.close(pid)
+    assert {:ok, saved} = Ipse.Diagnostics.saved(c.dir, id)
+    assert saved["event_feeds"]["unconfirmed_cleanup"] == 1
+    assert saved["event_feeds"]["unacknowledged"] == 1
+  end
+
+  test "notifications and feeds coexist without changing the barrier contract", c do
+    {:ok, pid} = start(c, config(c, :mixed))
+    id = Session.info(pid).id
+    :ok = Session.prompt(pid, "private prompt")
+    done(pid)
+    eventually(fn -> settled(pid) end)
+    assert Enum.any?(trace(c), &Map.has_key?(&1, "delivery_id"))
+    assert Enum.any?(trace(c), &Map.has_key?(&1, "handle"))
+    :ok = Session.close(pid)
+    assert {:ok, _} = Session.restore_context(rows(c, id))
+    assert :ok = Subscriptions.validate_sources(c.dir, id, rows(c, id))
+  end
+
+  test "explicit stop and idle resume never replay or restart feed callbacks", c do
+    cfg = config(c, :single)
+    {:ok, pid} = start(c, cfg)
+    id = Session.info(pid).id
+    :ok = Session.prompt(pid, "first private prompt")
+    done(pid)
+    eventually(fn -> settled(pid) end)
+    :ok = Session.stop_feeds(pid)
+    old = File.read!(c.trace)
+    :ok = Session.prompt(pid, "second private prompt")
+    done(pid)
+    assert File.read!(c.trace) == old
+    :ok = Session.close(pid)
+    bytes = File.read!(Path.join(c.dir, id <> ".jsonl"))
+    {:ok, resumed} = start(c, cfg, id)
+    assert status(resumed)["enrolled"] == false
+    assert File.read!(c.trace) == old
+    assert File.read!(Path.join(c.dir, id <> ".jsonl")) == bytes
+    :ok = Session.prompt(resumed, "third private prompt")
+    done(resumed)
+    eventually(fn -> settled(resumed) end)
+    assert length(trace(c)) == length(String.split(old, "\n", trim: true)) + 2
+    :ok = Session.close(resumed)
+    assert {:ok, _} = Session.restore_context(rows(c, id))
+  end
+
+  test "disabled selections execute no worker and create no feed lease", c do
+    {:ok, pid} = start(c, config(c, :single, enabled: false))
+    id = Session.info(pid).id
+    :ok = Session.prompt(pid, "private prompt")
+    done(pid)
+    refute File.exists?(c.trace)
+    assert Enum.all?(rows(c, id), &(&1["type"] not in Feeds.record_types()))
+    :ok = Session.close(pid)
+  end
+
+  defp resume(c, cfg, id, attempts \\ 100) do
+    case start(c, cfg, id) do
+      {:error, :session_locked} when attempts > 0 ->
+        Process.sleep(10)
+        resume(c, cfg, id, attempts - 1)
+
+      result ->
+        result
+    end
+  end
+
+  test "question checkpoints stay adjacent and explicit answer starts a fresh feed without replay",
+       c do
+    cfg = config(c, :question, scenario: :question)
+    {:ok, pid} = start(c, cfg)
+    id = Session.info(pid).id
+    :ok = Session.prompt(pid, "private prompt")
+    assert_receive {:ipse, ^pid, {:question, question, _}}, 3_000
+    eventually(fn -> settled(pid) end)
+    events = rows(c, id)
+    index = Enum.find_index(events, &(&1["type"] == "operator_question"))
+    assert Enum.at(events, index + 1)["type"] == "lifecycle_question_sources"
+    assert {:ok, _} = Session.restore_context(events)
+    assert :ok = Subscriptions.validate_sources(c.dir, id, events)
+    ref = Process.monitor(pid)
+    Process.exit(pid, :kill)
+    assert_receive {:DOWN, ^ref, :process, ^pid, :killed}, 2_000
+    old = File.read!(c.trace)
+    bytes = File.read!(Path.join(c.dir, id <> ".jsonl"))
+    {:ok, resumed} = resume(c, cfg, id)
+    assert_receive {:ipse, ^resumed, {:question, ^question, _}}, 3_000
+    assert File.read!(c.trace) == old
+    assert File.read!(Path.join(c.dir, id <> ".jsonl")) == bytes
+    assert {:error, :invalid_answer} = Session.answer(resumed, question, %{})
+    assert status(resumed)["enrolled"] == false
+    :ok = Session.answer(resumed, question, %{"choice" => "explicit private answer"})
+    done(resumed)
+    eventually(fn -> settled(resumed) end)
+    frames = Enum.filter(trace(c), &Map.has_key?(&1, "handle"))
+    assert length(frames) == 1
+    assert hd(frames)["event"]["type"] == "question.waiting"
+    :ok = Session.close(resumed)
+    assert {:ok, _} = Session.restore_context(rows(c, id))
+    assert :ok = Subscriptions.validate_sources(c.dir, id, rows(c, id))
+  end
+
+  test "cancellation interrupts a blocked feed independently of inference and preserves unknown deliveries",
+       c do
+    {:ok, pid} = start(c, config(c, :single, gate: true, mode: "hang"))
+    id = Session.info(pid).id
+    :ok = Session.prompt(pid, "private prompt")
+    assert_receive {:feed_model, model, _}, 3_000
+    eventually(fn -> File.exists?(c.pid_file) end)
+    worker = File.read!(c.pid_file)
+    :ok = Session.cancel(pid)
+    assert Session.info(pid).phase == :idle
+    eventually(fn -> not Process.alive?(model) and not alive?(worker) end)
+    [feed] = status(pid)["feeds"]
+    assert feed["closed"] and feed["reason"] == "cancelled"
+    assert feed["admitted"] == 1 and feed["acknowledged"] == 0
+    :ok = Session.close(pid)
+    assert {:ok, _} = Session.restore_context(rows(c, id))
+  end
+
+  test "owner death closes a blocked feed and idle resume starts no VM or model", c do
+    cfg = config(c, :single, gate: true, mode: "hang")
+
+    owner =
+      spawn(fn ->
+        receive do
+          :stop -> :ok
+        end
+      end)
+
+    {:ok, pid} = start(c, cfg, nil, owner)
+    id = Session.info(pid).id
+    :ok = Session.prompt(pid, "private prompt")
+    assert_receive {:feed_model, model, _}, 3_000
+    eventually(fn -> File.exists?(c.pid_file) end)
+    worker = File.read!(c.pid_file)
+    ref = Process.monitor(pid)
+    send(owner, :stop)
+    assert_receive {:DOWN, ^ref, :process, ^pid, :normal}, 5_000
+    eventually(fn -> not Process.alive?(model) and not alive?(worker) end)
+    old = File.read!(c.trace)
+    closed = Enum.find(rows(c, id), &(&1["type"] == "extension_feed_closed"))
+    assert closed["reason"] == "consumer_down"
+    {:ok, resumed} = resume(c, cfg, id)
+    assert status(resumed)["feeds"] == []
+    assert File.read!(c.trace) == old
+    refute_receive {:feed_model, _, _}, 50
+    :ok = Session.close(resumed)
+    assert :ok = Subscriptions.validate_sources(c.dir, id, rows(c, id))
+  end
+
+  test "a coherently altered callback receipt refuses physical validation before repair", c do
+    cfg = config(c, :single)
+    {:ok, pid} = start(c, cfg)
+    id = Session.info(pid).id
+    :ok = Session.prompt(pid, "private prompt")
+    done(pid)
+    eventually(fn -> settled(pid) end)
+    :ok = Session.close(pid)
+    original = rows(c, id)
+    intent = Enum.find(original, &(&1["type"] == "extension_feed_delivery_intent"))
+    forged_intent = Map.put(intent, "payload_sha256", String.duplicate("0", 64))
+
+    forged =
+      Enum.map(original, fn
+        ^intent -> forged_intent
+        %{"type" => "extension_feed_delivery_result"} -> Feeds.result(forged_intent)
+        event -> event
+      end)
+
+    assert {:ok, _} = Session.restore_context(forged)
+    assert {:error, :invalid_extension_feed} = Subscriptions.validate_sources(c.dir, id, forged)
+    path = Path.join(c.dir, id <> ".jsonl")
+    contents = Enum.map_join(forged, "\n", &Jason.encode!/1) <> "\n{"
+    File.write!(path, contents)
+    assert {:error, :invalid_extension_feed} = resume(c, cfg, id)
+    assert File.read!(path) == contents
+  end
+
+  test "the admission ceiling spans leases and malformed sequence/closure claims refuse", c do
+    {:ok, pid} = start(c, config(c, :single))
+    id = Session.info(pid).id
+    :ok = Session.prompt(pid, "private prompt")
+    done(pid)
+    eventually(fn -> settled(pid) end)
+    events = rows(c, id)
+    header = hd(events)
+    lease = Enum.find(events, &(&1["type"] == "extension_feed_intent"))
+    delivery = Enum.find(events, &(&1["type"] == "extension_feed_delivery_intent"))
+    # Pure receipt-bound checks; these generated positions are not physical source authority.
+    source_record = %{"type" => "synthetic"}
+
+    deliveries =
+      Enum.flat_map(1..Feeds.limit(), fn i ->
+        {:ok, source} = Ipse.Lifecycle.Source.build(id, 1_000_000 + i, source_record)
+        d = %{delivery | "sequence" => i, "source" => source}
+        [d, Feeds.result(d)]
+      end)
+
+    history = [header, lease, Feeds.ready(lease)] ++ deliveries
+    assert {:ok, %{deliveries: 10_000}} = Feeds.validate(history, id)
+    another = Map.put(lease, "resource_id", Ipse.Usage.id())
+    next = %{delivery | "resource_id" => another["resource_id"]}
+    assert {:error, _} = Feeds.validate(history ++ [another, next], id)
+
+    assert {:error, _} =
+             Feeds.validate(
+               [
+                 header,
+                 lease,
+                 Feeds.ready(lease),
+                 delivery,
+                 Map.put(Feeds.result(delivery), "sequence", 2)
+               ],
+               id
+             )
+
+    :ok = Session.close(pid)
+  end
+end

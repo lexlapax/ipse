@@ -247,37 +247,10 @@ defmodule Ipse.Observability.Channel do
   end
 
   defp close_worker(worker, counters) do
-    case :atomics.compare_exchange(counters, 9, 0, 1) do
-      :ok ->
-        result = Worker.close(worker)
-        :atomics.put(counters, 9, if(result == :ok, do: 2, else: 3))
-        result
-
-      _ ->
-        await_cleanup(counters)
-    end
+    Ipse.Extensions.WorkerLease.close(worker, counters)
   end
 
-  defp await_cleanup(counters),
-    do: await_cleanup(counters, System.monotonic_time(:millisecond) + 3_500)
-
-  defp await_cleanup(counters, deadline) do
-    case :atomics.get(counters, 9) do
-      2 ->
-        :ok
-
-      1 ->
-        if System.monotonic_time(:millisecond) < deadline do
-          Process.sleep(2)
-          await_cleanup(counters, deadline)
-        else
-          {:error, :cleanup_unconfirmed}
-        end
-
-      _ ->
-        {:error, :cleanup_unconfirmed}
-    end
-  end
+  defp await_cleanup(counters), do: Ipse.Extensions.WorkerLease.await(counters)
 
   defp release(counters) do
     current = :atomics.get(counters, 1)

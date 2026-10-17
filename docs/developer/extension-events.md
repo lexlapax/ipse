@@ -6,7 +6,9 @@ answer views run after native completion and presentation transforms. These are
 explicit boundaries in the
 [lifecycle design](lifecycle-events.md). Separately admitted
 [event jobs](extension-event-jobs.md) support finite actions and awaited recall;
-this guide covers read-only delivery. Broader lifecycle observation remains pending.
+this guide covers ordered boundary delivery. Separate
+[live metadata feeds](extension-feeds.md) observe supported activity during explicit
+work and have their own bounded queue/closure contract.
 
 Use [operator selection](../operator/extensions.md#event-subscribers) for
 trust/configuration and [artifacts](extension-artifacts.md) for installation.
@@ -17,7 +19,7 @@ declarations, callback values and delivery recovery.
 ## Inert declaration and authority
 
 A worker manifest may include an optional `subscriptions` array, with at most
-four unique IDs. Omission means an empty array. For example, a completed-answer
+four unique IDs across notifications, jobs and feeds. Omission means an empty array. For example, a completed-answer
 subscriber places these fields inside an otherwise complete artifact manifest:
 
 ```json
@@ -144,9 +146,9 @@ also have the 1 MiB source bound. An oversized original refuses input while idle
 an oversized effective source stops that attempt before notification/inference.
 
 The finite plan, one active delivery and rejection of another prompt while busy
-bound admission; there is no unbounded subscriber mailbox. This is not a live
-stream, a general broker or concurrent background scheduling. Those contracts
-must be negotiated separately. Session stays responsive to cancellation while
+bound admission; there is no unbounded subscriber mailbox. Continuous metadata
+observation uses the separate feed mode; private continuous streams and effectful
+background scheduling remain negotiated enhancements. Session stays responsive to cancellation while
 workers run; killing its owner stops the owned task/VM/native process group under
 the existing documented OS cleanup limits.
 
@@ -209,8 +211,10 @@ they do not establish installed subscriber execution by themselves. See
 
 The separate [job contract](extension-event-jobs.md) now provides finite host
 actions, pre-request recall and after-turn maintenance. Remaining foundation work
-includes broader lifecycle types/causal links and explicit catch-up.
+includes broader private lifecycle views/causal links and the independent domain
+catch-up proof. The [history primitive](extension-history.md) is implemented.
 [Diagnostic sinks](observability.md) have separate metadata capture/stop controls.
+Live metadata [feeds](extension-feeds.md) close visibly when capacity is exhausted.
 Continuous private feeds and external adapters need their own negotiated
 ownership/flow/egress contract. Notification acknowledgments must not silently
 gain effectful semantics in a future implementation. Production graph extraction

@@ -55,7 +55,7 @@ defmodule Ipse.CLI do
   Chat asks before writes, shell, MCP, and delegation. Headless run denies them without --yes.
   Shell execution uses your user permissions unless --sandbox native is selected.
   Native enforcement fails closed when unavailable; approvals remain required.
-  Chat commands: /help /skills /session /info /diagnostics /observability off /context /context refresh /ext [NAME JSON] /cancel /exit.
+  Chat commands: /help /skills /session /info /diagnostics /observability off /events off /context /context refresh /ext [NAME JSON] /cancel /exit.
   Invoke skills with $name.
   EOF finishes accepted work; errors and /cancel clear queued input.
   """
@@ -547,6 +547,14 @@ defmodule Ipse.CLI do
         IO.puts(
           "Diagnostic capture stopped; recovery journaling and usage accounting remain active."
         )
+
+        client_loop(s)
+
+      {:input, "/events off"} ->
+        case Ipse.Session.stop_feeds(s.pid) do
+          :ok -> IO.puts("Live event feeds stopped; inspect /diagnostics for coverage.")
+          _ -> IO.puts("Live event feeds stopped with unconfirmed cleanup; inspect /diagnostics.")
+        end
 
         client_loop(s)
 

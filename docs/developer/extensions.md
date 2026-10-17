@@ -20,12 +20,14 @@ Current contracts are organized by responsibility:
 | Durable request facts and embedded/worker private delivery | [Usage accounting](usage-accounting.md), [text channel](text-streams.md) |
 | Journal identity and typed recorded views | [Lifecycle adapter](lifecycle-events.md#internal-journal-source-and-prompt-views); raw pages stay host-only, while [history reads](extension-history.md) expose scoped projections |
 | Declared read-only prompt/answer delivery | [Event subscriptions](extension-events.md), with separate metadata/private authority and required/optional receipts |
+| Live committed metadata | [Feeds](extension-feeds.md), with explicit enrollment, bounded serial consumers, source-bound acknowledgments and visible incomplete closure |
 | Source-bound prompt/answer actions and recall | [Event jobs](extension-event-jobs.md), with finite approved actions, before-request contributions and after-turn maintenance |
 | Optional diagnostic capture | [Observability](observability.md), with operator policy, bounded owned sinks, aggregate local ring retention and immediate stop |
 | Author conformance inputs | [Synthetic checks](extension-conformance.md), with normal trust/approval, scratch Sessions, explicit answers and content-free assertions |
 
-Broader lifecycle subscriptions, developer controls and the
-independent installed-package/supervised proofs remain open. The
+Broader private lifecycle delivery/causal links and the independent installed-package/
+supervised proofs remain open. Synthetic dispatcher tracing and source-debugging
+boundaries are documented under observability. The
 [plan](../plan.md#p22-extension-scaffold-and-lifecycle-hooks) owns current status;
 [testing](testing.md#current-evidence-and-next-checks) owns actual results.
 [Adoption scenarios](extension-scenarios.md) explain bundled, installed and
@@ -344,7 +346,7 @@ interpreted as effects. Current interfaces and remaining proposals are distinct:
 | Prompt/presentation | Implemented `append` or `prefix`/`suffix` objects | Journal source-bound derived projection; preserve originals/native data |
 | Context contribution | Implemented `context.publish` sets with provenance | Accept/refuse within budgets, then pin exact main-request snapshots |
 | Tool/command/service | Implemented declared result schemas or explicit `host_call` proposals | Owned invocation; full tool approval and finite separately admitted actions |
-| Lifecycle subscriptions | Stable journal sources and declared read-only original/final-effective prompt notifications | Exact acknowledgment; separate private-view authority, required/optional receipts and no replay |
+| Lifecycle subscriptions | Stable journal sources, prompt/answer barriers and bounded live metadata feeds | Exact acknowledgment; separate private-view authority, barrier outcomes or incomplete feed closure, with no automatic replay |
 | Triggered work and ordered recall | Implemented prompt jobs with before-request/after-turn schedules; broader lifecycle jobs remain pending | Separate action admission; committed source/provenance and deterministic request snapshots |
 | Before-settlement scheduling | Future explicitly negotiated capability | Must validate remaining budgets/phase; no arbitrary auto-continuation exists |
 

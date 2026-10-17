@@ -3,8 +3,9 @@
 P22 lifecycle design with implemented journal-source, runtime-wait and prompt/answer adapters and
 [bounded read-only subscriptions](extension-events.md) plus separate
 [event jobs](extension-event-jobs.md) for approved actions, awaited recall and
-after-turn maintenance. Prompt and completed-answer delivery are implemented;
-broader lifecycle subscriptions remain pending.
+after-turn maintenance. Prompt/answer barriers and
+[live committed metadata feeds](extension-feeds.md) are implemented; broader
+private views and full causal coverage remain pending.
 Existing [transforms](extension-hooks.md),
 [invocations/actions](extension-host-calls.md), [context](extension-context.md)
 and [visible-text delivery](text-streams.md) retain their current wire contracts.
@@ -40,7 +41,8 @@ building block for selected notifications and the remaining delivery contracts.
 
 | Needed by a prompt-driven knowledge graph | Current support | Remaining foundation |
 | --- | --- | --- |
-| Read prompt text | Selected transforms and read-only original/final-effective subscriptions with explicit capabilities | Broader lifecycle views and continuous feeds |
+| Read prompt text | Selected transforms and read-only original/final-effective subscriptions with explicit capabilities | Broader private lifecycle views and continuous private feeds |
+| Observe host activity | Exact live metadata subscriptions with bounded queues and explicit incomplete closure | Broader private views, full causal source coverage and independent consumer proof |
 | Extract entities | Owned prompt jobs can run deterministic extraction | Model work needs a separately admitted, accounted request capability |
 | Store derived facts | Prompt jobs use normal approved state actions with source-bound invocation receipts | Production storage adapters and complete forgetting policies |
 | Add recalled evidence to an answer | Before-request jobs publish bounded attributed context into a frozen request snapshot; explicit history reads expose recorded views | Broader context seams and independent domain catch-up proof |
@@ -185,9 +187,10 @@ or `export` mode, or a selected reviewed artifact declares `lifecycle.record`.
 The capability enables source recording independently of diagnostics; it grants
 no callback, content read, host action or export permission. With both absent,
 no runtime facts are appended, including on an idle resume. Current subscriptions
-still accept only prompt/answer boundaries; runtime sources can be projected into
-diagnostics and explicitly read through authorized metadata history, not subscribed
-to through a new undocumented delivery mode.
+retain prompt/answer boundaries. Live metadata feeds can select waits and the
+recording-limit notice with `lifecycle.record`; initialization/final-close facts
+remain outside live enrollment. Authorized metadata history reads expose those
+recorded facts without starting a feed.
 
 At the final initialization boundary, each recorded process gets a fresh `epoch_id`.
 A resume identifies the prior recorded epoch and whether it was closed or
@@ -259,6 +262,7 @@ private content must not acquire it by subscribing to a metadata topic.
 | --- | --- | --- |
 | Implemented prompt/answer notification | Finite ordered boundary plan, one active callback, explicit required/optional outcomes | Exact acknowledgment only; metadata or separately granted private view |
 | Diagnostic notification | Independent bounded queues; sampling/drop counts are visible; sink failures do not fail the turn | Acknowledge metadata only; no host actions or context changes |
+| Implemented live metadata feed | Selected committed facts after explicit enrollment; bounded serial queue, durable intents/acknowledgments, visible incomplete closure on pressure/failure | Exact acknowledgment only; no implicit history, actions or private content |
 | Private content feed | Per-subscription sequence, bounded bytes/in-flight delivery, acknowledgment and explicit gaps/incomplete closure | Acknowledge the selected content view; effects require separate job admission |
 | Ordered boundary hook | Host awaits handlers in configured order at a named seam; deadline or invalid required result stops that transition | Schema-checked projection, context contribution or restrictive decision permitted at that seam |
 | Implemented prompt/answer job | Host admits a bounded owned job against a committed source event; action proposals use the ordinary approval/intent/outcome path | Finite negotiated host actions; no recursive turn launch or implicit provider call |
@@ -339,8 +343,9 @@ No executable filter, arbitrary topic wildcard or worker-selected scope runs in
 Session. Unknown declarations fail validation. The implemented
 [notification schema](extension-events.md#inert-declaration-and-authority)
 supports read-only `notify`; [job declarations](extension-event-jobs.md#declarations-and-handlers)
-add a typed handler and before-request/after-turn schedule. Other lifecycle types
-and delivery modes remain negotiated design targets.
+add a typed handler and before-request/after-turn schedule. The separate
+[feed schema](extension-feeds.md#declare-a-feed) selects supported metadata during
+live work. Other private views and delivery modes remain negotiated design targets.
 
 Prompt access, persistent writes, external transfer and model inference are
 separate grants. Installing or enabling a graph extension does not imply all

@@ -229,6 +229,10 @@ defmodule Ipse.Extensions.Actions do
        when type in ~w(lifecycle_epoch_started lifecycle_epoch_closed lifecycle_wait_started lifecycle_wait_finished lifecycle_recording_stopped),
        do: if(Ipse.Lifecycle.Runtime.valid_record?(event), do: {:ok, state}, else: @error)
 
+  defp validate_event(%{"type" => type} = event, state, _)
+       when type in ~w(extension_feed_intent extension_feed_ready extension_feed_delivery_intent extension_feed_delivery_result extension_feed_closed),
+       do: if(Ipse.Extensions.Feeds.valid_record?(event), do: {:ok, state}, else: @error)
+
   defp validate_event(%{"type" => "extension_invocation_intent"} = event, state, _) do
     if is_nil(state.parent),
       do:

@@ -2,7 +2,18 @@ defmodule Ipse.Session do
   @moduledoc "One supervised owner per agent conversation. I/O runs in monitored tasks."
   use GenServer
   alias Ipse.{Journal, Skills, Tools, WorkspaceContext, Questions}
-  alias Ipse.Extensions.{Host, Projection, Catalog, Invocation, Actions, Subscriptions, EventJob}
+
+  alias Ipse.Extensions.{
+    Host,
+    Projection,
+    Catalog,
+    Invocation,
+    Actions,
+    Subscriptions,
+    EventJob,
+    Feeds,
+    FeedChannel
+  }
 
   def start_link(opts) do
     config = Keyword.fetch!(opts, :config)
@@ -80,6 +91,7 @@ defmodule Ipse.Session do
   def info(pid), do: GenServer.call(pid, :info)
   def diagnostics(pid), do: GenServer.call(pid, :diagnostics)
   def stop_observability(pid), do: GenServer.call(pid, :stop_observability)
+  def stop_feeds(pid), do: GenServer.call(pid, :stop_feeds, :infinity)
   def subscribe_text(pid), do: GenServer.call(pid, :subscribe_text)
   def exports(pid), do: GenServer.call(pid, :exports)
 
@@ -211,7 +223,8 @@ defmodule Ipse.Session do
         owner_ref: owner_ref,
         request_started_at: nil,
         observation: nil,
-        lifecycle: nil
+        lifecycle: nil,
+        feeds: Feeds.new(events, id)
       }
 
       capture =
@@ -667,6 +680,7 @@ defmodule Ipse.Session do
          true <- s.extension_invocations < Invocation.limit(),
          true <- Ipse.Extensions.Registry.live?(entry.identity),
          :ok <- Catalog.validate_call(descriptor, arguments) do
+      s = enroll_feeds(s)
       owner = self()
       job_ref = make_ref()
       task = owned_task(fn -> Host.invoke_export(stage, name, arguments, owner, job_ref) end)
@@ -953,6 +967,7 @@ defmodule Ipse.Session do
        "version" => 1,
        "phase" => Atom.to_string(s.phase),
        "observability" => Ipse.Observability.Resources.snapshot(s.observation),
+       "extension_feeds" => Feeds.snapshot(s.feeds),
        "steps" => s.steps,
        "max_steps" => Map.get(s.config, :max_steps, 30),
        "approval_waiting" => not is_nil(s.approval),
@@ -981,6 +996,24 @@ defmodule Ipse.Session do
     {:reply, :ok, %{s | observation: capture}}
   end
 
+  def handle_call(:stop_feeds, _from, s) do
+    {cleanup, feeds} = Feeds.close(s.feeds, "stopped", &record(s, &1))
+    result = if Enum.all?(cleanup, &(&1 == :ok)), do: :ok, else: {:error, :cleanup_unconfirmed}
+    {:reply, result, %{s | feeds: feeds}}
+  end
+
+  def handle_call({:feed_worker, id, worker}, {caller, _}, s) when is_pid(worker) do
+    case s.feeds.resources[id] do
+      %{pid: ^caller, worker: nil, closed: false} = resource ->
+        if FeedChannel.active?(resource),
+          do: {:reply, :ok, put_in(s, [:feeds, :resources, id], %{resource | worker: worker})},
+          else: {:reply, {:error, :feed_stopped}, s}
+
+      _ ->
+        {:reply, {:error, :feed_refused}, s}
+    end
+  end
+
   def handle_call(:observation_drain_state, _from, s),
     do:
       {:reply,
@@ -1005,6 +1038,8 @@ defmodule Ipse.Session do
     do: {:reply, {:error, :busy}, s}
 
   def handle_call(:refresh_context, _from, s) do
+    s = enroll_feeds(s)
+
     task =
       owned_task(fn ->
         with {:ok, snapshot} <- WorkspaceContext.snapshot(s.cwd, s.context_home) do
@@ -1028,6 +1063,8 @@ defmodule Ipse.Session do
            {:ok, _},
            Ipse.Lifecycle.Source.build(s.id, 0, Subscriptions.received(turn, text))
          ) do
+      s = enroll_feeds(s)
+
       s = %{
         s
         | turn_id: turn,
@@ -1181,6 +1218,7 @@ defmodule Ipse.Session do
              question.parent["descriptor"]["name"]
            ),
          true <- entry.identity == question.parent["identity"] do
+      s = enroll_feeds(s)
       results = question.results ++ [result]
       record(s, result)
       record(s, Actions.continuation(question.parent, result))
@@ -1221,6 +1259,8 @@ defmodule Ipse.Session do
       ) do
     case Questions.validate_answers(question.arguments, answers) do
       {:ok, answers} ->
+        s = enroll_feeds(s)
+
         message =
           question_result(
             question.call,
@@ -1267,14 +1307,19 @@ defmodule Ipse.Session do
   end
 
   def handle_call(:close, _from, s) do
-    {cleanup, next} = stop_work(s, s.phase != :idle)
+    {cleanup, next} = stop_work(s, s.phase != :idle, "cancelled", "session_close")
     observer_cleanup = Ipse.Observability.Resources.close(s.observation, &record(s, &1))
     cleanup = cleanup ++ observer_cleanup
     result = if Enum.all?(cleanup, &(&1 == :ok)), do: :ok, else: {:error, :cleanup_unconfirmed}
     {:stop, :normal, result, close_epoch(next, "close", result == :ok)}
   end
 
-  defp stop_work(s, record_cancel \\ true, wait_outcome \\ "cancelled") do
+  defp stop_work(
+         s,
+         record_cancel \\ true,
+         wait_outcome \\ "cancelled",
+         feed_reason \\ "cancelled"
+       ) do
     s = finish_wait(s, wait_outcome)
     s = if s.task, do: measure_request(s, :cancelled), else: s
     s = close_question(s)
@@ -1366,7 +1411,8 @@ defmodule Ipse.Session do
         do: [{:error, :cleanup_unconfirmed} | text_cleanup],
         else: text_cleanup
 
-    {child_cleanup ++ cleanup ++ text_cleanup, next}
+    {feed_cleanup, feeds} = Feeds.close(s.feeds, feed_reason, &record(s, &1))
+    {child_cleanup ++ cleanup ++ text_cleanup ++ feed_cleanup, %{next | feeds: feeds}}
   end
 
   @impl true
@@ -1468,8 +1514,10 @@ defmodule Ipse.Session do
             call: call
           }
 
-          source = record_wait_subject(next, Actions.question_event(parent, action, s.steps))
+          event = Actions.question_event(parent, action, s.steps)
+          source = record_wait_subject(next, event)
           checkpoint_event_question(next, question)
+          if source, do: offer_record(next, source, event)
           next = question_wait(next, question, source)
           notify(next, {:question, question.id, question.arguments})
 
@@ -1692,12 +1740,14 @@ defmodule Ipse.Session do
         %{owner_ref: ref, question: question} = s
       )
       when ref != nil and question != nil do
-    {_cleanup, next} = stop_work(%{s | question: nil, calls: []}, false, "interrupted")
+    {_cleanup, next} =
+      stop_work(%{s | question: nil, calls: []}, false, "interrupted", "consumer_down")
+
     {:stop, :normal, close_epoch(next, "owner_down", false)}
   end
 
   def handle_info({:DOWN, ref, :process, _pid, _reason}, %{owner_ref: ref} = s) when ref != nil do
-    {_cleanup, next} = stop_work(s, true, "interrupted")
+    {_cleanup, next} = stop_work(s, true, "interrupted", "consumer_down")
     {:stop, :normal, close_epoch(next, "owner_down", false)}
   end
 
@@ -1741,7 +1791,64 @@ defmodule Ipse.Session do
     end
   end
 
+  def handle_info({:feed_ready, pid, id}, s) do
+    case s.feeds.resources[id] do
+      %{pid: ^pid, ready: false, closed: false} = r ->
+        if FeedChannel.active?(r) do
+          record(s, Feeds.ready(r.intent))
+          FeedChannel.admit(r)
+          {:noreply, put_in(s, [:feeds, :resources, id], %{r | ready: true})}
+        else
+          {:noreply, s}
+        end
+
+      _ ->
+        {:noreply, s}
+    end
+  end
+
+  def handle_info({:feed_ack, pid, id, sequence}, s) do
+    case s.feeds.resources[id] do
+      %{pid: ^pid, ready: true, closed: false} = r ->
+        if FeedChannel.active?(r) and sequence == r.ack + 1 and
+             Ipse.Extensions.Registry.live?(r.intent["identity"]) do
+          case :ets.take(r.pending, sequence) do
+            [{^sequence, intent}] ->
+              record(s, Feeds.result(intent))
+              :atomics.add(r.counters, 4, 1)
+              send(pid, {:ack_committed, sequence})
+              {:noreply, put_in(s, [:feeds, :resources, id], %{r | ack: sequence})}
+
+            _ ->
+              {:noreply, s}
+          end
+        else
+          {:noreply, s}
+        end
+
+      _ ->
+        {:noreply, s}
+    end
+  end
+
+  def handle_info({:feed_closed, pid, id, cleanup}, s) when is_boolean(cleanup) do
+    case s.feeds.resources[id] do
+      %{pid: ^pid, closed: false} = r ->
+        {:noreply, record_feed_close(s, id, r, cleanup)}
+
+      _ ->
+        {:noreply, s}
+    end
+  end
+
   def handle_info({:DOWN, ref, :process, pid, _}, s) do
+    s =
+      Enum.reduce(s.feeds.resources, s, fn {id, r}, state ->
+        if r.monitor == ref and r.pid == pid and not r.closed,
+          do: record_feed_close(state, id, r, false),
+          else: state
+      end)
+
     observation =
       Enum.reduce(s.observation.resources, s.observation, fn {id, resource}, capture ->
         if resource.monitor == ref and resource.pid == pid and not resource.closed do
@@ -1870,6 +1977,11 @@ defmodule Ipse.Session do
 
     Enum.each(s.observation.resources, fn {_, resource} ->
       Ipse.Observability.Channel.revoke(resource)
+      if Process.alive?(resource.pid), do: Process.exit(resource.pid, :kill)
+    end)
+
+    Enum.each(s.feeds.resources, fn {_, resource} ->
+      FeedChannel.stop(resource, "consumer_down")
       if Process.alive?(resource.pid), do: Process.exit(resource.pid, :kill)
     end)
 
@@ -2840,13 +2952,14 @@ defmodule Ipse.Session do
 
   defp record(s, event) do
     result =
-      if s.observation && s.observation.policy["mode"] != "off",
-        do: Journal.append_observed(s.dir, s.id, event),
-        else: Journal.append(s.dir, s.id, event)
+      if (s.observation != nil and s.observation.policy["mode"] != "off") or
+           Feeds.active?(s.feeds),
+         do: Journal.append_observed(s.dir, s.id, event),
+         else: Journal.append(s.dir, s.id, event)
 
     case result do
       :ok -> :ok
-      {:ok, source} -> Ipse.Observability.Resources.offer(s.observation, source, event)
+      {:ok, source} -> offer_record(s, source, event)
       {:error, reason} -> raise "Journal write failed: #{inspect(reason)}"
     end
   end
@@ -2854,7 +2967,7 @@ defmodule Ipse.Session do
   defp record_source(s, event) do
     case Journal.append_with_source(s.dir, s.id, event) do
       {:ok, source} ->
-        if s.observation, do: Ipse.Observability.Resources.offer(s.observation, source, event)
+        offer_record(s, source, event)
         source
 
       {:error, reason} ->
@@ -2863,6 +2976,43 @@ defmodule Ipse.Session do
   end
 
   defp notify(s, event), do: send(s.subscriber, {:ipse, self(), event})
+
+  defp offer_record(s, source, event) do
+    if s.observation, do: Ipse.Observability.Resources.offer(s.observation, source, event)
+
+    Feeds.offer(s.feeds, source, event, fn intent ->
+      case Journal.append(s.dir, s.id, intent) do
+        :ok -> :ok
+        {:error, reason} -> raise "Journal write failed: #{inspect(reason)}"
+      end
+    end)
+  end
+
+  defp enroll_feeds(s) do
+    feeds = Feeds.enroll(s.feeds, s.config, self(), &record_source(s, &1))
+
+    if feeds.refused > s.feeds.refused,
+      do:
+        notify(
+          s,
+          {:status, "Event feed lease capacity refused enrollment; inspect /diagnostics."}
+        )
+
+    %{s | feeds: feeds}
+  end
+
+  defp record_feed_close(s, id, r, cleanup) do
+    FeedChannel.stop(r, "consumer_down")
+    record(s, Feeds.closed(r, cleanup))
+    :ets.delete_all_objects(r.pending)
+
+    notify(
+      s,
+      {:status, "Event feed closed; inspect /diagnostics for incomplete coverage and cleanup."}
+    )
+
+    put_in(s, [:feeds, :resources, id], %{r | closed: true, cleanup: cleanup})
+  end
 
   defp saved_request(events, field) do
     events
@@ -3024,6 +3174,7 @@ defmodule Ipse.Session do
     with :ok <- Ipse.Handoff.validate_events(events),
          {:ok, _} <- Ipse.Lifecycle.Runtime.restore(events),
          :ok <- Ipse.Observability.Resources.validate(events),
+         {:ok, _} <- Feeds.validate(events),
          {:ok, _} <- Ipse.Usage.restore(events),
          :ok <- Projection.validate_events(events) do
       restore_validated_context(events)
@@ -3129,12 +3280,16 @@ defmodule Ipse.Session do
   defp close_epoch(s, reason, cleanup),
     do: lifecycle_records(s, Ipse.Lifecycle.Runtime.close(s.lifecycle, reason, cleanup))
 
-  defp record_wait_subject(%{lifecycle: %{active: true}} = s, event),
-    do: record_source(s, event)
-
   defp record_wait_subject(s, event) do
-    record(s, event)
-    nil
+    if match?(%{active: true}, s.lifecycle) or Feeds.active?(s.feeds) do
+      case Journal.append_with_source(s.dir, s.id, event) do
+        {:ok, source} -> source
+        {:error, reason} -> raise "Journal write failed: #{inspect(reason)}"
+      end
+    else
+      record(s, event)
+      nil
+    end
   end
 
   defp question_wait(s, question, source, turn \\ :current)
@@ -3188,6 +3343,7 @@ defmodule Ipse.Session do
 
           source = record_wait_subject(next, event)
           checkpoint_event_question(next, %{id: call["id"]})
+          if source, do: offer_record(next, source, event)
           next = question_wait(next, %{id: call["id"]}, source)
           notify(next, {:question, call["id"], arguments})
 

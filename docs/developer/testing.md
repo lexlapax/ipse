@@ -206,10 +206,11 @@ and [runtime identity](#p1-runtime-identity-2026-10-15).
 
 | Checkpoint | Evidence | Scope and remaining limits |
 | --- | --- | --- |
+| Live metadata feeds, Linux Serenity, 2026-10-17 | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters, thirteen focused feed fixtures and 602 native-suite tests with 14 macOS exclusions passed; source primitive, CLI help and isolated demo passed | Independent compiled consumers, exact metadata/acknowledgments, finite queues/receipts, pressure/timeout cleanup, question recovery and physical-source refusal; synthetic providers only |
 | Runtime epochs/waits, Linux Serenity, 2026-10-17 | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters, 31 focused causal/recovery fixtures and 589 native-suite tests with 14 macOS exclusions passed; source fixture and isolated CLI demo passed | Recorded session/approval/question boundaries, private-source validation, disabled parity, explicit extension recording with capture off and child-loss interruption; synthetic providers only |
 | Explicit history, Linux Serenity, 2026-10-17 | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters, eleven focused history fixtures and 578 native-suite tests with 14 macOS exclusions passed | Own-session fixed ranges, separate private grants, budget gaps, source/contiguous-span validation, approval/question boundaries and inert resume; synthetic provider only |
-| Hosted history baseline `22bde58` | [Ubuntu/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39023895537) passed all applicable steps: build, format, compile, tests, demo and extracted packages; macOS native/default experimental sandbox steps passed | Actual job/step conclusions inspected. This baseline includes history reads, precedes runtime epoch/wait sources and does not prove stronger descendant containment |
-| Source/extracted compatibility | Credential-free demo, bundled extension/accounting/text/shared-source/runtime-epoch/local-ring/conformance/history-primitive fixtures and actual traced conformance CLI passed in Linux glibc-2.44 package verification with matching OTP 29.1.1 notices and utility-only PATH | Runtime start/close/resume, history primitive and trace APIs are available without a system toolchain; source-debugger modules/debug information are absent in this package. Independently installed subscriber/catch-up proof remains a P22 gate |
+| Hosted runtime-source baseline `528899f` | [Ubuntu/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39025712381) passed all applicable steps: build, format, compile, tests, demo and extracted packages; macOS native/default experimental sandbox steps passed | Actual job/step conclusions inspected. This baseline includes runtime epoch/wait sources, precedes live metadata feeds and does not prove stronger descendant containment |
+| Source/extracted compatibility | Credential-free demo, bundled extension/accounting/text/shared-source/runtime-epoch/local-ring/conformance/history/feed-primitive fixtures and actual traced conformance CLI passed in Linux glibc-2.44 package verification with matching OTP 29.1.1 notices and utility-only PATH | Runtime epochs, history/feed primitives and trace APIs are available without a system toolchain; source-debugger modules/debug information are absent in this package. Installed feed execution and the independent domain catch-up proof remain P22 gates |
 | Provider acceptance | [Explicit live provider checks](#live-provider-acceptance-follow-up-2026-10-15) | Recorded account/model/platform combinations only; fixtures do not establish billing, hardware or arbitrary-model support |
 
 Conformance fixtures exercise independently compiled tools/commands/services and
@@ -327,6 +328,16 @@ fact without replaying historical samples. The bundled idle start/close/resume
 fixture checks compiled Session/source/metadata compatibility; it is not a domain
 graph extension or a guarantee that a final close fact reaches a closing sink.
 
+Live-feed fixtures exercise compiled independent workers and source-bound
+admission/acknowledgment with diagnostic capture off, metadata secret exclusion,
+normal write approval, notifications alongside feeds, pressure and invalid replies,
+deadline cleanup uncertainty, explicit stop, cancellation and owner death.
+Question checkpoint adjacency and explicit-answer enrollment survive abrupt
+restart without historical callback replay. Receipt bounds span leases; coherent
+payload tampering refuses physical validation before repair. The bundled feed
+fixture checks declaration/envelope/ack primitives, not installed release-worker
+execution or a complete ingestion audit. See [feed scope and limits](extension-feeds.md).
+
 Notification fixtures exercise separately granted original/final-effective views,
 metadata secret exclusion, final transformed text, synced ordered receipts,
 disabled behavior and no action bypass. Bounds cover private payloads, source
@@ -344,10 +355,10 @@ inference is manufactured. The nine [source/view fixtures](lifecycle-events.md#i
 and existing worker-text/context/service tests remain in the full suite. Source
 and extracted baselines, independent artifacts and hosted results are separate
 claims; no new live provider, audio device, exporter or remote service was used.
-Documentation checks passed 88 Markdown documents / 1069 local file and heading
+Documentation checks passed 89 Markdown documents / 1090 local file and heading
 links with no errors.
 
-P22 still needs broader lifecycle types/feeds and causal links, child completion,
+P22 still needs broader private lifecycle delivery and causal links, child completion,
 ephemeral identity, the independent installed-package catch-up/deduplication proof
 and supervised review. Synthetic dispatcher tracing and documented source-debugging
 boundaries are implemented; no live GUI/editor debugger trial is claimed. The full

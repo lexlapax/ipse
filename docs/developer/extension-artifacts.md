@@ -48,12 +48,13 @@ Import permits incompatible artifacts for storage; activation must call
 The optional `requires` object declares [typed service requirements](extension-services.md),
 not executable dependency discovery. Import validates aliases/version/schemas;
 activation resolves only explicit operator routes to already selected targets.
-Optional `subscriptions` declare bounded original/final-effective prompt delivery,
-with exact event/view/version/mode and required policy. Read-only
-[notifications](extension-events.md) use exact acknowledgment;
-[event jobs](extension-event-jobs.md) additionally name a typed job export and
-before-request/after-turn schedule. Private read and host-action grants remain
-separate. Unknown modes or widened declarations refuse inert validation.
+Optional `subscriptions` pin exact event/view/version/mode declarations.
+Prompt/answer [notifications](extension-events.md) add a required policy;
+[event jobs](extension-event-jobs.md) name a typed export and before-request/
+after-turn schedule. Read-only live [metadata feeds](extension-feeds.md) instead
+declare finite queue capacity and close coverage on overload. Private reads and
+host actions retain separate grants. Unknown modes or widened declarations
+refuse inert validation.
 
 Artifact identity is SHA-256 of the **original manifest bytes**, which bind every
 declared file's hash and length. Whitespace changes create a different identity.
@@ -183,7 +184,7 @@ projections; [invocations](extension-invocations.md) use typed catalogs and fini
 [host actions](extension-host-calls.md), including questions, tools, services and
 context. [Text consumers](text-streams.md#worker-clients) use a separate read-only
 resource lifetime and serializable handle, with no host-action interpretation.
-Lifecycle observation, broader nested jobs and the independent installed-package
+Broader private lifecycle observation, nested jobs and the independent installed-package
 proof remain [P22 work](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
 
 `test/extensions_worker_test.exs` compiles a uniquely named independent artifact

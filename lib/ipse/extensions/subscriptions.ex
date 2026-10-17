@@ -37,6 +37,13 @@ defmodule Ipse.Extensions.Subscriptions do
          true <-
            Enum.any?(declarations, &(&1["mode"] == "notify")) == "event.notify" in capabilities,
          true <- Enum.any?(declarations, &(&1["mode"] == "job")) == "event.job" in capabilities,
+         true <- Enum.any?(declarations, &(&1["mode"] == "feed")) == "event.feed" in capabilities,
+         true <-
+           not Enum.any?(
+             declarations,
+             &(&1["mode"] == "feed" and
+                 &1["event"] in ~w(wait.started wait.finished session.recording_stopped))
+           ) or "lifecycle.record" in capabilities,
          true <-
            Enum.all?(
              [
@@ -62,6 +69,7 @@ defmodule Ipse.Extensions.Subscriptions do
         event <- ~w(prompt.received prompt.effective_committed answer.committed),
         entry <- Map.get(config, :extensions, []),
         declaration <- Enum.sort_by(entry.subscriptions, & &1["id"]),
+        declaration["mode"] in ~w(notify job),
         declaration["event"] == event,
         EventJob.schedule(declaration) == schedule,
         do: %{instance: entry.identity["instance"], declaration: declaration}
@@ -69,6 +77,9 @@ defmodule Ipse.Extensions.Subscriptions do
 
   def declarations(config, schedule),
     do: Enum.filter(declarations(config), &(EventJob.schedule(&1.declaration) == schedule))
+
+  def all_declarations(config),
+    do: declarations(config) ++ Ipse.Extensions.Feeds.declarations(config)
 
   def validate_handlers(declarations, exports) do
     exports = Catalog.normalize(exports)
@@ -90,7 +101,7 @@ defmodule Ipse.Extensions.Subscriptions do
       "version" => 1,
       "entries" =>
         Enum.map(
-          declarations(config),
+          all_declarations(config),
           &%{"instance" => &1.instance, "declaration" => &1.declaration}
         )
     }
@@ -221,7 +232,8 @@ defmodule Ipse.Extensions.Subscriptions do
     |> case do
       :ok ->
         with :ok <- Ipse.Extensions.History.validate_sources(directory, session, events),
-             do: Ipse.Lifecycle.Runtime.validate_sources(directory, session, events)
+             :ok <- Ipse.Lifecycle.Runtime.validate_sources(directory, session, events),
+             do: Ipse.Extensions.Feeds.validate_sources(directory, session, events)
 
       error ->
         error
@@ -296,7 +308,9 @@ defmodule Ipse.Extensions.Subscriptions do
   end
 
   def restore_question(question, nil, directory, session, events) do
-    selected = get_in(hd(events), ["metadata", "extension_subscriptions", "entries"]) || []
+    selected =
+      (get_in(hd(events), ["metadata", "extension_subscriptions", "entries"]) || [])
+      |> Enum.reject(&(&1["declaration"]["mode"] == "feed"))
 
     if selected == [] do
       {:ok, nil}
@@ -366,7 +380,11 @@ defmodule Ipse.Extensions.Subscriptions do
          true <-
            snapshot["entries"] ==
              Enum.sort_by(snapshot["entries"], fn row ->
-               {if(EventJob.schedule(row["declaration"]) == "before_request", do: 0, else: 1),
+               {cond do
+                  row["declaration"]["mode"] == "feed" -> 2
+                  EventJob.schedule(row["declaration"]) == "before_request" -> 0
+                  true -> 1
+                end,
                 Enum.find_index(
                   ~w(prompt.received prompt.effective_committed answer.committed),
                   &(&1 == row["declaration"]["event"])
@@ -391,7 +409,7 @@ defmodule Ipse.Extensions.Subscriptions do
                      &1["id"] == row["declaration"]["handler"])
                )
            end) do
-      {:ok, snapshot["entries"], identities}
+      {:ok, Enum.reject(snapshot["entries"], &(&1["declaration"]["mode"] == "feed")), identities}
     else
       _ -> @error
     end
@@ -684,6 +702,8 @@ defmodule Ipse.Extensions.Subscriptions do
     do: {:ok, %{s | active: nil}}
 
   defp reduce(_, s, _, _), do: {:ok, s}
+
+  defp declaration?(%{"mode" => "feed"} = record), do: Ipse.Extensions.Feeds.declaration?(record)
 
   defp declaration?(record),
     do:

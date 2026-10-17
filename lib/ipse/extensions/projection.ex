@@ -84,6 +84,7 @@ defmodule Ipse.Extensions.Projection do
     registered? = match?([%{"metadata" => %{"extensions" => [_ | _]}} | _], events)
 
     with :ok <- Ipse.Extensions.Subscriptions.validate_events(events),
+         {:ok, _} <- Ipse.Extensions.Feeds.validate(events),
          :ok <- Ipse.Extensions.Invocation.validate_events(events),
          :ok <- Ipse.Extensions.TextResources.validate_events(events),
          :ok <- Ipse.Extensions.Actions.validate_events(events) do
@@ -218,6 +219,10 @@ defmodule Ipse.Extensions.Projection do
        do: {:ok, state},
        else: @invalid
   end
+
+  defp validate_event(%{"type" => type}, state, _registered)
+       when type in ~w(extension_feed_intent extension_feed_ready extension_feed_delivery_intent extension_feed_delivery_result extension_feed_closed),
+       do: {:ok, state}
 
   defp validate_event(%{"type" => type}, state, _registered) when is_binary(type) do
     if String.starts_with?(type, "extension_"), do: @invalid, else: {:ok, state}
