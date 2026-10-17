@@ -942,6 +942,10 @@ defmodule Ipse.CLI do
       provider == :chatgpt && opts[:base_url] ->
         {:error, "Subscription credentials only go to the official OpenAI endpoint."}
 
+      not Ipse.Provider.valid_base_url?(provider, opts[:base_url]) ->
+        {:error,
+         "Provider endpoint requires HTTPS or explicit HTTP loopback, without credentials, query or fragment."}
+
       true ->
         with {:ok, extensions} <- Ipse.Extensions.Registry.prepare(effective.extensions, home()),
              {:ok, servers} <- Ipse.MCP.Config.load(opts[:mcp_config]),

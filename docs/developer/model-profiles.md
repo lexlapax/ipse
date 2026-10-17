@@ -6,7 +6,8 @@ are closed data, not a workflow engine. P15 scope/trust/precedence bounds apply.
 Operator-declared IDs and any `base_url` are operator authority: project/directory
 sources cannot redefine those IDs or carry an endpoint, even with generic project
 trust. Project-defined IDs still use whole-profile replacement at nearer project
-scopes; roles override by key. `URI.new/1` validates endpoint syntax with explicit
+scopes; roles override by key. The shared `Provider.valid_base_url?/2` policy uses
+`URI.new/1` to validate profile, CLI and actual adapter endpoints with explicit
 scheme, loopback, userinfo/query/fragment and port policy.
 The selected main profile overlays file settings before environment/CLI limits;
 conflicting provider/model/endpoint overrides fail. The effective manifest and

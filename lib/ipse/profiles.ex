@@ -56,7 +56,7 @@ defmodule Ipse.Profiles do
              provider: @providers[profile["provider"]],
              max_output_tokens: profile["max_output_tokens"]
            }),
-         true <- endpoint?(profile["provider"], profile["base_url"]) do
+         true <- Ipse.Provider.valid_base_url?(profile["provider"], profile["base_url"]) do
       :ok
     else
       _ -> {:error, "Unsupported profile settings, model or credential reference."}
@@ -234,18 +234,4 @@ defmodule Ipse.Profiles do
 
   defp route_id(config, args),
     do: args["profile"] || Map.get(config, :roles, %{})[args["role"] || "routine"]
-
-  defp endpoint?(_, nil), do: true
-  defp endpoint?("chatgpt", url), do: url == "https://api.openai.com/v1"
-
-  defp endpoint?(_, url) do
-    with {:ok, uri} <- URI.new(url) do
-      is_binary(uri.host) and uri.host != "" and is_nil(uri.userinfo) and is_nil(uri.query) and
-        is_nil(uri.fragment) and is_integer(uri.port) and uri.port in 1..65535 and
-        (uri.scheme == "https" or
-           (uri.scheme == "http" and uri.host in ["127.0.0.1", "localhost", "::1"]))
-    else
-      _ -> false
-    end
-  end
 end

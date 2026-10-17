@@ -346,6 +346,7 @@ defmodule Ipse.Extensions.Registry do
       Ipse.Journal,
       Ipse.Journal.Writer,
       Ipse.ToolCall,
+      Ipse.HTTPProxy,
       Ipse.Lifecycle.Source,
       Ipse.Lifecycle.Event,
       Ipse.Lifecycle.Metadata,

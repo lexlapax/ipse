@@ -1,5 +1,11 @@
 # Fresh-session architecture-review handoff
 
+The cloud review below has returned for `b5297be` with evidence at `b08cd76`.
+It confirms fresh-session provenance, supplies additional PA findings and leaves
+coverage incomplete. Supervisor repairs and policy decisions are underway; this
+is not the next review target. The brief will be repinned after verification.
+See the [current PA register](../developer/architecture-review-dispositions.md#fresh-cloud-review-and-pa-dispositions).
+
 Start a **new Claude cloud review conversation** with repository `lexlapax/ipse`
 available from current `origin/main`, then paste the prompt below. Prepare a Git
 checkout whose history contains the pinned source/base/original revisions before

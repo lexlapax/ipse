@@ -24,8 +24,9 @@ quality. Subscription, API and installed Ollama checks have separate
 
 P23 is complete within its one-shot text/accounting scope. P24 is the active gate:
 the same-reviewer follow-up accepted earlier repairs and identified adjacent gaps,
-now repaired and verified at `b5297be`. Fresh-session coverage of omitted surfaces
-is still required.
+repaired and verified at `b5297be`. A fresh cloud review has now returned with
+additional findings and partial coverage; its repairs, policy decisions and
+remaining test-body inspection are the active work.
 The operator's 2026-10-17 direction
 puts independent architectural challenge, security review and a large supervised
 self-development trial ahead of media. P24 now owns architecture/security
@@ -38,7 +39,7 @@ new source transfer or dependency, or select a production engine.
 | Milestone or gate | Current state | Next result |
 | --- | --- | --- |
 | [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within selected scope; source/native/package/installed and hosted Linux/macOS passed | Retain accounting invariants through P24/P25 review and repairs |
-| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Scoped repairs verified through `b5297be`, including A1–A5; fresh-session brief prepared; no scan yet | Fresh independent omitted-surface review, applicable repairs, then triaged baseline OpenAI security audit |
+| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Fresh cloud review of `b5297be` received; no Critical/High found in inspected scope, acceptance withheld; no scan yet | Verify PA findings, resolve text/context policy, repair applicable gaps, complete omitted coverage, then baseline security audit |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Planned revised scope; unstarted | Independent Codex/Ipse research, Ipse-authored repairs, fresh acceptance runs and final architecture/security review |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Deferred; proposed scope subject to P25 decisions | Independently selectable working/long-term memory tools and optional lifecycle policies |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; proposed scope subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
@@ -141,28 +142,36 @@ and arbitrary trusted out-of-band calls cannot establish an invoice ceiling.
 ## P24: independent architecture validation and baseline security
 
 **In progress; fresh independent coverage and baseline security remain open.**
+The fresh cloud review of `b5297be` used evidence at `b08cd76`. It inspected more
+implementation and test bodies, found no Critical/High issue in that scope, and
+withheld acceptance because findings and coverage remain incomplete. Prioritize
+task-owned OS cleanup confirmation, text-consumer failure policy, proxy/endpoint
+consistency and skill-catalog drift. Also verify approval normalization, duplicate
+extension-call receipts, contribution framing, browser-login locking, Anthropic
+compaction compatibility and startup costs. Reconsider torn-ledger recovery only
+with a conservative, evidence-preserving contract. Decisions on optional versus
+required text consumers and untrusted context placement are with the operator.
+The review ran no code or tests; its proposed regressions are unrun until verified
+here. Baseline security and P25 remain gated.
+
 Repair candidate `b5297be` passed its local source/native/demo/package/installed
 handoff and hosted Ubuntu/macOS matrix, including both Mac enforcement steps.
 It repairs the follow-up
 approval-interleaving, journal-acknowledgment and call-ID gaps, makes missing-parent
 write refusal definite before the write, and corrects native cleanup guidance.
 The [disposition register](developer/architecture-review-dispositions.md) owns
-F1–F7, S1–S3, D1–D9 and A1–A7; [testing](developer/testing.md#current-evidence-and-next-checks)
+F1–F7, S1–S3, D1–D9, A1–A7 and PA-1–PA-15; [testing](developer/testing.md#current-evidence-and-next-checks)
 owns exact revisions, counts and platform receipts.
 
-Both returned critiques were partial static reviews with unrun regression
-proposals. The first targeted `21e59fe`; the follow-up targeted `b570ef8` with
-documentation at `d14d6ac`. The follow-up retained the original reviewer's context,
-accepted the earlier scoped repairs and explicitly withheld acceptance because
-of omissions. It does not satisfy the fresh-session requirement.
-
-Use the [fresh-session handoff](operator/architecture-review.md), pinned to
-`b5297be`. Prioritize unread validators, text/feed
-consumers, context/skills/auth, MCP client/schema/config, lifecycle/observability,
-sandbox code and their test bodies. Start without either earlier critique and
-preserve the independent source assessment before checking dispositions. If a
-session cannot cover the remaining work, retain a precise coverage checkpoint;
-do not substitute elapsed time or accepted repair claims for substantive inspection.
+The earlier reports targeted `21e59fe` and `b570ef8`; only the cloud pass on
+`b5297be` satisfies the fresh-session provenance requirement. All were static
+reviews with unrun regression proposals. After current repairs, repin the
+[review handoff](operator/architecture-review.md) and prioritize lifecycle modules/
+tests; invocation workflow/state/question and delivery/read tests; auth/MCP tests;
+handoff/compaction/workspace tests; state/child-usage/store; macOS/stdio; and
+delegation/parallel/budget tests plus usage/normalization. Preserve an independent
+source assessment before dispositions and record precise coverage checkpoints;
+elapsed time or accepted repair claims cannot substitute for substantive inspection.
 
 Retain explicit limits: journal growth/startup cost and same-size rewrite checks,
 linear ledger reads/hashes, unknown liability, fail-closed shared overdraw and

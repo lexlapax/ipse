@@ -83,9 +83,9 @@ Exact failed/passing runs are retained in the testing record.
 | D3 | Expired/revoked extension authority can refuse session activation, including idle resume. A real-expiry fixture confirms existing saved diagnosis and operator-written handoff succeed with unchanged journal bytes and no provider/callback activation | Accepted activation boundary with an existing read-only recovery path; no new API or execution of expired code is needed |
 | D4 | Fixed reservations are estimates and can understate in-flight input | Accepted documented limitation; preserve observed peaks and overdraw refusal, and evaluate stronger estimators separately from an invoice guarantee |
 | D5 | A controlled interleaved two-request fixture confirms shared overdraw refuses an otherwise completed response within its own reservation; both provider completions and actual usage remain in the budget ledger. Refused assistant/native content has no durable quarantine; Session admission and provider completion are different boundaries | Retain the current fail-closed whole-tree policy and document content loss. No new authority to expose/execute paid work. Future private quarantine/export needs a reviewed main/summary/helper contract; this fixture is not a full parallel-child scheduling or live-provider test |
-| D6 | Torn budget records fail closed without automatic ledger repair | Accepted documented limitation; any future recovery must preserve the original ledger and unknown liability |
+| D6 | Torn budget records fail closed without automatic ledger repair | Challenged in fresh-review PA-2. Keep refusal while evaluating explicit evidence-preserving recovery; no automatic truncation or refund of unknown liability |
 | D7 | Journal retention and retrieval deletion have different meanings | P25/P26/P27 must distinguish retrieval tombstones, no-resurrection, namespace migration/collection, journal redaction/access policy and secure erasure. A memory extension alone cannot promise removal of immutable host evidence |
-| D8 | Text pressure can fail the main request by the selected contract | Accepted bounded-pressure policy; S3's separate avoidable fragmentation failure is repaired without expanding buffers/deadlines |
+| D8 | Text pressure can fail the main request by the existing selected contract | Challenged in fresh-review PA-1. Optional/required policy is pending operator input; distinct failure reporting and Session regressions are required. S3's fragmentation repair remains verified |
 | D9 | Trusted executable code and explicit native execution have different OS boundaries | Preserve the documented trust model and macOS best-effort detached cleanup; no blanket confinement claim |
 
 ## Follow-up findings and verification
@@ -108,21 +108,60 @@ and these repairs do not close independent architectural coverage.
 | A6 | Accepted residual: no cumulative journal quota, full-history startup/resume validation and no live same-size rewrite authentication | Existing persistence limits remain explicit; same-user file tampering is not a security boundary. Future retention/redaction requires a reviewed generic contract |
 | A7 | Accepted residual: ledger reads/prefix hashing remain linear and contention may abort paid in-flight work, retaining unknown liability | No weakening of durable accounting, source validation, shared-overdraw refusal or billing claims |
 
+## Fresh cloud review and PA dispositions
+
+The fresh cloud report targets source `b5297be`, base `b570ef8`, original
+`21e59fe` and evidence `b08cd76`. It reports a fresh Opus 5.5 subscription session,
+medium effort, no subagents/billing change/operator help, about 20.5 minutes plus
+writing, and no executed code/tests. A worker restart reportedly lost no work.
+It found no Critical/High defect in inspected scope but explicitly withheld
+acceptance. This is independent source evidence, not runtime reproduction or a scan.
+
+| ID | Supervisor assessment | Current action and evidence |
+| --- | --- | --- |
+| PA-1 / D8 | Text pressure intentionally fails a request under the existing contract; an optional/required distinction and the misleading provider-error classification need resolution | Operator choice pending; add Session-level pressure and broker-loss cases after selecting policy. Feeds and diagnostics have a different existing non-interference contract |
+| PA-2 / D6 | Torn ledgers currently refuse by documented policy; the reviewer challenges its recovery cost | Analyze evidence-preserving explicit repair without refunding known liability, weakening canonical/ledger checks or replaying requests. Do not drop an unvalidated suffix automatically |
+| PA-3 | Task death alone does not acknowledge exit of task-owned shell groups or extension VMs | Verify actual close/abort paths; require resource cleanup receipts or report unconfirmed. Best-effort detached-descendant limits remain separate |
+| PA-4 | Fresh skill discovery can change resumed model input without a durable catalog checkpoint | Snapshot selection/provenance, diagnose drift and provide explicit refresh; loading changed skill content must not silently bypass the selected snapshot |
+| PA-5 | Auth accepted an unsupported proxy by falling back to direct egress; MCP private pools had no proxy options | Shared OTP/Finch policy implemented. Local real CONNECT fixtures cover auth, inference and MCP; unsupported schemes refuse and proxy credentials do not become origin headers. Focused 40, full native-inclusive 781 tests, build/demo/package and both installed proofs pass; hosted gates pending |
+| PA-6 | CLI endpoint overrides lacked profile-equivalent validation | Shared provider URI policy now covers profiles, CLI before credential acquisition and actual adapter routing. Remote cleartext, userinfo/query/fragment and malformed routes refuse; explicit loopback fixtures remain usable. Included in the PA-5 checks |
+| PA-7 | Redrawing full approval arguments for every sibling chunk amplifies terminal output | Replace per-chunk redraw with bounded deferral while keeping full authoritative approval visible; report any suppressed overflow |
+| PA-8 | Anthropic assistant-first failure remains speculative; no live reproduction or explicit current-doc first-turn rejection established | Check official Messages/compaction contracts and add a real adapter fixture for checkpoint continuation; distinguish wire compatibility from paid/live evidence |
+| PA-9 | Nonboolean approval values can disagree between decisions, effects and receipts | Require literal `true` for every approval clause; test native, delegated and extension boundaries |
+| PA-10 | Invocation validation does not consume a parent call after its first intent | Bind one invocation to each source request/call occurrence; reject forged duplicate intent/result pairs without changing historical native result projection |
+| PA-11 | Extension prompt text can include its own closing delimiter | Reject reserved framing markers before committing a transform; preserve original records on resume |
+| PA-12 | Browser waiting holds the shared credential lock | Release during browser wait, recheck current protected state under lock before exchange/commit, and test refresh/logout races without real accounts |
+| PA-13 / A6 | Startup repeatedly validates prefixes for historical questions; other claimed quadratic paths require measurement | Measure whole-session open and inspect actual per-invocation versus global bounds before changing reducers; preserve all corruption checks |
+| PA-14 / D9 | Trusted shell inherits environment beyond three stripped keys | Accepted explicit trust limitation; no new confinement or secret-isolation claim |
+| PA-15 / A2 | Five-second journal acknowledgment deadline deliberately stops Session | Accepted fail-closed policy and tested callback-stall limitation, not a new reproduced defect |
+
+The separate system-role placement challenge is an operator decision: retain
+core-owned rules in system text while moving untrusted contributions/skills/workspace
+material to labelled context, or explicitly accept the current placement. No role
+change is implemented while that choice is pending.
+
+Remaining coverage now prioritizes lifecycle runtime/child/event/ephemeral and
+their tests; invocation workflow/state/question tests and event/job/history/
+subscription/usage-read tests; auth and MCP client/HTTP/config tests; handoff,
+compaction/workspace-session tests; state/child-usage/store implementations and
+tests; macOS cache/signing/sandbox and stdio tests; delegation/parallel/budget
+test bodies, usage and normalization. The cloud report's actual coverage replaces
+the earlier blanket-unread list; no accepted repair disposition closes those gaps.
+
 ## Execution order and completion
 
-The scoped F1–F7 and S1–S3 repairs have passed their own source/native/package/
-installed and hosted gates through `b570ef8`. The
+The scoped F1–F7/S1–S3 and A1–A5 repairs passed their own source/native/package/
+installed and hosted gates through `b5297be`. The
 [testing record](testing.md#current-evidence-and-next-checks) owns exact results,
 revisions and remaining verification limits. Future repairs still need a
 regression or measured counterexample, coherent operator/developer guidance and
 their own checks before commit/push; an earlier green baseline does not cover them.
 
-The `b570ef8` follow-up does not supply the required fresh-session coverage.
-The [new brief](../operator/architecture-review.md) pins repair source `b5297be`
-and prioritizes the omissions above. Its local and hosted handoffs passed.
-Both older briefs are preserved with provenance in the
-[archive](../archive/index.md). The next reviewer must start without prior review
-context, preserve its own source assessment before reading this register and
-record inspected test bodies and specific uncovered paths. Preserve both earlier
-critiques and challenge every disposition. Baseline security and P25 remain gated
-by adequate independent coverage and applicable repairs. No scan has run; P24 is open.
+The fresh cloud report satisfies the fresh-session provenance condition but does
+not close coverage or acceptance. Verify PA findings and policy choices first,
+then refresh the [review brief](../operator/architecture-review.md) to the resulting
+passing source and prioritize the remaining checkpoint above. Earlier briefs are
+preserved in the [archive](../archive/index.md); preserve all private critiques.
+The next session must retain its source assessment before checking this register
+and identify inspected test bodies and omissions. Baseline security and P25 remain
+gated by adequate coverage and applicable repairs. No scan has run; P24 is open.

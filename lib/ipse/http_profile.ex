@@ -9,7 +9,8 @@ defmodule Ipse.HTTPProfile do
     with_client(fun, :httpc)
   end
 
-  def with_finch(fun) when is_function(fun, 1), do: with_client(fun, :finch)
+  def with_finch(fun, conn_opts \\ []) when is_function(fun, 1),
+    do: with_client(fun, {:finch, conn_opts})
 
   def finch_guardian(owner) do
     case Registry.lookup(Ipse.Registry, {__MODULE__, :finch_borrower, owner}) do
@@ -60,7 +61,7 @@ defmodule Ipse.HTTPProfile do
     Process.flag(:trap_exit, true)
     owner_monitor = Process.monitor(owner)
 
-    if backend == :finch,
+    if match?({:finch, _}, backend),
       do: Registry.register(Ipse.Registry, {__MODULE__, :finch_borrower, owner}, nil)
 
     case reserve() do
@@ -69,7 +70,11 @@ defmodule Ipse.HTTPProfile do
           case start_client(backend, name) do
             {:ok, profile} ->
               profile_monitor = Process.monitor(profile)
-              send(owner, {reference, {:ok, if(backend == :finch, do: name, else: profile)}})
+
+              send(
+                owner,
+                {reference, {:ok, if(match?({:finch, _}, backend), do: name, else: profile)}}
+              )
 
               receive do
                 {^reference, :finished} -> :ok
@@ -107,14 +112,14 @@ defmodule Ipse.HTTPProfile do
 
   defp start_client(:httpc, name), do: :inets.start(:httpc, [profile: name], :stand_alone)
 
-  defp start_client(:finch, name) do
+  defp start_client({:finch, conn_opts}, name) do
     Finch.start_link(
       name: name,
       pools: %{
         default: [
           size: 1,
           count: 1,
-          conn_opts: [protocols: [:http1], max_header_list_size: 16_384]
+          conn_opts: [protocols: [:http1], max_header_list_size: 16_384] ++ conn_opts
         ]
       }
     )

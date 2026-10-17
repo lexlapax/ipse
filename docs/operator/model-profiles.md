@@ -45,6 +45,8 @@ API keys and supplied context go to the configured endpoint: review it as an
 egress/credential decision. Subscription endpoints
 are restricted to the public OpenAI endpoint. An omitted endpoint uses the
 provider default. Models cannot change endpoints through delegation arguments.
+The same HTTPS/loopback and URL-shape policy applies to `--base-url` and embedded
+adapter dispatch; a CLI override cannot send API credentials over remote cleartext.
 
 Credential references are fixed by provider: `ipse-auth` for ChatGPT,
 `OPENAI_API_KEY` for OpenAI API, `ANTHROPIC_API_KEY` for Anthropic, and `none` for

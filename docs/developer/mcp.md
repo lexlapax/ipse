@@ -154,7 +154,13 @@ and system CA trust. There is no TLS-disable option. Plain HTTP requires
 does not qualify. Userinfo, query strings, fragments, control characters, and
 unsupported schemes fail configuration. Redirects and retries are disabled;
 credentials never follow a Location header. HTTP entries cannot specify command,
-args, env maps, or a local sandbox. No ambient proxy configuration is inherited.
+args, env maps, or a local sandbox. The private Finch pool receives proxy connection
+options from `Ipse.HTTPProxy`, shared with OTP auth/inference clients. Selected
+HTTP(S)_PROXY variables accept HTTP proxy URLs, optional encoded credentials and
+NO_PROXY bypasses; unsupported schemes or malformed URLs refuse before connection.
+Proxy authorization belongs to CONNECT/forward-proxy headers, not origin headers.
+Loopback deliberately bypasses ambient proxies. No fallback to direct egress occurs
+when the selected proxy fails. TLS verification remains Mint's default.
 The explicitly configured endpoint is trusted by the operator, never chosen
 from model text, a repository, or a server response.
 

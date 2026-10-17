@@ -78,6 +78,9 @@ defmodule Ipse.Provider do
   def endpoint(config, default, suffix) do
     base = config[:base_url] || default
 
+    unless valid_base_url?(config[:provider], base),
+      do: raise(ArgumentError, "Provider endpoint requires HTTPS or explicit HTTP loopback.")
+
     if config[:provider] == :chatgpt and base != "https://api.openai.com/v1" and
          not test_endpoint?(base) do
       raise ArgumentError, "Subscription credentials only go to the official OpenAI endpoint."
@@ -85,6 +88,25 @@ defmodule Ipse.Provider do
 
     String.trim_trailing(base, "/") <> suffix
   end
+
+  def valid_base_url?(_, nil), do: true
+
+  def valid_base_url?(provider, url) when provider in [:chatgpt, "chatgpt"],
+    do: url == "https://api.openai.com/v1" or test_endpoint?(url)
+
+  def valid_base_url?(_, url) when is_binary(url) do
+    with {:ok, uri} <- URI.new(url) do
+      byte_size(url) <= 512 and uri.host not in [nil, ""] and is_nil(uri.userinfo) and
+        is_nil(uri.query) and is_nil(uri.fragment) and is_integer(uri.port) and
+        uri.port in 1..65535 and
+        (uri.scheme == "https" or
+           (uri.scheme == "http" and uri.host in ["127.0.0.1", "localhost", "::1"]))
+    else
+      _ -> false
+    end
+  end
+
+  def valid_base_url?(_, _), do: false
 
   defp test_endpoint?(base) do
     if @test_endpoints and is_binary(base) do

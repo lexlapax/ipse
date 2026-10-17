@@ -109,34 +109,6 @@ defmodule Ipse.Auth.HTTP do
 
   defp decode(_), do: {:error, "ChatGPT authorization response exceeded the size limit."}
 
-  defp configure_proxy(profile) do
-    proxy = System.get_env("HTTPS_PROXY") || System.get_env("https_proxy")
-
-    if proxy && proxy != "" && not Ipse.Provider.HTTP.bypass_proxy?("auth.openai.com") do
-      uri = URI.parse(proxy)
-
-      if uri.scheme == "http" and is_binary(uri.host) do
-        :httpc.set_options(
-          [https_proxy: {{String.to_charlist(uri.host), uri.port || 80}, []}],
-          profile
-        )
-
-        if uri.userinfo do
-          [user | password] = String.split(uri.userinfo, ":", parts: 2)
-
-          [
-            proxy_auth:
-              {String.to_charlist(URI.decode(user)),
-               String.to_charlist(URI.decode(List.first(password) || ""))}
-          ]
-        else
-          []
-        end
-      else
-        []
-      end
-    else
-      []
-    end
-  end
+  defp configure_proxy(profile),
+    do: Ipse.HTTPProxy.httpc_options(profile, URI.parse("https://auth.openai.com"))
 end

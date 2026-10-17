@@ -128,56 +128,6 @@ defmodule Ipse.Provider.HTTP do
 
   defp put_request_id(state, _), do: state
 
-  defp configure_proxy(profile, uri) do
-    if bypass_proxy?(uri.host) do
-      []
-    else
-      name = if uri.scheme == "https", do: "HTTPS_PROXY", else: "HTTP_PROXY"
-      proxy = System.get_env(name) || System.get_env(String.downcase(name))
-
-      if proxy && proxy != "" do
-        parsed = URI.parse(proxy)
-
-        if parsed.host && parsed.scheme == "http" do
-          option = if uri.scheme == "https", do: :https_proxy, else: :proxy
-
-          :httpc.set_options(
-            [{option, {{String.to_charlist(parsed.host), parsed.port || 80}, []}}],
-            profile
-          )
-
-          if parsed.userinfo do
-            [user | password] = String.split(parsed.userinfo, ":", parts: 2)
-
-            [
-              proxy_auth:
-                {URI.decode(user) |> String.to_charlist(),
-                 URI.decode(List.first(password) || "") |> String.to_charlist()}
-            ]
-          else
-            []
-          end
-        else
-          raise ArgumentError, "Unsupported proxy URL"
-        end
-      else
-        []
-      end
-    end
-  end
-
-  def bypass_proxy?(host) do
-    host = String.downcase(host)
-
-    patterns =
-      (System.get_env("NO_PROXY") || System.get_env("no_proxy") || "")
-      |> String.split(",", trim: true)
-
-    host in ["localhost", "::1", "[::1]"] or String.starts_with?(host, "127.") or
-      Enum.any?(patterns, fn pattern ->
-        pattern = pattern |> String.trim() |> String.downcase() |> String.replace(~r/:\d+$/, "")
-        domain = String.trim_leading(pattern, ".")
-        pattern == "*" or host == domain or String.ends_with?(host, "." <> domain)
-      end)
-  end
+  defp configure_proxy(profile, uri), do: Ipse.HTTPProxy.httpc_options(profile, uri)
+  defdelegate bypass_proxy?(host), to: Ipse.HTTPProxy, as: :bypass?
 end

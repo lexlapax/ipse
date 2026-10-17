@@ -156,45 +156,50 @@ defmodule Ipse.MCP.HTTPTransport do
             if method == :delete and is_nil(session_id) do
               :ok
             else
-              Ipse.HTTPProfile.with_finch(fn finch ->
-                # The Finch guardian closes this private pool on borrower death too.
-                headers = [
-                  {"accept", "application/json, text/event-stream"},
-                  {"content-type", "application/json"},
-                  {"accept-encoding", "identity"},
-                  {"mcp-protocol-version", "2025-11-25"}
-                ]
+              proxy_options = Ipse.HTTPProxy.finch_options(URI.parse(server.url))
 
-                headers =
-                  if session_id, do: [{"mcp-session-id", session_id} | headers], else: headers
+              Ipse.HTTPProfile.with_finch(
+                fn finch ->
+                  # The Finch guardian closes this private pool on borrower death too.
+                  headers = [
+                    {"accept", "application/json, text/event-stream"},
+                    {"content-type", "application/json"},
+                    {"accept-encoding", "identity"},
+                    {"mcp-protocol-version", "2025-11-25"}
+                  ]
 
-                headers =
-                  case Map.values(server.env) do
-                    [token] -> [{"authorization", "Bearer " <> token} | headers]
-                    [] -> headers
+                  headers =
+                    if session_id, do: [{"mcp-session-id", session_id} | headers], else: headers
+
+                  headers =
+                    case Map.values(server.env) do
+                      [token] -> [{"authorization", "Bearer " <> token} | headers]
+                      [] -> headers
+                    end
+
+                  into = fn {:data, bytes}, {req, resp} ->
+                    if byte_size(resp.body) + byte_size(bytes) > @body_limit do
+                      {:halt, {req, %{resp | private: Map.put(resp.private, :ipse_limit, true)}}}
+                    else
+                      {:cont, {req, %{resp | body: resp.body <> bytes}}}
+                    end
                   end
 
-                into = fn {:data, bytes}, {req, resp} ->
-                  if byte_size(resp.body) + byte_size(bytes) > @body_limit do
-                    {:halt, {req, %{resp | private: Map.put(resp.private, :ipse_limit, true)}}}
-                  else
-                    {:cont, {req, %{resp | body: resp.body <> bytes}}}
-                  end
-                end
-
-                Req.request(
-                  method: method,
-                  url: server.url,
-                  body: body,
-                  headers: headers,
-                  finch: [name: finch, pool_timeout: min(timeout, 2000)],
-                  raw: true,
-                  retry: false,
-                  redirect: false,
-                  into: into,
-                  receive_timeout: timeout
-                )
-              end)
+                  Req.request(
+                    method: method,
+                    url: server.url,
+                    body: body,
+                    headers: headers,
+                    finch: [name: finch, pool_timeout: min(timeout, 2000)],
+                    raw: true,
+                    retry: false,
+                    redirect: false,
+                    into: into,
+                    receive_timeout: timeout
+                  )
+                end,
+                proxy_options
+              )
             end
           end
         rescue

@@ -166,6 +166,11 @@ use `http://127.0.0.1:PORT/mcp` or `http://[::1]:PORT/mcp` with
 other HTTP addresses. URLs cannot contain userinfo, queries, or fragments.
 Redirects are rejected and requests are never automatically retried.
 
+Network MCP honors `HTTPS_PROXY`/`HTTP_PROXY` (or lowercase variants) and `NO_PROXY`
+using the same policy as auth and inference. HTTP proxy URLs may include encoded
+credentials. Unsupported proxy schemes refuse; a failed selected proxy never
+falls back to a direct connection. Loopback endpoints bypass ambient proxies.
+
 The startup manifest shows the endpoint, allowlists, selected credential variable
 name, timeout, exception flag, and fingerprint; token/session values are private.
 Calls use the same full approval and intent journal as stdio. The transport is
