@@ -27,7 +27,7 @@ the next feature sequence on 2026-10-15:
 | [P19](#p19-long-session-diagnosis-and-recovery) | Diagnose retained-context limits and improve explicit recovery | Complete within documented scope; Linux and hosted Mac checks passed |
 | [P20](#p20-repeatable-supervised-self-development) | Reusable supervised development/review skill and evidence | Complete: fixtures, hosted checks and supervised live use; limitations recorded |
 | [P21](#p21-larger-self-development-trial-on-serenity) | Larger supervised trial with independent Mac verification | Complete within supervised scope; bounded review and Linux/hosted Mac checks passed |
-| [P22](#p22-extension-scaffold-and-lifecycle-hooks) | Typed extension scaffold, lifecycle hooks and runtime observability | In progress; artifacts/workers/config, hooks, usage/text, typed invocations and scoped host state implemented |
+| [P22](#p22-extension-scaffold-and-lifecycle-hooks) | Typed extension scaffold, lifecycle hooks and runtime observability | In progress; artifacts/workers/config, hooks, usage/text, invocations, scoped state, questions and workflow tools implemented |
 | [P23](#p23-usage-cost-reporting-and-budget-controls) | Usage/cost extensions and host budget admission | Authorized; follows P22 accounting foundation |
 | [P24](#p24-voice-and-realtime-media) | Voice extensions and owned realtime/media capabilities | Authorized; follows owned stream/provider foundation |
 | [P25](#p25-optional-knowledge-extensions) | Default-off working/long-term memory, research, graph and RAG | Authorized; research gates precede implementation selection |
@@ -1102,6 +1102,14 @@ Idle resume restores the question/checkpoint without running code. Only an
 explicit validated answer authorizes a newly journaled continuation; it never
 grants later write approval. Cancellation, bounded answers, action-chain integrity
 and interrupted-answer no-replay recovery are exercised by independent artifacts.
+
+P22A10 implements [bounded workflow calls](developer/extension-tool-actions.md)
+to the existing file/shell tools. Full mutation approval, scoped instruction
+preflight, linked owned execution and source-bound receipts preserve host policy.
+Known read failures retain typed failure codes. Unsupported tools, deadlines and
+incomplete/ambiguous effect outcomes stop the callback
+chain without replay. Service composition, context/evidence, worker streams,
+observability and the independent package proof remain required P22 work.
 
 Acceptance:
 

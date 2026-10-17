@@ -565,6 +565,8 @@ Separately trusted [host-state calls](extensions.md#scoped-state-host-calls)
 support scoped CAS storage and require normal approval for writes.
 Explicit [extension questions](extensions.md#structured-questions) reuse the same
 terminal forms and require a validated answer before starting a new continuation.
+[Workflow tool calls](extensions.md#workflow-tools) reuse file/shell policy and
+need separate mutation approval, even after a question was answered.
 Broader SDK capabilities and live controls remain in progress. See the [scenario analysis](../developer/extension-scenarios.md) and
 [P22 delivery gates](../developer/extensions.md#delivery-sequence-and-extension-only-proof).
 

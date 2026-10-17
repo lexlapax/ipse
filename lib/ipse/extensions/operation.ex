@@ -1,6 +1,7 @@
 defmodule Ipse.Extensions.Operation do
   @moduledoc "Closed host-operation contracts; proposals are not permission grants."
   alias Ipse.Extensions.State
+  def validate(%{"op" => "tool.call"} = request), do: Ipse.Extensions.ToolAction.validate(request)
 
   def validate(%{"op" => "operator.question"} = request) do
     with true <- Enum.sort(Map.keys(request)) == ~w(arguments checkpoint op),
@@ -18,14 +19,21 @@ defmodule Ipse.Extensions.Operation do
 
   def validate(request), do: State.validate(request)
   def question?(request), do: is_map(request) and request["op"] == "operator.question"
+  def tool?(request), do: is_map(request) and request["op"] == "tool.call"
+  def capability(%{"op" => "tool.call"}), do: "host.tools"
   def capability(%{"op" => "operator.question"}), do: "host.question"
   def capability(request), do: State.capability(request)
+  def mutating?(%{"op" => "tool.call", "name" => name}), do: Ipse.Tools.mutating?(name)
   def mutating?(request), do: State.mutating?(request)
 
   def namespace(_identity, %{"op" => "operator.question"}, _cwd, _id), do: {:ok, nil}
+  def namespace(_identity, %{"op" => "tool.call"}, _cwd, _id), do: {:ok, nil}
 
   def namespace(identity, request, cwd, id),
     do: State.namespace(identity, request["scope"], cwd, id)
+
+  def valid_outcome?(%{"op" => "tool.call"} = request, status, value, _),
+    do: Ipse.Extensions.ToolAction.valid_outcome?(request, status, value)
 
   def valid_outcome?(%{"op" => "operator.question"} = request, "answered", value, _) do
     Enum.sort(Map.keys(value)) == ["answers"] and

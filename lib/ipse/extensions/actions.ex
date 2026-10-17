@@ -2,7 +2,7 @@ defmodule Ipse.Extensions.Actions do
   @moduledoc "Typed finite host-call continuations with source-bound durable operation receipts."
   alias Ipse.Extensions.Operation
 
-  @keys ~w(type version parent_invocation_id operation_id step identity_sha256 namespace request request_sha256 approval)
+  @keys ~w(type version parent_invocation_id operation_id step identity_sha256 namespace context_sha256 request request_sha256 approval)
   @types ~w(extension_action_intent extension_action_result)
   @error {:error, :invalid_extension_action}
   @limit 16
@@ -25,7 +25,7 @@ defmodule Ipse.Extensions.Actions do
     _ -> @error
   end
 
-  def intent(parent, request, step, approval, cwd) do
+  def intent(parent, request, step, approval, cwd, context_sha256 \\ nil) do
     with {:ok, namespace} <-
            Operation.namespace(
              parent["identity"],
@@ -41,6 +41,7 @@ defmodule Ipse.Extensions.Actions do
         "step" => step,
         "identity_sha256" => Ipse.Compaction.digest([parent["identity"]]),
         "namespace" => namespace,
+        "context_sha256" => context_sha256,
         "request" => request,
         "request_sha256" => Ipse.Compaction.digest([request]),
         "approval" => approval
@@ -88,7 +89,7 @@ defmodule Ipse.Extensions.Actions do
       event["type"] == "extension_action_result" and
       event["outcome_sha256"] == Ipse.Compaction.digest([outcome]) and
       keys?(outcome, ~w(status value)) and
-      outcome["status"] in ~w(ok conflict denied unknown answered cancelled) and
+      outcome["status"] in ~w(ok conflict denied unknown answered cancelled failed) and
       outcome["status"] == "denied" == (event["approval"] == "denied") and
       Operation.valid_outcome?(
         event["request"],
@@ -122,6 +123,11 @@ defmodule Ipse.Extensions.Actions do
            ),
          true <- event["namespace"] == namespace,
          true <-
+           if(Operation.tool?(request),
+             do: hash?(event["context_sha256"]),
+             else: is_nil(event["context_sha256"])
+           ),
+         true <-
            event["approval"] in if(Operation.mutating?(request),
              do: ~w(approved session_allow denied),
              else: ["not_required"]
@@ -151,7 +157,8 @@ defmodule Ipse.Extensions.Actions do
       unknown: false,
       results: [],
       question: nil,
-      resume_needed: nil
+      resume_needed: nil,
+      context_sha256: nil
     }
 
     Enum.reduce_while(events, {:ok, initial}, fn event, {:ok, state} ->
@@ -222,13 +229,17 @@ defmodule Ipse.Extensions.Actions do
          event["step"] == state.step + 1 and
          not MapSet.member?(state.seen, event["operation_id"]) and
          valid_intent?(event, state.parent, cwd) do
-      {:ok,
-       %{
-         state
-         | action: event,
-           step: event["step"],
-           seen: MapSet.put(state.seen, event["operation_id"])
-       }}
+      if not Operation.tool?(event["request"]) or event["context_sha256"] == state.context_sha256 do
+        {:ok,
+         %{
+           state
+           | action: event,
+             step: event["step"],
+             seen: MapSet.put(state.seen, event["operation_id"])
+         }}
+      else
+        @error
+      end
     else
       @error
     end
@@ -300,6 +311,12 @@ defmodule Ipse.Extensions.Actions do
       else: @error
   end
 
+  defp validate_event(%{"type" => "workspace_context_snapshot", "snapshot" => snapshot}, state, _) do
+    if is_nil(state.question) and Ipse.WorkspaceContext.valid?(snapshot),
+      do: {:ok, %{state | context_sha256: Ipse.Compaction.digest([snapshot])}},
+      else: @error
+  end
+
   defp validate_event(event, state, _) do
     if not is_nil(state.question) or Map.has_key?(event, "operation_id") or
          Map.has_key?(event, "parent_invocation_id"),
@@ -309,5 +326,6 @@ defmodule Ipse.Extensions.Actions do
 
   defp keys?(map, keys), do: is_map(map) and Enum.sort(Map.keys(map)) == Enum.sort(keys)
   defp id?(id), do: is_binary(id) and Regex.match?(~r/\A[a-f0-9]{32}\z/, id)
+  defp hash?(hash), do: is_binary(hash) and Regex.match?(~r/\A[a-f0-9]{64}\z/, hash)
   defp bounded?(event), do: byte_size(Jason.encode!(event)) <= 65_536
 end

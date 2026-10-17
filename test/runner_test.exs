@@ -89,11 +89,15 @@ defmodule Ipse.RunnerTest do
 
     assert result.exit_code == 0
     assert result.output == String.duplicate("x", 101)
+    assert result.output_bytes == 1_000_000
+    assert result.output_truncated
   end
 
   test "keeps UTF-8 valid at the byte boundary", %{cwd: cwd} do
     assert {:ok, result} = Runner.run("printf '€€€'", cwd, output_limit: 7)
     assert result.output == "€€"
+    assert result.output_bytes == 9
+    assert result.output_truncated
     assert String.valid?(result.output)
   end
 

@@ -142,6 +142,7 @@ defmodule Ipse.Session do
         extension_actions:
           if(question && question[:kind] == :extension, do: question.action["step"], else: 0),
         extension_action_unknown: false,
+        extension_tool_context: nil,
         extension_action_results:
           if(question && question[:kind] == :extension, do: question.results, else: []),
         extension_request: nil,
@@ -430,6 +431,66 @@ defmodule Ipse.Session do
     do: {:reply, {:error, :cancelled}, s}
 
   def handle_call(
+        {:extension_tool_context, ref, request},
+        {caller, _},
+        %{job_ref: ref, task: %{pid: caller}, extension_action: nil, phase: phase} = s
+      )
+      when ref != nil and phase in [:tool, :extension_command, :extension_service] do
+    with parent when is_map(parent) <- s.extension_invocation,
+         true <- Ipse.Extensions.Registry.live?(parent["identity"]),
+         {:ok, _} <-
+           Actions.proposal(
+             %{"api_version" => 1, "kind" => "host_call", "request" => request},
+             parent["identity"]
+           ),
+         true <- Ipse.Extensions.Operation.tool?(request) do
+      {:reply, {:ok, s.context_snapshot}, %{s | extension_tool_context: nil}}
+    else
+      _ -> {:reply, {:error, :extension_tool_context_refused}, s}
+    end
+  end
+
+  def handle_call({:extension_tool_context, _, _}, _, s),
+    do: {:reply, {:error, :extension_tool_context_refused}, s}
+
+  def handle_call(
+        {:extension_tool_context_commit, ref, request, old_hash, snapshot, drift},
+        {caller, _},
+        %{job_ref: ref, task: %{pid: caller}, extension_action: nil, phase: phase} = s
+      )
+      when ref != nil and phase in [:tool, :extension_command, :extension_service] do
+    with true <- old_hash == Ipse.Compaction.digest([s.context_snapshot]),
+         true <- WorkspaceContext.valid?(snapshot),
+         true <-
+           Map.take(snapshot, ~w(version cwd boundary)) ==
+             Map.take(s.context_snapshot, ~w(version cwd boundary)),
+         true <-
+           Enum.take(snapshot["sources"], length(s.context_snapshot["sources"])) ==
+             s.context_snapshot["sources"],
+         :ok <- Ipse.Extensions.ToolAction.validate(request) do
+      if snapshot == s.context_snapshot do
+        gate = %{
+          request: Ipse.Compaction.digest([request]),
+          context: old_hash,
+          job: ref,
+          identity: Ipse.Compaction.digest([s.extension_invocation["identity"]])
+        }
+
+        {:reply, :ok, %{s | extension_tool_context: gate, context_drift: drift}}
+      else
+        s = persist_context(%{s | context_drift: drift, extension_tool_context: nil}, snapshot)
+        notify(s, {:context_refreshed, context_manifest(s)})
+        {:reply, {:error, :review_new_workspace_instructions}, s}
+      end
+    else
+      _ -> {:reply, {:error, :extension_tool_context_refused}, s}
+    end
+  end
+
+  def handle_call({:extension_tool_context_commit, _, _, _, _, _}, _, s),
+    do: {:reply, {:error, :extension_tool_context_refused}, s}
+
+  def handle_call(
         {:extension_action_begin, ref, request},
         from = {caller, _},
         %{job_ref: ref, task: %{pid: caller}, extension_action: nil, phase: phase} = s
@@ -447,8 +508,9 @@ defmodule Ipse.Session do
          true <- not s.extension_action_unknown,
          true <- Ipse.Extensions.Registry.live?(parent["identity"]),
          true <- not Ipse.Extensions.Operation.question?(request) or questions_enabled?(s.config),
+         {:ok, context_hash} <- extension_action_context(s, request),
          {:ok, intent} <-
-           Actions.intent(parent, request, s.extension_actions + 1, approval, s.cwd) do
+           Actions.intent(parent, request, s.extension_actions + 1, approval, s.cwd, context_hash) do
       cond do
         Ipse.Extensions.Operation.question?(request) ->
           record(s, intent)
@@ -473,6 +535,7 @@ defmodule Ipse.Session do
              s
              | phase: :extension_approval,
                approval: {:extension, approval_ref},
+               extension_tool_context: nil,
                extension_action: %{intent: intent, from: from, phase: phase}
            }}
 
@@ -482,10 +545,18 @@ defmodule Ipse.Session do
           reply =
             if approval == "denied",
               do: {:denied, intent},
-              else: {:ok, intent, %{root: Path.join(s.context_home, "extension-state-v1")}}
+              else: {:ok, intent, extension_execution_context(s)}
+
+          if Ipse.Extensions.Operation.tool?(request) and approval != "denied",
+            do: notify(s, {:tool, "extension:tool.call", request})
 
           {:reply, reply,
-           %{s | extension_action: %{intent: intent}, extension_actions: s.extension_actions + 1}}
+           %{
+             s
+             | extension_action: %{intent: intent},
+               extension_actions: s.extension_actions + 1,
+               extension_tool_context: nil
+           }}
       end
     else
       _ -> {:reply, {:error, :extension_action_refused}, s}
@@ -505,6 +576,9 @@ defmodule Ipse.Session do
     if Actions.result_intent(event) == intent and Actions.valid_result?(event) and
          Ipse.Extensions.Registry.live?(s.extension_invocation["identity"]) do
       record(s, event)
+
+      if Ipse.Extensions.Operation.tool?(intent["request"]),
+        do: notify(s, {:tool_result, "extension:tool.call", Jason.encode!(event["outcome"])})
 
       {:reply, {:ok, Actions.resume(event)},
        %{
@@ -629,10 +703,13 @@ defmodule Ipse.Session do
 
       reply =
         if allowed == true,
-          do: {:ok, intent, %{root: Path.join(s.context_home, "extension-state-v1")}},
+          do: {:ok, intent, extension_execution_context(s)},
           else: {:denied, intent}
 
       GenServer.reply(action.from, reply)
+
+      if allowed == true and Ipse.Extensions.Operation.tool?(intent["request"]),
+        do: notify(s, {:tool, "extension:tool.call", intent["request"]})
 
       {:reply, :ok,
        %{
@@ -2242,6 +2319,32 @@ defmodule Ipse.Session do
       "invoke.command" -> :extension_command
       "invoke.service" -> :extension_service
     end
+  end
+
+  defp extension_action_context(s, request) do
+    if Ipse.Extensions.Operation.tool?(request) do
+      expected = %{
+        request: Ipse.Compaction.digest([request]),
+        context: Ipse.Compaction.digest([s.context_snapshot]),
+        job: s.job_ref,
+        identity: Ipse.Compaction.digest([s.extension_invocation["identity"]])
+      }
+
+      if s.extension_tool_context == expected,
+        do: {:ok, expected.context},
+        else: {:error, :tool_context_not_reviewed}
+    else
+      {:ok, nil}
+    end
+  end
+
+  defp extension_execution_context(s) do
+    %{
+      root: Path.join(s.context_home, "extension-state-v1"),
+      cwd: s.cwd,
+      sandbox: Map.get(s.config, :sandbox, :off),
+      parallel_child: Map.get(s.config, :parallel_child, false)
+    }
   end
 
   defp restore_extension_question(events, messages, native) do

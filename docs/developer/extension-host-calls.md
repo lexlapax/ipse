@@ -5,14 +5,15 @@ P22A8 implements finite host-mediated state operations from typed
 `host_call` and receive a result through their negotiated `host.actions` callback.
 Fields inside ordinary `kind: result` values remain inert. Initial operations
 are get/list/put/delete. [Structured questions](extension-questions.md) now use the
-same finite protocol. Tool execution, context/evidence contributions
+same finite protocol. [Bounded workflow tools](extension-tool-actions.md) add
+approved file/shell operations. Context/evidence contributions
 and composed services remain SDK work; this does not complete P22 or ship a
 memory algorithm.
 
 ## Negotiation and protocol
 
 Artifacts declare `host.actions` with `host.state.read` and/or `host.state.write`,
-or `host.question`, alongside their `invoke.*` exports. These capabilities without `host.actions`
+or `host.question`/`host.tools`, alongside their `invoke.*` exports. These capabilities without `host.actions`
 refuse inert validation. Operator trust must allow every capability; project
 configuration cannot grant it. Transform callbacks do not implement continuations.
 

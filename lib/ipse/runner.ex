@@ -334,6 +334,8 @@ defmodule Ipse.Runner do
         output: <<>>,
         pending: <<>>,
         remaining: limit,
+        output_limit: limit,
+        output_bytes: 0,
         emit: emit,
         result: nil,
         error: nil
@@ -415,10 +417,22 @@ defmodule Ipse.Runner do
 
       {^port, {:exit_status, _code}} ->
         cond do
-          state.error -> {:error, state.error}
-          state.buffer != <<>> -> {:error, "shell supervisor sent an incomplete frame"}
-          state.result == nil -> {:error, "shell supervisor exited without a result"}
-          true -> {:ok, Map.put(state.result, :output, state.output)}
+          state.error ->
+            {:error, state.error}
+
+          state.buffer != <<>> ->
+            {:error, "shell supervisor sent an incomplete frame"}
+
+          state.result == nil ->
+            {:error, "shell supervisor exited without a result"}
+
+          true ->
+            {:ok,
+             Map.merge(state.result, %{
+               output: state.output,
+               output_bytes: state.output_bytes,
+               output_truncated: state.output_bytes > state.output_limit or state.pending != <<>>
+             })}
         end
     after
       remaining -> {:error, "shell supervisor stopped responding"}
@@ -452,7 +466,13 @@ defmodule Ipse.Runner do
     if text != "" and is_function(state.emit, 1), do: state.emit.({:tool_output, text})
 
     {:ok,
-     %{state | output: state.output <> text, pending: pending, remaining: state.remaining - count}}
+     %{
+       state
+       | output: state.output <> text,
+         pending: pending,
+         remaining: state.remaining - count,
+         output_bytes: state.output_bytes + byte_size(bytes)
+     }}
   end
 
   defp accept_frame(?X, bytes, state) do

@@ -81,7 +81,7 @@ For independent code, replace the built-in reference with its reviewed 64-charac
 digest and supply its declared options/capabilities. Supported capabilities are
 `transform.prompt`, `transform.presentation`, `invoke.tool`, `invoke.command`
 and `invoke.service`, plus `host.actions` with `host.state.read`/`host.state.write`
-or `host.question`;
+or `host.question`/`host.tools`;
 unsupported capabilities fail explicitly. Invocation
 exports require inert argument/result schemas in the artifact manifest. Do not
 put credentials in extension options. No automatic memory backend is selected.
@@ -172,8 +172,8 @@ Workers inherit no credential environment. Trusted executable code still has
 the operator's OS/filesystem access; ownership, deadlines and process-group
 cancellation do not themselves provide an OS sandbox. Initialize/transform
 callbacks must follow the SDK's effect-free contract; arbitrary trusted programs
-cannot be constrained by a return-value schema alone. General tool
-actions, context contributions, worker service composition, broader lifecycle observation,
+cannot be constrained by a return-value schema alone. Context contributions,
+worker service composition, broader lifecycle observation,
 live controls and the extension-only
 memory/workflow proof remain [P22 work](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
 See the [implemented hook contract](../developer/extension-hooks.md).
@@ -248,3 +248,27 @@ If interruption occurs after an answer/continuation intent, resume stays idle
 with unknown work and does not rerun the callback. Inspect receipts before
 explicitly choosing a fresh action. Exact artifact/config/host pins and expiry
 still apply. See [SDK checkpoint and recovery details](../developer/extension-questions.md).
+
+## Workflow tools
+
+Reviewed artifacts trusted for `host.actions` and `host.tools` can request the
+existing read/write/edit/shell tools. Write/edit/shell need their own full approval;
+answers or command invocation do not authorize them. Headless writes remain
+denied without `--yes`. Unknown tool IDs, delegation and MCP calls are unavailable
+through this operation. Child ceilings and parent mutation coordination still apply.
+
+New nested workspace instructions stop the invocation before tool approval or
+execution. Review `/context`, then explicitly decide whether to invoke again.
+Existing instruction drift still uses `/context refresh`; there is no automatic
+retry. Tools retain normal workspace/symlink/.git rules and the selected shell
+sandbox policy. Separate workers and deadlines are not an OS sandbox.
+
+Each call declares a 1–30,000 ms deadline; shell setup has the existing additional
+supervisor allowance. Results must fit 4 KiB text and the complete escaped SDK
+envelope. Read errors/oversized read results return known failure codes without
+partial data, allowing a bounded explicit follow-up. Shell exit status stays
+visible. Timeout, incomplete shell output or ambiguous
+failure stops with an unknown outcome; inspect before retrying. Cancellation kills
+the owned tool task and ordinary shell process group, with existing macOS cleanup
+limits. Committed receipts restore without rerunning effects. See
+[protocol and limits](../developer/extension-tool-actions.md).

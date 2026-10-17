@@ -52,6 +52,10 @@ P22A9 structured extension questions add no dependency. They reuse the existing
 Questions/JSONSchex validator and terminal rendering, native worker cleanup, owned
 tasks and journal reducer. Bounded JSON checkpoints replace arbitrary VM-state
 serialization; continuation receipt validation is Ipse-specific recovery policy.
+P22A10 workflow tool actions add no dependency. They reuse existing file tools,
+native Runner/sandbox, workspace-context loader, JSONSchex and linked OTP tasks.
+Runner's bounded result now includes drained-byte/truncation facts; no duplicate
+shell supervisor or workflow framework is introduced.
 P22A2's worker bridge reuses the current ERTS, Elixir, Jason and native stdio
 helper, adding no dependency. The synthetic independent artifact fixture uses
 the existing Elixir compiler in a separate VM. A small Ipse bootstrap implements

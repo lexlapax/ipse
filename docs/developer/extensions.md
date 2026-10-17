@@ -9,7 +9,8 @@ document subsequent increments.
 [Finite host state calls](extension-host-calls.md) implement the first scoped
 state/effect seam; general actions, composition and context remain provisional.
 [Structured question checkpoints](extension-questions.md) now support explicit
-answered continuation; general tool actions and service composition remain open.
+answered continuation; [approved workflow tools](extension-tool-actions.md) cover
+the existing file/shell tools. Service composition and context remain open.
 Other names and limits below remain proposed contracts. Existing skills, explicit
 MCP tools and provider adapters remain available alongside the
 [initial session hooks](extension-hooks.md).

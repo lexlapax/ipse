@@ -2699,3 +2699,45 @@ fresh isolated homes. This verifies existing bundled hooks/accounting/text and
 runtime packaging; custom question artifact conformance remains source-only.
 Documentation review checked **66 Markdown files / 651 local file and heading
 links** with no broken targets. No release was published.
+
+[Hosted question verification](https://github.com/lexlapax/ipse/actions/runs/38995020534)
+for `ed422ac` passed Ubuntu and macOS-14 on Elixir 1.18 / OTP 27: formatting,
+compilation, default tests, demo, package and extracted verification on both,
+plus macOS native enforcement. This is hosted evidence for questions, not local
+macOS execution on Serenity or verification of later workflow tool changes.
+
+## P22 approved workflow tools (2026-10-16)
+
+On Linux Serenity, **42 focused invocation/Runner tests** passed, including the
+final job/identity-bound instruction gate. The initial full native suite passed
+**464 tests, 14 macOS excluded**. Final build/package/full-suite evidence follows
+below. Tests use synthetic local files/processes; no paid inference ran.
+
+Independent worker fixtures exercise full approved/denied writes, ordinary read
+policy, new nested instruction refusal before tool intent/approval, pinned context
+receipts, escaped/out-of-workspace path and unsupported-tool refusal, normal
+nonzero shell exit reporting, output/escaped-JSON bounds and unknown timeout
+shutdown without callback continuation. Cancellation checks the actual shell PID
+exits and delayed descendants do not write. Altered context receipts refuse
+restore before tail repair. Runner fixtures count all drained bytes and report
+truncation at Unicode/output boundaries. See [SDK contract](extension-tool-actions.md)
+and [operator procedure](../operator/extensions.md#workflow-tools).
+
+The final **42 focused tests** also cover known read failures/oversized reads
+returning fixed failure codes without partial data, distinct from unknown write/
+shell effects. Source build, format check, warnings-as-errors compile, the isolated
+demo and existing hook/accounting/text fixture passed after that refinement.
+The final full `mix test --include native_sandbox` also passed **464 tests, 14
+macOS excluded**. Documentation review checked **67 Markdown files / 666 local
+file and heading links** with no broken targets.
+
+This increment reuses existing file/shell/sandbox facilities. It adds no runtime
+dependency, production memory backend, service-composition engine or release.
+Workflow artifact conformance is source-only; the separate imported extension
+package proof and broader P22/P23–P25 remain in progress.
+
+The final Linux glibc-2.44 archive rebuilt with matching OTP 29.1.1 notices and
+passed extracted-package verification using fresh homes and a utility-only PATH.
+It covers existing bundled hooks/accounting/text and runtime/helper behavior;
+the custom workflow artifact remains source-only evidence. This is a local
+verification archive, not a published release or live-account/macOS local check.

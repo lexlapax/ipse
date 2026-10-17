@@ -141,12 +141,19 @@ defmodule Ipse.Extensions.Host do
   end
 
   defp run_action(owner, job_ref, request) do
+    with :ok <- tool_context(owner, job_ref, request) do
+      run_admitted_action(owner, job_ref, request)
+    end
+  end
+
+  defp run_admitted_action(owner, job_ref, request) do
     case GenServer.call(owner, {:extension_action_begin, job_ref, request}, :infinity) do
       {:ok, intent, context} ->
         outcome =
-          case State.execute(context.root, intent["namespace"], request, intent["operation_id"]) do
+          case execute_action(context, intent, request) do
             {:ok, value} -> %{"status" => "ok", "value" => value}
             {:conflict, value} -> %{"status" => "conflict", "value" => value}
+            {:failed, value} -> %{"status" => "failed", "value" => value}
             _ -> %{"status" => "unknown", "value" => %{}}
           end
 
@@ -158,5 +165,32 @@ defmodule Ipse.Extensions.Host do
       _ ->
         {:error, :extension_action_refused}
     end
+  end
+
+  defp execute_action(context, _intent, %{"op" => "tool.call"} = request),
+    do: Ipse.Extensions.ToolAction.execute(request, context)
+
+  defp execute_action(context, intent, request),
+    do: State.execute(context.root, intent["namespace"], request, intent["operation_id"])
+
+  defp tool_context(owner, job_ref, %{"op" => "tool.call"} = request) do
+    with {:ok, snapshot} <- GenServer.call(owner, {:extension_tool_context, job_ref, request}),
+         {:ok, updated} <- nested_context(snapshot, request),
+         drift = Ipse.WorkspaceContext.drift(updated) do
+      GenServer.call(
+        owner,
+        {:extension_tool_context_commit, job_ref, request, Ipse.Compaction.digest([snapshot]),
+         updated, drift}
+      )
+    end
+  end
+
+  defp tool_context(_, _, _), do: :ok
+
+  defp nested_context(snapshot, %{"name" => "shell"}), do: {:ok, snapshot}
+
+  defp nested_context(snapshot, request) do
+    with {:ok, updated, _} <- Ipse.WorkspaceContext.nested(snapshot, request["arguments"]["path"]),
+         do: {:ok, updated}
   end
 end

@@ -19,6 +19,10 @@ Structured [extension questions](extension-questions.md) close their worker befo
 publication. Pending checkpoints restore inertly. An explicit validated answer
 commits its receipt/continuation intent before a fresh owned worker initializes;
 it never grants later mutation approval or manufactures a native provider call.
+[Workflow tool actions](extension-tool-actions.md) use existing tools/Runner in a
+linked leaf task. Session owns full approval and a request/job/identity/workspace
+gate; new nested instructions stop admission. Durable results preserve output
+completeness and native tool provenance without synthetic assistant calls.
 
 Ipse is an MIT-licensed, general-purpose local AI harness built around Elixir
 and OTP. The host role supports general-purpose tasks, with focused changes

@@ -77,6 +77,8 @@ Explicit host-state capabilities support scoped revision-checked storage with
 separate write approval; no automatic memory adapter is enabled.
 Trusted extensions can ask structured questions and resume from bounded checkpoints
 only after explicit answers; idle recovery never starts their callbacks.
+An explicit workflow-tool capability reuses bounded file/shell tools, workspace
+instruction checks and normal mutation approval.
 Resume pins code/configuration and restores committed projections without replay.
 See [extensions](docs/operator/extensions.md) for bounds and current SDK scope.
 Use `$project-orientation` to assess a repository's purpose, current changes,

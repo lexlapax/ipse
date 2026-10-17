@@ -3,12 +3,13 @@
 P22A7 adds inert manifest-declared tools, operator commands and standalone typed
 services. They share the independent worker SDK and owner chain used by the
 [prompt/presentation hooks](extension-hooks.md). This increment does not complete
-P22: context contributions, worker-to-host service composition, general tool
-actions, workflows, worker text handles and observability
+P22: context contributions, worker-to-host service composition, broader
+workflows, worker text handles and observability
 controls remain separate work. No provider or store is selected implicitly.
 P22A8 adds [finite host state calls](extension-host-calls.md) with explicit
 capability negotiation and separate mutation approval.
 P22A9 adds [structured questions and explicit continuations](extension-questions.md).
+P22A10 adds [approved file/shell workflow actions](extension-tool-actions.md).
 
 ## Inert declarations
 
@@ -102,7 +103,8 @@ The final value reply is
 `value` must satisfy the declared result schema; the whole reply obeys SDK bounds.
 Action-looking fields inside `value` remain data. A separately negotiated
 `host_call` supports [documented state operations](extension-host-calls.md) and
-[structured questions](extension-questions.md).
+[structured questions](extension-questions.md) and
+[bounded file/shell calls](extension-tool-actions.md).
 Unknown reply kinds/operations are refused. New actions must negotiate the typed
 outer protocol and reuse approval/intent boundaries; they cannot reinterpret
 domain JSON or command strings as executable actions.

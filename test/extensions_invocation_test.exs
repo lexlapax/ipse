@@ -82,7 +82,7 @@ defmodule Ipse.Extensions.InvocationTest do
       end)
 
     capabilities =
-      ~w(invoke.tool invoke.command invoke.service host.actions host.state.read host.state.write host.question)
+      ~w(invoke.tool invoke.command invoke.service host.actions host.state.read host.state.write host.question host.tools)
 
     code = """
     defmodule #{entrypoint} do
@@ -958,6 +958,184 @@ defmodule Ipse.Extensions.InvocationTest do
     assert Session.info(pid).phase == :question
     :ok = Session.answer(pid, question_id, answers())
     assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+  end
+
+  defp tool_request(name, args, timeout \\ 1000),
+    do: %{"op" => "tool.call", "name" => name, "arguments" => args, "timeout_ms" => timeout}
+
+  test "workflow writes use full separate approval and pinned workspace context receipts", ctx do
+    pid = start(ctx)
+    request = tool_request("write", %{"path" => "workflow.txt", "content" => "approved"})
+    :ok = host_command(pid, request)
+    assert_receive {:ipse, ^pid, {:approval, ref, "extension:tool.call", proposed}}, 3000
+    assert proposed["request"] == request
+    refute File.exists?(Path.join(ctx.root, "workflow.txt"))
+    :ok = Session.approve(pid, ref, true)
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+    assert File.read!(Path.join(ctx.root, "workflow.txt")) == "approved"
+    assert host_outcome(pid)["status"] == "ok"
+    {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+    intent = Enum.find(events, &(&1["type"] == "extension_action_intent"))
+    snapshot = Enum.find(events, &(&1["type"] == "workspace_context_snapshot"))["snapshot"]
+    assert intent["context_sha256"] == Ipse.Compaction.digest([snapshot])
+    assert intent["namespace"] == nil
+    assert :ok = Ipse.Extensions.Projection.validate_events(events)
+  end
+
+  test "denied workflow writes never execute and reads need no mutation approval", ctx do
+    pid = start(%{ctx | config: Map.put(ctx.config, :approval, :deny)})
+    :ok = host_command(pid, tool_request("write", %{"path" => "denied.txt", "content" => "no"}))
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+    assert host_outcome(pid)["status"] == "denied"
+    refute File.exists?(Path.join(ctx.root, "denied.txt"))
+    File.write!(Path.join(ctx.root, "read.txt"), "read fixture")
+    :ok = host_command(pid, tool_request("read", %{"path" => "read.txt"}))
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+    assert host_outcome(pid)["value"]["text"] =~ "read fixture"
+    :ok = host_command(pid, tool_request("read", %{"path" => "missing.txt"}))
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+    assert host_outcome(pid) == %{"status" => "failed", "value" => %{"reason" => "tool_failed"}}
+    File.write!(Path.join(ctx.root, "large-read.txt"), String.duplicate("a", 5000))
+    :ok = host_command(pid, tool_request("read", %{"path" => "large-read.txt"}))
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+    assert host_outcome(pid) == %{"status" => "failed", "value" => %{"reason" => "result_limit"}}
+    refute_receive {:ipse, ^pid, {:approval, _, _, _}}, 20
+  end
+
+  test "new nested instructions stop workflow before write approval or tool intent", ctx do
+    File.mkdir_p!(Path.join(ctx.root, "nested"))
+
+    File.write!(
+      Path.join(ctx.root, "nested/AGENTS.md"),
+      "Review these synthetic instructions before writes."
+    )
+
+    pid = start(ctx)
+
+    request =
+      tool_request("write", %{"path" => "nested/result.txt", "content" => "no implicit retry"})
+
+    :ok = host_command(pid, request)
+    assert_receive {:ipse, ^pid, {:done, :error}}, 3000
+    refute_receive {:ipse, ^pid, {:approval, _, _, _}}, 20
+    refute File.exists?(Path.join(ctx.root, "nested/result.txt"))
+    {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+    refute Enum.any?(events, &(&1["type"] == "extension_action_intent"))
+    assert Enum.any?(Session.info(pid).context["sources"], &(&1["kind"] == "nested"))
+    :ok = host_command(pid, request)
+    assert_receive {:ipse, ^pid, {:approval, ref, "extension:tool.call", _}}, 3000
+    :ok = Session.approve(pid, ref, false)
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+    refute File.exists?(Path.join(ctx.root, "nested/result.txt"))
+  end
+
+  test "timed-out workflow shell stops without callback continuation and kills descendants",
+       ctx do
+    pid = start(%{ctx | config: Map.put(ctx.config, :approval, :allow)})
+
+    request =
+      tool_request(
+        "shell",
+        %{"command" => "(sleep 0.5; printf bad > workflow-orphan) & wait"},
+        60
+      )
+
+    :ok = host_command(pid, request)
+    assert_receive {:ipse, ^pid, {:done, :error}}, 3000
+    assert length(String.split(File.read!(ctx.called), "\n", trim: true)) == 1
+    Process.sleep(600)
+    refute File.exists?(Path.join(ctx.root, "workflow-orphan"))
+    {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+    result = Enum.find(events, &(&1["type"] == "extension_action_result"))
+    assert result["outcome"]["status"] == "unknown"
+    assert :ok = Ipse.Extensions.Projection.validate_events(events)
+  end
+
+  test "workflow shell preserves completion status and refuses incomplete output", ctx do
+    pid = start(%{ctx | config: Map.put(ctx.config, :approval, :allow)})
+    :ok = host_command(pid, tool_request("shell", %{"command" => "printf fixture; exit 7"}))
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+
+    assert host_outcome(pid)["value"] == %{
+             "text" => "fixture",
+             "exit_code" => 7,
+             "output_bytes" => 7,
+             "output_truncated" => false
+           }
+
+    :ok =
+      host_command(
+        pid,
+        tool_request("shell", %{"command" => "head -c 5000 /dev/zero | tr '\\000' x"})
+      )
+
+    assert_receive {:ipse, ^pid, {:done, :error}}, 3000
+    {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+
+    assert List.last(Enum.filter(events, &(&1["type"] == "extension_action_result")))["outcome"][
+             "status"
+           ] == "unknown"
+
+    :ok = host_command(pid, tool_request("shell", %{"command" => "head -c 3000 /dev/zero"}))
+    assert_receive {:ipse, ^pid, {:done, :error}}, 3000
+  end
+
+  test "cancelling a workflow kills its linked tool task and actual shell group", ctx do
+    pid = start(%{ctx | config: Map.put(ctx.config, :approval, :allow)})
+
+    command =
+      "printf '%s' $$ > workflow-shell-pid; (sleep 1; printf bad > workflow-cancelled) & wait"
+
+    :ok = host_command(pid, tool_request("shell", %{"command" => command}, 5000))
+    shell_pid = await_pid(Path.join(ctx.root, "workflow-shell-pid"))
+    :ok = Session.cancel(pid)
+    await_exit(shell_pid, ctx.root)
+    Process.sleep(1100)
+    refute File.exists?(Path.join(ctx.root, "workflow-cancelled"))
+    {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+    assert Enum.any?(events, &(&1["type"] == "extension_action_intent"))
+    refute Enum.any?(events, &(&1["type"] == "extension_action_result"))
+    assert :ok = Ipse.Extensions.Projection.validate_events(events)
+  end
+
+  test "unsupported workflow tools, escaped paths and altered context receipts never bypass policy",
+       ctx do
+    pid = start(%{ctx | config: Map.put(ctx.config, :approval, :allow)})
+
+    for request <- [
+          tool_request("delegate", %{}),
+          tool_request("write", %{"path" => "../escape.txt", "content" => "no"})
+        ] do
+      :ok = host_command(pid, request)
+      assert_receive {:ipse, ^pid, {:done, :error}}, 3000
+    end
+
+    :ok = host_command(pid, tool_request("write", %{"path" => "good.txt", "content" => "one"}))
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+    id = Session.info(pid).id
+    :ok = Session.close(pid)
+    {:ok, events} = Journal.load(ctx.dir, id)
+
+    corrupted =
+      Enum.map(events, fn event ->
+        if event["type"] in Ipse.Extensions.Actions.types(),
+          do: Map.put(event, "context_sha256", String.duplicate("e", 64)),
+          else: event
+      end)
+
+    bytes = Enum.map_join(corrupted, "", &(Jason.encode!(&1) <> "\n")) <> "{partial"
+    path = Path.join(ctx.dir, id <> ".jsonl")
+    File.write!(path, bytes)
+
+    assert {:error, _} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Session,
+                config: ctx.config, cwd: ctx.root, state_dir: ctx.dir, subscriber: self(), id: id}
+             )
+
+    assert File.read!(path) == bytes
+    assert File.read!(Path.join(ctx.root, "good.txt")) == "one"
   end
 
   defp await_pid(path, attempts \\ 150)
