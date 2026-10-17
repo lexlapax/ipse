@@ -176,6 +176,14 @@ defmodule Ipse.TextStreamTest do
     :ok = TextStream.finish(ctx.server, next, "completed")
   end
 
+  test "direct producer pushes retain the 64 KiB bound", ctx do
+    ref = make_ref()
+    send(ctx.producer, {:push, ref, ctx.request, String.duplicate("a", 65_537)})
+    assert_receive {:push_result, ^ref, {:error, :invalid_text_chunk}}, 1000
+    assert_receive {:ipse_text, _, %{"kind" => "closed", "reason" => "invalid_chunk"}}, 1000
+    assert :ok = TextStream.finish(ctx.server, ctx.request, "failed")
+  end
+
   test "four private subscriptions is a host ceiling and peers cannot enroll themselves" do
     {:ok, server} = TextStream.start(self(), Usage.id())
     for _ <- 1..4, do: assert({:ok, _} = TextStream.subscribe(server, self()))

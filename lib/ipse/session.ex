@@ -2492,7 +2492,7 @@ defmodule Ipse.Session do
             emit = fn event ->
               case event do
                 {:text, text} when phase == :model ->
-                  :ok = Ipse.TextStream.push(stream, request_id, text)
+                  :ok = Ipse.TextStream.push_delta(stream, request_id, text)
                   send(owner, {:progress, job_ref, event})
 
                 {:provider_usage, _} ->

@@ -1,5 +1,5 @@
 defmodule Ipse.CLI do
-  @moduledoc "Terminal client for the Ipse session API."
+  @moduledoc "Owning terminal client for the Ipse session API."
   alias Ipse.CLI.Terminal
 
   @help """
@@ -382,7 +382,8 @@ defmodule Ipse.CLI do
                 cwd: opts[:cwd] || default_cwd(),
                 state_dir: state_dir(opts),
                 id: opts[:resume],
-                subscriber: self()
+                subscriber: self(),
+                owner: self()
               ] ++ handoff_opts}
            ) do
       ref = Process.monitor(pid)
@@ -458,27 +459,39 @@ defmodule Ipse.CLI do
 
       client = self()
       reader = if interactive, do: spawn(fn -> read_input(client) end), else: nil
-      if prompt, do: Ipse.Session.prompt(pid, prompt)
 
       if interactive,
         do: Terminal.puts("Type a task, $review, or /help. Use /cancel while work is running.")
 
       result =
-        client_loop(%{
-          pid: pid,
-          ref: ref,
-          interactive: interactive,
-          busy: prompt != nil,
-          cancelling: false,
-          approval: nil,
-          question: nil,
-          question_answers: %{},
-          queued: [],
-          exit: false,
-          cwd: info.cwd
-        })
+        try do
+          if prompt, do: Ipse.Session.prompt(pid, prompt)
 
-      if reader && Process.alive?(reader), do: Process.exit(reader, :kill)
+          client_loop(%{
+            pid: pid,
+            ref: ref,
+            interactive: interactive,
+            busy: prompt != nil,
+            cancelling: false,
+            approval: nil,
+            question: nil,
+            question_answers: %{},
+            queued: [],
+            exit: false,
+            cwd: info.cwd
+          })
+        catch
+          :exit, _ ->
+            Terminal.puts(
+              :stderr,
+              "Session request acknowledgment is unconfirmed; it may have taken effect and was not retried. Inspect saved receipts and the workspace before continuing."
+            )
+
+            1
+        after
+          if reader && Process.alive?(reader), do: Process.exit(reader, :kill)
+        end
+
       cleanup = if Process.alive?(pid), do: Ipse.Session.close(pid), else: :ok
       Process.demonitor(ref, [:flush])
 

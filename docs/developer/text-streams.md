@@ -144,9 +144,16 @@ unconfirmed-cleanup flag without raw text/options.
 
 Four consumers are permitted. Each has one outstanding frame, at most 64 queued
 entries and 64 KiB queued text. Adjacent text for the same request coalesces
-without changing concatenation. Delivery splits only at UTF-8 boundaries. One
-producer call of at most 64 KiB can wait outside those buffers. If any consumer
-cannot admit it, the provider task waits while Session remains responsive.
+without changing concatenation. Delivery splits only at UTF-8 boundaries. Direct
+`push/3` calls retain a 64 KiB bound. Session's provider adapter uses `push_delta/3`
+to split a larger valid visible delta into sequential UTF-8 pieces within that
+bound, reusing the broker's boundary calculation. It forwards the original UI
+delta only after all pieces are accepted; saved assistant/native data remain
+unchanged. This avoids an invalid-chunk failure caused solely by provider chunk
+size without expanding channel buffers. The provider already owns the original
+delta; fragmentation adds no queue of pending pieces. One producer call of at
+most 64 KiB can wait outside the buffers. If any consumer cannot admit it, the
+provider task waits while Session remains responsive.
 A 5-second pressure deadline closes subscriptions with explicit incomplete notices
 and returns an error to the producer, causing request failure without retry.
 Stalled start/end controls also have the 64-entry cap: overflow explicitly closes
@@ -170,7 +177,8 @@ Ordinary OTP GenServer calls, monitors, timers and maps add no dependency.
 
 `text_stream_test.exs`, `text_stream_session_test.exs`, `extensions_text_test.exs`
 and compaction fixtures
-cover Unicode concatenation, bounds, caller/sequence checks, pressure deadlines,
+cover large-delta Unicode concatenation and contiguous v2 source ranges, direct
+push bounds, caller/sequence checks, pressure deadlines,
 cancellation, consumer/owner death, control overload, inert resume and summary/
 native exclusion. The source/package hook fixture consumes the raw private stream
 alongside completed formatting and durable accounting. See [verification](testing.md).

@@ -155,9 +155,14 @@ passed source/native/demo/package/installed checks, Btrfs timing probes and the
 hosted Linux/macOS gates at `200640e`. Startup/retention and prefix-check costs
 remain explicit. Filesystem alias regressions now reproduce the metadata/parallel-claim
 gaps; conservative Unicode comparisons pass focused/full native-inclusive local
-checks, the demo, package verification and both installed proofs. Actual hosted
-Mac alias verification remains open. Additional speculative
-concerns and omitted coverage require their own evidence and dispositions.
+checks, the demo, package verification, both installed proofs and hosted
+Ubuntu/macOS at `be11890`, including actual Mac alias inode controls.
+Controlled fixtures also reproduce CLI
+acknowledgment/ownership failures and oversized visible-delta rejection; their
+repairs passed 50 related focused tests, 768 native-inclusive tests, the demo,
+package verification and both installed proofs; hosted validation remains open.
+The process-group identity concern and omitted coverage require their own
+evidence and dispositions.
 The security scan and P25 execution remain behind triage and applicable
 repairs; omitted architectural surfaces need a follow-up pass.
 Read-only Security Cloud access checks found the repository and available scan

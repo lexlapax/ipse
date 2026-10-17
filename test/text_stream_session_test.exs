@@ -5,6 +5,7 @@ defmodule Ipse.TextStreamSessionTest do
   defmodule Visible do
     def complete(config, _messages, _tools, emit) do
       send(config.test_pid, {:visible_worker, self()})
+      content = config[:large_delta] || "é🙂 visible"
 
       if config[:flood] do
         emit.({:text, String.duplicate("a", 65_536)})
@@ -12,14 +13,22 @@ defmodule Ipse.TextStreamSessionTest do
         emit.({:text, "tail"})
         send(config.test_pid, :second_chunk_accepted)
       else
-        emit.({:text, "é"})
-        emit.({:text, "🙂 visible"})
+        if config[:large_delta] do
+          receive do
+            :emit_large -> :ok
+          end
+
+          emit.({:text, content})
+        else
+          emit.({:text, "é"})
+          emit.({:text, "🙂 visible"})
+        end
       end
 
       {:ok,
        %{
          "role" => "assistant",
-         "content" => "é🙂 visible",
+         "content" => content,
          "provider_data" => %{"private" => "synthetic-native-reasoning"}
        }, %{}}
     end
@@ -56,6 +65,10 @@ defmodule Ipse.TextStreamSessionTest do
 
   defp drain(handle, frames \\ []) do
     receive do
+      {:ipse_text, server, %{"kind" => "closed", "reason" => reason}}
+      when server == handle.server ->
+        flunk("Session private stream closed: #{reason}")
+
       {:ipse_text, server, %{"sequence" => seq} = frame} when server == handle.server ->
         assert :ok = TextStream.ack(handle, seq)
         frames = frames ++ [frame]
@@ -63,6 +76,49 @@ defmodule Ipse.TextStreamSessionTest do
     after
       2000 -> flunk("Session private stream did not finish")
     end
+  end
+
+  test "a large provider delta preserves Unicode text, source ranges and private native data",
+       ctx do
+    text = "x" <> String.duplicate("é🙂", 23_000) <> "\u0000end"
+    ctx = %{ctx | config: Map.put(ctx.config, :large_delta, text)}
+    pid = start(ctx)
+    {:ok, handle} = Session.subscribe_text(pid, 2)
+    assert :ok = Session.prompt(pid, "large provider delta fixture")
+    assert_receive {:visible_worker, worker}, 1000
+
+    assert_receive {:ipse_text, server, %{"kind" => "start", "sequence" => sequence} = first},
+                   1000
+
+    assert server == handle.server
+    assert :ok = TextStream.ack(handle, sequence)
+    send(worker, :emit_large)
+    frames = drain(handle, [first])
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 2000
+    assert_receive {:ipse, ^pid, {:text, ^text}}, 1000
+    refute_receive {:ipse, ^pid, {:text, _}}, 20
+    assert Enum.map_join(frames, "", &(&1["text"] || "")) == text
+    assert List.last(frames)["complete"]
+
+    offset =
+      frames
+      |> Enum.filter(&(&1["kind"] == "text"))
+      |> Enum.reduce(0, fn frame, offset ->
+        assert String.valid?(frame["text"])
+        assert byte_size(frame["text"]) <= 2048
+        assert Ipse.Lifecycle.Ephemeral.valid_frame?(frame)
+        assert frame["source"]["start_byte"] == offset
+        next = offset + byte_size(frame["text"])
+        assert frame["source"]["end_byte"] == next
+        next
+      end)
+
+    assert offset == byte_size(text)
+    refute Jason.encode!(frames) =~ "synthetic-native-reasoning"
+    {:ok, events} = Ipse.Journal.load(ctx.dir, Session.info(pid).id)
+    {:ok, messages} = Session.restore_context(events)
+    assert List.last(messages)["content"] == text
+    assert List.last(messages)["provider_data"]["private"] == "synthetic-native-reasoning"
   end
 
   test "subscriptions are opt-in and visible text preserves final native data", ctx do

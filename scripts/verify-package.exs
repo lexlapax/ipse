@@ -109,6 +109,50 @@ defmodule Ipse.PackageVerifier do
     )
   end
 
+  defp verify_text!(launcher, release, env) do
+    expression = """
+    text = "x" <> String.duplicate(<<0xC3, 0xA9, 0xF0, 0x9F, 0x99, 0x82>>, 23_000)
+    owner = self()
+    request = Ipse.Usage.id()
+    {:ok, stream} = Ipse.TextStream.start(owner, Ipse.Usage.id())
+    {:ok, handle} = Ipse.TextStream.subscribe(stream, owner, 2)
+    producer = spawn(fn ->
+      receive do
+        :start ->
+          :ok = Ipse.TextStream.push_delta(stream, request, text)
+          send(owner, :delta_accepted)
+      end
+    end)
+    :ok = Ipse.TextStream.begin(stream, request, producer)
+    send(producer, :start)
+    collect = fn collect, chunks ->
+      receive do
+        :delta_accepted ->
+          :ok = Ipse.TextStream.finish(stream, request, "completed")
+          collect.(collect, chunks)
+        {:ipse_text, ^stream, %{"sequence" => sequence} = frame} ->
+          true = Ipse.Lifecycle.Ephemeral.valid_frame?(frame)
+          :ok = Ipse.TextStream.ack(handle, sequence)
+          chunks = [frame["text"] || "" | chunks]
+          if frame["kind"] == "end" do
+            true = frame["complete"]
+            chunks |> Enum.reverse() |> Enum.join()
+          else
+            collect.(collect, chunks)
+          end
+        {:ipse_text, ^stream, %{"kind" => "closed"}} -> raise "private text closed"
+      after
+        5000 -> raise "private text incomplete"
+      end
+    end
+    ^text = collect.(collect, [])
+    GenServer.stop(stream)
+    """
+
+    run!(launcher, ["eval", expression], release, env, "large private visible delta")
+    IO.puts("PASS: installed large Unicode delta over the bounded v2 text channel.")
+  end
+
   defp verify!(archive, root, tar) do
     release = Path.join(root, "release")
     home = Path.join(root, "home")
@@ -155,6 +199,7 @@ defmodule Ipse.PackageVerifier do
     run!(wrapper, ["--help"], release, env, "bundled CLI help")
     verify_terminal!(wrapper, release, env, root)
     verify_recovery!(otp_launcher, release, env, root)
+    verify_text!(otp_launcher, release, env)
 
     [app] = Path.wildcard(Path.join([release, "lib", "ipse-*"]))
 

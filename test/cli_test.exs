@@ -503,6 +503,65 @@ defmodule Ipse.CLITest do
     end)
   end
 
+  test "a lost cancellation acknowledgment exits cleanly without retrying" do
+    assert_unconfirmed_cli(:cancel)
+  end
+
+  test "a lost approval acknowledgment exits cleanly without retrying" do
+    assert_unconfirmed_cli(:approval)
+  end
+
+  test "terminal client loss stops its owned session and active provider" do
+    with_fixture_and_cli(fn fixture, cli ->
+      await_input(cli.stdio)
+      Ipse.CLITest.IOFixture.feed(cli.stdio, "gated owner-loss task")
+      {_server, 1, _request} = await_request(fixture)
+      session = lookup_session(cli.state_dir, session_id(cli.stderr))
+      monitor = Process.monitor(session)
+      worker = :sys.get_state(session).task.pid
+      worker_monitor = Process.monitor(worker)
+      Task.shutdown(cli.task, :brutal_kill)
+      assert_receive {:DOWN, ^monitor, :process, ^session, _}, 3000
+      assert_receive {:DOWN, ^worker_monitor, :process, ^worker, _}, 3000
+    end)
+  end
+
+  defp assert_unconfirmed_cli(action) do
+    with_fixture_and_cli(action != :approval, fn fixture, cli ->
+      await_input(cli.stdio)
+      Ipse.CLITest.IOFixture.feed(cli.stdio, "gated acknowledgment task")
+      {server, 1, _request} = await_request(fixture)
+
+      if action == :approval do
+        Ipse.CLITest.HTTPFixture.reply(server, 1, Ipse.CLITest.HTTPFixture.write_call_body())
+        await_text(cli.stderr, "Waiting for approval")
+      else
+        await_text(cli.stderr, "Running…")
+      end
+
+      session = lookup_session(cli.state_dir, session_id(cli.stderr))
+      monitor = Process.monitor(session)
+      :ok = :sys.suspend(session)
+
+      try do
+        Ipse.CLITest.IOFixture.feed(cli.stdio, if(action == :approval, do: "y", else: "/cancel"))
+        await_text(cli.stderr, "Session request acknowledgment is unconfirmed", 11_000)
+        :ok = :sys.resume(session)
+        assert 1 == Task.await(cli.task, 3000)
+        assert_receive {:DOWN, ^monitor, :process, ^session, _}, 3000
+        output = Ipse.CLITest.IOFixture.output(cli.stderr)
+        assert output =~ "was not retried"
+        refute output =~ "** (exit)"
+
+        {:ok, events} = Ipse.Journal.load(cli.state_dir, session_id(cli.stderr))
+        intents = Enum.filter(events, &(&1["type"] == "tool_started"))
+        assert length(intents) <= 1
+      after
+        if Process.alive?(session), do: :sys.resume(session)
+      end
+    end)
+  end
+
   test "cancel is visible and input during cancellation is discarded before a fresh turn" do
     with_fixture_and_cli(fn fixture, cli ->
       await_input(cli.stdio)

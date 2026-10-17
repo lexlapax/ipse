@@ -24,6 +24,15 @@ and can also start the deterministic, credential-free demo. A session is one
 cross-process lock. Provider and tool work runs in monitored tasks, with events
 sent back to the owning session and its CLI subscriber.
 
+The CLI registers itself as the root Session's owner; loss stops the Session and
+dependent work through the existing owner monitor. Request-call exits are caught
+without displaying private reasons. The client stops its reader, reports an
+unconfirmed acknowledgment, attempts bounded close and exits nonzero without
+retrying an approval/cancel/prompt. A timeout cannot establish that a request had
+no effect. Sequential cleanup and durable IO can still outlast the caller's
+deadline, so cleanup confirmation remains a separate result; see
+[operator recovery](../operator/recovery.md).
+
 `Ipse.CLI.Terminal` escapes terminal controls and invisible format characters at
 every CLI-owned output write, preserving ordinary Unicode/newline/tab display.
 Its visible escapes also retain JSON round-trip values, including supplementary
@@ -78,7 +87,10 @@ usage observations and final/partial/unknown outcomes remain durable even when
 a summary is rejected or a request fails. [Request accounting](usage-accounting.md)
 is mandatory and independent of optional tracing; pricing/budget policy remains
 separate. The [private text channel](text-streams.md) carries only visible output
-with bounded acknowledgments/pressure. Its chunks/subscriptions are ephemeral,
+with bounded acknowledgments/pressure. Session fragments large valid provider
+deltas into sequential bounded UTF-8 pushes before forwarding the original UI
+delta; direct broker limits and saved responses do not change.
+Its chunks/subscriptions are ephemeral,
 while completed assistant/native data and accounting stay in the journal.
 Optional [v2 event sources](stream-events.md) identify broker epochs and accepted
 stream byte ranges independently of consumer-local delivery sequence. V1 remains

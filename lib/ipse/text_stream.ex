@@ -28,6 +28,29 @@ defmodule Ipse.TextStream do
   def push(server, request_id, text),
     do: GenServer.call(server, {:push, request_id, text}, 10_000)
 
+  @doc false
+  def push_delta(nil, _, _), do: :ok
+
+  def push_delta(server, request_id, text) when is_binary(text) do
+    if String.valid?(text),
+      do: push_chunks(server, request_id, text),
+      else: push(server, request_id, text)
+  end
+
+  def push_delta(server, request_id, text), do: push(server, request_id, text)
+
+  defp push_chunks(server, request_id, text) when byte_size(text) <= @bytes,
+    do: push(server, request_id, text)
+
+  defp push_chunks(server, request_id, text) do
+    size = utf8_boundary(text, @bytes)
+    chunk = binary_part(text, 0, size)
+    rest = binary_part(text, size, byte_size(text) - size)
+
+    with :ok <- push(server, request_id, chunk),
+         do: push_chunks(server, request_id, rest)
+  end
+
   def finish(nil, _, _), do: :ok
 
   def finish(server, request_id, outcome),

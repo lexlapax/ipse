@@ -512,7 +512,10 @@ turn a stream reply into tools, state writes or model requests. At most four
 consumers share channel capacity. Selected workers must be ready before provider
 dispatch; capacity/startup refusal stops that attempt. Slow consumers may
 backpressure the request; callback failure closes incomplete with a fixed status.
-The provider may continue after a consumer leaves, or fail at the pressure deadline.
+Large provider deltas are split into bounded UTF-8 frames while preserving their
+exact text and saved response. This does not enlarge buffers or bypass the
+pressure deadline. The provider may continue after a consumer leaves, or fail
+at that deadline.
 
 Subscriptions/frames never replay on idle resume. Fresh operator input can enroll
 a new resource; no failed frame is retried. `/diagnostics` reports active count

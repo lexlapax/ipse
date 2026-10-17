@@ -47,6 +47,14 @@ not revalidate a same-size rewrite on every write. Resume still validates saved
 history before accepting work. Storage stalls can delay a durable acknowledgment;
 an error is not permission to repeat an uncertain effect.
 
+A missing Session acknowledgment also leaves uncertainty: an approved request
+may already have taken effect. The CLI reports this explicitly, exits nonzero,
+does not retry and attempts bounded cleanup. The reader stops, and the Session
+monitors its owning CLI process. Slow storage or sequential child/transport
+cleanup can still outlast the caller's deadline; an unconfirmed-cleanup notice
+requires inspection of receipts, the workspace and running processes. The
+provider `--timeout-ms` option does not change these Session call deadlines.
+
 Journal retention grows independently of the context window. There is no
 automatic journal rotation or disk quota. Context compaction does not delete
 that evidence or implement forgetting. For long work or a context refusal that
