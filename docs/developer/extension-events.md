@@ -211,12 +211,14 @@ they do not establish installed subscriber execution by themselves. See
 
 The separate [job contract](extension-event-jobs.md) now provides finite host
 actions, pre-request recall and after-turn maintenance. Remaining foundation work
-includes broader private lifecycle views/causal links and the independent domain
-catch-up proof. The [history primitive](extension-history.md) is implemented.
+includes the broader private lifecycle/causal coverage audit and supervised review.
+The [history primitive](extension-history.md) and independent installed
+[domain catch-up proof](extension-proof.md) are implemented.
 [Diagnostic sinks](observability.md) have separate metadata capture/stop controls.
 Live scoped [feeds](extension-feeds.md), including separately granted tool views,
 close visibly when capacity is exhausted. Other continuous private feeds and
 external adapters need their own negotiated
 ownership/flow/egress contract. Notification acknowledgments must not silently
 gain effectful semantics in a future implementation. Production graph extraction
-and stores remain P25 work; the extension-only P22 graph proof is still required.
+and stores remain P25 work; the synthetic installed proof does not establish their
+quality or complete P22.

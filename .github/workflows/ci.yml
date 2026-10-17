@@ -31,6 +31,10 @@ jobs:
       - run: ./bin/ipse demo
       - run: ./scripts/package.sh
       - run: elixir scripts/verify-package.exs dist/ipse-*.tar.gz
+      - name: Independent installed extension proof
+        run: |
+          elixir examples/extension-lab/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-extension-lab"
+          elixir examples/extension-lab/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-extension-lab"
       - name: Experimental macOS App Sandbox enforcement
         if: runner.os == 'macOS'
         run: |

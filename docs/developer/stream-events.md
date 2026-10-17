@@ -89,5 +89,7 @@ Fixtures cover unequal consumer boundaries, request reuse, broker restart,
 Unicode ranges, cancelled pending text, idle closure, malformed bindings and
 negotiated Session/worker delivery. Independently compiled workers cover disabled
 behavior, no-effect acknowledgments and inert resume. The bundled fixture runs
-both versions through a real Session in source/extracted runtimes; this does not
-establish installed release-worker execution, external transport or voice.
+both versions through a real Session in source/extracted runtimes. The separate
+[installed lab](extension-proof.md) verifies v2 worker acknowledgment of start,
+visible answer and end, plus public metadata projection. External transport and
+voice remain separate capabilities.

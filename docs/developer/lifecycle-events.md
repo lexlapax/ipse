@@ -42,13 +42,13 @@ building block for selected notifications and the remaining delivery contracts.
 
 | Needed by a prompt-driven knowledge graph | Current support | Remaining foundation |
 | --- | --- | --- |
-| Read prompt text | Selected transforms and read-only original/final-effective subscriptions with explicit capabilities | Broader private lifecycle views and continuous private feeds |
-| Observe host activity | Exact live metadata and separately granted admitted-tool views, bounded queues and explicit incomplete closure | Other private views, full causal source coverage and independent consumer proof |
+| Read prompt text | Selected transforms, read-only original/final-effective subscriptions and source-bound jobs with explicit capabilities | Broader private lifecycle views and continuous private feeds |
+| Observe host activity | Exact live metadata and separately granted admitted-tool views, bounded queues and explicit incomplete closure; installed consumers verified | Other private views and full causal source coverage audit |
 | Extract entities | Owned prompt jobs can run deterministic extraction | Model work needs a separately admitted, accounted request capability |
 | Store derived facts | Prompt jobs use normal approved state actions with source-bound invocation receipts | Production storage adapters and complete forgetting policies |
-| Add recalled evidence to an answer | Before-request jobs publish bounded attributed context into a frozen request snapshot; explicit history reads expose recorded views | Broader context seams and independent domain catch-up proof |
+| Add recalled evidence to an answer | Before-request jobs publish bounded attributed context into a frozen request snapshot; installed lab exercises explicit history catch-up | Broader context seams and production recall quality |
 | Consume generated text | Selected workers receive acknowledged visible-text frames or completed original/presented answer events | Keep these explicit content channels separate from sampled diagnostics |
-| Recover without duplicate effects | Source-bound job/action receipts, question checkpoints and no automatic replay | Independent package proof of domain deduplication and reindex policy |
+| Recover without duplicate effects | Source-bound receipts, question checkpoints, no automatic replay and installed lab deduplication/tombstone checks | Production reindex policy and externally committed effects |
 
 The current prompt transform cannot return `host_call` to store entities. A text
 consumer acknowledgment also cannot request effects. Implementing a graph by
@@ -257,7 +257,8 @@ refusal before repair and disabled parity. Independent event-job fixtures exerci
 `lifecycle.record` with capture off, separate mutation approval and extension-question
 restart; delegated fixtures check child correlation and lost-child wait closure.
 The bundled runtime fixture exercises idle start/close/resume and metadata
-projection. These source/SDK contracts leave the independent domain-package proof open.
+projection. The [independent domain package](extension-proof.md) separately tests
+these seams against an unchanged installed runtime.
 
 ### Delegated child outcomes
 
@@ -432,8 +433,9 @@ partial history and unavailable private content produce an explicit gap/refusal.
 The implemented [own-session history primitive](extension-history.md) supplies
 that recorded-view range to selected SDK code; source fixtures exercise an
 explicit catch-up command, question continuation and separate write approval.
-Domain deduplication/reindex policy and independent installed-package proof remain
-required. Reaching the range end does not establish complete original/effective
+The [independent lab](extension-proof.md) exercises domain deduplication, bounded
+catch-up and stale-write rejection after forget. Production reindex policy remains
+separate. Reaching the range end does not establish complete original/effective
 coverage in legacy history.
 Cached history receipts also resolve physical anchors/projections and contiguous
 source spans during recovery, diagnostics and handoff validation. These checks do
@@ -456,7 +458,10 @@ changing internal delivery semantics; no conformance or transport is claimed her
 
 ## Knowledge-graph acceptance proof
 
-Before freezing P22 core, extend the independent installed-package proof:
+The P22 coverage gate requires the following cases. The
+[independent extension lab](extension-proof.md) exercises deterministic graph
+capture, recall and recovery against candidate core `3b0ef78`; primitive fixtures
+cover additional bounds and failure paths. These are distinct evidence layers:
 
 1. Select a private prompt subscription explicitly; with it disabled, no graph
    worker, store or model request starts. Metadata-only subscribers never see the
@@ -481,9 +486,11 @@ Source fixtures now cover prompt-job admission, deterministic extraction, approv
 CAS writes, required recall, after-turn request isolation, question recovery and a
 delayed write rejected after concurrent forget. Additional SDK fixtures cover
 fixed-range history pagination, private grants, gaps and inert catch-up resume.
-The complete independent installed
-package proof above, including deduplication and bounded catch-up, remains pending.
-These fixtures do not complete P22 or establish production graph quality. P25 owns researched
+The installed lab adds domain deduplication, bounded catch-up, scopes, versions,
+question/workflow continuation, private tool/text consumers and pressure closure,
+without core changes or a release rebuild. Hosted lab checks, the full causal/private
+coverage audit and supervised independent review remain P22 gates. These checks
+do not establish production graph quality. P25 owns researched
 entity extraction, graph storage/retrieval and quality comparisons.
 
 ## Reuse decisions and sources

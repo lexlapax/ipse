@@ -1,4 +1,4 @@
-# Extension architecture proposal
+# Extension architecture and coverage
 
 This guide records P22's design rationale, framework comparison and SDK/core
 coverage gates. The research was reviewed on 2026-10-16 against `3ad33b3`;
@@ -24,9 +24,11 @@ Current contracts are organized by responsibility:
 | Source-bound prompt/answer actions and recall | [Event jobs](extension-event-jobs.md), with finite approved actions, before-request contributions and after-turn maintenance |
 | Optional diagnostic capture | [Observability](observability.md), with operator policy, bounded owned sinks, aggregate local ring retention and immediate stop |
 | Author conformance inputs | [Synthetic checks](extension-conformance.md), with normal trust/approval, scratch Sessions, explicit answers and content-free assertions |
+| Independent domain package | [Extension lab](extension-proof.md), with separately compiled artifacts, candidate core freeze and unchanged installed-runtime verification |
 
-Broader private lifecycle delivery/causal links and the independent installed-package/
-supervised proofs remain open. Synthetic dispatcher tracing and source-debugging
+The lifecycle/private-view/causal coverage audit, hosted lab verification and
+supervised review remain open. The independent lab covers the exercised domain
+seams, not the entire SDK. Synthetic dispatcher tracing and source-debugging
 boundaries are documented under observability. The
 [plan](../plan.md#p22-extension-scaffold-and-lifecycle-hooks) owns current status;
 [testing](testing.md#current-evidence-and-next-checks) owns actual results.
@@ -76,8 +78,9 @@ The implemented scaffold separates `Ipse.Extension` (behaviour),
 (independent VM/protocol ownership). Session retains admission and journal state.
 Callback contexts are purpose-built JSON values, never the entire Session struct,
 credential configuration, environment or provider-native data. Generic lifecycle
-envelopes remain pending, with source identity, versions, metadata/private views
-and delivery contracts specified in the [event design](lifecycle-events.md).
+envelopes provide source identity, versions and distinct metadata/private views
+under the supported [event contracts](lifecycle-events.md). Unsupported types or
+delivery modes refuse; the broader taxonomy remains a coverage gate.
 Elixir [behaviours](https://elixir.hexdocs.pm/Module.html#module-behaviour) supply
 callback contracts; [Task.Supervisor](https://elixir.hexdocs.pm/Task.Supervisor.html)
 supplies owned work. Runtime return values still require host validation.
@@ -94,8 +97,10 @@ order, enabled hooks, validated options and timeout/error policy. Unknown IDs
 fail without download; flags/configuration never become module names or shell
 strings. Do not create host atoms from arbitrary IDs or evaluate project `.exs`.
 
-P22 must prove a local independently built Elixir worker artifact can be imported,
-configured and used without rebuilding Ipse. A downloaded package manager,
+The [independent lab](extension-proof.md) proves local separately built Elixir
+worker artifacts can be imported, configured and used without rebuilding Ipse.
+Its synthetic memory/workflow proof leaves production algorithms and the remaining
+P22 completion gates open. A downloaded package manager,
 marketplace, signing infrastructure and automatic builder can follow later using
 the same artifact/activation contracts. A reviewed custom release remains an
 optional distribution route, rather than the only way to add an extension.
@@ -258,8 +263,9 @@ and validated contracts; the examples are not a fixed mandatory workflow.
 
 ## Long-term memory and customized workflows
 
-P22 must prove synthetic memory/workflow adapters through the generic SDK;
-production knowledge adapters belong to P25's separate research/selection gates.
+The [independent lab](extension-proof.md) exercises synthetic memory/workflow
+adapters through the generic SDK; production knowledge adapters belong to P25's
+separate research/selection gates.
 The two hook examples do not implement those systems. Session journals, research
 ledgers and compaction checkpoints are not cross-session long-term memory.
 
@@ -501,6 +507,9 @@ service is permitted.
    the [prompt-event graph scenario](lifecycle-events.md#knowledge-graph-acceptance-proof)
    through a synthetic subscriber using only the frozen SDK, including background
    indexing versus awaited recall and no-replay recovery.
+   The [current lab evidence](extension-proof.md) records the candidate freeze,
+   33 source/installed assertions and remaining platform/review gates; it does
+   not certify unexercised contracts or production algorithms.
 4. **P22D — observability and compatibility:** bounded local lifecycle sink,
    transform/event timing and drop counters; documented opt-in local BEAM tracing;
    conformance fixtures, package checks and a supervised extension-only trial.

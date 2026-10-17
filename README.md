@@ -109,8 +109,11 @@ Effects retain normal approval; cached receipts/projections restore without
 replay. Default-off [diagnostic capture](docs/operator/observability.md) supports
 bounded local sink workers and separate export authority. Synthetic extension
 checks offer optional [dispatcher tracing](docs/developer/observability.md#synthetic-dispatcher-tracing).
-Broader lifecycle contracts and the independent package proof remain
-[P22 work](docs/plan.md#p22-extension-scaffold-and-lifecycle-hooks).
+The [independent extension lab](docs/operator/extension-lab.md) exercises prompt-driven
+memory, graph extraction, recall, workflows and private tool/text observers without
+changing core or rebuilding the installed release. It uses synthetic data and
+does not select production knowledge engines. The lifecycle coverage audit,
+hosted proof and supervised review remain [P22 completion gates](docs/plan.md#p22-extension-scaffold-and-lifecycle-hooks).
 
 Explicit stdio and Streamable HTTP [MCP tools](docs/operator/mcp.md) use
 `--mcp-config`. Local servers have their own trusted/native sandbox setting;

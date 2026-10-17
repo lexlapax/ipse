@@ -259,8 +259,10 @@ or raw messages/arguments. Use synthetic inputs for breakpoints, and never suspe
 a live Session while effects continue. No debugger listener or distributed node
 is enabled. Committed runtime epoch/wait sources and negotiated private
 [text-event identity](stream-events.md) are implemented. Diagnostics do not acquire
-that private channel. Broader private lifecycle delivery/causal links and the independent package proof remain open in
-[P22](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
+that private channel. The [independent lab](extension-proof.md) uses synthetic
+`:sys.get_state/1` inspection solely to verify acknowledged ephemeral counters;
+its domain workers receive no host PID or private state. Broader lifecycle/private
+coverage and supervised review remain [P22 gates](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
 
 Twenty diagnostic fixtures cover off parity, privacy/source identity, stop, export scope,
 blocked/invalid sinks, owner-death VM/slot cleanup, rotation/aggregate bounds,

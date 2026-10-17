@@ -306,8 +306,9 @@ An explicitly answered pending question can resume its saved continuation and
 remaining plan without rerunning the event callback or earlier effects. Ordinary
 idle resume starts no jobs, and interrupted work is never automatically retried.
 Store deletion does not erase original journals or prior provider transfers.
-Production memory/graph policy and the independent installed-package proof remain
-separate plan requirements.
+The [independent extension lab](extension-lab.md) provides a synthetic installed
+memory/graph/workflow walkthrough. Production memory/graph policy remains a
+separate plan requirement.
 
 ## Scoped state host calls
 
@@ -509,8 +510,9 @@ cancellation do not themselves provide an OS sandbox. Initialize/transform
 callbacks must follow the SDK's effect-free contract; arbitrary trusted programs
 cannot be constrained by a return-value schema alone.
 
-Broader lifecycle subscriptions, triggered jobs, ordered recall,
-diagnostic controls and the independent installed memory/workflow proof remain
-[P22 work](../plan.md#p22-extension-scaffold-and-lifecycle-hooks). Remote installers,
+Use the procedures above for implemented subscriptions, jobs, ordered recall and
+diagnostic controls; use the [lab walkthrough](extension-lab.md) for separately
+built memory/workflow artifacts. The broader lifecycle coverage audit and
+supervised review remain [P22 work](../plan.md#p22-extension-scaffold-and-lifecycle-hooks). Remote installers,
 build assistants and live activation are future capabilities. Current import and
 selection never install a dependency or silently switch providers.

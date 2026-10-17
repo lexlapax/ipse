@@ -192,10 +192,12 @@ write conflicting with concurrent forget, and metadata hash/native exclusion.
 See [actual verification scope](testing.md#current-evidence-and-next-checks).
 
 This is a generic host contract and synthetic coverage, not a production graph
-engine or the frozen-core independent installed-package proof. The SDK now offers
+engine. The separate [frozen-core installed lab](extension-proof.md) exercises
+domain extraction, deduplication, catch-up, forget and receipt-backed recall.
+The SDK offers
 explicit [history pages](extension-history.md) and separately enrolled
 [runtime epoch/wait facts](lifecycle-events.md#runtime-epochs-and-operator-waits).
-Neither activates new job triggers or automatic catch-up. Independent domain
-deduplication/reindex proof, broader lifecycle delivery/causal links and P23's
-model/budget admission remain completion work. Optional
+Neither activates new job triggers or automatic catch-up. The broader lifecycle
+coverage audit, production reindex policy and P23's model/budget admission remain
+separate work. Optional
 [diagnostic capture](observability.md) does not gate these jobs or their receipts.

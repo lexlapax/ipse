@@ -19,6 +19,7 @@ start. Use the guides below for operation, development, and project context.
 | [Diagnostic capture](operator/observability.md) | Default-off local/export policy, selected sinks, immediate stop, limits and recovery |
 | [Request usage](operator/usage-accounting.md) | Durable counters, billing attribution, unknown outcomes and local inspection |
 | [Extensions](operator/extensions.md) | Review/import, operator trust and selection, capability procedures, limits and recovery |
+| [Independent extension lab](operator/extension-lab.md) | Build, review and select synthetic artifacts against an existing checkout or unchanged release |
 | [Troubleshooting](operator/troubleshooting.md) | Build, callback, account, lock, and recovery problems |
 
 ## Develop Ipse
@@ -36,7 +37,7 @@ start. Use the guides below for operation, development, and project context.
 | [Native shell sandbox](developer/sandbox.md) | OS capabilities, fail-closed selection, and platform limits |
 | [Protocol proposal](developer/protocol-proposal.md) | Proposed MCP, delegation, and remote-execution trust/recovery contracts |
 | [Research contract](developer/research.md) | Provenance-bound source/claim records, bounds, compatibility and resume |
-| [Extension proposal](developer/extensions.md) | P22 comparison, SDK/core boundary, lifecycle/trust/versioning and extension-only delivery gates |
+| [Extension architecture](developer/extensions.md) | P22 comparison, SDK/core boundary, lifecycle/trust/versioning and extension-only delivery gates |
 | [Extension artifact contract](developer/extension-artifacts.md) | Inert manifest/store API, pinned identity and explicit independent worker SDK/lifecycle boundaries |
 | [Session extension hooks](developer/extension-hooks.md) | Implemented prompt/presentation transforms, built-in registry, ownership, durable projections and no-replay recovery |
 | [Lifecycle events and subscriptions](developer/lifecycle-events.md) | Shared source identity, runtime epochs/waits, committed-fact metadata, prompt/answer delivery and remaining feeds/graph acceptance cases |
@@ -53,6 +54,7 @@ start. Use the guides below for operation, development, and project context.
 | [Extension context](developer/extension-context.md) | Bounded session contributions, assertion/evidence provenance, request snapshots and cached recovery |
 | [Extension adoption scenarios](developer/extension-scenarios.md) | Bundled/third-party/generated feature walkthroughs, artifact installation, temporary use and deferred host capabilities |
 | [Extension conformance](developer/extension-conformance.md) | Synthetic SDK scenarios, ordinary trust/approvals, scratch state, structured answers, reports and optional dispatcher tracing |
+| [Independent extension proof](developer/extension-proof.md) | Candidate core freeze, installed memory/workflow artifacts, source provenance, catch-up, deletion and negative cleanup evidence |
 | [Runtime capability boundaries](developer/runtime-capabilities.md) | Framework comparison, usage/cost facts, text/voice streams and core versus extension ownership |
 | [Usage accounting](developer/usage-accounting.md) | Implemented identities, normalized usage snapshots and recovery validation |
 | [Private text streams](developer/text-streams.md) | Embedded/worker enrollment, opaque resource handles, acknowledgment, pressure and ephemeral recovery |

@@ -153,6 +153,8 @@ without the flag; ownership cleanup and filesystem deletion are separate concern
 
 The current checker validates declared scenarios, not arbitrary extension quality,
 production services, real account providers, all crash schedules or compatibility
-with every runtime. The independent frozen-core package proof and broader lifecycle
-contracts remain [P22 gates](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
+with every runtime. The [independent lab](extension-proof.md) uses this checker
+for temporary CLI selection, then a separate operator verifier for its broader
+domain assertions. Lifecycle coverage, hosted lab checks and supervised review
+remain [P22 gates](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
 See [verification scope](testing.md#current-evidence-and-next-checks).

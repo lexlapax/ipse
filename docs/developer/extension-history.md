@@ -139,6 +139,8 @@ metadata exclusion, private view separation, post-boundary oversized/torn data,
 page splitting, gaps, altered text/receipt rejection and omitted-span detection. See
 [actual evidence](testing.md#current-evidence-and-next-checks).
 
-Cross-session/project history, a reindex manager, production knowledge quality and
-the independent frozen-core package proof remain separate requirements. No
+The [independent frozen-core lab](extension-proof.md) adds installed-worker
+catch-up, domain deduplication and tombstone/CAS rejection after forget. It does
+not expose cross-session/project history or implement a production reindex manager.
+Production knowledge quality remains P25 work. No
 database, search service, broker or new dependency is added by this operation.

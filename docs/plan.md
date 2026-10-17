@@ -1037,27 +1037,31 @@ persistent use. They are design walkthroughs, not execution proofs.
 | Admitted-tool views (A26) | Host tool IDs and source-bound input/outcome facts, separately granted structured live/history views, metadata privacy, bounded recording and explicit question/cancellation recovery | [Tool event contract](developer/tool-events.md) |
 | Child outcomes (A27) | Parent-owned start/result binding, authenticated worker completion, bounded metadata feed/history projection and distinct cleanup acknowledgment, with unknown/incomplete recovery | [Child event contract](developer/lifecycle-events.md#delegated-child-outcomes) |
 | Ephemeral text sources (A28) | Negotiated v2 text delivery, broker epochs, fresh stream/range identity, distinct consumer sequence, bounded metadata/private projections and unchanged v1 admission/recovery | [Stream event contract](developer/stream-events.md) |
+| Independent domain proof (A29) | Seven separately compiled artifacts exercise scoped memory/graph extraction, recall, questions/workflows, history/deduplication/forget and private tool/text observers against candidate core `3b0ef78`; unchanged installed Linux archive, temporary CLI selection and persistent configuration verified | [Proof scope](developer/extension-proof.md), [operator lab](operator/extension-lab.md) |
 
 The [verification guide](developer/testing.md#current-evidence-and-next-checks)
 distinguishes source fixtures, extracted-package baselines, hosted platform
-checks and live trials. Completed increments do not establish the remaining
-extension-only package proof or complete P22.
+checks and live trials. The independent lab establishes exercised extension-only
+seams; it does not complete P22 or establish production knowledge quality.
 
 ### Remaining completion work
 
-The [shared lifecycle event foundation](developer/lifecycle-events.md) still needs
-broader private lifecycle subscriptions and full causal links. Bounded own-session
-history reads are implemented; domain catch-up/deduplication still needs the
-independent package proof. Prompt/answer jobs and the pre-request recall seam are implemented;
-fully concurrent effectful scheduling remains a negotiated enhancement. Diagnostic
-capture, bounded sinks, aggregate local retention and synthetic dispatcher tracing
-are implemented, including runtime epoch/wait sources and live committed metadata
-feeds, with separately granted admitted-tool input/results, actual tool-source
-links, parent-owned child outcomes and negotiated ephemeral text identity. Other
-private delivery/causal seams remain open. Core must then be frozen for the independent
-installed memory/workflow/retrieval package proof, followed by supervised independent
-review and the required source/package/platform checks. See the
-[delivery sequence and coverage gate](developer/extensions.md#delivery-sequence-and-extension-only-proof).
+Audit the [shared lifecycle taxonomy](developer/lifecycle-events.md) against the
+acceptance contract below: identify supported private views and actual causal
+links at each stable boundary, implement any required gaps, and explicitly refuse
+unsupported subscriptions. Notifications, ordered transforms, live feeds and
+effectful jobs share occurrence identity without sharing authority. A local
+consumer needs no event broker; remote bridges need separately negotiated egress,
+acknowledgment, disconnect and catch-up contracts.
+
+The independent lab freezes candidate core at `3b0ef78` and has passed its 33
+synthetic assertions in source and an unchanged installed Linux release, including
+domain catch-up/deduplication and stale-write rejection after forget. Finish the
+hosted Linux/macOS proof and independently reviewed supervised trial. Any core gap
+found by the audit needs a new candidate freeze and compatibility evidence; do not
+retroactively claim the historical proof covers it. See the
+[delivery sequence and coverage gate](developer/extensions.md#delivery-sequence-and-extension-only-proof)
+and [actual evidence](developer/testing.md#current-evidence-and-next-checks).
 
 Remote catalogs/download assistants, turnkey builders, idle hot activation and
 nested interactive/effectful service contracts remain explicit future

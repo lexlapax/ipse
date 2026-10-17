@@ -101,6 +101,8 @@ Source fixtures cover private/metadata parity, coherent content/reference
 tampering, limits and incomplete recovery. Independent workers exercise native
 effects with separate approval, reused IDs, unavailable views, historical grants,
 question continuation, cancellation and source refusal before tail repair.
-Primitive extracted-runtime checks are separate from installed-worker and
-production graph proofs. Broader proposal/validation/private-action events and
+Primitive extracted-runtime checks are separate from the
+[installed lab](extension-proof.md), which verifies four private/metadata feed
+acknowledgments around a model-selected extension tool. Neither establishes
+production graph quality. Broader proposal/validation/private-action events and
 full causal coverage remain P22 work; no unsupported hook or permission is implied.

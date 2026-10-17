@@ -101,7 +101,8 @@ defmodule Ipse.MCP.SessionTest do
   test "tool batches run serially through separate confirmed connections", ctx do
     pid = session(ctx, approval: :allow, call_count: 2)
     :ok = Ipse.Session.prompt(pid, "write")
-    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+    # Discovery and both fresh connections each have a 10-second fixture budget.
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 35_000
     assert File.read!(Path.join(ctx.root, "calls.log")) == "write_note\nwrite_note\n"
     assert File.read!(Path.join(ctx.root, "note.txt")) == "approved fixture 2"
     assert Enum.all?(:sys.get_state(pid).mcp_resources |> Map.keys(), &(not Process.alive?(&1)))

@@ -1,0 +1,5 @@
+Code.require_file("spec.exs", __DIR__)
+[artifacts, output] = System.argv()
+File.write!(output, :json.encode(IpseLab.Spec.operator(Path.expand(artifacts))))
+File.chmod!(output, 0o600)
+IO.puts("Wrote dedicated operator configuration with every instance disabled.")

@@ -163,6 +163,8 @@ Sessions: metadata privacy and identity, barriers alongside feeds, source-bound
 approval observation, pressure and invalid replies, stop/cancel/owner loss,
 question checkpoint recovery, disabled parity, finite receipt bounds and coherent
 payload tampering before repair. Source fixtures and primitive extracted-runtime
-checks are distinct from the pending frozen-core installed graph-package proof.
+checks are distinct from the [installed extension lab](extension-proof.md), which
+separately verifies usage-feed saturation, inert resume and private tool-view
+acknowledgments against an unchanged release.
 Other continuous private/media feeds, effectful background lanes, external transport
 adapters and broader causal source seams remain separately negotiated work.

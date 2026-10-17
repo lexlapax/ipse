@@ -3,7 +3,8 @@
 Operator-requested planning on 2026-10-16. These are proposed shipped extensions,
 **all disabled by default**, not new implementations or services. P14 already
 provides a research skill, configured MCP retrieval and a durable evidence ledger;
-P22's synthetic memory/workflow example will prove SDK coverage. Neither is a
+P22's [synthetic installed memory/workflow lab](extension-proof.md) proves exercised
+SDK seams, including prompt-driven graph capture and explicit catch-up. Neither is a
 production memory, graph, RAG or pluggable research engine. Plan delivery as the
 independently selectable P25 capability family using P22 foundations. P23 reporting/
 budgets can integrate when available; local memory need not wait for voice or cost UI.
@@ -122,10 +123,10 @@ seams before choosing a production memory, graph or retrieval engine:
 
 | Responsibility | Implemented foundation | Remaining contract/proof |
 | --- | --- | --- |
-| Composition | Operator-bound typed value services, pinned dependencies and acyclic routing | Independent synthetic retriever proof; nested effectful services remain a negotiated enhancement |
-| Evidence/context | Bounded attributed publications, assertion/receipt provenance and awaited pre-request recall into exact snapshots | Domain records mapped to P14 source/claim identity and independently installed retriever proof |
-| State/deletion | Scoped CAS records, revision/generation checks, locks, tombstones and fixture rejection of delayed prompt writes after forget | Domain TTL, derivative deletion/export policy and complete concurrent-forget proofs |
-| Owned work | Explicit invocations, prompt/answer-triggered finite jobs, fixed-range history reads, cancellation, durable receipts and structured questions | Domain ingestion/deduplication and independent catch-up package proof; fully concurrent effectful jobs remain a negotiated enhancement |
+| Composition | Operator-bound typed value services, pinned dependencies, acyclic routing and installed synthetic lookup proof | Production retrievers; nested effectful services remain a negotiated enhancement |
+| Evidence/context | Bounded attributed publications, receipt-backed awaited recall and frozen snapshots, exercised by the installed lab | Domain records mapped to P14 source/claim identity and production retrieval quality |
+| State/deletion | Scoped CAS records, locks/tombstones and installed rejection of delayed prompt writes after concurrent forget | Domain TTL, complete derivative deletion/export policy and production concurrency coverage |
+| Owned work | Explicit invocations, prompt/answer jobs, fixed-range history, cancellation, receipts/questions and installed domain deduplication/catch-up | Production ingestion/reindex policy; fully concurrent effectful jobs remain a negotiated enhancement |
 | Event source/views | Stable journal references, scoped historical projections, selected original/effective prompt and original/presented answer delivery | Full causal links, broader lifecycle/continuous feeds and cross-session history authorization |
 | Optional model work | Existing explicit provider/profile and delegation paths | A negotiated accounted host request capability for extraction/embedding; current callbacks cannot silently call a model |
 
@@ -152,10 +153,10 @@ Typed options select store/search/fetch/embedding/rerank/graph instances and
 profiles; no backend or endpoint is mandatory. Project selections may narrow
 operator grants, not authorize egress or widen memory access. Unsupported
 operations refuse instead of hiding unaccounted work inside a hook. Use the
-independent installed-package gate to exercise these generic contracts before
-declaring the foundation complete. P22 needs a synthetic graph subscriber and
-retrieval service, not production graph queries, embeddings, database installation
-or a full research engine; those algorithms and their measurements belong to P25.
+independent [installed-package evidence](extension-proof.md) to assess the exercised
+contracts, while keeping the lifecycle audit, hosted checks and supervised review
+as P22 completion gates. Production graph queries, embeddings, database installation
+and research-engine algorithms and measurements belong to P25.
 
 ## P25 delivery and acceptance
 
