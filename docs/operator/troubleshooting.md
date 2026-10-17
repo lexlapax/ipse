@@ -24,6 +24,12 @@ children, which can retain workspace write access. See
 
 ## Build and sockets
 
+If an early P22 checkout fails only `mix format --check-formatted` on Elixir 1.18,
+update to the formatter compatibility repair. Elixir 1.18 and 1.20 laid out two
+guarded extension clauses differently; their portable `do`/`end` forms preserve
+behavior. This was a formatting gate, not evidence that macOS runtime tests ran.
+See [the hosted check record](../developer/testing.md#extension-formatter-compatibility-2026-10-16).
+
 - Missing `mix` or `rustc`: check packages and `PATH` against the
   [prerequisites](arch-linux.md#install-the-toolchain).
 - Missing or incompatible native helper: run `./scripts/build.sh` on this machine.

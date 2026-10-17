@@ -2502,3 +2502,16 @@ unchanged idle resume alongside the existing complete package verifier, using
 fresh isolated homes and a utility-only development PATH. The archive is a local
 verification artifact, not a published release. Hosted platform evidence follows
 the commit's CI run separately.
+
+## Extension formatter compatibility (2026-10-16)
+
+The first P22 worker/config/hook hosted runs stopped at the Elixir 1.18 formatter
+gate, including [the hook run](https://github.com/lexlapax/ipse/actions/runs/38984098657).
+Both Linux and macOS builds completed; their test/package steps were skipped.
+Do not count those skipped steps as hosted runtime verification. Serenity's
+Elixir 1.20 formatter had accepted two multiline guarded short clauses that 1.18
+rewrapped. Their explicit `do`/`end` equivalents preserve behavior and formatting
+across the supported versions. Local formatting, warnings-as-errors compilation
+and **16 focused worker/session tests** passed after the repair. The next hosted
+run must independently establish floor-toolchain and macOS runtime/package evidence.
+See [operator troubleshooting](../operator/troubleshooting.md#build-and-sockets).

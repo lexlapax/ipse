@@ -200,7 +200,9 @@ defmodule Ipse.Extensions.Projection do
          %{active: active},
          _registered
        )
-       when active != nil, do: @invalid
+       when active != nil do
+    @invalid
+  end
 
   defp validate_event(%{"type" => type, "message" => message}, state, _registered)
        when type in ~w(message handoff_imported operator_answer operator_question_closed) do

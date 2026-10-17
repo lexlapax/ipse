@@ -59,7 +59,9 @@ defmodule Ipse.Extensions.Worker do
 
   @impl true
   def handle_call({:invoke, _stage, _payload, _timeout}, _from, %{pending: pending} = state)
-      when not is_nil(pending), do: {:reply, {:error, :extension_busy}, state}
+      when not is_nil(pending) do
+    {:reply, {:error, :extension_busy}, state}
+  end
 
   def handle_call({:invoke, stage, payload, timeout}, from, state) do
     permitted =
