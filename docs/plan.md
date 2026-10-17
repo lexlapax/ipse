@@ -39,13 +39,10 @@ new dependencies or start production engine implementation.
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; proposed scope subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
 | [Apache-2.0 transition](#license-transition) | Requested; unimplemented | Separate verified license/package/documentation change after the agreed delivery scope |
 
-The P23D baseline at `84597b4` passed
-[hosted Linux/macOS verification](https://github.com/lexlapax/ipse/actions/runs/39046213259),
-including both packages, the installed extension lab and applicable Mac enforcement.
-The preceding `03d4187` run failed one Mac MCP fixture; eleven focused Linux
-catalog tests passed and the new hosted run did not reproduce it. No transport
-repair or deadline change was made; its original cause remains unconfirmed.
-Later runtime increments need their own verification.
+Feature status and runner readiness are separate. The latest hosted candidate
+has an unresolved Linux auth fixture failure; it cannot yet serve as P25's passing
+frozen baseline. Actual revisions, platform results and investigation belong in
+[testing](developer/testing.md#current-evidence-and-next-checks).
 
 Recommended order: finish P23; deliver P24 as
 already requested; freeze the P25 candidate and run its baseline security audit;
@@ -95,9 +92,9 @@ request/attempt/provider/billing/model facts separately from diagnostics. The
 
 [Provider output ceilings](developer/provider-limits.md) apply only to supported
 API/Ollama requests. ChatGPT subscription refuses the unsupported setting; no
-output-token ceiling is invented for that public interface. Local source/package
-and 41-assertion installed-lab checks passed; this runtime increment needs its own
-hosted result. See [actual evidence](developer/testing.md#current-evidence-and-next-checks).
+output-token ceiling is invented for that public interface. Verification and
+remaining platform issues are recorded in
+[actual evidence](developer/testing.md#current-evidence-and-next-checks).
 Atomic shared reservations and accounted extension model operations remain open.
 
 These reports do not enforce budgets, produce a globally atomic tree balance or
@@ -161,6 +158,13 @@ rubric, artifact manifest, round limits, held-out cases and security process.
 The [knowledge design](developer/knowledge-extensions.md) owns domain questions and
 selection gates. Existing P14 tools/skills/ledger and P22 SDK are available; engine
 installation or production implementation is not required by this milestone.
+
+Execution readiness requires a passing frozen runner, reviewed task/resource
+limits, usable explicit research access for both tracks and a triaged baseline
+audit. Brief preparation and service-access checks can proceed earlier. P24 live
+audio is not a prerequisite for this text/research experiment. Scope the trial
+as several reviewable work packages with retained intermediate artifacts, so
+research, long-task recovery and actual self-development have separate evidence.
 
 | Phase | Deliverable and gate |
 | --- | --- |

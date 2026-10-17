@@ -15,7 +15,12 @@ The proposed larger P25 comparison has a separate
 and Ipse research, source-based review, Ipse-authored fixes, fresh held-out runs
 and security review before/after. It has not run. Its provider/tool/resource
 choices and security-service access must be established before execution; this
-runbook does not provision that service or install scan tooling. The
+runbook does not provision that service or install scan tooling. Freeze a runner
+only after its applicable baseline checks pass and the baseline audit is triaged;
+the latest [verification record](../developer/testing.md#current-evidence-and-next-checks)
+currently includes an unresolved Linux auth failure. Brief preparation and access
+checks can proceed independently. P25's text/research trial does not require
+live audio acceptance. The
 [plan](../plan.md#current-priorities-and-status) owns current scope and scheduling.
 
 The credential-free fixture `mix run scripts/demo-self-development.exs` verifies

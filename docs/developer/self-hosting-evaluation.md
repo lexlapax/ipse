@@ -21,6 +21,13 @@ toolchain/OS, skills, extension artifacts and supported capabilities. Keep priva
 run state outside the candidate and out of Git. Freeze a baseline runner and a
 separate candidate worktree; the author never replaces its running executable.
 
+Require a passing runner baseline before scored execution, including resolution
+of applicable failures recorded in [current verification](testing.md#current-evidence-and-next-checks).
+Preparing the brief, checking service access and choosing resources can proceed
+while a prerequisite is open. Audio/device acceptance is not a prerequisite for
+this text/research trial. Separate an unavailable capability from a failed trial;
+neither can be recorded as a pass.
+
 The brief covers working and long-term memory, configurable research providers,
 graph augmentation and RAG. Each track must inspect current Ipse contracts,
 research primary sources and alternatives, then produce a recommended architecture,
@@ -28,6 +35,13 @@ tool/skill/MCP/extension/core allocation, dependency/license decisions, evaluati
 design, failure/security analysis and staged P26/P27 proposal. Include Zero-Mem
 as inspiration and distinguish the paper, authors' code and independent projects.
 An explicit decision to reject a candidate is a valid result when supported.
+
+Organize the work into reviewable packages: current-harness/API assessment;
+candidate/source discovery; comparative architecture and evaluation design;
+and the discrepancy-driven authoring, verification and rerun cycle. Retain an
+intermediate artifact and resource/intervention record for each package. Pin the
+size and resource limits in the brief rather than expanding them after results
+arrive. This makes the larger test measurable across sessions and checkpoints.
 
 Use two complementary comparisons:
 
