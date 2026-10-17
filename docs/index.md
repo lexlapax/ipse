@@ -53,7 +53,7 @@ start. Use the guides below for operation, development, and project context.
 | [Usage accounting](developer/usage-accounting.md) | Implemented identities, normalized usage snapshots and recovery validation |
 | [Private text streams](developer/text-streams.md) | Embedded/worker enrollment, opaque resource handles, acknowledgment, pressure and ephemeral recovery |
 | [Knowledge extension family](developer/knowledge-extensions.md) | Default-off working/long-term memory, pluggable research, graph/RAG and composition/evidence contracts |
-| [Observability contract](developer/observability.md) | Shared metadata capture, bounded owned sinks, lease recovery and remaining developer tracing gates |
+| [Observability contract](developer/observability.md) | Shared metadata capture, bounded owned sinks, ring quotas, lease recovery and remaining developer tracing gates |
 | [MCP client contract](developer/mcp.md) | Reused packages, transport ownership, descriptor binding, schema policy, and recovery |
 | [Local delegation contract](developer/delegation.md) | Parent/child ownership, explicit context, approvals, budgets, and unknown outcomes |
 | [Dependencies](developer/dependencies.md) | Runtime/build/CI inventory, script policy, approval requirements |

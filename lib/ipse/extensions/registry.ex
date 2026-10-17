@@ -13,7 +13,8 @@ defmodule Ipse.Extensions.Registry do
         "additionalProperties" => false,
         "required" => ["directory"],
         "properties" => %{
-          "directory" => %{"type" => "string", "minLength" => 1, "maxLength" => 1024}
+          "directory" => %{"type" => "string", "minLength" => 1, "maxLength" => 1024},
+          "retained_leases" => %{"type" => "integer", "minimum" => 1, "maximum" => 32}
         }
       }
     },

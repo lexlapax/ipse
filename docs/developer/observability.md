@@ -101,12 +101,44 @@ gates inference or action admission. Concurrent close paths share one cleanup re
 owner/channel death uses existing monitor/native ownership. No
 diagnostic acknowledgment gates approvals, usage, effects or private subscriptions.
 
-The local sink creates a private leaf under an existing canonical parent, refuses
-leaf symlinks/non-private existing paths, and writes owner-only JSONL. Each lease
-has a unique filename and at most two rotated files, each at most 10 MiB. Old lease
-files are not globally pruned; aggregate retention remains a foundation follow-up
-before unattended use. Host capability checks do not restrict ordinary worker OS
+## Local ring retention
+
+The local sink creates a private leaf under an existing canonical parent and
+writes owner-only JSONL in `trace-ring-v1`. Backend option `retained_leases` is
+1..32, default 4. This is extension behavior: event delivery, capture policy and
+action APIs are unchanged. The callback's two-field `limits` stays intact; lease
+count is pinned in instance options.
+
+A persistent directory advisory lock serializes catalog admission and writes.
+Each active worker also holds a slot lock for its lifetime. New workers choose the
+next free slot in ring order, reset only its known data files, and atomically
+publish its resource binding before appending. A full ring refuses new admission;
+active writers are never evicted. Closure/owner death releases OS locks; lock files
+remain in place to preserve inode identity.
+
+Participants must match the catalog's file, rotation and lease limits exactly.
+Filenames derive from bounded slot numbers, without an unbounded directory scan,
+arbitrary path or foreign-file pruning. Each slot has at most two files of at most
+10 MiB. Aggregate managed data is bounded by
+`retained_leases × retained_files × file_bytes` (80 MiB by default). Catalog and
+atomic-replacement scratch are each capped at 16 KiB, with at most the configured
+number of zero-byte slot locks plus one directory lock. Reads, path types,
+permissions, hardlinks, schema and policy are validated. Corruption/mismatch
+refuses without repair or automatic limit migration. Reuse is retention, not an
+age/TTL policy or a durable trace archive.
+
+Legacy root-level lease logs and unrelated files are neither adopted nor deleted;
+quota covers this managed format. Select a fresh directory for changed limits or
+clean legacy files separately after review. Journals/source IDs remain intact when
+trace slots are recycled. Capability checks do not restrict arbitrary worker OS
 permissions.
+
+The catalog reuses the strict bounded JSON decoder for syntax/duplicate keys.
+Its valid slot keys, capacity and exact limits derive from pinned backend settings;
+small map/range checks enforce that ownership policy without adding a general
+validator runtime to sink workers. Native advisory locks reuse the OS helper.
+
+## Lease recovery
 
 Recovery validates declared identity, stage/capture authority, policy bounds,
 intent hashes, receipt order/uniqueness and session binding before repair/work.
@@ -152,10 +184,11 @@ Formatted status redaction does not protect
 or raw messages/arguments. Never trace all processes or suspend a live Session
 while effects continue. No raw tracing command, debugger listener, distributed node
 or GUI dependency is enabled here. Approval/question wait spans, ephemeral identity,
-broader lifecycle delivery, aggregate retention and the independent package proof
+broader lifecycle delivery and the independent package proof
 remain open in [P22](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
 
-Thirteen focused fixtures cover off parity, privacy/source identity, stop, export
-scope, blocked/invalid sinks, owner-death VM cleanup, rotation, filtering, historical
-resume and corruption. [Testing](testing.md#current-evidence-and-next-checks)
+Twenty fixtures cover off parity, privacy/source identity, stop, export scope,
+blocked/invalid sinks, owner-death VM/slot cleanup, rotation/aggregate bounds,
+active-writer protection, mismatched limits, unsafe paths, legacy preservation,
+filtering, historical resume and corruption. [Testing](testing.md#current-evidence-and-next-checks)
 distinguishes source, hosted and extracted evidence.

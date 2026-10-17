@@ -290,8 +290,10 @@ does not grant effects, and background work cannot change an admitted request.
 actions, before-request recall and after-turn maintenance in one serial lane.
 Optional [diagnostic capture](observability.md) wraps shared metadata in bounded
 owned sink channels, with separate off/local/export policy and immediate stop.
-Broader private subscriptions, aggregate trace retention, developer tracing and the
-independent installed-package proof remain [P22 gates](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
+The local sink uses a bounded ring with active-writer locks; backend retention
+does not change host event/action APIs. Broader private subscriptions, developer
+tracing and the independent installed-package proof remain
+[P22 gates](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
 
 The internal lifecycle Source/Event adapter now binds committed journal facts to
 stable occurrence IDs and projects explicit metadata/private prompt views.

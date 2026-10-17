@@ -165,7 +165,7 @@ defmodule Ipse.ExtensionDemo do
           "instance" => "trace",
           "artifact" => artifact,
           "enabled" => true,
-          "options" => %{"directory" => Path.join(root, "trace")},
+          "options" => %{"directory" => Path.join(root, "trace"), "retained_leases" => 1},
           "order" => 0,
           "lifetime" => "session"
         }
@@ -196,7 +196,10 @@ defmodule Ipse.ExtensionDemo do
     await(session)
     drain_trace(session, 500)
     [sink] = Ipse.Session.diagnostics(session)["observability"]["sinks"]
-    path = Path.join([root, "trace", sink["resource_id"] <> ".jsonl"])
+    ring = Path.join([root, "trace", "trace-ring-v1"])
+    catalog = ring |> Path.join("catalog.json") |> File.read!() |> Jason.decode!()
+    {slot, _} = Enum.find(catalog["slots"], fn {_, id} -> id == sink["resource_id"] end)
+    path = Path.join(ring, "slot-#{slot}.jsonl")
     bytes = File.read!(path)
 
     false =
@@ -215,6 +218,23 @@ defmodule Ipse.ExtensionDemo do
     :ok = Ipse.Session.close(session)
     {:ok, events} = Ipse.Journal.load(directory, id)
     :ok = Ipse.Observability.Resources.validate(events, id)
+
+    {:ok, next} =
+      DynamicSupervisor.start_child(
+        Ipse.Sessions,
+        {Ipse.Session, [config: config, cwd: root, state_dir: directory, subscriber: self()]}
+      )
+
+    :ok = Ipse.Session.prompt(next, "replacement-diagnostic-private-prompt")
+    await(next)
+    drain_trace(next, 500)
+    [next_sink] = Ipse.Session.diagnostics(next)["observability"]["sinks"]
+    catalog = ring |> Path.join("catalog.json") |> File.read!() |> Jason.decode!()
+    1 = map_size(catalog["slots"])
+    true = Map.values(catalog["slots"]) == [next_sink["resource_id"]]
+    true = next_sink["resource_id"] != sink["resource_id"]
+    :ok = Ipse.Session.close(next)
+    true = length(Path.wildcard(Path.join(ring, "slot-*.jsonl*"))) <= 2
   end
 
   defp drain_trace(_, 0), do: raise("Local trace fixture did not settle")
@@ -222,7 +242,7 @@ defmodule Ipse.ExtensionDemo do
   defp drain_trace(session, remaining) do
     if Enum.all?(
          Ipse.Session.diagnostics(session)["observability"]["sinks"],
-         &(&1["ready"] and &1["pending"] == 0 and &1["delivered"] > 0)
+         &(&1["ready"] and not &1["closed"] and &1["pending"] == 0 and &1["delivered"] > 0)
        ) do
       :ok
     else

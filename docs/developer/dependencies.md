@@ -38,7 +38,7 @@ dependency. The main choices are:
 | Service composition | OTP `:digraph`/`:digraph_utils`, existing schemas and Worker | Private acyclic graphs supply ordering; operator routes, activation hashes and provenance remain Ipse policy |
 | Context and evidence | Existing validators, host-action receipts and journals | Bounded ordinary map/list access binds literal excerpts; no retrieval or JSON-path runtime is needed |
 | Request accounting and text delivery | OTP crypto/clocks, GenServer/monitors/queues, existing Worker/native ownership and provider tasks | Durable facts, resource leases and private acknowledged delivery have different failure semantics from optional telemetry; no stream/media framework is added |
-| Diagnostic capture and local sink | OTP atomics/monitors/tasks/filesystem, existing Worker/Runner/Journal/Source and schema adapters | Atomic admission bounds pending work before mailbox send; shared metadata, policy and cleanup receipts are harness-specific. No broker, collector, logging package or direct Telemetry API is added |
+| Diagnostic capture and local sink | OTP atomics/monitors/tasks/filesystem, existing Worker/Runner/native advisory locks/Journal/Source and schema adapters | Atomic queue admission and a bounded backend ring protect active writers and disk limits; shared metadata/policy/receipts remain harness-specific. No broker, collector, logging package or direct Telemetry API is added |
 
 [DETS](https://www.erlang.org/doc/apps/stdlib/dets.html) was evaluated for the
 scoped store. The 256-record/1 MiB contract needs exact JSON snapshots,

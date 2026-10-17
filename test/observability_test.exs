@@ -106,9 +106,12 @@ defmodule Ipse.ObservabilityTest do
   end
 
   defp config(c, kind \\ :local, mode \\ "local", behavior \\ "record", policy \\ %{}) do
+    {retained_leases, policy} = Map.pop(policy, "retained_leases", 4)
+
     {artifact, capabilities, options} =
       if kind == :local do
-        {"builtin:local-trace:1", ["observe.local"], %{"directory" => Path.join(c.root, "logs")}}
+        {"builtin:local-trace:1", ["observe.local"],
+         %{"directory" => Path.join(c.root, "logs"), "retained_leases" => retained_leases}}
       else
         {:ok, imported} = Store.import(c.artifact, Path.join(c.home, "extensions/artifacts"))
 
@@ -182,6 +185,13 @@ defmodule Ipse.ObservabilityTest do
       )
 
   defp sinks(pid), do: Session.diagnostics(pid)["observability"]["sinks"]
+  defp ring(c), do: Path.join([c.root, "logs", "trace-ring-v1"])
+
+  defp trace_path(c, resource) do
+    catalog = File.read!(Path.join(ring(c), "catalog.json")) |> Jason.decode!()
+    {slot, ^resource} = Enum.find(catalog["slots"], fn {_, id} -> id == resource end)
+    Path.join(ring(c), "slot-#{slot}.jsonl")
+  end
 
   test "off creates no sink, lease or file but mandatory accounting still works", c do
     pid = start(c, config(c, :local, "off"))
@@ -202,7 +212,7 @@ defmodule Ipse.ObservabilityTest do
     done(pid)
     eventually(fn -> Enum.any?(sinks(pid), &(&1["delivered"] >= 4)) end)
     [sink] = sinks(pid)
-    path = Path.join([c.root, "logs", sink["resource_id"] <> ".jsonl"])
+    path = trace_path(c, sink["resource_id"])
     eventually(fn -> File.exists?(path) end)
     lines = File.read!(path) |> String.split("\n", trim: true) |> Enum.map(&Jason.decode!/1)
 
@@ -346,7 +356,7 @@ defmodule Ipse.ObservabilityTest do
     end
 
     eventually(fn -> Enum.all?(sinks(pid), &(&1["ready"] and &1["pending"] == 0)) end)
-    paths = Path.wildcard(Path.join([c.root, "logs", "*"]))
+    paths = Path.wildcard(Path.join(ring(c), "slot-*.jsonl*"))
     assert length(paths) == 2
     assert Enum.all?(paths, &(File.stat!(&1).size <= 16_384))
 
@@ -411,7 +421,7 @@ defmodule Ipse.ObservabilityTest do
     assert sink["filtered"] > 0
 
     if File.dir?(Path.join(c.root, "logs")) do
-      for path <- Path.wildcard(Path.join([c.root, "logs", "*"])),
+      for path <- Path.wildcard(Path.join(ring(c), "slot-*.jsonl*")),
           line <- String.split(File.read!(path), "\n", trim: true) do
         assert Jason.decode!(line)["group"] == "model"
       end
@@ -435,5 +445,187 @@ defmodule Ipse.ObservabilityTest do
     assert {:error, :invalid_diagnostic_receipts} = Session.restore_context(altered)
     ready = Enum.find(events, &(&1["type"] == "diagnostic_sink_ready"))
     assert {:error, :invalid_diagnostic_receipts} = Session.restore_context(events ++ [ready])
+  end
+
+  defp settled(pid) do
+    eventually(fn ->
+      Enum.all?(
+        sinks(pid),
+        &(&1["ready"] and not &1["closed"] and &1["pending"] == 0 and &1["delivered"] > 0)
+      )
+    end)
+  end
+
+  test "a fixed lease ring bounds files and bytes across repeated sessions", c do
+    cfg = config(c, :local, "local", "record", %{"retained_leases" => 2, "file_bytes" => 16_384})
+
+    ids =
+      for n <- 1..5 do
+        pid = start(c, cfg)
+        :ok = Session.prompt(pid, "private-lease-#{n}")
+        done(pid)
+        settled(pid)
+        [sink] = sinks(pid)
+        id = Session.info(pid).id
+        :ok = Session.close(pid)
+        {sink["resource_id"], id}
+      end
+
+    catalog = File.read!(Path.join(ring(c), "catalog.json")) |> Jason.decode!()
+
+    assert MapSet.new(Map.values(catalog["slots"])) ==
+             MapSet.new(Enum.take(ids, -2) |> Enum.map(&elem(&1, 0)))
+
+    paths = Path.wildcard(Path.join(ring(c), "slot-*.jsonl*"))
+    assert length(paths) <= 4
+    assert Enum.sum(Enum.map(paths, &File.stat!(&1).size)) <= 2 * 2 * 16_384
+
+    sessions =
+      for path <- paths,
+          line <- String.split(File.read!(path), "\n", trim: true),
+          do: Jason.decode!(line)["event"]["source"]["session_id"]
+
+    assert MapSet.new(sessions) == MapSet.new(Enum.take(ids, -2) |> Enum.map(&elem(&1, 1)))
+    assert {:ok, _} = Journal.load(c.dir, elem(hd(ids), 1))
+    assert length(Path.wildcard(Path.join(ring(c), ".slot-*.lock"), match_dot: true)) == 2
+  end
+
+  test "full rings refuse new writers without evicting active sessions", c do
+    cfg = config(c, :local, "local", "record", %{"retained_leases" => 2})
+    first = start(c, cfg)
+    :ok = Session.prompt(first, "first-private")
+    done(first)
+    settled(first)
+    second = start(c, cfg)
+    :ok = Session.prompt(second, "second-private")
+    done(second)
+    settled(second)
+
+    for n <- 1..3 do
+      :ok = Session.prompt(first, "concurrent-first-#{n}")
+      :ok = Session.prompt(second, "concurrent-second-#{n}")
+      done(first)
+      done(second)
+    end
+
+    settled(first)
+    settled(second)
+    [second_sink] = sinks(second)
+    second_path = trace_path(c, second_sink["resource_id"])
+    before = File.read!(second_path)
+    catalog = File.read!(Path.join(ring(c), "catalog.json"))
+    lock_inode = File.stat!(Path.join(ring(c), ".slot-1.lock")).inode
+    refused = start(c, cfg)
+    :ok = Session.prompt(refused, "refused-private")
+    done(refused)
+    eventually(fn -> Enum.any?(sinks(refused), & &1["closed"]) end)
+    assert File.read!(second_path) == before
+    assert File.read!(Path.join(ring(c), "catalog.json")) == catalog
+    :ok = Session.close(first)
+    replacement = start(c, cfg)
+    :ok = Session.prompt(replacement, "replacement-private")
+    done(replacement)
+    settled(replacement)
+    assert File.read!(second_path) == before
+    assert File.stat!(Path.join(ring(c), ".slot-1.lock")).inode == lock_inode
+    :ok = Session.close(replacement)
+    :ok = Session.close(second)
+  end
+
+  test "owner death releases its slot for a new capture without replay", c do
+    cfg = config(c, :local, "local", "record", %{"retained_leases" => 1})
+    first = start(c, cfg)
+    :ok = Session.prompt(first, "old-private")
+    done(first)
+    settled(first)
+    Process.unlink(first)
+    Process.exit(first, :kill)
+    lock_path = Path.join(ring(c), ".slot-1.lock")
+
+    eventually(fn ->
+      case Ipse.Runner.lock(lock_path) do
+        {:ok, lock} ->
+          Ipse.Runner.unlock(lock)
+          true
+
+        _ ->
+          false
+      end
+    end)
+
+    next = start(c, cfg)
+    :ok = Session.prompt(next, "new-private")
+    done(next)
+    settled(next)
+    :ok = Session.close(next)
+  end
+
+  test "shared-directory limit mismatch refuses without altering existing logs", c do
+    first = start(c, config(c, :local, "local", "record", %{"retained_leases" => 1}))
+    :ok = Session.prompt(first, "protected-private")
+    done(first)
+    settled(first)
+    before = File.read!(Path.join(ring(c), "slot-1.jsonl"))
+    mismatch = start(c, config(c, :local, "local", "record", %{"retained_leases" => 2}))
+    :ok = Session.prompt(mismatch, "mismatch-private")
+    done(mismatch)
+    eventually(fn -> Enum.any?(sinks(mismatch), & &1["closed"]) end)
+    assert File.read!(Path.join(ring(c), "slot-1.jsonl")) == before
+    :ok = Session.close(first)
+  end
+
+  test "corrupt or oversized catalogs refuse without repair or data deletion", c do
+    cfg = config(c, :local, "local", "record", %{"retained_leases" => 1})
+    first = start(c, cfg)
+    :ok = Session.prompt(first, "protected-private")
+    done(first)
+    settled(first)
+    :ok = Session.close(first)
+    path = Path.join(ring(c), "catalog.json")
+    before = File.read!(Path.join(ring(c), "slot-1.jsonl"))
+
+    for bytes <- ["{\"version\":1,\"version\":1}", String.duplicate("x", 16_385)] do
+      File.write!(path, bytes)
+      pid = start(c, cfg)
+      :ok = Session.prompt(pid, "refused-private")
+      done(pid)
+      eventually(fn -> Enum.any?(sinks(pid), & &1["closed"]) end)
+      assert File.read!(path) == bytes
+      assert File.read!(Path.join(ring(c), "slot-1.jsonl")) == before
+    end
+  end
+
+  test "slot symlinks cannot redirect rotation or erasure", c do
+    cfg = config(c, :local, "local", "record", %{"retained_leases" => 1})
+    first = start(c, cfg)
+    :ok = Session.prompt(first, "first-private")
+    done(first)
+    settled(first)
+    :ok = Session.close(first)
+    slot = Path.join(ring(c), "slot-1.jsonl")
+    File.rm!(slot)
+    sentinel = Path.join(c.root, "sentinel")
+    File.write!(sentinel, "synthetic-outside-data")
+    File.ln_s!(sentinel, slot)
+    next = start(c, cfg)
+    :ok = Session.prompt(next, "refused-private")
+    done(next)
+    eventually(fn -> Enum.any?(sinks(next), & &1["closed"]) end)
+    assert File.read!(sentinel) == "synthetic-outside-data"
+    assert File.lstat!(slot).type == :symlink
+  end
+
+  test "legacy root files remain outside the managed ring", c do
+    directory = Path.join(c.root, "logs")
+    File.mkdir!(directory)
+    File.chmod!(directory, 0o700)
+    path = Path.join(directory, Ipse.Usage.id() <> ".jsonl")
+    File.write!(path, "legacy-synthetic-private")
+    pid = start(c, config(c))
+    :ok = Session.prompt(pid, "new-private")
+    done(pid)
+    settled(pid)
+    :ok = Session.close(pid)
+    assert File.read!(path) == "legacy-synthetic-private"
   end
 end

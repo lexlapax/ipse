@@ -192,7 +192,8 @@ cleanup status. Mode `off` starts no sink; selecting one is a separate step.
 A fast shutdown can discard remaining samples after its bounded grace, and the
 CLI reports unconfirmed cleanup separately from turn success. See
 [diagnostic capture](observability.md) for private directory requirements,
-per-lease rotation and retention limits. Never share the private journal wholesale.
+ring quotas, shared-directory limit matching and legacy migration. Never share
+the private journal wholesale.
 
 Report the command, toolchain, sanitized error, and whether it ran in a sandbox.
 Redact credentials, authorization URLs/codes, account identity, and private
