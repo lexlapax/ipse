@@ -15,17 +15,23 @@ usage is unmetered, and the latest 16 request records. Records identify provider
 requested/reported model, selected profile where configured, billing mode,
 main/summary kind and nullable normalized counters. Child records live in their
 own journals under `sessions/subagents/PARENT_SESSION_ID` and identify the parent
-request. The parent display does not yet sum child usage. See
+request. The built-in parent display shows its own requests; the optional tree
+report below combines granted child accounting. See
 [subagents](subagents.md) for ownership and approvals.
 
 ## Enable the optional report
 
-Two shipped extensions provide explicit operator commands: `builtin:cost-summary:1`
-summarizes a captured session range, and `builtin:cost-report:1` shows individual
-requests in pages. Both are disabled by default, with no automatic hook, rate
-lookup, model request or child-journal access. Configure operator trust and a
-rate card. This summary example deliberately has no price rows, so unmatched
-usage stays unpriced:
+Choose the scope explicitly. All three shipped report extensions are disabled
+by default, with no automatic hook, rate lookup or model request:
+
+| Artifact | Commands for instance `costs` | Scope |
+| --- | --- | --- |
+| `builtin:cost-report:1` | `ext__costs__report` | Individual own-session requests, at most four per page |
+| `builtin:cost-summary:1` | `ext__costs__summary` | Captured own-session totals |
+| `builtin:cost-tree:1` | `ext__costs__tree_summary`, `ext__costs__children`, `ext__costs__child_usage` | Parent plus actual registered direct children, under an additional explicit read grant |
+
+Configure operator trust and a rate card. This own-session summary example
+deliberately has no price rows, so unmatched usage stays unpriced:
 
 ```json
 {
@@ -77,9 +83,21 @@ In chat, request the summary explicitly:
 For individual request pages, select `builtin:cost-report:1` in both artifact
 fields and remove `host.usage.scan` from trust. Its command is
 `/ext ext__costs__report {}` or `/ext ext__costs__report {"limit":1}`. Separate
-instances may enable both with distinct names.
+instances may enable different reports with distinct names. For the tree report,
+select `builtin:cost-tree:1` in both artifact fields and add
+`host.usage.children` to trust, retaining the summary's other capabilities. Keep
+`allow_children: false` unless you also want this extension to execute inside
+children; parent-side child reads do not require that separate execution grant.
 
-For real usage, select your normal provider/profile explicitly. Neither command
+With that tree selection, use the actual 32-hex child ID returned by `children`:
+
+```text
+/ext ext__costs__tree_summary {}
+/ext ext__costs__children {}
+/ext ext__costs__child_usage {"child_id":"CHILD_ID_FROM_CHILDREN"}
+```
+
+For real usage, select your normal provider/profile explicitly. No report command
 starts inference. Disable an instance for future sessions with `enabled: false`,
 or use `--no-extensions`. See [selection and executable trust](extensions.md).
 
@@ -107,8 +125,20 @@ extension instance. To continue, pass its complete object back with the returned
 `next` cursor; limit can be 1–4. Null `next` exhausts that captured range. Omitting
 the snapshot starts a new range including later work. Repeated or overlapping
 pages are the same requests: do not add them twice. The summary handles request
-identity itself. An explicit child-accounting grant and combined parent/child
-reporting remain P23 work.
+identity itself. Discovery and child pages use the same explicit continuation
+pattern; pass the returned snapshot with `next` and retain the child ID for child
+pages.
+
+The tree report uses `coverage: "session_tree"`, with separate captured cuts for
+the parent, discovery and each child. These cuts are not one globally atomic
+timestamp. `child_count`, `captured_child_count`, `gap_count` and `gap_reasons`
+show missing coverage. Locked, missing, invalid, oversized or legacy-unbound
+child journals remain gaps. `unknown_child_outcome_count` prevents a complete cost
+claim when parent-side child completion/cleanup is uncertain, even if all available
+request records were read. Legacy unmetered history also prevents completeness.
+Group amounts cover enumerated requests; a nonzero gap does not price missing
+children as zero. The child-manifest digest binds the captured cuts recorded in
+action receipts without returning an unbounded list in one result.
 
 Reports carry rate revision/digest and provenance. Monetary integers use
 `currency_scale: 9`: divide `amount_nanos` by one billion for configured currency
@@ -120,6 +150,14 @@ total; use page reports for inspection. `summary_incomplete` reports a failed
 read. Cancellation, deadline, worker failure or an exhausted action allowance can
 leave an unknown invocation; inspect its receipts before explicitly trying again.
 There is no silent truncation or automatic retry.
+
+Child reads require protected regular journals beneath this parent's recorded
+child directory and take the child's existing lock. A live separately opened child
+can therefore refuse a read or recovery check. Let its active owner finish or
+cancel that work normally, then inspect the original files; do not delete lock files or alter records to force a
+complete report. A captured child prefix is at most 16 MiB. Discovery supports
+10,000 children; the tree accumulator supports 40,000 unique request attempts.
+Its shared 10,000-read allowance may stop a larger scan with incomplete coverage.
 
 The summary's `host.usage.scan` grant raises only accounting-read steps to 10,000
 per invocation. It admits no further host call after two minutes; an already
@@ -147,12 +185,14 @@ not provide that protection.
 
 Turning optional tracing off does not remove usage facts. No extra remote request
 collects them. The report's own-session read grant excludes prompts,
-results, credentials, raw endpoint URLs and native reasoning. The underlying
+results, credentials, raw endpoint URLs and native reasoning. The separate child
+grant exposes the same canonical accounting plus child discovery, not transcripts.
+Its snapshot fingerprint covers only granted accounting. The underlying
 journal still contains the private conversation; protect it as described in
 [usage](usage.md).
 
 Idle resume preserves facts without reissuing requests. Invalid committed
-accounting or changed cached read receipts refuse recovery before truncated-tail
+accounting, changed cached read receipts or unavailable captured child sources refuse recovery before truncated-tail
 repair. Idle resume displays cached results without recalculating costs or
 initializing a report worker. Keep the original file
 and inspect it rather than deleting records to make a balance look complete.

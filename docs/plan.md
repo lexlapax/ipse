@@ -28,7 +28,7 @@ the next feature sequence on 2026-10-15:
 | [P20](#p20-repeatable-supervised-self-development) | Reusable supervised development/review skill and evidence | Complete: fixtures, hosted checks and supervised live use; limitations recorded |
 | [P21](#p21-larger-self-development-trial-on-serenity) | Larger supervised trial with independent Mac verification | Complete within supervised scope; bounded review and Linux/hosted Mac checks passed |
 | [P22](#p22-extension-scaffold-and-lifecycle-hooks) | Typed extension scaffold, lifecycle hooks and runtime observability | Complete: lifecycle audit, independent installed proof, supervised trial and hosted Linux/macOS checks |
-| [P23](#p23-usage-cost-reporting-and-budget-controls) | Usage/cost extensions and host budget admission | In progress: own-session pages and cumulative summaries; child aggregation and budget admission remain |
+| [P23](#p23-usage-cost-reporting-and-budget-controls) | Usage/cost extensions and host budget admission | In progress: own-session and granted child aggregation; atomic budgets and accounted extension requests remain |
 | [P24](#p24-voice-and-realtime-media) | Voice extensions and owned realtime/media capabilities | Authorized; follows owned stream/provider foundation |
 | [P25](#p25-optional-knowledge-extensions) | Default-off working/long-term memory, research, graph and RAG | Authorized; research gates precede implementation selection |
 
@@ -1170,8 +1170,12 @@ groups separate billing/estimate bases and retain unknown/overflow outcomes.
 P23C adds a default-off `builtin:cost-summary:1` command: separately granted finite
 bulk reads, full captured own-session enumeration, request/attempt replacement,
 unknown/legacy and monetary/counter overflow handling, and inert cached recovery.
-Child aggregation, host reservations and accounted model operations remain open;
-neither report enforces budgets or claims parent/child totals.
+P23D adds explicit registered-child discovery and frozen accounting-prefix reads,
+exact child-origin bindings, source validation before parent recovery repair and
+the default-off `builtin:cost-tree:1` report. It preserves missing/busy/invalid/
+legacy gaps, failed-child observations and uncertain cleanup instead of zeroing
+liability. Host reservations and accounted model operations remain open; reports
+do not enforce budgets or promise an invoice ceiling.
 
 P22 supplies durable
 canonical usage facts and identities independently of tracing. Build an optional
@@ -1187,9 +1191,8 @@ provider's enforceable limits and avoid promising an exact invoice ceiling for
 in-flight requests. Reports, budget displays and policies use the SDK; approval,
 provider selection, cancellation and durable accounting stay core-owned.
 
-Next extend reporting with parent/child aggregation under
-an explicit child-accounting grant; then atomic host reservation/reconciliation
-and generic accounted extension model requests. Preserve bounded pagination,
+Next implement atomic host reservation/reconciliation and generic accounted
+extension model requests. Preserve bounded pagination,
 unknown liability and no automatic replay throughout these increments.
 
 Require fixtures for rate/version changes, unknown counts/rates, retry/revision

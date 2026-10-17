@@ -66,6 +66,9 @@ cleanup. A process exit alone is insufficient; an abruptly killed parent may
 leave an incomplete start. None of these statuses certifies a child's claims.
 Selected lifecycle consumers can observe metadata through
 [event feeds](extensions.md#live-event-feeds); task/result text is not included.
+The optional [tree usage report](usage-accounting.md) can aggregate these registered
+children under a separate read grant. Unavailable journals or uncertain outcomes
+remain explicit gaps; delegation itself does not enable reporting or pricing.
 
 See [usage](usage.md), [the developer contract](../developer/delegation.md), and
 [the plan](../plan.md#p9-parallel-local-subagents). Remote agents, automatic

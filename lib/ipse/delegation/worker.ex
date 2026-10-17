@@ -32,7 +32,11 @@ defmodule Ipse.Delegation.Worker do
 
     result =
       try do
-        with :ok <- GenServer.call(host.owner, {:delegation_register, host.job_ref, child, id}),
+        with :ok <-
+               GenServer.call(
+                 host.owner,
+                 {:delegation_register, host.job_ref, child, id, host.call_id}
+               ),
              :ok <- Session.prompt(child, prompt(args)) do
           timeout = host.config |> Map.get(:delegation_timeout_ms, Delegation.timeout_ms())
 

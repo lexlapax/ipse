@@ -19,7 +19,7 @@ Current contracts are organized by responsibility:
 | Explicit continuation and approved effects | [Questions](extension-questions.md), [workflow tools](extension-tool-actions.md) |
 | Typed dependency composition and contextual evidence | [Services](extension-services.md), [context](extension-context.md) |
 | Durable request facts and embedded/worker private delivery | [Usage accounting](usage-accounting.md), [text channel](text-streams.md) |
-| Granted accounting reads and optional cost pages/summaries | [Usage read SDK](usage-accounting.md#extension-accounting-reads), [configured reports](costs.md#reports-cumulative-aggregation-and-evidence); no content, child or budget authority |
+| Granted accounting reads and optional cost pages/summaries | [Usage read SDK](usage-accounting.md#extension-accounting-reads), [separate child grant](usage-accounting.md#registered-child-accounting), [configured reports](costs.md#reports-cumulative-aggregation-and-evidence); no content, mutation or budget authority |
 | Journal identity and typed recorded views | [Lifecycle adapter](lifecycle-events.md#internal-journal-source-and-prompt-views); raw pages stay host-only, while [history reads](extension-history.md) expose scoped projections |
 | Declared read-only prompt/answer delivery | [Event subscriptions](extension-events.md), with separate metadata/private authority and required/optional receipts |
 | Live committed views | [Feeds](extension-feeds.md), with scoped metadata/admitted-tool views, explicit enrollment, bounded consumers and visible incomplete closure |

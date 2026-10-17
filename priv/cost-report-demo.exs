@@ -3,7 +3,36 @@ defmodule Ipse.CostReportDemo do
   alias Ipse.{Session, Usage}
 
   defmodule Model do
-    def complete(config, _, _, _) do
+    def complete(config, messages, _, _) do
+      if config[:fixture_delegate] == true and config[:delegation_origin] == nil and
+           not Enum.any?(messages, &(&1["role"] == "tool")) do
+        {:ok,
+         %{
+           "role" => "assistant",
+           "content" => "",
+           "tool_calls" => [
+             %{
+               "id" => "fixture-call",
+               "type" => "function",
+               "function" => %{
+                 "name" => "delegate_parallel",
+                 "arguments" =>
+                   Jason.encode!(%{
+                     "tasks" => [
+                       %{"task" => "First synthetic child", "context" => "Synthetic"},
+                       %{"task" => "Second synthetic child", "context" => "Synthetic"}
+                     ]
+                   })
+               }
+             }
+           ]
+         }, %{"input_tokens" => 100, "output_tokens" => 20}}
+      else
+        complete_fixture(config)
+      end
+    end
+
+    defp complete_fixture(config) do
       if config[:fixture_fail],
         do: {:error, "Synthetic request refusal"},
         else:
@@ -41,10 +70,16 @@ defmodule Ipse.CostReportDemo do
 
   def config(home, enabled \\ true, rates \\ card(), kind \\ :page) do
     {artifact, capabilities} =
-      if kind == :summary do
-        {"builtin:cost-summary:1", ~w(invoke.command host.actions host.usage host.usage.scan)}
-      else
-        {"builtin:cost-report:1", ~w(invoke.command host.actions host.usage)}
+      case kind do
+        :tree ->
+          {"builtin:cost-tree:1",
+           ~w(invoke.command host.actions host.usage host.usage.scan host.usage.children)}
+
+        :summary ->
+          {"builtin:cost-summary:1", ~w(invoke.command host.actions host.usage host.usage.scan)}
+
+        :page ->
+          {"builtin:cost-report:1", ~w(invoke.command host.actions host.usage)}
       end
 
     data = %{
@@ -156,8 +191,44 @@ defmodule Ipse.CostReportDemo do
       ^summary_bytes = File.read!(summary_path)
       :ok = Session.close(summary_resumed)
 
+      tree_config =
+        config(home, true, card(), :tree)
+        |> Map.merge(%{
+          fixture_delegate: true,
+          subagents: true,
+          subagent_concurrency: 2,
+          approval: :allow
+        })
+
+      {:ok, tree} = start(tree_config, root, dir)
+      :ok = Session.prompt(tree, "Synthetic delegated accounting")
+      :ok = done(tree)
+      :ok = Session.invoke_export(tree, :command, "ext__costs__tree_summary", %{})
+      :ok = done(tree)
+      tree_value = Session.info(tree).extension_result["value"]
+
+      %{
+        "coverage" => "session_tree",
+        "request_count" => 4,
+        "child_count" => 2,
+        "gap_count" => 0,
+        "enumeration_complete" => true,
+        "cost_estimate_complete" => true,
+        "groups" => [%{"amount_nanos" => 1_600_000}]
+      } = tree_value
+
+      tree_id = Session.info(tree).id
+      :ok = Session.close(tree)
+      {:ok, _} = Ipse.Diagnostics.saved(dir, tree_id)
+      tree_path = Path.join(dir, tree_id <> ".jsonl")
+      tree_bytes = File.read!(tree_path)
+      {:ok, tree_resumed} = start(tree_config, root, dir, tree_id)
+      ^tree_value = Session.info(tree_resumed).extension_result["value"]
+      ^tree_bytes = File.read!(tree_path)
+      :ok = Session.close(tree_resumed)
+
       IO.puts(
-        "Cost report fixture: configured pages, full own-session summary and inert resume passed."
+        "Cost report fixture: configured pages, own-session/child summaries and inert resume passed."
       )
 
       :ok

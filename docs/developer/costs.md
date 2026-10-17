@@ -8,8 +8,8 @@ provider/model price is embedded. Default-off report and summary extensions
 use the granted accounting-read SDK for explicit own-session pages and captured
 session totals. See
 [operator selection](../operator/usage-accounting.md#enable-the-optional-report).
-Child aggregation, accounted model operations and budget enforcement remain P23
-delivery work.
+The separately granted `builtin:cost-tree:1` adds captured parent/direct-child
+aggregation. Accounted model operations and budget enforcement remain P23 work.
 
 ## Rate identity and selection
 
@@ -156,10 +156,39 @@ groups, unknown totals, cost/counter overflow, cumulative replacement, immutable
 admission and known invalid-card results. A 70-request worker scenario reads 18
 pages and validates byte-identical idle resume; it crosses the ordinary 16-step
 limit under a separate read grant. The credential-free `priv/cost-report-demo.exs`
-also runs both extensions in extracted-package verification. See
+also runs the report family in extracted-package verification. See
 [actual checks](testing.md#current-evidence-and-next-checks).
 
-P23 next needs explicit parent/child aggregation. Atomic covered
+`Ipse.Extensions.Examples.CostTree` uses the same pure accumulator and a separate
+`host.usage.children` grant. It reads one parent range, a frozen registered-child
+list and each selected child's fixed accounting prefix through the SDK. It exports
+`tree_summary`, `children` and `child_usage` as operator-only commands; no model
+tool, hook, storage action or extension execution inside children is required.
+The [child read contract](usage-accounting.md#registered-child-accounting) owns
+path/origin validation, locks, prefix bounds and recovery. No child-feature branch
+is added to Session's reporting logic; core changes admit generic accounting reads
+and record exact child-origin facts.
+
+Tree scope is a vector of cuts, not a globally atomic timestamp. The report retains
+the parent/discovery snapshots and a digest of the exact child descriptors,
+snapshots, completion/error entries in action receipts. Bounded summary output
+uses child/captured/gap counts, gap reasons and uncertain child-outcome counts;
+it never silently counts an unavailable child as zero. `enumeration_complete`
+requires all captured request records; complete costs additionally require no
+unmetered history, unknown child outcomes or unpriced/partial/overflowing usage.
+The accumulator permits 40,000 unique attempts for this reader; ordinary own-
+session summaries retain 10,000. The common read/traffic/deadline bounds remain.
+An exhausted read allowance can return visibly incomplete coverage. No automatic
+retry or catch-up updates an already saved result.
+
+Synthetic fixtures exercise serial and concurrent children, cumulative child
+usage, failed-child observations, missing/busy/unrelated/unsafe/oversized sources,
+changed cached counters and physical origins, later appends outside a fixed prefix
+and pre-repair refusal. The release fixture now runs a real parallel delegation
+and cached tree report with synthetic rates/provider. These verify accounting
+protocols, not live prices, account charges or a transactional external ledger.
+
+P23 next needs atomic covered
 request reservations, partial/unknown liability and provider-enforceable output
 bounds belong in host admission. Generic accounted extraction/embedding requests
 are required for P25. A calculator or event observer cannot supply those guarantees.

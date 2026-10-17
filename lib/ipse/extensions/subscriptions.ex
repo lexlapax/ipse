@@ -241,6 +241,7 @@ defmodule Ipse.Extensions.Subscriptions do
       :ok ->
         with :ok <- Ipse.Extensions.History.validate_sources(directory, session, events),
              :ok <- Ipse.Extensions.UsageRead.validate_sources(directory, session, events),
+             :ok <- Ipse.Extensions.ChildUsage.validate_sources(directory, session, events),
              :ok <- Ipse.Lifecycle.Runtime.validate_sources(directory, session, events),
              :ok <- Ipse.Lifecycle.Tool.validate_sources(directory, session, events),
              :ok <- Ipse.Lifecycle.Child.validate_sources(directory, session, events),

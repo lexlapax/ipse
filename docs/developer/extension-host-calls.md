@@ -26,7 +26,7 @@ alongside their `invoke.*` or `event.job` exports:
 | `host.services` | Operator-bound typed value calls | [Services](extension-services.md) |
 | `host.context` | Caller-scoped contextual evidence | [Context](extension-context.md) |
 | `host.history`, `host.history.*` | Bounded own-session recorded views with separate private grants | [History/catch-up](extension-history.md) |
-| `host.usage`, optional `host.usage.scan` | Own-session canonical accounting pages and extended read allowance | [Accounting reads](usage-accounting.md#extension-accounting-reads) |
+| `host.usage`, optional `host.usage.scan`/`host.usage.children` | Own-session pages, extended read allowance and separately granted registered-child accounting | [Accounting reads](usage-accounting.md#extension-accounting-reads) |
 
 An operation capability without `host.actions` refuses inert validation.
 Operator trust must allow every capability; project configuration cannot grant

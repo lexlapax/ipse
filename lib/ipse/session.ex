@@ -178,6 +178,7 @@ defmodule Ipse.Session do
         usage: %{},
         accounting: accounting,
         usage_reads: extension_state.usage_reads,
+        child_usage: extension_state.child_usage,
         active_request: nil,
         last_request_id: saved_request(events, "request_id"),
         turn_id:
@@ -479,18 +480,29 @@ defmodule Ipse.Session do
   def handle_call({:mcp_register, _, _}, _from, s), do: {:reply, {:error, :cancelled}, s}
 
   def handle_call(
-        {:delegation_register, ref, child, id},
+        {:delegation_register, ref, child, id, origin_call},
         {worker, _},
         %{job_ref: ref, task: %{pid: coordinator}, phase: phase} = s
       )
       when ref != nil and phase in [:tool, :delegated_approval] do
-    if worker == coordinator or MapSet.member?(s.delegation_workers, worker) do
+    call = hd(s.calls)
+
+    expected =
+      if call["function"]["name"] == "delegate_parallel",
+        do: [call["id"] <> "/0", call["id"] <> "/1"],
+        else: [call["id"]]
+
+    if (worker == coordinator or MapSet.member?(s.delegation_workers, worker)) and
+         origin_call in expected do
+      event = %{
+        "type" => "delegation_started",
+        "child_id" => id,
+        "call_id" => call["id"],
+        "origin_call_id" => origin_call
+      }
+
       source =
-        record_source(s, %{
-          "type" => "delegation_started",
-          "child_id" => id,
-          "call_id" => hd(s.calls)["id"]
-        })
+        record_source(s, event)
 
       monitor = Process.monitor(child)
       notify(s, {:subagent, id, :started})
@@ -498,7 +510,8 @@ defmodule Ipse.Session do
       {:reply, :ok,
        %{
          s
-         | delegation_resources:
+         | child_usage: Ipse.Extensions.ChildUsage.apply_parent(s.child_usage, event),
+           delegation_resources:
              Map.put(s.delegation_resources, child, %{
                monitor: monitor,
                id: id,
@@ -539,7 +552,7 @@ defmodule Ipse.Session do
   def handle_call({:delegation_worker, _, _}, _, s), do: {:reply, {:error, :cancelled}, s}
   def handle_call({:delegation_children, _}, _, s), do: {:reply, [], s}
 
-  def handle_call({:delegation_register, _, _, _}, _from, s),
+  def handle_call({:delegation_register, _, _, _, _}, _from, s),
     do: {:reply, {:error, :cancelled}, s}
 
   def handle_call({:delegation_finished, ref, child, status, reason, cleanup}, {worker, _}, s) do
@@ -548,7 +561,7 @@ defmodule Ipse.Session do
         event = Ipse.Lifecycle.Child.finished(resource, status, reason, cleanup)
 
         if s.task != nil and Ipse.Lifecycle.Child.valid_record?(event) do
-          record(s, event)
+          s = record_child_outcome(s, event)
           Process.demonitor(resource.monitor, [:flush])
           {:reply, :ok, next_delegated_approval(retire_child(s, child))}
         else
@@ -963,7 +976,11 @@ defmodule Ipse.Session do
           {:reply, reply,
            %{
              s
-             | extension_action: %{intent: intent, usage_read: context[:usage_read]},
+             | extension_action: %{
+                 intent: intent,
+                 usage_read: context[:usage_read],
+                 child_usage: context[:child_usage]
+               },
                extension_actions: s.extension_actions + 1,
                extension_tool_context: nil
            }}
@@ -990,6 +1007,7 @@ defmodule Ipse.Session do
            is_nil(intent["service"]) or
              Ipse.Extensions.Registry.live?(intent["service"]["identity"]),
          {:ok, usage_reads} <- commit_usage_read(s, intent, event),
+         {:ok, child_usage} <- commit_child_usage(s, intent, event),
          {:ok, contributions} <-
            Ipse.Extensions.Contributions.apply_result(
              s.extension_contributions,
@@ -1007,6 +1025,7 @@ defmodule Ipse.Session do
          s
          | extension_action: nil,
            usage_reads: usage_reads,
+           child_usage: child_usage,
            extension_contributions: contributions,
            extension_action_unknown: event["outcome"]["status"] == "unknown",
            extension_action_results: s.extension_action_results ++ [event]
@@ -1964,25 +1983,30 @@ defmodule Ipse.Session do
     resources =
       if s.mcp_resources[pid] == ref, do: Map.delete(s.mcp_resources, pid), else: s.mcp_resources
 
-    {children, child_down} =
+    {children, child_down, child_usage} =
       case s.delegation_resources[pid] do
         %{monitor: ^ref} = child ->
           if not child.finished and s.task != nil and s.job_ref == child.job_ref and
                Process.alive?(child.worker) do
-            {Map.put(s.delegation_resources, pid, %{child | down: true}), true}
+            {Map.put(s.delegation_resources, pid, %{child | down: true}), true, s.child_usage}
           else
-            if not child.finished,
-              do:
-                record(s, Ipse.Lifecycle.Child.finished(child, "unknown", "worker_failed", false))
+            next =
+              if child.finished,
+                do: s,
+                else:
+                  record_child_outcome(
+                    s,
+                    Ipse.Lifecycle.Child.finished(child, "unknown", "worker_failed", false)
+                  )
 
-            {Map.delete(s.delegation_resources, pid), true}
+            {Map.delete(s.delegation_resources, pid), true, next.child_usage}
           end
 
         _ ->
-          {s.delegation_resources, false}
+          {s.delegation_resources, false, s.child_usage}
       end
 
-    s = %{s | mcp_resources: resources, delegation_resources: children}
+    s = %{s | mcp_resources: resources, delegation_resources: children, child_usage: child_usage}
 
     s =
       case s.approval do
@@ -2801,8 +2825,14 @@ defmodule Ipse.Session do
 
   defp settle_children(s, reason) do
     Enum.reduce(s.delegation_resources, s, fn {pid, child}, state ->
-      if not child.finished,
-        do: record(state, Ipse.Lifecycle.Child.finished(child, "unknown", reason, false))
+      state =
+        if child.finished,
+          do: state,
+          else:
+            record_child_outcome(
+              state,
+              Ipse.Lifecycle.Child.finished(child, "unknown", reason, false)
+            )
 
       if child.down do
         Process.demonitor(child.monitor, [:flush])
@@ -2811,6 +2841,11 @@ defmodule Ipse.Session do
         put_in(state, [:delegation_resources, pid], %{child | finished: true})
       end
     end)
+  end
+
+  defp record_child_outcome(s, event) do
+    record(s, event)
+    %{s | child_usage: Ipse.Extensions.ChildUsage.apply_parent(s.child_usage, event)}
   end
 
   defp delegated_conflict?(s, child, name, args) do
@@ -3208,7 +3243,13 @@ defmodule Ipse.Session do
   defp admit_request(s, config, kind) do
     event = Ipse.Usage.admission(s.id, config, kind, s.turn_id)
     s = account(s, event)
-    %{s | active_request: event, last_request_id: event["request_id"]}
+
+    %{
+      s
+      | active_request: event,
+        last_request_id: event["request_id"],
+        child_usage: Ipse.Extensions.ChildUsage.apply_parent(s.child_usage, event)
+    }
   end
 
   defp account(s, event) do
@@ -3667,7 +3708,7 @@ defmodule Ipse.Session do
         else: context
 
     context =
-      if Ipse.Extensions.Operation.usage?(intent["request"]),
+      if Ipse.Extensions.UsageRead.operation?(intent["request"]),
         do:
           Map.put(
             context,
@@ -3681,6 +3722,22 @@ defmodule Ipse.Session do
           ),
         else: context
 
+    context =
+      if Ipse.Extensions.ChildUsage.operation?(intent["request"]) do
+        Map.put(
+          context,
+          :child_usage,
+          Ipse.Extensions.ChildUsage.context(
+            s.child_usage,
+            intent,
+            s.dir,
+            if(source, do: elem(Ipse.Lifecycle.Source.metadata(source), 1))
+          )
+        )
+      else
+        context
+      end
+
     if intent["service"] do
       target = Enum.find(s.config.extensions, &(&1.identity == intent["service"]["identity"]))
       Map.merge(context, %{service_entry: target, session_id: s.id, turn_id: s.turn_id})
@@ -3690,7 +3747,7 @@ defmodule Ipse.Session do
   end
 
   defp commit_usage_read(s, intent, event) do
-    if Ipse.Extensions.Operation.usage?(intent["request"]),
+    if Ipse.Extensions.UsageRead.operation?(intent["request"]),
       do:
         Ipse.Extensions.UsageRead.commit(
           s.usage_reads,
@@ -3699,6 +3756,19 @@ defmodule Ipse.Session do
           s.extension_action.usage_read
         ),
       else: {:ok, s.usage_reads}
+  end
+
+  defp commit_child_usage(s, intent, event) do
+    if Ipse.Extensions.ChildUsage.operation?(intent["request"]) do
+      Ipse.Extensions.ChildUsage.commit(
+        s.child_usage,
+        intent,
+        event,
+        s.extension_action.child_usage.source
+      )
+    else
+      {:ok, s.child_usage}
+    end
   end
 
   defp restore_extension_question(events, messages, native) do

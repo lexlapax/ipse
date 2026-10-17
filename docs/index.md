@@ -17,7 +17,7 @@ start. Use the guides below for operation, development, and project context.
 | [Supervised self-development](operator/self-development.md) | Mac trial setup, frozen runner, candidate worktree, review, resume and publication |
 | [Context recovery](operator/recovery.md) | Content-free diagnostics, reviewed handoff export/fresh-chat import and unknown-effect review |
 | [Diagnostic capture](operator/observability.md) | Default-off local/export policy, selected sinks, immediate stop, limits and recovery |
-| [Usage and cost reports](operator/usage-accounting.md) | Durable counters, default-off configured pages/session summaries, billing attribution, unknown outcomes and recovery |
+| [Usage and cost reports](operator/usage-accounting.md) | Durable counters, default-off own-session/child reports, explicit read grants, unknown coverage and recovery |
 | [Extensions](operator/extensions.md) | Review/import, operator trust and selection, capability procedures, limits and recovery |
 | [Independent extension lab](operator/extension-lab.md) | Build, review and select synthetic artifacts against an existing checkout or unchanged release |
 | [Troubleshooting](operator/troubleshooting.md) | Build, callback, account, lock, and recovery problems |
@@ -56,8 +56,8 @@ start. Use the guides below for operation, development, and project context.
 | [Extension conformance](developer/extension-conformance.md) | Synthetic SDK scenarios, ordinary trust/approvals, scratch state, structured answers, reports and optional dispatcher tracing |
 | [Independent extension proof](developer/extension-proof.md) | Candidate core freeze, installed memory/workflow artifacts, source provenance, catch-up, deletion and negative cleanup evidence |
 | [Runtime capability boundaries](developer/runtime-capabilities.md) | Framework comparison, usage/cost facts, text/voice streams and core versus extension ownership |
-| [Usage accounting](developer/usage-accounting.md) | Canonical request facts, granted own-session pages and cached/source recovery validation |
-| [Configured cost estimates](developer/costs.md) | Versioned rate cards, report/summary extensions, cumulative aggregation and remaining child/budget integration |
+| [Usage accounting](developer/usage-accounting.md) | Canonical facts, granted own-session/registered-child pages and cached/source recovery validation |
+| [Configured cost estimates](developer/costs.md) | Versioned rate cards, page/session/tree extensions, cumulative aggregation and remaining budget integration |
 | [Private text streams](developer/text-streams.md) | Embedded/worker enrollment, opaque resource handles, acknowledgment, pressure and ephemeral recovery |
 | [Ephemeral text events](developer/stream-events.md) | Negotiated v2 frame sources, shared stream/range identity, distinct delivery sequence and metadata/private projections |
 | [Knowledge extension family](developer/knowledge-extensions.md) | Default-off working/long-term memory, pluggable research, graph/RAG and composition/evidence contracts |

@@ -5,6 +5,9 @@ defmodule Ipse.Extensions.Operation do
   def validate(%{"op" => "history.read"} = request), do: Ipse.Extensions.History.validate(request)
   def validate(%{"op" => "usage.read"} = request), do: Ipse.Extensions.UsageRead.validate(request)
 
+  def validate(%{"op" => op} = request) when op in ~w(usage.children usage.child.read),
+    do: Ipse.Extensions.ChildUsage.validate(request)
+
   def validate(%{"op" => "context.publish"} = request),
     do: Ipse.Extensions.Contributions.validate(request)
 
@@ -32,13 +35,21 @@ defmodule Ipse.Extensions.Operation do
   def tool?(request), do: is_map(request) and request["op"] == "tool.call"
   def service?(request), do: is_map(request) and request["op"] == "service.call"
   def history?(request), do: Ipse.Extensions.History.operation?(request)
-  def usage?(request), do: Ipse.Extensions.UsageRead.operation?(request)
+
+  def usage?(request),
+    do:
+      Ipse.Extensions.UsageRead.operation?(request) or
+        Ipse.Extensions.ChildUsage.operation?(request)
 
   def capability(%{"op" => "history.read"} = request),
     do: Ipse.Extensions.History.capability(request)
 
   def capability(%{"op" => "context.publish"}), do: "host.context"
   def capability(%{"op" => "usage.read"}), do: "host.usage"
+
+  def capability(%{"op" => op}) when op in ~w(usage.children usage.child.read),
+    do: "host.usage.children"
+
   def capability(%{"op" => "service.call"}), do: "host.services"
   def capability(%{"op" => "tool.call"}), do: "host.tools"
   def capability(%{"op" => "operator.question"}), do: "host.question"
@@ -52,6 +63,11 @@ defmodule Ipse.Extensions.Operation do
   def namespace(_identity, %{"op" => "context.publish"}, _cwd, _id), do: {:ok, nil}
   def namespace(_identity, %{"op" => "history.read"}, _cwd, id), do: {:ok, id}
   def namespace(_identity, %{"op" => "usage.read"}, _cwd, id), do: {:ok, id}
+
+  def namespace(_identity, %{"op" => op}, _cwd, id)
+      when op in ~w(usage.children usage.child.read) do
+    {:ok, id}
+  end
 
   def namespace(identity, request, cwd, id),
     do: State.namespace(identity, request["scope"], cwd, id)
@@ -70,6 +86,10 @@ defmodule Ipse.Extensions.Operation do
 
   def valid_outcome?(%{"op" => "usage.read"} = request, status, value, id),
     do: Ipse.Extensions.UsageRead.valid_outcome?(request, status, value, id)
+
+  def valid_outcome?(%{"op" => op} = request, status, value, id)
+      when op in ~w(usage.children usage.child.read),
+      do: Ipse.Extensions.ChildUsage.valid_outcome?(request, status, value, id)
 
   def valid_outcome?(%{"op" => "context.publish"} = request, status, value, id),
     do: Ipse.Extensions.Contributions.valid_outcome?(request, status, value, id)

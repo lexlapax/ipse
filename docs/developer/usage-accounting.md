@@ -90,9 +90,8 @@ credentials and raw endpoints never enter this projection.
 At supported invocation/job boundaries the owned model request has settled.
 Previously admitted request facts cannot subsequently be completed by replay;
 only a new request ID can begin new work. This makes the fixed admitted prefix
-stable across later prompts and restarts. This is not a concurrent cross-session
-snapshot API; child reads and future concurrent request capabilities need their
-own negotiated contract.
+stable across later prompts and restarts. Child reads use the separate contract
+below; neither contract creates a globally atomic cross-session snapshot.
 
 Page construction copies at most four bounded records from Session's validated
 ledger; it does no filesystem scan or provider work in the GenServer. Existing
@@ -112,8 +111,59 @@ historical incomplete/unknown. Failed requests retain fixed `usage_snapshot`,
 `usage_cursor`, `usage_bounds` or `usage_limit` codes. No write authority or budget
 reservation follows from a read acknowledgment.
 
+### Registered child accounting
+
+`Ipse.Extensions.ChildUsage` implements the separately trusted
+`host.usage.children` capability, requiring `host.usage` and `host.actions`.
+It grants accounting for actual registered direct children of the owned session;
+it accepts no directory, arbitrary session root, recursive selection, content
+view or provider operation. Child execution/inheritance remains a different grant.
+
+| Operation | Closed request beyond `op` | Result |
+| --- | --- | --- |
+| `usage.children` | `cursor`, `limit` (1–4), nullable `snapshot` | `scope: "children"`, `coverage: "registered_children"`, snapshot, cursor/next and `children` |
+| `usage.child.read` | Same paging fields plus a 32-hex `child_id` | `scope: "child"`, `coverage: "canonical_requests"`, snapshot, cursor/next and `requests` |
+
+Both envelopes use version 1. Discovery rows contain child ID, nullable recorded
+parent request/turn IDs, parent-side status/cleanup acknowledgment and
+`origin_recorded`. They omit tasks, results and raw provider call IDs. New
+delegation registration records the exact child-origin call ID, including the
+actual parallel suffix, before prompting the child. Older journals without that
+binding remain discoverable but child reads refuse; no origin is invented.
+
+A version-2 discovery snapshot pins `source`, `operation_id`, `identity_sha256`
+and `child_count`. A version-3 child snapshot has those first three fields plus
+`child_id`, `request_count`, `legacy_unmetered`, `bytes` and `sha256`. Both bind
+the caller and parent intent's metadata source. `bytes` fixes a complete journal
+prefix; `sha256` fingerprints only its ordered canonical accounting projections,
+not private prompts, native payloads or the entire journal. It grants no new
+private-content hash. Later pages must match a previously committed snapshot.
+
+Child IO runs in a linked owned task with a five-second bound. The host derives
+the path under the canonical owner-only session root, refuses symlinked or
+other-writable child directories and non-private/non-regular journal/lock files,
+and acquires the existing native child lock. It reads at most 16 MiB, rejects
+incomplete/invalid/duplicate-key or oversized records, verifies the exact parent/
+request/call origin and restores `Usage` with the actual child ID. Every admitted
+request must retain that parent/request scope. Busy, missing, oversized, malformed
+or unrelated journals yield fixed failed outcomes, never an empty successful page.
+No tail repair, child resume, model request or recursive traversal occurs.
+
+At most 10,000 registered children and 10,000 successful initial child/discovery
+snapshots are supported per parent. Discovery refuses explicitly beyond its
+index limit. Read/shape/timeout failures remain visible in receipts. Recovery
+reconstructs the parent index and snapshot registry, validates cached discovery,
+resolves each original intent physically and compares each successful child page
+against its frozen accounting prefix before parent tail repair, diagnostics or
+handoff. Later child appends remain outside the old prefix. Missing/changed/busy
+sources refuse recovery; cached results are never silently refreshed or replayed.
+This validates accounting provenance, not all child conversation semantics or a
+cryptographically signed audit log. Protect both parent and child journals.
+
+### Extended read allowance
+
 The separately negotiated `host.usage.scan` capability requires `host.usage` and
-`host.actions`. Only `usage.read` may occupy steps 17 through 10,000 of an
+`host.actions`. Only the three accounting-read operations may occupy steps 17 through 10,000 of an
 invocation. Other operations still require their individual capabilities and
 remain within the first 16 steps; interleaved reads consume those steps too.
 Invocation receipts and restore validate the same per-operation bound, including

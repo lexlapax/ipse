@@ -28,7 +28,12 @@ or new dependency. A shared workspace is not filesystem isolation.
 
 Parent `tool_started` intent is durable before starting delegation work. Before
 prompting the child, the worker registers it synchronously against the parent's
-active job reference. The parent records the child journal ID and relationship.
+active job reference. The parent records the child journal ID and exact origin
+call ID, including the selected parallel suffix. Registration checks that origin
+against the active tool; the child header and request accounting retain the same
+parent/request/call relationship. The separately granted
+[child-accounting reader](usage-accounting.md#registered-child-accounting) checks
+that binding without running the child or exposing its conversation.
 A stale registration fails before inference or tools. Required child approvals
 return through the parent UI with the child ID, tool name, and full arguments.
 Each decision binds to the exact child/reference/arguments and is journaled;

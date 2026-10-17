@@ -180,10 +180,12 @@ defmodule Ipse.Extensions.Actions do
     {:ok, catalog} = Ipse.Extensions.Catalog.from_metadata(metadata)
     :ok = Ipse.Extensions.Services.validate_metadata(Map.get(metadata, "extensions", []), catalog)
     {:ok, usage_reads} = Ipse.Extensions.UsageRead.restore(events)
+    {:ok, child_usage} = Ipse.Extensions.ChildUsage.restore(events)
 
     initial = %{
       parent: nil,
       usage_reads: usage_reads,
+      child_usage: child_usage,
       action: nil,
       step: 0,
       seen: MapSet.new(),

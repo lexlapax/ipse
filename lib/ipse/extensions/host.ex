@@ -291,6 +291,16 @@ defmodule Ipse.Extensions.Host do
 
   defp execute_action(context, _intent, %{"op" => "usage.read"}), do: context.usage_read
 
+  defp execute_action(context, _intent, %{"op" => op})
+       when op in ~w(usage.children usage.child.read) do
+    task = Task.async(fn -> Ipse.Extensions.ChildUsage.execute(context.child_usage) end)
+
+    case Task.yield(task, 5000) || Task.shutdown(task, :brutal_kill) do
+      {:ok, result} -> result
+      _ -> {:failed, %{"code" => "usage_child_timeout"}}
+    end
+  end
+
   defp execute_action(context, intent, %{"op" => "history.read"}) do
     task = Task.async(fn -> Ipse.Extensions.History.execute(context, intent) end)
 
