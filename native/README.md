@@ -165,7 +165,8 @@ and [aarch64/generic syscalls](https://github.com/torvalds/linux/blob/v6.12/incl
 
 ### Native enforcement tests
 
-The default `mix test` excludes `:native_sandbox` and `:macos_sandbox` tests. Its untagged
+The default `mix test` excludes `:native_sandbox`, `:macos_sandbox` and
+`:macos_filesystem` tests. Its untagged
 capability test distinguishes successful explicit execution from fail-closed
 unavailability; that test alone is not evidence that enforcement was exercised.
 Run actual adversarial OS tests on a suitable Linux host with:

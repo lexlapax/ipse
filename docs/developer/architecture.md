@@ -191,8 +191,14 @@ without execution so the model can reconsider them. See the
 [workspace context contract](workspace-context.md), including shell-scope limits.
 
 Reads and mutations use workspace-relative tools. Path checks reject symlinks,
-workspace escapes, and writes under `.git`; these checks are not race-proof
-against a hostile process changing paths concurrently. Interactive chat asks
+workspace escapes, and writes under reserved `.git` components. `Tools.path_key/1`
+compares canonical Unicode normalization and case-folded names after removing
+format controls, combining grapheme joiners and variation selectors; the same key
+protects parallel child mutation claims. These comparisons conservatively reject
+aliases even on case-sensitive volumes and never rewrite execution/approval paths.
+They address case/normalization aliases, not arbitrary filesystem equivalence or
+concurrent path replacement. See [delegation](delegation.md) for the shared-workspace
+boundary. Interactive chat asks
 before writes and shell execution. Headless mode denies mutations unless
 `--yes` is supplied. Approval controls agent-directed calls only. Shell
 commands default to the user's OS permissions. Explicit `--sandbox native`

@@ -73,6 +73,12 @@ defmodule Ipse.PackageVerifier do
 
     expression = """
     workspace = #{inspect(workspace)}
+    File.write!(Path.join(workspace, ".git/protected"), "keep")
+    {:error, _} = Ipse.Tools.execute("write", %{"path" => ".GIT/new", "content" => "x"}, %{cwd: workspace})
+    {:error, _} = Ipse.Tools.execute("edit", %{"path" => ".GiT/protected", "old" => "keep", "new" => "changed"}, %{cwd: workspace})
+    "keep" = File.read!(Path.join(workspace, ".git/protected"))
+    false = File.exists?(Path.join(workspace, ".git/new"))
+    true = Ipse.Tools.path_key("CAF" <> <<0xC3, 0x89>> <> ".txt") == Ipse.Tools.path_key("cafe" <> <<0xCC, 0x81>> <> ".txt")
     {:unknown, _} = Ipse.Runner.run(~s(printf effected > effect; kill -KILL "$PPID"), workspace)
     "effected" = File.read!(Path.join(workspace, "effect"))
     {:error, _} = Ipse.Runner.run("true", Path.join(workspace, "missing"))
@@ -99,7 +105,7 @@ defmodule Ipse.PackageVerifier do
     run!(launcher, ["eval", expression], release, env, "recovery and sandbox authority")
 
     IO.puts(
-      "PASS: installed shell uncertainty, one-use historical results and project sandbox floor."
+      "PASS: installed shell uncertainty, historical results, sandbox floor and metadata aliases."
     )
   end
 

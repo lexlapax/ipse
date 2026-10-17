@@ -5,6 +5,20 @@ defmodule Ipse.Tools do
   @file_limit 1_048_576
   @scan_limit 8_388_608
 
+  @doc false
+  def path_key(path) when is_binary(path) do
+    if String.valid?(path) do
+      path
+      |> String.normalize(:nfd)
+      |> :string.casefold()
+      |> IO.chardata_to_string()
+      |> String.replace(~r/[\p{Cf}\x{034F}\x{FE00}-\x{FE0F}\x{E0100}-\x{E01EF}]/u, "")
+      |> String.normalize(:nfc)
+    end
+  end
+
+  def path_key(_), do: nil
+
   def definitions(sandbox \\ :off) do
     [
       tool(
@@ -161,7 +175,7 @@ defmodule Ipse.Tools do
             not String.starts_with?(expanded, String.trim_trailing(cwd, "/") <> "/") ->
           {:error, "path is outside the workspace"}
 
-        mutation and ".git" in Path.split(expanded) ->
+        mutation and Enum.any?(Path.split(expanded), &(path_key(&1) == ".git")) ->
           {:error, "writing .git paths is forbidden"}
 
         true ->

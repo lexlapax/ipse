@@ -116,12 +116,25 @@ two minutes of active time per child, and 16 KiB per child result bound aggregat
 work/results. Results are assembled in input order.
 
 The parent serializes child mutation decisions/effects and retains per-group
-normalized-path claims. Distinct write/edit targets may proceed after separate
-approvals; cross-child overlap is denied. Shell gets a wildcard claim, preventing
-another child's writes/shell, including a shell after a prior file claim.
-Parallel file tools reject existing hardlinks. This does not isolate reads from
-writes, other sessions, detached descendants, or hostile path replacement.
-It uses ordinary OTP tasks/messages with no new package or framework.
+path claims using `Tools.path_key/1`. After expansion against the workspace, the
+key applies canonical Unicode normalization and case folding, removing format
+controls, combining grapheme joiners and variation selectors. Cross-child
+equivalence is denied even where the underlying filesystem distinguishes those
+spellings. Original paths remain intact in approvals, journals and execution.
+The file-tool metadata guard uses the same comparison for reserved `.git`
+components. OTP's Unicode functions provide the comparison without a dependency
+or an approval-time filesystem probe.
+
+This conservative policy addresses filesystem-dependent case and normalization
+behavior, described in Apple's [APFS guide](https://developer.apple.com/library/archive/documentation/FileManagement/Conceptual/APFS_Guide/FAQ/FAQ.html).
+It is not an exhaustive filesystem identity test. Hosted Mac checks establish
+actual alias inode identity before asserting protection; portable fixtures cover
+conservative denial on other volumes. Distinct write/edit keys may proceed after
+separate approvals. Shell gets a wildcard claim, preventing another child's
+writes/shell, including a shell after a prior file claim. Parallel file tools
+reject existing hardlinks. Reads, other sessions, detached descendants and hostile
+path replacement remain outside this shared-workspace conflict policy. It uses
+ordinary OTP tasks/messages with no new package or framework.
 
 An unknown child outcome closes its sibling before returning an unknown group
 result. Parent cancellation/death stops all children and preserves unknown-effect

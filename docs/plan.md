@@ -151,10 +151,13 @@ now reproduced with a real lock; its write-ahead repair passed source/native/
 demo/package/installed and hosted Linux/macOS checks. Uncertain-tool-outcome and
 duplicate-ID recovery repairs also passed those local and hosted gates. The owned
 journal writer, protected ledger-state cache and linear usage-admission repair
-passed source/native/demo/package/installed checks and Btrfs timing probes;
-hosted verification remains open, with startup/retention and prefix-check costs
-explicit. Filesystem-alias work and other
-source-consistent findings require their own evidence and repairs.
+passed source/native/demo/package/installed checks, Btrfs timing probes and the
+hosted Linux/macOS gates at `200640e`. Startup/retention and prefix-check costs
+remain explicit. Filesystem alias regressions now reproduce the metadata/parallel-claim
+gaps; conservative Unicode comparisons pass focused/full native-inclusive local
+checks, the demo, package verification and both installed proofs. Actual hosted
+Mac alias verification remains open. Additional speculative
+concerns and omitted coverage require their own evidence and dispositions.
 The security scan and P25 execution remain behind triage and applicable
 repairs; omitted architectural surfaces need a follow-up pass.
 Read-only Security Cloud access checks found the repository and available scan

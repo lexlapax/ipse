@@ -27,7 +27,7 @@ jobs:
         run: |
           rustc --edition=2021 --test native/ipse-macos-sandbox.rs -o "$RUNNER_TEMP/ipse-macos-policy-test"
           "$RUNNER_TEMP/ipse-macos-policy-test"
-          mix test test/macos_sandbox_test.exs test/stdio_runner_test.exs --include macos_sandbox
+          mix test test/macos_sandbox_test.exs test/stdio_runner_test.exs test/macos_filesystem_test.exs --include macos_sandbox --include macos_filesystem
       - run: ./bin/ipse demo
       - run: ./scripts/package.sh
       - run: elixir scripts/verify-package.exs dist/ipse-*.tar.gz

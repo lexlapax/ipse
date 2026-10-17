@@ -22,4 +22,4 @@ System.put_env("HOME", operator_home)
 System.put_env("IPSE_HOME", Path.join(operator_home, ".ipse"))
 System.at_exit(fn _ -> File.rm_rf!(operator_home) end)
 
-ExUnit.start(exclude: [:native_sandbox, :macos_sandbox])
+ExUnit.start(exclude: [:native_sandbox, :macos_sandbox, :macos_filesystem])

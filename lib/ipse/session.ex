@@ -2962,7 +2962,9 @@ defmodule Ipse.Session do
   end
 
   defp delegated_target(s, name, args) when name in ["write", "edit"] do
-    if is_binary(args["path"]), do: Path.expand(args["path"], s.cwd), else: "*"
+    if is_binary(args["path"]),
+      do: Tools.path_key(Path.expand(args["path"], s.cwd)) || "*",
+      else: "*"
   end
 
   defp delegated_target(_, _, _), do: "*"

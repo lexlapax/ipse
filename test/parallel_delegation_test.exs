@@ -43,7 +43,14 @@ defmodule Ipse.ParallelDelegationTest do
               {:ok, %{"role" => "assistant", "content" => content}, %{}}
 
             _ ->
-              path = if config.mode == :conflict, do: "same.txt", else: "child-#{index}.txt"
+              path =
+                case config.mode do
+                  :conflict -> "same.txt"
+                  :case_conflict -> Enum.at(["Case.txt", "case.txt"], index)
+                  :normalization_conflict -> Enum.at(["café.txt", "cafe\u0301.txt"], index)
+                  :format_conflict -> Enum.at(["memory.txt", "me\u200Bmory.txt"], index)
+                  _ -> "child-#{index}.txt"
+                end
 
               {:ok,
                %{
@@ -321,6 +328,22 @@ defmodule Ipse.ParallelDelegationTest do
     assert File.read!(Path.join(ctx.root, "same.txt")) == args["content"]
     {:ok, events} = Journal.load(ctx.state, Session.info(pid).id)
     assert Enum.any?(events, &(&1["decision"] == "conflict_denied"))
+  end
+
+  test "case, normalization and ignorable variants cannot claim a sibling's mutation target",
+       ctx do
+    for mode <- [:case_conflict, :normalization_conflict, :format_conflict] do
+      {pid, _} = start(ctx, mode)
+      :ok = Session.prompt(pid, "Synthetic aliased child targets")
+      approve_group(pid)
+      assert_receive {:ipse, ^pid, {:approval, ref, _name, args}}, 3000
+      :ok = Session.approve(pid, ref, true)
+      assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+      assert File.read!(Path.join(ctx.root, args["path"])) == args["content"]
+      {:ok, events} = Journal.load(ctx.state, Session.info(pid).id)
+      assert Enum.any?(events, &(&1["decision"] == "conflict_denied"))
+      assert :ok = Session.close(pid)
+    end
   end
 
   test "cancellation stops both active children and resume never starts them again", ctx do

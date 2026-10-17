@@ -94,10 +94,14 @@ budget, at most twelve child model calls in total. Serial delegation remains
 available. The concurrency setting is saved and must match on resume.
 
 Only one child mutation executes at a time. Approved write/edit targets are
-claimed by that child for the group; another child's request for the same
-normalized path is denied. Shell claims the whole workspace and conflicts with
-every other child's mutation in either ordering. Parallel children cannot mutate
-hardlinked files. Reads/model work may overlap writes and observe changing data;
+claimed by that child for the group. Comparison folds Unicode case and canonical
+normalization and removes format controls, combining grapheme joiners and variation
+selectors. Another child's request for an equivalent target is denied, including
+on a case-sensitive filesystem where the spellings could name distinct files.
+Approval arguments and the actual path retain their original spelling. Shell
+claims the whole workspace and conflicts with every other child's mutation in
+either ordering. Parallel children cannot mutate hardlinked files.
+Reads/model work may overlap writes and observe changing data;
 this is not filesystem isolation or protection against unrelated processes or
 hostile path replacement. Conflict denials are journaled as `conflict_denied`
 by the parent and denied in the child's own journal.

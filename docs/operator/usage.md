@@ -138,9 +138,12 @@ With the default `--sandbox off`, shell execution is trusted local execution. Co
 your user permissions. The helper clears common provider credential environment
 variables, but it cannot prevent authorized commands from reading your files,
 credentials on disk, or other ambient secrets. Use a disposable workspace/container
-when appropriate. File tools reject symlinks and workspace escapes; writes to
-`.git` are rejected. These path checks are not a defense against a hostile process
-concurrently replacing filesystem entries.
+when appropriate. File tools reject symlinks and workspace escapes. Write/edit
+reserve `.git` path components across Unicode case and canonical normalization,
+also ignoring format controls, combining grapheme joiners and variation selectors.
+This conservatively rejects spellings such as `.GIT` even on case-sensitive
+filesystems. It does not change shell permissions. These checks do not defend
+against a hostile process concurrently replacing filesystem entries.
 
 ### Shell policy
 

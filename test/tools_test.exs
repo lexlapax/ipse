@@ -58,6 +58,31 @@ defmodule Ipse.ToolsTest do
     assert {:error, _} = Tools.execute("read", %{"path" => "linked/file"}, context)
   end
 
+  test "Git metadata names remain reserved across case and ignorable format variants", c do
+    for name <- [".GIT", ".GiT", ".g\u200bit", ".git\uFE0F"] do
+      directory = Path.join(c.cwd, name)
+      File.mkdir_p!(directory)
+      File.write!(Path.join(directory, "protected"), "keep")
+
+      assert {:error, _} =
+               Tools.execute(
+                 "write",
+                 %{"path" => name <> "/forbidden", "content" => "x"},
+                 c.context
+               )
+
+      assert {:error, _} =
+               Tools.execute(
+                 "edit",
+                 %{"path" => name <> "/protected", "old" => "keep", "new" => "changed"},
+                 c.context
+               )
+
+      assert File.read!(Path.join(directory, "protected")) == "keep"
+      refute File.exists?(Path.join(directory, "forbidden"))
+    end
+  end
+
   test "bounds a large single line and returns valid UTF-8", %{cwd: cwd, context: context} do
     File.write!(Path.join(cwd, "large"), String.duplicate("€", 30_000))
     assert {:ok, text} = Tools.execute("read", %{"path" => "large"}, context)
