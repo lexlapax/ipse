@@ -533,7 +533,7 @@ The installed lab adds domain deduplication, bounded catch-up, scopes, versions,
 question/workflow continuation, private tool/text consumers and pressure closure,
 without core changes or a release rebuild. A supervised extension-only trial also
 ran with separate read-only review. The [coverage audit](#supported-lifecycle-coverage)
-defines the stable seams; hosted verification of the current lab remains open. These checks
+defines the stable seams; hosted Linux/macOS verification passed at `de073ba`. These checks
 do not establish production graph quality. P25 owns researched
 entity extraction, graph storage/retrieval and quality comparisons.
 

@@ -27,7 +27,7 @@ the next feature sequence on 2026-10-15:
 | [P19](#p19-long-session-diagnosis-and-recovery) | Diagnose retained-context limits and improve explicit recovery | Complete within documented scope; Linux and hosted Mac checks passed |
 | [P20](#p20-repeatable-supervised-self-development) | Reusable supervised development/review skill and evidence | Complete: fixtures, hosted checks and supervised live use; limitations recorded |
 | [P21](#p21-larger-self-development-trial-on-serenity) | Larger supervised trial with independent Mac verification | Complete within supervised scope; bounded review and Linux/hosted Mac checks passed |
-| [P22](#p22-extension-scaffold-and-lifecycle-hooks) | Typed extension scaffold, lifecycle hooks and runtime observability | In progress; implemented foundation and remaining completion gates listed below |
+| [P22](#p22-extension-scaffold-and-lifecycle-hooks) | Typed extension scaffold, lifecycle hooks and runtime observability | Complete: lifecycle audit, independent installed proof, supervised trial and hosted Linux/macOS checks |
 | [P23](#p23-usage-cost-reporting-and-budget-controls) | Usage/cost extensions and host budget admission | Authorized; follows P22 accounting foundation |
 | [P24](#p24-voice-and-realtime-media) | Voice extensions and owned realtime/media capabilities | Authorized; follows owned stream/provider foundation |
 | [P25](#p25-optional-knowledge-extensions) | Default-off working/long-term memory, research, graph and RAG | Authorized; research gates precede implementation selection |
@@ -995,7 +995,8 @@ remain intact. This is separate from the P22 extension scaffold.
 
 ## P22: extension scaffold and lifecycle hooks
 
-**In progress.** The operator authorized P22–P25 on 2026-10-16. P22 establishes
+**Complete within the documented SDK contract at `de073ba`.** The operator
+authorized P22–P25 on 2026-10-16. P22 establishes
 the generic extension APIs and verifies that domain features can use them
 without feature-specific core dispatch. New domain behavior, memory,
 presentation and optional workflows should use these APIs; core retains
@@ -1042,10 +1043,10 @@ persistent use. They are design walkthroughs, not execution proofs.
 
 The [verification guide](developer/testing.md#current-evidence-and-next-checks)
 distinguishes source fixtures, extracted-package baselines, hosted platform
-checks and live trials. The independent lab establishes exercised extension-only
-seams; it does not complete P22 or establish production knowledge quality.
+checks and live trials. The combined evidence below completes P22; it does not
+establish production knowledge quality or implement P23–P25 capabilities.
 
-### Remaining completion work
+### Completion evidence and future capabilities
 
 The [shared lifecycle audit](developer/lifecycle-events.md#supported-lifecycle-coverage)
 records exact private views, actual causal links, legacy absences and unsupported
@@ -1059,10 +1060,11 @@ assertions in source and an unchanged installed Linux release. A frozen release
 also authored a two-file extension change in a separate worktree under individual
 edit approval, followed by a separate read-only review and supervisor verification.
 Both shipped hooks ran in both live sessions; idle resume changed neither journals
-nor source. The remaining gate is hosted verification of the current lab and
-canonical bundle-path correction: `2874da0` passed Ubuntu, while macOS passed
-source/native/ordinary package checks but the new verifier mistook `/private/var`
-for a different runtime path. The corrected verifier still rejects system tools.
+nor source. [Hosted run `39037702166`](https://github.com/lexlapax/ipse/actions/runs/39037702166)
+passed every applicable Linux/macOS build, format, compile, test, demo, ordinary
+package and installed-lab step, plus macOS native/default experimental enforcement.
+It verifies the canonical bundle-path correction after `2874da0` mistook macOS's
+`/private/var` alias for a different runtime. System tools remain rejected.
 Any future core change requires a new candidate freeze and compatibility evidence;
 do not extend this historical proof by assertion. See the
 [delivery sequence and coverage gate](developer/extensions.md#delivery-sequence-and-extension-only-proof)
@@ -1073,6 +1075,16 @@ nested interactive/effectful service contracts remain explicit future
 enhancements. Current value-service replies cannot acquire those capabilities.
 Optional cost/budget policy is P23; voice/realtime is P24; researched default-off
 knowledge extensions are P25. P25 can proceed independently of voice.
+
+| Acceptance | Completion evidence |
+| --- | --- |
+| 1 — typed lifecycle and delivery | Supported-boundary audit, exact declaration refusals, private/metadata separation, physical source validation, bounded feeds and durable/ephemeral identity fixtures |
+| 2 — SDK, artifacts, trust and usage | Inert import, immutable registry/runtime/config pins, worker ownership, child subset/expiry/missing-artifact fixtures, canonical request accounting and acknowledged text channel |
+| 3 — two shipped hooks | Credential-free source/package examples and both hooks in the live author/reviewer sessions; original/native integrity and inert resume checked |
+| 4 — extension-only memory/workflow proof | Seven separately compiled artifacts, 41 source/installed assertions, temporary CLI and persistent selection, deduplication/catch-up/forget/conflict; no core/native change or archive rebuild |
+| 5 — observability/developer controls | Off/local/export policy, bounded owned sinks and aggregate ring, immediate stop, synthetic tracing/conformance and documented source-debugger limits; no mandatory broker/exporter |
+| 6 — failure/recovery/platform/trial | Full Linux native suite (632 passed, 14 macOS exclusions), both hosted platforms including installed lab, version/import/lease/approval/failure fixtures and separately reviewed supervised trial |
+| 7 — documentation/dependencies/publication | Integrated operator/developer guides, public coverage/evidence records, dependency reuse inventory and checked links; verified increments committed and pushed through `de073ba` |
 
 Acceptance:
 

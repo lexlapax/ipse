@@ -155,7 +155,7 @@ operator grants, not authorize egress or widen memory access. Unsupported
 operations refuse instead of hiding unaccounted work inside a hook. Use the
 independent [installed-package evidence](extension-proof.md) to assess the exercised
 contracts alongside the [lifecycle audit](lifecycle-events.md#supported-lifecycle-coverage)
-and supervised trial; hosted checks remain the P22 gate. Production graph queries, embeddings, database installation
+and supervised trial; hosted checks passed. Production graph queries, embeddings, database installation
 and research-engine algorithms and measurements belong to P25.
 
 ## P25 delivery and acceptance

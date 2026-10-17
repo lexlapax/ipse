@@ -5,7 +5,7 @@ The extension lab exercises domain behavior against candidate core
 entirely under [examples/extension-lab](../../examples/extension-lab/README.md),
 with an integration test and package-verification workflow. No domain feature
 branch, runtime module, native helper change or project dependency is required.
-This is concrete SDK coverage, not completion of P22 or selection of P25 engines.
+This is one layer of P22 completion evidence, not selection of P25 engines.
 
 ## Build and execution boundary
 
@@ -97,10 +97,10 @@ macOS's `/var` and `/private/var` aliases must not be mistaken for a system tool
 Hosted proof runs on both workflow jobs. See
 [current evidence](testing.md#current-evidence-and-next-checks) for actual results.
 The candidate source freeze is independently reviewable with
-`git diff 3b0ef78 -- lib native`; future core-feature changes need their own
+`git diff 3b0ef78 de073ba -- lib native`; future core-feature changes need their own
 compatibility checks rather than pretending this historical reference is current.
 
-## Supervised trial and remaining P22 gates
+## Supervised trial and completion scope
 
 The frozen release authored the read-only stats command in a separate candidate
 worktree using explicit ChatGPT subscription `gpt-6.1-sol`/high. Three exact edits
@@ -113,10 +113,13 @@ idle resume. No core edit or release rebuild occurred. The
 live authoring/review from synthetic runtime verification.
 
 The [lifecycle coverage audit](lifecycle-events.md#supported-lifecycle-coverage)
-identifies stable and unsupported seams. Hosted verification of the current lab
-and bundle-path correction remains the P22 completion gate. Unsupported stages, custom
+identifies stable and unsupported seams. Hosted Linux/macOS verification of the
+current lab and bundle-path correction passed at `de073ba`; the
+[actual evidence](testing.md#current-evidence-and-next-checks) closes P22's gates.
+Unsupported stages, custom
 event publication, concurrent effectful jobs, remote installation and media stay
 explicit negotiated enhancements, not silently available callbacks. The
-[plan](../plan.md#p22-extension-scaffold-and-lifecycle-hooks) retains those gates.
+[plan](../plan.md#p22-extension-scaffold-and-lifecycle-hooks) records the completion
+scope and future capabilities.
 P23 supplies accounted model work/budgets; P24 supplies media; P25 supplies
 researched memory/research/graph/RAG algorithms and adapters.

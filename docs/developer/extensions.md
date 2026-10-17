@@ -2,7 +2,8 @@
 
 This guide records P22's design rationale, framework comparison and SDK/core
 coverage gates. The research was reviewed on 2026-10-16 against `3ad33b3`;
-implementation was subsequently authorized and is in progress. Proposed
+implementation was subsequently authorized and its P22 gates passed at `de073ba`.
+Proposed
 callbacks and examples below are design targets unless an implemented contract
 is linked here. This is not a frozen complete SDK or proof that every future
 feature can avoid core changes.
@@ -28,8 +29,8 @@ Current contracts are organized by responsibility:
 
 The [lifecycle coverage audit](lifecycle-events.md#supported-lifecycle-coverage)
 records supported private/causal seams, and the independent lab includes a
-supervised extension-only authoring/review trial. Hosted verification of the
-current lab remains open. The proof covers exercised domain seams, not the entire
+supervised extension-only authoring/review trial. Hosted Linux/macOS verification
+of the current lab passed. The proof covers exercised domain seams, not the entire
 SDK. Synthetic dispatcher tracing and source-debugging
 boundaries are documented under observability. The
 [plan](../plan.md#p22-extension-scaffold-and-lifecycle-hooks) owns current status;
@@ -82,7 +83,7 @@ Callback contexts are purpose-built JSON values, never the entire Session struct
 credential configuration, environment or provider-native data. Generic lifecycle
 envelopes provide source identity, versions and distinct metadata/private views
 under the supported [event contracts](lifecycle-events.md). Unsupported types or
-delivery modes refuse; the broader taxonomy remains a coverage gate.
+delivery modes refuse; the coverage audit explicitly identifies unsupported stages.
 Elixir [behaviours](https://elixir.hexdocs.pm/Module.html#module-behaviour) supply
 callback contracts; [Task.Supervisor](https://elixir.hexdocs.pm/Task.Supervisor.html)
 supplies owned work. Runtime return values still require host validation.
@@ -101,8 +102,8 @@ strings. Do not create host atoms from arbitrary IDs or evaluate project `.exs`.
 
 The [independent lab](extension-proof.md) proves local separately built Elixir
 worker artifacts can be imported, configured and used without rebuilding Ipse.
-Its synthetic memory/workflow proof leaves production algorithms and the remaining
-P22 completion gates open. A downloaded package manager,
+Its synthetic memory/workflow proof leaves production algorithms to P25 and
+unsupported SDK capabilities to explicit enhancements. A downloaded package manager,
 marketplace, signing infrastructure and automatic builder can follow later using
 the same artifact/activation contracts. A reviewed custom release remains an
 optional distribution route, rather than the only way to add an extension.
@@ -510,7 +511,7 @@ service is permitted.
    through a synthetic subscriber using only the frozen SDK, including background
    indexing versus awaited recall and no-replay recovery.
    The [current lab evidence](extension-proof.md) records the candidate freeze,
-   41 source/installed assertions, supervised trial and remaining platform gate; it does
+   41 source/installed assertions, supervised trial and passed platform gates; it does
    not certify unexercised contracts or production algorithms.
 4. **P22D — observability and compatibility:** bounded local lifecycle sink,
    transform/event timing and drop counters; documented opt-in local BEAM tracing;

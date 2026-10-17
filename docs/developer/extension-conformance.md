@@ -156,5 +156,5 @@ production services, real account providers, all crash schedules or compatibilit
 with every runtime. The [independent lab](extension-proof.md) uses this checker
 for temporary CLI selection, then a separate operator verifier for its broader
 domain assertions. Its supervised trial and the lifecycle audit are recorded;
-hosted verification remains the [P22 gate](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
+hosted Linux/macOS verification passed. See [P22's completion scope](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
 See [verification scope](testing.md#current-evidence-and-next-checks).

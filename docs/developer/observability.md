@@ -264,7 +264,7 @@ that private channel. The [independent lab](extension-proof.md) uses synthetic
 its domain workers receive no host PID or private state. The
 [coverage audit](lifecycle-events.md#supported-lifecycle-coverage) defines current
 private/causal seams; [P22 status](../plan.md#p22-extension-scaffold-and-lifecycle-hooks)
-tracks remaining hosted verification.
+records passed hosted verification and the supported scope.
 
 Twenty diagnostic fixtures cover off parity, privacy/source identity, stop, export scope,
 blocked/invalid sinks, owner-death VM/slot cleanup, rotation/aggregate bounds,

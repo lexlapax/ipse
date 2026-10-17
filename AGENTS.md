@@ -43,8 +43,9 @@ P22's selected direction is extension-first feature development. Prefer its
 implemented, documented extension APIs for new domain behavior, memory,
 presentation and optional workflows. Reserve core changes for host invariants,
 correctness and explicitly reviewed extension-API gaps; do not bypass approvals or execute
-untrusted code to avoid a necessary core change. The foundation is implemented
-in part; remaining contracts and proof gates are tracked in the plan. Earlier
+untrusted code to avoid a necessary core change. P22's documented foundation and
+proof gates are complete; foreseen cost, media and knowledge capabilities remain
+tracked under P23–P25. Earlier
 milestones did not require mechanisms unavailable when they shipped.
 
 ## Start here

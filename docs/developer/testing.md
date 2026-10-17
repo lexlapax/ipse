@@ -206,6 +206,7 @@ and [runtime identity](#p1-runtime-identity-2026-10-15).
 
 | Checkpoint | Evidence | Scope and remaining limits |
 | --- | --- | --- |
+| P22 hosted completion `de073ba` | [Ubuntu/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39037702166) passed every applicable step: build, format, compile, tests, demo, ordinary packages and independent installed extension lab; macOS native and default experimental sandbox enforcement passed | Actual job/step conclusions inspected. Includes canonical bundle-path correction and 41-assertion lab; the stronger macOS escaped-descendant lifetime diagnostic remains an acknowledged limit |
 | Supervised extension-only change, Linux Serenity, 2026-10-17 | Frozen installed release authored operator-only stats in two files under three exact edit approvals; a fresh read-only review found no actionable issue in scope; 41 source/installed assertions, focused integration and all 632 native-suite tests passed (14 macOS exclusions), including symlinked temporary-root verification | Actual ChatGPT subscription `gpt-6.1-sol`/high, eight author and five reviewer requests; both shipped hooks and inert idle resume verified. Runtime assertions use synthetic data/model, not live graph quality |
 | Independent extension lab, Linux Serenity, 2026-10-17 | Seven artifacts compiled separately; 33 source and installed-release assertions passed, including real temporary CLI selection; eight focused tests and 632 native-suite tests passed with 14 macOS exclusions | Candidate core `3b0ef78` unchanged under `lib/`/`native/`; host BEAM bytes unchanged and domain modules never loaded in host. Synthetic extraction/corpus/model only; terminal expected service crash leaves cleanup unconfirmed and `safe_to_continue: false` |
 | Ephemeral text sources, Linux Serenity, 2026-10-17 | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters, 25 focused fixtures and 631 native-suite tests with 14 macOS exclusions passed; real dual-version source SDK fixture, CLI help and isolated demo passed | Negotiated embedded/independent-worker delivery, unchanged v1, shared range identity with unequal chunking, UTF-8/cancelled-pending positions, idle closure, malformed bindings, no-effect replies and inert resume; synthetic provider only |
@@ -216,7 +217,7 @@ and [runtime identity](#p1-runtime-identity-2026-10-15).
 | Explicit history, Linux Serenity, 2026-10-17 | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters, eleven focused history fixtures and 578 native-suite tests with 14 macOS exclusions passed | Own-session fixed ranges, separate private grants, budget gaps, source/contiguous-span validation, approval/question boundaries and inert resume; synthetic provider only |
 | Hosted child-outcome baseline `6b234c6` | [Ubuntu/macOS matrix, attempt 2](https://github.com/lexlapax/ipse/actions/runs/39031441379/attempts/2) passed all applicable steps: build, format, compile, tests, demo and extracted packages; macOS native/default experimental sandbox steps passed | Actual job/step conclusions inspected. Initial macOS concurrent-ring drain wait failed; unchanged failed-job retry passed. This baseline precedes v2 text sources and does not prove stronger containment or drain latency |
 | Hosted v2-text candidate `3b0ef78` | [Matrix run](https://github.com/lexlapax/ipse/actions/runs/39032443735) ended with Ubuntu success and macOS test failure | The older serial MCP batch test waited five seconds despite discovery and two connections each allowing ten seconds. Its aggregate assertion now allows 35 seconds, retaining call-order/result/cleanup checks; macOS tests passed at the next baseline below |
-| Hosted lab baseline `2874da0` | [Matrix run](https://github.com/lexlapax/ipse/actions/runs/39036899179) passed Ubuntu including the installed lab; macOS passed tests, native enforcement, demo and ordinary package verification, then failed the new installed-lab path assertion | macOS resolved `/var/.../release/erts-.../bin/erl` through `/private/var`; the verifier incorrectly compared lexical prefixes. Current code compares canonical bundled executable paths, with Linux symlink-root verification passed; actual macOS confirmation remains pending |
+| Hosted lab baseline `2874da0` | [Matrix run](https://github.com/lexlapax/ipse/actions/runs/39036899179) passed Ubuntu including the installed lab; macOS passed tests, native enforcement, demo and ordinary package verification, then failed the new installed-lab path assertion | macOS resolved `/var/.../release/erts-.../bin/erl` through `/private/var`; the verifier incorrectly compared lexical prefixes. Canonical bundled executable comparison passed Linux symlink-root and hosted macOS verification at `de073ba` |
 | Source/extracted compatibility | Credential-free demo, bundled extension/accounting/dual-version-text/lifecycle/local-ring/conformance/history/feed/tool-view fixtures, traced conformance CLI and serial/parallel child demos passed in Linux glibc-2.44 package verification with matching OTP 29.1.1 notices and utility-only PATH | APIs work without a system toolchain; source-debugger modules/debug information are absent. Primitive tool-view positions are synthetic. The separate lab adds installed private tool/text delivery and domain catch-up without changing archive SHA-256 `93f88a3ded9666e0b2c083699932b972ad36d538614c5ed54420b253b140196d` |
 | Provider acceptance | [Explicit live provider checks](#live-provider-acceptance-follow-up-2026-10-15) | Recorded account/model/platform combinations only; fixtures do not establish billing, hardware or arbitrary-model support |
 
@@ -380,16 +381,16 @@ inference stays unstarted, cleanup remains unconfirmed and no later domain
 scenario runs. Passing its assertions does not permit continued effects.
 Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4
 formatters, CLI help and isolated credential-free demo passed for this increment.
-Documentation review checked 96 Markdown documents and 1179 local file/heading
+Documentation review checked 96 Markdown documents and 1180 local file/heading
 links with no errors.
 
-The [lifecycle audit](lifecycle-events.md#supported-lifecycle-coverage) and supervised
-trial below address those P22 gates; hosted verification of the current lab remains
-open. Synthetic dispatcher tracing and documented source-debugging boundaries are
+The [lifecycle audit](lifecycle-events.md#supported-lifecycle-coverage), supervised
+trial below and hosted verification of the current lab complete P22's gates.
+Synthetic dispatcher tracing and documented source-debugging boundaries are
 implemented; no live GUI/editor debugger trial is claimed. The full
 [event/graph coverage gate](lifecycle-events.md#knowledge-graph-acceptance-proof)
-includes primitive failures and independent domain evidence; neither layer alone
-completes it. P23–P25 and the final license transition remain open; the [plan](../plan.md)
+combines primitive failures, independent domain evidence and reviewed live use.
+P23–P25 and the final license transition remain open; the [plan](../plan.md)
 owns acceptance/status.
 
 ### Supervised extension-only trial (2026-10-17)

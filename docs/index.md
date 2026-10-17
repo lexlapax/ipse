@@ -40,7 +40,7 @@ start. Use the guides below for operation, development, and project context.
 | [Extension architecture](developer/extensions.md) | P22 comparison, SDK/core boundary, lifecycle/trust/versioning and extension-only delivery gates |
 | [Extension artifact contract](developer/extension-artifacts.md) | Inert manifest/store API, pinned identity and explicit independent worker SDK/lifecycle boundaries |
 | [Session extension hooks](developer/extension-hooks.md) | Implemented prompt/presentation transforms, built-in registry, ownership, durable projections and no-replay recovery |
-| [Lifecycle events and subscriptions](developer/lifecycle-events.md) | Shared source identity, runtime epochs/waits, committed-fact metadata, prompt/answer delivery and remaining feeds/graph acceptance cases |
+| [Lifecycle events and subscriptions](developer/lifecycle-events.md) | Supported lifecycle taxonomy, shared sources, metadata/private delivery, causal/recovery limits and graph acceptance evidence |
 | [Prompt/answer subscription contract](developer/extension-events.md) | Inert declarations, distinct private views, ordered read-only delivery, completed-answer binding and source-bound recovery |
 | [Live event feed contract](developer/extension-feeds.md) | Explicit enrollment, scoped metadata/private-tool views, persistent consumers, source-bound acknowledgments, bounded queues and inert resume |
 | [Admitted-tool events](developer/tool-events.md) | Opt-in execution source IDs, structured input/result views, causal binding, bounded recording and question/interruption recovery |
