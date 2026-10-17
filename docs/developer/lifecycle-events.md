@@ -98,7 +98,8 @@ bounded queues and incomplete closure, disabled parity and inert resume. The
 and private tool/text paths without feature-specific host dispatch. This audit
 finds no additional core seam required by those exercised P22 scenarios. Consumers
 needing a row's unsupported capability require an explicit SDK enhancement;
-P23/P24 and P25's research gates remain responsible for their specified features.
+P23/P24 own their remaining runtime features; proposed P25 research informs deferred
+P26/P27 production knowledge work.
 
 ## Internal journal source and prompt views
 
@@ -534,8 +535,9 @@ question/workflow continuation, private tool/text consumers and pressure closure
 without core changes or a release rebuild. A supervised extension-only trial also
 ran with separate read-only review. The [coverage audit](#supported-lifecycle-coverage)
 defines the stable seams; hosted Linux/macOS verification passed at `de073ba`. These checks
-do not establish production graph quality. P25 owns researched
-entity extraction, graph storage/retrieval and quality comparisons.
+do not establish production graph quality. Proposed P25 researches extraction,
+storage/retrieval and evaluation choices; P26/P27 defer production implementation
+and its quality measurements until those choices are reviewed.
 
 ## Reuse decisions and sources
 

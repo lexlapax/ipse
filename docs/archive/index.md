@@ -5,6 +5,7 @@ Use the [current documentation map](../index.md) for supported guidance.
 
 | Snapshot | Provenance | Current replacements |
 | --- | --- | --- |
+| [2026-10-17 before comparative self-hosting review](2026-10-17-before-self-hosting-review/index.md) | Commit `03d4187`; complete prior plan/knowledge design with rebased links and historical claims retained | [Plan](../plan.md), [evaluation protocol](../developer/self-hosting-evaluation.md), [knowledge design](../developer/knowledge-extensions.md) |
 | [2026-10-17 metadata-only feed contract](2026-10-17-before-private-tool-feeds/index.md) | Commit `b8aae70`; original live feed contract before scoped tool views, with rebased links | [Feeds](../developer/extension-feeds.md), [tool sources/views](../developer/tool-events.md) |
 | [2026-10-17 prompt-only delivery contracts](2026-10-17-before-answer-events/index.md) | Commit `22ac9e1`; notification/job contracts before completed-answer delivery, with rebased links | [Subscriptions](../developer/extension-events.md), [event jobs](../developer/extension-event-jobs.md) |
 | [2026-10-17 capture before ring retention](2026-10-17-before-trace-ring/index.md) | Commit `59dd52f`; original operator/developer capture guides | [Operator controls](../operator/observability.md), [ring contract](../developer/observability.md#local-ring-retention) |

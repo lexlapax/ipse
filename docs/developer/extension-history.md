@@ -142,5 +142,5 @@ page splitting, gaps, altered text/receipt rejection and omitted-span detection.
 The [independent frozen-core lab](extension-proof.md) adds installed-worker
 catch-up, domain deduplication and tombstone/CAS rejection after forget. It does
 not expose cross-session/project history or implement a production reindex manager.
-Production knowledge quality remains P25 work. No
+Production knowledge quality remains deferred P26/P27 work after P25 research. No
 database, search service, broker or new dependency is added by this operation.

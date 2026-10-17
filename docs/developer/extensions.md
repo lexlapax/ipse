@@ -103,7 +103,8 @@ strings. Do not create host atoms from arbitrary IDs or evaluate project `.exs`.
 
 The [independent lab](extension-proof.md) proves local separately built Elixir
 worker artifacts can be imported, configured and used without rebuilding Ipse.
-Its synthetic memory/workflow proof leaves production algorithms to P25 and
+Its synthetic memory/workflow proof leaves production algorithms to the
+researched P26/P27 follow-ons and
 unsupported SDK capabilities to explicit enhancements. A downloaded package manager,
 marketplace, signing infrastructure and automatic builder can follow later using
 the same artifact/activation contracts. A reviewed custom release remains an
@@ -268,8 +269,8 @@ and validated contracts; the examples are not a fixed mandatory workflow.
 ## Long-term memory and customized workflows
 
 The [independent lab](extension-proof.md) exercises synthetic memory/workflow
-adapters through the generic SDK; production knowledge adapters belong to P25's
-separate research/selection gates.
+adapters through the generic SDK. The proposed P25 comparison researches their
+design; production knowledge adapters are deferred to P26/P27 selection gates.
 The two hook examples do not implement those systems. Session journals, research
 ledgers and compaction checkpoints are not cross-session long-term memory.
 
@@ -340,8 +341,9 @@ Telemetry handler or JSON event queue. Media/realtime are negotiated boundaries
 with explicit unsupported-operation errors until P24.
 
 The requested shipped [knowledge extension family](knowledge-extensions.md)
-belongs in P25: working/long-term memory, pluggable research, graph augmentation
-and RAG, all default-off and independently selected. P22's generic service
+is researched in the proposed P25 comparison, with production working/long-term
+memory deferred to P26 and research/graph/RAG to P27. All remain default-off and
+independently selected. P22's generic service
 composition, evidence, context/store and owned-job contracts must support these
 without making any database, embedding provider or graph engine mandatory.
 
@@ -507,7 +509,7 @@ service is permitted.
    Production memory stores, elaborate workflows, assisted download/build UI and
    live activation remain follow-ons against these same versioned contracts.
    Add a small synthetic retrieval service to prove declared composition and
-   source-attributed context without building P25's production engines. Exercise
+   source-attributed context without building production knowledge engines. Exercise
    the [prompt-event graph scenario](lifecycle-events.md#knowledge-graph-acceptance-proof)
    through a synthetic subscriber using only the frozen SDK, including background
    indexing versus awaited recall and no-replay recovery.
@@ -546,8 +548,9 @@ Run Linux source/native and hosted Mac/package checks, plus an independently
 reviewed supervised trial. Record real limitations and dependencies, review both
 operator/developer guidance and links, then commit/push completed increments.
 
-Use the proposed event requirements in [observability](observability.md) when
-implementing the remaining observer contract. Current API/status is mapped at
-the start of this guide. See
+Use the [observability contract](observability.md) and
+[lifecycle audit](lifecycle-events.md#supported-lifecycle-coverage) for supported
+observer APIs and explicitly deferred capabilities. Current API/status is mapped
+at the start of this guide. See
 [P22](../plan.md#p22-extension-scaffold-and-lifecycle-hooks),
 [configuration](configuration.md) and [recovery](context-compaction.md).

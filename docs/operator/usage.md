@@ -568,15 +568,17 @@ These available facilities are distinct from the planned capabilities below.
 
 | Milestone | Remaining capability | Status and boundary |
 | --- | --- | --- |
-| P22 | Broader private lifecycle seams/causal links and the independent package proof | In progress; scoped live feeds include separately granted tool input/results; diagnostic capture/local retention and synthetic dispatcher tracing are available |
-| P23 | Cost reports and budget admission | Planned over durable usage facts; context bytes are not tokens or an invoice |
+| P23 | Budget admission and accounted extension model work | Own-session/child reports are available; atomic reservations and covered extension operations remain open. Context bytes are not tokens or an invoice |
 | P24 | STT/text-agent/TTS and realtime media | Planned with explicit device/provider/billing selection; text authentication does not imply audio access |
-| P25 | Optional working/long-term memory, research engine, graph and RAG | Research/selection gates remain; each adapter will be independently configured and default-off |
+| P25 | Larger supervised comparative research/self-development trial | Proposed independent Codex/Ipse study, repairs, reruns and before/after security review; unstarted |
+| P26/P27 | Optional working/long-term memory, research engine, graph and RAG | Production packages deferred pending P25 selection; independently configurable and default-off |
 
 The [plan](../plan.md) owns milestone acceptance. The
 [observability design](../developer/observability.md) separates optional
 sanitized diagnostics from mandatory journals/accounting and private content;
 no exporter starts automatically. The [knowledge design](../developer/knowledge-extensions.md)
-treats Zero-Mem as inspiration, not an installed backend. Existing skills,
-configured MCP tools and the research ledger remain available; optional memory
-will not replace ordinary history or make RAG persist personal records silently.
+treats Zero-Mem as inspiration, not an installed backend. P22's SDK/proof gates
+are complete within their [documented coverage](../developer/lifecycle-events.md#supported-lifecycle-coverage).
+Existing skills, configured MCP tools and the research ledger remain available.
+Optional memory will not replace ordinary history or make RAG persist personal
+records silently.

@@ -298,16 +298,18 @@ actions, before-request recall and after-turn maintenance in one serial lane.
 Optional [diagnostic capture](observability.md) wraps shared metadata in bounded
 owned sink channels, with separate off/local/export policy and immediate stop.
 The local sink uses a bounded ring with active-writer locks; backend retention
-does not change host event/action APIs. Broader private subscriptions, developer
-tracing and the independent installed-package proof remain
-[P22 gates](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
+does not change host event/action APIs. Synthetic developer tracing, selected
+private subscriptions/feeds and the [independent installed lab](extension-proof.md)
+complete their documented [P22 gates](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
 
 The internal lifecycle Source/Event adapter now binds committed journal facts to
 stable occurrence IDs and projects explicit metadata/private prompt views.
 Bounded source pages neither repair tails nor execute/replay callbacks. They
 contain private journal records and are not a diagnostic export or worker API;
-selected prompt views are delivered only through the separate admitted subscription
-path. Broader lifecycle seams and effectful jobs remain pending.
+selected private views are delivered only through separately admitted subscription,
+feed or job contracts. Finite effectful prompt/answer jobs use normal approvals;
+unsupported views, causal links and concurrent effectful jobs remain explicit
+enhancements in the [coverage audit](lifecycle-events.md#supported-lifecycle-coverage).
 
 Keep provider-specific wire formats inside provider adapters and keep session
 state transitions in `Ipse.Session`. Put ordinary filesystem and shell

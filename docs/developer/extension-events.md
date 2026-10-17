@@ -221,5 +221,7 @@ close visibly when capacity is exhausted. Other continuous private feeds and
 external adapters need their own negotiated
 ownership/flow/egress contract. Notification acknowledgments must not silently
 gain effectful semantics in a future implementation. Production graph extraction
-and stores remain P25 work; the synthetic installed proof does not establish their
-quality or complete P22.
+and stores remain deferred production work after P25 research; the synthetic
+installed proof establishes exercised SDK behavior, not their quality. The
+combined [P22 evidence](testing.md#current-evidence-and-next-checks) closes its
+documented gates.

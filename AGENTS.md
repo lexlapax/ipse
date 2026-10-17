@@ -44,9 +44,9 @@ implemented, documented extension APIs for new domain behavior, memory,
 presentation and optional workflows. Reserve core changes for host invariants,
 correctness and explicitly reviewed extension-API gaps; do not bypass approvals or execute
 untrusted code to avoid a necessary core change. P22's documented foundation and
-proof gates are complete; foreseen cost, media and knowledge capabilities remain
-tracked under P23–P25. Earlier
-milestones did not require mechanisms unavailable when they shipped.
+proof gates are complete. Cost and media remain P23/P24 work; the proposed P25
+evaluation informs deferred P26/P27 knowledge capabilities. Earlier milestones
+did not require mechanisms unavailable when they shipped.
 
 ## Start here
 
@@ -62,8 +62,9 @@ milestones did not require mechanisms unavailable when they shipped.
 - [docs/developer/testing.md](docs/developer/testing.md): verification and unverified integrations.
 
 Treat the plan as direction, not authorization to implement every milestone.
-For an unspecified next task, start with the first incomplete P0 acceptance
-check. Inspect the current branch and worktree; preserve unrelated user edits.
+For an unspecified next task, use the active milestone and first open acceptance
+check in the current plan, keeping proposed work distinct from authorized scope.
+Inspect the current branch and worktree; preserve unrelated user edits.
 Make progress without repeated confirmation for routine reversible changes.
 
 ## Commands

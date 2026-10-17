@@ -5,7 +5,8 @@ The extension lab exercises domain behavior against candidate core
 entirely under [examples/extension-lab](../../examples/extension-lab/README.md),
 with an integration test and package-verification workflow. No domain feature
 branch, runtime module, native helper change or project dependency is required.
-This is one layer of P22 completion evidence, not selection of P25 engines.
+This is one layer of P22 completion evidence. Production knowledge engines remain
+unselected; the proposed P25 evaluation researches later P26/P27 delivery.
 
 ## Build and execution boundary
 
@@ -60,8 +61,9 @@ this intentionally conservative policy may remove other facts from those sources
 Forget-all uses the host tombstone and blocks recreation in that namespace.
 Forget also clears this instance's future context contributions. CAS rejects a
 delayed write captured before forget. Journals, old request snapshots and earlier
-provider transfers are not erased. These limited policies do not replace P25's
-retention, migration, quality or comprehensive deletion design.
+provider transfers are not erased. These limited policies do not replace the
+production retention, migration, quality or comprehensive deletion design required
+by the [knowledge selection gates](knowledge-extensions.md).
 
 ## Verification and evidence
 
@@ -121,5 +123,6 @@ event publication, concurrent effectful jobs, remote installation and media stay
 explicit negotiated enhancements, not silently available callbacks. The
 [plan](../plan.md#p22-extension-scaffold-and-lifecycle-hooks) records the completion
 scope and future capabilities.
-P23 supplies accounted model work/budgets; P24 supplies media; P25 supplies
-researched memory/research/graph/RAG algorithms and adapters.
+P23's remaining work includes accounted model operations/budgets; P24 targets
+media. The proposed P25 evaluation researches knowledge designs and exercises
+self-development; production adapters are deferred to P26/P27.

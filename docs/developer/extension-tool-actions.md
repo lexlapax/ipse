@@ -4,8 +4,9 @@ P22A10 adds `host.tools` to the [finite host-call protocol](extension-host-calls
 It calls the existing `read`, `write`, `edit` and `shell` tools through host-owned
 schema, context, approval and execution boundaries. It does not register a new
 agent loop or authorize arbitrary tool IDs. [Value-service composition](extension-services.md)
-is implemented separately; context contributions and the independent package
-proof remain P22 work.
+is implemented separately, alongside [context contributions](extension-context.md).
+The [independent installed lab](extension-proof.md) verifies the exercised workflow
+paths; arbitrary nested effects remain outside the value-service contract.
 
 ## Request and permission
 

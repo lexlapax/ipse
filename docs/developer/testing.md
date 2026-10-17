@@ -204,10 +204,17 @@ and [runtime identity](#p1-runtime-identity-2026-10-15).
 
 ## Current evidence and next checks
 
+The [plan](../plan.md#current-priorities-and-status) owns current milestone scopes.
+Older dated records retain their contemporary numbering: their P25 production
+knowledge references predate the proposed P25 comparison and P26/P27 deferral.
+No comparative P25 run or OpenAI security-service scan has executed as part of
+the planning review.
+
 | Checkpoint | Evidence | Scope and remaining limits |
 | --- | --- | --- |
+| P23D hosted `03d4187` | [Completed matrix](https://github.com/lexlapax/ipse/actions/runs/39044897250): Ubuntu passed; macOS failed `stdio integration supports resource-only and prompt-only capability sets` at `test/mcp/catalog_test.exs:324`, with `MCP transport failed before tool dispatch` | Actual job/step conclusions and failed log inspected. Mac reported 690 tests, one failure, 31 excluded; later native/demo/package/installed-lab checks were skipped. Cause is unconfirmed; no passing replacement run is claimed |
 | P23D child-accounting SDK/report, Linux Serenity, 2026-10-17 | Build, warnings-as-errors compilation, actual Elixir 1.18.4/1.20.4 formatters and final 675-test Linux native baseline passed (14 macOS exclusions). Seven final child fixtures passed, including the additional legacy case; the earlier report/summary/registry set passed 22 tests. Exact documented tree configuration passed three real CLI command checks with zero model requests; help/demo passed | Actual serial/parallel children, final cumulative replacement, failed-child partial usage, caller/child scope, frozen prefixes, accounting-only fingerprints, missing/busy/unsafe/oversized/legacy gaps, cached-counter forgery refusal, pre-repair validation and inert resume. Index exhaustion refuses new discovery while preserving admitted ranges. Atomic budgets and accounted extension model requests remain open |
-| P23D extracted package and installed compatibility | Final archive SHA-256 `492b4264cbd08dd34f46ccc91ef5fe8accceae2e3136412aac0cf67e54018afb` passed the ordinary release verifier, including real parallel-child reports and inert recovery. Independent installed lab passed all 41 assertions with temporary CLI selection; archive/host bytes stayed unchanged and no system development toolchain was available | Synthetic rates/providers only; no live billing or globally atomic cross-session balance claim. The lab's deliberate terminal service failure retains unconfirmed cleanup and `safe_to_continue: false`. This increment needs its own hosted Linux/macOS result |
+| P23D extracted package and installed compatibility | Final archive SHA-256 `492b4264cbd08dd34f46ccc91ef5fe8accceae2e3136412aac0cf67e54018afb` passed the ordinary release verifier, including real parallel-child reports and inert recovery. Independent installed lab passed all 41 assertions with temporary CLI selection; archive/host bytes stayed unchanged and no system development toolchain was available | Synthetic rates/providers only; no live billing or globally atomic cross-session balance claim. The lab's deliberate terminal service failure retains unconfirmed cleanup and `safe_to_continue: false`. The new hosted run above passed Ubuntu and failed Mac; this local evidence does not close that failure |
 | P23C hosted baseline `d81af65` | [Ubuntu/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39042723717) passed every applicable step: build, format, compile, tests, demo, ordinary packages, independent installed extension lab and both macOS enforcement steps | Actual job/step conclusions inspected. Confirms the summary baseline and the two corrected observation waits; the new child SDK/report requires its own hosted result |
 | P23C own-session summaries, Linux Serenity, 2026-10-17 | Build, warnings-as-errors compilation, actual Elixir 1.18.4/1.20.4 formatters and 669 native-suite tests passed (14 macOS exclusions). Final summary fixtures: 7 passed; summary/action/job compatibility: 21 passed. Exact operator JSON passed the real CLI check with zero model requests; help/demo and extracted-package verification passed | Captured full-session enumeration across 18 pages/70 requests, cumulative replacement, admission identity, separated billing bases, partial/legacy unknowns, independent cost/counter overflow, explicit disabled parity, 10,000-read versus 16-mutation-step bounds and byte-identical idle resume. Child accounting, budgets and generic accounted model requests remain open |
 | P23C installed-artifact compatibility | Existing independent lab passed all 41 assertions against archive SHA-256 `6bfc77fd173ef647399a003159220e18059dbab31abe8745ddebd77de04f0fc2`; archive and host BEAM bytes stayed unchanged within the run, with real temporary CLI selection and no system development toolchain | Compatibility on the new SDK, not a new frozen-core claim. The deliberate terminal service-crash case retains unconfirmed cleanup and `safe_to_continue: false`. New hosted Linux/macOS results must be checked separately |
@@ -400,8 +407,9 @@ Synthetic dispatcher tracing and documented source-debugging boundaries are
 implemented; no live GUI/editor debugger trial is claimed. The full
 [event/graph coverage gate](lifecycle-events.md#knowledge-graph-acceptance-proof)
 combines primitive failures, independent domain evidence and reviewed live use.
-P23–P25 and the final license transition remain open; the [plan](../plan.md)
-owns acceptance/status.
+Remaining accounting/media work, the larger self-development evaluation, deferred
+production knowledge packages and the final license transition are tracked in the
+[current plan](../plan.md), which owns acceptance/status.
 
 ### Supervised extension-only trial (2026-10-17)
 

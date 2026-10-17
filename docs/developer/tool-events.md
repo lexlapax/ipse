@@ -105,4 +105,6 @@ Primitive extracted-runtime checks are separate from the
 [installed lab](extension-proof.md), which verifies four private/metadata feed
 acknowledgments around a model-selected extension tool. Neither establishes
 production graph quality. Broader proposal/validation/private-action events and
-full causal coverage remain P22 work; no unsupported hook or permission is implied.
+causal links are unsupported enhancements in the
+[coverage audit](lifecycle-events.md#supported-lifecycle-coverage); P22 completion
+does not imply those hooks or permissions.

@@ -1,12 +1,22 @@
-# Supervised self-development on macOS
+# Supervised self-development
 
 The bundled `$self-development` skill now supplies the reusable supervision,
 bounded review and evidence checklist used for subsequent trials. It is inert
 instruction, not permission to execute scripts or publish. Explicitly load its
 `references/evidence-checklist.md` and `references/review-request.md` resources as
-directed. The Mac procedure below still defines its own concrete task/authority;
-other hosts follow their repository/platform checks. Use the local
+directed. The completed P18 Mac runbook below retains its concrete task/authority;
+adapt its separation and review procedures to a newly scoped trial rather than
+repeating its already integrated feature. Other hosts use their repository/platform
+checks and matching runtime. Use the local
 [context recovery tools](recovery.md) for diagnosis or explicit handoff.
+
+The proposed larger P25 comparison has a separate
+[evaluation protocol](../developer/self-hosting-evaluation.md): independent Codex
+and Ipse research, source-based review, Ipse-authored fixes, fresh held-out runs
+and security review before/after. It has not run. Its provider/tool/resource
+choices and security-service access must be established before execution; this
+runbook does not provision that service or install scan tooling. The
+[plan](../plan.md#current-priorities-and-status) owns current scope and scheduling.
 
 The credential-free fixture `mix run scripts/demo-self-development.exs` verifies
 bundled discovery, both explicit resources and journal provenance with effects
@@ -32,7 +42,7 @@ merged after hosted Linux/macOS CI passed. P18 is complete within this supervise
 trial's documented scope. Keep the running harness separate from its target. See the
 [local evidence](../developer/testing.md#p18-macos-supervised-self-development-evidence).
 
-## Selected change and completion criteria
+## P18 selected change and completion criteria
 
 The selected task is **add `ipse sessions --json`**. It gives the trial a small
 runtime change with observable behavior and meaningful tests:
@@ -47,9 +57,9 @@ runtime change with observable behavior and meaningful tests:
 - No authentication, inference, network retrieval or journal mutation for listing;
   no new dependency. Update CLI help, operator usage and developer verification.
 
-The operator can choose another small change before implementation. Keep the
-first Mac trial to one feature; use the existing review skill rather than also
-building a new self-development framework.
+This was the bounded first Mac change, not a pending implementation request.
+Choose a fresh acceptance task for a new trial and use the existing review skill
+without also building a new self-development framework.
 
 ## 1. Create a stable runner and a candidate worktree
 

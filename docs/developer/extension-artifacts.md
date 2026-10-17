@@ -189,8 +189,10 @@ projections; [invocations](extension-invocations.md) use typed catalogs and fini
 [host actions](extension-host-calls.md), including questions, tools, services and
 context. [Text consumers](text-streams.md#worker-clients) use a separate read-only
 resource lifetime and serializable handle, with no host-action interpretation.
-Broader private lifecycle observation, nested jobs and the independent installed-package
-proof remain [P22 work](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
+The [lifecycle audit](lifecycle-events.md#supported-lifecycle-coverage) defines the
+implemented private observation/job contracts and unsupported nested/concurrent
+operations. The [independent installed proof](extension-proof.md) closes its
+documented [P22 gate](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
 
 `test/extensions_worker_test.exs` compiles a uniquely named independent artifact
 with the existing Elixir compiler in a separate VM. It verifies inert import,

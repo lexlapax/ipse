@@ -14,7 +14,7 @@ start. Use the guides below for operation, development, and project context.
 | [Research](operator/research.md) | Configurable search/retrieval, source ledger, citations and recovery |
 | [MCP servers](operator/mcp.md) | Explicit stdio/HTTP configuration, TLS, credentials, server sandbox, approvals, recovery, and demos |
 | [Local subagents](operator/subagents.md) | Explicit delegation, child approvals, bounds, journals, and recovery |
-| [Supervised self-development](operator/self-development.md) | Mac trial setup, frozen runner, candidate worktree, review, resume and publication |
+| [Supervised self-development](operator/self-development.md) | Frozen runner/candidate operation, completed Mac runbook, review, resume and publication |
 | [Context recovery](operator/recovery.md) | Content-free diagnostics, reviewed handoff export/fresh-chat import and unknown-effect review |
 | [Diagnostic capture](operator/observability.md) | Default-off local/export policy, selected sinks, immediate stop, limits and recovery |
 | [Usage and cost reports](operator/usage-accounting.md) | Durable counters, default-off own-session/child reports, explicit read grants, unknown coverage and recovery |
@@ -60,7 +60,8 @@ start. Use the guides below for operation, development, and project context.
 | [Configured cost estimates](developer/costs.md) | Versioned rate cards, page/session/tree extensions, cumulative aggregation and remaining budget integration |
 | [Private text streams](developer/text-streams.md) | Embedded/worker enrollment, opaque resource handles, acknowledgment, pressure and ephemeral recovery |
 | [Ephemeral text events](developer/stream-events.md) | Negotiated v2 frame sources, shared stream/range identity, distinct delivery sequence and metadata/private projections |
-| [Knowledge extension family](developer/knowledge-extensions.md) | Default-off working/long-term memory, pluggable research, graph/RAG and composition/evidence contracts |
+| [Comparative self-development evaluation](developer/self-hosting-evaluation.md) | Proposed P25 independent Codex/Ipse research, rubric, Ipse-authored repairs, held-out reruns and before/after security gates |
+| [Knowledge extension family](developer/knowledge-extensions.md) | P25 research questions and deferred P26/P27 default-off memory, research, graph/RAG selection and acceptance |
 | [Observability contract](developer/observability.md) | Shared metadata capture, bounded owned sinks, ring quotas, lease recovery, synthetic dispatcher tracing and source-debugging boundaries |
 | [MCP client contract](developer/mcp.md) | Reused packages, transport ownership, descriptor binding, schema policy, and recovery |
 | [Local delegation contract](developer/delegation.md) | Parent/child ownership, explicit context, approvals, budgets, and unknown outcomes |

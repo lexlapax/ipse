@@ -1,13 +1,20 @@
 # Optional memory, research, graph and RAG extensions
 
-Operator-requested planning on 2026-10-16. These are proposed shipped extensions,
-**all disabled by default**, not new implementations or services. P14 already
-provides a research skill, configured MCP retrieval and a durable evidence ledger;
-P22's [synthetic installed memory/workflow lab](extension-proof.md) proves exercised
-SDK seams, including prompt-driven graph capture and explicit catch-up. Neither is a
-production memory, graph, RAG or pluggable research engine. Plan delivery as the
-independently selectable P25 capability family using P22 foundations. P23 reporting/
-budgets can integrate when available; local memory need not wait for voice or cost UI.
+These are proposed shipped capabilities, **all disabled by default**, with no
+production engine or backend selected. P14 already supplies a research skill,
+configured MCP retrieval and a durable evidence ledger. P22's
+[synthetic installed memory/workflow lab](extension-proof.md) proves exercised SDK
+seams, including prompt-driven graph capture and explicit catch-up. Those are
+foundations, not production memory, graph, RAG or a pluggable research engine.
+
+The [revised plan](../plan.md#p25-comparative-research-and-supervised-self-development)
+proposes P25 as independent Codex/Ipse research, comparison and supervised harness
+improvement. This guide owns the domain questions and selection requirements;
+the [evaluation protocol](self-hosting-evaluation.md) owns the experiment.
+Production packages are deferred to proposed P26 memory and P27 research/graph/RAG,
+subject to the research outcome. The earlier implementation authorization does
+not override the operator's 2026-10-17 request to reconsider that scope. P23 reports
+are available; atomic budgets and accounted extension model requests remain open.
 
 ## Research before implementation selection
 
@@ -29,7 +36,8 @@ Ipse interoperability or reasons to copy its cross-project defaults. No package
 is installed or code copied. Pin the actual sources, inspect current implementation,
 runtime dependencies and licenses before any reuse; keep Ipse's own logic in Elixir.
 
-Every P25 candidate needs a research/decision record before implementation:
+Every candidate needs a research/decision record before implementation selection.
+P25's two tracks produce these records independently:
 
 1. Primary papers/docs/source, exact revisions, maintenance/maturity, licensing,
    dependencies and reproducibility. Distinguish authors' code, independent
@@ -42,10 +50,12 @@ Every P25 candidate needs a research/decision record before implementation:
    host extension, external backend or truly missing generic host capability.
    Reuse existing P14/SDK surfaces; do not create a hook or service merely to call
    one retrieval function. Document rejected alternatives and remaining gaps.
-4. A bounded synthetic prototype and failure/concurrency/recovery tests, then
-   opt-in live evaluation when necessary. Require scoped data/retention and no
-   hidden model calls. Research completion alone does not authorize installation
-   or mark a production feature implemented.
+4. A bounded synthetic evaluation/prototype design and failure/concurrency/recovery
+   cases, then opt-in live evaluation when necessary. P25 delivers the design and
+   evidence-backed decisions; backend prototypes/installations belong to a
+   separately selected P26/P27 increment unless explicitly added to the trial.
+   Require scoped data/retention and no hidden model calls. Research completion
+   alone does not authorize installation or mark a production feature implemented.
 
 ## Tool, skill, extension or core
 
@@ -127,7 +137,7 @@ seams before choosing a production memory, graph or retrieval engine:
 | Evidence/context | Bounded attributed publications, receipt-backed awaited recall and frozen snapshots, exercised by the installed lab | Domain records mapped to P14 source/claim identity and production retrieval quality |
 | State/deletion | Scoped CAS records, locks/tombstones and installed rejection of delayed prompt writes after concurrent forget | Domain TTL, complete derivative deletion/export policy and production concurrency coverage |
 | Owned work | Explicit invocations, prompt/answer jobs, fixed-range history, cancellation, receipts/questions and installed domain deduplication/catch-up | Production ingestion/reindex policy; fully concurrent effectful jobs remain a negotiated enhancement |
-| Event source/views | Stable journal references, scoped historical projections, selected original/effective prompt and original/presented answer delivery | Full causal links, broader lifecycle/continuous feeds and cross-session history authorization |
+| Event source/views | Stable journal references, scoped history, prompt/answer delivery and selected live metadata/private-tool feeds, with separate ephemeral text sources | Unsupported view families and causal links listed in the lifecycle audit; cross-session history authorization |
 | Optional model work | Existing explicit provider/profile and delegation paths | A negotiated accounted host request capability for extraction/embedding; current callbacks cannot silently call a model |
 
 The [lifecycle event design](lifecycle-events.md) makes prompt-driven graph
@@ -155,19 +165,28 @@ operator grants, not authorize egress or widen memory access. Unsupported
 operations refuse instead of hiding unaccounted work inside a hook. Use the
 independent [installed-package evidence](extension-proof.md) to assess the exercised
 contracts alongside the [lifecycle audit](lifecycle-events.md#supported-lifecycle-coverage)
-and supervised trial; hosted checks passed. Production graph queries, embeddings, database installation
-and research-engine algorithms and measurements belong to P25.
+and supervised trial; its P22 hosted checks passed. Production graph queries,
+embeddings, database installation and research-engine implementation/measurements
+are deferred to P26/P27. P25 evaluates the research and improves the harness used
+to do it; it need not implement these engines.
 
-## P25 delivery and acceptance
+## Research handoff and deferred production acceptance
 
-Treat these as independent packages with shared contracts, not one mandatory
-pipeline. Deliver short-term/long-term memory first, then the research engine and
-RAG adapters as useful; graph storage/traversal remains independently selectable.
-This feature-family work can proceed independently of voice or cost UI once its
-required P22 capabilities exist. The operator authorized P22–P25 implementation
-on 2026-10-16; each production choice still follows the research gate above.
-Request operator input only for a material unresolved choice or an additional
-dependency/action that requires approval, not for already authorized routine work.
+P25 should deliver source-backed decisions for each family, rejected alternatives,
+a baseline and quality/resource evaluation design, dependency/license findings,
+an explicit tool/skill/MCP/extension/core map and an implementable P26/P27 proposal.
+Compare both tracks against the same requirements and inspected evidence; record
+remaining uncertainty and material operator choices. Codex's preferred design is
+not automatically correct. No package install, graph store or embedding service is
+needed merely to produce this research handoff.
+
+For later implementation, treat the capabilities as independent packages with
+shared contracts. Proposed P26 delivers working/long-term memory; proposed P27
+delivers research, graph and RAG increments in the order supported by P25. Their
+selection can change after the study. These packages have no intrinsic voice or
+cost-UI dependency, but required host accounting/admission and other SDK gaps must
+be closed before the operations that need them. Request input for material
+unresolved choices or actions/dependencies that require approval.
 
 Ship a minimal configurable local baseline and explicit provider interfaces, with
 no default remote store, embeddings, search service or model. Evaluate existing

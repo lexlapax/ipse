@@ -153,7 +153,9 @@ ceiling. Compaction refusals now record exact request measurements in a private
 `compaction_failed` event. Model/summary workers record bounded-category completion,
 failure/cancellation and elapsed milliseconds; approval/tool time is excluded.
 Idle resume does not add measurements or replay requests. This is a minimal
-local diagnostic foundation; broad lifecycle/OTLP tracing remains P22 work.
+local diagnostic foundation. P22's separate [observability contract](observability.md)
+adds bounded capture, retention and synthetic dispatcher tracing. External OTLP
+exporters remain optional, separately configured and unselected.
 
 `Ipse.Handoff.export/3` requires an explicit bounded operator note and emits a
 small versioned recovery artifact with source-event digest and unknown-call

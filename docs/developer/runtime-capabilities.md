@@ -190,5 +190,9 @@ resume cases. P24 adds chained voice first, then explicit realtime capability wi
 synthetic media/backpressure/interrupt/playback tests before opt-in live account
 checks. A rich visual debugger can be an independently selected extension/client;
 it does not require adopting a graph engine or become a P22 completion dependency.
-Implementation of P22–P25 was subsequently authorized on 2026-10-16. Usage/cost
-and media contracts here remain delivery targets until their evidence is recorded.
+The operator authorized the earlier P22–P25 sequence on 2026-10-16. On 2026-10-17
+they requested reconsidering P25 as a larger comparative research/self-development
+trial and deferring production knowledge packages. The [current plan](../plan.md)
+records that proposed P25/P26/P27 split. Implemented cost reports are documented
+separately; budget/model-operation and media contracts remain delivery targets
+until their evidence is recorded.

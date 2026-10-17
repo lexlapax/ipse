@@ -110,8 +110,10 @@ the already completed original assistant. Previously committed projections remai
 available in either case. Initialize/private VM state lasts for the job; it is
 not durable session state. [Host-mediated scoped state](extension-host-calls.md)
 is available from typed invocations, as are [owned value-service jobs](extension-services.md).
-Context/broader nested jobs remain subsequent P22 increments; static catalogs and
-standalone invocations are implemented.
+[Context contributions](extension-context.md) and finite prompt/answer
+[event jobs](extension-event-jobs.md) are implemented separately. Broader nested
+effectful service operations require a negotiated enhancement; static catalogs
+and standalone invocations do not imply that capability.
 
 ## Persistence and recovery
 
