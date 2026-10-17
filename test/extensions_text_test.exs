@@ -1,0 +1,347 @@
+defmodule Ipse.Extensions.TextTest do
+  use ExUnit.Case, async: false
+  alias Ipse.{Session, Journal}
+  alias Ipse.Extensions.{Config, Registry, Store, Manifest, TextResources}
+
+  defmodule Model do
+    def complete(config, messages, _, emit) do
+      send(config.test_pid, {:text_provider, self(), messages})
+      emit.({:reason, "synthetic hidden reasoning"})
+      emit.({:text, "vis"})
+      emit.({:text, "ible λ"})
+      if config[:hold_provider], do: receive(do: (:release -> :ok), after: (15_000 -> :ok))
+
+      {:ok,
+       %{
+         "role" => "assistant",
+         "content" => "visible λ",
+         "provider_data" => %{"native" => "synthetic native continuation"}
+       }, %{}}
+    end
+  end
+
+  setup_all do
+    root = Path.join(System.tmp_dir!(), "ipse-worker-text-#{Ipse.Usage.id()}")
+    source = Path.join(root, "artifact")
+    File.mkdir_p!(Path.join(source, "ebin"))
+    module = "Independent.TextSink#{System.unique_integer([:positive])}"
+    file = Path.join(root, "fixture.ex")
+
+    File.write!(file, """
+    defmodule #{module} do
+      @behaviour Ipse.Extension
+      def describe, do: %{"sdk" => 1, "capabilities" => ["stream.text"]}
+      def init(options) do
+        File.write!(options["path"] <> ".init", "initialized\n", [:append])
+        File.write!(options["path"] <> ".pid", System.pid())
+        {:ok, options}
+      end
+      def handle("stream.text", payload, state) do
+        File.write!(state["path"], Jason.encode!(payload) <> "\n", [:append])
+        if state["mode"] == "hang" and payload["frame"]["kind"] == "text" do
+          File.write!(state["path"] <> ".blocked", "blocked")
+          Process.sleep(:infinity)
+        end
+        result = if state["mode"] == "wrong",
+          do: %{"api_version" => 1, "kind" => "host_call", "request" => %{"op" => "tool.call", "name" => "write", "arguments" => %{"path" => "unapproved", "content" => "bad"}, "timeout_ms" => 1000}},
+          else: %{"api_version" => 1, "kind" => "ack", "handle" => payload["handle"], "sequence" => Map.get(payload["frame"], "sequence", 0)}
+        {:ok, result, state}
+      end
+    end
+    """)
+
+    arguments = ["-pa", Application.app_dir(:ipse, "ebin"), "-o", Path.join(source, "ebin"), file]
+
+    {output, status} =
+      System.cmd(System.find_executable("elixirc"), arguments, stderr_to_stdout: true)
+
+    assert status == 0, output
+    File.write!(Path.join(source, "LICENSE"), "MIT synthetic fixture")
+
+    manifest = %{
+      "format" => 1,
+      "id" => "fixture/text_sink",
+      "version" => "0.1.0",
+      "sdk" => 1,
+      "protocol" => 1,
+      "backend" => "elixir_worker",
+      "entrypoint" => module,
+      "license_file" => "LICENSE",
+      "capabilities" => ["stream.text"],
+      "options_schema" => %{
+        "type" => "object",
+        "additionalProperties" => false,
+        "required" => ~w(path mode),
+        "properties" => %{
+          "path" => %{"type" => "string"},
+          "mode" => %{"type" => "string", "enum" => ~w(normal wrong hang)}
+        }
+      },
+      "runtime" => %{
+        "elixir" => ">= 1.18.0",
+        "otp" => [String.to_integer(System.otp_release())],
+        "platforms" => [to_string(:erlang.system_info(:system_architecture))]
+      },
+      "files" =>
+        Enum.map(["LICENSE", "ebin/Elixir.#{module}.beam"], fn path ->
+          bytes = File.read!(Path.join(source, path))
+          %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Manifest.sha256(bytes)}
+        end)
+    }
+
+    File.write!(Path.join(source, "extension.json"), Jason.encode!(manifest))
+    home = Path.join(root, "home")
+    {:ok, artifact} = Store.import(source, Path.join(home, "extensions/artifacts"))
+    on_exit(fn -> File.rm_rf!(root) end)
+    %{artifact_root: root, artifact: artifact, home: home}
+  end
+
+  setup ctx do
+    root = Path.join(ctx.artifact_root, "session-#{Ipse.Usage.id()}")
+    File.mkdir_p!(root)
+    path = Path.join(root, "frames.jsonl")
+    %{root: root, dir: Path.join(root, "sessions"), path: path}
+  end
+
+  defp config(ctx, mode \\ "normal", enabled \\ true) do
+    source = %{
+      scope: "operator",
+      path: "/fixture/operator.json",
+      data: %{
+        "extensions" => [
+          %{
+            "instance" => "sink",
+            "artifact" => ctx.artifact.digest,
+            "enabled" => enabled,
+            "options" => %{"path" => ctx.path, "mode" => mode},
+            "order" => 1,
+            "lifetime" => "persistent"
+          }
+        ],
+        "extension_trust" => [
+          %{
+            "artifact" => ctx.artifact.digest,
+            "capabilities" => ["stream.text"],
+            "allow_project" => false,
+            "allow_children" => false
+          }
+        ]
+      }
+    }
+
+    {:ok, selections} = Config.resolve([source], [])
+    {:ok, entries} = Registry.prepare(selections, ctx.home)
+
+    %{
+      provider: :ollama,
+      model: "fixture",
+      provider_module: Model,
+      test_pid: self(),
+      home: ctx.home,
+      approval: :deny,
+      compact: false,
+      extensions: entries
+    }
+  end
+
+  defp start(ctx, config, id \\ nil) do
+    {:ok, pid} =
+      DynamicSupervisor.start_child(
+        Ipse.Sessions,
+        {Session, config: config, cwd: ctx.root, state_dir: ctx.dir, subscriber: self(), id: id}
+      )
+
+    on_exit(fn -> if Process.alive?(pid), do: Session.close(pid) end)
+    pid
+  end
+
+  defp frames(ctx) do
+    case File.read(ctx.path) do
+      {:ok, bytes} -> bytes |> String.split("\n") |> Enum.drop(-1) |> Enum.map(&Jason.decode!/1)
+      _ -> []
+    end
+  end
+
+  defp await(predicate, attempts \\ 200)
+  defp await(_, 0), do: flunk("text-resource condition did not arrive")
+
+  defp await(predicate, attempts) do
+    if not predicate.() do
+      Process.sleep(20)
+      await(predicate, attempts - 1)
+    end
+  end
+
+  test "selected worker gets private bounded ordered JSON frames after durable intent", ctx do
+    pid = start(ctx, config(ctx))
+    refute File.exists?(ctx.path <> ".init")
+    assert :ok = Session.prompt(pid, "original input")
+    assert_receive {:text_provider, _, [_system, %{"content" => "original input"}]}, 5000
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5000
+    await(fn -> Enum.any?(frames(ctx), &(&1["frame"]["kind"] == "end")) end)
+    values = frames(ctx)
+    assert hd(values)["frame"]["kind"] == "start"
+    assert List.last(values)["frame"]["outcome"] == "completed"
+    assert Enum.map(values, & &1["frame"]["sequence"]) == Enum.to_list(1..length(values))
+
+    assert values
+           |> Enum.filter(&(&1["frame"]["kind"] == "text"))
+           |> Enum.map_join(& &1["frame"]["text"]) == "visible λ"
+
+    refute inspect(values) =~ "hidden reasoning"
+    refute inspect(values) =~ "native continuation"
+    assert Enum.all?(values, &(Ipse.Extension.validate(&1) == :ok))
+    {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+    intent = Enum.find(events, &(&1["type"] == "extension_text_intent"))
+    assert hd(values)["handle"] == intent["resource_id"]
+    assert :ok = TextResources.validate_events(events, Session.info(pid).id)
+
+    assert Enum.find_index(events, &(&1["type"] == "extension_text_ready")) <
+             Enum.find_index(events, &(&1["type"] == "request_admitted"))
+
+    refute Enum.any?(events, &Map.has_key?(&1, "frame"))
+    assert Session.info(pid).accounting["request_count"] == 1
+    assert :ok = Session.close(pid)
+  end
+
+  test "disabled adapters initialize nothing and idle resume creates no subscription", ctx do
+    disabled = start(ctx, config(ctx, "normal", false))
+    assert :ok = Session.prompt(disabled, "no sink")
+    assert_receive {:ipse, ^disabled, {:done, :ok}}, 5000
+    refute File.exists?(ctx.path <> ".init")
+    pid = start(ctx, config(ctx))
+    assert :ok = Session.prompt(pid, "first")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5000
+    await(fn -> Enum.any?(frames(ctx), &(&1["frame"]["kind"] == "end")) end)
+    id = Session.info(pid).id
+    assert :ok = Session.close(pid)
+    before = File.read!(Path.join(ctx.dir, id <> ".jsonl"))
+    before_frames = File.read!(ctx.path)
+    File.rm!(ctx.path <> ".init")
+    resumed = start(ctx, config(ctx), id)
+    assert Session.info(resumed).phase == :idle
+    refute File.exists?(ctx.path <> ".init")
+    assert File.read!(ctx.path) == before_frames
+    assert File.read!(Path.join(ctx.dir, id <> ".jsonl")) == before
+    assert :ok = Session.prompt(resumed, "explicit new prompt")
+    assert_receive {:ipse, ^resumed, {:done, :ok}}, 5000
+    await(fn -> length(Enum.filter(frames(ctx), &(&1["frame"]["kind"] == "end"))) == 2 end)
+    assert frames(ctx) |> Enum.map(& &1["handle"]) |> Enum.uniq() |> length() == 2
+  end
+
+  test "read-only reply cannot acquire effects and reports incomplete closure", ctx do
+    pid = start(ctx, config(ctx, "wrong"))
+    assert :ok = Session.prompt(pid, "bad consumer")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5000
+
+    await(fn ->
+      {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+      Enum.any?(events, &(&1["type"] == "extension_text_closed"))
+    end)
+
+    refute File.exists?(Path.join(ctx.root, "unapproved"))
+    {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+    closed = Enum.find(events, &(&1["type"] == "extension_text_closed"))
+    assert closed["reason"] == "consumer_failed"
+    assert closed["cleanup_confirmed"]
+    assert :ok = TextResources.validate_events(events)
+    assert :ok = Session.close(pid)
+  end
+
+  test "full private channel refuses activation before loading code or inference", ctx do
+    pid = start(ctx, config(ctx))
+
+    handles =
+      for _ <- 1..4 do
+        assert {:ok, handle} = Session.subscribe_text(pid)
+        handle
+      end
+
+    assert :ok = Session.prompt(pid, "no private capacity")
+    assert_receive {:ipse, ^pid, {:done, :error}}, 5000
+    refute File.exists?(ctx.path <> ".init")
+    refute_receive {:text_provider, _, _}
+    assert Session.info(pid).accounting["request_count"] == 0
+    for handle <- handles, do: assert(:ok = Ipse.TextStream.unsubscribe(handle))
+    assert :ok = Session.prompt(pid, "explicit new attempt")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5000
+  end
+
+  test "cancel stops a blocked callback and actual VM without replay", ctx do
+    pid = start(ctx, Map.put(config(ctx, "hang"), :hold_provider, true))
+    assert :ok = Session.prompt(pid, "hang consumer")
+    await(fn -> File.exists?(ctx.path <> ".blocked") end)
+    actual = File.read!(ctx.path <> ".pid")
+    assert :ok = Session.cancel(pid)
+    await_exit(actual, ctx.root)
+    id = Session.info(pid).id
+    assert :ok = Session.close(pid)
+    File.rm!(ctx.path <> ".init")
+    resumed = start(ctx, Map.put(config(ctx, "hang"), :hold_provider, true), id)
+    assert Session.info(resumed).phase == :idle
+    refute File.exists?(ctx.path <> ".init")
+  end
+
+  test "untrappable owner death stops a blocked consumer and actual VM", ctx do
+    pid = start(ctx, Map.put(config(ctx, "hang"), :hold_provider, true))
+    assert :ok = Session.prompt(pid, "owner death")
+    await(fn -> File.exists?(ctx.path <> ".blocked") end)
+    actual = File.read!(ctx.path <> ".pid")
+    id = Session.info(pid).id
+    monitor = Process.monitor(pid)
+    Process.exit(pid, :kill)
+    assert_receive {:DOWN, ^monitor, :process, ^pid, _}, 1000
+    await_exit(actual, ctx.root)
+    File.rm!(ctx.path <> ".init")
+    resumed = start(ctx, Map.put(config(ctx, "hang"), :hold_provider, true), id)
+    assert Session.info(resumed).phase == :idle
+    refute File.exists?(ctx.path <> ".init")
+  end
+
+  test "corrupt lifecycle receipts refuse before tail repair", ctx do
+    pid = start(ctx, config(ctx))
+    assert :ok = Session.prompt(pid, "receipt fixture")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5000
+    id = Session.info(pid).id
+    assert :ok = Session.close(pid)
+    {:ok, events} = Journal.load(ctx.dir, id)
+
+    for corrupted <- [
+          Enum.reject(events, &(&1["type"] == "extension_text_ready")),
+          Enum.reject(events, &(&1["type"] == "extension_text_intent")),
+          Enum.map(events, fn event ->
+            if event["type"] == "extension_text_ready",
+              do: Map.put(event, "intent_sha256", String.duplicate("a", 64)),
+              else: event
+          end)
+        ] do
+      path = Path.join(ctx.dir, id <> ".jsonl")
+      bytes = Enum.map_join(corrupted, "", &(Jason.encode!(&1) <> "\n")) <> "{partial"
+      File.write!(path, bytes)
+
+      assert {:error, _} =
+               DynamicSupervisor.start_child(
+                 Ipse.Sessions,
+                 {Session,
+                  config: config(ctx),
+                  cwd: ctx.root,
+                  state_dir: ctx.dir,
+                  subscriber: self(),
+                  id: id}
+               )
+
+      assert File.read!(path) == bytes
+    end
+  end
+
+  defp await_exit(actual, cwd) do
+    assert Regex.match?(~r/\A[0-9]+\z/, actual)
+
+    await(fn ->
+      {:ok, result} =
+        Ipse.Runner.run("kill -0 " <> actual, cwd, timeout_ms: 1000, output_limit: 0)
+
+      result.exit_code != 0
+    end)
+  end
+end

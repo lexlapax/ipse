@@ -136,7 +136,8 @@ def handle("transform.prompt", payload, state), do: {:ok, payload, state}
 
 `describe/0` returns a JSON object with SDK 1 and capabilities exactly matching
 the reviewed manifest, including exact normalized `exports` for invocation
-artifacts. Missing exports normalize to empty only for transform-only code.
+artifacts. Missing exports normalize to empty for code without `invoke.*` exports,
+including transform-only and text-consumer artifacts.
 This executable handshake is not a pre-execution certificate: startup intent
 precedes loading/describe/init. `init/1` receives validated options once; its private
 state stays in that worker. `handle/3` receives a declared capability string and
@@ -163,14 +164,15 @@ The owner is monitored while idle or active. Owner death, deadline expiry,
 process exit and protocol failure close the owned native stdio process group;
 failed callbacks are not restarted/replayed. `Worker.close(pid)` reports the
 native helper's cleanup result. Worker status formatting includes only readiness,
-sequence and traffic counters, never options/payloads. P22A4's
-[session host](extension-hooks.md) adds pinned activation identity and durable
-prompt/display projections; P22A7 adds [static catalogs and value-only
-invocations](extension-invocations.md). P22A8 adds [host-mediated state
-operations](extension-host-calls.md); P22A9 adds [question checkpoints](extension-questions.md).
-P22A10 adds [bounded workflow tool actions](extension-tool-actions.md). Service composition,
-via [owned value jobs](extension-services.md) is implemented in P22A11. Context,
-broader nested job contracts and observations remain later P22 work.
+sequence and traffic counters, never options/payloads. The raw Worker bridge is
+a developer building block; Session adapters impose stage-specific admission,
+effect and recovery rules. [Hooks](extension-hooks.md) commit prompt/display
+projections; [invocations](extension-invocations.md) use typed catalogs and finite
+[host actions](extension-host-calls.md), including questions, tools, services and
+context. [Text consumers](text-streams.md#worker-clients) use a separate read-only
+resource lifetime and serializable handle, with no host-action interpretation.
+Lifecycle observation, broader nested jobs and the independent installed-package
+proof remain [P22 work](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
 
 `test/extensions_worker_test.exs` compiles a uniquely named independent artifact
 with the existing Elixir compiler in a separate VM. It verifies inert import,

@@ -81,6 +81,7 @@ defmodule Ipse.Session do
          {:ok, lock} <- acquire_lock(Path.join(dir, id <> ".lock"), 10),
          {:ok, locked_events} <- Journal.load(dir, id),
          {:ok, _} <- restore_context(locked_events),
+         :ok <- Ipse.Extensions.TextResources.validate_events(locked_events, id),
          :ok <- Journal.repair_tail(dir, id),
          {:ok, events} <- Journal.load(dir, id),
          {:ok, accounting} <- Ipse.Usage.restore(events, id),
@@ -136,6 +137,10 @@ defmodule Ipse.Session do
           ),
         text_stream: nil,
         text_stream_monitor: nil,
+        extension_text: %{},
+        extension_text_count: Ipse.Extensions.TextResources.count(events),
+        extension_text_turn: nil,
+        extension_text_cleanup_failed: false,
         final: Projection.presentation(events),
         extension_intent: nil,
         extension_invocation: if(question && question[:kind] == :extension, do: question.parent),
@@ -335,18 +340,142 @@ defmodule Ipse.Session do
   end
 
   def handle_call(:subscribe_text, {consumer, _}, %{phase: :idle} = s) do
-    s =
-      if s.text_stream do
-        s
-      else
-        {:ok, stream} = Ipse.TextStream.start(self(), s.id)
-        %{s | text_stream: stream, text_stream_monitor: Process.monitor(stream)}
-      end
+    s = ensure_text_stream(s)
 
     {:reply, Ipse.TextStream.subscribe(s.text_stream, consumer), s}
   end
 
   def handle_call(:subscribe_text, _, s), do: {:reply, {:error, :busy}, s}
+
+  def handle_call(
+        {:extension_text_begin, ref, identity},
+        {caller, _},
+        %{job_ref: ref, task: %{pid: caller}, phase: :extension_text_start} = s
+      )
+      when ref != nil do
+    duplicate =
+      Enum.any?(s.extension_text, fn {_, resource} ->
+        resource.intent["identity"]["instance"] == identity["instance"]
+      end)
+
+    if identity in Ipse.Extensions.Registry.manifests(s.config) and
+         "stream.text" in identity["capabilities"] and
+         Ipse.Extensions.Registry.live?(identity) and not duplicate and
+         s.extension_text_count < 10_000 and map_size(s.extension_text) < 4 do
+      intent = Ipse.Extensions.TextResources.intent(identity, s.id, s.turn_id)
+      record(s, intent)
+
+      resource = %{
+        intent: intent,
+        pid: nil,
+        worker: nil,
+        monitor: nil,
+        subscription_id: nil,
+        ready: false,
+        closed: false
+      }
+
+      {:reply, {:ok, intent},
+       %{
+         s
+         | extension_text: Map.put(s.extension_text, intent["resource_id"], resource),
+           extension_text_count: s.extension_text_count + 1
+       }}
+    else
+      {:reply, {:error, :extension_text_refused}, s}
+    end
+  end
+
+  def handle_call(
+        {:extension_text_register, ref, intent, consumer},
+        {caller, _},
+        %{job_ref: ref, task: %{pid: caller}, phase: :extension_text_start} = s
+      )
+      when ref != nil do
+    with %{intent: ^intent, pid: nil} = resource <- s.extension_text[intent["resource_id"]],
+         true <- is_pid(consumer) and Process.alive?(consumer),
+         s = ensure_text_stream(s),
+         {:ok, handle} <- Ipse.TextStream.subscribe(s.text_stream, consumer) do
+      resource = %{
+        resource
+        | pid: consumer,
+          monitor: Process.monitor(consumer),
+          subscription_id: handle.subscription_id
+      }
+
+      {:reply, {:ok, handle},
+       %{s | extension_text: Map.put(s.extension_text, intent["resource_id"], resource)}}
+    else
+      _ -> {:reply, {:error, :extension_text_refused}, s}
+    end
+  end
+
+  def handle_call({:extension_text_worker, id, worker}, {consumer, _}, s) do
+    case s.extension_text[id] do
+      %{pid: ^consumer, worker: nil} = resource when is_pid(worker) ->
+        if Process.alive?(consumer) and Process.alive?(worker) do
+          {:reply, :ok,
+           %{s | extension_text: Map.put(s.extension_text, id, %{resource | worker: worker})}}
+        else
+          {:reply, {:error, :extension_text_refused}, s}
+        end
+
+      _ ->
+        {:reply, {:error, :extension_text_refused}, s}
+    end
+  end
+
+  def handle_call(
+        {:extension_text_ready, ref, intent, consumer},
+        {caller, _},
+        %{job_ref: ref, task: %{pid: caller}, phase: :extension_text_start} = s
+      )
+      when ref != nil do
+    with %{intent: ^intent, pid: ^consumer, ready: false, closed: false} = resource <-
+           s.extension_text[intent["resource_id"]],
+         true <- Process.alive?(consumer) and Process.alive?(resource.worker),
+         true <- Ipse.TextStream.enrolled?(s.text_stream, resource.subscription_id, consumer),
+         true <- Ipse.Extensions.Registry.live?(intent["identity"]) do
+      record(s, Ipse.Extensions.TextResources.ready(intent))
+
+      {:reply, :ok,
+       %{
+         s
+         | extension_text:
+             Map.put(s.extension_text, intent["resource_id"], %{resource | ready: true})
+       }}
+    else
+      _ -> {:reply, {:error, :extension_text_refused}, s}
+    end
+  end
+
+  def handle_call({:extension_text_begin, _, _}, _, s),
+    do: {:reply, {:error, :extension_text_refused}, s}
+
+  def handle_call(
+        {:extension_text_abort, ref, intent},
+        {caller, _},
+        %{job_ref: ref, task: %{pid: caller}, phase: :extension_text_start} = s
+      )
+      when ref != nil do
+    case s.extension_text[intent["resource_id"]] do
+      %{intent: ^intent, pid: nil} ->
+        record(s, Ipse.Extensions.TextResources.closed(intent, "startup_failed", nil, nil, true))
+        {:reply, :ok, %{s | extension_text: Map.delete(s.extension_text, intent["resource_id"])}}
+
+      _ ->
+        {:reply, :ok, s}
+    end
+  end
+
+  def handle_call({:extension_text_abort, _, _}, _, s),
+    do: {:reply, {:error, :extension_text_refused}, s}
+
+  def handle_call({:extension_text_register, _, _, _}, _, s),
+    do: {:reply, {:error, :extension_text_refused}, s}
+
+  def handle_call({:extension_text_ready, _, _, _}, _, s),
+    do: {:reply, {:error, :extension_text_refused}, s}
 
   def handle_call(:exports, _, s), do: {:reply, s.extension_catalog, s}
 
@@ -629,7 +758,14 @@ defmodule Ipse.Session do
        "active_worker" => not is_nil(s.task),
        "accounting" => Ipse.Usage.snapshot(s.accounting),
        "context" => Ipse.Diagnostics.context(s.messages, s.config, system_message(s)),
-       "extension_context" => Ipse.Extensions.Contributions.summary(s.extension_contributions)
+       "extension_context" => Ipse.Extensions.Contributions.summary(s.extension_contributions),
+       "extension_text" => %{
+         "active_consumers" =>
+           Enum.count(s.extension_text, fn {_, resource} ->
+             resource.ready and not resource.closed
+           end),
+         "unconfirmed_cleanup" => s.extension_text_cleanup_failed
+       }
      }, s}
   end
 
@@ -878,6 +1014,39 @@ defmodule Ipse.Session do
 
     if s.task, do: Task.shutdown(s.task, :brutal_kill)
 
+    text_cleanup =
+      Enum.map(s.extension_text, fn {_, resource} ->
+        result =
+          cond do
+            resource.closed ->
+              if is_pid(resource.pid) and Process.alive?(resource.pid),
+                do: Process.exit(resource.pid, :kill)
+
+              :ok
+
+            is_pid(resource.pid) ->
+              Ipse.Extensions.TextConsumer.close(resource)
+
+            true ->
+              :ok
+          end
+
+        if not resource.closed,
+          do:
+            record(
+              s,
+              Ipse.Extensions.TextResources.closed(
+                resource.intent,
+                "cancelled",
+                nil,
+                nil,
+                result == :ok
+              )
+            )
+
+        result
+      end)
+
     s =
       settle_calls(
         s,
@@ -900,6 +1069,8 @@ defmodule Ipse.Session do
           extension_action_results: [],
           extension_action_unknown: false,
           extension_request: nil,
+          extension_text: %{},
+          extension_text_turn: nil,
           tool_decision: "not_decided",
           mcp_resources: %{},
           delegation_resources: %{},
@@ -909,7 +1080,12 @@ defmodule Ipse.Session do
           delegation_claims: %{}
       }
 
-    {child_cleanup ++ cleanup, next}
+    text_cleanup =
+      if s.extension_text_cleanup_failed,
+        do: [{:error, :cleanup_unconfirmed} | text_cleanup],
+        else: text_cleanup
+
+    {child_cleanup ++ cleanup ++ text_cleanup, next}
   end
 
   @impl true
@@ -1079,6 +1255,12 @@ defmodule Ipse.Session do
       {:extension_prompt, :ok} ->
         {:noreply, model(%{s | extension_intent: nil})}
 
+      {:extension_text_start, :ok} ->
+        {:noreply, model(s)}
+
+      {:extension_text_start, {:error, error}} ->
+        {:noreply, fail(s, error)}
+
       {:extension_presentation, :ok} ->
         notify(s, {:presentation, s.final})
         {:noreply, finish(s, :ok)}
@@ -1214,7 +1396,60 @@ defmodule Ipse.Session do
      )}
   end
 
+  def handle_info({:extension_text_closed, consumer, id, reason, frames, bytes, cleanup}, s) do
+    case s.extension_text[id] do
+      %{pid: ^consumer, closed: false} = resource ->
+        event =
+          Ipse.Extensions.TextResources.closed(resource.intent, reason, frames, bytes, cleanup)
+
+        if Ipse.Extensions.TextResources.valid_closed?(event, resource.intent) do
+          record(s, event)
+
+          notify(
+            s,
+            {:status,
+             "Extension text consumer closed incomplete; original provider history is retained."}
+          )
+
+          {:noreply,
+           %{
+             s
+             | extension_text: Map.put(s.extension_text, id, %{resource | closed: true}),
+               extension_text_cleanup_failed: s.extension_text_cleanup_failed or not cleanup
+           }}
+        else
+          {:noreply, s}
+        end
+
+      _ ->
+        {:noreply, s}
+    end
+  end
+
   def handle_info({:DOWN, ref, :process, pid, _}, s) do
+    unconfirmed_text =
+      Enum.any?(s.extension_text, fn {_, resource} ->
+        resource.monitor == ref and resource.pid == pid and not resource.closed
+      end)
+
+    extension_text =
+      Enum.reduce(s.extension_text, s.extension_text, fn {id, resource}, resources ->
+        if resource.monitor == ref and resource.pid == pid do
+          if not resource.closed,
+            do: record(s, Ipse.Extensions.TextResources.closed(resource.intent, "consumer_down"))
+
+          Map.delete(resources, id)
+        else
+          resources
+        end
+      end)
+
+    s = %{
+      s
+      | extension_text: extension_text,
+        extension_text_cleanup_failed: s.extension_text_cleanup_failed or unconfirmed_text
+    }
+
     s =
       if ref == s.text_stream_monitor,
         do: %{s | text_stream: nil, text_stream_monitor: nil},
@@ -1246,6 +1481,12 @@ defmodule Ipse.Session do
   @impl true
   def terminate(_reason, s) do
     if s.task, do: Task.shutdown(s.task, :brutal_kill)
+
+    Enum.each(s.extension_text, fn {_, resource} ->
+      if is_pid(resource.pid) and Process.alive?(resource.pid),
+        do: Process.exit(resource.pid, :kill)
+    end)
+
     Ipse.Runner.unlock(s.lock)
     :ok
   end
@@ -1355,6 +1596,9 @@ defmodule Ipse.Session do
       not Ipse.Usage.capacity?(s.accounting) ->
         fail(s, "The session request-accounting limit was reached; start a fresh session.")
 
+      s.extension_text_turn != s.turn_id and Ipse.Extensions.TextResources.entries(s.config) != [] ->
+        start_extension_text(s)
+
       true ->
         system = system_message(s)
 
@@ -1396,6 +1640,36 @@ defmodule Ipse.Session do
       :model
     )
   end
+
+  defp start_extension_text(s) do
+    entries =
+      Enum.reject(Ipse.Extensions.TextResources.entries(s.config), fn entry ->
+        Enum.any?(s.extension_text, fn {_, resource} ->
+          resource.intent["identity"] == entry.identity and resource.ready and
+            not resource.closed and Process.alive?(resource.pid) and
+            Ipse.Extensions.Registry.live?(entry.identity) and
+            Ipse.TextStream.enrolled?(s.text_stream, resource.subscription_id, resource.pid)
+        end)
+      end)
+
+    s = %{s | extension_text_turn: s.turn_id}
+
+    if entries == [] do
+      model(s)
+    else
+      owner = self()
+      ref = make_ref()
+      task = owned_task(fn -> Ipse.Extensions.TextResources.start(entries, owner, ref) end)
+      %{s | task: task, job_ref: ref, phase: :extension_text_start}
+    end
+  end
+
+  defp ensure_text_stream(%{text_stream: nil} = s) do
+    {:ok, stream} = Ipse.TextStream.start(self(), s.id)
+    %{s | text_stream: stream, text_stream_monitor: Process.monitor(stream)}
+  end
+
+  defp ensure_text_stream(s), do: s
 
   defp launch_request(s, config, messages, tools, phase) do
     s = admit_request(s, config, Atom.to_string(phase))

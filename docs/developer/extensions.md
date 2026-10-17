@@ -17,9 +17,9 @@ Current contracts are organized by responsibility:
 | Tools, commands, services and finite host operations | [Invocations](extension-invocations.md), [host calls](extension-host-calls.md) |
 | Explicit continuation and approved effects | [Questions](extension-questions.md), [workflow tools](extension-tool-actions.md) |
 | Typed dependency composition and contextual evidence | [Services](extension-services.md), [context](extension-context.md) |
-| Durable request facts and embedded private delivery | [Usage accounting](usage-accounting.md), [text channel](text-streams.md) |
+| Durable request facts and embedded/worker private delivery | [Usage accounting](usage-accounting.md), [text channel](text-streams.md) |
 
-Worker stream access, lifecycle observability/developer controls and the
+Lifecycle observability/developer controls and the
 independent installed-package/supervised proofs remain open. The
 [plan](../plan.md#p22-extension-scaffold-and-lifecycle-hooks) owns current status;
 [testing](testing.md#current-evidence-and-next-checks) owns actual results.
@@ -146,8 +146,9 @@ The first standalone worker targets Elixir/OTP and existing declared tooling.
 Later other-language workers can use the same wire contract, with explicit runtime
 requirements and dependency approval/inventory; no new language runtime becomes
 a silent Ipse dependency. Shared-worker reuse is deferred. Current callbacks use
-fresh owned VMs; question continuations reconstruct state from bounded JSON.
-An activation instance/session does not imply persistent private VM state.
+fresh owned VMs for transforms/invocations; question continuations reconstruct
+state from bounded JSON. Text consumers own a VM for their private resource
+lifetime. An activation instance alone does not imply persistent VM state.
 Preserve cross-process locking for intentionally shared durable stores.
 
 ## Lifecycle map

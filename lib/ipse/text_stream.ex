@@ -10,6 +10,14 @@ defmodule Ipse.TextStream do
   def start(owner, session_id), do: GenServer.start(__MODULE__, {owner, session_id})
   def subscribe(server, consumer), do: GenServer.call(server, {:subscribe, consumer})
 
+  def enrolled?(nil, _, _), do: false
+
+  def enrolled?(server, id, consumer) do
+    GenServer.call(server, {:enrolled, id, consumer}) == true
+  catch
+    :exit, _ -> false
+  end
+
   def begin(server, request_id, producer),
     do: GenServer.call(server, {:begin, request_id, producer})
 
@@ -67,6 +75,9 @@ defmodule Ipse.TextStream do
       {:reply, {:error, :text_subscription_unavailable}, s}
     end
   end
+
+  def handle_call({:enrolled, id, consumer}, {owner, _}, %{owner: owner} = s),
+    do: {:reply, match?(%{pid: ^consumer}, s.subscribers[id]), s}
 
   def handle_call({:begin, request_id, producer}, {owner, _}, %{owner: owner, active: nil} = s)
       when is_pid(producer) do

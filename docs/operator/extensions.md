@@ -89,8 +89,10 @@ trust ceiling must cover every declared capability:
 | `host.tools` | Existing bounded read/write/edit/shell calls | [Workflow tools](#workflow-tools) |
 | `host.services` | Calls through explicit operator service bindings | [Composition](#service-composition) |
 | `host.context` | Bounded caller-scoped context publications | [Context/evidence](#context-and-evidence) |
+| `stream.text` | Acknowledged private visible-text delivery through a scoped worker handle | [Text clients](#visible-text-clients) |
 
-Every `host.*` operation capability also requires `host.actions`. Unsupported
+Every `host.*` operation capability also requires `host.actions`; `stream.text`
+is a separate read-only capability. Unsupported
 capabilities fail explicitly. Invocation exports need inert argument/result
 schemas in the manifest. Keep credentials out of options. These mechanisms
 do not select an automatic memory backend or retrieval provider.
@@ -296,12 +298,24 @@ Changes to pinned code/config still require the documented recovery path.
 
 ## Visible-text clients
 
-Embedded clients can explicitly use a bounded private visible-text subscription;
-there is no new stream CLI flag or installed-worker subscription capability yet.
-It receives raw visible model text; completed-answer formatting remains separate.
-Slow consumers can backpressure their request and receive explicit incomplete
-shutdown on timeout/cancel. Subscriptions are ephemeral and do not replay on
-resume. See the [embedded contract](../developer/text-streams.md).
+Embedded clients may explicitly subscribe while idle. An installed artifact
+trusted/selected for `stream.text` receives the same bounded private frames in
+its owned worker; select it through the usual configuration or `--extension`.
+There is no separate stream CLI flag. Consumers get raw visible model text,
+excluding summaries, native reasoning, credentials and completed formatting.
+
+Worker callbacks acknowledge an opaque scoped handle and sequence; they cannot
+turn a stream reply into tools, state writes or model requests. At most four
+consumers share channel capacity. Selected workers must be ready before provider
+dispatch; capacity/startup refusal stops that attempt. Slow consumers may
+backpressure the request; callback failure closes incomplete with a fixed status.
+The provider may continue after a consumer leaves, or fail at the pressure deadline.
+
+Subscriptions/frames never replay on idle resume. Fresh operator input can enroll
+a new resource; no failed frame is retried. `/diagnostics` reports active count
+and unconfirmed cleanup without text/options. Cancel/close stops workers; owner
+death also stops blocked callbacks. Terminal delivery is best effort, and
+unconfirmed cleanup is reported. See the [SDK and embedding contract](../developer/text-streams.md).
 
 ## Recovery and execution boundaries
 
@@ -335,7 +349,7 @@ cancellation do not themselves provide an OS sandbox. Initialize/transform
 callbacks must follow the SDK's effect-free contract; arbitrary trusted programs
 cannot be constrained by a return-value schema alone.
 
-Broader nested service contracts, worker stream access, lifecycle observation,
+Broader nested service contracts, lifecycle observation,
 live controls and the independent installed memory/workflow proof remain
 [P22 work](../plan.md#p22-extension-scaffold-and-lifecycle-hooks). Remote installers,
 build assistants and live activation are future capabilities. Current import and

@@ -549,12 +549,13 @@ sandboxing. No live activation, automatic download or build assistant exists.
 Local `/diagnostics`, `ipse diagnose --resume ID` and
 `ipse handoff --resume ID --note TEXT` support content diagnosis and reviewed
 recovery. See [context recovery](recovery.md). Visible text streams in chat;
-embedded clients can also subscribe to the [private bounded channel](../developer/text-streams.md).
+embedded clients and selected `stream.text` workers use the
+[private bounded channel](../developer/text-streams.md).
 These available facilities are distinct from the planned capabilities below.
 
 | Milestone | Remaining capability | Status and boundary |
 | --- | --- | --- |
-| P22 | Worker stream handles, lifecycle observation and debugging/conformance | In progress; no off/local/export trace-mode flag is available yet |
+| P22 | Lifecycle observation, debugging/conformance and the independent package proof | In progress; no off/local/export trace-mode flag is available yet |
 | P23 | Cost reports and budget admission | Planned over durable usage facts; context bytes are not tokens or an invoice |
 | P24 | STT/text-agent/TTS and realtime media | Planned with explicit device/provider/billing selection; text authentication does not imply audio access |
 | P25 | Optional working/long-term memory, research engine, graph and RAG | Research/selection gates remain; each adapter will be independently configured and default-off |

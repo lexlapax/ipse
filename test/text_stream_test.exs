@@ -80,6 +80,20 @@ defmodule Ipse.TextStreamTest do
     assert text(drain(ctx)) == "synthetic-private-visible-text"
   end
 
+  test "owner admission checks live enrollment rather than consumer process existence", ctx do
+    assert TextStream.enrolled?(ctx.server, ctx.handle.subscription_id, self())
+    owner = self()
+
+    outsider =
+      Task.async(fn -> TextStream.enrolled?(ctx.server, ctx.handle.subscription_id, owner) end)
+
+    refute Task.await(outsider)
+    assert :ok = TextStream.unsubscribe(ctx.handle)
+    assert Process.alive?(self())
+    refute TextStream.enrolled?(ctx.server, ctx.handle.subscription_id, self())
+    refute TextStream.enrolled?(nil, ctx.handle.subscription_id, self())
+  end
+
   test "full buffers backpressure the producer and acknowledgment resumes it losslessly", ctx do
     chunk = String.duplicate("a", 65_536)
     push(ctx, chunk)

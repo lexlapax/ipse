@@ -273,13 +273,14 @@ Separate VMs and process groups are ownership boundaries, not OS sandboxing.
 | Workflow tools | Existing file/Runner policy, instruction preflight, linked owned tasks and output-completeness facts | [Tool actions](extension-tool-actions.md) |
 | Value-service composition | Operator routes, acyclic dependency identities, target lease/schema/cleanup checks and host provenance | [Services](extension-services.md) |
 | Session context | Bounded caller-owned sets, assertion/receipt provenance and exact main-request snapshots | [Context](extension-context.md) |
+| Private text consumers | Owned independent workers, opaque resource handles, acknowledged frames and explicit incomplete cleanup | [Text delivery](text-streams.md) |
 
 Ordinary returned JSON is data; it never implies another host action. Unknown
 outcomes stop without replay. Idle resume validates committed projections and
 receipts without loading callbacks or retrieving again. Mandatory instructions,
 messages and native continuation remain intact. Domain algorithms belong in
 extensions where the supported SDK permits; missing host capabilities require
-reviewed general contracts. Worker stream access, lifecycle observability and
+reviewed general contracts. Lifecycle observability and
 the independent installed-package proof remain [P22 gates](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
 
 Keep provider-specific wire formats inside provider adapters and keep session

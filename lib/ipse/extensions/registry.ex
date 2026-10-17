@@ -145,6 +145,7 @@ defmodule Ipse.Extensions.Registry do
     entries = Map.get(config, :extensions, [])
 
     is_list(entries) and length(entries) <= 8 and
+      Enum.count(entries, &("stream.text" in &1.identity["capabilities"])) <= 4 and
       Enum.all?(entries, fn entry ->
         is_map(entry) and
           Enum.sort(Map.keys(entry)) == [
@@ -247,6 +248,8 @@ defmodule Ipse.Extensions.Registry do
       Ipse.Usage,
       Ipse.Usage.Normalizer,
       Ipse.TextStream,
+      Ipse.Extensions.TextResources,
+      Ipse.Extensions.TextConsumer,
       Ipse.Session
     ]
     |> Enum.map(fn module ->

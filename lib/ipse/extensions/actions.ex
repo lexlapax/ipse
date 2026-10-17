@@ -215,6 +215,10 @@ defmodule Ipse.Extensions.Actions do
     }
   end
 
+  defp validate_event(%{"type" => type}, state, _)
+       when type in ~w(extension_text_intent extension_text_ready extension_text_closed),
+       do: {:ok, state}
+
   defp validate_event(%{"type" => "extension_invocation_intent"} = event, state, _) do
     if is_nil(state.parent),
       do:

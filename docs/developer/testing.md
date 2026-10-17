@@ -204,31 +204,31 @@ and [runtime identity](#p1-runtime-identity-2026-10-15).
 
 ## Current evidence and next checks
 
-The latest local runtime checkpoint is `7c2df84` on Linux Serenity: build,
-warnings-as-errors compilation, 477 tests with 14 macOS-only exclusions, both
-actual Elixir 1.18.4/1.20.4 formatter checks, the credential-free demo, and the
-extracted Linux package baseline passed. See
-[context/evidence details](#p22-session-context-and-evidence-2026-10-16).
-The service commit's hosted run stopped at formatting; the context increment
-repairs it. The [context hosted run](https://github.com/lexlapax/ipse/actions/runs/39000762785)
-passed the full Ubuntu build/test/demo/package checks. On macOS, formatting and
-compilation passed, but the suite failed at the existing MCP lost-response recovery
-fixture's five-second wait. The mailbox contained only `discovering_mcp`, so the
-assertion was still covering VM/catalog startup, not resource-call execution.
-Native enforcement, demo and packaging were skipped on that job.
+| Checkpoint | Evidence | Scope and remaining limits |
+| --- | --- | --- |
+| Worker text resources, Linux Serenity | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters, 485 native-suite tests with 14 macOS exclusions | Source fixtures; new worker/resource behavior needs independent installed-package and hosted platform evidence |
+| Hosted baseline `51513e8` | [Ubuntu/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39001726434) passed build, format, compile, tests, demo and extracted packages; macOS native checks passed | Establishes the preceding context/service and MCP-readiness baseline, not subsequent worker-text changes |
+| Provider acceptance | [Explicit live provider checks](#live-provider-acceptance-follow-up-2026-10-15) | Recorded account/model/platform combinations only; fixture tests do not establish billing, hardware or arbitrary-model support |
 
-The fixture now waits for its explicit model/catalog-ready event within fifteen
-seconds before the existing five-second tool-progress and ten-second outcome
-waits. The configured five-second server/RPC limit, unknown/not-started outcomes, prompt
-batch stop and no-replay resume assertions are unchanged. **14 focused catalog/
-session tests** and both actual formatter checks passed on Linux. This fixture
-coordination repair adds no runtime dependency or production timeout change.
-The full macOS completion gate still needs a new hosted run.
+The worker-text increment adds seven independent-artifact fixtures and a broker
+enrollment check. A focused text suite passed 20 tests; the final full Linux
+suite additionally covers the strengthened owner-death idle-resume case. See
+[resource contract](text-streams.md) and
+[context/evidence checkpoint](#p22-session-context-and-evidence-2026-10-16).
 
-P22 still needs worker stream access, observability/debugging, the independent
-installed-package proof and supervised review. P23–P25 and the final license
-transition remain open; the [plan](../plan.md) owns acceptance/status. Do not infer
-current platform or live-provider support from a narrower or older passing record.
+The earlier [service run](https://github.com/lexlapax/ipse/actions/runs/38999961420)
+stopped at formatting. The [context run](https://github.com/lexlapax/ipse/actions/runs/39000762785)
+repaired formatting and passed Ubuntu, but macOS stopped at a five-second MCP
+fixture wait while still discovering the catalog; native/demo/package steps were
+skipped. `51513e8` adds an explicit catalog-ready barrier, retaining the configured
+server/RPC and resource-outcome limits and no-replay assertions. Fourteen focused
+catalog/session tests and the subsequent full hosted matrix passed. This is
+fixture coordination evidence, not a production timeout or permission change.
+
+P22 still needs observability/debugging, the independent installed-package proof
+and supervised review. P23–P25 and the final license transition remain open;
+the [plan](../plan.md) owns acceptance/status. Current source/package results,
+hosted platforms and live trials are separate verification claims.
 
 ## Historical verification records
 
@@ -2875,6 +2875,33 @@ matching OTP 29.1.1 notices and passed `scripts/verify-package.exs`: isolated
 homes, default/explicit workspace paths, utility-only PATH, help/demo and bundled
 MCP/delegation/extension checks. This is the package baseline, not an extracted
 independent context artifact proof. The [current summary](#current-evidence-and-next-checks)
-records the separate hosted Linux success and macOS fixture failure.
+tracks subsequent platform results separately from this historical checkpoint.
 Documentation validation passed **69 Markdown files / 705 local file and heading
+links**, with no errors.
+
+## P22 worker text resources (2026-10-16)
+
+On Linux Serenity, build, warnings-as-errors compilation, both actual Elixir
+1.18.4/1.20.4 formatter checks and the full native suite passed: **485 tests,
+14 macOS-only exclusions**. A focused worker/broker/session text suite
+passed **20 tests**. Seven independently compiled artifact fixtures exercise
+ordered bounded JSON text and opaque handles, native/reasoning exclusion, inert
+disabled behavior, no frame replay on byte-identical idle resume, fresh-resource
+enrollment after explicit input, read-only host-action refusal, capacity refusal
+before initialization/inference, and corruption refusal before tail repair.
+Cancellation and untrappable owner death check the actual worker VM exits; both
+restore idle without initializing it again. Broker admission additionally checks
+live enrollment, preventing a surviving consumer PID from representing a removed
+subscription. See [contract](text-streams.md) and
+[operator procedure](../operator/extensions.md#visible-text-clients).
+
+The credential-free source demo and explicit hook/accounting/text fixture passed.
+The Linux glibc-2.44 package rebuilt with matching OTP 29.1.1 notices and passed
+extracted help/demo, isolated homes, default/explicit workspaces, utility-only
+PATH and bundled MCP/delegation/extension checks. This is the package baseline,
+not an independently installed worker-text artifact proof in an extracted release.
+The current increment still needs hosted platform results; the preceding
+`51513e8` Linux/macOS matrix is recorded in the current summary. No live provider,
+audio, exporter, external dependency or production knowledge backend was used.
+Documentation checks passed **74 Markdown files / 889 local file and heading
 links**, with no errors.

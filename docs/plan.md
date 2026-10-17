@@ -1015,7 +1015,7 @@ persistent use. They are design walkthroughs, not execution proofs.
 | Artifacts and activation (A1–A3) | Inert immutable import/inspection, independent worker SDK, scoped operator trust/configuration and session leases | [Artifacts](developer/extension-artifacts.md), [operator selection](operator/extensions.md) |
 | Prompt and presentation (A4) | Two default-off examples; source-bound projections retain original/native data and restore without callbacks | [Hooks](developer/extension-hooks.md) |
 | Request facts (A5) | Durable identities, normalized final/partial/unknown usage, rejected-summary retention and child attribution | [Usage](developer/usage-accounting.md) |
-| Visible text (A6) | Embedded private subscriptions with acknowledgments, bounded pressure and explicit incomplete shutdown | [Text channel](developer/text-streams.md) |
+| Visible text (A6/A13) | Embedded and selected worker consumers, serializable handles, acknowledgments, bounded pressure and incomplete shutdown | [Text channel](developer/text-streams.md) |
 | Catalogs and invocations (A7) | Inert typed tools/commands/services, full tool approval, owned workers and committed receipts | [Invocations](developer/extension-invocations.md) |
 | Host state (A8) | Finite continuations, scoped CAS storage, retained tombstones and separate write approval | [Host calls](developer/extension-host-calls.md) |
 | Operator questions (A9) | Durable checkpoints; only explicit validated answers start new continuations | [Questions](developer/extension-questions.md) |
@@ -1030,8 +1030,8 @@ extension-only package proof or complete P22.
 
 ### Remaining completion work
 
-Worker-visible private stream access, lifecycle observation with off/local/export
-controls, bounded diagnostic sinks and developer conformance/debugging remain
+Lifecycle observation with off/local/export controls, bounded diagnostic sinks
+and developer conformance/debugging remain
 to be implemented. Core must then be frozen for the independent installed
 memory/workflow/retrieval package proof, followed by supervised independent
 review and the required source/package/platform checks. See the

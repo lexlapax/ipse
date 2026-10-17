@@ -3,7 +3,7 @@
 P22A7 adds inert manifest-declared tools, operator commands and standalone typed
 services. They share the independent worker SDK and owner chain used by the
 [prompt/presentation hooks](extension-hooks.md). This increment does not complete
-P22: broader nested job contracts, worker text handles and observability
+P22: broader nested job contracts, observability
 controls remain separate work. No provider or store is selected implicitly.
 P22A8 adds [finite host state calls](extension-host-calls.md) with explicit
 capability negotiation and separate mutation approval.
@@ -11,6 +11,8 @@ P22A9 adds [structured questions and explicit continuations](extension-questions
 P22A10 adds [approved file/shell workflow actions](extension-tool-actions.md).
 P22A11 adds [typed operator-bound value-service composition](extension-services.md).
 P22A12 adds [explicit session context/evidence publications](extension-context.md).
+Private [text consumers](text-streams.md) use their own read-only resource lifetime,
+separate from invocation host actions.
 
 ## Inert declarations
 
