@@ -206,6 +206,7 @@ and [runtime identity](#p1-runtime-identity-2026-10-15).
 
 | Checkpoint | Evidence | Scope and remaining limits |
 | --- | --- | --- |
+| P23A configured estimator, Linux Serenity, 2026-10-17 | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters, 15 focused fixtures and 647 native-suite tests passed (14 macOS exclusions); CLI help and isolated credential-free demo passed | [Pure rate-card estimates](costs.md): exact configured identity/units/rounding, cache partitions, explicit unknowns, provenance and overflow. No rate lookup, paid call, installed report extension, accounting-read grant or budget enforcement is claimed |
 | P22 hosted completion `de073ba` | [Ubuntu/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39037702166) passed every applicable step: build, format, compile, tests, demo, ordinary packages and independent installed extension lab; macOS native and default experimental sandbox enforcement passed | Actual job/step conclusions inspected. Includes canonical bundle-path correction and 41-assertion lab; the stronger macOS escaped-descendant lifetime diagnostic remains an acknowledged limit |
 | Supervised extension-only change, Linux Serenity, 2026-10-17 | Frozen installed release authored operator-only stats in two files under three exact edit approvals; a fresh read-only review found no actionable issue in scope; 41 source/installed assertions, focused integration and all 632 native-suite tests passed (14 macOS exclusions), including symlinked temporary-root verification | Actual ChatGPT subscription `gpt-6.1-sol`/high, eight author and five reviewer requests; both shipped hooks and inert idle resume verified. Runtime assertions use synthetic data/model, not live graph quality |
 | Independent extension lab, Linux Serenity, 2026-10-17 | Seven artifacts compiled separately; 33 source and installed-release assertions passed, including real temporary CLI selection; eight focused tests and 632 native-suite tests passed with 14 macOS exclusions | Candidate core `3b0ef78` unchanged under `lib/`/`native/`; host BEAM bytes unchanged and domain modules never loaded in host. Synthetic extraction/corpus/model only; terminal expected service crash leaves cleanup unconfirmed and `safe_to_continue: false` |
@@ -381,7 +382,7 @@ inference stays unstarted, cleanup remains unconfirmed and no later domain
 scenario runs. Passing its assertions does not permit continued effects.
 Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4
 formatters, CLI help and isolated credential-free demo passed for this increment.
-Documentation review checked 96 Markdown documents and 1180 local file/heading
+Documentation review checked 97 Markdown documents and 1187 local file/heading
 links with no errors.
 
 The [lifecycle audit](lifecycle-events.md#supported-lifecycle-coverage), supervised

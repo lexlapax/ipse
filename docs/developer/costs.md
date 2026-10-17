@@ -1,0 +1,121 @@
+# Configurable usage estimates
+
+P23 starts with `Ipse.Extensions.Costs`, a pure extension-side calculator over
+explicit data. It validates a versioned rate card and estimates one canonical
+cumulative request snapshot. It performs no IO, pricing lookup, model request,
+state mutation, subscription or request admission. No rates ship enabled and no
+provider/model price is embedded. The operator CLI still exposes counters only;
+the report extension, accounted model operations and budget enforcement remain
+P23 delivery work.
+
+## Rate identity and selection
+
+`schema/0` returns the closed schema; `validate/1` reuses the existing bounded
+JSON Schema adapter plus semantic date, decimal and overlap checks. A card has
+version 1, ID, revision, uppercase three-letter currency label, publication date,
+source and up to 32 rows. The existing SDK object bounds apply, including 16 KiB
+per object. Currency is an explicit label, not an exchange-rate or ISO-registry
+lookup. A source is `https:` without user information/query, or an `operator:`
+reference; neither is fetched.
+
+Each row selects exact provider, billing mode, model and endpoint hash, a UTC
+admission-date interval and an input-token interval. Dates use `YYYY-MM-DD`;
+intervals include the lower bound and exclude the upper bound, with null upper
+bounds allowed. Intersecting date/token bands for the same identity refuse.
+Unknown input cannot select a finite token band. A reported model takes precedence
+over the requested model; aliases do not silently match. Null endpoint matches
+only a request with no explicit endpoint hash, never an arbitrary custom endpoint.
+
+The basis must match billing: API → `api_estimate`, subscription → explicitly
+configured `api_equivalent`, local → `local_estimate`. An API row cannot price
+a subscription/local request. Missing subscription pricing says it is not API
+spend; missing local pricing remains unconfigured, not free. Scripted demo usage
+is not applicable. These are estimates of configured measured dimensions, not
+account charges or invoices.
+
+## Units and arithmetic
+
+Rates are nonnegative decimal strings, with at most nine fractional digits and
+nine integer digits. Floats, exponents, signs and unsupported dimensions refuse.
+Token rates are currency per million tokens, web-search/fetch rates per thousand
+reported requests, and duration rates per second against normalized nanoseconds.
+
+| Input policy | Required token rates | Interpretation |
+| --- | --- | --- |
+| `flat` | `input`, `output` | Operator-selected approximation applying one rate to all input tokens |
+| `cache_split` | `input_uncached`, `input_cached`, `input_cache_write`, `output` | Inclusive input minus known cached/write subsets; no double counting |
+| `cache_ttl_split` | `input_uncached`, `input_cached`, `input_cache_write_5m`, `input_cache_write_1h`, `output` | Aggregate writes must equal the sum of known TTL subsets |
+
+Reasoning tokens are already within output and have no additional rate dimension.
+Unknown cache breakdowns do not become zero. Zero inclusive input or zero aggregate
+writes can mathematically establish zero subsets. Contradictory partitions are
+excluded from the known subtotal. Optional `web_search`, `web_fetch` and
+`duration_second` rates need their corresponding counts; a positive reported extra
+without a rate keeps the total unknown. Unreported, unconfigured extras are outside
+the stated `text_tokens_and_reported_extras` scope, not certified zero charges.
+
+OTP integers retain exact intermediate products with a common denominator.
+The calculator adds components before rounding up once per request to one
+billionth of the configured currency (`currency_scale: 9`). It never uses binary
+floating point for money. A result above the SDK-safe integer bound is an explicit
+overflow with no amount. This fixed precision and bounded decimal syntax need no
+general decimal-arithmetic package; the schema adapter, normalized counters,
+canonical digest and OTP arithmetic are already dependencies.
+[Decimal 3.1.1](https://decimal.hexdocs.pm/readme.html), Apache-2.0, was evaluated
+for its arbitrary decimal precision and bounded parsing. This contract deliberately
+accepts only a fixed nonnegative nine-place format and performs exact integer
+products before one rounding step, so no decimal context, arbitrary exponent or
+additional package is needed. Reevaluate Decimal if that numeric contract expands.
+
+## Input and result
+
+`estimate/2` requires exactly these request fields, selected from validated host
+accounting: `provider`, `billing_mode`, `model`, `reported_model`,
+`endpoint_sha256`, `admitted_at_ms`, `outcome`, `finality`, `usage`. Usage must be
+a valid normalized record. The calculator validates data; it does not authenticate
+a caller's claimed accounting or read a private Session/journal.
+
+An estimate identifies provider/billing, requested/reported/rated model, endpoint
+hash and admission time, plus card revision/digest, source/publication date,
+selected row/input policy, currency/scale, basis, components and rounding rule.
+`amount_nanos` is present
+only for a fully priced final completed snapshot. `known_amount_nanos` can retain
+the priced subtotal of partial/unknown work; it stays null when nothing is known.
+Missing rates/counts, invalid partitions, incomplete requests and overflow have
+explicit reasons. A known observed zero is different from an unknown total.
+
+Recompute from the latest cumulative snapshot, not by adding successive provider
+observations. The calculator has no mutable ledger or deduplication state; the
+report caller must retain request/attempt identity, replace revisions and avoid
+counting a child twice. Card changes produce a different digest and estimate;
+they do not rewrite saved request facts or retrospectively certify a bill.
+
+## Evidence and next integration
+
+Fifteen focused fixtures cover exact arithmetic/rounding, cache/TTL partitions,
+reasoning inclusion, missing/zero/contradictory counters, partial work, subscription/
+local/demo distinction, request/duration extras, dates/bands, exact model/endpoint
+matching, revision provenance, invalid schemas/decimal inputs and overflow. They
+use synthetic rates and no service/account. See [actual checks](testing.md#current-evidence-and-next-checks).
+
+P23 next needs a bounded, explicitly granted accounting-read operation and a
+default-off report extension, including parent/child aggregation. Atomic covered
+request reservations, partial/unknown liability and provider-enforceable output
+bounds belong in host admission. Generic accounted extraction/embedding requests
+are required for P25. A calculator or event observer cannot supply those guarantees.
+
+## Primary-source review
+
+Reviewed on 2026-10-17; no published numeric rate is copied into runtime defaults:
+
+- OpenAI pricing varies by model, cache category, context band and processing
+  mode. Those dimensions require explicit configured rows; a model string alone
+  cannot establish an invoice. [API pricing](https://developers.openai.com/api/docs/pricing).
+- OpenAI output includes non-visible generated tokens; the output limit applies
+  beyond displayed text. Meter output once, retaining reasoning as a breakdown.
+  [Reasoning and cost control](https://developers.openai.com/api/docs/guides/reasoning).
+- Anthropic separates cache reads and TTL-specific writes and documents additional
+  context/geography/tool modifiers. A configured scope must not silently promise
+  coverage of unsupported charges. [Pricing](https://platform.claude.com/docs/en/about-claude/pricing).
+- Ollama reports token counts and nanosecond durations. Those measurements do not
+  determine hardware/electricity prices. [Usage metrics](https://docs.ollama.com/api/usage).

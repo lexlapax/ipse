@@ -24,8 +24,12 @@ input is derived only when all uncached/cache components are known. Invalid or
 inconsistent counters are labelled invalid.
 
 Subscription usage is not API spend. API usage is not an invoice; local usage
-does not mean hardware/electricity costs nothing. This increment has no prices
-or monetary/token budget enforcement. P23 adds configured estimates/admission.
+does not mean hardware/electricity costs nothing. The current CLI has no cost
+report, rate-card configuration field or monetary/token budget enforcement.
+P23's [developer estimator](../developer/costs.md) accepts explicit rate-card data;
+operator report selection and host budget admission are still being implemented.
+Do not add proposed cost settings to configuration or treat displayed counters
+as a spending limit.
 
 Usage facts are mandatory local records; turning optional tracing off will not
 remove them. No extra remote request collects them. Inspection excludes prompts,

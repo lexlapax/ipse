@@ -1,8 +1,9 @@
 # Durable request accounting
 
 `Ipse.Usage` and `Ipse.Usage.Normalizer` implement P22's mandatory, content-free
-request facts independently of optional tracing and extensions. No prices,
-budget reservations or rate service are implemented by this increment. See
+request facts independently of optional tracing and extensions. P23's pure
+[configured cost calculator](costs.md) consumes explicit normalized snapshots;
+host accounting does not fetch rates, quote prices or enforce a budget yet. See
 [operator inspection](../operator/usage-accounting.md) and
 [future costs/streams](runtime-capabilities.md#usage-facts-and-costs).
 
