@@ -11,7 +11,7 @@ defmodule Ipse.Extensions.Catalog do
 
   def capabilities,
     do:
-      ~w(transform.prompt transform.presentation invoke.tool invoke.command invoke.service host.actions host.state.read host.state.write)
+      ~w(transform.prompt transform.presentation invoke.tool invoke.command invoke.service host.actions host.state.read host.state.write host.question)
 
   def empty, do: %{"version" => 1, "tools" => [], "commands" => [], "services" => []}
 
@@ -22,7 +22,10 @@ defmodule Ipse.Extensions.Catalog do
          true <- Enum.sort(Map.keys(exports)) == ~w(commands services tools version),
          true <- exports["version"] === 1,
          true <-
-           not Enum.any?(~w(host.state.read host.state.write), &(&1 in capabilities)) or
+           not Enum.any?(
+             ~w(host.state.read host.state.write host.question),
+             &(&1 in capabilities)
+           ) or
              "host.actions" in capabilities,
          true <-
            Enum.all?(@groups, fn {group, capability} ->

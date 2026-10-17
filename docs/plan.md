@@ -1096,6 +1096,13 @@ not select a production memory backend. Context/evidence, questions/tool actions
 service composition, worker stream handles, observability and the independent
 memory/workflow package proof remain required P22 work.
 
+P22A9 implements [structured-question checkpoints](developer/extension-questions.md)
+for extension tools/commands/services. Workers close before question publication.
+Idle resume restores the question/checkpoint without running code. Only an
+explicit validated answer authorizes a newly journaled continuation; it never
+grants later write approval. Cancellation, bounded answers, action-chain integrity
+and interrupted-answer no-replay recovery are exercised by independent artifacts.
+
 Acceptance:
 
 1. Define the event taxonomy and payload/version/ordering/failure contract for

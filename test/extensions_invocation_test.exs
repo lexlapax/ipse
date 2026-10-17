@@ -82,7 +82,7 @@ defmodule Ipse.Extensions.InvocationTest do
       end)
 
     capabilities =
-      ~w(invoke.tool invoke.command invoke.service host.actions host.state.read host.state.write)
+      ~w(invoke.tool invoke.command invoke.service host.actions host.state.read host.state.write host.question)
 
     code = """
     defmodule #{entrypoint} do
@@ -93,9 +93,11 @@ defmodule Ipse.Extensions.InvocationTest do
       def init(options), do: {:ok, options}
       def handle("host.actions", payload, state) do
         File.write!(#{inspect(called)}, Jason.encode!(payload) <> "\\n", [:append])
-        response = if state["repeat"],
+        response = if get_in(payload, ["checkpoint", "write_request"]),
+          do: %{"api_version" => 1, "kind" => "host_call", "request" => payload["checkpoint"]["write_request"]},
+          else: if(state["repeat"],
           do: %{"api_version" => 1, "kind" => "host_call", "request" => state["request"]},
-          else: %{"api_version" => 1, "kind" => "result", "value" => %{"text" => Jason.encode!(payload["outcome"]), "input_id" => payload["invocation_id"]}}
+          else: %{"api_version" => 1, "kind" => "result", "value" => %{"text" => Jason.encode!(payload["outcome"]), "input_id" => payload["invocation_id"]}})
         {:ok, response, state}
       end
       def handle(stage, payload, state) do
@@ -697,6 +699,265 @@ defmodule Ipse.Extensions.InvocationTest do
     assert File.read!(ctx.called) == calls
     assert File.read!(path) == before
     assert File.read!(file) == "{broken"
+  end
+
+  defp question_request(checkpoint \\ %{"next" => "finish"}) do
+    %{
+      "op" => "operator.question",
+      "checkpoint" => checkpoint,
+      "arguments" => %{
+        "questions" => [
+          %{
+            "id" => "choice",
+            "prompt" => "Choose a synthetic option",
+            "kind" => "single",
+            "options" => [%{"id" => "a", "label" => "A"}, %{"id" => "b", "label" => "B"}],
+            "recommended" => "a"
+          },
+          %{
+            "id" => "tags",
+            "prompt" => "Choose synthetic tags",
+            "kind" => "multiple",
+            "options" => [%{"id" => "a", "label" => "A"}, %{"id" => "b", "label" => "B"}]
+          },
+          %{"id" => "note", "prompt" => "Enter a synthetic note", "kind" => "text"}
+        ]
+      }
+    }
+  end
+
+  defp answers, do: %{"choice" => "b", "tags" => ["a", "b"], "note" => "fixture answer"}
+
+  test "structured extension command closes VM before asking and validates explicit answers",
+       ctx do
+    pid = start(ctx)
+    request = question_request()
+    :ok = host_command(pid, request)
+    assert_receive {:ipse, ^pid, {:question, id, args}}, 3000
+    assert args == request["arguments"]
+    await_exit(await_pid(ctx.pid_file), ctx.root)
+    assert Session.info(pid).phase == :question
+    refute_receive {:ipse, ^pid, {:done, _}}, 30
+    path = Path.join(ctx.dir, Session.info(pid).id <> ".jsonl")
+    before = File.read!(path)
+    assert {:error, _} = Session.answer(pid, "stale", answers())
+    assert {:error, _} = Session.answer(pid, id, %{"choice" => "a"})
+    assert File.read!(path) == before
+    :ok = Session.answer(pid, id, answers())
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+    assert host_outcome(pid) == %{"status" => "answered", "value" => %{"answers" => answers()}}
+    assert Session.info(pid).accounting["request_count"] == 0
+
+    [initial, resumed] =
+      File.read!(ctx.called) |> String.split("\n", trim: true) |> Enum.map(&Jason.decode!/1)
+
+    assert initial["arguments"]["host_request"] == request
+    assert resumed["checkpoint"] == request["checkpoint"]
+
+    assert :ok =
+             Ipse.Extensions.Projection.validate_events(
+               elem(Journal.load(ctx.dir, Session.info(pid).id), 1)
+             )
+  end
+
+  test "pending extension question resumes inertly and only an explicit answer starts continuation",
+       ctx do
+    pid = start(ctx)
+    :ok = host_command(pid, question_request())
+    assert_receive {:ipse, ^pid, {:question, id, _}}, 3000
+    session_id = Session.info(pid).id
+    monitor = Process.monitor(pid)
+    Process.exit(pid, :kill)
+    assert_receive {:DOWN, ^monitor, :process, ^pid, :killed}, 1000
+    calls = File.read!(ctx.called)
+    path = Path.join(ctx.dir, session_id <> ".jsonl")
+    before = File.read!(path)
+    resumed = start(ctx, session_id)
+    assert_receive {:ipse, ^resumed, {:question, ^id, _}}, 2000
+    assert File.read!(path) == before
+    assert File.read!(ctx.called) == calls
+    :ok = Session.answer(resumed, id, answers())
+    assert_receive {:ipse, ^resumed, {:done, :ok}}, 3000
+    assert host_outcome(resumed)["status"] == "answered"
+    assert length(String.split(File.read!(ctx.called), "\n", trim: true)) == 2
+  end
+
+  test "native extension tool question keeps its real call and approval across inert resume",
+       ctx do
+    ctx = %{
+      ctx
+      | config:
+          Map.put(ctx.config, :tool_args, %{
+            "text" => "question",
+            "host_request" => question_request()
+          })
+    }
+
+    pid = run_tool(ctx)
+    assert_receive {:ipse, ^pid, {:question, question_id, _}}, 3000
+    id = Session.info(pid).id
+    monitor = Process.monitor(pid)
+    Process.exit(pid, :kill)
+    assert_receive {:DOWN, ^monitor, :process, ^pid, :killed}, 1000
+    resumed = start(ctx, id)
+    assert_receive {:ipse, ^resumed, {:question, ^question_id, _}}, 2000
+    :ok = Session.answer(resumed, question_id, answers())
+    assert_receive {:ipse, ^resumed, {:done, :ok}}, 3000
+    {:ok, events} = Journal.load(ctx.dir, id)
+    assert :ok = Ipse.Extensions.Projection.validate_events(events)
+    messages = for %{"type" => "message", "message" => message} <- events, do: message
+
+    result =
+      Enum.find(
+        messages,
+        &(&1["role"] == "tool" and &1["tool_call_id"] == "native-extension-call")
+      )
+
+    assert result["ipse_tool_outcome"] == %{
+             "status" => "result_recorded",
+             "approval" => "approved"
+           }
+
+    assert Enum.any?(
+             messages,
+             &(&1["provider_data"] == %{"native" => "synthetic-private-native"})
+           )
+  end
+
+  test "extension answers do not authorize a following host write", ctx do
+    pid = start(ctx)
+
+    put = %{
+      "op" => "state.put",
+      "scope" => "project",
+      "key" => "note",
+      "expected_revision" => 0,
+      "value" => %{}
+    }
+
+    :ok = host_command(pid, question_request(%{"write_request" => put}))
+    assert_receive {:ipse, ^pid, {:question, id, _}}, 3000
+    :ok = Session.answer(pid, id, answers())
+    assert_receive {:ipse, ^pid, {:approval, ref, "extension:state.put", proposed}}, 3000
+    assert proposed["request"] == put
+    refute File.exists?(Path.join(ctx.home, "extension-state-v1"))
+    :ok = Session.approve(pid, ref, false)
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+    assert host_outcome(pid)["status"] == "denied"
+    refute File.exists?(Path.join(ctx.home, "extension-state-v1"))
+  end
+
+  test "cancelled extension question records no answer or executable continuation", ctx do
+    pid = start(ctx)
+    :ok = host_command(pid, question_request())
+    assert_receive {:ipse, ^pid, {:question, id, _}}, 3000
+    :ok = Session.cancel(pid)
+    assert {:error, _} = Session.answer(pid, id, answers())
+    {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+
+    assert Enum.any?(
+             events,
+             &(&1["type"] == "extension_action_result" and &1["outcome"]["status"] == "cancelled")
+           )
+
+    refute Enum.any?(events, &(&1["type"] == "extension_continuation_intent"))
+    assert :ok = Ipse.Extensions.Projection.validate_events(events)
+  end
+
+  test "unavailable operator questions stop without selecting recommendations", ctx do
+    pid = start(%{ctx | config: Map.put(ctx.config, :operator_questions, false)})
+    :ok = host_command(pid, question_request())
+    assert_receive {:ipse, ^pid, {:done, :error}}, 3000
+    refute_receive {:ipse, ^pid, {:question, _, _}}, 20
+    {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+    refute Enum.any?(events, &(&1["type"] in ~w(extension_question extension_action_intent)))
+  end
+
+  test "question and continuation corruption refuse resume before tail repair", ctx do
+    pid = start(ctx)
+    :ok = host_command(pid, question_request())
+    assert_receive {:ipse, ^pid, {:question, question_id, _}}, 3000
+    :ok = Session.answer(pid, question_id, answers())
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+    id = Session.info(pid).id
+    :ok = Session.close(pid)
+    {:ok, events} = Journal.load(ctx.dir, id)
+    continuation = Enum.find(events, &(&1["type"] == "extension_continuation_intent"))
+
+    for corrupted <- [
+          Enum.reject(events, &(&1["type"] == "extension_question")),
+          List.delete(events, continuation),
+          Enum.map(events, fn event ->
+            if event["type"] == "extension_question",
+              do: Map.update!(event, "steps", &(&1 + 1)),
+              else: event
+          end),
+          events ++ [continuation]
+        ] do
+      path = Path.join(ctx.dir, id <> ".jsonl")
+      bytes = Enum.map_join(corrupted, "", &(Jason.encode!(&1) <> "\n")) <> "{partial"
+      File.write!(path, bytes)
+
+      assert {:error, _} =
+               DynamicSupervisor.start_child(
+                 Ipse.Sessions,
+                 {Session,
+                  config: ctx.config,
+                  cwd: ctx.root,
+                  state_dir: ctx.dir,
+                  subscriber: self(),
+                  id: id}
+               )
+
+      assert File.read!(path) == bytes
+    end
+  end
+
+  test "interrupted answer continuation remains idle and never restarts executable initialization",
+       ctx do
+    pid = start(ctx)
+    :ok = host_command(pid, question_request())
+    assert_receive {:ipse, ^pid, {:question, question_id, _}}, 3000
+    :ok = Session.answer(pid, question_id, answers())
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+    id = Session.info(pid).id
+    :ok = Session.close(pid)
+    {:ok, events} = Journal.load(ctx.dir, id)
+    index = Enum.find_index(events, &(&1["type"] == "extension_continuation_intent"))
+    prefix = Enum.take(events, index + 1)
+    assert :ok = Ipse.Extensions.Projection.validate_events(prefix)
+    path = Path.join(ctx.dir, id <> ".jsonl")
+    bytes = Enum.map_join(prefix, "", &(Jason.encode!(&1) <> "\n"))
+    File.write!(path, bytes)
+    calls = File.read!(ctx.called)
+    File.rm!(ctx.marker)
+    resumed = start(ctx, id)
+    assert Session.info(resumed).phase == :idle
+    assert Session.info(resumed).question == nil
+    refute File.exists?(ctx.marker)
+    assert File.read!(ctx.called) == calls
+    assert File.read!(path) == bytes
+  end
+
+  test "an answer exceeding its checkpoint envelope is rejected without recording or truncation",
+       ctx do
+    pid = start(ctx)
+    :ok = host_command(pid, question_request(%{"data" => String.duplicate("x", 8170)}))
+    assert_receive {:ipse, ^pid, {:question, question_id, _}}, 3000
+    path = Path.join(ctx.dir, Session.info(pid).id <> ".jsonl")
+    before = File.read!(path)
+
+    assert {:error, _} =
+             Session.answer(
+               pid,
+               question_id,
+               Map.put(answers(), "note", String.duplicate("a", 8000))
+             )
+
+    assert File.read!(path) == before
+    assert Session.info(pid).phase == :question
+    :ok = Session.answer(pid, question_id, answers())
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
   end
 
   defp await_pid(path, attempts \\ 150)

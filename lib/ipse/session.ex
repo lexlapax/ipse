@@ -87,6 +87,7 @@ defmodule Ipse.Session do
          {:ok, messages} <- restore(events),
          {:ok, _research} <- Ipse.Research.restore(events),
          {:ok, question, messages} <- restore_question(events, messages),
+         {:ok, question, messages} <- restore_extension_question(events, messages, question),
          :ok <- question_available(question, config),
          {:ok, context_snapshot, context_is_new} <-
            workspace_snapshot(events, cwd, home, opts[:context_snapshot]) do
@@ -109,11 +110,15 @@ defmodule Ipse.Session do
           ),
         messages: messages,
         compaction: nil,
-        tool_decision: "not_decided",
+        tool_decision:
+          if(question && question[:kind] == :extension,
+            do: question.parent["approval"],
+            else: "not_decided"
+          ),
         task: nil,
         job_ref: nil,
         phase: if(question, do: :question, else: :idle),
-        calls: if(question, do: [question.call], else: []),
+        calls: if(question && question.call, do: [question.call], else: []),
         question: question,
         approval: nil,
         steps: if(question, do: question.steps, else: 0),
@@ -122,16 +127,23 @@ defmodule Ipse.Session do
         accounting: accounting,
         active_request: nil,
         last_request_id: saved_request(events, "request_id"),
-        turn_id: saved_request(events, "turn_id") || Ipse.Usage.id(),
+        turn_id:
+          if(question && question[:kind] == :extension,
+            do: question.parent["payload"]["turn_id"],
+            else: saved_request(events, "turn_id") || Ipse.Usage.id()
+          ),
         text_stream: nil,
         text_stream_monitor: nil,
         final: Projection.presentation(events),
         extension_intent: nil,
-        extension_invocation: nil,
-        extension_action: nil,
-        extension_actions: 0,
+        extension_invocation: if(question && question[:kind] == :extension, do: question.parent),
+        extension_action:
+          if(question && question[:kind] == :extension, do: %{intent: question.action}),
+        extension_actions:
+          if(question && question[:kind] == :extension, do: question.action["step"], else: 0),
         extension_action_unknown: false,
-        extension_action_results: [],
+        extension_action_results:
+          if(question && question[:kind] == :extension, do: question.results, else: []),
         extension_request: nil,
         extension_result: Invocation.latest_display(events),
         extension_catalog: extension_catalog(config),
@@ -424,7 +436,7 @@ defmodule Ipse.Session do
       )
       when ref != nil and phase in [:tool, :extension_command, :extension_service] do
     mode = Map.get(s.config, :approval, :ask)
-    mutation = Ipse.Extensions.State.mutating?(request)
+    mutation = Ipse.Extensions.Operation.mutating?(request)
 
     approval =
       if mutation,
@@ -434,37 +446,46 @@ defmodule Ipse.Session do
     with parent when is_map(parent) <- s.extension_invocation,
          true <- not s.extension_action_unknown,
          true <- Ipse.Extensions.Registry.live?(parent["identity"]),
+         true <- not Ipse.Extensions.Operation.question?(request) or questions_enabled?(s.config),
          {:ok, intent} <-
            Actions.intent(parent, request, s.extension_actions + 1, approval, s.cwd) do
-      if mutation and mode == :ask do
-        approval_ref = make_ref()
+      cond do
+        Ipse.Extensions.Operation.question?(request) ->
+          record(s, intent)
 
-        proposed = %{
-          "extension" => parent["identity"]["instance"],
-          "artifact_sha256" => parent["identity"]["artifact_sha256"],
-          "namespace" => intent["namespace"],
-          "request" => request
-        }
+          {:reply, {:question, intent},
+           %{s | extension_action: %{intent: intent}, extension_actions: s.extension_actions + 1}}
 
-        notify(s, {:approval, approval_ref, "extension:" <> request["op"], proposed})
+        mutation and mode == :ask ->
+          approval_ref = make_ref()
 
-        {:noreply,
-         %{
-           s
-           | phase: :extension_approval,
-             approval: {:extension, approval_ref},
-             extension_action: %{intent: intent, from: from, phase: phase}
-         }}
-      else
-        record(s, intent)
+          proposed = %{
+            "extension" => parent["identity"]["instance"],
+            "artifact_sha256" => parent["identity"]["artifact_sha256"],
+            "namespace" => intent["namespace"],
+            "request" => request
+          }
 
-        reply =
-          if approval == "denied",
-            do: {:denied, intent},
-            else: {:ok, intent, %{root: Path.join(s.context_home, "extension-state-v1")}}
+          notify(s, {:approval, approval_ref, "extension:" <> request["op"], proposed})
 
-        {:reply, reply,
-         %{s | extension_action: %{intent: intent}, extension_actions: s.extension_actions + 1}}
+          {:noreply,
+           %{
+             s
+             | phase: :extension_approval,
+               approval: {:extension, approval_ref},
+               extension_action: %{intent: intent, from: from, phase: phase}
+           }}
+
+        true ->
+          record(s, intent)
+
+          reply =
+            if approval == "denied",
+              do: {:denied, intent},
+              else: {:ok, intent, %{root: Path.join(s.context_home, "extension-state-v1")}}
+
+          {:reply, reply,
+           %{s | extension_action: %{intent: intent}, extension_actions: s.extension_actions + 1}}
       end
     else
       _ -> {:reply, {:error, :extension_action_refused}, s}
@@ -642,6 +663,57 @@ defmodule Ipse.Session do
   def handle_call(
         {:answer, id, answers},
         _from,
+        %{question: %{kind: :extension, id: id} = question, phase: :question} = s
+      ) do
+    with {:ok, _} <- Questions.validate_answers(question.arguments, answers),
+         true <- Ipse.Extensions.Registry.live?(question.parent["identity"]),
+         {:ok, result} <-
+           Actions.result(question.action, %{
+             "status" => "answered",
+             "value" => %{"answers" => answers}
+           }),
+         {:ok, entry, _} <-
+           Catalog.lookup(
+             s.config,
+             question.parent["descriptor"]["stage"],
+             question.parent["descriptor"]["name"]
+           ),
+         true <- entry.identity == question.parent["identity"] do
+      results = question.results ++ [result]
+      record(s, result)
+      record(s, Actions.continuation(question.parent, result))
+      owner = self()
+      job_ref = make_ref()
+
+      task =
+        owned_task(fn ->
+          Host.resume_export(entry, question.parent, result, owner, job_ref, results)
+        end)
+
+      phase = invocation_phase(question.parent)
+
+      {:reply, :ok,
+       %{
+         s
+         | question: nil,
+           phase: phase,
+           task: task,
+           job_ref: job_ref,
+           extension_invocation: question.parent,
+           extension_action: nil,
+           extension_actions: question.action["step"],
+           extension_action_results: results,
+           extension_action_unknown: false,
+           tool_decision: question.parent["approval"]
+       }}
+    else
+      _ -> {:reply, {:error, :invalid_extension_answer_or_expired}, s}
+    end
+  end
+
+  def handle_call(
+        {:answer, id, answers},
+        _from,
         %{question: %{id: id} = question, phase: :question} = s
       ) do
     case Questions.validate_answers(question.arguments, answers) do
@@ -810,6 +882,56 @@ defmodule Ipse.Session do
     s = %{s | task: nil}
 
     case {phase, result} do
+      {invocation_phase, {:extension_question, action}}
+      when invocation_phase in [:tool, :extension_command, :extension_service] ->
+        with %{intent: ^action} <- s.extension_action,
+             true <- questions_enabled?(s.config),
+             true <- Ipse.Extensions.Registry.live?(s.extension_invocation["identity"]) do
+          parent = s.extension_invocation
+
+          next =
+            if invocation_phase == :tool,
+              do:
+                settle_calls(
+                  %{s | calls: tl(s.calls), phase: :idle},
+                  "Not started while extension clarification is required."
+                ),
+              else: s
+
+          call = if invocation_phase == :tool, do: hd(s.calls)
+
+          question = %{
+            kind: :extension,
+            id: action["operation_id"],
+            arguments: action["request"]["arguments"],
+            parent: parent,
+            action: action,
+            results: s.extension_action_results,
+            steps: s.steps,
+            call: call
+          }
+
+          record(next, Actions.question_event(parent, action, s.steps))
+          notify(next, {:question, question.id, question.arguments})
+
+          {:noreply,
+           %{
+             next
+             | question: question,
+               phase: :question,
+               task: nil,
+               job_ref: nil,
+               calls: if(call, do: [call], else: [])
+           }}
+        else
+          _ ->
+            {:noreply,
+             fail(
+               s,
+               "Extension question could not be committed; no answer or continuation was selected."
+             )}
+        end
+
       {invocation_phase, {:extension_invocation_result, event}}
       when invocation_phase in [:tool, :extension_command, :extension_service] ->
         with intent when is_map(intent) <- s.extension_invocation,
@@ -2084,6 +2206,18 @@ defmodule Ipse.Session do
 
   defp close_question(%{question: nil} = s), do: s
 
+  defp close_question(%{question: %{kind: :extension} = question} = s) do
+    {:ok, result} = Actions.result(question.action, %{"status" => "cancelled", "value" => %{}})
+    record(s, result)
+
+    %{
+      s
+      | question: nil,
+        phase: invocation_phase(question.parent),
+        tool_decision: question.parent["approval"]
+    }
+  end
+
   defp close_question(s) do
     message =
       question_result(
@@ -2100,6 +2234,54 @@ defmodule Ipse.Session do
     })
 
     %{s | question: nil, calls: [], messages: s.messages ++ [message]}
+  end
+
+  defp invocation_phase(parent) do
+    case parent["descriptor"]["stage"] do
+      "invoke.tool" -> :tool
+      "invoke.command" -> :extension_command
+      "invoke.service" -> :extension_service
+    end
+  end
+
+  defp restore_extension_question(events, messages, native) do
+    with {:ok, state} <- Actions.restore(events) do
+      if state.question do
+        with true <- is_nil(native),
+             parent = state.parent,
+             call =
+               if(invocation_phase(parent) == :tool,
+                 do:
+                   Enum.find_value(Enum.reverse(messages), fn message ->
+                     Enum.find(
+                       message["tool_calls"] || [],
+                       &(&1["id"] == parent["parent_call_id"])
+                     )
+                   end)
+               ),
+             true <- invocation_phase(parent) != :tool or is_map(call) do
+          question = %{
+            kind: :extension,
+            id: state.action["operation_id"],
+            arguments: state.action["request"]["arguments"],
+            parent: parent,
+            action: state.action,
+            results: state.results,
+            steps: state.question["steps"],
+            call: call
+          }
+
+          messages =
+            if call, do: remove_question_placeholder(messages, call["id"]), else: messages
+
+          {:ok, question, messages}
+        else
+          _ -> {:error, :invalid_extension_question}
+        end
+      else
+        {:ok, native, messages}
+      end
+    end
   end
 
   defp restore_question(events, messages) do

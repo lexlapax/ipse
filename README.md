@@ -75,6 +75,8 @@ Reviewed artifacts can also declare schema-checked tools, commands and standalon
 services; `/ext` inspects the active catalog and invokes operator commands.
 Explicit host-state capabilities support scoped revision-checked storage with
 separate write approval; no automatic memory adapter is enabled.
+Trusted extensions can ask structured questions and resume from bounded checkpoints
+only after explicit answers; idle recovery never starts their callbacks.
 Resume pins code/configuration and restores committed projections without replay.
 See [extensions](docs/operator/extensions.md) for bounds and current SDK scope.
 Use `$project-orientation` to assess a repository's purpose, current changes,

@@ -1,6 +1,6 @@
 defmodule Ipse.Extensions.Host do
   @moduledoc "Ordered bounded transform jobs, owned by Session's monitored task chain."
-  alias Ipse.Extensions.{Registry, Worker, Projection, Actions, State}
+  alias Ipse.Extensions.{Registry, Worker, Projection, Actions, State, Operation}
 
   def enabled?(config, stage),
     do: Enum.any?(Map.get(config, :extensions, []), &(stage in &1.identity["capabilities"]))
@@ -50,8 +50,21 @@ defmodule Ipse.Extensions.Host do
 
   def invoke_export(stage, name, arguments, owner, job_ref) do
     with {:ok, intent, entry} <-
-           GenServer.call(owner, {:extension_invoke_begin, job_ref, stage, name, arguments}),
-         {:ok, worker} <-
+           GenServer.call(owner, {:extension_invoke_begin, job_ref, stage, name, arguments}) do
+      execute_export(entry, intent, stage, intent["payload"], owner, job_ref, [])
+    else
+      _ -> invocation_unknown()
+    end
+  catch
+    :exit, _ -> invocation_unknown()
+  end
+
+  def resume_export(entry, parent, result, owner, job_ref, actions) do
+    execute_export(entry, parent, "host.actions", Actions.resume(result), owner, job_ref, actions)
+  end
+
+  defp execute_export(entry, intent, stage, payload, owner, job_ref, prior_actions) do
+    with {:ok, worker} <-
            Worker.start(
              owner: self(),
              store: entry.store,
@@ -62,11 +75,25 @@ defmodule Ipse.Extensions.Host do
            ) do
       try do
         with {:ok, _} <- Worker.call(worker, "initialize", entry.options),
-             {:ok, response} <- Worker.call(worker, stage, intent["payload"]),
-             {:ok, response, actions} <- continue(worker, response, entry, owner, job_ref, []),
-             {:ok, event} <- Ipse.Extensions.Invocation.build_result(intent, response, actions),
-             :ok <- Worker.close(worker) do
-          {:extension_invocation_result, event}
+             {:ok, response} <- Worker.call(worker, stage, payload) do
+          case continue(worker, response, entry, owner, job_ref, prior_actions) do
+            {:ok, response, actions} ->
+              with {:ok, event} <-
+                     Ipse.Extensions.Invocation.build_result(intent, response, actions),
+                   :ok <- Worker.close(worker) do
+                {:extension_invocation_result, event}
+              else
+                _ -> invocation_unknown()
+              end
+
+            {:question, action} ->
+              if Worker.close(worker) == :ok,
+                do: {:extension_question, action},
+                else: invocation_unknown()
+
+            _ ->
+              invocation_unknown()
+          end
         else
           _ -> invocation_unknown()
         end
@@ -87,8 +114,22 @@ defmodule Ipse.Extensions.Host do
 
   defp continue(worker, %{"kind" => "host_call"} = response, entry, owner, job_ref, actions)
        when length(actions) < 16 do
-    with {:ok, request} <- Actions.proposal(response, entry.identity),
-         {:ok, intent, outcome} <- run_action(owner, job_ref, request),
+    with {:ok, request} <- Actions.proposal(response, entry.identity) do
+      if Operation.question?(request) do
+        GenServer.call(owner, {:extension_action_begin, job_ref, request}, :infinity)
+      else
+        continue_action(worker, request, entry, owner, job_ref, actions)
+      end
+    end
+  end
+
+  defp continue(_, %{"kind" => "host_call"}, _, _, _, _),
+    do: {:error, :extension_action_limit}
+
+  defp continue(_, response, _, _, _, actions), do: {:ok, response, actions}
+
+  defp continue_action(worker, request, entry, owner, job_ref, actions) do
+    with {:ok, intent, outcome} <- run_action(owner, job_ref, request),
          {:ok, event} <- Actions.result(intent, outcome),
          {:ok, payload} <- GenServer.call(owner, {:extension_action_commit, job_ref, event}),
          true <- payload["outcome"]["status"] != "unknown",
@@ -98,11 +139,6 @@ defmodule Ipse.Extensions.Host do
       _ -> {:error, :extension_action_stopped}
     end
   end
-
-  defp continue(_, %{"kind" => "host_call"}, _, _, _, _),
-    do: {:error, :extension_action_limit}
-
-  defp continue(_, response, _, _, _, actions), do: {:ok, response, actions}
 
   defp run_action(owner, job_ref, request) do
     case GenServer.call(owner, {:extension_action_begin, job_ref, request}, :infinity) do

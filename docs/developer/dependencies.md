@@ -48,6 +48,10 @@ needs concurrency coordination/named tables, while this bounded 256-record/1 MiB
 contract needs exact JSON snapshots, cross-VM CAS and refusal instead of repair.
 Custom code implements namespace/approval/receipt policy and a small atomic store,
 not a production memory database. See [storage decision and limits](extension-host-calls.md#scope-storage-and-recovery).
+P22A9 structured extension questions add no dependency. They reuse the existing
+Questions/JSONSchex validator and terminal rendering, native worker cleanup, owned
+tasks and journal reducer. Bounded JSON checkpoints replace arbitrary VM-state
+serialization; continuation receipt validation is Ipse-specific recovery policy.
 P22A2's worker bridge reuses the current ERTS, Elixir, Jason and native stdio
 helper, adding no dependency. The synthetic independent artifact fixture uses
 the existing Elixir compiler in a separate VM. A small Ipse bootstrap implements

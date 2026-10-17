@@ -33,7 +33,7 @@ ordered capabilities, order/lifetime/earliest expiry, child ceiling,
 VM components (Elixir version, OTP major, ERTS version, architecture), host API
 digest and generation 1. The host digest binds `Ipse.Extension`, Identity, Catalog,
 Invocation, Manifest, Store, Registry, Worker, Bootstrap, Host, Projection,
-Actions, State,
+Actions, Operation, State, Questions,
 the shared schema adapter, usage normalizer/
 ledger, private text channel and Session BEAM bytes. It is an exact API
 implementation pin, not a signature or full operating-system/toolchain digest.

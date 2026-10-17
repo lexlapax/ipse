@@ -2660,3 +2660,42 @@ on a utility-only PATH and fresh homes. Its fixture covers the existing bundled
 hooks/accounting/text capabilities; the independent custom state artifact remains
 source-only evidence. Documentation review checked **65 Markdown files / 635
 local file and heading links** with no broken targets.
+
+[Hosted host-state verification](https://github.com/lexlapax/ipse/actions/runs/38993945716)
+for `142b0b7` passed Ubuntu/macOS-14 on Elixir 1.18 / OTP 27: formatting,
+compilation, default tests, demo, packaging and extracted verification on both,
+plus macOS native enforcement. This is hosted evidence for host state, not a local
+macOS run on Serenity or verification of subsequent question edits.
+
+## P22 structured extension questions (2026-10-16)
+
+On Linux Serenity, source build, formatting and warnings-as-errors compilation
+passed. The initial full `mix test --include native_sandbox` passed **457 tests,
+14 macOS excluded**. After adding a question counter digest and refusing unrelated
+work during a pending question, **39 focused invocation/question/session tests**
+and the final **457-test native suite** (14 macOS excluded) passed. No live account or
+paid inference ran.
+
+Independently compiled worker fixtures cover single/multiple/text questions,
+explicit nonrecommended answers, closure of the actual VM before publication,
+stale/invalid/oversized answers leaving journals unchanged, explicit fresh-VM
+continuation with the exact JSON checkpoint, and unchanged idle question recovery.
+Native extension tool questions preserve their actual call ID/provider data and
+approval across crash/resume. Answers cannot authorize a following state write;
+it needs separate full approval. Cancellation creates no answer/continuation,
+unavailable questions select no default, and interrupted answered continuation
+restores idle without initialization/replay. Missing/altered/duplicate question or
+continuation records refuse restore before tail repair. See
+[SDK contract](extension-questions.md) and [operator controls](../operator/extensions.md#structured-questions).
+
+The credential-free demo and source hook/accounting/text fixture passed. Extension
+question protocol fixtures are source tests, not yet the independent installed
+extension package proof required by P22. General tool actions, service composition,
+context contributions, worker stream handles and observability remain in progress.
+
+The Linux glibc-2.44 archive rebuilt with matching OTP 29.1.1 notices and passed
+`scripts/verify-package.exs` using the extracted runtime, utility-only PATH and
+fresh isolated homes. This verifies existing bundled hooks/accounting/text and
+runtime packaging; custom question artifact conformance remains source-only.
+Documentation review checked **66 Markdown files / 651 local file and heading
+links** with no broken targets. No release was published.

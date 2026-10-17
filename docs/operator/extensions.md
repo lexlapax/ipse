@@ -80,7 +80,8 @@ Merge these top-level fields into the operator's version-1
 For independent code, replace the built-in reference with its reviewed 64-character
 digest and supply its declared options/capabilities. Supported capabilities are
 `transform.prompt`, `transform.presentation`, `invoke.tool`, `invoke.command`
-and `invoke.service`, plus `host.actions` with `host.state.read`/`host.state.write`;
+and `invoke.service`, plus `host.actions` with `host.state.read`/`host.state.write`
+or `host.question`;
 unsupported capabilities fail explicitly. Invocation
 exports require inert argument/result schemas in the artifact manifest. Do not
 put credentials in extension options. No automatic memory backend is selected.
@@ -171,7 +172,7 @@ Workers inherit no credential environment. Trusted executable code still has
 the operator's OS/filesystem access; ownership, deadlines and process-group
 cancellation do not themselves provide an OS sandbox. Initialize/transform
 callbacks must follow the SDK's effect-free contract; arbitrary trusted programs
-cannot be constrained by a return-value schema alone. General tool/question
+cannot be constrained by a return-value schema alone. General tool
 actions, context contributions, worker service composition, broader lifecycle observation,
 live controls and the extension-only
 memory/workflow proof remain [P22 work](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
@@ -227,3 +228,23 @@ explicitly deciding what to do next; it may have committed. Tampered receipts or
 corrupt state refuse recovery/access without repair. Artifact/config-source
 changes isolate new namespaces; no automatic migration or collector is available.
 Do not remove lock files. See [protocol, paging and recovery](../developer/extension-host-calls.md).
+
+## Structured questions
+
+Artifacts explicitly trusted for `host.actions` and `host.question` can ask the
+normal single-choice, multiple-choice or text questions. Recommendations are
+never submitted automatically. The worker closes before the question appears;
+an interrupted pending question restores and waits without executable startup.
+No model request is needed for a standalone command/service question.
+
+Your validated answer starts a new journaled continuation using the extension's
+bounded saved checkpoint. It grants no permission for a subsequent write; normal
+full approval still applies. Stale/invalid/oversized answers are rejected without
+changing the journal. `/cancel` closes the question without answering. Headless
+and child sessions cannot silently select an answer. Questions and other host
+calls share the same 16-operation invocation budget.
+
+If interruption occurs after an answer/continuation intent, resume stays idle
+with unknown work and does not rerun the callback. Inspect receipts before
+explicitly choosing a fresh action. Exact artifact/config/host pins and expiry
+still apply. See [SDK checkpoint and recovery details](../developer/extension-questions.md).
