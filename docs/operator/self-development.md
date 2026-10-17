@@ -20,8 +20,9 @@ held-out reruns and final architecture/security reviews. The
 voice/media is deferred to P28 and does not block this text/research work.
 
 Use the [prepared architecture-review handoff](architecture-review.md) for the
-operator's selected Claude subscription route. Prepare a pinned, sanitized
-repository/design packet and a passing candidate from
+operator's selected Claude subscription route in the existing Serenity project
+directory. Its pinned Git revision and source exclusions replace a required
+packet download or separate checkout. Use a passing candidate from
 the [verification record](../developer/testing.md#current-evidence-and-next-checks).
 Normally ask an independent external reviewer, such as Claude, to challenge it
 before scanning. Establish reviewer/service access, source-sharing authority,
@@ -31,7 +32,9 @@ files, private journals and unrelated projects; retain raw findings privately.
 This runbook provisions no service and installs no external review/scan tooling.
 
 Triage counterexamples and scan findings against actual code, repair applicable
-blockers and refresh affected reviews on the changed revision. Freeze P25's runner
+blockers and refresh affected reviews on the changed revision. Wait for the
+independent initial critique and its triage before scanning, architecture repairs
+or P25 execution. Freeze P25's runner
 only after its checks and P24 gates pass. Brief preparation/access checks can
 proceed earlier; earlier passing releases do not verify later runtime changes.
 Keep the external critique separate from the initial A/B research inputs, record

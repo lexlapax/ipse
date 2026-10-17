@@ -35,7 +35,7 @@ new source transfer or dependency, or select a production engine.
 | Milestone or gate | Current state | Next result |
 | --- | --- | --- |
 | [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within selected scope; source/native/package/installed and hosted Linux/macOS passed | Retain accounting invariants through P24/P25 review and repairs |
-| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Review packet prepared; operator selected Claude subscription; no critique or scan yet | Independent adversarial architecture review, evidence-based dispositions and triaged baseline OpenAI security audit |
+| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Local review handoff prepared; operator runs Claude subscription on Serenity; no critique or scan yet | Independent adversarial architecture review, evidence-based dispositions and triaged baseline OpenAI security audit |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Planned revised scope; unstarted | Independent Codex/Ipse research, Ipse-authored repairs, fresh acceptance runs and final architecture/security review |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Deferred; proposed scope subject to P25 decisions | Independently selectable working/long-term memory tools and optional lifecycle policies |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; proposed scope subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
@@ -44,14 +44,14 @@ new source transfer or dependency, or select a production engine.
 
 Feature status and runner readiness are separate. Accounted-model candidate
 `21e59fe` passed hosted Linux/macOS source, package and both independent installed
-proofs, including both Mac enforcement steps. P24's review packet targets that
+proofs, including both Mac enforcement steps. P24's local Git review targets that
 revision. Later runtime changes need their own baseline before P25's runner is frozen.
 Actual revisions, platform results and investigation belong in
 [testing](developer/testing.md#current-evidence-and-next-checks).
 
 Execution order:
 
-1. Collect the independent Claude critique of P24's prepared packet; independently
+1. Collect the independent Claude critique of P24's pinned revision; independently
    triage and repair blocking design defects, then run the baseline OpenAI security
    audit on the resulting revision.
 2. Execute P25's independent research, discrepancy comparison, Ipse-authored
@@ -135,7 +135,10 @@ and arbitrary trusted out-of-band calls cannot establish an invoice ceiling.
 ## P24: independent architecture validation and baseline security
 
 **Prepared; external review unstarted.** The operator selected a Claude
-subscription review of the [pinned source packet](operator/architecture-review.md).
+subscription review in the existing Serenity project directory using the
+[pinned-commit handoff](operator/architecture-review.md). No download/extraction or
+new checkout is required. Wait for the initial critique and its triage before
+the security scan, architecture repairs or P25 execution.
 Read-only Security Cloud access checks found the repository and available scan
 credits; no matching environment was found and no scan or billing change was
 started. Access readiness does not close either review gate.

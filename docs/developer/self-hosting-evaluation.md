@@ -81,7 +81,11 @@ unworkable extension seams and failure modes as well as security weaknesses. A
 vulnerability scan and the Codex/Ipse knowledge-research comparison answer
 different questions; neither substitutes for this independent critique.
 
-Freeze a review brief, exact revision and sanitized source/design manifest. Record
+Freeze a review brief, exact revision and sanitized source/design manifest. The
+operator's [local Claude handoff](../operator/architecture-review.md) uses the
+existing Serenity checkout with read-only Git object access to the pinned commit;
+no archive or new checkout is required. Source exclusions still apply, and current
+worktree/untracked files are not review inputs. Record
 the external model/provider/version as reported, settings, public interface,
 tool/file/network access, limits and supervisor interventions. Do not infer
 external-agent access from installed API keys or a prior ChatGPT approval. Before
