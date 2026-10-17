@@ -126,6 +126,47 @@ defmodule Ipse.ConfigTest do
     assert config.settings["provider"] == "openai"
   end
 
+  test "output caps follow scoped profile environment CLI precedence with explicit provider refusals",
+       c do
+    put(Path.join(c.home, "config.json"), %{"provider" => "ollama", "max_output_tokens" => 96})
+    assert {:ok, file} = Config.resolve(c.cwd, c.home, [], %{})
+    assert Config.runtime_settings(file).max_output_tokens == 96
+
+    File.write!(
+      Path.join(c.home, "config.json"),
+      Jason.encode!(%{
+        version: 1,
+        settings: %{provider: "ollama", max_output_tokens: 96},
+        profiles: %{capped: %{provider: "ollama", model: "fixture", max_output_tokens: 80}},
+        roles: %{main: "capped"}
+      })
+    )
+
+    assert {:ok, profile} = Config.resolve(c.cwd, c.home, [], %{})
+    assert profile.settings["max_output_tokens"] == 80
+    assert profile.provenance["max_output_tokens"] == "profile capped"
+    assert {:ok, env} = Config.resolve(c.cwd, c.home, [], %{"IPSE_MAX_OUTPUT_TOKENS" => "64"})
+    assert env.settings["max_output_tokens"] == 64
+
+    assert {:ok, cli} =
+             Config.resolve(c.cwd, c.home, [max_output_tokens: 32], %{
+               "IPSE_MAX_OUTPUT_TOKENS" => "64"
+             })
+
+    assert cli.settings["max_output_tokens"] == 32
+    assert cli.provenance["max_output_tokens"] == "CLI"
+    refute cli.fingerprint == env.fingerprint
+    assert {:error, message} = Config.resolve(c.cwd, c.home, [provider: "chatgpt"], %{})
+    assert message =~ "does not support"
+
+    assert {:error, _} =
+             Config.resolve(c.cwd, c.home, [provider: "openai", max_output_tokens: 15], %{})
+
+    for value <- ["0", "-1", "1.5", "none", "1000001"] do
+      assert {:error, _} = Config.resolve(c.cwd, c.home, [], %{"IPSE_MAX_OUTPUT_TOKENS" => value})
+    end
+  end
+
   test "a config outside the nearest repository is never inherited", c do
     put(Path.join(c.root, ".ipse/config.json"), %{"provider" => "anthropic"})
     assert {:ok, config} = Config.resolve(c.cwd, c.home, [], %{})

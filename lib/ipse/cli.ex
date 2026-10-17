@@ -32,6 +32,7 @@ defmodule Ipse.CLI do
   --json                               sessions only: JSON array of id/provider/model/cwd
   --note TEXT                          handoff only: operator-written continuation note
   --max-steps N                        Model calls per turn (default: 30)
+  --max-output-tokens N                Per-request provider cap (API/Ollama only; no aggregate budget)
   --context-bytes N                    Context byte ceiling (default: 400000)
   --no-compact                         Stop at the ceiling without automatic reduction
   --sandbox off|native                 Shell OS policy (default: off)
@@ -83,6 +84,7 @@ defmodule Ipse.CLI do
           yes: :boolean,
           base_url: :string,
           max_steps: :integer,
+          max_output_tokens: :integer,
           context_bytes: :integer,
           compact: :boolean,
           sandbox: :string,
@@ -888,6 +890,7 @@ defmodule Ipse.CLI do
                extensions: extensions,
                observability: effective.observability.policy,
                timeout_ms: opts[:timeout_ms],
+               max_output_tokens: opts[:max_output_tokens],
                sandbox: sandbox,
                base_url: opts[:base_url],
                max_steps: opts[:max_steps] || 30,
@@ -923,11 +926,16 @@ defmodule Ipse.CLI do
              Ipse.Journal.load(state_dir(opts), opts[:resume]) do
         saved = get_in(meta, ["configuration", "settings"]) || %{}
 
+        saved =
+          if meta["max_output_tokens"],
+            do: Map.put_new(saved, "max_output_tokens", meta["max_output_tokens"]),
+            else: saved
+
         restored =
           Enum.reduce(saved, opts, fn {key, value}, acc ->
             case key do
               key
-              when key in ~w(provider model sandbox max_steps context_bytes compact subagents subagent_concurrency timeout_ms) ->
+              when key in ~w(provider model sandbox max_steps context_bytes compact subagents subagent_concurrency timeout_ms max_output_tokens) ->
                 Keyword.put_new(acc, String.to_existing_atom(key), value)
 
               _ ->

@@ -26,9 +26,10 @@ attempt/parent identities, normalized cumulative usage snapshots, final/partial/
 unknown outcomes, rejected-summary retention and inert resume. Ollama omitted
 counters stay unknown. The old latest-successful usage map remains compatible.
 P19 context measurements are encoded JSON bytes, not tokens. P23 adds a pure
-[configured rate-card estimator and opt-in page report](costs.md) through separately
-granted accounting reads. Whole-session/child aggregation, monetary budget
-enforcement and P24 audio usage remain implementation work.
+[configured rate-card estimator and opt-in page/session/child reports](costs.md)
+through separately granted accounting reads. Supported
+[provider output ceilings](provider-limits.md) are an explicit per-request control.
+Shared monetary/token reservation enforcement and P24 audio usage remain work.
 
 P19's local on-demand diagnostics and request timing are available. Optional
 metadata capture, bounded sink workers, stop controls and opt-in synthetic
@@ -114,7 +115,12 @@ unknown pricing/charge policy and explicit overrides before dispatch. Some
 providers cannot guarantee a monetary ceiling for in-flight work; label such
 limits advisory or conservative estimates, not exact invoice caps. Tool services
 and executable extensions making out-of-band calls are not automatically covered.
-Fully trusted code is not confined by an SDK accounting API.
+Fully trusted code is not confined by an SDK accounting API. The output-cap
+control refuses ChatGPT subscription requests when a cap is configured, because
+the public subscription interface excludes that field. A future reservation
+policy must represent unsupported bounds and unknown liability explicitly;
+silently dropping a requested bound or switching billing is not an enforcement
+strategy.
 
 ## Text and media are distinct from diagnostics
 

@@ -21,7 +21,7 @@ defmodule Ipse.Config do
     "anthropic" => "claude-sonnet-4-5",
     "demo" => "scripted"
   }
-  @fields ~w(provider model sandbox max_steps context_bytes compact subagents subagent_concurrency timeout_ms)
+  @fields ~w(provider model sandbox max_steps context_bytes compact subagents subagent_concurrency timeout_ms max_output_tokens)
   @option_keys Map.new(@fields, fn key -> {key, String.to_atom(key)} end)
   @env_keys Map.new(@fields, &{&1, "IPSE_" <> String.upcase(&1)})
 
@@ -90,6 +90,11 @@ defmodule Ipse.Config do
                  settings["model"],
                  profile["reasoning_effort"]
                ),
+             :ok <-
+               Ipse.Provider.Limits.validate(%{
+                 provider: String.to_existing_atom(settings["provider"]),
+                 max_output_tokens: settings["max_output_tokens"]
+               }),
              true <-
                is_nil(profile_id) or
                  (settings["provider"] == profile["provider"] and
@@ -117,6 +122,9 @@ defmodule Ipse.Config do
            |> Map.put(:observability, observation)
            |> Map.put(:execution, execution)}
         else
+          {:error, message} when is_binary(message) ->
+            {:error, message}
+
           _ ->
             {:error,
              "Invalid effective configuration or subagent concurrency; inspect ipse config."}
@@ -159,7 +167,8 @@ defmodule Ipse.Config do
         "compact" => %{"type" => "boolean"},
         "subagents" => %{"type" => "boolean"},
         "subagent_concurrency" => integer(1, 2),
-        "timeout_ms" => integer(1000, 600_000)
+        "timeout_ms" => integer(1000, 600_000),
+        "max_output_tokens" => integer(1, Ipse.Provider.Limits.maximum())
       },
       "additionalProperties" => false
     }
@@ -314,7 +323,13 @@ defmodule Ipse.Config do
   end
 
   defp parse_environment(field, value)
-       when field in ["max_steps", "context_bytes", "subagent_concurrency", "timeout_ms"] do
+       when field in [
+              "max_steps",
+              "context_bytes",
+              "subagent_concurrency",
+              "timeout_ms",
+              "max_output_tokens"
+            ] do
     case Integer.parse(value) do
       {n, ""} -> {:ok, n}
       _ -> {:error, :invalid}

@@ -41,6 +41,10 @@ only profile ID, role and effort alongside the existing provider/model facts.
 Successful child results carry host routing facts before the explicitly untrusted
 model result; this prevents the parent relying on child self-description. Limits
 remain at most six model calls/120 seconds and the parent's context ceiling.
+An optional output cap also ceilings inherited/selected children: the selected
+profile can narrow it but cannot widen or omit a parent bound. Combined provider
+capability/range checks occur before delegation approval; unsupported subscription
+routing refuses instead of dropping the cap. See [provider limits](provider-limits.md).
 There is no fallback policy, recursive delegation, child MCP or summary-profile
 routing. Configured roles are explicit host routes; semantic task classification
 is the parent's proposal, validated by the host.

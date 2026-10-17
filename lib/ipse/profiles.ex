@@ -16,7 +16,7 @@ defmodule Ipse.Profiles do
     "ollama" => "none",
     "demo" => "none"
   }
-  @settings ~w(provider model max_steps context_bytes timeout_ms)
+  @settings ~w(provider model max_steps context_bytes timeout_ms max_output_tokens)
 
   def validate(profiles, roles)
       when is_map(profiles) and is_map(roles) and map_size(profiles) <= 8 do
@@ -51,6 +51,11 @@ defmodule Ipse.Profiles do
            Map.get(profile, "credential", @credentials[profile["provider"]]) ==
              @credentials[profile["provider"]],
          :ok <- reasoning(profile["provider"], profile["model"], profile["reasoning_effort"]),
+         :ok <-
+           Ipse.Provider.Limits.validate(%{
+             provider: @providers[profile["provider"]],
+             max_output_tokens: profile["max_output_tokens"]
+           }),
          true <- endpoint?(profile["provider"], profile["base_url"]) do
       :ok
     else
@@ -125,7 +130,18 @@ defmodule Ipse.Profiles do
         :ok
 
       id in ids(config) ->
-        validate_profile(config.profiles[id])
+        profile = config.profiles[id]
+
+        with :ok <- validate_profile(profile) do
+          Ipse.Provider.Limits.validate(%{
+            provider: @providers[profile["provider"]],
+            max_output_tokens:
+              Ipse.Provider.Limits.narrow(
+                config[:max_output_tokens],
+                profile["max_output_tokens"]
+              )
+          })
+        end
 
       true ->
         {:error, "Delegation profile is not configured; no provider fallback was attempted."}
@@ -155,6 +171,7 @@ defmodule Ipse.Profiles do
             :shared_root,
             :extensions,
             :parallel_child,
+            :max_output_tokens,
             :approval,
             :delegation_origin
           ])
@@ -196,7 +213,11 @@ defmodule Ipse.Profiles do
            context_bytes:
              min(profile["context_bytes"] || 400_000, Map.get(config, :context_bytes, 400_000)),
            timeout_ms: min(profile["timeout_ms"] || 120_000, Ipse.Delegation.timeout_ms())
-         })}
+         })
+         |> Map.put(
+           :max_output_tokens,
+           Ipse.Provider.Limits.narrow(config[:max_output_tokens], runtime[:max_output_tokens])
+         )}
       end
     end
   end

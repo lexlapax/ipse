@@ -13,6 +13,7 @@ searched. It never inherits configuration outside that boundary.
     "provider": "ollama",
     "model": "qwen3.5:9b",
     "max_steps": 30,
+    "max_output_tokens": 1024,
     "context_bytes": 400000,
     "timeout_ms": 120000,
     "compact": true,
@@ -37,7 +38,14 @@ names in uppercase, such as `IPSE_MAX_STEPS`; booleans accept `true` or `false`.
 Default files may be absent. Each file is at most 16 KiB; at most 17 candidate
 scopes are examined. JSON must use version 1. Model names are bounded to 200
 characters; steps 1..100000, context 8192..16000000 bytes, timeout 1000..600000 ms.
-Concurrency is 1 or 2, with 2 requiring enabled subagents.
+Concurrency is 1 or 2, with 2 requiring enabled subagents. `max_output_tokens` is
+optional: 16..1000000 for OpenAI API, 1..1000000 for Ollama/Anthropic. ChatGPT
+subscription and demo reject it. Omit it to keep the previous provider behavior.
+Use `IPSE_MAX_OUTPUT_TOKENS` or `--max-output-tokens N` for explicit overrides.
+This is a per-request generation cap, including summary requests, not an aggregate
+budget or invoice limit. Existing lower adapter limits still apply: Anthropic
+defaults to 8192 and Ollama summaries to 4096. Model/account limits may be tighter.
+See [usage and budget boundaries](usage-accounting.md#unknowns-and-recovery).
 
 Repository settings require **`--trust-project-config` on each invocation**.
 Review them before trusting, since they can select a provider/billing mode or

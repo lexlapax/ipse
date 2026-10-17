@@ -134,7 +134,13 @@ defmodule Ipse.CostReportDemo do
       {:ok, inactive} = start(config(home, false), root, dir)
       [] = Session.exports(inactive)["entries"]
       :ok = Session.close(inactive)
-      cfg = config(home)
+      cfg = Map.put(config(home), :max_output_tokens, 64)
+      %{"max_output_tokens" => 64} = Ipse.Provider.OpenAI.request_body(cfg, [], [])
+
+      %{"max_tokens" => 64} =
+        Ipse.Provider.Anthropic.request_body(%{cfg | provider: :anthropic}, [], [])
+
+      {:error, _} = Ipse.Provider.Limits.validate(%{cfg | provider: :chatgpt})
       {:ok, pid} = start(cfg, root, dir)
       :ok = Session.prompt(pid, "Synthetic private prompt")
       :ok = done(pid)
@@ -155,6 +161,11 @@ defmodule Ipse.CostReportDemo do
       {:ok, _} = Ipse.Diagnostics.saved(dir, id)
       path = Path.join(dir, id <> ".jsonl")
       before = File.read!(path)
+
+      {:error, :resume_configuration_mismatch} =
+        start(Map.delete(cfg, :max_output_tokens), root, dir, id)
+
+      ^before = File.read!(path)
       {:ok, resumed} = start(cfg, root, dir, id)
       :idle = Session.info(resumed).phase
       ^before = File.read!(path)

@@ -419,6 +419,7 @@ defmodule Ipse.Provider.HTTPTest do
           "child" => %{
             "provider" => provider,
             "model" => "selected-child",
+            "max_output_tokens" => 64,
             "base_url" => base,
             "timeout_ms" => 5000
           }
@@ -439,9 +440,74 @@ defmodule Ipse.Provider.HTTPTest do
 
       {headers, request} = Task.await(server)
       assert request["model"] == "selected-child"
+
+      case provider do
+        "openai" -> assert request["max_output_tokens"] == 64
+        "ollama" -> assert request["options"]["num_predict"] == 64
+        "anthropic" -> assert request["max_tokens"] == 64
+      end
+
       refute headers <> Jason.encode!(request) =~ "parent-private"
       refute Map.has_key?(request, "reasoning")
     end
+  end
+
+  test "Ollama summary caps keep the lower bound and explicit length termination preserves usage without tools" do
+    complete = Jason.encode!(%{"message" => %{"content" => "ok"}, "done" => true}) <> "\n"
+
+    for {limit, expected} <- [{64, 64}, {9000, 4096}] do
+      {base, server} = fixture(complete)
+
+      config =
+        Ipse.Compaction.request_config(%{
+          provider: :ollama,
+          model: "fixture",
+          base_url: base,
+          timeout_ms: 5000,
+          max_output_tokens: limit
+        })
+
+      assert {:ok, _, _} = Provider.complete(config, [], [], fn _ -> :ok end)
+      {_, request} = Task.await(server)
+      assert request["options"] == %{"temperature" => 0, "num_predict" => expected}
+      assert is_map(request["format"])
+    end
+
+    truncated =
+      Jason.encode!(%{
+        "message" => %{
+          "content" => "",
+          "thinking" => "synthetic-private",
+          "tool_calls" => [%{"function" => %{"name" => "write", "arguments" => %{}}}]
+        },
+        "done" => true,
+        "done_reason" => "length",
+        "prompt_eval_count" => 8,
+        "eval_count" => 64
+      }) <> "\n"
+
+    {base, server} = fixture(truncated)
+    owner = self()
+
+    assert {:error, message} =
+             Provider.complete(
+               %{
+                 provider: :ollama,
+                 model: "fixture",
+                 base_url: base,
+                 timeout_ms: 5000,
+                 max_output_tokens: 64
+               },
+               [],
+               [],
+               &send(owner, &1)
+             )
+
+    assert message =~ "incomplete"
+    refute message =~ "synthetic-private"
+    assert_received {:provider_usage, %{"input_tokens" => 8, "output_tokens" => 64}}
+    refute_received {:text, _}
+    Task.await(server)
   end
 
   defp fixture(body, status \\ 200, response_headers \\ "") do

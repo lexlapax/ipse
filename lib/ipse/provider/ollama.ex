@@ -32,12 +32,18 @@ defmodule Ipse.Provider.Ollama do
       "stream" => true
     }
 
+    limit = Ipse.Provider.Limits.output_tokens(config)
+    body = if limit, do: Map.put(body, "options", %{"num_predict" => limit}), else: body
+
     body =
       if is_map(config[:summary_schema]) do
         Map.merge(body, %{
           "format" => config.summary_schema,
           "think" => false,
-          "options" => %{"temperature" => 0, "num_predict" => 4096}
+          "options" => %{
+            "temperature" => 0,
+            "num_predict" => Ipse.Provider.Limits.narrow(limit, 4096)
+          }
         })
       else
         body
@@ -165,16 +171,21 @@ defmodule Ipse.Provider.Ollama do
 
         if data["done"] == true, do: emit.({:provider_usage, usage})
 
-        {:ok,
-         %{
-           state
-           | content: state.content <> delta,
-             thinking: state.thinking <> (message["thinking"] || ""),
-             calls: state.calls ++ (message["tool_calls"] || []),
-             done: state.done or data["done"] == true,
-             usage: usage,
-             reported_model: Ipse.RuntimeInfo.model_name(data["model"]) || state.reported_model
-         }}
+        if data["done"] == true and data["done_reason"] == "length" do
+          {:error,
+           "Ollama reached a generation limit; the response is incomplete and no tools were executed."}
+        else
+          {:ok,
+           %{
+             state
+             | content: state.content <> delta,
+               thinking: state.thinking <> (message["thinking"] || ""),
+               calls: state.calls ++ (message["tool_calls"] || []),
+               done: state.done or data["done"] == true,
+               usage: usage,
+               reported_model: Ipse.RuntimeInfo.model_name(data["model"]) || state.reported_model
+           }}
+        end
 
       _ ->
         {:error, "Invalid JSON in Ollama stream."}

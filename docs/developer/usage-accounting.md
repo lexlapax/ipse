@@ -7,6 +7,9 @@ snapshots through a separate own-session read grant. Host accounting does not
 fetch rates, quote prices or enforce a budget yet. See
 [operator inspection](../operator/usage-accounting.md) and
 [future costs/streams](runtime-capabilities.md#usage-facts-and-costs).
+Separately configured [provider output caps](provider-limits.md) bound supported
+individual requests; they do not change this version-1 accounting schema or
+supply aggregate admission control.
 
 ## Identity and admission
 

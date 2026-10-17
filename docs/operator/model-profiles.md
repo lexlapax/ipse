@@ -20,6 +20,7 @@ role. Without profiles, existing provider/model selection remains available.
       "provider": "ollama",
       "model": "qwen3.5:9b",
       "max_steps": 4,
+      "max_output_tokens": 1024,
       "timeout_ms": 120000
     }
   },
@@ -31,7 +32,9 @@ Install/configure the chosen model service separately; profiles never download
 models or sign in for you. Up to eight profiles are allowed. IDs begin with an
 ASCII letter and use at most 64 letters/digits/underscore/hyphen characters.
 Every profile requires provider/model. Optional limits are `max_steps`,
-`context_bytes` and `timeout_ms`, using configuration bounds. Optional `base_url`
+`context_bytes`, `timeout_ms` and supported `max_output_tokens`, using
+configuration bounds. Subscription profiles reject output caps; the public
+subscription interface does not support that field. Optional `base_url`
 selects an explicit HTTPS endpoint, or HTTP on literal loopback/localhost.
 URLs cannot contain credentials, queries or fragments. Subscription endpoints
 are restricted to the public OpenAI endpoint. An omitted endpoint uses the
@@ -58,7 +61,7 @@ setting is not translated to them.
 
 A selected profile owns provider/model/endpoint. Conflicting `--provider`,
 `--model` or `--base-url` overrides are rejected; choose another profile. CLI
-step/context/timeout overrides still take precedence. Project files require
+step/context/timeout/output-cap overrides still take precedence. Project files require
 current-run trust. Neither profiles nor roles grant effect permissions.
 
 The parent can propose `delegate` with a configured `profile` ID or a configured
@@ -76,8 +79,12 @@ history, credentials, endpoint and opaque provider payloads do not cross to a
 selected child profile. Child journals record profile/role/provider/model/effort;
 host routing facts accompany the untrusted child result. `/info` shows the active
 profile and effort, separately from provider-reported model identity.
-Child budgets remain at most six model calls and 120 seconds, with bounded
-context/results; this is additional to parent work. No automatic fallback or
-separate summary routing is provided. Main-model compaction stays on the main
+Child limits remain at most six model calls and 120 seconds, with bounded
+context/results; this is additional to parent work. A shared aggregate token/cost
+budget is not implemented yet. An inherited child keeps the parent's output cap;
+a selected child can narrow that cap and cannot remove
+or widen it. Routing an inherited cap to an unsupported provider refuses before
+delegation starts. No automatic fallback or separate summary routing is provided.
+Main-model compaction stays on the main
 profile. Changing profile definitions/roles invalidates resume conservatively;
 start a new session after policy changes.

@@ -63,6 +63,10 @@ Set `OPENAI_API_KEY` through your normal secret-management method, then:
 ```
 
 API requests use API billing, separately from your ChatGPT subscription.
+For supported API/Ollama providers, an explicit `--max-output-tokens N` caps each
+request; the [configuration guide](configuration.md) defines ranges and lower
+adapter limits. Subscription requests reject that unsupported setting instead of
+dropping it or switching billing. This is separate from aggregate cost budgets.
 
 ## 3. Local Ollama
 

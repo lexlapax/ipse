@@ -118,6 +118,7 @@ defmodule Ipse.Session do
          :ok <- extension_configuration(config),
          :ok <- Ipse.Observability.Config.runtime(config),
          :ok <- Ipse.Usage.configuration(config),
+         :ok <- Ipse.Provider.Limits.validate(config),
          {:ok, cwd} <- WorkspaceContext.canonical_path(requested_cwd),
          true <- File.dir?(cwd),
          {:ok, id, _events} <- open(dir, id, cwd, config),
@@ -3299,6 +3300,7 @@ defmodule Ipse.Session do
            Journal.create(dir, %{
              "cwd" => cwd,
              "usage_version" => 1,
+             "max_output_tokens" => config[:max_output_tokens],
              "provider" => to_string(config.provider),
              "model" => config.model,
              "sandbox" => to_string(Map.get(config, :sandbox, :off)),
@@ -3321,6 +3323,7 @@ defmodule Ipse.Session do
          true <-
            old_cwd == cwd and meta["provider"] == to_string(config.provider) and
              meta["model"] == config.model and
+             meta["max_output_tokens"] === config[:max_output_tokens] and
              Map.get(meta, "sandbox", "off") == to_string(Map.get(config, :sandbox, :off)) and
              Map.get(meta, "mcp_servers", []) == Ipse.MCP.fingerprints(config) and
              Map.get(meta, "subagents", false) == Ipse.Delegation.enabled?(config) and

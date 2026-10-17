@@ -31,7 +31,7 @@ new dependencies or start production engine implementation.
 
 | Milestone or gate | Current state | Next result |
 | --- | --- | --- |
-| [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | In progress; configured own-session and child reports implemented | Resolve current hosted verification failure; atomic host reservations/reconciliation and accounted extension model operations |
+| [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | In progress; configured own-session/child reports and supported request output caps | Atomic host reservations/reconciliation and accounted extension model operations |
 | [P24: voice and media](#p24-voice-and-realtime-media) | Authorized; unimplemented | Chained STT/text/TTS, then explicit realtime/media capability |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Proposed revised scope; unstarted | Independent Codex/Ipse research, measured discrepancies, Ipse-authored repairs and fresh acceptance runs |
 | P25 security gates | Proposed; no service access or scan verified | Baseline audit before broad self-development and final-candidate review/rescan afterward |
@@ -39,15 +39,15 @@ new dependencies or start production engine implementation.
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; proposed scope subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
 | [Apache-2.0 transition](#license-transition) | Requested; unimplemented | Separate verified license/package/documentation change after the agreed delivery scope |
 
-The latest checked P23D hosted run at `03d4187`,
-[39044897250](https://github.com/lexlapax/ipse/actions/runs/39044897250), passed Ubuntu
-and failed one macOS MCP resource/prompt fixture before dispatch. Its cause is
-unconfirmed; later Mac native/package/lab steps did not run. Local Linux and
-extracted-package evidence does not close this open platform check. Record the
-repair and exact replacement run in the testing guide before claiming the current
-increment verified on both hosts.
+The P23D baseline at `84597b4` passed
+[hosted Linux/macOS verification](https://github.com/lexlapax/ipse/actions/runs/39046213259),
+including both packages, the installed extension lab and applicable Mac enforcement.
+The preceding `03d4187` run failed one Mac MCP fixture; eleven focused Linux
+catalog tests passed and the new hosted run did not reproduce it. No transport
+repair or deadline change was made; its original cause remains unconfirmed.
+Later runtime increments need their own verification.
 
-Recommended order: close that verification issue and finish P23; deliver P24 as
+Recommended order: finish P23; deliver P24 as
 already requested; freeze the P25 candidate and run its baseline security audit;
 then execute the comparative research/repair/rerun cycle and final security review.
 P25's text/research trial has no technical dependency on audio devices or a live
@@ -91,6 +91,14 @@ request/attempt/provider/billing/model facts separately from diagnostics. The
 | P23B | Separately granted own-session `usage.read`, fixed prefixes, source-bound cached recovery and default-off `builtin:cost-report:1` pages |
 | P23C | Finite separately granted full own-session enumeration and default-off `builtin:cost-summary:1`, cumulative request replacement and overflow/legacy handling |
 | P23D | Explicit registered-child discovery/reads and default-off `builtin:cost-tree:1`, frozen accounting prefixes, exact origins and visible missing/busy/invalid/legacy/cleanup gaps |
+| P23E1 | Explicit supported provider output ceilings, narrowed child/summary caps and saved-policy resume |
+
+[Provider output ceilings](developer/provider-limits.md) apply only to supported
+API/Ollama requests. ChatGPT subscription refuses the unsupported setting; no
+output-token ceiling is invented for that public interface. Local source/package
+and 41-assertion installed-lab checks passed; this runtime increment needs its own
+hosted result. See [actual evidence](developer/testing.md#current-evidence-and-next-checks).
+Atomic shared reservations and accounted extension model operations remain open.
 
 These reports do not enforce budgets, produce a globally atomic tree balance or
 promise an invoice ceiling. Rates are configured; subscription equivalents,

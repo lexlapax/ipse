@@ -188,8 +188,10 @@ and pre-repair refusal. The release fixture now runs a real parallel delegation
 and cached tree report with synthetic rates/provider. These verify accounting
 protocols, not live prices, account charges or a transactional external ledger.
 
-P23 next needs atomic covered-request reservations, partial/unknown liability and
-provider-enforceable output bounds in host admission. Generic accounted extraction
+Optional [provider output caps](provider-limits.md) now supply a supported
+per-request control; subscription requests explicitly refuse that unsupported
+setting. P23 still needs atomic covered-request reservations and partial/unknown
+liability in host admission. Generic accounted extraction
 requests are needed before a selected knowledge package can call a model;
 embeddings need their own supported provider/accounting contract. The proposed
 P25 research trial can use existing explicit provider/tools without implementing

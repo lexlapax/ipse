@@ -343,8 +343,11 @@ Pricing services, source-debugger/GUI dependencies, codecs, audio
 devices/transports, memory databases, embedding/rerank providers and graph/vector
 engines remain unselected. P22 uses existing OTP/helper/schema/journal facilities
 where suitable; subsequent milestones must evaluate/inventory packages and obtain
-any required outside-Elixir/Rust approval before implementation. No mandatory backend or
-hardcoded service/rate is introduced by these planning entries.
+any required outside-Elixir/Rust approval before implementation. No mandatory
+backend or hardcoded service/rate is introduced by these planning entries.
+Provider output ceilings reuse the settings/profile JSONSchex schemas with small
+provider capability/range checks and existing request adapters; no new parser,
+tokenizer, native library or pricing service is introduced.
 Lifecycle feeds and admitted-tool views reuse the existing independent Worker bridge,
 Journal/source/schema adapters, OTP processes/monitors, atomics and private ETS.
 They share worker cleanup with diagnostic channels and add no package or broker.

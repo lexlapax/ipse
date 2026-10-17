@@ -56,6 +56,9 @@ defmodule Ipse.Provider.OpenAI do
         do: Map.put(body, "reasoning", %{"effort" => config.reasoning_effort}),
         else: body
 
+    limit = Ipse.Provider.Limits.output_tokens(config)
+    body = if limit, do: Map.put(body, "max_output_tokens", limit), else: body
+
     if config[:provider] == :chatgpt,
       do: body,
       else: Map.put(body, "tools", Enum.map(tools, &function_definition/1))

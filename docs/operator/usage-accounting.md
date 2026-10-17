@@ -183,6 +183,14 @@ The report does not enforce monetary/token budgets or promise an invoice ceiling
 Host reservation/admission remains P23 work; displayed counters or estimates do
 not provide that protection.
 
+An explicit [`max_output_tokens` setting](configuration.md) can cap individual
+OpenAI API, Anthropic and Ollama requests; children retain or narrow the parent's
+cap, and lower adapter limits remain. ChatGPT subscription rejects this setting
+because its public interface does not support it. A per-request output cap does
+not limit input or aggregate requests/costs. Truncated provider output stops
+incomplete without admitting tools, retaining available partial usage. Already
+streamed text remains visible; inspect the error before explicitly continuing.
+
 Turning optional tracing off does not remove usage facts. No extra remote request
 collects them. The report's own-session read grant excludes prompts,
 results, credentials, raw endpoint URLs and native reasoning. The separate child

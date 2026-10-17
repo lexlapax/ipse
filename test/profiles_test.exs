@@ -179,6 +179,53 @@ defmodule Ipse.ProfilesTest do
     assert :ok = Profiles.validate_profile(%{"provider" => "ollama", "model" => "fixture"})
   end
 
+  test "selected children cannot widen or drop an inherited output cap or route it to unsupported providers",
+       c do
+    config = %{
+      provider: :openai,
+      model: "parent",
+      max_output_tokens: 128,
+      profiles: %{
+        "local" => %{"provider" => "ollama", "model" => "fixture", "max_output_tokens" => 256},
+        "subscription" => %{"provider" => "chatgpt", "model" => "fixture"}
+      }
+    }
+
+    assert {:ok, local} = Profiles.child_config(config, %{}, %{"profile" => "local"})
+    assert local.max_output_tokens == 128
+    narrow = put_in(config, [:profiles, "local", "max_output_tokens"], 64)
+    assert {:ok, local} = Profiles.child_config(narrow, %{}, %{"profile" => "local"})
+    assert local.max_output_tokens == 64
+    assert {:ok, inherited} = Profiles.child_config(config, %{}, %{})
+    assert inherited.max_output_tokens == 128
+    assert {:error, _} = Profiles.validate_route(config, %{"profile" => "subscription"})
+    assert {:error, _} = Profiles.child_config(config, %{}, %{"profile" => "subscription"})
+
+    assert {:error, _} =
+             Profiles.validate_profile(%{
+               "provider" => "chatgpt",
+               "model" => "fixture",
+               "max_output_tokens" => 128
+             })
+
+    assert :ok =
+             Profiles.validate_profile(%{
+               "provider" => "openai",
+               "model" => "fixture",
+               "max_output_tokens" => 128
+             })
+
+    assert {:ok, cfg} =
+             Config.resolve(
+               c.root,
+               c.home,
+               [project_config: false, provider: "ollama", max_output_tokens: 32],
+               %{}
+             )
+
+    assert cfg.settings["max_output_tokens"] == 32
+  end
+
   test "switching a parallel child profile preserves hardlink mutation denial", c do
     target = Path.join(c.root, "original.txt")
     alias_path = Path.join(c.root, "alias.txt")

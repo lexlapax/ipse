@@ -125,6 +125,10 @@ loopback HTTP requires an explicit exception.
 
 Opt-in [local subagents](docs/operator/subagents.md) support serial or bounded
 parallel work with separate approvals, journals and explicit model routing.
+An optional [provider output cap](docs/operator/configuration.md) applies to
+supported API/Ollama requests and is retained or narrowed by children. ChatGPT
+subscription rejects that unsupported setting; it never switches to API billing.
+Shared atomic token/cost budgets remain work in progress.
 Use `$research` with configured search/fetch MCP tools for a durable
 [source/claim ledger](docs/operator/research.md). No search service or automatic
 memory backend is required. The terminal is line-oriented; remote agents and

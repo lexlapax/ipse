@@ -23,6 +23,13 @@ including whitespace, does invalidate it conservatively. No raw file is journale
 or inserted into model context. The CLI converts only fixed known field names to
 runtime keys, and persists the manifest in session metadata.
 
+Optional `max_output_tokens` follows this same precedence and fingerprint contract,
+with provider capability/range checks after effective selection. It adds no default
+setting to old configurations. The CLI restores it on resume; Session also pins
+the effective cap for embedded callers before journal repair. See
+[provider output ceilings](provider-limits.md) for wire mappings, inherited child
+limits and the explicit subscription refusal.
+
 `Session.info/1` exposes the non-secret manifest. Resume compares fingerprints
 before acquiring work or requesting inference. Legacy metadata without a manifest
 accepts only a config with no loaded files, retaining existing provider/model/

@@ -18,7 +18,8 @@ defmodule Ipse.Provider do
                  to_string(config[:provider]),
                  config[:model],
                  config[:reasoning_effort]
-               ) do
+               ),
+             :ok <- Ipse.Provider.Limits.validate(config) do
           case apply(adapter, :complete, [config, messages, tools, emit]) do
             {:error, message} when is_binary(message) -> error(message, config)
             result -> result

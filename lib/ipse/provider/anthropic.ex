@@ -39,7 +39,7 @@ defmodule Ipse.Provider.Anthropic do
     %{
       "model" => config[:model],
       "stream" => true,
-      "max_tokens" => config[:max_tokens] || 8192,
+      "max_tokens" => Ipse.Provider.Limits.output_tokens(config, config[:max_tokens] || 8192),
       "system" => Enum.map_join(system, "\n\n", &(&1["content"] || "")),
       "messages" => Enum.map(messages, &native/1),
       "tools" =>
