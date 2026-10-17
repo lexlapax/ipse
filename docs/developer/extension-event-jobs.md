@@ -202,6 +202,7 @@ explicit [history pages](extension-history.md) and separately enrolled
 [runtime epoch/wait facts](lifecycle-events.md#runtime-epochs-and-operator-waits).
 Neither activates new job triggers or automatic catch-up. The
 [coverage audit](lifecycle-events.md#supported-lifecycle-coverage) identifies exact
-supported triggers; production reindex policy and P23 model/budget admission remain
-separate work. Optional
+supported triggers. Production reindex policy remains separate domain work;
+[accounted model calls](extension-model-calls.md) and shared admission use their
+own host contracts. Optional
 [diagnostic capture](observability.md) does not gate these jobs or their receipts.

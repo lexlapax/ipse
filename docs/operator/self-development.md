@@ -19,7 +19,9 @@ held-out reruns and final architecture/security reviews. The
 [plan](../plan.md#current-priorities-and-status) owns scope and order; former-P24
 voice/media is deferred to P28 and does not block this text/research work.
 
-Prepare a pinned, sanitized repository/design packet and a passing candidate from
+Use the [prepared architecture-review handoff](architecture-review.md) for the
+operator's selected Claude subscription route. Prepare a pinned, sanitized
+repository/design packet and a passing candidate from
 the [verification record](../developer/testing.md#current-evidence-and-next-checks).
 Normally ask an independent external reviewer, such as Claude, to challenge it
 before scanning. Establish reviewer/service access, source-sharing authority,

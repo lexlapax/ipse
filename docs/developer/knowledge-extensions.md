@@ -20,7 +20,7 @@ subject to the research outcome. The earlier implementation authorization does
 not override the operator's 2026-10-17 request to reconsider that scope. P23 reports
 and shared main/summary/child budgets are available.
 [Accounted one-shot text calls](extension-model-calls.md) now supply the optional
-model seam under P23F validation; embeddings and production engines remain separate.
+model seam verified in P23F; embeddings and production engines remain separate.
 
 ## Research before implementation selection
 
@@ -144,7 +144,7 @@ seams before choosing a production memory, graph or retrieval engine:
 | State/deletion | Scoped CAS records, locks/tombstones and installed rejection of delayed prompt writes after concurrent forget | Domain TTL, complete derivative deletion/export policy and production concurrency coverage |
 | Owned work | Explicit invocations, prompt/answer jobs, fixed-range history, cancellation, receipts/questions and installed domain deduplication/catch-up | Production ingestion/reindex policy; fully concurrent effectful jobs remain a negotiated enhancement |
 | Event source/views | Stable journal references, scoped history, prompt/answer delivery and selected live metadata/private-tool feeds, with separate ephemeral text sources | Unsupported view families and causal links listed in the lifecycle audit; cross-session history authorization |
-| Optional model work | Explicit profile-bound `host.model` one-shot text calls, canonical usage/shared budget and private input grants; P23F validation remains open | Embeddings need a separate public provider/accounting contract; callbacks cannot silently call a model |
+| Optional model work | Explicit profile-bound `host.model` one-shot text calls, canonical usage/shared budget and private input grants; P23F source/package/platform checks passed | Embeddings need a separate public provider/accounting contract; callbacks cannot silently call a model |
 
 The [lifecycle event design](lifecycle-events.md) makes prompt-driven graph
 ingestion a P22 acceptance scenario. Hooks subscribe to shared boundaries, but

@@ -74,7 +74,8 @@ all provider-side charges or an invoice. ChatGPT subscription has no supported
 request output field through the current public interface. Optional
 [shared budget policy](budgets.md) refuses subscription output quotas, while
 request/input-reservation/estimated-money quotas remain independently selectable.
-Generic accounted extension model requests remain P23 work.
+[Accounted extension text requests](extension-model-calls.md) narrow these ceilings
+through their selected profile and owner policy as well.
 
 ## Verification scope
 

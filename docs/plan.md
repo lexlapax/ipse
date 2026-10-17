@@ -22,7 +22,8 @@ provider/account combinations, unattended self-development or production knowled
 quality. Subscription, API and installed Ollama checks have separate
 [provider verification](developer/testing.md#provider-verification-status).
 
-P23 is the active implementation milestone. The operator's 2026-10-17 direction
+P23 is complete within its one-shot text/accounting scope. P24 is the active gate,
+awaiting the operator's independent Claude review. The operator's 2026-10-17 direction
 puts independent architectural challenge, security review and a large supervised
 self-development trial ahead of media. P24 now owns architecture/security
 readiness; the former P24 voice/media scope moves to deferred P28. P25 compares
@@ -33,36 +34,35 @@ new source transfer or dependency, or select a production engine.
 
 | Milestone or gate | Current state | Next result |
 | --- | --- | --- |
-| [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | In progress; model-call source/package/installed checks passed | Close hosted Linux/macOS gates on the final candidate |
-| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Planned; no external review or scan run | Independent adversarial architecture review, evidence-based dispositions and triaged baseline OpenAI security audit |
+| [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within selected scope; source/native/package/installed and hosted Linux/macOS passed | Retain accounting invariants through P24/P25 review and repairs |
+| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Review packet prepared; operator selected Claude subscription; no critique or scan yet | Independent adversarial architecture review, evidence-based dispositions and triaged baseline OpenAI security audit |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Planned revised scope; unstarted | Independent Codex/Ipse research, Ipse-authored repairs, fresh acceptance runs and final architecture/security review |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Deferred; proposed scope subject to P25 decisions | Independently selectable working/long-term memory tools and optional lifecycle policies |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; proposed scope subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
 | [P28: voice and media](#p28-voice-and-realtime-media) | Deferred; former P24 scope, unimplemented | Chained STT/text/TTS, then explicit realtime/media capability; no prerequisite for P24/P25 |
 | [Apache-2.0 transition](#license-transition) | Requested; unimplemented | Separate verified license/package/documentation change after the agreed delivery scope |
 
-Feature status and runner readiness are separate. Shared-budget candidate
-`a815d06` passed hosted Linux/macOS source, package and installed-extension checks,
-including both Mac enforcement steps and the reproduced auth cleanup repair.
-Later runtime changes need their own baseline before P25's runner is frozen.
+Feature status and runner readiness are separate. Accounted-model candidate
+`21e59fe` passed hosted Linux/macOS source, package and both independent installed
+proofs, including both Mac enforcement steps. P24's review packet targets that
+revision. Later runtime changes need their own baseline before P25's runner is frozen.
 Actual revisions, platform results and investigation belong in
 [testing](developer/testing.md#current-evidence-and-next-checks).
 
 Execution order:
 
-1. Finish P23's accounted extension model operations and verify the candidate.
-2. Freeze the P24 review packet. Have an independent external agent, such as
-   Claude, challenge the architecture; triage and repair blocking design defects,
-   then run the baseline OpenAI security audit on the resulting revision.
-3. Execute P25's independent research, discrepancy comparison, Ipse-authored
+1. Collect the independent Claude critique of P24's prepared packet; independently
+   triage and repair blocking design defects, then run the baseline OpenAI security
+   audit on the resulting revision.
+2. Execute P25's independent research, discrepancy comparison, Ipse-authored
    repairs and fresh same-input/held-out reruns. Finish with an external
    architecture delta review and security review/rescan of the final candidate.
-4. Select later P26/P27 production increments from the evidence. Keep P28 media
+3. Select later P26/P27 production increments from the evidence. Keep P28 media
    deferred until explicitly scheduled; neither audio devices nor voice accounts
    block P24/P25. Resolve the separate license-transition placement before that
    change rather than allowing deferred features to hide its outstanding status.
 
-Brief preparation and review-service access checks can proceed while P23 is open.
+Brief preparation and review-service access checks may precede scored execution.
 Architecture review normally precedes the baseline scan to sharpen its threat
 model; a recorded reason may reverse that order. Material repairs require review
 of affected surfaces on the new revision. Address a new defect when found rather
@@ -93,7 +93,7 @@ unrelated work and never force-push. Detailed procedures are in
 
 ## P23: usage, cost reporting and budget controls
 
-**In progress.** The [usage contract](developer/usage-accounting.md) supplies durable
+**Complete within the selected scope.** The [usage contract](developer/usage-accounting.md) supplies durable
 request/attempt/provider/billing/model facts separately from diagnostics. The
 [configured cost implementation](developer/costs.md) and
 [operator guide](operator/usage-accounting.md) define the available reports:
@@ -106,7 +106,7 @@ request/attempt/provider/billing/model facts separately from diagnostics. The
 | P23D | Explicit registered-child discovery/reads and default-off `builtin:cost-tree:1`, frozen accounting prefixes, exact origins and visible missing/busy/invalid/legacy/cleanup gaps |
 | P23E1 | Explicit supported provider output ceilings, narrowed child/summary caps and saved-policy resume |
 | P23E2 | Optional atomic session-tree reservations for main/summary/children, conservative settlement, protected inspection and historical-source validation; local and hosted Linux/macOS source/package/installed checks passed |
-| P23F | Explicit one-shot `host.model` text requests, profile-bound approvals/receipts, canonical usage and shared reservations; source/native/package and both independent artifact proofs passed; hosted Linux/macOS validation remains open |
+| P23F | Explicit one-shot `host.model` text requests, profile-bound approvals/receipts, canonical usage and shared reservations; source/native/package and both independent artifact proofs passed locally and in hosted Linux/macOS checks |
 
 [Provider output ceilings](developer/provider-limits.md) apply only to supported
 API/Ollama requests. ChatGPT subscription refuses the unsupported setting; no
@@ -115,29 +115,32 @@ and limitations are recorded in
 [actual evidence](developer/testing.md#current-evidence-and-next-checks).
 The [shared budget contract](developer/budgets.md) covers main, summary and local
 children and [extension model operations](developer/extension-model-calls.md)
-independently of reports. P23F's source and installed proofs passed; the milestone
-remains open until its final hosted verification gates pass.
+independently of reports. P23F's source and installed proofs passed locally and on
+both hosted platforms; the measured coverage remains distinct from live billing.
 
 These reports do not enforce budgets, produce a globally atomic tree balance or
 promise an invoice ceiling. Rates are configured; subscription equivalents,
 API estimates and local inference resource costs remain distinct. Missing usage
 or failed-child cleanup cannot be converted to zero liability.
 
-Remaining acceptance:
-
-1. Close supported hosted Linux/macOS gates on the exact commit, including both
-   macOS enforcement steps, ordinary package verification, the
-   [independently built model artifact](../examples/model-calls/README.md) and the
-   existing seven-artifact compatibility lab. Local source/native/demo and both
-   installed proofs passed; preserve that evidence and its byte/toolchain bounds.
-2. Reconcile operator/developer guidance with the terminal hosted results before
-   completion. One-shot text is the selected operation; embeddings/audio remain
-   unsupported pending separate contracts. In-flight input/money estimation and
-   arbitrary trusted out-of-band calls cannot establish an invoice ceiling.
+The [independently built model artifact](../examples/model-calls/README.md) and
+existing seven-artifact compatibility lab passed against unchanged extracted
+packages. Acceptance includes real parallel child inference, nested approvals,
+owner-loss cancellation, refusal/overdraw, source-bound cached cost recovery and
+inert resume. Exact revisions, archive digests and terminal hosted conclusions
+are recorded in testing. One-shot text is the selected operation; embeddings/audio
+remain unsupported pending separate contracts. In-flight input/money estimation
+and arbitrary trusted out-of-band calls cannot establish an invoice ceiling.
 
 ## P24: independent architecture validation and baseline security
 
-**Planned; unstarted.** Challenge the foundation before the large self-development
+**Prepared; external review unstarted.** The operator selected a Claude
+subscription review of the [pinned source packet](operator/architecture-review.md).
+Read-only Security Cloud access checks found the repository and available scan
+credits; no matching environment was found and no scan or billing change was
+started. Access readiness does not close either review gate.
+
+Challenge the foundation before the large self-development
 trial. An external agent, such as Claude, reviews a pinned repository/design
 packet independently of the implementation author and the Codex/Ipse research
 tracks. The first pass does not receive our preferred verdict or either track's
@@ -403,8 +406,8 @@ inert resume; loading does not run scripts or install dependencies. See
 ## P9: parallel local subagents
 
 Complete: opt-in two-child groups, separate approval routing, bounded scheduling,
-results and cancellation. Serial remains default; atomic shared token/cost
-reservations remain P23 work. See
+results and cancellation. Serial remains default; P23 separately adds atomic shared
+token/cost reservations. See
 [P9 evidence](developer/testing.md#p9-parallel-local-delegation-2026-10-15).
 
 ## P10: network MCP

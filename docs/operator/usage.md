@@ -571,12 +571,12 @@ samples immediately. Journals and usage remain active.
 Selected [live event feeds](extensions.md#live-event-feeds) enroll on explicit
 work with separate bounded queues and durable receipts. `/events off` stops them;
 idle resume starts no feed, and incomplete coverage needs explicit catch-up.
-These available facilities are distinct from the planned capabilities below.
+Current delivery and remaining work follow this sequence:
 
-| Milestone | Remaining capability | Status and boundary |
+| Milestone | Scope | Status and boundary |
 | --- | --- | --- |
-| P23 | Final accounted-model verification | Own-session/child reports, optional [shared reservations](budgets.md) and explicit [extension text calls](extensions.md#accounted-model-calls); final source/package/platform gates remain open. Context bytes are not tokens or an invoice |
-| P24 | Independent architecture validation and baseline security | Planned external adversarial review, such as Claude, followed by triaged OpenAI security audit; neither has run |
+| P23 | Complete within selected scope | Own-session/child reports, optional [shared reservations](budgets.md) and explicit [extension text calls](extensions.md#accounted-model-calls); source/package/platform gates passed. Context bytes are not tokens or an invoice |
+| P24 | Independent architecture validation and baseline security | [Claude subscription handoff](architecture-review.md) prepared, followed by triaged OpenAI security audit; no critique or scan yet |
 | P25 | Larger supervised comparative research/self-development trial | Independent Codex/Ipse study, repairs, held-out reruns and final architecture/security review; unstarted |
 | P26/P27 | Optional working/long-term memory, research engine, graph and RAG | Production packages deferred pending P25 selection; independently configurable and default-off |
 | P28 | STT/text-agent/TTS and realtime media | Deferred former-P24 scope, with explicit device/provider/billing selection; text authentication does not imply audio access |

@@ -56,6 +56,15 @@ kept where needed to resume a provider exchange. The session enforces a
 per-turn model-call limit and runs tools sequentially. It does not use a fixed
 plan/execute workflow or require a graph framework.
 
+Separately trusted extensions can request bounded one-shot text inference through
+`host.model` using a named profile. Session owns the additional egress approval,
+model step and canonical admission; a linked task resolves the selected provider's
+credentials and performs IO. Only bounded text and normalized usage return to the
+worker. Private native responses remain separate from the main conversation, and
+these helper requests share any configured tree budget. See
+[accounted extension model calls](extension-model-calls.md) for routing, cancellation
+and source-bound recovery.
+
 Before dispatch, Session journals a correlated request admission. Normalized
 usage observations and final/partial/unknown outcomes remain durable even when
 a summary is rejected or a request fails. [Request accounting](usage-accounting.md)
@@ -281,10 +290,11 @@ Separate VMs and process groups are ownership boundaries, not OS sandboxing.
 | Finite host actions | Separate mutation approval, scoped CAS state and ordered no-replay action receipts | [Host calls](extension-host-calls.md) |
 | Questions | Close workers before publication; commit explicit answers and continuation intent before new initialization | [Questions](extension-questions.md) |
 | Workflow tools | Existing file/Runner policy, instruction preflight, linked owned tasks and output-completeness facts | [Tool actions](extension-tool-actions.md) |
+| One-shot text inference | Named profile, full egress approval, owned provider IO, private native receipts, canonical usage and source-bound recovery | [Model calls](extension-model-calls.md) |
 | Value-service composition | Operator routes, acyclic dependency identities, target lease/schema/cleanup checks and host provenance | [Services](extension-services.md) |
 | Session context | Bounded caller-owned sets, assertion/receipt provenance and exact main-request snapshots | [Context](extension-context.md) |
 | Accounting reads | Caller/session-bound pages and separately granted registered-child prefixes; owned IO/locks, exact origin, content exclusion and cached/source validation | [Usage read SDK](usage-accounting.md#extension-accounting-reads) |
-| Shared model admission | Operator policy, durable atomic main/summary/child reservations, retained unknown liability and pre-repair source checks; independent of extension reports | [Budget contract](budgets.md) |
+| Shared model admission | Operator policy, durable atomic main/summary/child/helper reservations, retained unknown liability and pre-repair source checks; independent of extension reports | [Budget contract](budgets.md) |
 | Private text consumers | Owned independent workers, opaque resource handles, acknowledged frames and explicit incomplete cleanup | [Text delivery](text-streams.md) |
 | Prompt event subscribers | Inert declarations, separate private-view grants, ordered owned notification and source-bound no-replay receipts | [Event delivery](extension-events.md) |
 
