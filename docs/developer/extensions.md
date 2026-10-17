@@ -169,7 +169,8 @@ to boundaries under explicit delivery contracts. Diagnostic notifications,
 private feeds, ordered hooks and event-triggered jobs share correlation while
 retaining different permissions, ordering and recovery. The
 [lifecycle contract](lifecycle-events.md) defines source identity, original versus
-effective prompt views, bounded delivery, causal loops and no-replay semantics.
+effective prompt and original versus presented answer views, bounded delivery,
+causal loops and no-replay semantics.
 Neither private access nor metadata includes hidden reasoning or auth.
 
 | Stage | Useful observations | Proposed transformation/effect boundary |

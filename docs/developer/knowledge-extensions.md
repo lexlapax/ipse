@@ -123,17 +123,18 @@ seams before choosing a production memory, graph or retrieval engine:
 | Responsibility | Implemented foundation | Remaining contract/proof |
 | --- | --- | --- |
 | Composition | Operator-bound typed value services, pinned dependencies and acyclic routing | Independent synthetic retriever proof; nested effectful services remain a negotiated enhancement |
-| Evidence/context | Caller-scoped bounded publications, assertion/receipt provenance and exact main-request snapshots | Domain records mapped to P14 source/claim identity; awaited recall at a documented pre-request seam |
-| State/deletion | Scoped CAS records, revision/generation checks, locks and tombstones through approved actions | TTL, derivative deletion/export policy and delayed-job rejection after forget |
-| Owned work | Explicit invocations with finite actions, cancellation, durable intents/outcomes and structured questions | Event-to-job admission, private prompt subscriptions, bounded ingestion/catch-up and source-event deduplication |
-| Event source/views | Stable journal references, bounded host-only pages and admitted read-only original/final-effective prompt notifications | Effectful event jobs, full causal links, broader lifecycle/continuous feeds and explicit catch-up |
+| Evidence/context | Bounded attributed publications, assertion/receipt provenance and awaited pre-request recall into exact snapshots | Domain records mapped to P14 source/claim identity and independently installed retriever proof |
+| State/deletion | Scoped CAS records, revision/generation checks, locks, tombstones and fixture rejection of delayed prompt writes after forget | Domain TTL, derivative deletion/export policy and complete concurrent-forget proofs |
+| Owned work | Explicit invocations and prompt/answer-triggered finite jobs, cancellation, durable receipts and structured questions | Bounded ingestion/catch-up, domain source-event deduplication and independent package proof; fully concurrent effectful jobs remain a negotiated enhancement |
+| Event source/views | Stable journal references, bounded host-only pages, selected original/effective prompt and original/presented answer delivery | Full causal links, broader lifecycle/continuous feeds and explicit authorized catch-up |
 | Optional model work | Existing explicit provider/profile and delegation paths | A negotiated accounted host request capability for extraction/embedding; current callbacks cannot silently call a model |
 
 The [lifecycle event design](lifecycle-events.md) makes prompt-driven graph
 ingestion a P22 acceptance scenario. Hooks subscribe to shared boundaries, but
 metadata notification, private content delivery, ordered recall and effectful
 jobs have distinct contracts. A graph can subscribe to a selected original or
-effective prompt view, extract entities deterministically in an owned worker and
+effective prompt view, or a separately authorized completed-answer view, extract
+entities deterministically in an owned worker and
 propose approved scoped writes. Acknowledgment alone grants no storage or model
 authority. Background indexing cannot change an admitted request; same-turn
 recall must be awaited and committed before inference. Resume restores committed

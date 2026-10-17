@@ -25,10 +25,15 @@ defmodule Ipse.Extensions.EventJob do
            "intent_sha256" => Ipse.Compaction.digest([delivery]),
            "event_id" => delivery["source"]["event_id"],
            "schedule" => schedule(delivery["declaration"]),
-           "sources" => %{
-             "received" => facts.received.source,
-             "effective" => facts.effective.source
-           }
+           "sources" =>
+             answer_source(
+               %{
+                 "received" => facts.received.source,
+                 "effective" => facts.effective.source
+               },
+               delivery,
+               facts
+             )
          },
          parent =
            Invocation.intent(
@@ -48,7 +53,14 @@ defmodule Ipse.Extensions.EventJob do
            |> Map.put("payload", public_payload)
            |> Map.put("payload_sha256", Ipse.Compaction.digest([public_payload])),
          :ok <- Invocation.validate_intent(parent),
-         true <- matches?(parent, delivery, facts.received.record, facts.effective.record) do
+         true <-
+           matches?(
+             parent,
+             delivery,
+             facts.received.record,
+             facts.effective.record,
+             if(facts[:answer], do: facts.answer.record)
+           ) do
       {:ok, parent}
     else
       _ -> {:error, :event_job_refused}
@@ -72,19 +84,28 @@ defmodule Ipse.Extensions.EventJob do
       Regex.match?(~r/\A[0-9a-f]{64}\z/, trigger["intent_sha256"]) and
       trigger["schedule"] in ~w(before_request after_turn) and
       is_map(trigger["sources"]) and
-      Enum.sort(Map.keys(trigger["sources"])) == ~w(effective received) and
+      Enum.sort(Map.keys(trigger["sources"])) in [
+        ~w(effective received),
+        ~w(answer effective received)
+      ] and
       Enum.all?(trigger["sources"], fn {_, source} -> Source.valid?(source) end) and
-      trigger["sources"]["received"]["session_id"] ==
-        trigger["sources"]["effective"]["session_id"]
+      Enum.all?(trigger["sources"], fn {_, source} ->
+        source["session_id"] == trigger["sources"]["effective"]["session_id"]
+      end) and
+      (not Map.has_key?(trigger["sources"], "answer") or trigger["schedule"] == "after_turn")
   rescue
     _ -> false
   end
 
-  def matches?(parent, delivery, received, effective) do
+  def matches?(parent, delivery, received, effective, answer \\ nil) do
     trigger = parent["event_trigger"]
 
     record =
-      if delivery["declaration"]["event"] == "prompt.received", do: received, else: effective
+      case delivery["declaration"]["event"] do
+        "prompt.received" -> received
+        "prompt.effective_committed" -> effective
+        "answer.committed" -> answer
+      end
 
     valid_trigger?(trigger) and delivery["declaration"]["mode"] == "job" and
       parent["descriptor"]["stage"] == "event.job" and parent["identity"] == delivery["identity"] and
@@ -98,11 +119,32 @@ defmodule Ipse.Extensions.EventJob do
       trigger["sources"]["received"] == effective["received_source"] and
       Source.matches?(trigger["sources"]["received"], received) and
       Source.matches?(trigger["sources"]["effective"], effective) and
+      answer_matches?(trigger, delivery, answer, effective) and
       parent["payload"]["trigger"] == public_trigger(trigger) and
       parent["payload"]["arguments"] == %{"event" => Subscriptions.payload(delivery, record)}
   rescue
     _ -> false
   end
+
+  defp answer_source(sources, %{"declaration" => %{"event" => "answer.committed"}}, facts),
+    do: Map.put(sources, "answer", facts.answer.source)
+
+  defp answer_source(sources, _, _), do: sources
+
+  defp answer_matches?(
+         trigger,
+         %{"declaration" => %{"event" => "answer.committed"}} = delivery,
+         answer,
+         effective
+       ),
+       do:
+         Ipse.Lifecycle.Answer.valid?(answer) and
+           trigger["sources"]["answer"] == delivery["source"] and
+           Source.matches?(trigger["sources"]["answer"], answer) and
+           answer["effective_source"] == trigger["sources"]["effective"] and
+           answer["turn_id"] == effective["turn_id"]
+
+  defp answer_matches?(trigger, _, _, _), do: not Map.has_key?(trigger["sources"], "answer")
 
   def restore_question(nil, _, _, _), do: {:ok, nil}
 
@@ -136,11 +178,20 @@ defmodule Ipse.Extensions.EventJob do
          true <-
            received.source == trigger["sources"]["received"] and
              effective.source == trigger["sources"]["effective"],
-         true <- matches?(parent, delivery, received.record, effective.record) do
+         {:ok, answer} <- restore_answer(trigger, directory, session),
+         true <-
+           matches?(
+             parent,
+             delivery,
+             received.record,
+             effective.record,
+             if(answer, do: answer.record)
+           ) do
       {:ok,
        %{
          received: received,
          effective: effective,
+         answer: answer,
          intent: delivery,
          turn: delivery["turn_id"],
          schedule: trigger["schedule"]
@@ -151,5 +202,17 @@ defmodule Ipse.Extensions.EventJob do
   end
 
   def restore_question(_, _, _, _), do: {:ok, nil}
+
+  defp restore_answer(%{"sources" => %{"answer" => source}}, directory, session) do
+    with {:ok, %{records: [fact]}} <-
+           Ipse.Journal.source_page(directory, session, source["byte_offset"], 1),
+         true <- fact.source == source do
+      {:ok, fact}
+    else
+      _ -> {:error, :invalid_event_job_question}
+    end
+  end
+
+  defp restore_answer(_, _, _), do: {:ok, nil}
   defp id?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{32}\z/, value)
 end

@@ -6,7 +6,7 @@ defmodule Ipse.Lifecycle.Event do
   @doc "Project one supported occurrence into metadata or its explicit private prompt view. No callbacks run."
   def project(source, record, view) do
     with true <- is_binary(view) and Source.matches?(source, record),
-         {:ok, type, private_view, text, metrics, correlations} <- describe(record),
+         {:ok, type, private_view, text, metrics, correlations} <- describe(record, view),
          {:ok, reference, data} <- data(source, view, private_view, text, metrics),
          envelope = %{
            "version" => 1,
@@ -28,6 +28,24 @@ defmodule Ipse.Lifecycle.Event do
   rescue
     _ -> {:error, :invalid_lifecycle_event}
   end
+
+  defp describe(%{"type" => "lifecycle_answer_committed"} = record, view) do
+    if Ipse.Lifecycle.Answer.valid?(record) do
+      key = %{"answer.original" => "original", "answer.presented" => "presented"}[view]
+
+      {:ok, "answer.committed", if(key, do: view), if(key, do: record[key]),
+       Map.take(record, ~w(original_bytes presented_bytes)),
+       %{
+         "turn_id" => record["turn_id"],
+         "request_id" => record["request_id"],
+         "causing_event_id" => record["effective_source"]["event_id"]
+       }}
+    else
+      {:error, :invalid_lifecycle_event}
+    end
+  end
+
+  defp describe(record, _view), do: describe(record)
 
   defp describe(%{"type" => "extension_prompt_received"} = record) do
     if Enum.sort(Map.keys(record)) == ~w(original original_sha256 type version) and
@@ -94,12 +112,14 @@ defmodule Ipse.Lifecycle.Event do
     end
   end
 
-  defp data(source, view, view, text, _metrics) do
+  defp data(source, view, view, text, _metrics) when is_binary(text) do
     case Ipse.Extension.validate(%{"text" => text}) do
       :ok -> {:ok, source, %{"text" => text}}
       _ -> {:error, :private_lifecycle_view_too_large}
     end
   end
+
+  defp data(_, view, view, nil, _), do: {:error, :private_lifecycle_view_too_large}
 
   defp data(_, _, _, _, _), do: {:error, :lifecycle_view_unavailable}
   defp text?(value), do: is_binary(value) and String.valid?(value)

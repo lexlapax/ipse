@@ -1,9 +1,10 @@
 # Lifecycle events, hooks and subscribers
 
-P22 lifecycle design with implemented journal-source/metadata/prompt-view adapters and
-[bounded read-only prompt subscriptions](extension-events.md) plus separate
+P22 lifecycle design with implemented journal-source/metadata/prompt/answer adapters and
+[bounded read-only subscriptions](extension-events.md) plus separate
 [event jobs](extension-event-jobs.md) for approved actions, awaited recall and
-after-turn maintenance. Broader lifecycle subscriptions remain pending.
+after-turn maintenance. Prompt and completed-answer delivery are implemented;
+broader lifecycle subscriptions remain pending.
 Existing [transforms](extension-hooks.md),
 [invocations/actions](extension-host-calls.md), [context](extension-context.md)
 and [visible-text delivery](text-streams.md) retain their current wire contracts.
@@ -31,11 +32,11 @@ unordered broadcast, or make diagnostics the only way to receive lifecycle data.
 Existing journals remain the recovery authority; this does not require replacing
 Session with a new event-sourcing or workflow framework.
 
-The internal adapter provides stable source references, typed prompt views and
+The internal adapter provides stable source references, typed prompt/answer views and
 allowlisted metadata for other saved boundaries without changing the journal
 format or initializing any subscriber. The
 [implemented source API](#internal-journal-source-and-prompt-views) below is the
-building block for selected prompt notifications and the remaining delivery contracts.
+building block for selected notifications and the remaining delivery contracts.
 
 | Needed by a prompt-driven knowledge graph | Current support | Remaining foundation |
 | --- | --- | --- |
@@ -43,7 +44,7 @@ building block for selected prompt notifications and the remaining delivery cont
 | Extract entities | Owned prompt jobs can run deterministic extraction | Model work needs a separately admitted, accounted request capability |
 | Store derived facts | Prompt jobs use normal approved state actions with source-bound invocation receipts | Production storage adapters and complete forgetting policies |
 | Add recalled evidence to an answer | Before-request jobs publish bounded attributed context into a frozen request snapshot | Broader context lifecycle seams and explicit catch-up |
-| Consume generated text | Selected workers receive acknowledged visible-text frames | Keep this loss-aware content channel separate from sampled diagnostics |
+| Consume generated text | Selected workers receive acknowledged visible-text frames or completed original/presented answer events | Keep these explicit content channels separate from sampled diagnostics |
 | Recover without duplicate effects | Source-bound job/action receipts, question checkpoints and no automatic replay | Independent package proof of domain deduplication and reindex policy |
 
 The current prompt transform cannot return `host_call` to store entities. A text
@@ -95,14 +96,27 @@ version-1 envelope. Prompt facts have explicit metadata and private views:
 | Validated `transform.prompt` result | `prompt.projection_committed` | `prompt.projection` |
 | Selected subscription's `lifecycle_prompt_received` | `prompt.received` | `prompt.original` |
 | Selected subscription's `lifecycle_prompt_committed` | `prompt.effective_committed` | `prompt.effective` |
+| Selected subscription's `lifecycle_answer_committed` | `answer.committed` | `answer.original` or `answer.presented` |
 
 Every type also supports a `metadata` view containing only byte counts, stable
-source correlation and, for a transform, operation/artifact correlation. Metadata
+source correlation and applicable host operation/request/turn/artifact correlation. Metadata
 excludes prompt text and content digests. The private view contains only its
 selected text and private source binding, never the full journal record or native
 continuation. Both use the existing 16 KiB SDK-object bound; private strings retain
 the 8 KiB limit and overflow refuses without truncation. Larger future private
 feeds need negotiated resource handles/flow control.
+
+The answer marker is a distinct boundary after native completion and all
+presentation transforms. `Lifecycle.Answer` binds the original assistant message
+digest, final presented text, turn/request IDs and effective-prompt source. Session
+recovery checks those against actual preceding messages/projections; source
+validation also resolves the prompt reference physically. It is not the earlier
+`assistant.committed` message metadata or a chunk/playback acknowledgment.
+Original/presented views share one answer source ID. Each retains at most 8 KiB;
+larger text is unavailable, with byte count and private digest retained rather
+than truncation. Metadata remains available, and a bounded presented view can be
+selected independently of an oversized original. Native history is unchanged.
+An answer-only subscriber gets no private prompt data from its causal reference.
 
 Other committed facts have metadata-only projections through
 `Ipse.Lifecycle.Metadata`. They use the same source ID, envelope and bounds:

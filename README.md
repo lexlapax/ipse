@@ -90,9 +90,11 @@ operator trust and explicit session selection. The two shipped hooks are
 default-off. Reviewed artifacts can expose typed tools/commands/services and
 negotiate state, questions, workflow tools, service composition, contextual
 evidence and private visible-text consumption. Prompt delivery has separate
-[read-only notifications](docs/operator/extensions.md#prompt-event-subscribers) and
+[read-only notifications](docs/operator/extensions.md#event-subscribers) and
 [approved jobs](docs/operator/extensions.md#event-jobs) for before-request recall
 or after-turn maintenance.
+Completed-answer subscribers can separately select original or presented text;
+native provider continuation remains private.
 `/ext` inspects the active catalog
 and invokes operator commands.
 Effects retain normal approval; cached receipts/projections restore without

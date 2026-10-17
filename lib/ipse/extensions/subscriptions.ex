@@ -1,13 +1,14 @@
 defmodule Ipse.Extensions.Subscriptions do
-  @moduledoc "Inert prompt subscriptions and pure no-replay delivery receipts."
+  @moduledoc "Inert prompt/answer subscriptions and pure no-replay delivery receipts."
   alias Ipse.Journal
   alias Ipse.Extensions.{Identity, Manifest, EventJob, Catalog}
-  alias Ipse.Lifecycle.{Source, Event}
+  alias Ipse.Lifecycle.{Source, Event, Answer}
   @error {:error, :invalid_extension_subscription}
   @types ~w(extension_event_intent extension_event_result)
   @views %{
     "prompt.received" => ~w(metadata prompt.original),
-    "prompt.effective_committed" => ~w(metadata prompt.effective)
+    "prompt.effective_committed" => ~w(metadata prompt.effective),
+    "answer.committed" => ~w(metadata answer.original answer.presented)
   }
   def types, do: @types
 
@@ -40,7 +41,9 @@ defmodule Ipse.Extensions.Subscriptions do
            Enum.all?(
              [
                {"prompt.original", "event.prompt.original"},
-               {"prompt.effective", "event.prompt.effective"}
+               {"prompt.effective", "event.prompt.effective"},
+               {"answer.original", "event.answer.original"},
+               {"answer.presented", "event.answer.presented"}
              ],
              fn {view, capability} ->
                Enum.any?(declarations, &(&1["view"] == view)) == capability in capabilities
@@ -56,7 +59,7 @@ defmodule Ipse.Extensions.Subscriptions do
 
   def declarations(config) do
     for schedule <- ~w(before_request after_turn),
-        event <- ~w(prompt.received prompt.effective_committed),
+        event <- ~w(prompt.received prompt.effective_committed answer.committed),
         entry <- Map.get(config, :extensions, []),
         declaration <- Enum.sort_by(entry.subscriptions, & &1["id"]),
         declaration["event"] == event,
@@ -191,6 +194,12 @@ defmodule Ipse.Extensions.Subscriptions do
         "lifecycle_prompt_committed" ->
           [event["received_source"]]
 
+        "lifecycle_answer_committed" ->
+          [event["effective_source"]]
+
+        "lifecycle_question_sources" ->
+          [event["received_source"], event["effective_source"]]
+
         "extension_invocation_intent" ->
           if(event["event_trigger"], do: Map.values(event["event_trigger"]["sources"]), else: [])
 
@@ -231,12 +240,15 @@ defmodule Ipse.Extensions.Subscriptions do
         unsafe: false,
         settling: false,
         request: nil,
-        presentation: nil
+        presentation: nil,
+        answer: nil,
+        assistant_request: nil,
+        previous: nil
       }
 
       Enum.reduce_while(events, {:ok, initial}, fn event, {:ok, state} ->
         case reduce(event, state, declarations, identities) do
-          {:ok, next} -> {:cont, {:ok, next}}
+          {:ok, next} -> {:cont, {:ok, %{next | previous: event}}}
           _ -> {:halt, @error}
         end
       end)
@@ -250,6 +262,84 @@ defmodule Ipse.Extensions.Subscriptions do
   end
 
   def validate_events(_), do: @error
+
+  def question_sources(turn, question, received, effective),
+    do: %{
+      "type" => "lifecycle_question_sources",
+      "version" => 1,
+      "turn_id" => turn,
+      "question_id" => question,
+      "received_source" => received,
+      "effective_source" => effective
+    }
+
+  def restore_question(nil, _, _, _, _), do: {:ok, nil}
+  def restore_question(_, context, _, _, _) when context != nil, do: {:ok, context}
+
+  def restore_question(
+        %{kind: :extension, parent: %{"descriptor" => %{"stage" => stage}}},
+        nil,
+        _,
+        _,
+        _
+      )
+      when stage != "invoke.tool" do
+    {:ok, nil}
+  end
+
+  def restore_question(question, nil, directory, session, events) do
+    selected = get_in(hd(events), ["metadata", "extension_subscriptions", "entries"]) || []
+
+    if selected == [] do
+      {:ok, nil}
+    else
+      with {_, index} <-
+             events
+             |> Enum.with_index()
+             |> Enum.reverse()
+             |> Enum.find(fn {event, _} -> question_id(event) == question.id end),
+           checkpoint when is_map(checkpoint) <- Enum.at(events, index + 1),
+           true <-
+             checkpoint["type"] == "lifecycle_question_sources" and
+               checkpoint["question_id"] == question.id,
+           {:ok, received} <- resolve_fact(directory, session, checkpoint["received_source"]),
+           {:ok, effective} <- resolve_fact(directory, session, checkpoint["effective_source"]),
+           true <- valid_received?(received.record) and valid_committed?(effective.record),
+           true <-
+             effective.record["received_source"] == received.source and
+               effective.record["turn_id"] == checkpoint["turn_id"] and
+               received.record["turn_id"] == checkpoint["turn_id"] do
+        {:ok,
+         %{
+           received: received,
+           effective: effective,
+           answer: nil,
+           intent: nil,
+           turn: checkpoint["turn_id"],
+           schedule: "before_request"
+         }}
+      else
+        _ -> {:error, :invalid_lifecycle_question_checkpoint}
+      end
+    end
+  rescue
+    _ -> {:error, :invalid_lifecycle_question_checkpoint}
+  end
+
+  defp resolve_fact(directory, session, source) do
+    with true <- Source.valid?(source) and source["session_id"] == session,
+         {:ok, %{records: [fact]}} <-
+           Journal.source_page(directory, session, source["byte_offset"], 1),
+         true <- fact.source == source do
+      {:ok, fact}
+    else
+      _ -> @error
+    end
+  end
+
+  defp question_id(%{"type" => "operator_question", "id" => id}), do: id
+  defp question_id(%{"type" => "extension_question", "operation_id" => id}), do: id
+  defp question_id(_), do: nil
 
   defp metadata(metadata) do
     identities = Map.new(Map.get(metadata, "extensions", []), &{&1["instance"], &1})
@@ -269,8 +359,11 @@ defmodule Ipse.Extensions.Subscriptions do
            snapshot["entries"] ==
              Enum.sort_by(snapshot["entries"], fn row ->
                {if(EventJob.schedule(row["declaration"]) == "before_request", do: 0, else: 1),
-                if(row["declaration"]["event"] == "prompt.received", do: 0, else: 1),
-                identities[row["instance"]]["order"], row["instance"], row["declaration"]["id"]}
+                Enum.find_index(
+                  ~w(prompt.received prompt.effective_committed answer.committed),
+                  &(&1 == row["declaration"]["event"])
+                ), identities[row["instance"]]["order"], row["instance"],
+                row["declaration"]["id"]}
              end),
          true <-
            Enum.all?(identities, fn {instance, identity} ->
@@ -313,6 +406,8 @@ defmodule Ipse.Extensions.Subscriptions do
            settling: false,
            request: nil,
            presentation: nil,
+           answer: nil,
+           assistant_request: nil,
            turns: MapSet.put(s.turns, event["turn_id"])
        }}
     else
@@ -332,8 +427,54 @@ defmodule Ipse.Extensions.Subscriptions do
     end
   end
 
-  defp reduce(%{"type" => "message", "message" => message}, s, _, _),
-    do: {:ok, %{s | last: message}}
+  defp reduce(%{"type" => "message", "message" => message} = event, s, _, _),
+    do:
+      {:ok,
+       %{
+         s
+         | last: message,
+           assistant_request:
+             if(message["role"] == "assistant",
+               do: event["request_id"],
+               else: s.assistant_request
+             )
+       }}
+
+  defp reduce(%{"type" => "lifecycle_answer_committed"} = event, s, declarations, _) do
+    final = s.presentation || s.last["content"]
+
+    if Enum.any?(declarations, &(&1["declaration"]["event"] == "answer.committed")) and
+         s.settling and s.answer == nil and s.active == nil and Answer.valid?(event) and
+         event["turn_id"] == s.marker["turn_id"] and event["request_id"] == s.assistant_request and
+         Source.matches?(event["effective_source"], s.marker) and s.last["role"] == "assistant" and
+         s.last["tool_calls"] in [nil, []] and
+         Answer.build(
+           event["turn_id"],
+           s.assistant_request,
+           s.last,
+           final,
+           event["effective_source"]
+         ) == event do
+      {:ok, %{s | answer: event}}
+    else
+      @error
+    end
+  end
+
+  defp reduce(%{"type" => "lifecycle_question_sources"} = event, s, _, _) do
+    if keys?(event, ~w(type version turn_id question_id received_source effective_source)) and
+         event["version"] === 1 and s.marker != nil and s.active == nil and not s.settling and
+         question_id(s.previous) == event["question_id"] and is_binary(event["question_id"]) and
+         byte_size(event["question_id"]) in 1..256 and String.valid?(event["question_id"]) and
+         event["turn_id"] == s.marker["turn_id"] and
+         event["received_source"] == s.marker["received_source"] and
+         Source.matches?(event["effective_source"], s.marker) and
+         event["effective_source"]["session_id"] == s.session do
+      {:ok, s}
+    else
+      @error
+    end
+  end
 
   defp reduce(
          %{"type" => "extension_transform_result", "stage" => "transform.prompt"} = event,
@@ -347,7 +488,14 @@ defmodule Ipse.Extensions.Subscriptions do
     identity = event["identity"]
     declaration = event["declaration"]
     key = {identity["instance"], declaration["id"]}
-    record = if declaration["event"] == "prompt.received", do: s.received, else: s.marker
+
+    record =
+      case declaration["event"] do
+        "prompt.received" -> s.received
+        "prompt.effective_committed" -> s.marker
+        "answer.committed" -> s.answer
+      end
+
     expected_payload = if record, do: payload(event, record)
 
     with true <-
@@ -485,7 +633,7 @@ defmodule Ipse.Extensions.Subscriptions do
 
   defp reduce(%{"type" => "extension_invocation_intent"} = parent, %{active: intent} = s, _, _)
        when intent != nil do
-    if s.job == nil and EventJob.matches?(parent, intent, s.received, s.marker),
+    if s.job == nil and EventJob.matches?(parent, intent, s.received, s.marker, s.answer),
       do: {:ok, %{s | job: parent}},
       else: @error
   end
@@ -534,7 +682,11 @@ defmodule Ipse.Extensions.Subscriptions do
       keys?(
         record,
         ~w(id event event_version view mode required) ++
-          if(record["mode"] == "job", do: ~w(handler schedule), else: [])
+          cond do
+            record["mode"] == "job" -> ~w(handler schedule)
+            record["event"] == "answer.committed" -> ["schedule"]
+            true -> []
+          end
       ) and
         text?(record["id"]) and Regex.match?(~r/\A[a-z][a-z0-9_-]{0,31}\z/, record["id"]) and
         record["event_version"] === 1 and record["mode"] in ~w(notify job) and
@@ -543,6 +695,7 @@ defmodule Ipse.Extensions.Subscriptions do
               Regex.match?(~r/\A[a-z][a-z0-9_-]{0,31}\z/, record["handler"]) and
               record["schedule"] in ~w(before_request after_turn))) and
         is_boolean(record["required"]) and
+        (record["event"] != "answer.committed" or record["schedule"] == "after_turn") and
         record["view"] in Map.get(@views, record["event"], [])
 
   defp keys?(record, keys), do: is_map(record) and Enum.sort(Map.keys(record)) == Enum.sort(keys)

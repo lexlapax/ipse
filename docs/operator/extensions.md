@@ -98,8 +98,9 @@ trust ceiling must cover every declared capability:
 | `stream.text` | Acknowledged private visible-text delivery through a scoped worker handle | [Text clients](#visible-text-clients) |
 | `observe.local`, `observe.export` | Read-only metadata sink with separate operator capture policy | [Diagnostic capture](observability.md) |
 | `event.job` | Source-bound prompt handlers using normal finite approved actions, before requests or after answers | [Event jobs](#event-jobs) |
-| `event.notify` | Declared read-only original/effective prompt event notifications; metadata only without a private read capability | [Event subscribers](#prompt-event-subscribers) |
-| `event.prompt.original`, `event.prompt.effective` | The selected original or final-effective user-text view | [Event subscribers](#prompt-event-subscribers) |
+| `event.notify` | Declared read-only prompt/answer notifications; metadata only without a private read capability | [Event subscribers](#event-subscribers) |
+| `event.prompt.original`, `event.prompt.effective` | The selected original or final-effective user-text view | [Event subscribers](#event-subscribers) |
+| `event.answer.original`, `event.answer.presented` | The selected original or completed presented answer text | [Event subscribers](#event-subscribers) |
 
 Every `host.*` operation capability also requires `host.actions`; `stream.text`
 is a separate read-only capability. Unsupported
@@ -190,44 +191,52 @@ session memory API. These transform callbacks cannot request state writes or
 model calls. The separate explicit invocation/action contracts below support
 scoped effects.
 
-Read-only prompt subscribers use their own manifest declarations and trust grants,
+Read-only event subscribers use their own manifest declarations and trust grants,
 as described below. Separate event jobs can propose approved storage and recall
 actions; notification access alone does not authorize them, model requests or
 transfer to another system.
 
-## Prompt event subscribers
+## Event subscribers
 
-An imported artifact may declare notifications for original input and final
-effective user text. Select it with the existing extension configuration/flags,
+An imported artifact may declare notifications for original input, final
+effective user text or a completed answer. Select it with the existing extension configuration/flags,
 after reviewing its code and declared capabilities. `event.notify` alone receives
-metadata; private views additionally require the corresponding `event.prompt.*`
+metadata; private views additionally require the corresponding `event.prompt.*` or `event.answer.*`
 grant. Installing the artifact does not activate it, and diagnostic capture may
 remain off. See the [SDK declaration and limits](../developer/extension-events.md).
 
-Callbacks run in order after all prompt transforms and before MCP discovery or
-model requests for that input. Each uses a fresh owned VM and can only acknowledge
-the event. A required failure stops that attempt before inference. An optional
+Prompt callbacks run after all prompt transforms and before MCP discovery or
+model requests for that input. Answer callbacks require an explicit `after_turn`
+schedule and run after presentation is saved. Original and presented answer views
+are separate read grants; neither exposes native provider continuation. Each
+callback uses a fresh owned VM and can only acknowledge the event.
+A required prompt failure stops before inference; a required answer failure
+marks settlement as failed without retracting the answer. An optional
 failure is recorded and reported, then ordinary work can continue. There are at
 most eight selected declarations; the existing SDK byte bounds and five-second
 initialization/callback deadlines apply. Overflow refuses without truncation.
 
 Idle resume runs no subscriber, and an unfinished delivery is never retried
-automatically. A new explicit input creates new occurrence/delivery IDs. Live
-diagnostics show admitted/pending delivery and unconfirmed cleanup without prompt
-content. A timeout may stop the VM without confirming final cleanup; close/cancel
+automatically. A new explicit input creates new occurrence/delivery IDs.
+Native clarification resume retains the selected prompt/answer context, so an
+explicit answer can continue to answer delivery without repeating earlier prompt
+notifications. Missing/corrupt source checkpoints refuse instead of dropping work.
+Live diagnostics show admitted/pending delivery and unconfirmed cleanup without
+private text. A timeout may stop the VM without confirming final cleanup; close/cancel
 reports that uncertainty. Notifications cannot perform host actions or alter the
-current prompt.
+current prompt or completed answer.
 
 ## Event jobs
 
-Reviewed artifacts may separately declare `event.job` handlers for the same
-original/effective prompt facts. Select them through the ordinary trust/configuration
+Reviewed artifacts may separately declare `event.job` handlers for prompt or
+completed-answer facts. Select them through the ordinary trust/configuration
 and `--extension` mechanisms. Review the handler, schedule, private view and each
 requested host capability; an enabled notification never silently becomes an
 effectful job. Jobs do not appear in the model tool catalog or `/ext` commands.
 See the [job SDK contract](../developer/extension-event-jobs.md). The wider internal
 metadata vocabulary does not enable extra subscription types: current manifest
-delivery remains limited to these two prompt facts. Separate
+delivery covers the two prompt facts and `answer.committed`. Answer jobs run only
+after the answer and receive only their selected view. Separate
 [diagnostic capture](observability.md) consumes metadata without granting private
 views or actions.
 

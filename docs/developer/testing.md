@@ -206,8 +206,8 @@ and [runtime identity](#p1-runtime-identity-2026-10-15).
 
 | Checkpoint | Evidence | Scope and remaining limits |
 | --- | --- | --- |
-| Developer tracing, Linux Serenity, 2026-10-17 | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters, twenty focused trace/conformance fixtures and 558 native-suite tests with 14 macOS exclusions passed | Includes nine trace, eleven author-runner and twenty diagnostic fixtures; synthetic fixed-arity dispatcher samples, no live provider or source-debugger integration |
-| Hosted conformance baseline `1ac694b` | [Ubuntu/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39018696102) passed build, format, compile, tests, demo and extracted packages; macOS native and default experimental sandbox steps passed | Job/step conclusions inspected; this precedes dispatcher tracing and does not prove its hosted behavior or stronger descendant containment |
+| Completed-answer events, Linux Serenity, 2026-10-17 | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters, 49 focused event/diagnostic fixtures and 567 native-suite tests with 14 macOS exclusions passed | Original/presented answer delivery, privacy, approved writes, native/extension question recovery and worker cleanup; synthetic provider only. Trace-reason repair is separately recorded below |
+| Hosted tracing repair `d59eabc` | [Ubuntu/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39020626883) passed build, format, compile, tests, demo and extracted packages; macOS native and default experimental sandbox steps passed | Job/step conclusions inspected; this verifies the trace-reason repair, precedes answer subscriptions and does not prove stronger descendant containment |
 | Hosted tracing `22ac9e1` | [Ubuntu/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39019657244): Ubuntu passed all steps; macOS build/format/compile passed, then one trace deadline-reason assertion failed | macOS capture had stopped, but concurrent report collection could label the outcome `stopped`; its later native/demo/package steps were skipped. This is not a passing macOS tracing checkpoint |
 | Source/extracted compatibility | Credential-free demo, bundled extension/accounting/text/shared-source/local-ring/conformance fixtures and actual traced conformance CLI passed in Linux glibc-2.44 package verification with matching OTP 29.1.1 notices and utility-only PATH | Bundled trace API available without system toolchain; source-debugger modules/debug information absent in this package. Independently installed subscriber proof remains a P22 gate |
 | Provider acceptance | [Explicit live provider checks](#live-provider-acceptance-follow-up-2026-10-15) | Recorded account/model/platform combinations only; fixtures do not establish billing, hardware or arbitrary-model support |
@@ -239,8 +239,9 @@ and notification of the collector. The repair claims one closing reason in a
 shared atomic latch before either participant destroys settings. Report collection
 can therefore perform its own cleanup without relabeling a deadline or mistaking
 the watchdog's normal exit for failure. Capture bounds and wire fields are unchanged;
-all nine cleanup fixtures passed 51 consecutive executions locally. Hosted macOS
-success must be established by a later actual run.
+all nine cleanup fixtures passed 51 consecutive executions locally. The subsequent
+hosted Ubuntu/macOS repair run above passed all applicable steps, including
+extracted packages; the earlier failed run remains recorded rather than relabeled.
 
 Diagnostic fixtures cover default-off parity, private/hash exclusion, shared source
 identity, operator/export scope, immediate stop, bounded overload, rotation and
@@ -272,6 +273,19 @@ idle replay, and a delayed write's captured revision conflicting with concurrent
 forget. Metadata-only jobs receive neither prompt text nor private source hashes.
 See the [job contract](extension-event-jobs.md). These are generic SDK fixtures,
 not a production extraction algorithm or independent installed-package proof.
+
+Answer fixtures add original/presented views sharing one occurrence, request and
+effective-prompt binding, rejection of a forged presentation, metadata/disabled
+parity and oversized private refusal without changing native history. They cover
+after-answer storage approval, invalid notification effects, actual blocked-worker
+cancel/owner-death cleanup and question recovery with an answer source and no
+second inference. A native clarification regression first reproduced lost
+after-turn delivery after resume; source checkpoints now preserve mixed prompt/
+answer context without replaying prompt notifications. A coherently forged
+checkpoint source still fails physical validation. The source/extracted projection fixture checks the new compiled
+view and diagnostic wrapper APIs only; it is not installed answer-subscriber
+execution in an extracted package. That stronger proof remains part of the
+independent frozen-core package gate.
 
 Committed-fact metadata fixtures cover model, tool, context, question, child,
 extension and turn boundaries with fixed dimensions and stable source IDs.

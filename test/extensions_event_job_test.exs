@@ -21,18 +21,23 @@ defmodule Ipse.Extensions.EventJobTest do
     root = Path.join(System.tmp_dir!(), "ipse-job-artifacts-#{Ipse.Usage.id()}")
 
     artifacts =
-      for {kind, schedule, private} <- [
-            {:before, "before_request", true},
-            {:after, "after_turn", true},
-            {:metadata, "before_request", false}
+      for {kind, schedule, private, event} <- [
+            {:before, "before_request", true, "prompt.effective_committed"},
+            {:after, "after_turn", true, "prompt.effective_committed"},
+            {:metadata, "before_request", false, "prompt.effective_committed"},
+            {:answer, "after_turn", true, "answer.committed"}
           ],
           into: %{} do
         declaration = %{
           "id" => "maintain",
           "handler" => "maintain",
-          "event" => "prompt.effective_committed",
+          "event" => event,
           "event_version" => 1,
-          "view" => if(private, do: "prompt.effective", else: "metadata"),
+          "view" =>
+            if(private,
+              do: if(kind == :answer, do: "answer.presented", else: "prompt.effective"),
+              else: "metadata"
+            ),
           "mode" => "job",
           "schedule" => schedule,
           "required" => schedule == "before_request"
@@ -40,7 +45,12 @@ defmodule Ipse.Extensions.EventJobTest do
 
         capabilities =
           ~w(event.job invoke.command host.actions host.state.read host.state.write host.context host.question) ++
-            if(private, do: ["event.prompt.effective"], else: [])
+            if(private,
+              do: [
+                if(kind == :answer, do: "event.answer.presented", else: "event.prompt.effective")
+              ],
+              else: []
+            )
 
         result = %{
           "type" => "object",
@@ -322,6 +332,27 @@ defmodule Ipse.Extensions.EventJobTest do
     :ok = Session.close(pid)
   end
 
+  test "answer jobs store only their selected answer after inference with separate approval", c do
+    {:ok, pid} = start(c, config(c, :answer, "write", :ask))
+    :ok = Session.prompt(pid, "This prompt must not become the saved answer")
+    assert_receive {:job_model, _}, 10_000
+    assert_receive {:ipse, ^pid, {:approval, ref, "extension:state.put", arguments}}, 10_000
+    assert arguments["request"]["value"]["text"] == "answer"
+    :ok = Session.approve(pid, ref, true)
+    done(pid, :ok)
+    rows = events(c, pid)
+    delivery = Enum.find(rows, &(&1["type"] == "extension_event_intent"))
+    parent = Enum.find(rows, &(&1["type"] == "extension_invocation_intent"))
+    answer = Enum.find(rows, &(&1["type"] == "lifecycle_answer_committed"))
+    assert parent["event_trigger"]["event_id"] == delivery["source"]["event_id"]
+    assert parent["event_trigger"]["sources"]["answer"] == delivery["source"]
+    assert parent["event_trigger"]["sources"]["effective"] == answer["effective_source"]
+    assert Subscriptions.validate_events(rows) == :ok
+    assert Subscriptions.validate_sources(c.dir, Session.info(pid).id, rows) == :ok
+    assert Session.info(pid).final == "answer"
+    :ok = Session.close(pid)
+  end
+
   test "headless denial stays denied, never inherited from the subscription", c do
     {:ok, pid} = start(c, config(c, :before, "write", :deny))
     :ok = Session.prompt(pid, "denied entities")
@@ -413,7 +444,7 @@ defmodule Ipse.Extensions.EventJobTest do
   end
 
   test "structured feedback resumes only the paused job with separate write approval", c do
-    for schedule <- [:before, :after] do
+    for schedule <- [:before, :after, :answer] do
       config = config(c, schedule, "question", :ask)
       {:ok, pid} = start(c, config)
       :ok = Session.prompt(pid, "Question provenance")

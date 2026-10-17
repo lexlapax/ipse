@@ -6,7 +6,7 @@ defmodule Ipse.Observability.Event do
          group =
            (cond do
               String.contains?(event["type"], ".compaction_") -> "compaction"
-              group == "assistant" -> "stream"
+              group in ["assistant", "answer"] -> "stream"
               true -> group
             end),
          true <- group in Ipse.Observability.Config.groups() do
@@ -45,10 +45,10 @@ defmodule Ipse.Observability.Event do
       Enum.sort(Map.keys(reference)) == ~w(byte_offset event_id session_id version) and
       Ipse.Lifecycle.Source.valid?(Map.put(reference, "record_sha256", String.duplicate("0", 64))) and
       event["event_id"] == reference["event_id"] and
-      event["type"] in ~w(session.created prompt.received prompt.expanded_committed prompt.projection_committed prompt.effective_committed model.admitted model.usage_observed model.finished model.measured tool.started assistant.committed tool.result_recorded context.workspace_committed context.catalog_committed context.extensions_committed context.compaction_committed context.compaction_failed question.waiting question.answered question.closed child.started turn.settling turn.finished turn.cancelled extension.invocation_admitted extension.invocation_recorded extension.action_admitted extension.action_recorded extension.question_waiting extension.continuation_admitted extension.delivery_admitted extension.delivery_recorded extension.text_admitted extension.text_ready extension.text_closed) and
+      event["type"] in ~w(session.created prompt.received prompt.expanded_committed prompt.projection_committed prompt.effective_committed answer.committed model.admitted model.usage_observed model.finished model.measured tool.started assistant.committed tool.result_recorded context.workspace_committed context.catalog_committed context.extensions_committed context.compaction_committed context.compaction_failed question.waiting question.answered question.closed child.started turn.settling turn.finished turn.cancelled extension.invocation_admitted extension.invocation_recorded extension.action_admitted extension.action_recorded extension.question_waiting extension.continuation_admitted extension.delivery_admitted extension.delivery_recorded extension.text_admitted extension.text_ready extension.text_closed) and
       Enum.all?(event["data"], fn
         {key, number}
-        when key in ~w(input_bytes output_bytes source_count tool_count sequence duration_ms action_count) ->
+        when key in ~w(input_bytes output_bytes original_bytes presented_bytes source_count tool_count sequence duration_ms action_count) ->
           uint?(number)
 
         {"kind", kind} ->

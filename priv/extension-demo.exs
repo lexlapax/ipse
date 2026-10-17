@@ -138,6 +138,7 @@ defmodule Ipse.ExtensionDemo do
 
       local_trace(root, config)
       conformance(catalog, config.home)
+      answer_views()
 
       IO.puts(
         "Extension prompt/presentation and unchanged idle resume fixture passed without inference. Local diagnostic sink fixture passed without network inference."
@@ -147,6 +148,44 @@ defmodule Ipse.ExtensionDemo do
     after
       File.rm_rf!(root)
     end
+  end
+
+  # Projection-only runtime compatibility check; these synthetic positions are
+  # not physical journal authority or an installed subscriber proof.
+  defp answer_views do
+    id = Ipse.Usage.id()
+    {:ok, effective} = Ipse.Lifecycle.Source.build(id, 0, %{"type" => "synthetic"})
+
+    record =
+      Ipse.Lifecycle.Answer.build(
+        Ipse.Usage.id(),
+        Ipse.Usage.id(),
+        %{
+          "role" => "assistant",
+          "content" => "fixture original",
+          "provider_data" => %{"secret" => "private native"}
+        },
+        "fixture presented",
+        effective
+      )
+
+    true = Ipse.Lifecycle.Answer.valid?(record)
+    {:ok, source} = Ipse.Lifecycle.Source.build(id, 1, record)
+    {:ok, original} = Ipse.Lifecycle.Event.project(source, record, "answer.original")
+    {:ok, presented} = Ipse.Lifecycle.Event.project(source, record, "answer.presented")
+    "fixture original" = original["data"]["text"]
+    "fixture presented" = presented["data"]["text"]
+    true = original["event_id"] == presented["event_id"]
+    false = String.contains?(Jason.encode!(original), "private native")
+    {:ok, metadata} = Ipse.Observability.Event.build(source, record, 1, 0)
+    true = Ipse.Observability.Event.valid?(metadata)
+
+    false =
+      String.contains?(Jason.encode!(metadata), [
+        "fixture original",
+        "fixture presented",
+        "sha256"
+      ])
   end
 
   defp conformance(catalog, home) do

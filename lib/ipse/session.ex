@@ -119,6 +119,8 @@ defmodule Ipse.Session do
          {:ok, question, messages} <- restore_extension_question(events, messages, question),
          :ok <- question_available(question, config),
          {:ok, event_question} <- EventJob.restore_question(question, dir, id, events),
+         {:ok, event_question} <-
+           Subscriptions.restore_question(question, event_question, dir, id, events),
          {:ok, context_snapshot, context_is_new} <-
            workspace_snapshot(events, cwd, home, opts[:context_snapshot]) do
       state = %{
@@ -171,6 +173,7 @@ defmodule Ipse.Session do
         extension_text_cleanup_failed: false,
         event_received: if(event_question, do: event_question.received),
         event_committed: if(event_question, do: event_question.effective),
+        event_answer: if(event_question, do: event_question.answer),
         event_turn: if(event_question, do: event_question.turn),
         event_intent: if(event_question, do: event_question.intent),
         event_schedule: if(event_question, do: event_question.schedule, else: "before_request"),
@@ -327,10 +330,11 @@ defmodule Ipse.Session do
          true <- s.event_count < 10_000 and Ipse.Extensions.Registry.live?(entry.identity),
          true <- EventJob.schedule(declaration) == s.event_schedule,
          fact =
-           if(declaration["event"] == "prompt.received",
-             do: s.event_received,
-             else: s.event_committed
-           ),
+           (case declaration["event"] do
+              "prompt.received" -> s.event_received
+              "prompt.effective_committed" -> s.event_committed
+              "answer.committed" -> s.event_answer
+            end),
          true <- fact != nil,
          {intent, payload} =
            Subscriptions.intent(entry.identity, declaration, fact.source, fact.record, s.turn_id) do
@@ -338,7 +342,11 @@ defmodule Ipse.Session do
       s = %{s | event_intent: intent, event_count: s.event_count + 1}
 
       if declaration["mode"] == "job" do
-        facts = %{received: s.event_received, effective: s.event_committed}
+        facts = %{
+          received: s.event_received,
+          effective: s.event_committed,
+          answer: s.event_answer
+        }
 
         case EventJob.prepare(s.config, entry, intent, payload, facts, s.id, s.turn_id) do
           {:ok, parent} when s.extension_invocations < 10_000 ->
@@ -991,6 +999,7 @@ defmodule Ipse.Session do
         | turn_id: turn,
           event_received: nil,
           event_committed: nil,
+          event_answer: nil,
           event_turn: nil,
           event_intent: nil,
           event_schedule: "before_request",
@@ -1293,6 +1302,7 @@ defmodule Ipse.Session do
           event_intent: nil,
           event_received: nil,
           event_committed: nil,
+          event_answer: nil,
           event_turn: nil,
           event_schedule: "before_request",
           event_after_started: false,
@@ -1415,6 +1425,7 @@ defmodule Ipse.Session do
           }
 
           record(next, Actions.question_event(parent, action, s.steps))
+          checkpoint_event_question(next, question)
           notify(next, {:question, question.id, question.arguments})
 
           {:noreply,
@@ -2604,6 +2615,23 @@ defmodule Ipse.Session do
         "final_sha256" => Ipse.Extensions.Manifest.sha256(s.final)
       })
 
+      s =
+        if Enum.any?(after_plans, &(&1.declaration["event"] == "answer.committed")) do
+          event =
+            Ipse.Lifecycle.Answer.build(
+              s.turn_id,
+              s.last_request_id,
+              List.last(s.messages),
+              s.final,
+              s.event_committed.source
+            )
+
+          source = record_source(s, event)
+          %{s | event_answer: %{record: event, source: source}}
+        else
+          s
+        end
+
       owner = self()
       ref = make_ref()
       task = owned_task(fn -> Host.notify_events(after_plans, owner, ref) end)
@@ -2635,6 +2663,7 @@ defmodule Ipse.Session do
           extension_request: nil,
           event_received: nil,
           event_committed: nil,
+          event_answer: nil,
           event_turn: nil,
           event_intent: nil,
           event_schedule: "before_request",
@@ -2649,7 +2678,13 @@ defmodule Ipse.Session do
          delivery when is_map(delivery) <- s.event_intent,
          true <- is_nil(s.extension_action) and not s.extension_action_unknown,
          true <-
-           EventJob.matches?(parent, delivery, s.event_received.record, s.event_committed.record),
+           EventJob.matches?(
+             parent,
+             delivery,
+             s.event_received.record,
+             s.event_committed.record,
+             if(s.event_answer, do: s.event_answer.record)
+           ),
          true <- Ipse.Extensions.Registry.live?(parent["identity"]),
          {:ok, expected} <-
            Invocation.build_result(
@@ -3044,6 +3079,7 @@ defmodule Ipse.Session do
           }
 
           record(next, event)
+          checkpoint_event_question(next, %{id: call["id"]})
           notify(next, {:question, call["id"], arguments})
 
           %{
@@ -3268,6 +3304,20 @@ defmodule Ipse.Session do
     end
   rescue
     _ -> {:error, :invalid_operator_question_checkpoint}
+  end
+
+  defp checkpoint_event_question(s, question) do
+    if s.event_committed != nil and s.event_intent == nil do
+      record(
+        s,
+        Subscriptions.question_sources(
+          s.turn_id,
+          question.id,
+          s.event_received.source,
+          s.event_committed.source
+        )
+      )
+    end
   end
 
   defp valid_question_end?(_, nil), do: false

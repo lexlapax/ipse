@@ -8,12 +8,37 @@ defmodule Ipse.Extensions.SubscriptionsTest do
     def complete(config, messages, _tools, _emit) do
       send(config.test_pid, {:subscription_model, messages})
 
-      {:ok,
-       %{
-         "role" => "assistant",
-         "content" => "answer",
-         "provider_data" => %{"native" => "synthetic-native-secret"}
-       }, %{}}
+      if config[:native_question] == true and
+           not Enum.any?(messages, &(&1["role"] == "assistant")) do
+        arguments = %{
+          "questions" => [
+            %{"id" => "choice", "prompt" => "Choose synthetic continuation", "kind" => "text"}
+          ]
+        }
+
+        {:ok,
+         %{
+           "role" => "assistant",
+           "content" => "",
+           "tool_calls" => [
+             %{
+               "id" => "native_fixture_question",
+               "type" => "function",
+               "function" => %{
+                 "name" => "ask_operator",
+                 "arguments" => Jason.encode!(arguments)
+               }
+             }
+           ]
+         }, %{}}
+      else
+        {:ok,
+         %{
+           "role" => "assistant",
+           "content" => Map.get(config, :answer_text, "answer"),
+           "provider_data" => %{"native" => "synthetic-native-secret"}
+         }, %{}}
+      end
     end
   end
 
@@ -21,29 +46,47 @@ defmodule Ipse.Extensions.SubscriptionsTest do
     root = Path.join(System.tmp_dir!(), "ipse-subscription-artifacts-#{Ipse.Usage.id()}")
 
     artifacts =
-      for {kind, private, required} <- [
-            {:private, true, true},
-            {:optional, true, false},
-            {:metadata, false, true}
+      for {kind, private, required, family} <- [
+            {:private, true, true, :prompt},
+            {:optional, true, false, :prompt},
+            {:metadata, false, true, :prompt},
+            {:answer, true, true, :answer},
+            {:answer_optional, true, false, :answer},
+            {:answer_metadata, false, true, :answer}
           ],
           into: %{} do
         declarations =
-          for {id, event, view} <- [
-                {"original", "prompt.received", "prompt.original"},
-                {"effective", "prompt.effective_committed", "prompt.effective"}
-              ],
-              do: %{
-                "id" => id,
-                "event" => event,
-                "view" => if(private, do: view, else: "metadata"),
-                "event_version" => 1,
-                "mode" => "notify",
-                "required" => required
-              }
+          for {id, event, view} <-
+                if(family == :prompt,
+                  do: [
+                    {"original", "prompt.received", "prompt.original"},
+                    {"effective", "prompt.effective_committed", "prompt.effective"}
+                  ],
+                  else: [
+                    {"original", "answer.committed", "answer.original"},
+                    {"presented", "answer.committed", "answer.presented"}
+                  ]
+                ),
+              do:
+                Map.merge(
+                  %{
+                    "id" => id,
+                    "event" => event,
+                    "view" => if(private, do: view, else: "metadata"),
+                    "event_version" => 1,
+                    "mode" => "notify",
+                    "required" => required
+                  },
+                  if(family == :answer, do: %{"schedule" => "after_turn"}, else: %{})
+                )
 
         capabilities =
           if private,
-            do: ~w(event.notify event.prompt.original event.prompt.effective),
+            do:
+              if(family == :answer,
+                do: ~w(event.notify event.answer.original event.answer.presented),
+                else: ~w(event.notify event.prompt.original event.prompt.effective)
+              ),
             else: ["event.notify"]
 
         directory = Path.join(root, Atom.to_string(kind))
@@ -138,7 +181,7 @@ defmodule Ipse.Extensions.SubscriptionsTest do
     }
   end
 
-  defp config(c, kind, mode \\ "record", enabled \\ true) do
+  defp config(c, kind, mode \\ "record", enabled \\ true, instance \\ "subscriber") do
     {:ok, artifact} =
       Store.import(c.artifacts[kind].directory, Path.join(c.home, "extensions/artifacts"))
 
@@ -153,7 +196,7 @@ defmodule Ipse.Extensions.SubscriptionsTest do
       ],
       "extensions" => [
         %{
-          "instance" => "subscriber",
+          "instance" => instance,
           "artifact" => artifact.digest,
           "enabled" => enabled,
           "options" => %{"trace" => c.trace, "pid" => c.pid_file, "mode" => mode},
@@ -205,6 +248,210 @@ defmodule Ipse.Extensions.SubscriptionsTest do
   end
 
   defp alive?(pid), do: elem(System.cmd("kill", ["-0", pid], stderr_to_stdout: true), 1) == 0
+
+  test "native clarification resume retains answer delivery without rerunning prompt notifications",
+       c do
+    config = config(c, :answer, "record", true, "answers") |> Map.put(:native_question, true)
+    prompt_config = config(c, :metadata)
+
+    config = %{
+      config
+      | extensions:
+          Enum.sort_by(
+            config.extensions ++ prompt_config.extensions,
+            &{&1.identity["order"], &1.identity["instance"]}
+          )
+    }
+
+    {:ok, session} = start(c, config)
+    :ok = Session.prompt(session, "Question before answer")
+    assert_receive {:ipse, ^session, {:question, question, _}}, 10_000
+    before = trace(c)
+    assert Enum.count(before, &Map.has_key?(&1, "event")) == 2
+    id = Session.info(session).id
+    Process.exit(session, :kill)
+    eventually(fn -> not Process.alive?(session) end)
+    {:ok, resumed} = start(c, config, id)
+    assert_receive {:ipse, ^resumed, {:question, ^question, _}}, 1000
+    assert trace(c) == before
+    :ok = Session.answer(resumed, question, %{"choice" => "continue"})
+    done(resumed, :ok)
+    assert Enum.count(trace(c), &Map.has_key?(&1, "event")) == 4
+    {:ok, events} = Journal.load(c.dir, id)
+    assert Enum.count(events, &(&1["type"] == "lifecycle_prompt_received")) == 1
+    assert Enum.count(events, &(&1["type"] == "request_admitted")) == 2
+    assert Subscriptions.validate_events(events) == :ok
+    assert match?({:ok, _}, Session.restore_context(events))
+    checkpoint = Enum.find(events, &(&1["type"] == "lifecycle_question_sources"))
+    assert checkpoint["question_id"] == question
+    effective = Enum.find(events, &(&1["type"] == "lifecycle_prompt_committed"))
+    {:ok, forged_source} = Source.build(id, 0, effective)
+
+    forged =
+      Enum.map(events, fn e ->
+        if e == checkpoint, do: Map.put(e, "effective_source", forged_source), else: e
+      end)
+
+    assert Subscriptions.validate_events(forged) == :ok
+
+    assert Subscriptions.validate_sources(c.dir, id, forged) ==
+             {:error, :invalid_extension_subscription}
+
+    :ok = Session.close(resumed)
+  end
+
+  test "answer views retain native-visible and final presented text with shared source identity",
+       c do
+    config = config(c, :answer)
+
+    formatter = %{
+      "instance" => "formatter",
+      "artifact" => "builtin:answer-format:1",
+      "enabled" => true,
+      "options" => %{"prefix" => "<answer>", "suffix" => "</answer>"},
+      "order" => 0,
+      "lifetime" => "session"
+    }
+
+    trust = %{
+      "artifact" => formatter["artifact"],
+      "capabilities" => ["transform.presentation"],
+      "allow_project" => false,
+      "allow_children" => false
+    }
+
+    {:ok, catalog} =
+      Config.resolve(
+        [
+          %{
+            scope: "operator",
+            path: "/synthetic/formatter.json",
+            data: %{"extensions" => [formatter], "extension_trust" => [trust]}
+          }
+        ],
+        []
+      )
+
+    {:ok, [entry]} = Registry.prepare(catalog, c.home)
+    config = %{config | extensions: [entry | config.extensions]}
+    {:ok, session} = start(c, config)
+    :ok = Session.prompt(session, "synthetic private prompt")
+    done(session, :ok)
+    [_, original, _, presented] = trace(c)
+    assert original["event"]["data"]["text"] == "answer"
+    assert presented["event"]["data"]["text"] == "<answer>answer</answer>"
+    assert original["event"]["event_id"] == presented["event"]["event_id"]
+    refute Jason.encode!(trace(c)) =~ "synthetic-native-secret"
+    refute Jason.encode!(trace(c)) =~ "synthetic private prompt"
+    id = Session.info(session).id
+    {:ok, events} = Journal.load(c.dir, id)
+    answer = Enum.find(events, &(&1["type"] == "lifecycle_answer_committed"))
+    assert answer["presented"] == Session.info(session).final
+    request = Enum.find(events, &(&1["type"] == "request_admitted"))
+    assert original["event"]["correlations"]["request_id"] == request["request_id"]
+    assert Subscriptions.validate_events(events) == :ok
+    assert Subscriptions.validate_sources(c.dir, id, events) == :ok
+    assert match?({:ok, _}, Session.restore_context(events))
+
+    changed =
+      Enum.map(events, fn e ->
+        if e == answer do
+          e
+          |> Map.put("presented", "forged")
+          |> Map.put("presented_bytes", 6)
+          |> Map.put("presented_sha256", Manifest.sha256("forged"))
+        else
+          e
+        end
+      end)
+
+    assert Subscriptions.validate_events(changed) == {:error, :invalid_extension_subscription}
+    :ok = Session.close(session)
+    bytes = File.read!(Path.join(c.dir, id <> ".jsonl"))
+    before = trace(c)
+    {:ok, resumed} = start(c, config, id)
+    assert File.read!(Path.join(c.dir, id <> ".jsonl")) == bytes
+    assert trace(c) == before
+    :ok = Session.close(resumed)
+  end
+
+  test "answer metadata and disabled instances never receive private output", c do
+    {:ok, session} = start(c, config(c, :answer_metadata))
+    :ok = Session.prompt(session, "private prompt")
+    done(session, :ok)
+    entries = for row <- trace(c), row["event"], do: row["event"]
+    assert length(entries) == 2
+    assert Enum.all?(entries, &(&1["data"] == %{"original_bytes" => 6, "presented_bytes" => 6}))
+    refute Jason.encode!(entries) =~ "\"text\""
+    refute Jason.encode!(entries) =~ "record_sha256"
+    :ok = Session.close(session)
+    File.rm!(c.trace)
+    {:ok, session} = start(c, config(c, :answer, "record", false))
+    :ok = Session.prompt(session, "private prompt")
+    done(session, :ok)
+    refute File.exists?(c.trace)
+    {:ok, events} = Journal.load(c.dir, Session.info(session).id)
+    refute Enum.any?(events, &(&1["type"] == "lifecycle_answer_committed"))
+    :ok = Session.close(session)
+  end
+
+  test "oversized private answers refuse without truncating native history or initializing workers",
+       c do
+    for {kind, status} <- [{:answer_optional, :ok}, {:answer, :error}] do
+      config = config(c, kind) |> Map.put(:answer_text, String.duplicate("a", 8193))
+      {:ok, session} = start(c, config)
+      :ok = Session.prompt(session, "bounded answer fixture")
+      done(session, status)
+      refute File.exists?(c.trace)
+      {:ok, events} = Journal.load(c.dir, Session.info(session).id)
+      answer = Enum.find(events, &(&1["type"] == "lifecycle_answer_committed"))
+      assert answer["original"] == nil and answer["presented"] == nil
+      assert answer["original_bytes"] == 8193
+      assert byte_size(Session.info(session).final) == 8193
+      assert Subscriptions.validate_events(events) == :ok
+
+      assert Enum.all?(
+               Enum.filter(events, &(&1["type"] == "extension_event_result")),
+               &(&1["outcome"] == "not_started")
+             )
+
+      :ok = Session.close(session)
+    end
+  end
+
+  test "answer notifications cannot turn acknowledgments into mutations or undo the saved answer",
+       c do
+    {:ok, session} = start(c, config(c, :answer, "host_call"))
+    :ok = Session.prompt(session, "answer first")
+    done(session, :error)
+    assert Session.info(session).final == "answer"
+    {:ok, events} = Journal.load(c.dir, Session.info(session).id)
+    assert Enum.count(events, &(&1["type"] == "request_admitted")) == 1
+    refute Enum.any?(events, &(&1["type"] == "extension_action_intent"))
+    assert Subscriptions.validate_events(events) == :ok
+    :ok = Session.close(session)
+  end
+
+  test "answer capabilities and after-turn timing are explicit, not inferred from prompt access",
+       c do
+    declaration = c.artifacts.answer.manifest["subscriptions"] |> hd()
+    assert Subscriptions.validate([declaration], ~w(event.notify event.answer.original)) == :ok
+
+    assert {:error, :invalid_extension_subscription} =
+             Subscriptions.validate([declaration], ~w(event.notify event.prompt.original))
+
+    assert {:error, :invalid_extension_subscription} =
+             Subscriptions.validate(
+               [Map.put(declaration, "schedule", "before_request")],
+               ~w(event.notify event.answer.original)
+             )
+
+    assert {:error, :invalid_extension_subscription} =
+             Subscriptions.validate(
+               [Map.delete(declaration, "schedule")],
+               ~w(event.notify event.answer.original)
+             )
+  end
 
   test "private declarations deliver original then final effective prompt with synced receipts",
        c do
@@ -356,9 +603,13 @@ defmodule Ipse.Extensions.SubscriptionsTest do
   end
 
   test "cancel and untrappable owner death stop actual worker VMs without resume callbacks", c do
-    config = config(c, :private, "hang")
-
-    for stop <- [:cancel, :kill] do
+    for {kind, stop} <- [
+          {:private, :cancel},
+          {:private, :kill},
+          {:answer, :cancel},
+          {:answer, :kill}
+        ] do
+      config = config(c, kind, "hang")
       File.rm(c.pid_file)
       {:ok, session} = start(c, config)
       :ok = Session.prompt(session, "blocked callback")

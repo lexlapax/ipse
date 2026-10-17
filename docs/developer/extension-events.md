@@ -1,14 +1,14 @@
-# Prompt event subscriptions
+# Prompt and completed-answer subscriptions
 
-Selected extensions can receive bounded, read-only prompt notifications through
-the independent worker SDK. The host records original input and a final effective
-user-text boundary, then delivers selected views before MCP discovery, compaction
-or inference for that input. This implements the first subscription seams in the
+Selected extensions can receive bounded, read-only prompt and completed-answer
+notifications through the independent worker SDK. Prompt views run before inference;
+answer views run after native completion and presentation transforms. These are
+explicit boundaries in the
 [lifecycle design](lifecycle-events.md). Separately admitted
 [event jobs](extension-event-jobs.md) support finite actions and awaited recall;
 this guide covers read-only delivery. Broader lifecycle observation remains pending.
 
-Use [operator selection](../operator/extensions.md#prompt-event-subscribers) for
+Use [operator selection](../operator/extensions.md#event-subscribers) for
 trust/configuration and [artifacts](extension-artifacts.md) for installation.
 The [source/view adapter](lifecycle-events.md#internal-journal-source-and-prompt-views)
 owns occurrence identity and source paging. This guide owns subscription
@@ -17,27 +17,30 @@ declarations, callback values and delivery recovery.
 ## Inert declaration and authority
 
 A worker manifest may include an optional `subscriptions` array, with at most
-four unique IDs. Omission means an empty array. For example, these fields belong
-inside an otherwise complete artifact manifest:
+four unique IDs. Omission means an empty array. For example, a completed-answer
+subscriber places these fields inside an otherwise complete artifact manifest:
 
 ```json
 {
-  "capabilities": ["event.notify", "event.prompt.effective"],
+  "capabilities": ["event.notify", "event.answer.presented"],
   "subscriptions": [
     {
-      "id": "observe_prompt",
-      "event": "prompt.effective_committed",
+      "id": "observe_answer",
+      "event": "answer.committed",
       "event_version": 1,
-      "view": "prompt.effective",
+      "view": "answer.presented",
       "mode": "notify",
+      "schedule": "after_turn",
       "required": true
     }
   ]
 }
 ```
 
-Every notification declaration has exactly these six fields. Job declarations
-add a handler and schedule under the separate job contract. IDs use the existing lowercase
+Prompt notifications omit `schedule`, retaining their original six fields and before-request delivery.
+An `answer.committed` notification additionally requires `"schedule": "after_turn"`.
+Job declarations add a handler and schedule under the separate job contract.
+IDs use the existing lowercase
 ASCII identifier convention and are at most 32 characters. Event version is 1;
 this guide's mode is `notify`. Unknown stages, versions, modes, views,
 wildcards and executable filters refuse during inert validation. `describe/0`
@@ -48,12 +51,13 @@ executes no callback.
 | --- | --- | --- |
 | `prompt.received` | `metadata` or `prompt.original` | `event.notify`; private view also needs `event.prompt.original` |
 | `prompt.effective_committed` | `metadata` or `prompt.effective` | `event.notify`; private view also needs `event.prompt.effective` |
+| `answer.committed` | `metadata`, `answer.original` or `answer.presented` | `event.notify`; private views separately need `event.answer.original` or `event.answer.presented` |
 
 The declared capability set must match these views. `event.notify` is present
 exactly when notifications exist (`event.job` is separate); each private read capability is present exactly
 when a declaration uses it. Operator trust must cover all declared capabilities.
 Project/child selection retains the ordinary operator ceilings; a child receives
-only its own prompt facts, never the parent's conversation feed. There are at
+only its own selected facts, never the parent's conversation feed. There are at
 most eight selected declarations across all active instances. Their canonical
 digest is pinned in `subscriptions_sha256`, and the inert session snapshot is
 checked against those identities on restore.
@@ -61,7 +65,7 @@ checked against those identities on restore.
 Read authority grants no storage, model, tool, question or context-publication
 operation. Even an artifact trusted for invocation host actions cannot use them
 through a notification reply. Installing an extension or selecting a metadata
-view does not grant private prompt access. Diagnostic capture settings and these
+view does not grant private prompt or answer access. Diagnostic capture settings and these
 explicit subscriptions have separate enablement: tracing can remain off while a
 selected private subscriber operates.
 
@@ -80,6 +84,17 @@ or run before the prompt transformers. All received subscriptions run first,
 then effective subscriptions. Within each stage, instance order/ID and then
 subscription ID determine delivery order. Each callback uses a fresh owned VM;
 private VM state is not retained between notifications.
+
+Selected answer subscriptions add one `lifecycle_answer_committed` fact after
+`lifecycle_turn_settling`. It binds the final native assistant message, original
+visible answer, final presented text, turn/request IDs and effective-prompt source.
+All original/presented/metadata views retain the same answer occurrence ID. It is
+not emitted for intermediate tool-call messages, failed inference or failed
+presentation, and is not a per-chunk stream or a claim that audio was played.
+After-turn prompt jobs run first, then answer declarations in instance/ID order.
+The answer marker is frozen before maintenance: subsequent jobs cannot change it.
+An answer-only selection still records prompt boundaries for causal recovery,
+but grants its worker no prompt view.
 
 Before executable initialization, Session syncs an `extension_event_intent`
 binding delivery ID, identity, declaration, source, turn and exact callback-payload
@@ -119,7 +134,12 @@ No reply proposes effects or modifies the prompt. Worker initialization and each
 callback have separate five-second deadlines. The existing 16 KiB SDK-object and
 8 KiB string bounds apply to the complete wrapped payload. Overflow refuses
 without truncation; a `not_started` receipt with a null payload digest records
-projection refusal before worker initialization. Received/effective source records
+projection refusal before worker initialization. The answer marker retains at
+most 8 KiB per text view; larger views are unavailable, with original byte counts
+and private digests retained instead of a truncated substitute. Native assistant
+history and final presentation are unchanged. A small presented view may remain
+available when its original view exceeds the bound, and metadata remains available.
+Received/effective source records
 also have the 1 MiB source bound. An oversized original refuses input while idle;
 an oversized effective source stops that attempt before notification/inference.
 
@@ -142,7 +162,9 @@ A protocol timeout can terminate the VM while leaving cleanup unconfirmed,
 because the terminating worker cannot return a final close acknowledgment.
 Process disappearance alone does not prove complete descendant cleanup.
 
-A required non-acknowledgment stops before inference for that attempt. An optional
+A required prompt non-acknowledgment stops before inference for that attempt.
+A required answer failure stops later maintenance and marks turn settlement as an
+error; it cannot retract the saved or already displayed answer. An optional
 failure has a saved receipt and fixed status notice, then permits later deliveries
 and ordinary work. Neither policy rewrites history or constitutes a privacy
 redaction/erasure guarantee. At most 10,000 delivery intents fit one session;
@@ -156,6 +178,16 @@ does not prove source authenticity. Resume refuses corrupt references before tai
 repair. Pure `Session.restore_context/1` checks structural/projection invariants;
 it cannot verify physical file positions without a journal path.
 
+Native clarification and model-selected extension-tool questions retain an adjacent
+`lifecycle_question_sources` checkpoint when a prompt subscription context exists.
+It binds that question/turn to the original and effective sources. Recovery checks
+adjacency, source/content bindings and physical positions before exposing the
+pending question. Only its explicit answer continues work; completed prompt
+notifications are not repeated, while later answer delivery retains its original
+turn context. Missing/invalid required source checkpoints refuse rather than
+guessing cursors or silently dropping the after-turn plan. Standalone commands
+and services do not acquire a prompt context through their questions.
+
 Idle resume initializes no subscriber and restores no delivery queue. An unfinished
 intent remains historical unknown; a fresh explicit input gets new turn/event and
 delivery IDs even when its text is identical. Ordinary model continuations and
@@ -168,7 +200,11 @@ usage, approvals and acknowledged visible-text delivery remain separate.
 private versus metadata views, final transformed text, disabled behavior, strict
 acknowledgment/no action bypass, bounds, optional/required failures, timeout,
 actual VM shutdown, byte-identical idle resume, fresh identical prompts and
-coherently forged physical references before repair. See
+coherently forged physical references before repair. Answer cases additionally
+cover native/presented separation, metadata-only and disabled parity, oversized
+private refusal, source/request links, no effect through acknowledgments and
+blocked-worker cleanup. Pure answer-view fixtures run in source/extracted packages;
+they do not establish installed subscriber execution by themselves. See
 [actual platform/package evidence](testing.md#current-evidence-and-next-checks).
 
 The separate [job contract](extension-event-jobs.md) now provides finite host

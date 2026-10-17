@@ -1,7 +1,7 @@
 # Event jobs and context recall
 
 Event jobs let selected extensions propose normal host actions in response to
-committed prompt facts. They use a distinct `event.job` capability and typed job
+committed prompt or completed-answer facts. They use a distinct `event.job` capability and typed job
 exports. [Read-only notifications](extension-events.md) retain their exact
 acknowledgment contract; enabling them does not authorize actions or model calls.
 See [operator procedures](../operator/extensions.md#event-jobs) for selection.
@@ -62,7 +62,9 @@ retain their four-per-artifact/eight-total bounds. `describe/0` must match the
 reviewed exports, capabilities and subscriptions.
 
 Only `before_request` and `after_turn` schedules are accepted. Read-only `notify`
-declarations keep their original six-field schema and before-request timing.
+prompt declarations keep their original six-field schema and before-request timing.
+`answer.committed` jobs and notifications require `after_turn`; private original
+and presented answer views require their separate `event.answer.*` capabilities.
 An artifact with both modes declares both capabilities. Private original/effective
 views still need their respective read grants; every requested host operation
 also needs `host.actions` and its own operation capability. Import/inspection,
@@ -84,7 +86,9 @@ the standard invocation IDs/session/turn/handler/arguments fields:
 - Top-level `trigger` is host-created: `kind: "event"`, delivery ID, source event
   ID and schedule. An argument claiming the same keys is not host provenance.
 - The private journal parent also binds the delivery-intent digest and both
-  captured prompt source references. Those private hashes/references are not
+  captured prompt source references. Answer-triggered parents additionally bind
+  the exact answer source; legacy prompt triggers retain their two-source shape.
+  Those private hashes/references are not
   forwarded through the public trigger, including to metadata-only jobs.
 
 The source/identity/handler/turn/arguments links are validated on restore. Session,
@@ -157,7 +161,8 @@ continuation intent before a fresh worker enters `host.actions`; the original
 event callback and earlier effects are not replayed. A subsequent write still
 needs separate approval.
 
-Pending-question restore retains the source pair, current declaration, schedule
+Pending-question restore retains the prompt source pair, the answer source when
+applicable, current declaration, schedule
 and remaining immutable plan. After-turn recovery also restores the saved final
 answer. Completed earlier declarations are skipped, and the remaining plan runs
 only as continuation of an explicitly answered question. Idle resume without a
