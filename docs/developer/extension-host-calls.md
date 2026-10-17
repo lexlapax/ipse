@@ -1,22 +1,32 @@
 # Extension host calls and scoped state
 
-P22A8 implements finite host-mediated state operations from typed
-[invocations](extension-invocations.md). Workers propose an explicit outer
-`host_call` and receive a result through their negotiated `host.actions` callback.
-Fields inside ordinary `kind: result` values remain inert. Initial operations
-are get/list/put/delete. [Structured questions](extension-questions.md) now use the
-same finite protocol. [Bounded workflow tools](extension-tool-actions.md) add
-approved file/shell operations. [Explicit value services](extension-services.md)
-add typed composition. [Context publications](extension-context.md) add bounded
-assertions and receipt-backed excerpts. These increments do not complete P22 or
-ship a memory algorithm.
+Host calls let an explicitly invoked extension request a finite, separately
+admitted operation and continue from its committed receipt. Workers return an
+outer `host_call`; ordinary `kind: result` fields remain data. Session owns
+capability, approval, lifetime and journal admission. The owned task performs IO
+outside Session, keeping cancellation and operator input responsive.
+
+This guide owns the common continuation protocol and scoped state contract.
+Questions, tools, services and context use the same action chain; their linked
+guides own operation-specific schemas and failure behavior. The full extension
+foundation remains in progress; no production memory algorithm is selected here.
 
 ## Negotiation and protocol
 
-Artifacts declare `host.actions` with `host.state.read` and/or `host.state.write`,
-or `host.question`/`host.tools`/`host.services`/`host.context`, alongside their `invoke.*` exports. These capabilities without `host.actions`
-refuse inert validation. Operator trust must allow every capability; project
-configuration cannot grant it. Transform callbacks do not implement continuations.
+Artifacts declare `host.actions` and the operation capabilities they need,
+alongside their `invoke.*` exports:
+
+| Capability | Operation family | Contract |
+| --- | --- | --- |
+| `host.state.read`, `host.state.write` | Scoped get/list and put/delete | State requests below |
+| `host.question` | Explicit structured clarification | [Questions](extension-questions.md) |
+| `host.tools` | Existing bounded file/shell tools | [Workflow tools](extension-tool-actions.md) |
+| `host.services` | Operator-bound typed value calls | [Services](extension-services.md) |
+| `host.context` | Caller-scoped contextual evidence | [Context](extension-context.md) |
+
+An operation capability without `host.actions` refuses inert validation.
+Operator trust must allow every capability; project configuration cannot grant
+it. Transform callbacks do not implement continuations.
 
 An invocation may return this instead of its final schema-checked value:
 

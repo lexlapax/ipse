@@ -526,80 +526,43 @@ model assessments, not automatic truth or freshness guarantees.
 
 ## Extension and debugging roadmap
 
-Skills, configured MCP tools and provider adapters are available today. General
-lifecycle observation, cross-session memory adapters and an operator trace-export
-interface remain proposed in [P22](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
-Scoped prompt/output transforms and typed tool/command/service invocations are
-implemented; see [current controls](extensions.md). The
-[extension research](../developer/extensions.md) distinguishes the remaining
-proposals from current behavior. P19 supplies local diagnostics for long-session
-recovery; the [observability design](../developer/observability.md) separates
-sanitized diagnostics from private session journals and raw developer traces.
-No extension script, service, exporter or dependency is installed by this roadmap.
+Use the [extension guide](extensions.md) to import/inspect a reviewed local
+artifact, grant its operator capability ceiling and select an instance for a
+new session. Two bundled hooks are disabled by default. Independent artifacts
+use owned Elixir workers without rebuilding Ipse; project configuration can
+select only an operator-approved subset. Import, skills and generated code
+grant no trust or action permission.
 
-P22 separates three operations: acquire/build an immutable package, install
-and review its executable scope, then enable/configure an instance for a session.
-Bundled precompiled examples are default-off and selectable through generic
-configuration/flags. Independently built packages use an owned worker and
-local import without rebuilding Ipse. Remote download/build assistants follow
-later against the same contracts. Project configuration may select only an
-operator-approved subset; unknown IDs never trigger an automatic install.
+`/ext` lists active tools/commands/services; `/ext NAME JSON_OBJECT` invokes a
+declared operator command while idle, without a model request. Explicitly
+negotiated host operations support scoped state, structured questions,
+file/shell workflows, operator-bound value services and contextual evidence.
+Normal mutation approval applies. For selection flags, limits and recovery,
+use the [capability procedures](extensions.md#configure-selections).
 
-An operator-requested feature can first be trialed with a temporary session lease
-and later promoted into explicit persistent configuration using the exact reviewed
-artifact. Temporary use does not save global defaults, erase journals or undo
-external writes. Initial activation uses a new session; use a reviewed handoff
-when continuing current work. Changing a live session's extension catalog is a
-future host capability, not implicit hot reload. Resume pins artifact/options/
-lifetime identity and refuses unavailable or incompatible required code.
+Temporary selection affects the durable session, not global defaults. Promote
+it through an explicit persistent configuration edit after review. Resume pins
+exact code/options/configuration identity; changing the catalog requires a
+fresh session or reviewed handoff. Separate workers and deadlines are not OS
+sandboxing. No live activation, automatic download or build assistant exists.
 
-A loaded skill, repository instruction or generated feature cannot grant action
-permission or trust itself. In-VM extensions and trusted local worker programs
-have the user's OS access; separate workers/timeouts are not an OS sandbox. These
-use the implemented activation procedures. [Inert import/inspection commands and scoped
-selection data](extensions.md) are available. Explicit selections can now run
-bounded prompt annotation/completed presentation hooks and typed value-only
-tools/commands/services with pinned no-replay resume. `/ext` lists the catalog;
-`/ext NAME JSON_OBJECT` invokes a declared operator command without a model request.
-Separately trusted [host-state calls](extensions.md#scoped-state-host-calls)
-support scoped CAS storage and require normal approval for writes.
-Explicit [extension questions](extensions.md#structured-questions) reuse the same
-terminal forms and require a validated answer before starting a new continuation.
-[Workflow tool calls](extensions.md#workflow-tools) reuse file/shell policy and
-need separate mutation approval, even after a question was answered.
-[Value services](extensions.md#service-composition) compose only through explicit
-operator routes; bindings never install or enable dependencies implicitly.
-[Context publications](extensions.md#context-and-evidence) contribute bounded
-assertions or receipt-backed excerpts, restored without retrieval/callbacks.
-Broader SDK capabilities and live controls remain in progress. See the [scenario analysis](../developer/extension-scenarios.md) and
-[P22 delivery gates](../developer/extensions.md#delivery-sequence-and-extension-only-proof).
+Local `/diagnostics`, `ipse diagnose --resume ID` and
+`ipse handoff --resume ID --note TEXT` support content diagnosis and reviewed
+recovery. See [context recovery](recovery.md). Visible text streams in chat;
+embedded clients can also subscribe to the [private bounded channel](../developer/text-streams.md).
+These available facilities are distinct from the planned capabilities below.
 
-Local `/diagnostics`, `ipse diagnose --resume ID` and explicit
-`ipse handoff --resume ID --note TEXT` are now available for context diagnosis and
-reviewed recovery. See [context recovery](recovery.md) for scope, privacy and
-limitations. These local facilities do not enable general hooks or remote tracing.
+| Milestone | Remaining capability | Status and boundary |
+| --- | --- | --- |
+| P22 | Worker stream handles, lifecycle observation and debugging/conformance | In progress; no off/local/export trace-mode flag is available yet |
+| P23 | Cost reports and budget admission | Planned over durable usage facts; context bytes are not tokens or an invoice |
+| P24 | STT/text-agent/TTS and realtime media | Planned with explicit device/provider/billing selection; text authentication does not imply audio access |
+| P25 | Optional working/long-term memory, research engine, graph and RAG | Research/selection gates remain; each adapter will be independently configured and default-off |
 
-Observability on/off controls are planned in P22: an `off`/`local`/`export` host
-gate plus generic sink configuration/flags, default-off local tracing and explicit
-remote egress. No such mode flag is available today. Turning optional tracing off
-will preserve recovery journals, usage accounting and streamed answers. Developer
-source fixtures can be inspected with Mix test tracing; bounded BEAM tracing and
-extension-conformance procedures are part of P22, while richer viewers/IDE setup
-remain optional. See [controls and debugging](../developer/observability.md).
-
-Visible text already streams in chat. Embedded clients can explicitly subscribe
-to the [bounded private channel](../developer/text-streams.md); installed-worker
-handles remain P22 work. P23 plans cost/report extensions over normalized usage and
-host budget enforcement; context bytes are not tokens or a bill. P24 plans
-STT/text-agent/TTS and realtime media with explicit provider/device/billing choices.
-Neither voice nor token-cost reporting is implemented today. See
-[capability boundaries](../developer/runtime-capabilities.md).
-
-P25 plans researched, shipped but disabled short-term/long-term memory, a pluggable
-research engine, graph memory and RAG. Each may be a tool/skill/MCP integration,
-extension or combination, selected after evaluation; Zero-Mem is an inspiration
-candidate rather than an installed backend. Configure each independently through
-declared tools/hooks/providers; enabling one will not silently start another store, model or
-service. Optional working memory does not replace ordinary session history, and
-RAG does not automatically persist personal memories. Existing `$research`/MCP/
-evidence tools remain available today. See [knowledge extension plan](../developer/knowledge-extensions.md).
+The [plan](../plan.md) owns milestone acceptance. The
+[observability design](../developer/observability.md) separates optional
+sanitized diagnostics from mandatory journals/accounting and private content;
+no exporter starts automatically. The [knowledge design](../developer/knowledge-extensions.md)
+treats Zero-Mem as inspiration, not an installed backend. Existing skills,
+configured MCP tools and the research ledger remain available; optional memory
+will not replace ordinary history or make RAG persist personal records silently.

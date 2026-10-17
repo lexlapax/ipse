@@ -39,12 +39,13 @@ Anthropic API. Never switch providers or billing modes silently. Keep a
 credential-free demo usable without any model service. Choose small, testable
 improvements rather than turning the plan into a mandatory execution pipeline.
 
-P22's selected direction is extension-first feature development. Once its supported
-API exists, prefer extensions for new domain behavior, memory, presentation and
-optional workflows. Reserve core changes for host invariants, correctness and
-explicitly reviewed extension-API gaps; do not bypass approvals or execute
-untrusted code to avoid a necessary core change. The extension API is currently
-planned, so this does not require P19–P21 to use an unavailable mechanism.
+P22's selected direction is extension-first feature development. Prefer its
+implemented, documented extension APIs for new domain behavior, memory,
+presentation and optional workflows. Reserve core changes for host invariants,
+correctness and explicitly reviewed extension-API gaps; do not bypass approvals or execute
+untrusted code to avoid a necessary core change. The foundation is implemented
+in part; remaining contracts and proof gates are tracked in the plan. Earlier
+milestones did not require mechanisms unavailable when they shipped.
 
 ## Start here
 
@@ -143,13 +144,15 @@ Report what changed, checks actually run, and remaining limitations. Do not
 claim Arch, browser sign-in, paid inference, or a release was verified unless
 the corresponding check really ran.
 
-Before declaring any sub-goal or milestone complete, always review and update
-the developer and operator documentation. Validate content against the current
-implementation and actual verification results, including commands, examples,
-limitations, and status claims. Rewrite stale or incorrect guidance and check
-links and cross-references to other documents, repairing broken targets and
-inconsistent descriptions. Documentation review and repair are required
-completion checks, not optional follow-up work.
+Before declaring any sub-goal or milestone complete, review developer and operator
+documentation as whole documents. Rework structure, flow and terminology around
+the reader's task; integrate changes into the explanation instead of accumulating
+feature-by-feature blocks. Reconcile overlapping guidance across entry points,
+remove repetition and stale status claims, and keep current behavior distinct
+from proposals and dated evidence. Validate commands, examples and limitations
+against implementation and actual verification. Check links and cross-references,
+repairing broken targets and inconsistent descriptions. This editorial review
+and repair is a required completion check, not optional follow-up work.
 Maintain the audience structure and authoritative topic ownership in
 [docs/index.md](docs/index.md): operator procedures under `docs/operator/`,
 developer guidance under `docs/developer/`, and shared context under `docs/`.

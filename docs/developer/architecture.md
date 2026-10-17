@@ -1,54 +1,19 @@
 # Architecture
 
-Mandatory [request accounting](usage-accounting.md) is separate from optional
-diagnostics: Session journals admission before provider dispatch and normalized
-outcomes before assistant/summary validation. Unknown failed/interrupted usage
-survives inert resume. Pricing and budget policy remain separate capabilities.
-
-Enabled [extension catalogs](extension-invocations.md) are inert manifest data.
-Session owns schema/approval/lease admission and syncs intent before a monitored
-task starts the independent worker VM. Validated receipts reconstruct tool
-messages on resume without running code; standalone command/service values are
-separate from assistant messages. The CLI is a generic catalog/invocation client.
-No host action, state or workflow is inferred from returned domain JSON.
-Separately negotiated [host calls](extension-host-calls.md) admit finite scoped
-state requests with normal mutation approval, intent-before-IO and ordered
-receipts. The native lock/JSON CAS store runs in the owned task, outside Session.
-Unknown outcomes stop without replay; no workflow framework is introduced.
-Structured [extension questions](extension-questions.md) close their worker before
-publication. Pending checkpoints restore inertly. An explicit validated answer
-commits its receipt/continuation intent before a fresh owned worker initializes;
-it never grants later mutation approval or manufactures a native provider call.
-[Workflow tool actions](extension-tool-actions.md) use existing tools/Runner in a
-linked leaf task. Session owns full approval and a request/job/identity/workspace
-gate; new nested instructions stop admission. Durable results preserve output
-completeness and native tool provenance without synthetic assistant calls.
-[Service composition](extension-services.md) resolves manifest requirements only
-through operator routes. OTP acyclic graph ordering pins complete dependency
-identities before startup; owned value jobs journal intent before target loading
-and result after schema/lease/cleanup checks. Nested effects are not inferred from
-returned data, and idle restore never executes either artifact.
-[Context contributions](extension-context.md) replace only the caller's session
-set, with bounded asserted data or excerpts bound to earlier successful action
-receipts. Main requests sync exact snapshots before dispatch; cached sets survive
-idle resume without retrieval. Mandatory instructions/messages/native data remain
-intact, and diagnostic summaries expose counts/bytes/digests rather than text.
-
 Ipse is an MIT-licensed, general-purpose local AI harness built around Elixir
-and OTP. The host role supports general-purpose tasks, with focused changes
-when requested and workload stacks chosen from user requirements and environment.
-The current bundled tools mainly serve file/project work; broader task coverage
-remains bounded by the actual trials in the testing record.
-The core agent loop, provider adapters, tool policy, skills, authentication, and
-session journal are Elixir. A small Rust standard-library helper owns shell and
-configured MCP process groups and advisory session locks. There is no JavaScript or Python
-runtime dependency in Ipse itself, and no required workflow framework. These
-implementation constraints do not restrict target-workspace languages or the
-installed tools an approved shell/MCP call may use. A workload's dependencies
-and permissions remain separate from harness dependencies and permissions.
+and OTP. Session owns conversation, permissions, active work and durable
+recovery. Providers, skills, tools and extensions supply capabilities through
+that boundary. A small Rust standard-library helper owns OS process groups,
+pipes, advisory locks and the explicitly selected native sandbox facilities.
 
-The project's name reflects continuity and feedback; its philosophical origin
-and limits are explained in [naming.md](../naming.md).
+There is no JavaScript/Python runtime dependency or mandatory workflow
+framework. These implementation choices do not restrict the languages or
+runtimes of target projects. The current bundled tools focus on file/project
+work; broader coverage is bounded by the [actual trials](testing.md).
+
+This guide explains ownership and interactions. Topic contracts below own the
+detailed schemas and limits; the [documentation map](../index.md) routes
+operator procedures, proposals and verification evidence.
 
 ## Current shape
 
@@ -68,6 +33,8 @@ CLI ──prompt / approval / cancel──> Session GenServer
                                       │                              └─ Anthropic
                                       ├── sequential tool calls ──> read/write/edit
                                       │                          └─ shell ──> Rust helper
+                                      ├── opt-in owned workers ──> MCP / extensions
+                                      ├── opt-in child sessions ──> separate jobs/journals
                                       └── append events ──> private JSONL journal
 ```
 
@@ -86,6 +53,14 @@ kept where needed to resume a provider exchange. The session enforces a
 per-turn model-call limit and runs tools sequentially. It does not use a fixed
 plan/execute workflow or require a graph framework.
 
+Before dispatch, Session journals a correlated request admission. Normalized
+usage observations and final/partial/unknown outcomes remain durable even when
+a summary is rejected or a request fails. [Request accounting](usage-accounting.md)
+is mandatory and independent of optional tracing; pricing/budget policy remains
+separate. The [private text channel](text-streams.md) carries only visible output
+with bounded acknowledgments/pressure. Its chunks/subscriptions are ephemeral,
+while completed assistant/native data and accounting stay in the journal.
+
 `Ipse.HTTPProfile` owns per-request HTTP lifetimes for authentication, providers,
 and network MCP. A monitored guardian starts a standalone OTP HTTP profile or
 private Finch HTTP/1 pool and retains its lease until the client exits. Borrower
@@ -95,23 +70,24 @@ bounds atom usage and keeps proxy settings and connection state isolated between
 concurrent requests. Exhaustion returns a retryable error instead of creating
 unbounded profile names.
 
-## Context compaction
+## Configuration and profile boundaries
 
-`Ipse.Compaction` builds bounded summary requests and validates checkpoints;
-Session owns the extra provider task and journal commit. Summaries preserve older
-user intent/action provenance and the latest two user turns including native data.
-When summary planning fails, deterministic older settled tool-output excerpts can
-reduce a single long turn, preserving all user/native/call/provenance fields and
-the newest two call batches. Both paths retain the original journal and validate
-durable projections on resume. Summaries and excerpts remain untrusted data.
-A synced checkpoint changes only the effective projection; original transcript
-events stay intact. Resume validates the covered prefix and restores without
-automatically restarting inference or tools. Cancellation saves no partial
-checkpoint. See [the compaction contract](context-compaction.md) for thresholds,
-schema, recovery, and fidelity limits.
+CLI configuration resolves bounded operator/project/directory JSON through
+`Ipse.Config`, requiring current-run project trust. Effective non-secret settings,
+source digests, configured profiles/roles and selected execution are persisted and
+checked on resume before inference. See [configuration](configuration.md) and
+[model profiles](model-profiles.md). `Ipse.Profiles` enforces configured IDs/roles,
+documented reasoning capabilities and credential/native-history isolation for
+mixed-provider children. Configuration and skills grant no effect permissions.
+Shared operator skills use explicit isolation inputs; see
+[skill discovery](#skill-discovery).
+
+Bundled trusted shell launches strip the active release's injected ERTS PATH entry
+and launcher variables before executing operator tools. This avoids contaminating
+an independent installed Erlang/Elixir toolchain. Native execution keeps its own
+fixed environment policy. This adds no filesystem or network enforcement claim.
 
 ## Runtime identity
-
 
 `Ipse.RuntimeInfo` is a small shared formatter and allowlisted snapshot builder.
 `Session.info/1` exposes it under `runtime`; `/info` formats that snapshot locally.
@@ -138,9 +114,38 @@ and minimal shell environment from inherited host state. They contain no
 credential/environment dumps and do not grant extra roots. See
 [Linux descriptor support and visibility](sandbox.md#observed-bash-and-dependency-visibility-limits).
 
+## Authentication and provider errors
+
+ChatGPT subscription sign-in follows the documented open-source app flow.
+Browser sign-in, inference, coding tools, resume, and logout passed with one
+account on Arch; natural-expiry refresh and rotation also passed on 2026-10-15.
+See [testing.md](testing.md#p0-closure-on-serenity-2026-10-15). A permission-off
+request returned the live usage-limit error. Exhausted allowance and broader
+account/model eligibility remain unverified; fixtures do not establish those
+live-service properties.
+
+Subscription recovery follows the official
+[error contract](https://developers.openai.com/siwc/token-sharing-open-source/errors-and-recovery).
+`Auth.HTTP` recognizes a fixed allowlist of terminal OAuth errors on client-error
+responses. Under the credential lock, `Auth` clears the unusable token fields
+and retains the host/client/account mapping for reauthorization. Rate limits,
+service errors, malformed errors, and invalid-client configuration do not erase
+credentials. Successful rotation is saved as owner-only pending renewal before
+identity discovery/key fetching. Retry validates that saved response without
+reusing the consumed refresh token; unverified identities never become active.
+Activation preserves the original receipt-time expiry. Reduced scopes are
+committed before permission denial. Fresh login replaces pending renewal, and
+logout revokes its newest refresh token. Loss before durable storage still
+requires fresh login; an expired unvalidated identity also requires fresh login.
+
+`Provider.Error` formats bounded machine metadata and fixed recovery guidance,
+without echoing server prose. The subscription adapter uses developer messages
+and an `additional_tools` item, preserving native continuation data; the API route
+keeps its existing wire shape. Subscription endpoints are pinned below the CLI;
+only test-compiled code permits loopback fixtures. Provider errors redact the
+active credential and stop the turn; the CLI clears queued requests visibly.
+
 ## Trust and side effects
-
-
 
 The system message describes the workspace and available skill metadata.
 Project skills override Ipse user, shared operator, and bundled skills, in that
@@ -172,75 +177,6 @@ escape the process group. On macOS, the signed App Sandbox worker enforces file
 and network boundaries, while cleanup of detached descendants is best effort;
 they may survive cancellation or timeout with workspace access. See
 [native policy](sandbox.md) and [actual checks](testing.md#macos-native-backend-2026-10-15).
-
-## Persistence and recovery
-
-The default application home is `~/.ipse` and can be changed with
-`IPSE_HOME`. Owner-only credential files are kept separately from session
-journals; journals contain prompts, tool arguments, and results, so those may
-include user secrets. A state directory can be overridden with `--state-dir`.
-
-Each session journal is JSONL. The Rust helper provides a persistent advisory
-lock whose lifetime follows its Port owner; lock files are kept to preserve
-inode identity. Resume loads events into conversation history without replaying
-tool calls. Started interrupted calls are marked with an unknown outcome because
-their external effects may already have happened. Calls cancelled before launch
-are recorded as not started; older unresolved history remains conservative. A final partial record may be
-repaired while holding the session lock. The full transcript remains on disk.
-
-`ipse sessions` reads listings directly through `Journal.list/1`, without starting
-or resuming sessions or authenticating. The default text output is unchanged;
-`--json` projects only `id`, `provider`, `model` and `cwd` into one ID-sorted array,
-with missing fields encoded as null. It does not export arbitrary metadata or
-messages. Empty/missing stores and skipped invalid journals retain the existing
-listing behavior, and truncated tails are read without repair. This is a local
-read, not a configuration/provider request or journal mutation. See
-[operator listing usage](../operator/usage.md#saved-session-listings) and
-[local verification](testing.md#p18-macos-supervised-self-development-evidence).
-
-## Boundaries and current limits
-
-The line-oriented terminal client is not a full-screen TUI. Explicit opt-in
-serial local delegation is implemented with bounded child sessions and an
-explicit two-child parallel mode. Recursive and remote agents are not implemented.
-Network MCP supports explicitly configured Streamable HTTP endpoints; see the
-[transport contract](mcp.md#streamable-http-boundary). Windows is unsupported.
-Native Linux and macOS sandbox profiles are optional. macOS
-does not provide reliable cleanup for descendants that detach from the process
-group; its filesystem and network enforcement do not make those descendants
-short-lived. See [native policy](sandbox.md).
-Automatic compaction attempts to retain useful history within the context byte
-ceiling. If no safe checkpoint fits, the session stops with recovery guidance
-and keeps the original journal.
-
-ChatGPT subscription sign-in follows the documented open-source app flow.
-Browser sign-in, inference, coding tools, resume, and logout passed with one
-account on Arch; natural-expiry refresh and rotation also passed on 2026-10-15.
-See [testing.md](testing.md#p0-closure-on-serenity-2026-10-15). A permission-off
-request returned the live usage-limit error. Exhausted allowance and broader
-account/model eligibility remain unverified; fixtures do not establish those
-live-service properties.
-
-Subscription recovery follows the official
-[error contract](https://developers.openai.com/siwc/token-sharing-open-source/errors-and-recovery).
-`Auth.HTTP` recognizes a fixed allowlist of terminal OAuth errors on client-error
-responses. Under the credential lock, `Auth` clears the unusable token fields
-and retains the host/client/account mapping for reauthorization. Rate limits,
-service errors, malformed errors, and invalid-client configuration do not erase
-credentials. Successful rotation is saved as owner-only pending renewal before
-identity discovery/key fetching. Retry validates that saved response without
-reusing the consumed refresh token; unverified identities never become active.
-Activation preserves the original receipt-time expiry. Reduced scopes are
-committed before permission denial. Fresh login replaces pending renewal, and
-logout revokes its newest refresh token. Loss before durable storage still
-requires fresh login; an expired unvalidated identity also requires fresh login.
-
-`Provider.Error` formats bounded machine metadata and fixed recovery guidance,
-without echoing server prose. The subscription adapter uses developer messages
-and an `additional_tools` item, preserving native continuation data; the API route
-keeps its existing wire shape. Subscription endpoints are pinned below the CLI;
-only test-compiled code permits loopback fixtures. Provider errors redact the
-active credential and stop the turn; the CLI clears queued requests visibly.
 
 ## Skill discovery
 
@@ -281,7 +217,7 @@ Tests isolate HOME and IPSE_HOME before default CLI/session discovery.
 ## Skill resources
 
 `Skills.load_resource/3` resolves one explicit name/path against the selected
-discovered skill, preserving project > user > bundled precedence. It reuses
+discovered skill, preserving project > Ipse user > shared operator > bundled precedence. It reuses
 `WorkspaceContext`'s bounded source reader and canonical root checks. Resources
 are UTF-8 files of at most 32 KiB, with at most eight relative path components
 and a 1024-byte path. Parent traversal, absolute paths, resource symlinks,
@@ -305,8 +241,7 @@ approved shell, and skill-resource tools. No automatic execution, additional
 roots, dependencies, or mandatory workflow framework is introduced. See
 [operator invocation](../operator/usage.md#working-with-the-agent).
 
-
-## Extension guidance
+## MCP integration
 
 Explicit stdio and Streamable HTTP MCP use an existing SDK behind the session's
 approval/journal boundary. Servers are explicitly configured and allowlisted for exact tools,
@@ -319,6 +254,33 @@ is independently selected and fails closed; shell `--sandbox` does not change
 the server policy. Loss or RPC failure after dispatch stops the batch with an
 unknown outcome, never an automatic retry. See the [MCP contract](mcp.md) for
 catalog/schema limits, protocol scope, and platform boundaries.
+
+## Extension guidance
+
+Extensions add explicitly selected behavior through inert declarations and
+owned workers. The registry pins artifact, options, source/scope, runtime,
+host API and lifetime identity before executable activation. Session owns
+capability/schema/lease admission, journals intent before initialization and
+commits validated results before continuation. Disabled code never initializes.
+Separate VMs and process groups are ownership boundaries, not OS sandboxing.
+
+| Interface | Host responsibility | Contract |
+| --- | --- | --- |
+| Prompt/presentation transforms | Preserve original input, assistant/native data and source-bound derived projections | [Hooks](extension-hooks.md) |
+| Tools/commands/services | Inert namespaced catalogs, argument/result validation, full tool approval and owned invocation receipts | [Invocations](extension-invocations.md) |
+| Finite host actions | Separate mutation approval, scoped CAS state and ordered no-replay action receipts | [Host calls](extension-host-calls.md) |
+| Questions | Close workers before publication; commit explicit answers and continuation intent before new initialization | [Questions](extension-questions.md) |
+| Workflow tools | Existing file/Runner policy, instruction preflight, linked owned tasks and output-completeness facts | [Tool actions](extension-tool-actions.md) |
+| Value-service composition | Operator routes, acyclic dependency identities, target lease/schema/cleanup checks and host provenance | [Services](extension-services.md) |
+| Session context | Bounded caller-owned sets, assertion/receipt provenance and exact main-request snapshots | [Context](extension-context.md) |
+
+Ordinary returned JSON is data; it never implies another host action. Unknown
+outcomes stop without replay. Idle resume validates committed projections and
+receipts without loading callbacks or retrieving again. Mandatory instructions,
+messages and native continuation remain intact. Domain algorithms belong in
+extensions where the supported SDK permits; missing host capabilities require
+reviewed general contracts. Worker stream access, lifecycle observability and
+the independent installed-package proof remain [P22 gates](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
 
 Keep provider-specific wire formats inside provider adapters and keep session
 state transitions in `Ipse.Session`. Put ordinary filesystem and shell
@@ -339,23 +301,6 @@ from boolean action approvals and grant no permission. Headless/child requests
 fail explicitly. See the [question contract](operator-questions.md) for bounds,
 durable restore and terminal behavior. MCP elicitation remains unavailable.
 
-## Configuration and profile boundaries
-
-CLI configuration resolves bounded operator/project/directory JSON through
-`Ipse.Config`, requiring current-run project trust. Effective non-secret settings,
-source digests, configured profiles/roles and selected execution are persisted and
-checked on resume before inference. See [configuration](configuration.md) and
-[model profiles](model-profiles.md). `Ipse.Profiles` enforces configured IDs/roles,
-documented reasoning capabilities and credential/native-history isolation for
-mixed-provider children. Configuration and skills grant no effect permissions.
-Shared operator skills use explicit isolation inputs; see
-[skill discovery](#skill-discovery).
-
-Bundled trusted shell launches strip the active release's injected ERTS PATH entry
-and launcher variables before executing operator tools. This avoids contaminating
-an independent installed Erlang/Elixir toolchain. Native execution keeps its own
-fixed environment policy. This adds no filesystem or network enforcement claim.
-
 ## Research ledger
 
 `Ipse.Research` binds bounded literal source excerpts and claim references to
@@ -374,3 +319,58 @@ loads it and both resources through the real Session/journal with effect policy
 denied; the source and extracted-package checks run that fixture explicitly.
 Live application is separately verified in P21. See the
 [operator procedure](../operator/self-development.md).
+
+## Context compaction
+
+`Ipse.Compaction` builds bounded summary requests and validates checkpoints;
+Session owns the extra provider task and journal commit. Summaries preserve older
+user intent/action provenance and the latest two user turns including native data.
+When summary planning fails, deterministic older settled tool-output excerpts can
+reduce a single long turn, preserving all user/native/call/provenance fields and
+the newest two call batches. Both paths retain the original journal and validate
+durable projections on resume. Summaries and excerpts remain untrusted data.
+A synced checkpoint changes only the effective projection; original transcript
+events stay intact. Resume validates the covered prefix and restores without
+automatically restarting inference or tools. Cancellation saves no partial
+checkpoint. See [the compaction contract](context-compaction.md) for thresholds,
+schema, recovery, and fidelity limits.
+
+## Persistence and recovery
+
+The default application home is `~/.ipse` and can be changed with
+`IPSE_HOME`. Owner-only credential files are kept separately from session
+journals; journals contain prompts, tool arguments, and results, so those may
+include user secrets. A state directory can be overridden with `--state-dir`.
+
+Each session journal is JSONL. The Rust helper provides a persistent advisory
+lock whose lifetime follows its Port owner; lock files are kept to preserve
+inode identity. Resume loads events into conversation history without replaying
+tool calls. Started interrupted calls are marked with an unknown outcome because
+their external effects may already have happened. Calls cancelled before launch
+are recorded as not started; older unresolved history remains conservative. A final partial record may be
+repaired while holding the session lock. The full transcript remains on disk.
+
+`ipse sessions` reads listings directly through `Journal.list/1`, without starting
+or resuming sessions or authenticating. The default text output is unchanged;
+`--json` projects only `id`, `provider`, `model` and `cwd` into one ID-sorted array,
+with missing fields encoded as null. It does not export arbitrary metadata or
+messages. Empty/missing stores and skipped invalid journals retain the existing
+listing behavior, and truncated tails are read without repair. This is a local
+read, not a configuration/provider request or journal mutation. See
+[operator listing usage](../operator/usage.md#saved-session-listings) and
+[local verification](testing.md#p18-macos-supervised-self-development-evidence).
+
+## Boundaries and current limits
+
+The line-oriented terminal client is not a full-screen TUI. Explicit opt-in
+serial local delegation is implemented with bounded child sessions and an
+explicit two-child parallel mode. Recursive and remote agents are not implemented.
+Network MCP supports explicitly configured Streamable HTTP endpoints; see the
+[transport contract](mcp.md#streamable-http-boundary). Windows is unsupported.
+Native Linux and macOS sandbox profiles are optional. macOS
+does not provide reliable cleanup for descendants that detach from the process
+group; its filesystem and network enforcement do not make those descendants
+short-lived. See [native policy](sandbox.md).
+Automatic compaction attempts to retain useful history within the context byte
+ceiling. If no safe checkpoint fits, the session stops with recovery guidance
+and keeps the original journal.

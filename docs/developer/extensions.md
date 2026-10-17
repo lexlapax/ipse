@@ -1,30 +1,34 @@
 # Extension architecture proposal
 
-Research reviewed on 2026-10-16 against repository `3ad33b3`. This is the P22
-design proposal; implementation was subsequently authorized for P22–P25.
-The [artifact contract](extension-artifacts.md) documents the first implemented
-API. The implemented [hooks](extension-hooks.md), [typed invocations](extension-invocations.md),
-[usage ledger](usage-accounting.md) and [private text channel](text-streams.md)
-document subsequent increments.
-[Finite host state calls](extension-host-calls.md) implement the first scoped
-state/effect seam; broader contracts remain provisional.
-[Structured question checkpoints](extension-questions.md) now support explicit
-answered continuation; [approved workflow tools](extension-tool-actions.md) cover
-the existing file/shell tools. [Typed value services](extension-services.md) now
-compose through explicit operator bindings. [Session context](extension-context.md)
-now supports bounded publications and receipt-bound excerpts. Broader nested jobs,
-worker stream access, observability and the installed-package proof remain open.
-Other names and limits below remain proposed contracts. Existing skills, explicit
-MCP tools and provider adapters remain available alongside the
-[initial session hooks](extension-hooks.md).
-The operator's subsequent bundled, third-party and generated-feature scenarios
-are exercised in [scenario analysis](extension-scenarios.md). That review replaces
-the original rebuild-only loading assumption with a backend-independent SDK,
-immutable artifacts and scoped activation. Inert local import and explicit
-new-session activation are implemented; remote acquisition, hot activation and
-the remaining SDK coverage gates are still planned.
+This guide records P22's design rationale, framework comparison and SDK/core
+coverage gates. The research was reviewed on 2026-10-16 against `3ad33b3`;
+implementation was subsequently authorized and is in progress. Proposed
+callbacks and examples below are design targets unless an implemented contract
+is linked here. This is not a frozen complete SDK or proof that every future
+feature can avoid core changes.
+
+Current contracts are organized by responsibility:
+
+| Responsibility | Implemented contract |
+| --- | --- |
+| Package identity, import and worker execution | [Artifacts and worker SDK](extension-artifacts.md) |
+| Scoped selection and trust | [Operator configuration](../operator/extensions.md#configure-selections) |
+| Ordered prompt/completed-answer projections | [Session hooks](extension-hooks.md) |
+| Tools, commands, services and finite host operations | [Invocations](extension-invocations.md), [host calls](extension-host-calls.md) |
+| Explicit continuation and approved effects | [Questions](extension-questions.md), [workflow tools](extension-tool-actions.md) |
+| Typed dependency composition and contextual evidence | [Services](extension-services.md), [context](extension-context.md) |
+| Durable request facts and embedded private delivery | [Usage accounting](usage-accounting.md), [text channel](text-streams.md) |
+
+Worker stream access, lifecycle observability/developer controls and the
+independent installed-package/supervised proofs remain open. The
+[plan](../plan.md#p22-extension-scaffold-and-lifecycle-hooks) owns current status;
+[testing](testing.md#current-evidence-and-next-checks) owns actual results.
+[Adoption scenarios](extension-scenarios.md) explain bundled, installed and
+generated features. Inert local import and new-session activation are available;
+remote acquisition, builders and hot activation remain future capabilities.
 
 ## Recommendation
+
 
 Use a small versioned Elixir behaviour and OTP-owned workers, with two distinct
 interfaces: lifecycle observation and narrowly scoped data transformation.
@@ -55,11 +59,13 @@ No upstream JavaScript runtime, plugin package or hook script was installed.
 
 ## Minimal scaffold and loading
 
-Proposed modules are `Ipse.Extension` (behaviour), `Ipse.Extensions` (registry and
-dispatcher), and a supervised per-session owner/worker. An event envelope has
-schema version, event ID, session/turn/call correlation, stage, monotonic timing
-and an allowlisted payload. Callback contexts are purpose-built values, never
-the entire Session struct, credential config, environment or provider-native data.
+The implemented scaffold separates `Ipse.Extension` (behaviour),
+`Ipse.Extensions.Registry` (inert activation), `Host` (owned dispatch) and `Worker`
+(independent VM/protocol ownership). Session retains admission and journal state.
+Callback contexts are purpose-built JSON values, never the entire Session struct,
+credential configuration, environment or provider-native data. Lifecycle observer
+envelopes remain a separate pending contract, with version/correlation/timing and
+allowlisted payload requirements described below.
 Elixir [behaviours](https://elixir.hexdocs.pm/Module.html#module-behaviour) supply
 callback contracts; [Task.Supervisor](https://elixir.hexdocs.pm/Task.Supervisor.html)
 supplies owned work. Runtime return values still require host validation.
@@ -139,9 +145,10 @@ dump. This is API/data minimization, not a sandbox against trusted executable co
 The first standalone worker targets Elixir/OTP and existing declared tooling.
 Later other-language workers can use the same wire contract, with explicit runtime
 requirements and dependency approval/inventory; no new language runtime becomes
-a silent Ipse dependency. Shared-worker reuse is deferred: default to a worker per
-extension instance/session so state, crashes and versions do not bleed across
-sessions. Preserve cross-process locking for intentionally shared durable stores.
+a silent Ipse dependency. Shared-worker reuse is deferred. Current callbacks use
+fresh owned VMs; question continuations reconstruct state from bounded JSON.
+An activation instance/session does not imply persistent private VM state.
+Preserve cross-process locking for intentionally shared durable stores.
 
 ## Lifecycle map
 
@@ -176,13 +183,15 @@ their relative completion order has no effect on model or tool execution.
 All slow work stays outside the Session GenServer in owned cancellable workers.
 Reject synchronous reentry into the same Session while it waits for a callback.
 
-Proposed initial bounds: eight enabled adapters, four transformations per stage,
-16 KiB JSON event payload, 16 KiB added prompt contribution, 200 ms default and
-2000 ms maximum transform timeout. Original prompts retain the host's existing
-limits; a transformer cannot raise the context ceiling. Set a finite observer
-queue and trace-file quota with visible dropped-event counts. Validate CPU/time,
-encoded bytes, JSON shape and UTF-8; task shutdown is still not hard memory/OS
-containment. Tune these proposed numbers from fixtures before freezing version 1.
+Implemented contracts bound activation to eight instances, SDK objects to 16 KiB
+and host actions to sixteen per invocation. Worker initialization/callback
+deadlines are five seconds; workflow tools have their separately bounded tool
+deadline. Hook input/output and global contextual evidence have distinct limits
+in their authoritative guides. These replace the research draft's provisional
+200–2000 ms transform timing. A transformer cannot raise the context ceiling.
+Observer queue/file quotas and visible drop counts still need implementation.
+Validate encoded bytes, JSON shape and UTF-8; owned task shutdown is not hard
+memory/OS containment. Unexercised observer contracts remain provisional.
 
 Persist original user input, exact derived prompt/presentation, transformation
 identity/order and source/config digests in bounded private events before use.
@@ -223,9 +232,10 @@ and validated contracts; the examples are not a fixed mandatory workflow.
 
 ## Long-term memory and customized workflows
 
-Include these as P22 follow-on adapter designs, not claims that the two examples
-implement memory or a workflow system. Session journals, research ledgers and
-compaction checkpoints are not cross-session long-term memory.
+P22 must prove synthetic memory/workflow adapters through the generic SDK;
+production knowledge adapters belong to P25's separate research/selection gates.
+The two hook examples do not implement those systems. Session journals, research
+ledgers and compaction checkpoints are not cross-session long-term memory.
 
 A memory adapter needs scoped operator/project/namespace ownership, explicit
 recall and remember/forget/export operations, retrieval budgets and attributable
@@ -301,25 +311,24 @@ without making any database, embedding provider or graph engine mandatory.
 
 ### Context, state and effects
 
-Proposed version-1 result contracts should be closed schemas, not arbitrary
-maps interpreted differently by each caller:
+Each public operation has a closed schema; arbitrary returned maps cannot be
+interpreted as effects. Current interfaces and remaining proposals are distinct:
 
-| Invocation | Accepted result | Commit/use boundary |
+| Interface | Current contract or design target | Commit/use boundary |
 | --- | --- | --- |
-| Registration | IDs, SDK/capabilities, descriptors, scopes, option schema | Validate once before activation; no session effects |
-| Observation | `:ok` only | Never changes context/actions; ephemeral diagnostic state only |
-| Prompt admission | `continue` or bounded attributed annotation/projection | Save original and validated projection before inference |
-| Context contribution | List of bounded text/source/version contributions | Select within declared budgets and journal the selected snapshot |
-| Completed presentation | Bounded visible text plus format/provenance | Save after original response; label display and preserve continuation |
-| Tool invocation | Recorded result or typed failed/unknown outcome | Host validates full arguments, approves and syncs intent before execution |
-| Operator command | Informational display or typed host-action proposals | Action proposals use ordinary approval/question/intent paths |
-| Before settlement | `settle` or finite typed action list | Validate remaining budgets and current phase before scheduling |
+| Registration | Implemented inert manifest IDs, capabilities, schemas and options | Validate before activation; discovery executes no callback |
+| Prompt/presentation | Implemented `append` or `prefix`/`suffix` objects | Journal source-bound derived projection; preserve originals/native data |
+| Context contribution | Implemented `context.publish` sets with provenance | Accept/refuse within budgets, then pin exact main-request snapshots |
+| Tool/command/service | Implemented declared result schemas or explicit `host_call` proposals | Owned invocation; full tool approval and finite separately admitted actions |
+| Observation | Pending sanitized lifecycle event/sink contract | Must never change context/actions or replace mandatory journals |
+| Before-settlement scheduling | Future explicitly negotiated capability | Must validate remaining budgets/phase; no arbitrary auto-continuation exists |
 
-Each envelope includes `api_version`, event ID, session/turn/call correlation,
-stage, monotonic timestamp, fixed outcome category and an allowlisted payload.
-Each durable projection additionally pins adapter/config/build identity and
-input/output digests. Tool/context text is private capability data, not part of
-the sanitized observational envelope. Unknown result keys/kinds fail validation;
+The linked operation guides own exact envelope fields and bounds. Invocations
+and durable actions carry host-issued correlation IDs and source identities;
+transform projections pin input/output/context digests. The planned lifecycle
+envelope must separately define event IDs, stage, monotonic timing and sanitized
+outcomes. Tool/context text is private capability data, not diagnostic payload.
+Unknown result keys/kinds fail validation;
 no returned command string is implicitly executed. Any policy veto may reduce
 capabilities only. It cannot grant approval, rewrite already reviewed arguments,
 change credential/provider selection or erase unknown outcomes.
@@ -335,9 +344,11 @@ and owner cleanup independently of optional notification delivery.
 Separate mandatory operator/repository instructions, original admitted intent and
 provider continuation from optional reference documents, memory and extension
 annotations. Each optional contribution declares origin, stable ID/version,
-UTF-8 text, encoded-byte cost, priority and maximum budget. Host selection reports
-which contributions fit or were omitted; it never silently removes mandatory
-instructions or native continuation. Retrieval does not get unlimited space
+UTF-8 text, encoded-byte cost, priority and maximum budget. Current v1 publication
+accepts or refuses a set atomically, preserving previous sets on refusal. A future
+per-item selection policy must report what was omitted; it must never silently
+remove mandatory instructions or native continuation. Retrieval does not get
+unlimited space
 just because it is useful. The supervised P21 trial's large instruction and
 retained-context measurements motivate this distinction; they do not establish
 that any mandatory instruction was safe to discard.
@@ -386,11 +397,12 @@ Project `.ipse/` configures only an operator-approved subset; flags override
 invocation configuration within that ceiling, not executable trust or revocation.
 Children get a validated subset with separate storage/approval/effect identities.
 
-The authoritative [adoption contract](extension-scenarios.md#package-and-installation-contract)
-defines manifest identity, import staging, compatibility and installation
-transactions. Its [activation contract](extension-scenarios.md#configuration-lifetime-and-activation)
-distinguishes durable configuration from temporary leases, promotion, expiry and
-resume. A session pins its exact active set/generation. Initial P22 activation
+The implemented [artifact contract](extension-artifacts.md) owns manifest identity,
+import staging, compatibility and installation transactions. The
+[operator guide](../operator/extensions.md) owns selection, leases, promotion,
+expiry and recovery procedures. [Adoption scenarios](extension-scenarios.md#configuration-lifetime-and-activation)
+exercise those boundaries and future acquisition/activation designs without
+claiming implementation. A session pins its exact active set/generation. Initial P22 activation
 uses new sessions; live activation is a foreseen idle host transaction with a
 versioned capability, rather than arbitrary code reload. The
 [scenario matrix](extension-scenarios.md#scenario-tests) distinguishes foundation
@@ -483,16 +495,8 @@ Run Linux source/native and hosted Mac/package checks, plus an independently
 reviewed supervised trial. Record real limitations and dependencies, review both
 operator/developer guidance and links, then commit/push completed increments.
 
-P22A1 implements the [inert artifact contract](extension-artifacts.md), followed by
-P22A2's [independent worker SDK](extension-artifacts.md#independent-worker-sdk).
-P22A3 adds scoped selection/trust data and inert CLI commands. P22A4 implements
-the [initial session hooks](extension-hooks.md), a generic registry and two opt-in
-examples with durable projections/no-replay resume. Broader SDK seams,
-observability and extension-only proofs above remain in progress;
-the operator authorized completing P22–P25 on 2026-10-16. The
-[operator guide](../operator/extensions.md) distinguishes the available API from
-planned activation commands.
-
-Use the shared event contracts in [observability](observability.md). See
+Use the proposed event requirements in [observability](observability.md) when
+implementing the remaining observer contract. Current API/status is mapped at
+the start of this guide. See
 [P22](../plan.md#p22-extension-scaffold-and-lifecycle-hooks),
 [configuration](configuration.md) and [recovery](context-compaction.md).

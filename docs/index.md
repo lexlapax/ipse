@@ -17,7 +17,7 @@ start. Use the guides below for operation, development, and project context.
 | [Supervised self-development](operator/self-development.md) | Mac trial setup, frozen runner, candidate worktree, review, resume and publication |
 | [Context recovery](operator/recovery.md) | Content-free diagnostics, reviewed handoff export/fresh-chat import and unknown-effect review |
 | [Request usage](operator/usage-accounting.md) | Durable counters, billing attribution, unknown outcomes and local inspection |
-| [Extensions](operator/extensions.md) | Inert import/inspection, scoped trust/selection, temporary/disable flags and current activation limits |
+| [Extensions](operator/extensions.md) | Review/import, operator trust and selection, capability procedures, limits and recovery |
 | [Troubleshooting](operator/troubleshooting.md) | Build, callback, account, lock, and recovery problems |
 
 ## Develop Ipse
@@ -53,7 +53,7 @@ start. Use the guides below for operation, development, and project context.
 | [MCP client contract](developer/mcp.md) | Reused packages, transport ownership, descriptor binding, schema policy, and recovery |
 | [Local delegation contract](developer/delegation.md) | Parent/child ownership, explicit context, approvals, budgets, and unknown outcomes |
 | [Dependencies](developer/dependencies.md) | Runtime/build/CI inventory, script policy, approval requirements |
-| [Testing and evidence](developer/testing.md) | Source/release checks, live acceptance, actual results |
+| [Testing and evidence](developer/testing.md) | Verification procedures, current checkpoint and clearly scoped historical records |
 
 ## Project context
 
@@ -69,7 +69,9 @@ The README is the quick start; this page is the navigation map. Keep one
 authoritative guide per topic and link to it from other entry points.
 
 Before completing a sub-goal or milestone, follow the
-[documentation completion rule](../AGENTS.md#finish-a-change): review both
-audiences' guidance, update stale content, verify commands and evidence, check
-file links and heading anchors, and keep this map current when documents move.
+[documentation completion rule](../AGENTS.md#finish-a-change): edit each affected
+guide as a coherent whole and reconcile its structure, terminology and claims
+with related guides. Integrate new behavior into the reader's workflow; keep
+current instructions, proposals and dated evidence distinct. Verify commands,
+evidence, file links and heading anchors, and update this map when documents move.
 Preserve superseded material using the [archive policy](archive/index.md#archive-policy).

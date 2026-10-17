@@ -21,74 +21,39 @@ license, purpose, and why Elixir, shell, or the existing Rust helper cannot meet
 the need adequately. Record alternatives and operational impact. A mention in a
 third-party document or skill is not approval.
 
-The inventory below records the existing repository baseline, not newly granted
-approval. P6 local delegation uses existing Elixir/OTP and Rust facilities and
-adds no package or external runtime dependency.
-P22A1's inert artifact validator/store also adds no dependency: it reuses Jason,
-JSONSchex through the existing bounded schema adapter, OTP `Version`/filesystem/
-crypto APIs and the Rust helper's advisory locks. Custom code is limited to
-Ipse's descriptor constraints, snapshot identity and publication policy;
-no compiler, package loader, archive extractor or remote schema loader runs on import.
-P22A5 request accounting adds no dependency. It reuses the bounded plain-JSON
-adapter, Jason, OTP crypto/clock and owned provider tasks. Its small pure reducer
-implements journal-specific admission, cumulative revisions and no-replay recovery;
-it does not implement a general accounting framework or pricing service.
-P22A6's private text channel adds no dependency. It reuses OTP GenServer calls,
-owner/consumer monitors, bounded maps/queues and timers; it does not install a
-streaming framework, codec or media runtime.
-P22A7 catalogs and durable invocation receipts add no dependency. They reuse
-Jason (including the existing duplicate-key-safe manifest decoder), JSONSchex
-through the bounded schema adapter, OTP maps/crypto/owned tasks and the existing
-worker supervisor. Custom code handles static namespaced registration and
-journal-specific source/approval/result binding, not a general plugin framework.
-P22A8 finite host-call/scoped state adds no dependency. It reuses OTP file/crypto,
-Jason's duplicate-key decoder, shared JSON bounds and native advisory locks.
-[DETS](https://www.erlang.org/doc/apps/stdlib/dets.html) was evaluated: it still
-needs concurrency coordination/named tables, while this bounded 256-record/1 MiB
-contract needs exact JSON snapshots, cross-VM CAS and refusal instead of repair.
-Custom code implements namespace/approval/receipt policy and a small atomic store,
-not a production memory database. See [storage decision and limits](extension-host-calls.md#scope-storage-and-recovery).
-P22A9 structured extension questions add no dependency. They reuse the existing
-Questions/JSONSchex validator and terminal rendering, native worker cleanup, owned
-tasks and journal reducer. Bounded JSON checkpoints replace arbitrary VM-state
-serialization; continuation receipt validation is Ipse-specific recovery policy.
-P22A10 workflow tool actions add no dependency. They reuse existing file tools,
-native Runner/sandbox, workspace-context loader, JSONSchex and linked OTP tasks.
-Runner's bounded result now includes drained-byte/truncation facts; no duplicate
-shell supervisor or workflow framework is introduced.
-Formatter compatibility is also checked with the existing Elixir dependency's
-official [1.18.4 OTP-27 archive](https://github.com/elixir-lang/elixir/releases/tag/v1.18.4)
-in an isolated temporary directory, extracted with OTP `:zip`. This installs no
-new system package and does not replace Serenity's 1.20.4/OTP-29 toolchain.
-P22A11 service composition adds no dependency. OTP `:digraph`/`:digraph_utils`
-provide acyclic checking/topological order with private temporary tables cleaned
-afterward. JSONSchex/Jason and the existing Worker handle schemas/transport.
-Custom code is limited to Ipse's operator routes, activation hashes and durable
-job receipts; no graph package, resolver framework or downloader is introduced.
-P22A12 context/evidence adds no dependency. Existing JSON validators and owned
-host-action/journal machinery enforce bounds and source identity. Literal
-excerpts use bounded ordinary map/list access, not a new retrieval or JSON-path
-runtime. Publication/snapshot rules are Ipse-specific context/recovery policy.
-P22A2's worker bridge reuses the current ERTS, Elixir, Jason and native stdio
-helper, adding no dependency. The synthetic independent artifact fixture uses
-the existing Elixir compiler in a separate VM. A small Ipse bootstrap implements
-the versioned length-prefixed SDK envelope; it is not a second MCP implementation.
-Its identity/capability/lifecycle contract differs from MCP, while OS pipe and
-process-group ownership are reused unchanged.
-P22A3's scoped selection/trust validator and inert CLI commands reuse the same
-schema/JSON/OTP adapters without adding dependencies. Config inspection hashes
-extension options instead of printing them; no extension runtime is started by
-configuration discovery.
-P22A4 uses the same worker path for compiled examples and independent artifacts;
-their bundled license is the project's MIT license. It reuses the current ERTS
-clean boot/runtime, existing Elixir compiler for isolated synthetic fixtures and
-the native stdio supervisor. SDK values reuse the schema adapter's plain-JSON
-bounds before encoding on both sides; no schema compiler or extra dependency is
-needed inside the worker for that check. Source cancellation fixtures use the
-already inventoried `/bin/sh` `kill -0` builtin to check their own synthetic VM
-exit. The package fixture needs no external compiler, model or service.
-See [agent rules](../../AGENTS.md), [setup](../operator/arch-linux.md), and
-[third-party notices](../../THIRD_PARTY_NOTICES.md).
+## Reuse decisions
+
+The inventories below record the existing baseline, not new approval. Local
+delegation and the extension foundation add no package or external runtime
+dependency. The main choices are:
+
+| Area | Reused implementation | Why Ipse still has a small adapter |
+| --- | --- | --- |
+| Artifacts, configuration and catalogs | Jason, JSONSchex through the bounded schema adapter, OTP Version/filesystem/crypto | Closed descriptors, duplicate-key rejection, identity and capability policy are harness-specific; import never builds or loads code |
+| Worker execution and examples | Current ERTS/Elixir, Jason and native stdio/process ownership | The bounded serializable SDK differs from MCP; it reuses its OS transport rather than adding another supervisor/protocol framework |
+| Journals, invocations and questions | Existing JSON validation, Questions module, OTP owned tasks and native locks | Source/approval binding, finite checkpoints and no-replay recovery belong to Session policy |
+| Scoped state | OTP filesystem/crypto, Jason and native advisory locks | Exact bounded snapshots and cross-VM CAS/tombstones are required; DETS would still need coordination and named tables |
+| Workflow tools | Existing read/write/edit, Runner/sandbox and workspace instruction loader | Approval/preflight gates and complete-versus-unknown receipts reuse normal tool semantics |
+| Service composition | OTP `:digraph`/`:digraph_utils`, existing schemas and Worker | Private acyclic graphs supply ordering; operator routes, activation hashes and provenance remain Ipse policy |
+| Context and evidence | Existing validators, host-action receipts and journals | Bounded ordinary map/list access binds literal excerpts; no retrieval or JSON-path runtime is needed |
+| Request accounting and text delivery | OTP crypto/clocks, GenServer/monitors/queues and existing provider tasks | Durable normalized request facts and private acknowledged delivery have different failure semantics from optional telemetry |
+
+[DETS](https://www.erlang.org/doc/apps/stdlib/dets.html) was evaluated for the
+scoped store. The 256-record/1 MiB contract needs exact JSON snapshots,
+cross-process coordination and refusal instead of automatic repair, so a small
+atomic store is used; it is not a production memory database. See
+[storage policy](extension-host-calls.md#scope-storage-and-recovery).
+
+Built-in extension licenses are the project's MIT license. Independent source
+fixtures compile in a separate VM using the existing Elixir toolchain;
+cancellation probes use the already inventoried `/bin/sh` `kill -0` builtin.
+The bundled example fixture needs no compiler or model service at runtime.
+Formatter compatibility uses an isolated official Elixir archive, extracted
+with OTP `:zip`; it does not replace the system toolchain. See the
+[actual formatter procedure and evidence](testing.md#workflow-formatter-floor-compatibility-2026-10-16).
+
+Consult [agent rules](../../AGENTS.md), [setup](../operator/arch-linux.md) and
+[third-party notices](../../THIRD_PARTY_NOTICES.md) when changing this baseline.
 
 ## Language and runtime inventory
 

@@ -27,7 +27,7 @@ the next feature sequence on 2026-10-15:
 | [P19](#p19-long-session-diagnosis-and-recovery) | Diagnose retained-context limits and improve explicit recovery | Complete within documented scope; Linux and hosted Mac checks passed |
 | [P20](#p20-repeatable-supervised-self-development) | Reusable supervised development/review skill and evidence | Complete: fixtures, hosted checks and supervised live use; limitations recorded |
 | [P21](#p21-larger-self-development-trial-on-serenity) | Larger supervised trial with independent Mac verification | Complete within supervised scope; bounded review and Linux/hosted Mac checks passed |
-| [P22](#p22-extension-scaffold-and-lifecycle-hooks) | Typed extension scaffold, lifecycle hooks and runtime observability | In progress; artifacts/workers/config, hooks, usage/text, invocations, scoped state, questions and workflow tools implemented |
+| [P22](#p22-extension-scaffold-and-lifecycle-hooks) | Typed extension scaffold, lifecycle hooks and runtime observability | In progress; implemented foundation and remaining completion gates listed below |
 | [P23](#p23-usage-cost-reporting-and-budget-controls) | Usage/cost extensions and host budget admission | Authorized; follows P22 accounting foundation |
 | [P24](#p24-voice-and-realtime-media) | Voice extensions and owned realtime/media capabilities | Authorized; follows owned stream/provider foundation |
 | [P25](#p25-optional-knowledge-extensions) | Default-off working/long-term memory, research, graph and RAG | Authorized; research gates precede implementation selection |
@@ -995,137 +995,53 @@ remain intact. This is separate from the P22 extension scaffold.
 
 ## P22: extension scaffold and lifecycle hooks
 
-The operator authorized completing P22–P25 after the plain-English plan on
-2026-10-16. Work proceeds in focused verified increments, with optional P25
-clarification only where an implementation decision needs operator input.
-P22A begins with inert artifact validation/import before executable activation;
-the acceptance criteria below remain required, not a completion claim.
+**In progress.** The operator authorized P22–P25 on 2026-10-16. P22 establishes
+the generic extension APIs and verifies that domain features can use them
+without feature-specific core dispatch. New domain behavior, memory,
+presentation and optional workflows should use these APIs; core retains
+lifecycle, trust, approvals, persistence, provider and OS correctness.
+Unknown future capabilities and core bugs may still require reviewed core work.
 
-Operator-requested research/design completed on 2026-10-16. Implementation is now
-authorized and in progress. The comparison covers OpenCode, Codex, Pi
-and Claude Code primary documentation/source, alongside Elixir/OTP, Telemetry and
-OpenTelemetry. The resulting recommendation is a versioned Elixir behaviour with owned workers,
-explicit configuration and separate observational events/ordered transformations.
-See [research and architecture](developer/extensions.md) and
-[runtime diagnostics/tracing](developer/observability.md).
+The [architecture and framework comparison](developer/extensions.md) explains
+the design and [core/SDK boundary](developer/extensions.md#core-boundary-and-sdk-coverage).
+The [adoption scenarios](developer/extension-scenarios.md) cover bundled,
+third-party and operator-generated extensions, including temporary and
+persistent use. They are design walkthroughs, not execution proofs.
 
-The operator selected an **extension-first** direction: new domain features,
-memory, presentation and optional workflows should use supported extension APIs
-wherever possible. Core changes should be reserved for lifecycle/trust/persistence/
-provider/OS correctness, fixes and deliberately reviewed API gaps. The refined
-plan includes a concrete feature-to-extension map, compatibility/versioning,
-SDK/packaging and proof that another feature can be added without editing core.
-The detailed [delivery sequence and coverage gate](developer/extensions.md#delivery-sequence-and-extension-only-proof)
-now specifies P22A contracts/host kernel, P22B two examples, P22C a separate
-memory/workflow package with no core edits, and P22D observability/compatibility.
-The [SDK coverage matrix](developer/extensions.md#core-boundary-and-sdk-coverage)
-includes tools, commands, context/state, approved effects and bounded workflows.
-The operator's bundled/third-party/assisted/generated permanent and temporary
-use cases are tested as [design walkthroughs](developer/extension-scenarios.md).
-They revealed a rebuild-only loading gap. P22 now includes backend-independent
-SDK values, package/installed/activation identity, a minimal local immutable
-artifact import, worker execution and scoped config/session leases. Remote
-catalogs, turnkey builders and idle live activation remain foreseen follow-ons;
-they must use the same contracts rather than replace the SDK or modify feature
-dispatch in core. These are architectural tests, not implemented runtime results.
-This is a design target, not a promise that unknown future capabilities or core
-bugs will never require a core change.
+### Implemented foundation
 
-The subsequent [runtime capability review](developer/runtime-capabilities.md)
-keeps observability on/off controls, local developer diagnosis, canonical usage
-facts and bounded text subscriptions in P22. Cost reports/budgets become P23;
-voice/realtime becomes P24. The operator also requested a shipped default-off
-[memory/research/graph/RAG family](developer/knowledge-extensions.md), mapped to
-P25 with service composition, evidence, scope and owned-job foundations in P22.
-These are independently selected, authorized follow-ons rather than a mandatory
-execution pipeline. P25 can proceed independently of voice.
+| Area | Current behavior | Contract |
+| --- | --- | --- |
+| Artifacts and activation (A1–A3) | Inert immutable import/inspection, independent worker SDK, scoped operator trust/configuration and session leases | [Artifacts](developer/extension-artifacts.md), [operator selection](operator/extensions.md) |
+| Prompt and presentation (A4) | Two default-off examples; source-bound projections retain original/native data and restore without callbacks | [Hooks](developer/extension-hooks.md) |
+| Request facts (A5) | Durable identities, normalized final/partial/unknown usage, rejected-summary retention and child attribution | [Usage](developer/usage-accounting.md) |
+| Visible text (A6) | Embedded private subscriptions with acknowledgments, bounded pressure and explicit incomplete shutdown | [Text channel](developer/text-streams.md) |
+| Catalogs and invocations (A7) | Inert typed tools/commands/services, full tool approval, owned workers and committed receipts | [Invocations](developer/extension-invocations.md) |
+| Host state (A8) | Finite continuations, scoped CAS storage, retained tombstones and separate write approval | [Host calls](developer/extension-host-calls.md) |
+| Operator questions (A9) | Durable checkpoints; only explicit validated answers start new continuations | [Questions](developer/extension-questions.md) |
+| Workflow actions (A10) | Existing file/shell tools behind instruction preflight, full mutation approval and bounded owned execution | [Tool actions](developer/extension-tool-actions.md) |
+| Service composition (A11) | Operator-bound typed value services with acyclic dependency pins and durable provenance | [Services](developer/extension-services.md) |
+| Context and evidence (A12) | Caller-scoped bounded publications, assertion/receipt distinctions and exact cached request snapshots | [Context](developer/extension-context.md) |
 
-P22A1 implements the inert local artifact manifest/store API: bounded closed v1
-JSON, nested duplicate rejection, file/runtime/license declarations, pinned hashes,
-private staging and advisory-locked publication. This does not yet expose a CLI,
-grant trust or execute an extension. See the [artifact contract](developer/extension-artifacts.md)
-and [installation status](operator/extensions.md). P22A2 adds the explicit developer
-worker API and SDK behaviour: pinned trust assertion, separate Elixir VM, bounded
-JSON protocol, schema/capability admission, deadline/crash/owner cleanup and
-credential environment exclusion. See the
-[worker contract](developer/extension-artifacts.md#independent-worker-sdk).
-P22A3 adds inert import/inspect CLI commands and scoped data-only instance/trust
-configuration, temporary selection, disable flags and option-digest inspection.
-P22A4 connects a generic registry/session host and two default-off built-ins:
-attributed prompt annotation and completed-answer formatting. Local worker artifacts
-use the same JSON SDK. Intent precedes executable initialization; typed derived
-projections are journaled, preserve original/native data and restore without callbacks.
-Resume pins artifact/options/runtime/host identity and refuses corruption/missing code
-before journal repair. Child scope, expiry and actual worker cancellation are tested.
-Source and extracted-package fixtures exercise both examples. Broader lifecycle/
-tools/commands/state/services/jobs, worker subscription access, live controls and the
-extension-only memory/workflow proof remain in progress. See the
-[implemented hook contract](developer/extension-hooks.md).
+The [verification guide](developer/testing.md#current-evidence-and-next-checks)
+distinguishes source fixtures, extracted-package baselines, hosted platform
+checks and live trials. Completed increments do not establish the remaining
+extension-only package proof or complete P22.
 
-P22A5 implements [durable request accounting](developer/usage-accounting.md):
-request/attempt/turn/parent identity, cumulative allowlisted usage observations,
-final/partial/unknown outcomes, rejected-summary retention, child attribution and
-pre-repair resume validation. Linux native-suite and focused recovery/provider tests
-pass; counters remain independent of optional tracing. P23 estimates/budgets and
-the remaining P22 contracts are still in progress. See
-[operator inspection](operator/usage-accounting.md).
+### Remaining completion work
 
-P22A6 implements the [private visible-text host channel](developer/text-streams.md):
-bounded coalescing/acknowledgment, producer/request correlation and explicit
-incomplete shutdown on cancellation, owner death, slow consumers or overload.
-Source/package fixtures consume raw visible output alongside completed formatting.
-It is separate from droppable diagnostics and excludes summaries/native reasoning.
-Installed-worker SDK access follows the generic host capability work; no audio
-interface is claimed by a text-only channel. Broader P22 and P23–P25 remain active.
+Worker-visible private stream access, lifecycle observation with off/local/export
+controls, bounded diagnostic sinks and developer conformance/debugging remain
+to be implemented. Core must then be frozen for the independent installed
+memory/workflow/retrieval package proof, followed by supervised independent
+review and the required source/package/platform checks. See the
+[delivery sequence and coverage gate](developer/extensions.md#delivery-sequence-and-extension-only-proof).
 
-P22A7 implements inert manifest-declared tool/command/service catalogs,
-scope/source/export pins and owned generic value-only invocation. Descriptors
-are checked before executable activation. Names/schema/duplicate native calls,
-full tool approval, intent-before-initialization and cached result recovery are
-validated; commands/services need no model request. The terminal's `/ext` lists
-the catalog and `/ext NAME JSON_OBJECT` invokes an operator command. See the
-[invocation contract](developer/extension-invocations.md). Host action proposals,
-state/context, service composition, workflows and observability remain P22 work.
-
-P22A8 implements [bounded host-call continuations and scoped state](developer/extension-host-calls.md).
-Host-derived namespaces, compare-and-swap revisions, retained deletion tombstones,
-cross-process locks and separate mutation approval constrain the initial get/list/
-put/delete operations. Final results bind their complete action receipt chain;
-unknown operations stop without continuation or replay. This small store does
-not select a production memory backend. Context/evidence, questions/tool actions,
-service composition, worker stream handles, observability and the independent
-memory/workflow package proof remain required P22 work.
-
-P22A9 implements [structured-question checkpoints](developer/extension-questions.md)
-for extension tools/commands/services. Workers close before question publication.
-Idle resume restores the question/checkpoint without running code. Only an
-explicit validated answer authorizes a newly journaled continuation; it never
-grants later write approval. Cancellation, bounded answers, action-chain integrity
-and interrupted-answer no-replay recovery are exercised by independent artifacts.
-
-P22A10 implements [bounded workflow calls](developer/extension-tool-actions.md)
-to the existing file/shell tools. Full mutation approval, scoped instruction
-preflight, linked owned execution and source-bound receipts preserve host policy.
-Known read failures retain typed failure codes. Unsupported tools, deadlines and
-incomplete/ambiguous effect outcomes stop the callback
-chain without replay. Service composition, context/evidence, worker streams,
-observability and the independent package proof remain required P22 work.
-
-P22A11 implements [typed requirements and explicit operator service routes](developer/extension-services.md).
-Value contract 1 pins full dependency identities/schema, rejects missing/cyclic
-dependencies before activation, and journals owned jobs with typed result
-provenance. Idle restore runs no code. Nested interactive/effectful services
-require a separately negotiated future contract; value replies cannot acquire
-host effects. Context/evidence, worker streams, observability and the independent
-package coverage proof remain P22 work.
-
-P22A12 implements [session context and receipt-bound evidence](developer/extension-context.md).
-Explicit publications replace only the caller's bounded set. Assertions remain
-unverified; literal excerpts can bind successful prior action receipts. Main
-requests pin exact context snapshots before dispatch; idle resume uses committed
-data without callbacks or retrieval. No mandatory instructions/history are
-discarded. Worker streams, observability/debugging, the independent installed
-package coverage proof and supervised review remain required P22 work.
+Remote catalogs/download assistants, turnkey builders, idle hot activation and
+nested interactive/effectful service contracts remain explicit future
+enhancements. Current value-service replies cannot acquire those capabilities.
+Optional cost/budget policy is P23; voice/realtime is P24; researched default-off
+knowledge extensions are P25. P25 can proceed independently of voice.
 
 Acceptance:
 

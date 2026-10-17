@@ -41,81 +41,72 @@ needed. Match the OS/architecture and libc requirements in the release filename.
 
 ## Use Ipse
 
-Follow the [operator guide](docs/operator/usage.md) for ChatGPT subscription
-sign-in, other providers, approvals, skills, session resume, and logout.
-ChatGPT subscription is the default; API billing always requires explicit provider
-selection. In chat, `/info` shows the running application version and configured
-provider/model without calling a model. Review proposed file and shell calls before approving them.
-Interactive chat also supports validated single-choice, multi-select and free-text
-[operator questions](docs/operator/usage.md#operator-questions), with explicit
-answers and resumable waiting; answers grant no action permission.
-Shell commands use trusted local execution by default. `--sandbox native` requests
-the opt-in Linux or macOS workspace sandbox and fails closed when unavailable; see
-[shell policy](docs/operator/usage.md#shell-policy).
-Core and bundled-release checks passed on Linux x86_64 and macOS arm64;
-native macOS enforcement also passed on macOS 26.7.2 locally and macOS 14 CI, both arm64. Detached
-children may survive cancellation with workspace access. Windows is future work.
+Follow the [operator guide](docs/operator/usage.md) for login, provider selection,
+approvals and chat. ChatGPT subscription is the default; API billing requires
+explicit provider selection. `/info` reports the running application and
+configured provider/model locally. Review full file/shell arguments before
+approving them. Structured [operator questions](docs/operator/usage.md#operator-questions)
+accept explicit single-choice, multi-select or text answers; answering grants
+no action permission.
 
-Automatic context compaction retains the original journal. Older-turn summaries
-use the selected provider; a long-turn fallback excerpts older settled tool output
-without a model request; see [operation and limits](docs/operator/usage.md#context-compaction).
-Use `/diagnostics` or local `ipse diagnose` for context byte accounting and
-[provider usage facts](docs/operator/usage-accounting.md). For an
-explicit reviewed recovery into a fresh idle chat, export a bounded handoff note
-and import it with `chat --handoff PATH`; see [context recovery](docs/operator/recovery.md).
-Run from any working directory or use `--cwd`; `/context` shows applicable saved
-instructions and `/context refresh` reloads them while idle. See
-[workspace instructions](docs/operator/usage.md#workspace-instructions).
-Operator and trusted project/directory JSON settings support explicit precedence,
-local `ipse config` inspection and resume checks; see [configuration](docs/operator/configuration.md).
-`ipse extension import PATH` and `ipse extension inspect DIGEST` provide inert,
-pinned local artifact installation. Scoped trust/selection can enable default-off
-prompt annotations and completed-answer formatting in separate Elixir workers.
-Reviewed artifacts can also declare schema-checked tools, commands and standalone
-services; `/ext` inspects the active catalog and invokes operator commands.
-Explicit host-state capabilities support scoped revision-checked storage with
-separate write approval; no automatic memory adapter is enabled.
-Trusted extensions can ask structured questions and resume from bounded checkpoints
-only after explicit answers; idle recovery never starts their callbacks.
-An explicit workflow-tool capability reuses bounded file/shell tools, workspace
-instruction checks and normal mutation approval.
-Typed service requirements use explicit operator bindings and owned value jobs;
-unknown routes, schema mismatches and cycles refuse activation.
-Resume pins code/configuration and restores committed projections without replay.
-See [extensions](docs/operator/extensions.md) for bounds and current SDK scope.
-Explicit context publications support bounded assertions or receipt-backed
-excerpts, with cached request snapshots and separate mandatory instructions.
-Use `$project-orientation` to assess a repository's purpose, current changes,
-and available checks before choosing next steps; see
-[project assessment](docs/operator/usage.md#working-with-the-agent).
-Skills are discovered without copying from project `.agents/skills`, Ipse user
-`IPSE_HOME/skills`, shared operator `~/.agents/skills`, then bundled definitions
-(in that precedence order). The shared home is independent of `IPSE_HOME`;
-see [skill limits and provenance](docs/operator/usage.md#skills).
-Explicit stdio and Streamable HTTP MCP tools are available through `--mcp-config`; see
-[configuration and trust boundaries](docs/operator/mcp.md).
-Local MCP servers default to trusted execution; a per-server `"sandbox": "native"`
-requests the fixed native workspace policy independently of shell `--sandbox`.
-Network MCP requires an explicit endpoint, verified HTTPS, and optional server-specific
-bearer credentials; literal loopback HTTP needs an explicit exception.
-The MCP allowlist can include exact tools, resource URIs, and prompt names;
-review their metadata and approval requests as untrusted data. See the
-[MCP operator guide](docs/operator/mcp.md) for limits and platform evidence.
-Opt-in local delegation is available with `--subagents`; it runs serial children
-by default or two parallel children with `--subagent-concurrency 2`,
-in the same workspace with separate journals and parent-mediated approvals.
-[Named profiles and task roles](docs/operator/model-profiles.md) can route bounded
-children to an explicitly configured provider/model, including local Ollama. See [local subagents](docs/operator/subagents.md) for limits and
-recovery behavior. There is no full-screen TUI, remote-agent, or Windows support.
-See [runtime limits](docs/operator/usage.md#runtime-and-limits)
-and [architecture](docs/developer/architecture.md) for details.
+Shell commands run with trusted local permissions by default.
+`--sandbox native` explicitly requests the Linux/macOS workspace profile and
+fails closed when unavailable; see [shell policy](docs/operator/usage.md#shell-policy).
+Core/package checks have passed on Linux x86_64 and macOS arm64. Native macOS
+enforcement passed locally on macOS 26.7.2 and on macOS 14 CI; detached children
+can still survive cancellation with workspace access. Windows is future work.
+The [verification record](docs/developer/testing.md#current-evidence-and-next-checks)
+identifies tested revisions and remaining platform gates.
 
-Use `$research` with explicitly configured search/fetch MCP tools for bounded
-research and a durable source/claim ledger; see [research setup](docs/operator/research.md).
-No external search service is embedded or required.
+### Workspace, skills and configuration
 
-Find setup, operation, development, and verification guidance in the
-[documentation map](docs/index.md).
+Start from the target directory or use `--cwd`. `/context` shows saved scoped
+instructions; `/context refresh` reloads them while idle. Operator and trusted
+project/directory JSON settings have explicit precedence, local `ipse config`
+inspection and pinned resume identity. See [configuration](docs/operator/configuration.md)
+and [workspace instructions](docs/operator/usage.md#workspace-instructions).
+
+Use `$project-orientation` to assess a project's purpose, current changes and
+available checks before choosing next steps. Skills are discovered in project
+`.agents/skills`, Ipse user `IPSE_HOME/skills`, shared operator `~/.agents/skills`,
+then bundled definitions. Shared skills are independent of `IPSE_HOME`; see
+[skill provenance and limits](docs/operator/usage.md#skills).
+
+### Sessions and recovery
+
+Automatic compaction retains the original journal. Older-turn summaries use
+the selected provider; a long-turn fallback excerpts older settled tool output
+without a model request. Use `/diagnostics` or local `ipse diagnose` for byte
+accounting and [provider usage facts](docs/operator/usage-accounting.md).
+When safe compaction cannot continue, export a reviewed handoff and import it
+with `chat --handoff PATH` into a fresh idle session. See
+[compaction limits](docs/operator/usage.md#context-compaction) and
+[context recovery](docs/operator/recovery.md).
+
+### Extensions and external capabilities
+
+[Extensions](docs/operator/extensions.md) use inert local import, separate
+operator trust and explicit session selection. The two shipped hooks are
+default-off. Reviewed artifacts can expose typed tools/commands/services and
+negotiate state, questions, workflow tools, service composition or contextual
+evidence. `/ext` inspects the active catalog and invokes operator commands.
+Effects retain normal approval; cached receipts/projections restore without
+replay. The full SDK, observability controls and independent package proof
+remain [P22 work](docs/plan.md#p22-extension-scaffold-and-lifecycle-hooks).
+
+Explicit stdio and Streamable HTTP [MCP tools](docs/operator/mcp.md) use
+`--mcp-config`. Local servers have their own trusted/native sandbox setting;
+shell policy does not change it. Network MCP needs a configured endpoint,
+verified HTTPS and optional server-specific bearer credentials. Literal
+loopback HTTP requires an explicit exception.
+
+Opt-in [local subagents](docs/operator/subagents.md) support serial or bounded
+parallel work with separate approvals, journals and explicit model routing.
+Use `$research` with configured search/fetch MCP tools for a durable
+[source/claim ledger](docs/operator/research.md). No search service or automatic
+memory backend is required. The terminal is line-oriented; remote agents and
+a full-screen TUI remain unsupported. Use the [documentation map](docs/index.md)
+for the authoritative operator, developer and verification guides.
 
 ## Development
 

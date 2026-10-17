@@ -5,10 +5,13 @@ for operation, and [troubleshooting](../operator/troubleshooting.md) for recover
 
 ## Documentation completion check
 
-Before declaring any sub-goal or milestone done, review developer and operator
-guidance against implementation and actual results. Update commands, examples,
-limitations, and status claims; separate fixture coverage from live checks.
-Check relative file links, heading anchors, and consistency between entry points.
+Before declaring any sub-goal or milestone done, edit affected developer/operator
+guides as coherent documents. Rework structure and flow around their audience,
+integrate new behavior into existing explanations and reconcile overlapping
+guidance. Remove repetition and stale claims; separate current procedures,
+proposals and dated evidence. Validate commands, examples and limitations against
+implementation and actual results. Check relative file links, heading anchors
+and terminology across entry points; fixture coverage is distinct from live checks.
 When adding or moving a guide, update the map and all old references. Keep
 operator procedures in `docs/operator/`, developer guidance in `docs/developer/`,
 and superseded material in the [archive](../archive/index.md).
@@ -200,6 +203,32 @@ is in [Arch local provider checks](#arch-release-and-local-provider-checks-2026-
 and [runtime identity](#p1-runtime-identity-2026-10-15).
 
 ## Current evidence and next checks
+
+The latest local runtime checkpoint is `7c2df84` on Linux Serenity: build,
+warnings-as-errors compilation, 477 tests with 14 macOS-only exclusions, both
+actual Elixir 1.18.4/1.20.4 formatter checks, the credential-free demo, and the
+extracted Linux package baseline passed. See
+[context/evidence details](#p22-session-context-and-evidence-2026-10-16).
+The service commit's hosted run stopped at formatting; the context increment
+repairs it. The [context hosted run](https://github.com/lexlapax/ipse/actions/runs/39000762785)
+passed the full Ubuntu build/test/demo/package checks. On macOS, formatting and
+compilation passed, but the suite failed at the existing MCP lost-response recovery
+fixture's five-second wait. Native enforcement, demo and packaging were skipped
+on that job. The full macOS completion gate remains open.
+
+P22 still needs worker stream access, observability/debugging, the independent
+installed-package proof and supervised review. P23–P25 and the final license
+transition remain open; the [plan](../plan.md) owns acceptance/status. Do not infer
+current platform or live-provider support from a narrower or older passing record.
+
+## Historical verification records
+
+The dated records below preserve what ran at each checkpoint, including failures,
+interventions and superseded limitations. A claim that work was pending describes
+that record's state, not the latest implementation. Counts and successful jobs
+apply to the recorded revision/scope; skipped jobs are not verification evidence.
+Use the current summary above and linked topic contracts before reproducing old
+commands or treating a historical result as current completion.
 
 ### Documentation restructure, 2026-10-14
 
@@ -2836,6 +2865,7 @@ The source hook/accounting/private-text fixture passed through its explicit
 matching OTP 29.1.1 notices and passed `scripts/verify-package.exs`: isolated
 homes, default/explicit workspace paths, utility-only PATH, help/demo and bundled
 MCP/delegation/extension checks. This is the package baseline, not an extracted
-independent context artifact proof or hosted macOS evidence for this increment.
+independent context artifact proof. The [current summary](#current-evidence-and-next-checks)
+records the separate hosted Linux success and macOS fixture failure.
 Documentation validation passed **69 Markdown files / 705 local file and heading
 links**, with no errors.
