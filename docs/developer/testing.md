@@ -2515,3 +2515,11 @@ across the supported versions. Local formatting, warnings-as-errors compilation
 and **16 focused worker/session tests** passed after the repair. The next hosted
 run must independently establish floor-toolchain and macOS runtime/package evidence.
 See [operator troubleshooting](../operator/troubleshooting.md#build-and-sockets).
+
+[The repaired hosted run](https://github.com/lexlapax/ipse/actions/runs/38984630310)
+for `efbc862` passed both `ubuntu-latest` and `macos-14` on the existing
+Elixir 1.18 / OTP 27 matrix. Formatting, compilation, default tests, demo,
+packaging and extracted-package verification passed on both; the macOS native
+enforcement step also passed. This establishes hosted macOS hook/package
+verification, not a local macOS run on Serenity. The matrix used credential-free
+fixtures and did not validate a paid account or publish a release.
