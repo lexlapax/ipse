@@ -33,6 +33,12 @@ dependencies and options before granting trust. A digest establishes identity,
 not authenticity or safety. Do not add artifacts to Ipse's code path.
 See the [author contract](../developer/extension-artifacts.md).
 
+Extension authors can use `ipse extension check --fixture PATH` with a dedicated
+operator configuration and ordinary reviewed selections. This executes code through
+synthetic Sessions; it is separate from inert import/inspection. See
+[conformance inputs and boundaries](../developer/extension-conformance.md) for
+scratch state, assertions, explicit answers, approvals and failure handling.
+
 ## Configure selections
 
 Merge these top-level fields into the operator's version-1

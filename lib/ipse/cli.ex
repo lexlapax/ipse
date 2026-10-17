@@ -16,6 +16,7 @@ defmodule Ipse.CLI do
   ipse extension import PATH       Copy a local inert extension artifact
   ipse extension inspect DIGEST    Verify an installed artifact without executing it
   ipse extension list              List inert built-in extension descriptors
+  ipse extension check --fixture PATH  Exercise selected extensions with synthetic inputs
   ipse research --resume ID        Export a saved session's evidence ledger locally
   ipse diagnose --resume ID        Inspect content-free saved context measurements
   ipse handoff --resume ID --note TEXT  Export an explicit recovery note locally
@@ -44,6 +45,8 @@ defmodule Ipse.CLI do
   --profile ID                         Select an operator-configured main profile
   --extension INSTANCE                 Activate a configured temporary extension instance
   --no-extensions                      Disable configured extension instances
+  --fixture PATH                       Synthetic inputs for extension check
+  --keep-fixture                       Retain its private scratch state and journals
   --observability off|local|export      Operator diagnostic capture policy (default off)
 
   Chat asks before writes, shell, MCP, and delegation. Headless run denies them without --yes.
@@ -91,6 +94,8 @@ defmodule Ipse.CLI do
           extension: :keep,
           extensions: :boolean,
           observability: :string,
+          fixture: :string,
+          keep_fixture: :boolean,
           json: :boolean,
           note: :string,
           help: :boolean,
@@ -103,6 +108,10 @@ defmodule Ipse.CLI do
       invalid != [] ->
         IO.puts(:stderr, "Unknown options: #{inspect(invalid)}")
         1
+
+      (Keyword.has_key?(opts, :fixture) or Keyword.has_key?(opts, :keep_fixture)) and
+          (rest != ["extension", "check"] or opts[:demo] == true) ->
+        report({:error, "Fixture options require extension check."})
 
       Keyword.has_key?(opts, :handoff) and
           (rest not in [[], ["chat"]] or Keyword.has_key?(opts, :resume) or opts[:demo] == true or
@@ -189,6 +198,43 @@ defmodule Ipse.CLI do
     extension_artifact(
       Ipse.Extensions.Registry.lookup(Path.join(home(), "extensions/artifacts"), digest)
     )
+  end
+
+  defp dispatch(["extension", "check"], opts) do
+    allowed =
+      ~w(config cwd trust_project_config project_config extension extensions yes sandbox observability fixture keep_fixture json)a
+
+    with true <- is_binary(opts[:fixture]) and Enum.all?(Keyword.keys(opts), &(&1 in allowed)),
+         {:ok, fixture, digest} <- Ipse.Extensions.Conformance.read(opts[:fixture]),
+         {:ok, effective} <- Ipse.Config.resolve(opts[:cwd] || default_cwd(), home(), opts) do
+      IO.puts(
+        :stderr,
+        "Synthetic SDK check: selected trusted workers use your OS permissions. Host mutations require --yes; context and state use a scratch workspace."
+      )
+
+      sandbox = if effective.settings["sandbox"] == "native", do: :native, else: :off
+
+      case Ipse.Extensions.Conformance.run(effective.extensions, home(), fixture,
+             yes: opts[:yes] == true,
+             keep: opts[:keep_fixture] == true,
+             sandbox: sandbox,
+             observability: effective.observability.policy
+           ) do
+        {:ok, result} ->
+          IO.puts(Jason.encode!(Map.put(result, "fixture_sha256", digest), pretty: true))
+          if result["passed"], do: 0, else: 1
+
+        _ ->
+          report(
+            {:error, "Synthetic conformance execution failed; no fixture content was printed."}
+          )
+      end
+    else
+      _ ->
+        report(
+          {:error, "Invalid conformance fixture/configuration or unsupported check options."}
+        )
+    end
   end
 
   defp dispatch(["research"], opts) do

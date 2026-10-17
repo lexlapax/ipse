@@ -1028,6 +1028,7 @@ persistent use. They are design walkthroughs, not execution proofs.
 | Shared committed metadata (A17) | Allowlisted model/tool/context/question/child/extension/turn projections retain stable source IDs and existing host causal links; no broader delivery or exporter activation | [Lifecycle events](developer/lifecycle-events.md#internal-journal-source-and-prompt-views) |
 | Diagnostic capture (A18) | Operator-only off/local/export policy, default-off local sink, bounded owned worker queues, visible drops/failures, rotation, immediate stop and independent recovery receipts | [Controls](operator/observability.md), [contract](developer/observability.md) |
 | Local trace retention (A19) | Bundled sink backend bounds slots/files/bytes across sessions, protects active writers with native locks and refuses corrupt/mismatched policy without changing host APIs | [Ring contract](developer/observability.md#local-ring-retention) |
+| SDK conformance (A20) | Explicit synthetic CLI checks reuse Sessions, trust/approval and recovery schemas; support prompt/tool/command/service scenarios, structured answers, scratch state and content-free assertions | [Author runner](developer/extension-conformance.md) |
 
 The [verification guide](developer/testing.md#current-evidence-and-next-checks)
 distinguishes source fixtures, extracted-package baselines, hosted platform
@@ -1041,7 +1042,7 @@ broader private lifecycle subscriptions, full causal links and explicit bounded
 history catch-up. Prompt jobs and the pre-request recall seam are implemented;
 fully concurrent effectful scheduling remains a negotiated enhancement. Diagnostic
 capture, bounded sinks and aggregate local retention are implemented; missing
-live lifecycle/wait spans and developer conformance/debugging remain open. Core
+live lifecycle/wait spans and bounded raw developer tracing remain open. Core
 must then be frozen for the independent
 installed memory/workflow/retrieval package proof, followed by supervised independent
 review and the required source/package/platform checks. See the

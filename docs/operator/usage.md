@@ -564,7 +564,7 @@ These available facilities are distinct from the planned capabilities below.
 
 | Milestone | Remaining capability | Status and boundary |
 | --- | --- | --- |
-| P22 | Broader lifecycle seams, debugging/conformance and the independent package proof | In progress; bounded metadata capture, local ring retention and off/local/export mode are available |
+| P22 | Broader lifecycle seams, raw developer tracing and the independent package proof | In progress; synthetic SDK checks, bounded capture/local retention and off/local/export mode are available |
 | P23 | Cost reports and budget admission | Planned over durable usage facts; context bytes are not tokens or an invoice |
 | P24 | STT/text-agent/TTS and realtime media | Planned with explicit device/provider/billing selection; text authentication does not imply audio access |
 | P25 | Optional working/long-term memory, research engine, graph and RAG | Research/selection gates remain; each adapter will be independently configured and default-off |

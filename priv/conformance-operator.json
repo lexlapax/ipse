@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "extension_trust": [
+    {"artifact": "builtin:prompt-annotation:1", "capabilities": ["transform.prompt"],
+     "allow_project": false, "allow_children": false}
+  ],
+  "extensions": [
+    {"instance": "annotation", "artifact": "builtin:prompt-annotation:1",
+     "enabled": false, "options": {"text": "Synthetic note"},
+     "order": 0, "lifetime": "session"}
+  ]
+}

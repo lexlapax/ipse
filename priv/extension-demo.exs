@@ -137,6 +137,7 @@ defmodule Ipse.ExtensionDemo do
       :ok = Ipse.Session.close(resumed)
 
       local_trace(root, config)
+      conformance(catalog, config.home)
 
       IO.puts(
         "Extension prompt/presentation and unchanged idle resume fixture passed without inference. Local diagnostic sink fixture passed without network inference."
@@ -146,6 +147,28 @@ defmodule Ipse.ExtensionDemo do
     after
       File.rm_rf!(root)
     end
+  end
+
+  defp conformance(catalog, home) do
+    fixture = %{
+      "version" => 1,
+      "cases" => [
+        %{
+          "id" => "hooks",
+          "kind" => "prompt",
+          "text" => "Synthetic conformance input",
+          "expect" => %{
+            "status" => "ok",
+            "requests" => 1,
+            "final" => "<answer>Conformance fixture completed.</answer>",
+            "records" => %{"extension_transform_result" => 2}
+          }
+        }
+      ]
+    }
+
+    {:ok, %{"passed" => true, "provider" => "synthetic"}} =
+      Ipse.Extensions.Conformance.run(catalog, home, fixture)
   end
 
   defp local_trace(root, config) do

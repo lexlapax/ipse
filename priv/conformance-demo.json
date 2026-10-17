@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "cases": [
+    {"id": "annotate", "kind": "prompt", "text": "Synthetic question",
+     "expect": {"status": "ok", "requests": 1, "user_contains": "Synthetic note",
+       "final": "Conformance fixture completed.", "records": {"extension_transform_result": 1}}}
+  ]
+}

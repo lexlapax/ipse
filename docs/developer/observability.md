@@ -4,7 +4,8 @@ The implemented path projects committed journal facts into shared metadata,
 then dispatches it through bounded owned sink workers. Capture defaults to off;
 operator policy, selection and export capability are separate gates.
 [Operator procedures](../operator/observability.md) own configuration and stop.
-Raw developer tracing and the SDK conformance runner remain P22 work. The
+The [synthetic conformance runner](extension-conformance.md) is available; raw
+developer tracing remains P22 work. The
 [dated proposal](../archive/2026-10-17-observability-proposal/observability.md)
 preserves the earlier design.
 
@@ -170,7 +171,9 @@ Start with synthetic fixtures, `/diagnostics` and the metadata timeline:
 or collectors. Test output is not raw provider tracing. Never replay effects to
 investigate failure.
 
-P22 still needs a synthetic SDK conformance runner and bounded local BEAM tracing.
+Use the [conformance runner](extension-conformance.md) for synthetic callback,
+question, action and context scenarios through the ordinary Session validators.
+P22 still needs bounded local BEAM tracing.
 Evaluate [ElixirLS DAP](https://elixir-lsp.github.io/elixir-ls/getting-started/vscode/)
 and [OTP debugger](https://www.erlang.org/doc/apps/debugger/debugger_chapter.html)
 before adding source-debugging infrastructure.

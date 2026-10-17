@@ -22,6 +22,7 @@ Current contracts are organized by responsibility:
 | Declared read-only prompt delivery | [Event subscriptions](extension-events.md), with separate metadata/private authority and required/optional receipts |
 | Source-bound prompt actions and recall | [Event jobs](extension-event-jobs.md), with finite approved actions, before-request contributions and after-turn maintenance |
 | Optional diagnostic capture | [Observability](observability.md), with operator policy, bounded owned sinks, aggregate local ring retention and immediate stop |
+| Author conformance inputs | [Synthetic checks](extension-conformance.md), with normal trust/approval, scratch Sessions, explicit answers and content-free assertions |
 
 Broader lifecycle subscriptions, developer controls and the
 independent installed-package/supervised proofs remain open. The

@@ -39,6 +39,7 @@ dependency. The main choices are:
 | Context and evidence | Existing validators, host-action receipts and journals | Bounded ordinary map/list access binds literal excerpts; no retrieval or JSON-path runtime is needed |
 | Request accounting and text delivery | OTP crypto/clocks, GenServer/monitors/queues, existing Worker/native ownership and provider tasks | Durable facts, resource leases and private acknowledged delivery have different failure semantics from optional telemetry; no stream/media framework is added |
 | Diagnostic capture and local sink | OTP atomics/monitors/tasks/filesystem, existing Worker/Runner/native advisory locks/Journal/Source and schema adapters | Atomic queue admission and a bounded backend ring protect active writers and disk limits; shared metadata/policy/receipts remain harness-specific. No broker, collector, logging package or direct Telemetry API is added |
+| Synthetic SDK conformance | Existing Config/Registry/Session/Questions/Diagnostics and bounded JSON Schema adapter | Real host callbacks/approvals/recovery validators are exercised with a synthetic provider and scratch state; no duplicate worker protocol, effect replay framework or test service is added |
 
 [DETS](https://www.erlang.org/doc/apps/stdlib/dets.html) was evaluated for the
 scoped store. The 256-record/1 MiB contract needs exact JSON snapshots,

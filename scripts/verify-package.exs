@@ -69,6 +69,30 @@ defmodule Ipse.PackageVerifier do
 
     run!(wrapper, ["--help"], release, env, "bundled CLI help")
 
+    [app] = Path.wildcard(Path.join([release, "lib", "ipse-*"]))
+
+    check =
+      run!(
+        wrapper,
+        [
+          "extension",
+          "check",
+          "--config",
+          Path.join(app, "priv/conformance-operator.json"),
+          "--fixture",
+          Path.join(app, "priv/conformance-demo.json"),
+          "--extension",
+          "annotation",
+          "--no-project-config"
+        ],
+        default_workspace,
+        env,
+        "bundled synthetic conformance CLI"
+      )
+
+    unless String.contains?(check, "\"provider\": \"synthetic\""),
+      do: raise("release conformance CLI did not identify its synthetic provider")
+
     # The first run exercises default cwd from a directory outside the release.
     run!(
       wrapper,
