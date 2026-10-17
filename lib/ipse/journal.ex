@@ -41,6 +41,45 @@ defmodule Ipse.Journal do
 
   def append(_state_dir, _id, _event), do: {:error, :event_must_be_a_map}
 
+  @doc "Append and sync a record before returning its private, stable lifecycle source. Caller holds the session lock."
+  def append_with_source(state_dir, id, event) when is_map(event) do
+    with :ok <- validate_id(id),
+         {:ok, encoded} <- Jason.encode(event),
+         {:ok, decoded} <-
+           Ipse.Extensions.Manifest.decode_json(encoded, Ipse.Lifecycle.Source.record_bytes()),
+         path = journal_path(state_dir, id),
+         {:ok, contents} <- File.read(path),
+         :ok <- validate_complete_journal(contents),
+         {:ok, source} <- Ipse.Lifecycle.Source.build(id, byte_size(contents), decoded),
+         :ok <- ensure_state_dir(state_dir),
+         :ok <- append_sync(path, encoded <> "\n") do
+      {:ok, source}
+    end
+  end
+
+  def append_with_source(_, _, _), do: {:error, :event_must_be_a_map}
+
+  @doc "Read a bounded page of complete source records without replay or tail repair. Cursor is a record's byte offset."
+  def source_page(state_dir, id, cursor \\ 0, limit \\ 32)
+
+  def source_page(state_dir, id, cursor, limit)
+      when is_integer(cursor) and cursor in 0..9_007_199_254_740_991 and
+             is_integer(limit) and limit in 1..64 do
+    with :ok <- validate_id(id),
+         {:ok, file} <-
+           :file.open(String.to_charlist(journal_path(state_dir, id)), [:read, :binary, :raw]) do
+      try do
+        with :ok <- source_boundary(file, cursor) do
+          read_sources(file, id, cursor, limit, 0, [])
+        end
+      after
+        :file.close(file)
+      end
+    end
+  end
+
+  def source_page(_, _, _, _), do: {:error, :invalid_source_page}
+
   def load(state_dir, id) do
     with :ok <- validate_id(id),
          {:ok, contents} <- File.read(journal_path(state_dir, id)),
@@ -216,4 +255,76 @@ defmodule Ipse.Journal do
   end
 
   defp now, do: DateTime.utc_now() |> DateTime.to_iso8601()
+
+  defp source_boundary(_, 0), do: :ok
+
+  defp source_boundary(file, cursor) do
+    case :file.pread(file, cursor - 1, 1) do
+      {:ok, "\n"} -> :ok
+      _ -> {:error, :invalid_source_cursor}
+    end
+  end
+
+  defp read_sources(_file, _id, cursor, 0, _bytes, records),
+    do: {:ok, %{records: Enum.reverse(records), next: cursor}}
+
+  defp read_sources(file, id, cursor, remaining, bytes, records) do
+    case source_line(file, cursor, <<>>) do
+      :eof ->
+        {:ok, %{records: Enum.reverse(records), next: nil}}
+
+      {:ok, line} ->
+        if records != [] and bytes + byte_size(line) > Ipse.Lifecycle.Source.record_bytes() do
+          {:ok, %{records: Enum.reverse(records), next: cursor}}
+        else
+          with {:ok, record} <-
+                 Ipse.Extensions.Manifest.decode_json(line, Ipse.Lifecycle.Source.record_bytes()),
+               true <- is_map(record),
+               {:ok, source} <- Ipse.Lifecycle.Source.build(id, cursor, record) do
+            read_sources(
+              file,
+              id,
+              cursor + byte_size(line) + 1,
+              remaining - 1,
+              bytes + byte_size(line),
+              [%{source: source, record: record} | records]
+            )
+          else
+            _ -> {:error, :invalid_source_record}
+          end
+        end
+
+      error ->
+        error
+    end
+  end
+
+  defp source_line(file, cursor, acc) do
+    limit = Ipse.Lifecycle.Source.record_bytes()
+    remaining = limit + 1 - byte_size(acc)
+
+    case :file.pread(file, cursor + byte_size(acc), min(16_384, remaining)) do
+      {:ok, chunk} ->
+        case :binary.match(chunk, "\n") do
+          {index, 1} ->
+            {:ok, acc <> binary_part(chunk, 0, index)}
+
+          :nomatch
+          when byte_size(acc) + byte_size(chunk) > limit ->
+            {:error, :source_record_too_large}
+
+          :nomatch ->
+            source_line(file, cursor, acc <> chunk)
+        end
+
+      :eof when acc == <<>> ->
+        :eof
+
+      :eof ->
+        {:error, :incomplete_source_record}
+
+      {:error, _} ->
+        {:error, :source_read_failed}
+    end
+  end
 end

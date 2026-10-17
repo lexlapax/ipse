@@ -37,7 +37,7 @@ digest and generation 1. The host digest binds `Ipse.Extension`, Identity, Catal
 Invocation, Manifest, Store, Registry, Worker, Bootstrap, Host, Projection,
 Actions, Operation, ToolAction, Services, ServiceCall, State, Questions, Tools, Runner, WorkspaceContext,
 the shared schema adapter, usage normalizer/
-ledger, private text channel and Session BEAM bytes. It is an exact API
+ledger, private text channel, Journal, lifecycle Source/Event and Session BEAM bytes. It is an exact API
 implementation pin, not a signature or full operating-system/toolchain digest.
 Startup checks current VM components and code; resume requires identical pinned
 identities. No migration or hot activation is implemented.

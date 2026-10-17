@@ -18,6 +18,7 @@ Current contracts are organized by responsibility:
 | Explicit continuation and approved effects | [Questions](extension-questions.md), [workflow tools](extension-tool-actions.md) |
 | Typed dependency composition and contextual evidence | [Services](extension-services.md), [context](extension-context.md) |
 | Durable request facts and embedded/worker private delivery | [Usage accounting](usage-accounting.md), [text channel](text-streams.md) |
+| Internal journal occurrence identity and typed prompt views | [Lifecycle source/view adapter](lifecycle-events.md#internal-journal-source-and-prompt-views); subscriber admission remains pending |
 
 Generic private lifecycle subscriptions, event-triggered jobs,
 observability/developer controls and the
@@ -337,7 +338,7 @@ interpreted as effects. Current interfaces and remaining proposals are distinct:
 | Prompt/presentation | Implemented `append` or `prefix`/`suffix` objects | Journal source-bound derived projection; preserve originals/native data |
 | Context contribution | Implemented `context.publish` sets with provenance | Accept/refuse within budgets, then pin exact main-request snapshots |
 | Tool/command/service | Implemented declared result schemas or explicit `host_call` proposals | Owned invocation; full tool approval and finite separately admitted actions |
-| Lifecycle subscriptions | Pending shared event identity and metadata/private views | Diagnostic delivery never changes context/actions or replaces mandatory journals |
+| Lifecycle subscriptions | Internal stable journal sources and typed prompt views; generic delivery/admission pending | Diagnostic delivery never changes context/actions or replaces mandatory journals |
 | Triggered work and ordered recall | Pending generic event-to-job and pre-request hook contracts | Separate action admission; committed source/provenance and deterministic request snapshots |
 | Before-settlement scheduling | Future explicitly negotiated capability | Must validate remaining budgets/phase; no arbitrary auto-continuation exists |
 

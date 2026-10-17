@@ -22,6 +22,9 @@ selected independent workers for prompt/presentation and
 [typed invocations](extension-invocations.md), but has no observation bus or
 supported operator external trace-export interface. P19 adds content-free context accounting
 and local request measurements, not general lifecycle hooks or remote export.
+The internal source/view adapter can now identify committed journal occurrences
+and project typed prompt metadata/private views without callbacks. It does not
+initialize diagnostic sinks or expose a subscription/export interface.
 
 ## Enablement and configuration
 

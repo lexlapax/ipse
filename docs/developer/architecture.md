@@ -287,6 +287,12 @@ does not grant effects, and background work cannot change an admitted request.
 Private subscriptions, job admission, ordered recall, lifecycle observability
 and the independent installed-package proof remain [P22 gates](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
 
+The internal lifecycle Source/Event adapter now binds committed journal facts to
+stable occurrence IDs and projects explicit metadata/private prompt views.
+Bounded source pages neither repair tails nor execute/replay callbacks. They
+contain private journal records and are not a diagnostic export or worker API;
+subscriber admission and other lifecycle seams remain pending.
+
 Keep provider-specific wire formats inside provider adapters and keep session
 state transitions in `Ipse.Session`. Put ordinary filesystem and shell
 operations behind the tool boundary. Add new capabilities only with clear

@@ -1,8 +1,8 @@
 # Lifecycle events, hooks and subscribers
 
-P22 design decision, reviewed against `dc07fb5` on 2026-10-16. This document
-specifies the remaining generic event foundation; it is **not an implemented
-subscription API**. Existing [transforms](extension-hooks.md),
+P22 lifecycle design, with an implemented internal journal-source and prompt-view
+adapter. Generic subscription admission and event-triggered jobs remain pending;
+this is **not an implemented subscription API**. Existing [transforms](extension-hooks.md),
 [invocations/actions](extension-host-calls.md), [context](extension-context.md)
 and [visible-text delivery](text-streams.md) retain their current wire contracts.
 The [plan](../plan.md#p22-extension-scaffold-and-lifecycle-hooks) owns delivery
@@ -29,6 +29,11 @@ unordered broadcast, or make diagnostics the only way to receive lifecycle data.
 Existing journals remain the recovery authority; this does not require replacing
 Session with a new event-sourcing or workflow framework.
 
+The current internal adapter provides stable source references and typed prompt
+views without changing the journal format or initializing any subscriber. The
+[implemented source API](#internal-journal-source-and-prompt-views) below is the
+building block for the remaining delivery contracts, not a new execution path.
+
 | Needed by a prompt-driven knowledge graph | Current support | Remaining foundation |
 | --- | --- | --- |
 | Read prompt text | Selected prompt transforms receive effective visible user text | Generic subscription with an explicit original/effective view and scope |
@@ -44,6 +49,77 @@ performing untracked I/O inside either callback would bypass the intended host
 contract. Worker isolation alone does not prevent reviewed executable code from
 using ordinary OS permissions; capability checks govern supported host APIs and
 do not constitute a new OS sandbox.
+
+## Internal journal source and prompt views
+
+`Ipse.Lifecycle.Source` binds a journal record to its session ID and byte offset.
+Its version-1 event ID is the first 128 bits of SHA-256 over the domain-separated
+session/offset identity; the canonical record digest separately binds content.
+The digest stays private. Distinct records with identical text get distinct IDs;
+all supported views of one record retain its source ID. This relies on append-only
+journals: edits/replacement require corruption review, not silent reuse of an old
+reference with changed content. The reference is identity, not authentication or
+a permission token.
+
+`Journal.append_with_source/3` returns a reference only after the append is synced;
+the caller must hold the session lock. The existing `append/3` and `load/2` retain
+their behavior. `Journal.source_page/4` reads complete records from a byte cursor
+without rewriting old journals, repairing tails or invoking callbacks. Pages
+contain at most 64 records and 1 MiB of raw JSON record bytes, plus bounded source
+references; individual records are capped at 1 MiB. The default count is 32.
+Reads use bounded chunks, validate record boundaries and reject duplicate JSON
+keys, non-object records and oversized/incomplete lines. A non-nil next cursor
+may need one final empty read to establish EOF. Concurrent append/tail repair
+needs the caller's ordinary session ownership policy; this API does not create a
+transactional catch-up snapshot or retry a changing tail automatically.
+Page reads validate the selected records, not the entire journal or its session
+metadata. Full Session recovery validation and scope checks remain prerequisites
+for admitting any work from those facts.
+
+Pages are **private journal data**, including records unsupported by the event
+adapter. Do not forward them wholesale to workers or diagnostics. A source
+reference's canonical digest detects a changed record supplied with that
+reference. Legacy records are readable within these bounds; unsupported large
+records refuse rather than being skipped or truncated.
+
+`Ipse.Lifecycle.Event.project/3` checks source/content binding and creates a closed
+version-1 envelope for the currently exercised prompt facts:
+
+| Existing journal source | Event type | Private view |
+| --- | --- | --- |
+| `extension_prompt_received` | `prompt.received` | `prompt.original` |
+| User `message` | `prompt.expanded_committed` | `prompt.expanded` |
+| Validated `transform.prompt` result | `prompt.projection_committed` | `prompt.projection` |
+
+Every type also supports a `metadata` view containing only byte counts, stable
+source correlation and, for a transform, operation/artifact correlation. Metadata
+excludes prompt text and content digests. The private view contains only its
+selected text and private source binding, never the full journal record or native
+continuation. Both use the existing 16 KiB SDK-object bound; private strings retain
+the 8 KiB limit and overflow refuses without truncation. Larger future private
+feeds need negotiated resource handles/flow control.
+
+These stages describe the actual saved facts: `expanded_committed` precedes
+transforms, and a projection may precede another configured transform. Neither is
+advertised as the final request prompt. Original input is currently recorded only
+when prompt transforms are selected. Legacy bare prompt records do not carry a
+turn ID, so the adapter does not invent one. Final effective-prompt seams, full
+causal links, ephemeral event identity and other lifecycle types remain pending.
+No manifest/configuration capability exposes these internal functions yet;
+projecting a view in host code is not subscriber authorization. The host API digest
+now pins Journal, Source and Event alongside existing extension contracts.
+Neither `Source.valid?/1` nor `Event.project/3` authenticates a worker-supplied
+record/reference pair. Future host admission must resolve references against its
+owned validated journal; workers cannot manufacture authoritative host facts.
+
+Nine Linux source fixtures in `test/lifecycle_test.exs` exercise stable identities,
+repeated prompts, legacy/noncanonical JSON byte positions, paging/record limits,
+tail/duplicate-key/scalar refusal, forged bindings, private-view bounds and secret
+exclusion. A real selected prompt-transform session verifies the three committed
+stages and byte-identical idle resume of the original session ID. The bundled
+`priv/extension-demo.exs` additionally checks those views/source IDs in source and
+extracted-runtime verification. See [actual verification scope](testing.md#current-evidence-and-next-checks);
+these fixtures do not establish subscriber admission or graph-job behavior.
 
 ## Delivery contracts
 

@@ -184,7 +184,9 @@ Generic lifecycle subscriptions and automatic prompt-driven graph/memory jobs
 are still planned, with separate permission to read private prompt content and
 to store or send it elsewhere. They are not enabled by selecting a formatter,
 text consumer or diagnostic sink. See the [event design and current gaps](../developer/lifecycle-events.md#model-and-current-coverage);
-it does not introduce usable manifest fields or CLI flags yet.
+it does not introduce usable manifest fields or CLI flags yet. The implemented
+internal source/view adapter reads committed journal facts without callbacks;
+it grants no subscription authority and does not automatically ingest history.
 
 ## Scoped state host calls
 

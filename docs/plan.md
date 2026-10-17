@@ -1022,6 +1022,7 @@ persistent use. They are design walkthroughs, not execution proofs.
 | Workflow actions (A10) | Existing file/shell tools behind instruction preflight, full mutation approval and bounded owned execution | [Tool actions](developer/extension-tool-actions.md) |
 | Service composition (A11) | Operator-bound typed value services with acyclic dependency pins and durable provenance | [Services](developer/extension-services.md) |
 | Context and evidence (A12) | Caller-scoped bounded publications, assertion/receipt distinctions and exact cached request snapshots | [Context](developer/extension-context.md) |
+| Lifecycle source/views (A14) | Internal stable journal occurrence IDs, bounded read-only source pages and distinct metadata/private prompt projections; no subscriber activation | [Lifecycle events](developer/lifecycle-events.md#internal-journal-source-and-prompt-views) |
 
 The [verification guide](developer/testing.md#current-evidence-and-next-checks)
 distinguishes source fixtures, extracted-package baselines, hosted platform
@@ -1031,8 +1032,8 @@ extension-only package proof or complete P22.
 ### Remaining completion work
 
 The [shared lifecycle event foundation](developer/lifecycle-events.md) still needs
-generic private subscriptions, committed source/causal identity, event-triggered
-owned jobs and an ordered pre-request recall seam. Diagnostic observation is one
+generic private subscriptions, full causal links, final effective-prompt seams,
+event-triggered owned jobs and an ordered pre-request recall seam. Diagnostic observation is one
 separate metadata view, with off/local/export controls, bounded sinks and developer
 conformance/debugging also pending. Core must then be frozen for the independent
 installed memory/workflow/retrieval package proof, followed by supervised independent

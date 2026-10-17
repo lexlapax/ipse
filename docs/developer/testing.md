@@ -206,14 +206,25 @@ and [runtime identity](#p1-runtime-identity-2026-10-15).
 
 | Checkpoint | Evidence | Scope and remaining limits |
 | --- | --- | --- |
-| Worker text resources, Linux Serenity | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters, 485 native-suite tests with 14 macOS exclusions | Source fixtures; independently installed package proof remains open |
+| Lifecycle source/views, Linux Serenity | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters, 494 native-suite tests with 14 macOS exclusions; nine focused lifecycle fixtures passed | Internal journal/view adapter and unchanged real-session idle resume; subscriber admission/jobs remain unimplemented |
 | Hosted worker-text baseline `dc07fb5` | [Ubuntu/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39004356777) passed build, format, compile, tests, demo and extracted packages; macOS native and default experimental sandbox checks passed | Job/step conclusions inspected; does not establish the independent installed-package proof or stronger macOS descendant containment |
-| Lifecycle/event design review | 75 Markdown documents / 911 local file and heading links passed; existing compiled CLI inert extension listing verified | Documentation/acceptance update only; private event subscriptions, triggered jobs and graph cases are not implemented or executed by this review |
+| Lifecycle source/extracted fixture | Credential-free demo, updated extension fixture and Linux glibc-2.44 package/extracted verification passed with matching OTP 29.1.1 notices and utility-only PATH | Bundled source/view adapter proof; neither an independently installed subscriber package nor new macOS evidence |
 | Provider acceptance | [Explicit live provider checks](#live-provider-acceptance-follow-up-2026-10-15) | Recorded account/model/platform combinations only; fixture tests do not establish billing, hardware or arbitrary-model support |
 
-The worker-text increment adds seven independent-artifact fixtures and a broker
-enrollment check. A focused text suite passed 20 tests; the final full Linux
-suite additionally covers the strengthened owner-death idle-resume case. See
+The nine lifecycle fixtures cover stable occurrences across rereads and repeated
+prompts, actual byte positions in legacy JSON, bounded pages/records, incomplete
+tails, duplicate keys/scalars, altered source bindings, private-view overflow and
+secret exclusion. A real selected transform session checks distinct committed
+prompt stages and byte-identical idle resume of the original session ID. The
+bundled extension fixture now exercises source IDs and metadata/private views,
+including unchanged IDs after resume; source and extracted Linux execution passed.
+Documentation checks passed 75 Markdown documents / 916 local file and heading
+links with no errors. No new model, audio device, exporter or remote service was used.
+See the [internal source/view contract](lifecycle-events.md#internal-journal-source-and-prompt-views).
+
+Worker text coverage includes seven independent-artifact fixtures and a broker
+enrollment check. Its focused text suite passed 20 tests; the full Linux suite
+covers owner-death idle resume. See
 [resource contract](text-streams.md) and
 [context/evidence checkpoint](#p22-session-context-and-evidence-2026-10-16).
 

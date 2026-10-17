@@ -126,6 +126,7 @@ seams before choosing a production memory, graph or retrieval engine:
 | Evidence/context | Caller-scoped bounded publications, assertion/receipt provenance and exact main-request snapshots | Domain records mapped to P14 source/claim identity; awaited recall at a documented pre-request seam |
 | State/deletion | Scoped CAS records, revision/generation checks, locks and tombstones through approved actions | TTL, derivative deletion/export policy and delayed-job rejection after forget |
 | Owned work | Explicit invocations with finite actions, cancellation, durable intents/outcomes and structured questions | Event-to-job admission, private prompt subscriptions, bounded ingestion/catch-up and source-event deduplication |
+| Event source/views | Internal stable journal references, bounded source pages and typed metadata/private prompt views | Subscriber authority/delivery, full causal links and final effective-prompt seams |
 | Optional model work | Existing explicit provider/profile and delegation paths | A negotiated accounted host request capability for extraction/embedding; current callbacks cannot silently call a model |
 
 The [lifecycle event design](lifecycle-events.md) makes prompt-driven graph

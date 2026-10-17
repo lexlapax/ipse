@@ -124,6 +124,7 @@ defmodule Ipse.ExtensionDemo do
       :ok = Ipse.Session.close(session)
       path = Path.join(opts[:state_dir], info.id <> ".jsonl")
       bytes = File.read!(path)
+      lifecycle = lifecycle_views(opts[:state_dir], info.id)
 
       {:ok, resumed} =
         DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, opts ++ [id: info.id]})
@@ -132,6 +133,7 @@ defmodule Ipse.ExtensionDemo do
       ^accounting = Ipse.Session.info(resumed).accounting
       "<answer>fixture answer</answer>" = Ipse.Session.info(resumed).final
       ^bytes = File.read!(path)
+      ^lifecycle = lifecycle_views(opts[:state_dir], info.id)
       :ok = Ipse.Session.close(resumed)
 
       IO.puts(
@@ -142,6 +144,43 @@ defmodule Ipse.ExtensionDemo do
     after
       File.rm_rf!(root)
     end
+  end
+
+  defp lifecycle_views(directory, id) do
+    {:ok, %{records: records, next: nil}} = Ipse.Journal.source_page(directory, id, 0, 64)
+
+    metadata =
+      for %{source: source, record: record} <- records,
+          {:ok, event} <- [Ipse.Lifecycle.Event.project(source, record, "metadata")],
+          do: event
+
+    ~w(prompt.received prompt.expanded_committed prompt.projection_committed) =
+      Enum.map(metadata, & &1["type"])
+
+    false =
+      String.contains?(Jason.encode!(metadata), [
+        "original fixture task",
+        "Fixture context",
+        "synthetic-private-native"
+      ])
+
+    for event <- metadata do
+      entry = Enum.find(records, &(&1.source["event_id"] == event["event_id"]))
+
+      view =
+        %{
+          "prompt.received" => "prompt.original",
+          "prompt.expanded_committed" => "prompt.expanded",
+          "prompt.projection_committed" => "prompt.projection"
+        }[event["type"]]
+
+      {:ok, private} = Ipse.Lifecycle.Event.project(entry.source, entry.record, view)
+      true = String.contains?(private["data"]["text"], "original fixture task")
+      false = String.contains?(Jason.encode!(event), entry.source["record_sha256"])
+      false = String.contains?(Jason.encode!(private), "synthetic-private-native")
+    end
+
+    metadata
   end
 
   defp await(session) do

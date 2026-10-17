@@ -250,6 +250,9 @@ defmodule Ipse.Extensions.Registry do
       Ipse.TextStream,
       Ipse.Extensions.TextResources,
       Ipse.Extensions.TextConsumer,
+      Ipse.Journal,
+      Ipse.Lifecycle.Source,
+      Ipse.Lifecycle.Event,
       Ipse.Session
     ]
     |> Enum.map(fn module ->
