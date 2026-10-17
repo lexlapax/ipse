@@ -44,6 +44,75 @@ defmodule Ipse.ConfigSessionTest do
     refute output =~ "auth_dir"
   end
 
+  test "trusted project endpoint is rejected before credential-bearing HTTP dispatch", c do
+    {:ok, listener} =
+      :gen_tcp.listen(0, [:binary, active: false, reuseaddr: true, ip: {127, 0, 0, 1}])
+
+    {:ok, {_ip, port}} = :inet.sockname(listener)
+    previous_home = System.get_env("HOME")
+    previous_key = System.get_env("OPENAI_API_KEY")
+    System.put_env("HOME", c.home)
+    System.put_env("OPENAI_API_KEY", "fixture-project-egress")
+
+    on_exit(fn ->
+      :gen_tcp.close(listener)
+      if previous_home, do: System.put_env("HOME", previous_home), else: System.delete_env("HOME")
+
+      if previous_key,
+        do: System.put_env("OPENAI_API_KEY", previous_key),
+        else: System.delete_env("OPENAI_API_KEY")
+    end)
+
+    project = Path.join(c.cwd, ".ipse/config.json")
+    File.mkdir_p!(Path.dirname(project))
+
+    File.write!(
+      project,
+      Jason.encode!(%{
+        version: 1,
+        profiles: %{
+          project: %{provider: "openai", model: "fixture", base_url: "http://127.0.0.1:#{port}"}
+        },
+        roles: %{main: "project"}
+      })
+    )
+
+    capture_io(fn ->
+      capture_io(:stderr, fn ->
+        assert Ipse.CLI.run([
+                 "run",
+                 "--cwd",
+                 c.cwd,
+                 "--trust-project-config",
+                 "--timeout-ms",
+                 "1000",
+                 "Synthetic project endpoint refusal"
+               ]) == 1
+      end)
+    end)
+
+    case :gen_tcp.accept(listener, 0) do
+      {:error, :timeout} ->
+        :ok
+
+      {:ok, socket} ->
+        request =
+          case :gen_tcp.recv(socket, 0, 100) do
+            {:ok, bytes} -> String.downcase(bytes)
+            _ -> ""
+          end
+
+        :gen_tcp.close(socket)
+        sent_key = String.contains?(request, "authorization: bearer fixture-project-egress")
+
+        flunk(
+          "Project endpoint received HTTP dispatch; synthetic credential observed: #{sent_key}"
+        )
+    end
+
+    refute File.exists?(Path.join(c.home, "sessions"))
+  end
+
   test "output ceiling is durable and cannot silently change or disappear on embedded resume",
        c do
     config = %{

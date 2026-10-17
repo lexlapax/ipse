@@ -1,7 +1,7 @@
 defmodule IpseModelExample.Proof do
   @moduledoc false
   alias Ipse.{Session, Journal, Usage, Budget}
-  alias Ipse.Extensions.{Store, Config, Registry}
+  alias Ipse.Extensions.{Store, Config, Registry, Manifest}
 
   def run(artifact) do
     {:ok, _} = Application.ensure_all_started(:ipse)
@@ -97,6 +97,11 @@ defmodule IpseModelExample.Proof do
           {:ipse, ^pid, {:approval, ref, "extension:model.complete", proposed}} ->
             true =
               proposed["request"] == request and proposed["execution"]["provider"] == "ollama"
+
+            true = proposed["destination"]["origin"] == base
+
+            true =
+              proposed["destination"]["target_sha256"] == Manifest.sha256(base <> "/api/chat")
 
             ref
         after

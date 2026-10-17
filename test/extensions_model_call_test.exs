@@ -84,6 +84,30 @@ defmodule Ipse.Extensions.ModelCallTest do
     assert nil == ModelCall.snapshot(Map.put(config(), :extensions, []))
   end
 
+  test "delegated model approvals include a closed non-secret destination" do
+    assert {:ok, runtime, execution} = ModelCall.prepare(config(), request())
+    assert {:ok, destination} = Ipse.Provider.destination(runtime)
+
+    proposed = %{
+      "extension" => "fixture",
+      "artifact_sha256" => String.duplicate("a", 64),
+      "namespace" => Ipse.Usage.id(),
+      "request" => request(),
+      "execution" => execution,
+      "destination" => destination
+    }
+
+    assert ModelCall.delegated_approval?("extension:model.complete", proposed)
+
+    for invalid <- [
+          Map.delete(proposed, "destination"),
+          put_in(proposed, ["destination", "origin"], "https://name@example.invalid"),
+          put_in(proposed, ["destination", "target_sha256"], "raw-url"),
+          Map.put(proposed, "api_key", "synthetic")
+        ],
+        do: refute(ModelCall.delegated_approval?("extension:model.complete", invalid))
+  end
+
   test "subscription selection refuses an inherited unsupported output ceiling" do
     config =
       put_in(config(), [:profiles, "extract"], %{

@@ -2,12 +2,15 @@ defmodule Ipse.Provider.Anthropic do
   @moduledoc "Anthropic Messages streaming adapter with native content replay."
   alias Ipse.Provider.{HTTP, SSE}
 
+  def endpoint(config),
+    do: Ipse.Provider.endpoint(config, "https://api.anthropic.com", "/v1/messages")
+
   def complete(config, messages, tools, emit) do
     if config[:api_key] in [nil, ""] do
       {:error, "Anthropic API key is missing."}
     else
       body = request_body(config, messages, tools)
-      url = Ipse.Provider.endpoint(config, "https://api.anthropic.com", "/v1/messages")
+      url = endpoint(config)
 
       headers = [
         {"x-api-key", config[:api_key]},

@@ -2,11 +2,14 @@ defmodule Ipse.Provider.OpenAI do
   @moduledoc "Stateless Responses API adapter; retains native reasoning and function call items."
   alias Ipse.Provider.{HTTP, SSE}
 
+  def endpoint(config),
+    do: Ipse.Provider.endpoint(config, "https://api.openai.com/v1", "/responses")
+
   def complete(config, messages, tools, emit) do
     if config[:api_key] in [nil, ""] do
       {:error, "OpenAI credentials are missing. Sign in or configure an API key."}
     else
-      url = Ipse.Provider.endpoint(config, "https://api.openai.com/v1", "/responses")
+      url = endpoint(config)
 
       headers = [
         {"authorization", "Bearer " <> config[:api_key]},

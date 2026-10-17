@@ -2,6 +2,9 @@
 
 Named profiles select provider, model, bounded execution limits and a fixed
 credential reference in the [scoped JSON configuration](configuration.md).
+Operator files own their declared profile identities and all custom endpoints;
+trusted project files may add profiles using provider defaults or assign roles,
+but cannot replace an operator profile or set `base_url`.
 Explicit `--profile ID` overrides `IPSE_PROFILE`, then the configured `main`
 role. Without profiles, existing provider/model selection remains available.
 
@@ -34,9 +37,12 @@ ASCII letter and use at most 64 letters/digits/underscore/hyphen characters.
 Every profile requires provider/model. Optional limits are `max_steps`,
 `context_bytes`, `timeout_ms` and supported `max_output_tokens`, using
 configuration bounds. Subscription profiles reject output caps; the public
-subscription interface does not support that field. Optional `base_url`
-selects an explicit HTTPS endpoint, or HTTP on literal loopback/localhost.
-URLs cannot contain credentials, queries or fragments. Subscription endpoints
+subscription interface does not support that field. Operator-only `base_url`
+selects an explicit HTTPS endpoint, or HTTP on literal loopback/localhost, with
+a valid URI and port in 1..65535. URLs cannot contain userinfo, queries or fragments;
+keep secrets out of paths too, since configuration is nonsecret inspection data.
+API keys and supplied context go to the configured endpoint: review it as an
+egress/credential decision. Subscription endpoints
 are restricted to the public OpenAI endpoint. An omitted endpoint uses the
 provider default. Models cannot change endpoints through delegation arguments.
 
@@ -91,7 +97,9 @@ profile. Changing profile definitions/roles invalidates resume conservatively;
 start a new session after policy changes.
 
 Reviewed extensions with `host.model` can separately name a profile for one-shot
-inference. They supply explicit input and need their own egress approval; they do
+inference. Their own egress approval shows the actual scheme/host/port origin and
+a digest of the full wire target; URL paths and credentials are not included in
+that destination display. They supply explicit input and do
 not inherit the main conversation, API key or native continuation. A permitted
 child extension can use the same host-managed profile catalog, while its requests
 retain the child's origin and share tree admission. Profile roles do not select

@@ -3,13 +3,7 @@ defmodule Ipse.Provider do
   @test_endpoints Code.ensure_loaded?(Mix) and Mix.env() == :test
 
   def complete(config, messages, tools, emit) when is_function(emit, 1) do
-    adapter =
-      case config[:provider] do
-        provider when provider in [:openai, :chatgpt] -> Ipse.Provider.OpenAI
-        :ollama -> Ipse.Provider.Ollama
-        :anthropic -> Ipse.Provider.Anthropic
-        _ -> nil
-      end
+    adapter = adapter(config[:provider])
 
     if adapter do
       try do
@@ -34,6 +28,52 @@ defmodule Ipse.Provider do
       {:error, "Unknown provider. Choose chatgpt, openai, ollama, or anthropic."}
     end
   end
+
+  @doc "Non-secret egress origin and full wire-target digest, using the actual adapter route."
+  def destination(config) do
+    with module when not is_nil(module) <- adapter(config[:provider]),
+         target = module.endpoint(config),
+         {:ok, uri} <- URI.new(target),
+         true <-
+           is_binary(uri.host) and uri.host != "" and is_nil(uri.userinfo) and
+             is_nil(uri.query) and is_nil(uri.fragment),
+         origin = URI.to_string(%URI{scheme: uri.scheme, host: uri.host, port: uri.port}),
+         facts = %{
+           "origin" => origin,
+           "target_sha256" => :crypto.hash(:sha256, target) |> Base.encode16(case: :lower)
+         },
+         true <- valid_destination?(facts) do
+      {:ok, facts}
+    else
+      _ -> {:error, :invalid_provider_destination}
+    end
+  rescue
+    _ -> {:error, :invalid_provider_destination}
+  end
+
+  def valid_destination?(%{"origin" => origin, "target_sha256" => digest} = facts) do
+    with true <- map_size(facts) == 2 and is_binary(origin) and byte_size(origin) <= 512,
+         true <- is_binary(digest) and Regex.match?(~r/\A[0-9a-f]{64}\z/, digest),
+         {:ok, uri} <- URI.new(origin) do
+      uri.host not in [nil, ""] and is_nil(uri.userinfo) and is_nil(uri.query) and
+        is_nil(uri.fragment) and uri.path in [nil, ""] and is_integer(uri.port) and
+        uri.port in 1..65535 and
+        (uri.scheme == "https" or
+           (uri.scheme == "http" and uri.host in ["127.0.0.1", "localhost", "::1"])) and
+        URI.to_string(%URI{scheme: uri.scheme, host: uri.host, port: uri.port}) == origin
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
+  def valid_destination?(_), do: false
+
+  defp adapter(provider) when provider in [:openai, :chatgpt], do: Ipse.Provider.OpenAI
+  defp adapter(:ollama), do: Ipse.Provider.Ollama
+  defp adapter(:anthropic), do: Ipse.Provider.Anthropic
+  defp adapter(_), do: nil
 
   def endpoint(config, default, suffix) do
     base = config[:base_url] || default

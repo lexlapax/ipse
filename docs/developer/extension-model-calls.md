@@ -53,6 +53,16 @@ execution facts: profile, provider/model/billing, configured endpoint digest,
 effort, effective output ceiling and deadline. Approving the enclosing tool or
 answering a question does not approve this call.
 
+The approval also includes closed `destination` facts: `origin` is the actual
+scheme/host/port and `target_sha256` binds the full wire URL. The provider adapter's
+same `endpoint/1` route supplies both disclosure and dispatch, including defaults;
+paths, userinfo and query credentials are not printed in destination facts.
+Profile URLs themselves reject userinfo/queries/fragments and invalid ports.
+Project profiles cannot select endpoints or replace operator-defined IDs. The
+parent's model-egress approval classification validates this additional object;
+ordinary opaque mutations keep their existing leases. Original execution facts
+and their configured-root endpoint digest remain unchanged.
+
 ## Profile and owned execution
 
 Only a named real ChatGPT/OpenAI/Ollama/Anthropic profile is supported. Demo is

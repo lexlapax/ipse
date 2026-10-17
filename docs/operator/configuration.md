@@ -26,12 +26,14 @@ searched. It never inherits configuration outside that boundary.
 
 Provider values are `chatgpt`, `openai`, `ollama`, `anthropic`, and `demo`;
 subscription and API billing stay separate. Supported settings are exactly those
-shown. Unknown fields, credentials, approval policies, scripts, endpoints, MCP
-servers and filesystem-root changes are rejected. Authentication remains in
+shown. Unknown fields, inline credentials, approval policies, scripts, MCP
+servers and filesystem-root changes are rejected. JSON endpoint settings belong only
+to operator-defined [model profiles](model-profiles.md), not project settings or
+profiles. Authentication remains in
 protected auth storage or the existing explicit provider environment variables.
 This loader does not expose private `.ipse` files through general tools.
 
-Precedence is built-in defaults, operator file, project root, nearer directory,
+Ordinary setting precedence is built-in defaults, operator file, project root, nearer directory,
 `IPSE_*` environment settings, then CLI flags. Environment keys match the setting
 names in uppercase, such as `IPSE_MAX_STEPS`; booleans accept `true` or `false`.
 `--config PATH` or `IPSE_CONFIG` replaces the operator file and must exist.
@@ -74,7 +76,18 @@ session. Old sessions without a manifest can resume only when no config file is
 newly introduced. Current action approvals are always separate from saved data.
 Named model profiles and main/routine/review routing are available; see
 [model profiles](model-profiles.md). Top-level `profiles` and `roles` extend this
-version-1 schema. A later same-ID profile replaces the whole earlier definition.
+version-1 schema. Profile IDs declared in the operator file cannot be replaced by
+project/directory files, even with current-run trust. Projects may add profiles
+using provider defaults and assign roles to configured IDs. Any project profile
+with `base_url` refuses before session creation or credential-bearing HTTP dispatch;
+configure custom endpoints in the operator file. Nearer project files can still
+replace a project-defined same-ID profile as a whole. Roles retain ordinary scoped
+precedence; neither roles nor project trust grant action permissions.
+
+After moving an old project endpoint into operator configuration, inspect the
+effective configuration and start a new session. Existing source/fingerprint and
+runtime pins are not rewritten to make old sessions resume; use a reviewed
+[handoff](recovery.md) if recovery context is needed.
 Operator-only top-level `budget` pins a per-session-tree policy with explicit
 reservations; project files cannot set or replace it. Omission leaves it disabled.
 It shares the ordinary 16 KiB file limit and source/fingerprint resume checks.

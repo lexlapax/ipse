@@ -17,7 +17,7 @@ defmodule Ipse.Extensions.ModelCall do
 
   @doc "Recognize the host's complete model-egress approval, which owns no filesystem mutation lease."
   def delegated_approval?("extension:model.complete", proposed) do
-    keys?(proposed, ~w(extension artifact_sha256 namespace request execution)) and
+    keys?(proposed, ~w(extension artifact_sha256 namespace request execution destination)) and
       is_binary(proposed["extension"]) and
       Regex.match?(~r/\A[A-Za-z][A-Za-z0-9_-]{0,63}\z/, proposed["extension"]) and
       is_binary(proposed["artifact_sha256"]) and
@@ -25,6 +25,7 @@ defmodule Ipse.Extensions.ModelCall do
       validate(proposed["request"]) == :ok and valid_profile?(proposed["execution"]) and
       proposed["execution"]["id"] == proposed["request"]["profile"] and
       proposed["execution"]["provider"] in ~w(chatgpt openai ollama anthropic) and
+      Ipse.Provider.valid_destination?(proposed["destination"]) and
       id?(proposed["namespace"])
   rescue
     _ -> false
@@ -155,7 +156,8 @@ defmodule Ipse.Extensions.ModelCall do
           do: Map.put(runtime, :auth_dir, config[:model_auth_dir] || config[:auth_dir]),
           else: runtime
 
-      {:ok, runtime, execution}
+      with {:ok, _destination} <- Ipse.Provider.destination(runtime),
+           do: {:ok, runtime, execution}
     end
   end
 

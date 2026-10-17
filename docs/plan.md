@@ -140,10 +140,13 @@ independent Claude review of `21e59fe`, conducted through Git objects in the
 existing Serenity checkout. The [disposition register](developer/architecture-review-dispositions.md)
 records the seven findings, three unverified concerns, nine design items and
 partial coverage. Its proposed runtime regressions were unrun by the reviewer.
-Supervisor verification reproduced the terminal display defect; its repair passed
-local source/native/package/installed checks and awaits hosted Linux/macOS results.
-Other source-consistent findings require their own evidence
-and repairs. The security scan and P25 execution remain behind triage and applicable
+The terminal display defect is reproduced and repaired, with local and hosted
+Linux/macOS source/package/installed gates passed. The project endpoint/credential
+issue is also reproduced; its authority/disclosure repair passed local source/
+native/package/installed checks and awaits hosted platform results,
+with sandbox precedence awaiting the operator's separate decision. Other
+source-consistent findings require their own evidence and repairs.
+The security scan and P25 execution remain behind triage and applicable
 repairs; omitted architectural surfaces need a follow-up pass.
 Read-only Security Cloud access checks found the repository and available scan
 credits; no matching environment was found and no scan or billing change was

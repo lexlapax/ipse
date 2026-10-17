@@ -2,8 +2,10 @@ defmodule Ipse.Provider.Ollama do
   @moduledoc "Ollama native streaming chat adapter."
   alias Ipse.Provider.HTTP
 
+  def endpoint(config), do: Ipse.Provider.endpoint(config, "http://127.0.0.1:11434", "/api/chat")
+
   def complete(config, messages, tools, emit) do
-    url = Ipse.Provider.endpoint(config, "http://127.0.0.1:11434", "/api/chat")
+    url = endpoint(config)
 
     {messages, _} =
       Enum.map_reduce(messages, %{}, fn message, names ->

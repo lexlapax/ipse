@@ -420,7 +420,11 @@ bounded result size/deadline; it cannot replace the provider, endpoint or creden
 through call arguments. No model/service is downloaded or chosen automatically.
 
 The call has its own approval, showing the full input/instruction and
-profile/provider/model/billing facts. Approving its enclosing tool or answering a
+profile/provider/model/billing facts, actual destination origin and full-target
+digest. Paths and credentials are omitted from that destination display; the
+endpoint comes from operator configuration or the provider default. Project
+configuration cannot redefine an operator profile or supply an endpoint.
+Approving its enclosing tool or answering a
 question does not approve inference; `--yes` grants session-wide action authority
 and headless denial never dispatches. Prompt/history/memory access still needs
 separate grants. Only this call's text and normalized usage return to its caller;

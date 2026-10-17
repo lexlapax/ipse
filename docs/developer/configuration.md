@@ -14,7 +14,12 @@ files are optional; explicit operator paths are required. Project settings requi
 explicit current-run trust. This authorization does not replace effect approvals.
 
 The schema also accepts validated named `profiles` and `roles`; see the
-[profile contract](model-profiles.md). All profile definitions and assignments
+[profile contract](model-profiles.md). Before merging or selecting execution,
+`profile_authority/1` refuses project endpoints and replacement of operator profile
+IDs. Generic project trust cannot authorize credential-bearing endpoint changes;
+operator endpoints remain configurable. Project-defined IDs may be overridden by
+nearer project scopes, and role assignment retains normal precedence.
+All profile definitions and assignments
 participate in resume fingerprints. The result contains effective string-keyed settings, field provenance, source
 path/canonical path/scope/SHA-256 and a canonical fingerprint over effective
 settings and source descriptors. Field provenance is excluded from the fingerprint

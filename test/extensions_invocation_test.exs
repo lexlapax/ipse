@@ -512,6 +512,12 @@ defmodule Ipse.Extensions.InvocationTest do
     assert proposed["execution"]["provider"] == "ollama"
     assert proposed["execution"]["id"] == "extract"
     assert proposed["execution"]["max_output_tokens"] == 32
+    assert proposed["destination"]["origin"] == base
+
+    assert proposed["destination"]["target_sha256"] ==
+             Ipse.Extensions.Manifest.sha256(base <> "/api/chat")
+
+    assert Ipse.Extensions.ModelCall.delegated_approval?("extension:model.complete", proposed)
     refute_receive {:model_http, _, _}, 20
     :ok = Session.approve(pid, ref, true)
     assert_receive {:ipse, ^pid, {:done, :ok}}, 3000

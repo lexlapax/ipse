@@ -102,6 +102,9 @@ checked on resume before inference. See [configuration](configuration.md) and
 [model profiles](model-profiles.md). `Ipse.Profiles` enforces configured IDs/roles,
 documented reasoning capabilities and credential/native-history isolation for
 mixed-provider children. Configuration and skills grant no effect permissions.
+Project trust cannot set profile endpoints or replace operator-declared profile
+IDs; endpoint authority remains with the operator. Helper egress approvals derive
+their visible origin/target digest from the actual adapter route.
 Shared operator skills use explicit isolation inputs; see
 [skill discovery](#skill-discovery).
 

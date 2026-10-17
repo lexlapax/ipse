@@ -952,8 +952,9 @@ defmodule Ipse.Session do
 
           proposed =
             if ModelCall.operation?(request) do
-              {:ok, _, execution} = ModelCall.prepare(s.config, request)
-              Map.put(proposed, "execution", execution)
+              {:ok, runtime, execution} = ModelCall.prepare(s.config, request)
+              {:ok, destination} = Ipse.Provider.destination(runtime)
+              proposed |> Map.put("execution", execution) |> Map.put("destination", destination)
             else
               proposed
             end

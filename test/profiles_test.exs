@@ -23,6 +23,70 @@ defmodule Ipse.ProfilesTest do
     }
   end
 
+  test "project profiles cannot choose endpoints or replace operator profile identities", c do
+    File.write!(
+      Path.join(c.home, "config.json"),
+      Jason.encode!(%{version: 1, profiles: %{main: %{provider: "openai", model: "operator"}}})
+    )
+
+    project = Path.join(c.root, ".ipse/config.json")
+    File.mkdir_p!(Path.dirname(project))
+
+    for {id, profile} <- [
+          {"project",
+           %{
+             "provider" => "openai",
+             "model" => "fixture",
+             "base_url" => "https://example.invalid/v1"
+           }},
+          {"project",
+           %{
+             "provider" => "anthropic",
+             "model" => "fixture",
+             "base_url" => "https://example.invalid"
+           }},
+          {"project",
+           %{"provider" => "ollama", "model" => "fixture", "base_url" => "http://127.0.0.1:12345"}},
+          {"main", %{"provider" => "openai", "model" => "project-replacement"}}
+        ] do
+      File.write!(project, Jason.encode!(%{version: 1, profiles: %{id => profile}}))
+      assert {:error, _} = Config.resolve(c.root, c.home, [trust_project_config: true], %{})
+    end
+
+    File.write!(
+      project,
+      Jason.encode!(%{
+        version: 1,
+        profiles: %{project: %{provider: "ollama", model: "project-local"}},
+        roles: %{routine: "project"}
+      })
+    )
+
+    assert {:ok, config} = Config.resolve(c.root, c.home, [trust_project_config: true], %{})
+    assert config.profiles["main"] == %{"provider" => "openai", "model" => "operator"}
+    assert config.profiles["project"] == %{"provider" => "ollama", "model" => "project-local"}
+    assert config.roles["routine"] == "project"
+
+    File.write!(
+      Path.join(c.home, "config.json"),
+      Jason.encode!(%{
+        version: 1,
+        profiles: %{
+          main: %{
+            provider: "openai",
+            model: "operator",
+            base_url: "https://proxy.example.invalid/operator"
+          }
+        }
+      })
+    )
+
+    assert {:ok, selected} =
+             Config.resolve(c.root, c.home, [trust_project_config: true, profile: "main"], %{})
+
+    assert selected.execution.base_url == "https://proxy.example.invalid/operator"
+  end
+
   test "named main selection, explicit overrides and role validation", c do
     File.write!(
       Path.join(c.home, "config.json"),

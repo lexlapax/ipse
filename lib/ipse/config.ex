@@ -32,6 +32,7 @@ defmodule Ipse.Config do
          {:ok, sources} <- sources(dirs, home, opts, environment),
          {:ok, loaded} <- load_sources(sources),
          :ok <- project_trust(loaded, opts),
+         :ok <- profile_authority(loaded),
          {:ok, env} <- environment_settings(environment) do
       initial = %{
         settings: @defaults,
@@ -300,6 +301,28 @@ defmodule Ipse.Config do
         File.close(file)
       end
     end
+  end
+
+  defp profile_authority(loaded) do
+    operator_ids =
+      loaded
+      |> Enum.filter(&(&1.scope == "operator"))
+      |> Enum.flat_map(&Map.keys(&1.data["profiles"] || %{}))
+      |> MapSet.new()
+
+    invalid =
+      Enum.find(loaded, fn source ->
+        source.scope == "project" and
+          Enum.any?(source.data["profiles"] || %{}, fn {id, profile} ->
+            MapSet.member?(operator_ids, id) or Map.has_key?(profile, "base_url")
+          end)
+      end)
+
+    if invalid,
+      do:
+        {:error,
+         "Project configuration cannot define provider endpoints or replace operator profiles: #{invalid.path}"},
+      else: :ok
   end
 
   defp project_trust(loaded, opts) do
