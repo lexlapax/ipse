@@ -1,6 +1,6 @@
 # Lifecycle events, hooks and subscribers
 
-P22 lifecycle design with implemented journal-source/metadata/prompt/answer adapters and
+P22 lifecycle design with implemented journal-source, runtime-wait and prompt/answer adapters and
 [bounded read-only subscriptions](extension-events.md) plus separate
 [event jobs](extension-event-jobs.md) for approved actions, awaited recall and
 after-turn maintenance. Prompt and completed-answer delivery are implemented;
@@ -93,6 +93,8 @@ reference's canonical digest detects a changed record supplied with that
 reference. Legacy records are readable within these bounds; unsupported large
 records refuse rather than being skipped or truncated.
 
+### Prompt and answer views
+
 `Ipse.Lifecycle.Event.project/3` checks source/content binding and creates a closed
 version-1 envelope. Prompt facts have explicit metadata and private views:
 
@@ -125,12 +127,27 @@ than truncation. Metadata remains available, and a bounded presented view can be
 selected independently of an oversized original. Native history is unchanged.
 An answer-only subscriber gets no private prompt data from its causal reference.
 
+These stages describe the actual saved facts: `expanded_committed` precedes
+transforms, and a projection may precede another configured transform. Neither is
+advertised as the final request prompt. Selected subscriptions add a distinct
+final-effective user-text marker after all prompt transforms, with received-source
+and turn bindings. Original input is recorded when transforms or prompt subscriptions
+are selected. Legacy bare prompt records do not carry a turn ID, so the adapter
+does not invent one. Full causal links, ephemeral event identity and broader
+lifecycle delivery remain pending. The [subscription contract](extension-events.md)
+grants selected views through the host; projecting a view in host code alone grants
+no authority.
+
+### Committed metadata
+
 Other committed facts have metadata-only projections through
 `Ipse.Lifecycle.Metadata`. They use the same source ID, envelope and bounds:
 
 | Source family | Event vocabulary | Selected metadata |
 | --- | --- | --- |
 | Session header | `session.created` | No configuration, credentials or paths |
+| Recorded process epoch | `session.started`, `session.resumed`, `session.close_committed`, `session.recording_stopped` | Host epoch/previous-epoch IDs, previous closure state, logical closure/cleanup confirmation or source-limit notice |
+| Operator wait | `wait.started`, `wait.finished` | Host wait/epoch IDs, approval/question domain, actual available turn/request/invocation/operation/child links, selected question's causing-event ID; finish adds outcome and process-local elapsed milliseconds |
 | Request admission, usage observation, completion and measurement | `model.admitted`, `model.usage_observed`, `model.finished`, `model.measured` | Existing request/attempt/turn/parent IDs, kind, sequence, duration, outcome and finality where saved |
 | Saved assistant/tool text and tool start | `assistant.committed`, `tool.result_recorded`, `tool.started` | Text byte count, existing assistant request ID or approval category; no arguments, result text or raw provider call IDs |
 | Workspace/catalog/extension context and compaction | `context.workspace_committed`, `context.catalog_committed`, `context.extensions_committed`, `context.compaction_committed`, `context.compaction_failed` | Source/tool counts or existing request ID; no paths, contributions, summaries or error strings |
@@ -151,25 +168,67 @@ into public identifiers or invent a cause from adjacent records.
 This is a display projection, not a complete journal validator, authentication,
 subscriber admission or an exporter. Owned Session recovery validation and physical
 source resolution remain prerequisites for actions. Unknown source types refuse;
-session process resume/close, approval waiting/resolution, child completion and
-ephemeral stream occurrences still need their own documented source contracts.
-The session header describes creation, not each new process startup. A saved tool
+child completion and ephemeral stream occurrences still need their own documented
+source contracts. The session header describes creation; the optional runtime
+facts below distinguish subsequent process epochs. A saved tool
 message proves that a result was recorded, not the success of its underlying effect.
+The host API digest pins these lifecycle, subscription and history adapters
+alongside existing extension contracts. Neither `Source.valid?/1` nor
+`Event.project/3` authenticates a worker-supplied record/reference pair. Host
+admission resolves saved references against its owned validated journal;
+workers cannot manufacture authoritative host facts.
 
-These stages describe the actual saved facts: `expanded_committed` precedes
-transforms, and a projection may precede another configured transform. Neither is
-advertised as the final request prompt. Selected subscriptions add a distinct
-final-effective user-text marker after all prompt transforms, with received-source
-and turn bindings. Original input is recorded when transforms or prompt subscriptions
-are selected. Legacy bare prompt records do not carry a turn ID, so the adapter
-does not invent one. Full causal links, ephemeral event identity and broader
-lifecycle delivery remain pending. The [subscription contract](extension-events.md) grants
-selected views through the host; projecting a view in host code alone grants no
-authority. The host API digest pins Journal, Source, Event, Metadata and Subscriptions
-alongside existing extension contracts.
-Neither `Source.valid?/1` nor `Event.project/3` authenticates a worker-supplied
-record/reference pair. Host admission resolves saved references against its
-owned validated journal; workers cannot manufacture authoritative host facts.
+### Runtime epochs and operator waits
+
+`Lifecycle.Runtime` records these metadata sources when capture starts in `local`
+or `export` mode, or a selected reviewed artifact declares `lifecycle.record`.
+The capability enables source recording independently of diagnostics; it grants
+no callback, content read, host action or export permission. With both absent,
+no runtime facts are appended, including on an idle resume. Current subscriptions
+still accept only prompt/answer boundaries; runtime sources can be projected into
+diagnostics and explicitly read through authorized metadata history, not subscribed
+to through a new undocumented delivery mode.
+
+At the final initialization boundary, each recorded process gets a fresh `epoch_id`.
+A resume identifies the prior recorded epoch and whether it was closed or
+unclosed; legacy/unrecorded history has no invented prior epoch. `session.close_committed`
+means the logical close result was synced before process exit, not that the PID
+is already dead. Explicit close includes the existing cleanup result. Owner loss
+records its observed cause but leaves `cleanup_confirmed: false`, since that path
+does not confirm orderly diagnostic-resource cleanup. Unexpected termination,
+untrappable kill or lock-helper loss may leave the epoch open. Termination does
+not append a speculative finish or write after journal ownership is lost.
+
+Interactive native tool, extension-action and delegated-child approvals start
+distinct waits before operator publication. Accepted decisions close only that
+wait; stale references do nothing. Policy allow/deny without an operator wait is
+not given a synthetic waiting span. Native and extension questions start after
+their question checkpoint, preserving existing checkpoint adjacency. Their
+private source references resolve the actual preceding question occurrence;
+public metadata carries only its event ID, never raw question/provider IDs,
+text, arguments, answers or BEAM references. Extension waits bind their real
+parent invocation/operation; standalone extensions do not borrow an earlier
+model request ID.
+
+Only validated answers finish a question wait. Cancellation records `cancelled`;
+observed owner/worker interruption records `interrupted`; extension lease loss
+at approval records `expired`. None authorizes later effects. An explicitly
+resumed question gets a new wait/epoch and monotonic start time, retaining its
+actual saved question source when available. A prior unclosed wait stays
+incomplete; downtime is not added to a fabricated duration. Legacy questions
+without a recorded reference retain that absence. Recording/schema restoration
+and physical source validation run before tail repair or further work.
+
+The durable session admits at most 10,000 runtime facts plus one
+`session.recording_stopped` limit marker. Starts reserve room for their matching
+end/close facts. Exhaustion disables further runtime recording for that session,
+leaving any unclosed span explicitly incomplete; it does not deny ordinary agent
+work or cleanup. Diagnostic filtering, sampling, stop and sink acknowledgments do
+not control these already-enrolled sources. In particular, `/observability off`
+stops sample delivery; runtime metadata recording ends with this epoch or its
+source limit. A new invocation uses its reviewed configuration again.
+
+### Validation and verification
 
 Nine source fixtures in `test/lifecycle_test.exs` exercise stable identities,
 repeated prompts, legacy/noncanonical JSON byte positions, paging/record limits,
@@ -182,6 +241,14 @@ source-to-delivery-to-invocation causation. The bundled `priv/extension-demo.exs
 checks shared prompt/model source IDs and request correlation in source and
 extracted-runtime verification. See [actual verification scope](testing.md#current-evidence-and-next-checks).
 Projection fixtures alone do not establish broader subscriber delivery or production graph behavior.
+
+`test/lifecycle_runtime_test.exs` checks strict restoration, bounded recording,
+native decisions, questions/restart, cancellation, owner loss, physical-reference
+refusal before repair and disabled parity. Independent event-job fixtures exercise
+`lifecycle.record` with capture off, separate mutation approval and extension-question
+restart; delegated fixtures check child correlation and lost-child wait closure.
+The bundled runtime fixture exercises idle start/close/resume and metadata
+projection. These source/SDK contracts leave the independent domain-package proof open.
 
 ## Delivery contracts
 

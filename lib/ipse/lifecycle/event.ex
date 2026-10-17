@@ -133,20 +133,35 @@ defmodule Ipse.Lifecycle.Event do
       event["view"] == "metadata" and
       Ipse.Lifecycle.Source.valid_metadata?(reference) and
       event["event_id"] == reference["event_id"] and
-      event["type"] in ~w(session.created prompt.received prompt.expanded_committed prompt.projection_committed prompt.effective_committed answer.committed model.admitted model.usage_observed model.finished model.measured tool.started assistant.committed tool.result_recorded context.workspace_committed context.catalog_committed context.extensions_committed context.compaction_committed context.compaction_failed question.waiting question.answered question.closed child.started turn.settling turn.finished turn.cancelled extension.invocation_admitted extension.invocation_recorded extension.action_admitted extension.action_recorded extension.question_waiting extension.continuation_admitted extension.delivery_admitted extension.delivery_recorded extension.text_admitted extension.text_ready extension.text_closed) and
+      event["type"] in ~w(session.created session.started session.resumed session.close_committed session.recording_stopped wait.started wait.finished prompt.received prompt.expanded_committed prompt.projection_committed prompt.effective_committed answer.committed model.admitted model.usage_observed model.finished model.measured tool.started assistant.committed tool.result_recorded context.workspace_committed context.catalog_committed context.extensions_committed context.compaction_committed context.compaction_failed question.waiting question.answered question.closed child.started turn.settling turn.finished turn.cancelled extension.invocation_admitted extension.invocation_recorded extension.action_admitted extension.action_recorded extension.question_waiting extension.continuation_admitted extension.delivery_admitted extension.delivery_recorded extension.text_admitted extension.text_ready extension.text_closed) and
       Enum.all?(event["data"], fn
         {key, number}
         when key in ~w(input_bytes output_bytes original_bytes presented_bytes source_count tool_count sequence duration_ms action_count) ->
           uint?(number)
 
         {"kind", kind} ->
-          kind in ~w(model compaction)
+          kind in ~w(model compaction approval question)
+
+        {"domain", domain} ->
+          domain in ~w(tool extension_action delegated_tool native_question extension_question)
+
+        {"previous_state", state} ->
+          state in ~w(none closed unclosed)
+
+        {"closure", closure} ->
+          closure in ~w(close owner_down cleanup_failure)
+
+        {"cleanup_confirmed", cleanup} ->
+          is_boolean(cleanup)
+
+        {"reason", reason} ->
+          reason == "limit"
 
         {"finality", finality} ->
           finality in ~w(final partial)
 
         {key, outcome} when key in ~w(outcome status approval) ->
-          outcome in ~w(ok error completed failed cancelled unknown denied conflict answered not_started acknowledged approved session_allow not_decided not_required)
+          outcome in ~w(ok error completed failed cancelled interrupted expired unknown denied conflict answered not_started acknowledged approved session_allow not_decided not_required)
 
         _ ->
           false
@@ -156,7 +171,7 @@ defmodule Ipse.Lifecycle.Event do
           is_binary(hash) and Regex.match?(~r/\A[0-9a-f]{64}\z/, hash)
 
         {key, id}
-        when key in ~w(request_id attempt_id session_id turn_id parent_session_id parent_request_id invocation_id parent_invocation_id operation_id continuation_id delivery_id resource_id causing_event_id child_id) ->
+        when key in ~w(epoch_id previous_epoch_id wait_id request_id attempt_id session_id turn_id parent_session_id parent_request_id invocation_id parent_invocation_id operation_id continuation_id delivery_id resource_id causing_event_id child_id) ->
           is_binary(id) and Regex.match?(~r/\A[0-9a-f]{32}\z/, id)
 
         _ ->

@@ -57,7 +57,9 @@ cannot set it, even to `off`. Mode precedence is built-in `off`, operator file,
 | `retained_files` | 2 | 1 or 2 files per local diagnostic lease |
 
 Current sources are supported **committed journal facts**, not every proposed
-group. Raw stream chunks, approval wait messages, hidden reasoning and arbitrary
+group. Session start/resume and approval/question wait metadata use group
+`session`; wait outcomes include their process-local elapsed milliseconds.
+Raw stream chunks, approval arguments/question text, hidden reasoning and arbitrary
 runtime state are excluded. See the
 [implemented vocabulary](../developer/lifecycle-events.md#internal-journal-source-and-prompt-views).
 
@@ -67,12 +69,16 @@ previous transfers cannot be retracted. Cleanup settles separately. `/diagnostic
 shows current mode/limits, pending/admitted/delivered/dropped/filtered/error/failure
 counts and sink readiness/closure. The original configuration manifest stays fixed;
 the live snapshot reflects the stop. `/cancel` cancels work without disabling capture.
+The process's enrolled metadata sources remain recorded in its private journal
+until close or their bounded source limit; stopping a sink does not erase or
+disable independent journal recording. A reviewed extension can also request
+these sources through `lifecycle.record` with capture off.
 
 There is no in-session enable/export promotion or general hot reload. Use reviewed
 flags/configuration for a new invocation. Mode flags/environment overrides do not
 change the tool fingerprint; file edits still follow ordinary
 [resume compatibility](configuration.md). Enabled resume creates fresh diagnostic
-leases for new work and never replays old samples.
+leases and a new `session.resumed` fact; it never replays old samples.
 
 ## Files, failures and export
 
@@ -102,6 +108,9 @@ Inspect cleanup status: VM exit alone does not confirm complete descendant clean
 and explicit close reports uncertainty when appropriate. An idle active capture
 gets up to 500 ms to settle during orderly shutdown; remaining samples are dropped.
 The CLI uses this close path and reports cleanup failures separately from turn success.
+Its final logical close fact is durable after sink cleanup, so delivery of that
+last fact to the closing sink is not guaranteed. An unclosed recorded epoch/wait
+remains incomplete after a crash; resume does not invent success or elapsed downtime.
 
 Mode `export` additionally admits reviewed `observe.export` artifacts selected in
 operator scope. It configures no collector by itself. Endpoints, authentication

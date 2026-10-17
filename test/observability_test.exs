@@ -393,8 +393,18 @@ defmodule Ipse.ObservabilityTest do
     :ok = Session.close(first)
     old = File.read!(c.trace)
     resumed = start(c, cfg, id: id)
-    eventually(fn -> Enum.all?(sinks(resumed), & &1["ready"]) end)
-    assert File.read!(c.trace) == old
+    eventually(fn -> Enum.all?(sinks(resumed), &(&1["ready"] and &1["pending"] == 0)) end)
+    resumed_bytes = File.read!(c.trace)
+    assert String.starts_with?(resumed_bytes, old)
+
+    new_lines =
+      resumed_bytes
+      |> binary_part(byte_size(old), byte_size(resumed_bytes) - byte_size(old))
+      |> String.split("\n", trim: true)
+
+    assert [%{"event" => %{"event" => %{"type" => "session.resumed"}}}] =
+             Enum.map(new_lines, &Jason.decode!/1)
+
     :ok = Session.prompt(resumed, "new-private-prompt")
     done(resumed)
     eventually(fn -> Enum.all?(sinks(resumed), &(&1["pending"] == 0)) end)

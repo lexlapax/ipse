@@ -210,7 +210,8 @@ defmodule Ipse.Session do
         delegations: 0,
         owner_ref: owner_ref,
         request_started_at: nil,
-        observation: nil
+        observation: nil,
+        lifecycle: nil
       }
 
       capture =
@@ -232,6 +233,23 @@ defmodule Ipse.Session do
         else
           state
         end
+
+      state =
+        lifecycle_records(
+          state,
+          Ipse.Lifecycle.Runtime.open(config, capture.policy, events, id, opts[:id] != nil)
+        )
+
+      state =
+        if question,
+          do:
+            question_wait(
+              state,
+              question,
+              Ipse.Lifecycle.Runtime.question_source(events, question),
+              saved_request(events, "turn_id")
+            ),
+          else: state
 
       if question, do: {:ok, state, {:continue, :question}}, else: {:ok, state}
     else
@@ -827,6 +845,13 @@ defmodule Ipse.Session do
         mutation and mode == :ask ->
           approval_ref = make_ref()
 
+          s =
+            begin_wait(s, "extension_action", %{
+              "turn_id" => parent["payload"]["turn_id"],
+              "parent_invocation_id" => parent["invocation_id"],
+              "operation_id" => intent["operation_id"]
+            })
+
           proposed = %{
             "extension" => parent["identity"]["instance"],
             "artifact_sha256" => parent["identity"]["artifact_sha256"],
@@ -1069,6 +1094,8 @@ defmodule Ipse.Session do
       ) do
     case s.delegation_resources[child] do
       %{id: id, worker: ^worker} ->
+        s = finish_wait(s, if(allowed == true, do: "approved", else: "denied"))
+
         record(s, %{
           "type" => "delegation_approval",
           "child_id" => id,
@@ -1096,6 +1123,7 @@ defmodule Ipse.Session do
 
     if Ipse.Extensions.Registry.live?(s.extension_invocation["identity"]) do
       record(s, intent)
+      s = finish_wait(s, if(allowed == true, do: "approved", else: "denied"))
 
       reply =
         if allowed == true,
@@ -1116,13 +1144,14 @@ defmodule Ipse.Session do
            extension_actions: s.extension_actions + 1
        }}
     else
+      s = finish_wait(s, "expired")
       GenServer.reply(action.from, {:error, :extension_action_expired})
       {:reply, :ok, %{s | approval: nil, phase: action.phase, extension_action: nil}}
     end
   end
 
   def handle_call({:approve, ref, allowed}, _from, %{approval: {ref, call, args}} = s) do
-    s = %{s | approval: nil}
+    s = finish_wait(%{s | approval: nil}, if(allowed, do: "approved", else: "denied"))
 
     if allowed,
       do: {:reply, :ok, launch_tool(s, call, args, "approved")},
@@ -1155,6 +1184,7 @@ defmodule Ipse.Session do
       results = question.results ++ [result]
       record(s, result)
       record(s, Actions.continuation(question.parent, result))
+      s = finish_wait(s, "answered")
       owner = self()
       job_ref = make_ref()
 
@@ -1203,6 +1233,8 @@ defmodule Ipse.Session do
 
         record(s, %{"type" => "operator_answer", "version" => 1, "id" => id, "message" => message})
 
+        s = finish_wait(s, "answered")
+
         notify(s, {:tool_result, "ask_operator", message["content"]})
         next = %{s | messages: s.messages ++ [message], calls: [], question: nil, phase: :idle}
         {:reply, :ok, model(next)}
@@ -1225,7 +1257,9 @@ defmodule Ipse.Session do
       )
 
       notify(s, {:done, :error})
-      {:stop, :normal, {:error, :cleanup_unconfirmed}, next}
+
+      {:stop, :normal, {:error, :cleanup_unconfirmed},
+       close_epoch(next, "cleanup_failure", false)}
     else
       notify(s, {:done, :cancelled})
       {:reply, :ok, next}
@@ -1237,10 +1271,11 @@ defmodule Ipse.Session do
     observer_cleanup = Ipse.Observability.Resources.close(s.observation, &record(s, &1))
     cleanup = cleanup ++ observer_cleanup
     result = if Enum.all?(cleanup, &(&1 == :ok)), do: :ok, else: {:error, :cleanup_unconfirmed}
-    {:stop, :normal, result, next}
+    {:stop, :normal, result, close_epoch(next, "close", result == :ok)}
   end
 
-  defp stop_work(s, record_cancel \\ true) do
+  defp stop_work(s, record_cancel \\ true, wait_outcome \\ "cancelled") do
+    s = finish_wait(s, wait_outcome)
     s = if s.task, do: measure_request(s, :cancelled), else: s
     s = close_question(s)
     child_cleanup = Enum.map(Map.keys(s.delegation_resources), &close/1)
@@ -1433,8 +1468,9 @@ defmodule Ipse.Session do
             call: call
           }
 
-          record(next, Actions.question_event(parent, action, s.steps))
+          source = record_wait_subject(next, Actions.question_event(parent, action, s.steps))
           checkpoint_event_question(next, question)
+          next = question_wait(next, question, source)
           notify(next, {:question, question.id, question.arguments})
 
           {:noreply,
@@ -1656,13 +1692,13 @@ defmodule Ipse.Session do
         %{owner_ref: ref, question: question} = s
       )
       when ref != nil and question != nil do
-    {_cleanup, next} = stop_work(%{s | question: nil, calls: []}, false)
-    {:stop, :normal, next}
+    {_cleanup, next} = stop_work(%{s | question: nil, calls: []}, false, "interrupted")
+    {:stop, :normal, close_epoch(next, "owner_down", false)}
   end
 
   def handle_info({:DOWN, ref, :process, _pid, _reason}, %{owner_ref: ref} = s) when ref != nil do
-    {_cleanup, next} = stop_work(s)
-    {:stop, :normal, next}
+    {_cleanup, next} = stop_work(s, true, "interrupted")
+    {:stop, :normal, close_epoch(next, "owner_down", false)}
   end
 
   def handle_info({:DOWN, ref, :process, _pid, _reason}, %{task: %{ref: ref}} = s) do
@@ -1756,13 +1792,23 @@ defmodule Ipse.Session do
     resources =
       if s.mcp_resources[pid] == ref, do: Map.delete(s.mcp_resources, pid), else: s.mcp_resources
 
-    children =
+    {children, child_down} =
       case s.delegation_resources[pid] do
-        %{monitor: ^ref} -> Map.delete(s.delegation_resources, pid)
-        _ -> s.delegation_resources
+        %{monitor: ^ref} -> {Map.delete(s.delegation_resources, pid), true}
+        _ -> {s.delegation_resources, false}
       end
 
     s = %{s | mcp_resources: resources, delegation_resources: children}
+
+    s =
+      case s.approval do
+        {:delegated, _, _, ^pid, _, _, _} when child_down ->
+          finish_wait(%{s | approval: nil, phase: :tool}, "interrupted")
+
+        _ ->
+          s
+      end
+
     s = if s.delegation_effect == pid, do: %{s | delegation_effect: nil}, else: s
     {:noreply, next_delegated_approval(s)}
   end
@@ -1828,6 +1874,7 @@ defmodule Ipse.Session do
     end)
 
     Ipse.Runner.unlock(s.lock)
+
     :ok
   end
 
@@ -2336,6 +2383,7 @@ defmodule Ipse.Session do
 
       requires_approval and mode == :ask ->
         ref = make_ref()
+        s = begin_wait(s, "tool", %{"turn_id" => s.turn_id, "request_id" => s.last_request_id})
 
         if external do
           notify(
@@ -2494,6 +2542,14 @@ defmodule Ipse.Session do
 
           mode == :ask ->
             approval = make_ref()
+
+            s =
+              begin_wait(s, "delegated_tool", %{
+                "turn_id" => s.turn_id,
+                "request_id" => s.last_request_id,
+                "child_id" => id
+              })
+
             notify(s, {:approval, approval, "child #{id}/#{name}", args})
 
             %{
@@ -2604,6 +2660,7 @@ defmodule Ipse.Session do
   end
 
   defp fail(s, error) do
+    s = finish_wait(s, "interrupted")
     notify(s, {:error, error})
 
     s
@@ -2965,6 +3022,7 @@ defmodule Ipse.Session do
   @doc "Validate saved effective context without starting inference, tools or a session."
   def restore_context(events) do
     with :ok <- Ipse.Handoff.validate_events(events),
+         {:ok, _} <- Ipse.Lifecycle.Runtime.restore(events),
          :ok <- Ipse.Observability.Resources.validate(events),
          {:ok, _} <- Ipse.Usage.restore(events),
          :ok <- Projection.validate_events(events) do
@@ -3057,6 +3115,47 @@ defmodule Ipse.Session do
 
   defp restore_messages([message | rest]), do: [message | restore_messages(rest)]
 
+  defp lifecycle_records(s, {context, records}) do
+    Enum.each(records, &record(s, &1))
+    %{s | lifecycle: context}
+  end
+
+  defp begin_wait(s, domain, links),
+    do: lifecycle_records(s, Ipse.Lifecycle.Runtime.begin_wait(s.lifecycle, domain, links))
+
+  defp finish_wait(s, outcome),
+    do: lifecycle_records(s, Ipse.Lifecycle.Runtime.finish_wait(s.lifecycle, outcome))
+
+  defp close_epoch(s, reason, cleanup),
+    do: lifecycle_records(s, Ipse.Lifecycle.Runtime.close(s.lifecycle, reason, cleanup))
+
+  defp record_wait_subject(%{lifecycle: %{active: true}} = s, event),
+    do: record_source(s, event)
+
+  defp record_wait_subject(s, event) do
+    record(s, event)
+    nil
+  end
+
+  defp question_wait(s, question, source, turn \\ :current)
+
+  defp question_wait(s, %{kind: :extension} = question, source, _turn),
+    do:
+      begin_wait(s, "extension_question", %{
+        "turn_id" => question.parent["payload"]["turn_id"],
+        "parent_invocation_id" => question.parent["invocation_id"],
+        "operation_id" => question.action["operation_id"],
+        "subject_source" => source
+      })
+
+  defp question_wait(s, _question, source, turn),
+    do:
+      begin_wait(s, "native_question", %{
+        "turn_id" => if(turn == :current, do: s.turn_id, else: turn),
+        "request_id" => s.last_request_id,
+        "subject_source" => source
+      })
+
   defp question_available(nil, _), do: :ok
 
   defp question_available(_, config),
@@ -3087,8 +3186,9 @@ defmodule Ipse.Session do
             "prefix_sha256" => Ipse.Compaction.digest(next.messages)
           }
 
-          record(next, event)
+          source = record_wait_subject(next, event)
           checkpoint_event_question(next, %{id: call["id"]})
+          next = question_wait(next, %{id: call["id"]}, source)
           notify(next, {:question, call["id"], arguments})
 
           %{

@@ -97,6 +97,8 @@ Completed-answer subscribers can separately select original or presented text;
 native provider continuation remains private.
 Explicit [history reads](docs/operator/extensions.md#explicit-history-and-catch-up) provide bounded
 own-session recorded views for catch-up, with separate private grants and no replay.
+Optional [runtime metadata](docs/developer/lifecycle-events.md#runtime-epochs-and-operator-waits)
+records session epochs and operator waits, preserving incomplete spans across restart.
 `/ext` inspects the active catalog
 and invokes operator commands.
 Effects retain normal approval; cached receipts/projections restore without

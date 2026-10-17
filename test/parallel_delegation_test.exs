@@ -182,7 +182,11 @@ defmodule Ipse.ParallelDelegationTest do
   end
 
   test "distinct file mutations have individual approvals and execute serially", ctx do
-    {pid, _} = start(ctx, :write)
+    {pid, _} =
+      start(ctx, :write, %{
+        observability: Map.put(Ipse.Observability.Config.defaults(), "mode", "local")
+      })
+
     :ok = Session.prompt(pid, "Run two child writes")
     approve_group(pid)
     assert_receive {:ipse, ^pid, {:approval, first, first_name, first_args}}, 3000
@@ -198,6 +202,58 @@ defmodule Ipse.ParallelDelegationTest do
     assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
     assert File.read!(Path.join(ctx.root, "child-0.txt")) == "child 0"
     assert File.read!(Path.join(ctx.root, "child-1.txt")) == "child 1"
+    id = Session.info(pid).id
+    :ok = Session.close(pid)
+    {:ok, events} = Journal.load(ctx.state, id)
+    waits = Enum.filter(events, &(&1["type"] == "lifecycle_wait_started"))
+    assert Enum.map(waits, & &1["domain"]) == ["tool", "delegated_tool", "delegated_tool"]
+    children = for %{"type" => "delegation_started", "child_id" => child} <- events, do: child
+    assert Enum.map(tl(waits), & &1["child_id"]) |> Enum.sort() == Enum.sort(children)
+
+    assert Enum.all?(
+             Enum.filter(events, &(&1["type"] == "lifecycle_wait_finished")),
+             &(&1["outcome"] == "approved")
+           )
+
+    assert {:ok, _} = Session.restore_context(events)
+  end
+
+  test "child loss interrupts its pending approval wait without accepting a stale decision",
+       ctx do
+    {pid, _} =
+      start(ctx, :write, %{
+        observability: Map.put(Ipse.Observability.Config.defaults(), "mode", "local")
+      })
+
+    id = Session.info(pid).id
+    :ok = Session.prompt(pid, "Run child writes")
+    approve_group(pid)
+    assert_receive {:ipse, ^pid, {:approval, ref, _, _}}, 3_000
+    {:delegated, ^ref, _, child, _, _, _} = :sys.get_state(pid).approval
+    Process.exit(child, :kill)
+    assert_receive {:ipse, ^pid, {:done, :error}}, 5_000
+    assert {:error, :no_pending_approval} = Session.approve(pid, ref, true)
+    :ok = Session.close(pid)
+    {:ok, events} = Journal.load(ctx.state, id)
+
+    wait =
+      Enum.find(
+        events,
+        &(&1["type"] == "lifecycle_wait_started" and &1["domain"] == "delegated_tool")
+      )
+
+    assert wait != nil
+
+    finish =
+      Enum.find(
+        events,
+        &(&1["type"] == "lifecycle_wait_finished" and &1["wait_id"] == wait["wait_id"])
+      )
+
+    assert finish["outcome"] == "interrupted"
+    refute File.exists?(Path.join(ctx.root, "child-0.txt"))
+    refute File.exists?(Path.join(ctx.root, "child-1.txt"))
+    assert {:ok, _} = Session.restore_context(events)
   end
 
   test "cross-child target conflicts are denied rather than overwrite a sibling result", ctx do

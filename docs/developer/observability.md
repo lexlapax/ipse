@@ -37,6 +37,12 @@ Only new supported records written after enrollment are offered. Headers and old
 records are not replayed. Enabled resume creates fresh leases; unfinished old ones
 remain historical unknown, never reinitialized. Lease intent/ready/closed records
 are mandatory recovery facts, independent of sample delivery.
+The shared [runtime sources](lifecycle-events.md#runtime-epochs-and-operator-waits)
+add a fresh session epoch and operator-wait starts/finishes. Capture enables their
+recording, but an extension's separate `lifecycle.record` grant can enable them
+with capture off. Stopping delivery does not stop an enrolled epoch's journal
+sources. A logical close is committed after sink cleanup and need not reach that
+sink; cleanup and journaling never depend on final notification acknowledgment.
 
 ## SDK contract
 
@@ -65,7 +71,9 @@ Sequence counts attempted observations in this capture epoch; unsupported,
 filtered and dropped positions can create gaps. Elapsed time is monotonic since
 epoch start, not an operation duration or wall clock. Request durations remain
 separate facts. Completed assistant metadata uses group `stream`; compaction uses
-`compaction`. Known group names do not imply sources for every proposed seam.
+`compaction`; both runtime epochs and operator waits use `session`. Wait duration
+is measured only inside its recorded process epoch, never across restart.
+Known group names do not imply sources for every proposed seam.
 
 The only accepted response echoes actual values in a closed acknowledgment:
 
@@ -245,8 +253,8 @@ Formatted status redaction does not protect
 [`sys.get_state`](https://www.erlang.org/doc/apps/stdlib/sys.html#get_state/2)
 or raw messages/arguments. Use synthetic inputs for breakpoints, and never suspend
 a live Session while effects continue. No debugger listener or distributed node
-is enabled. Approval/question wait spans, ephemeral identity, broader lifecycle
-delivery and the independent package proof remain open in
+is enabled. Committed runtime epoch/wait sources are implemented; ephemeral identity,
+broader lifecycle delivery and the independent package proof remain open in
 [P22](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
 
 Twenty diagnostic fixtures cover off parity, privacy/source identity, stop, export scope,

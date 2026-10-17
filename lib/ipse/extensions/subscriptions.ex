@@ -219,8 +219,12 @@ defmodule Ipse.Extensions.Subscriptions do
       end
     end)
     |> case do
-      :ok -> Ipse.Extensions.History.validate_sources(directory, session, events)
-      error -> error
+      :ok ->
+        with :ok <- Ipse.Extensions.History.validate_sources(directory, session, events),
+             do: Ipse.Lifecycle.Runtime.validate_sources(directory, session, events)
+
+      error ->
+        error
     end
   rescue
     _ -> @error

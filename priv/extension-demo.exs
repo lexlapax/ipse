@@ -140,6 +140,7 @@ defmodule Ipse.ExtensionDemo do
       conformance(catalog, config.home)
       answer_views()
       history_views(root)
+      runtime_epochs(root, config)
 
       IO.puts(
         "Extension prompt/presentation and unchanged idle resume fixture passed without inference. Local diagnostic sink fixture passed without network inference."
@@ -187,6 +188,40 @@ defmodule Ipse.ExtensionDemo do
         "fixture presented",
         "sha256"
       ])
+  end
+
+  defp runtime_epochs(root, config) do
+    directory = Path.join(root, "runtime-sessions")
+
+    config =
+      %{config | extensions: []}
+      |> Map.put(:observability, Map.put(Ipse.Observability.Config.defaults(), "mode", "local"))
+
+    opts = [config: config, cwd: root, state_dir: directory, subscriber: self()]
+    {:ok, first} = DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, opts})
+    id = Ipse.Session.info(first).id
+    :ok = Ipse.Session.close(first)
+
+    {:ok, resumed} =
+      DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, opts ++ [id: id]})
+
+    :idle = Ipse.Session.info(resumed).phase
+    :ok = Ipse.Session.close(resumed)
+    {:ok, events} = Ipse.Journal.load(directory, id)
+    {:ok, %{closed: true, count: 4}} = Ipse.Lifecycle.Runtime.restore(events, id)
+    {:ok, []} = Ipse.Session.restore_context(events)
+    :ok = Ipse.Lifecycle.Runtime.validate_sources(directory, id, events)
+    {:ok, %{records: records, next: nil}} = Ipse.Journal.source_page(directory, id, 0, 64)
+
+    types =
+      for %{source: source, record: record} <- records,
+          record["type"] in Ipse.Lifecycle.Runtime.types() do
+        {:ok, metadata} = Ipse.Lifecycle.Event.project(source, record, "metadata")
+        true = Ipse.Lifecycle.Event.valid_metadata?(metadata)
+        metadata["type"]
+      end
+
+    ~w(session.started session.close_committed session.resumed session.close_committed) = types
   end
 
   # Primitive compatibility fixture; installed SDK execution is exercised by the

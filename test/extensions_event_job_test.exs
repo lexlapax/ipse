@@ -23,6 +23,7 @@ defmodule Ipse.Extensions.EventJobTest do
     artifacts =
       for {kind, schedule, private, event} <- [
             {:before, "before_request", true, "prompt.effective_committed"},
+            {:recording, "before_request", true, "prompt.effective_committed"},
             {:after, "after_turn", true, "prompt.effective_committed"},
             {:metadata, "before_request", false, "prompt.effective_committed"},
             {:answer, "after_turn", true, "answer.committed"}
@@ -50,7 +51,7 @@ defmodule Ipse.Extensions.EventJobTest do
                 if(kind == :answer, do: "event.answer.presented", else: "event.prompt.effective")
               ],
               else: []
-            )
+            ) ++ if(kind == :recording, do: ["lifecycle.record"], else: [])
 
         result = %{
           "type" => "object",
@@ -330,6 +331,87 @@ defmodule Ipse.Extensions.EventJobTest do
 
     assert {:error, _} = Session.invoke_export(pid, :job, "ext__graph__maintain", %{})
     :ok = Session.close(pid)
+  end
+
+  test "lifecycle recording works with diagnostics off and confers no write approval", c do
+    cfg = config(c, :recording, "write", :ask)
+    {:ok, pid} = start(c, cfg)
+    on_exit(fn -> if Process.alive?(pid), do: Session.close(pid) end)
+    id = Session.info(pid).id
+    :ok = Session.prompt(pid, "Meridian Graph")
+    assert_receive {:ipse, ^pid, {:approval, ref, "extension:state.put", _}}, 10_000
+    all = events(c, pid)
+    [epoch, wait] = Enum.filter(all, &(&1["type"] in Ipse.Lifecycle.Runtime.types()))
+    assert wait["domain"] == "extension_action"
+    assert wait["epoch_id"] == epoch["epoch_id"]
+    assert wait["request_id"] == nil
+    parent = Enum.find(all, &(&1["type"] == "extension_invocation_intent"))
+    assert wait["parent_invocation_id"] == parent["invocation_id"]
+    assert wait["turn_id"] == parent["payload"]["turn_id"]
+    assert Session.diagnostics(pid)["observability"]["policy"]["mode"] == "off"
+    refute Enum.any?(all, &(&1["type"] == "diagnostic_sink_intent"))
+    assert puts(all) == []
+    :ok = Session.approve(pid, ref, false)
+    done(pid, :error)
+    :ok = Session.close(pid)
+    {:ok, all} = Journal.load(c.dir, id)
+    [_, _, finished, closed] = Enum.filter(all, &(&1["type"] in Ipse.Lifecycle.Runtime.types()))
+    assert finished["operation_id"] == wait["operation_id"]
+    assert finished["outcome"] == "denied"
+    assert closed["closure"] == "close"
+    assert {:ok, _} = Session.restore_context(all)
+    assert :ok = Subscriptions.validate_sources(c.dir, id, all)
+  end
+
+  test "event-job questions retain source checkpoints and fresh wait identity after restart",
+       c do
+    cfg = config(c, :recording, "question", :ask)
+    {:ok, pid} = start(c, cfg)
+    :ok = Session.prompt(pid, "Meridian Graph")
+    assert_receive {:ipse, ^pid, {:question, question, _}}, 10_000
+    id = Session.info(pid).id
+    before = events(c, pid)
+    [_, wait] = Enum.filter(before, &(&1["type"] in Ipse.Lifecycle.Runtime.types()))
+    assert wait["domain"] == "extension_question"
+    assert Ipse.Lifecycle.Source.valid?(wait["subject_source"])
+    index = Enum.find_index(before, &(&1["type"] == "extension_question"))
+    assert Enum.at(before, index + 1)["type"] == "lifecycle_wait_started"
+    monitor = Process.monitor(pid)
+    Process.exit(pid, :kill)
+    assert_receive {:DOWN, ^monitor, :process, ^pid, :killed}, 2_000
+    # The native session lock helper can take a scheduling turn to exit.
+    eventually(fn -> not Process.alive?(pid) end)
+    {:ok, resumed} = resume_recording(c, cfg, id)
+    on_exit(fn -> if Process.alive?(resumed), do: Session.close(resumed) end)
+    assert_receive {:ipse, ^resumed, {:question, ^question, _}}, 10_000
+
+    [_, ^wait, _, next_wait] =
+      Enum.filter(events(c, resumed), &(&1["type"] in Ipse.Lifecycle.Runtime.types()))
+
+    assert next_wait["subject_source"] == wait["subject_source"]
+    refute next_wait["wait_id"] == wait["wait_id"]
+    refute_receive {:job_model, _}, 50
+    :ok = Session.answer(resumed, question, %{"proceed" => "yes"})
+    assert_receive {:ipse, ^resumed, {:approval, ref, "extension:state.put", _}}, 10_000
+    :ok = Session.approve(resumed, ref, false)
+    done(resumed, :error)
+    :ok = Session.close(resumed)
+    {:ok, all} = Journal.load(c.dir, id)
+    finished = Enum.filter(all, &(&1["type"] == "lifecycle_wait_finished"))
+    assert Enum.map(finished, & &1["outcome"]) == ["answered", "denied"]
+    assert {:ok, _} = Session.restore_context(all)
+    assert :ok = Subscriptions.validate_sources(c.dir, id, all)
+  end
+
+  defp resume_recording(c, cfg, id, attempts \\ 100) do
+    case start(c, cfg, id) do
+      {:error, :session_locked} when attempts > 0 ->
+        Process.sleep(10)
+        resume_recording(c, cfg, id, attempts - 1)
+
+      result ->
+        result
+    end
   end
 
   test "answer jobs store only their selected answer after inference with separate approval", c do

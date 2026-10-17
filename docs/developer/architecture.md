@@ -370,6 +370,14 @@ their external effects may already have happened. Calls cancelled before launch
 are recorded as not started; older unresolved history remains conservative. A final partial record may be
 repaired while holding the session lock. The full transcript remains on disk.
 
+Optional [runtime facts](lifecycle-events.md#runtime-epochs-and-operator-waits)
+distinguish recorded session epochs and operator waits. Diagnostic capture or a
+reviewed extension's `lifecycle.record` capability enrolls them independently of
+effect admission. Unclosed epochs/waits remain incomplete after abrupt loss;
+resume never synthesizes a successful finish or replays a handler. Logical close
+is recorded before process exit and carries only the cleanup confirmation actually
+available. No termination callback writes after the lock helper is lost.
+
 `ipse sessions` reads listings directly through `Journal.list/1`, without starting
 or resuming sessions or authenticating. The default text output is unchanged;
 `--json` projects only `id`, `provider`, `model` and `cwd` into one ID-sorted array,

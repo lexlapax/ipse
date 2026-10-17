@@ -166,6 +166,7 @@ defmodule Ipse.Extensions.Actions do
   end
 
   def restore([%{"metadata" => metadata} | _] = events) do
+    {:ok, _} = Ipse.Lifecycle.Runtime.restore(events)
     {:ok, catalog} = Ipse.Extensions.Catalog.from_metadata(metadata)
     :ok = Ipse.Extensions.Services.validate_metadata(Map.get(metadata, "extensions", []), catalog)
 
@@ -223,6 +224,10 @@ defmodule Ipse.Extensions.Actions do
   defp validate_event(%{"type" => type}, state, _)
        when type in ~w(extension_text_intent extension_text_ready extension_text_closed),
        do: {:ok, state}
+
+  defp validate_event(%{"type" => type} = event, state, _)
+       when type in ~w(lifecycle_epoch_started lifecycle_epoch_closed lifecycle_wait_started lifecycle_wait_finished lifecycle_recording_stopped),
+       do: if(Ipse.Lifecycle.Runtime.valid_record?(event), do: {:ok, state}, else: @error)
 
   defp validate_event(%{"type" => "extension_invocation_intent"} = event, state, _) do
     if is_nil(state.parent),

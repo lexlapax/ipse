@@ -7,6 +7,7 @@ defmodule Ipse.Observability.Event do
            (cond do
               String.contains?(event["type"], ".compaction_") -> "compaction"
               group in ["assistant", "answer"] -> "stream"
+              group == "wait" -> "session"
               true -> group
             end),
          true <- group in Ipse.Observability.Config.groups() do

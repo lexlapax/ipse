@@ -97,6 +97,7 @@ trust ceiling must cover every declared capability:
 | `host.context` | Bounded caller-scoped context publications | [Context/evidence](#context-and-evidence) |
 | `host.history`, `host.history.*` | Explicit reads of this session's metadata or separately granted private views | [History](#explicit-history-and-catch-up) |
 | `stream.text` | Acknowledged private visible-text delivery through a scoped worker handle | [Text clients](#visible-text-clients) |
+| `lifecycle.record` | Record bounded session epochs and operator waits independently of diagnostic capture; no callback or read/action grant | [Runtime facts](../developer/lifecycle-events.md#runtime-epochs-and-operator-waits) |
 | `observe.local`, `observe.export` | Read-only metadata sink with separate operator capture policy | [Diagnostic capture](observability.md) |
 | `event.job` | Source-bound prompt handlers using normal finite approved actions, before requests or after answers | [Event jobs](#event-jobs) |
 | `event.notify` | Declared read-only prompt/answer notifications; metadata only without a private read capability | [Event subscribers](#event-subscribers) |
@@ -104,7 +105,9 @@ trust ceiling must cover every declared capability:
 | `event.answer.original`, `event.answer.presented` | The selected original or completed presented answer text | [Event subscribers](#event-subscribers) |
 
 Every `host.*` operation capability also requires `host.actions`; `stream.text`
-is a separate read-only capability. Unsupported
+is a separate read-only capability. `lifecycle.record` enrolls metadata recording
+for the new process without starting an extension worker; history reads,
+subscriptions and effects need their own grants. Unsupported
 capabilities fail explicitly. Invocation exports need inert argument/result
 schemas in the manifest. Keep credentials out of options. These mechanisms
 do not select an automatic memory backend or retrieval provider.

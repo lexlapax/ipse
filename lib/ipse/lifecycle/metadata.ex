@@ -22,6 +22,10 @@ defmodule Ipse.Lifecycle.Metadata do
   def describe(%{"type" => "session", "metadata" => metadata}) when is_map(metadata),
     do: result("session.created", %{}, %{})
 
+  def describe(%{"type" => type} = record)
+      when type in ~w(lifecycle_epoch_started lifecycle_epoch_closed lifecycle_wait_started lifecycle_wait_finished lifecycle_recording_stopped),
+      do: Ipse.Lifecycle.Runtime.describe(record)
+
   def describe(%{"type" => "request_admitted", "version" => 1} = record),
     do:
       fields(
