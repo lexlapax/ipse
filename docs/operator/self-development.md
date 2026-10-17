@@ -26,9 +26,10 @@ held-out reruns and final architecture/security reviews. The
 voice/media is deferred to P28 and does not block this text/research work.
 
 Use the [fresh-session architecture-review handoff](architecture-review.md) for the
-operator's selected Claude subscription route in the existing Serenity project
-directory. Its pinned Git revision and source exclusions replace a required
-packet download or separate checkout. Use a passing candidate from
+operator's selected Claude cloud/subscription route with a prepared Git checkout.
+The same brief supports the existing Serenity checkout without a fixed path.
+Its pinned Git objects and source exclusions define the review inputs; a plain
+file snapshot cannot silently replace them. Use a passing candidate from
 the [verification record](../developer/testing.md#current-evidence-and-next-checks).
 Normally ask an independent external reviewer, such as Claude, to challenge it
 before scanning. Establish reviewer/service access, source-sharing authority,

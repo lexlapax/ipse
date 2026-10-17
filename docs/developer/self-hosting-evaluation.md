@@ -84,9 +84,11 @@ vulnerability scan and the Codex/Ipse knowledge-research comparison answer
 different questions; neither substitutes for this independent critique.
 
 Freeze a review brief, exact revision and sanitized source/design manifest. The
-operator's [local Claude handoff](../operator/architecture-review.md) uses the
-existing Serenity checkout with read-only Git object access to the pinned commit;
-no archive or new checkout is required. Source exclusions still apply, and current
+operator's [Claude handoff](../operator/architecture-review.md) supports a prepared
+cloud checkout or the existing local checkout, with read-only Git object access
+to the pinned commit. Setup must supply the required history before review; no
+project execution is needed. A missing Git object is an access limitation, not
+permission to review a different revision. Source exclusions still apply, and current
 worktree/untracked files are not review inputs. Record
 the external model/provider/version as reported, settings, public interface,
 tool/file/network access, limits and supervisor interventions. Do not infer

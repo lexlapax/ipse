@@ -1,11 +1,17 @@
 # Fresh-session architecture-review handoff
 
-Start a **new Claude Code conversation** in the existing Serenity checkout,
-`/home/lexlapax/projects/lexlapax/ipse`. Do not resume or continue either earlier
-review conversation, paste their reports, or attach this working conversation.
-Reusing the checkout is fine; the review context must be fresh. Use the selected
-Claude subscription and paste the prompt below. No packet download, installation,
-Mac repair, API billing or overage change is required.
+Start a **new Claude cloud review conversation** with repository `lexlapax/ipse`
+available from current `origin/main`, then paste the prompt below. Prepare a Git
+checkout whose history contains the pinned source/base/original revisions before
+the review starts; no project build, test run or dependency installation is needed.
+The checkout path is environment-specific. The existing Serenity checkout also
+works if the operator later chooses local execution.
+
+Do not resume either earlier review conversation, paste its report, or attach
+this working conversation. The review context must be fresh. Use the operator's
+selected Claude account and subscription; this handoff enables no API billing or
+overage change. If cloud access supplies only a file snapshot without verifiable
+Git objects, report that limitation rather than silently reviewing another revision.
 
 ## Target and acceptance
 
@@ -31,8 +37,9 @@ keeps baseline security and P25 behind applicable repairs and adequate coverage.
 ## Prompt for the new conversation
 
 ```text
-Perform a fresh-session adversarial architecture review of Ipse in this existing
-Serenity repository: /home/lexlapax/projects/lexlapax/ipse
+Perform a fresh-session adversarial architecture review of repository lexlapax/ipse
+in the Git checkout provided by this cloud environment. Discover its repository
+root from the current working directory; no Serenity-specific path is assumed.
 
 SOURCE_REV = b5297beca9781cd52e907f7907683882ccaebba9
 BASE_REV = b570ef8422d83f70ebd13386a0e0bf5630d9c3d6
@@ -42,10 +49,14 @@ First confirm this conversation has no earlier review report, critique or
 implementation conversation in its context. If it does, stop and request a new
 conversation; an instruction to forget earlier material is insufficient.
 Verify SOURCE_REV as a commit and record committed HEAD once as EVIDENCE_REV.
+Verify BASE_REV and ORIGINAL_REV are available too. If the checkout or required
+Git objects are missing, stop and report the access limitation; do not fetch,
+change branches, or substitute current HEAD for the pinned source during review.
 Use SOURCE_REV for implementation/tests/contracts and EVIDENCE_REV only for the
 explicit phase-B evidence documents. Leave branch, index and worktree untouched.
 
 Read-only Git examples:
+git --no-pager rev-parse --show-toplevel
 git --no-pager rev-parse --verify 'b5297beca9781cd52e907f7907683882ccaebba9^{commit}'
 git --no-pager rev-parse --verify HEAD
 git --no-pager ls-tree -r --name-only b5297beca9781cd52e907f7907683882ccaebba9
