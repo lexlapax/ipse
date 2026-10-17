@@ -1,7 +1,7 @@
 defmodule Ipse.Session do
   @moduledoc "One supervised owner per agent conversation. I/O runs in monitored tasks."
   use GenServer
-  alias Ipse.{Journal, Skills, Tools, WorkspaceContext, Questions}
+  alias Ipse.{Journal, Skills, Tools, WorkspaceContext, Questions, ToolCall}
   alias Ipse.Journal.Writer
 
   alias Ipse.Extensions.{
@@ -2244,6 +2244,16 @@ defmodule Ipse.Session do
       if Process.alive?(resource.pid), do: Process.exit(resource.pid, :kill)
     end)
 
+    # A timed-out append may still be queued or inside IO. Stop its sole writer
+    # before releasing the session lock; never retry an unconfirmed record.
+    Process.unlink(s.journal_writer)
+    writer_ref = Process.monitor(s.journal_writer)
+    Process.exit(s.journal_writer, :kill)
+
+    receive do
+      {:DOWN, ^writer_ref, :process, _, _} -> :ok
+    end
+
     Ipse.Runner.unlock(s.lock)
 
     :ok
@@ -2612,7 +2622,7 @@ defmodule Ipse.Session do
 
   defp valid_tool_ids?(calls) when is_list(calls) do
     Enum.all?(calls, fn
-      %{"id" => id} when is_binary(id) -> id != ""
+      %{"id" => id} -> ToolCall.valid_id?(id)
       _ -> false
     end) and length(Enum.uniq_by(calls, & &1["id"])) == length(calls)
   end
@@ -3302,8 +3312,8 @@ defmodule Ipse.Session do
         offer_record(s, source, event)
         source
 
-      {:error, reason} ->
-        raise "Journal write failed: #{inspect(reason)}"
+      {:error, _} ->
+        exit(:journal_unavailable)
     end
   end
 
@@ -3337,7 +3347,7 @@ defmodule Ipse.Session do
     case result do
       :ok -> :ok
       {:ok, source} -> offer_record(s, source, event)
-      {:error, reason} -> raise "Journal write failed: #{inspect(reason)}"
+      {:error, _} -> exit(:journal_unavailable)
     end
   end
 
@@ -3347,8 +3357,8 @@ defmodule Ipse.Session do
         offer_record(s, source, event)
         source
 
-      {:error, reason} ->
-        raise "Journal write failed: #{inspect(reason)}"
+      {:error, _} ->
+        exit(:journal_unavailable)
     end
   end
 
@@ -3360,7 +3370,7 @@ defmodule Ipse.Session do
     Feeds.offer(s.feeds, source, event, fn intent ->
       case Writer.append(s.journal_writer, intent) do
         :ok -> :ok
-        {:error, reason} -> raise "Journal write failed: #{inspect(reason)}"
+        {:error, _} -> exit(:journal_unavailable)
       end
     end)
   end
@@ -3713,7 +3723,7 @@ defmodule Ipse.Session do
     if match?(%{active: true}, s.lifecycle) or Feeds.active?(s.feeds) do
       case Writer.append_with_source(s.journal_writer, event) do
         {:ok, source} -> source
-        {:error, reason} -> raise "Journal write failed: #{inspect(reason)}"
+        {:error, _} -> exit(:journal_unavailable)
       end
     else
       record(s, event)
@@ -4040,8 +4050,7 @@ defmodule Ipse.Session do
 
         with true <- event["version"] == 1 and is_map(call),
              true <-
-               event["id"] == call["id"] and is_binary(call["id"]) and
-                 byte_size(call["id"]) in 1..256,
+               event["id"] == call["id"] and ToolCall.valid_id?(call["id"]),
              true <- get_in(call, ["function", "name"]) == "ask_operator",
              {:ok, args} <- Jason.decode(get_in(call, ["function", "arguments"])),
              {:ok, ^args} <- Questions.validate(event["arguments"]),

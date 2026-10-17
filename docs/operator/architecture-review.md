@@ -1,5 +1,11 @@
 # Independent architecture-review handoff
 
+The `b570ef8` brief below has been used. Its returned report is a same-session
+follow-up with incomplete coverage, not the requested fresh assessment. Follow-up
+repairs are under verification; this older target is not the next review packet.
+The supervisor will refresh the pinned source and remaining-coverage brief after
+the candidate passes its checks. See the [current register](../developer/architecture-review-dispositions.md#follow-up-findings-and-verification).
+
 P24 needs a follow-up review of the repaired candidate and the surfaces omitted
 from the first critique. Run a fresh Claude subscription session in the existing
 Serenity checkout, `/home/lexlapax/projects/lexlapax/ipse`, and paste the prompt

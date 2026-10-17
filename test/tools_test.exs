@@ -30,6 +30,17 @@ defmodule Ipse.ToolsTest do
     assert File.read!(Path.join(cwd, "notes")) == "first\nchanged\nthird\n"
   end
 
+  test "missing and non-directory write parents are refused before attempting a write", c do
+    File.write!(Path.join(c.cwd, "parent-file"), "keep")
+
+    for path <- ["missing/child", "parent-file/child"] do
+      assert {:error, _} = Tools.execute("write", %{"path" => path, "content" => "x"}, c.context)
+      refute File.exists?(Path.join(c.cwd, path))
+    end
+
+    assert File.read!(Path.join(c.cwd, "parent-file")) == "keep"
+  end
+
   test "rejects absent, repeated, overlapping, or empty edits", %{cwd: cwd, context: context} do
     File.write!(Path.join(cwd, "notes"), "aaa")
 

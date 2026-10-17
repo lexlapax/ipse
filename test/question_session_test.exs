@@ -6,7 +6,7 @@ defmodule Ipse.QuestionSessionTest do
     def complete(config, messages, tools, _emit) do
       send(config.test_pid, {:question_provider, self(), messages, tools})
       turn = Enum.count(messages, &(&1["role"] == "user"))
-      id = "clarify-#{turn}"
+      id = config[:call_id] || "clarify-#{turn}"
       answered = Enum.any?(messages, &(&1["role"] == "tool" and &1["tool_call_id"] == id))
 
       before_done =
@@ -123,6 +123,36 @@ defmodule Ipse.QuestionSessionTest do
 
       result ->
         result
+    end
+  end
+
+  test "opaque boundary call IDs survive question resume and oversized IDs are refused", ctx do
+    for id <- [String.duplicate("x", 256), String.duplicate("雪", 85) <> "x", "opaque / 雪"] do
+      {:ok, pid} = start(ctx, %{call_id: id})
+      on_exit(fn -> if Process.alive?(pid), do: Session.close(pid) end)
+      :ok = Session.prompt(pid, "Synthetic boundary question")
+      assert_receive {:ipse, ^pid, {:question, ^id, _}}, 2000
+      session_id = Session.info(pid).id
+      kill(pid)
+      assert {:ok, resumed} = resume(ctx, %{call_id: id}, session_id)
+      on_exit(fn -> if Process.alive?(resumed), do: Session.close(resumed) end)
+      assert Session.info(resumed).phase == :question
+      :ok = Session.answer(resumed, id, %{"choice" => "one"})
+      assert_receive {:ipse, ^resumed, {:done, :ok}}, 2000
+      assert :ok = Session.close(resumed)
+    end
+
+    for id <- [String.duplicate("x", 257), String.duplicate("x", 300), String.duplicate("雪", 86)] do
+      {:ok, pid} = start(ctx, %{call_id: id})
+      on_exit(fn -> if Process.alive?(pid), do: Session.close(pid) end)
+      :ok = Session.prompt(pid, "Synthetic oversized question")
+      assert_receive {:ipse, ^pid, {:done, :error}}, 2000
+      refute_receive {:ipse, ^pid, {:question, _, _}}, 20
+      session_id = Session.info(pid).id
+      assert :ok = Session.close(pid)
+      assert {:ok, resumed} = resume(ctx, %{call_id: id}, session_id)
+      assert Session.info(resumed).phase == :idle
+      assert :ok = Session.close(resumed)
     end
   end
 

@@ -100,8 +100,8 @@ defmodule Ipse.Extensions.Invocation do
   end
 
   def source_call_valid?(%{"tool_calls" => calls}, id, name, arguments)
-      when is_list(calls) and is_binary(id) and byte_size(id) in 1..512 do
-    with true <- String.valid?(id),
+      when is_list(calls) do
+    with true <- Ipse.ToolCall.valid_id?(id),
          [call] <- Enum.filter(calls, &(&1["id"] == id)),
          true <- get_in(call, ["function", "name"]) == name,
          {:ok, parsed} <- Manifest.decode_json(get_in(call, ["function", "arguments"])) do
@@ -331,9 +331,8 @@ defmodule Ipse.Extensions.Invocation do
   end
 
   defp valid_parent?(%{"descriptor" => %{"stage" => "invoke.tool"}} = event) do
-    not Map.has_key?(event, "event_trigger") and is_binary(event["parent_call_id"]) and
-      String.valid?(event["parent_call_id"]) and
-      byte_size(event["parent_call_id"]) in 1..512 and id?(event["parent_request_id"]) and
+    not Map.has_key?(event, "event_trigger") and Ipse.ToolCall.valid_id?(event["parent_call_id"]) and
+      id?(event["parent_request_id"]) and
       event["approval"] in ~w(approved session_allow)
   end
 

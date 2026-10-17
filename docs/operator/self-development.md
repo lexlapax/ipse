@@ -12,10 +12,12 @@ checks and matching runtime. Use the local
 
 Next comes P24's external adversarial architecture validation and baseline OpenAI
 security audit, followed by P25's larger independent Codex/Ipse research and
-self-development comparison. The first partial static critique has returned;
+self-development comparison. The first critique and a same-session follow-up have returned;
 [repair verification and remaining review coverage](../developer/architecture-review-dispositions.md)
-are recorded separately. The prepared follow-up brief targets the repaired source
-and first-pass omissions. No security scan or larger trial has run. The
+are recorded separately. The follow-up accepted the earlier repairs but found
+adjacent gaps with local repairs now verified and hosted checks pending. A fresh review session must cover remaining
+omissions and the repaired candidate; the same-session report does not satisfy
+that requirement. No security scan or larger trial has run. The
 [review and evaluation protocol](../developer/self-hosting-evaluation.md) defines
 the critique, dispositions, source-based comparison, Ipse-authored repairs,
 held-out reruns and final architecture/security reviews. The

@@ -4,9 +4,37 @@ defmodule Ipse.JournalWriterTest do
   alias Ipse.Journal.Writer
 
   defmodule WaitingModel do
-    def complete(config, _, _, _) do
+    def complete(config, _, _, emit) do
       send(config.test_pid, {:model_worker, self()})
+
+      receive do
+        :observe -> emit.({:provider_usage, %{input_tokens: 1, output_tokens: 1}})
+      end
+
       Process.sleep(:infinity)
+    end
+  end
+
+  defmodule EffectModel do
+    def complete(_, _, _, _) do
+      {:ok,
+       %{
+         "role" => "assistant",
+         "content" => "",
+         "tool_calls" => [
+           %{
+             "id" => "effect",
+             "function" => %{
+               "name" => "shell",
+               "arguments" =>
+                 Jason.encode!(%{
+                   "command" =>
+                     "printf started; while [ ! -e release ]; do sleep 0.02; done; printf effected > effect"
+                 })
+             }
+           }
+         ]
+       }, %{}}
     end
   end
 
@@ -158,6 +186,90 @@ defmodule Ipse.JournalWriterTest do
     :ok = GenServer.stop(writer, :normal)
     assert_receive {:DOWN, ^owner_monitor, :process, ^session, :journal_unavailable}, 5_000
     assert_receive {:DOWN, ^worker_monitor, :process, ^worker, _}, 5_000
+  end
+
+  @tag timeout: 20_000
+  test "stalled journal acknowledgment deliberately stops the session and owned work", c do
+    config = %{
+      provider: :demo,
+      model: "fixture",
+      provider_module: WaitingModel,
+      test_pid: self(),
+      home: Path.join(c.dir, "home"),
+      approval: :deny
+    }
+
+    assert {:ok, session} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Ipse.Session, config: config, cwd: c.dir, state_dir: c.dir, subscriber: self()}
+             )
+
+    :ok = Ipse.Session.prompt(session, "Synthetic stalled observation")
+    assert_receive {:model_worker, worker}, 5_000
+    id = Ipse.Session.info(session).id
+    writer = :sys.get_state(session).journal_writer
+    owner_monitor = Process.monitor(session)
+    worker_monitor = Process.monitor(worker)
+    writer_monitor = Process.monitor(writer)
+    :ok = :sys.suspend(writer)
+    send(worker, :observe)
+
+    try do
+      assert_receive {:DOWN, ^owner_monitor, :process, ^session, :journal_unavailable}, 8_000
+      assert_receive {:DOWN, ^worker_monitor, :process, ^worker, _}, 2_000
+      assert_receive {:DOWN, ^writer_monitor, :process, ^writer, _}, 2_000
+      assert {:ok, events} = Journal.load(c.dir, id)
+      refute Enum.any?(events, &(&1["type"] == "request_usage_observed"))
+    after
+      if Process.alive?(writer), do: :sys.resume(writer)
+      if Process.alive?(session), do: Ipse.Session.close(session)
+    end
+  end
+
+  @tag timeout: 20_000
+  test "an effect with a stalled result append resumes unknown without replay", c do
+    config = %{
+      provider: :demo,
+      model: "fixture",
+      provider_module: EffectModel,
+      home: Path.join(c.dir, "home"),
+      approval: :allow
+    }
+
+    opts = [config: config, cwd: c.dir, state_dir: c.dir, subscriber: self()]
+    assert {:ok, session} = DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, opts})
+    :ok = Ipse.Session.prompt(session, "Synthetic stalled effect receipt")
+    assert_receive {:ipse, ^session, {:tool_output, "started"}}, 5_000
+    id = Ipse.Session.info(session).id
+    writer = :sys.get_state(session).journal_writer
+    monitor = Process.monitor(session)
+    :ok = :sys.suspend(writer)
+
+    try do
+      File.write!(Path.join(c.dir, "release"), "go")
+      assert_receive {:DOWN, ^monitor, :process, ^session, :journal_unavailable}, 8_000
+      assert File.read!(Path.join(c.dir, "effect")) == "effected"
+      File.write!(Path.join(c.dir, "effect"), "operator edit")
+      assert {:ok, events} = Journal.load(c.dir, id)
+      assert {:ok, messages} = Ipse.Session.restore_context(events)
+      assert Enum.any?(messages, &(get_in(&1, ["ipse_tool_outcome", "status"]) == "unknown"))
+      bytes = File.read!(Path.join(c.dir, id <> ".jsonl"))
+
+      assert {:ok, resumed} =
+               DynamicSupervisor.start_child(
+                 Ipse.Sessions,
+                 {Ipse.Session, Keyword.put(opts, :id, id)}
+               )
+
+      assert Ipse.Session.info(resumed).phase == :idle
+      assert File.read!(Path.join(c.dir, "effect")) == "operator edit"
+      assert File.read!(Path.join(c.dir, id <> ".jsonl")) == bytes
+      assert :ok = Ipse.Session.close(resumed)
+    after
+      if Process.alive?(writer), do: :sys.resume(writer)
+      if Process.alive?(session), do: Ipse.Session.close(session)
+    end
   end
 
   test "steady append CPU and retained memory do not scale with 2 versus 64 MiB of history", c do

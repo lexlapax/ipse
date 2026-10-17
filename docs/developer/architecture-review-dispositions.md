@@ -24,6 +24,25 @@ invocation/service/accounting-read validators, context/compaction/auth plumbing,
 MCP HTTP, OS sandbox implementations, observability or the independent examples.
 Those omissions remain explicit coverage work; this report does not close P24.
 
+The operator returned a second report for source
+`b570ef8422d83f70ebd13386a0e0bf5630d9c3d6`, with documentation evidence at
+`d14d6acc4c9f6ec003f94006a9bf4a0d9b395d9a`. The same reviewer used the same
+session, retaining the first critique. It is a same-reviewer follow-up, not the
+requested fresh independent assessment. Reported settings were Opus 5.5,
+subscription, effort auto, no subagents or billing change; inspection lasted about
+six minutes plus writing. No code or tests were executed. The reviewer accepted
+the scoped F/S repairs and explicit D policies, while identifying adjacent gaps
+and explicitly withholding architectural acceptance because of omissions.
+
+New inspection covered the repair diff, terminal renderer, writer, retained native
+group owner, event jobs and HTTP profile. Session extension/question paths,
+subscriptions, MCP HTTP and test bodies received partial coverage. Invocation,
+actions, projection, services, contributions, text resources/consumers, feed channel,
+most usage readers, compaction, workspace context, skills, auth, MCP client/schema/
+config, lifecycle/observability and OS sandbox implementations still need substantive
+independent inspection with their test bodies. A fresh reviewer should prioritize
+these surfaces rather than repeat only the repair delta.
+
 ## Findings and verified repairs
 
 “Accepted source defect” means the supervisor checked the described path against
@@ -68,6 +87,23 @@ Exact failed/passing runs are retained in the testing record.
 | D8 | Text pressure can fail the main request by the selected contract | Accepted bounded-pressure policy; S3's separate avoidable fragmentation failure is repaired without expanding buffers/deadlines |
 | D9 | Trusted executable code and explicit native execution have different OS boundaries | Preserve the documented trust model and macOS best-effort detached cleanup; no blanket confinement claim |
 
+## Follow-up findings and verification
+
+These A identifiers belong to the `b570ef8` follow-up, separate from F1–F7.
+Local regressions use synthetic content and isolated homes; no live model service
+or operator credentials are involved. Completion still requires the candidate's
+full handoff and hosted platform checks recorded in [testing](testing.md).
+
+| ID | Assessment and repair | Verification and remaining limits |
+| --- | --- | --- |
+| A1 | Reproduced: a relayed newline-delimited fake prompt remained below the actual pending approval. CLI now retains its reference, full proposal and MCP target context and redraws them after interleaved output or local commands, without buffering returned text | Controlled subscriber regression passes; an actual two-child CLI/HTTP fixture also exercises the read-result versus shell-approval ordering. Terminal control escaping remains active; returned prose remains untrusted |
+| A2 | Reproduced with a suspended writer: the default call timeout escaped with its private request term. Explicit five-second writer calls now return an unconfirmed-write error; every mandatory append path deliberately stops Session as `journal_unavailable`. Termination stops owned work and confirms writer exit before releasing the lock | Controlled callback-stall regressions verify provider cleanup, canceled queued append, and a real completed shell effect whose unrecorded result resumes unknown without replay. This is not a kernel fsync/power-loss test. Kernel IO can still delay writer termination and client cleanup confirmation; no append retry or deadline relaxation |
+| A3 | Reproduced live admission of oversized question IDs. `Ipse.ToolCall` now defines opaque valid UTF-8 IDs of 1–256 bytes for live batches, question restore, extension parent/source and question-source validation. Handoff retains a stricter display encoding and hashes unsafe historical IDs | Boundary ASCII/multibyte/punctuation question IDs survive abrupt interruption, resume and answer; 257/300-byte and oversized multibyte IDs are refused before questions or effects and leave resumable idle history. Existing oversized checkpoints are not silently rekeyed; use inert diagnosis/handoff if required. Host identity includes the shared validator |
+| A4 | Missing/non-directory parents now fail a read-only preflight before `File.write` is attempted | Real filesystem refusals pass. A later write failure remains unknown even after successful preflight; the check is not a path lock or proof against races. Other ambiguous write failures stay conservative |
+| A5 | Corrected stdio retry commentary and native guidance: the unreaped anchor can keep group signaling successful after ordinary children exit | Documentation matches bounded drain/disconnect behavior; no native behavior change or stronger detached-child claim |
+| A6 | Accepted residual: no cumulative journal quota, full-history startup/resume validation and no live same-size rewrite authentication | Existing persistence limits remain explicit; same-user file tampering is not a security boundary. Future retention/redaction requires a reviewed generic contract |
+| A7 | Accepted residual: ledger reads/prefix hashing remain linear and contention may abort paid in-flight work, retaining unknown liability | No weakening of durable accounting, source validation, shared-overdraw refusal or billing claims |
+
 ## Execution order and completion
 
 The scoped F1–F7 and S1–S3 repairs have passed their own source/native/package/
@@ -77,11 +113,11 @@ revisions and remaining verification limits. Future repairs still need a
 regression or measured counterexample, coherent operator/developer guidance and
 their own checks before commit/push; an earlier green baseline does not cover them.
 
-The [prepared follow-up brief](../operator/architecture-review.md) now targets
-`b570ef8`, covering the repair delta and first-pass omissions, particularly Session
-extension begin/commit/question restore, subscriptions/jobs, compaction/workspace
-context and MCP HTTP. The reviewer records an independent source assessment before
-checking this register and later verification evidence. Preserve the original
-critique and challenge every disposition. The baseline security audit and P25
-remain gated by adequate independent coverage and any resulting applicable
-repairs. No security scan has run and P24 remains incomplete.
+The `b570ef8` follow-up does not supply the required fresh-session coverage.
+After verifying these new repairs, refresh the
+[review brief](../operator/architecture-review.md) to pin the resulting source and
+prioritize the omissions above. The next reviewer must start without prior review
+context, preserve its own source assessment before reading this register and
+record inspected test bodies and specific uncovered paths. Preserve both earlier
+critiques and challenge every disposition. Baseline security and P25 remain gated
+by adequate independent coverage and applicable repairs. No scan has run; P24 is open.

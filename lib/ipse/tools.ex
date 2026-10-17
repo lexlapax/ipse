@@ -148,9 +148,14 @@ defmodule Ipse.Tools do
     do: {:error, "unknown tool: #{inspect(name, limit: 20, printable_limit: 100)}"}
 
   defp write_effect(path, content) do
-    case File.write(path, content) do
-      :ok -> :ok
-      {:error, reason} -> {:unknown, "Write may have changed the file: " <> message(reason)}
+    with {:ok, %File.Stat{type: :directory}} <- File.stat(Path.dirname(path)) do
+      case File.write(path, content) do
+        :ok -> :ok
+        {:error, reason} -> {:unknown, "Write may have changed the file: " <> message(reason)}
+      end
+    else
+      {:ok, _} -> {:error, "Write parent must be an existing directory"}
+      {:error, reason} -> {:error, message(reason)}
     end
   end
 

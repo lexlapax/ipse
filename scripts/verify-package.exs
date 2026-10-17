@@ -82,6 +82,12 @@ defmodule Ipse.PackageVerifier do
     {:unknown, _} = Ipse.Runner.run(~s(printf effected > effect; kill -KILL "$PPID"), workspace)
     "effected" = File.read!(Path.join(workspace, "effect"))
     {:error, _} = Ipse.Runner.run("true", Path.join(workspace, "missing"))
+    {:error, _} = Ipse.Tools.execute("write", %{"path" => "missing/child", "content" => "x"}, %{cwd: workspace})
+    opaque = String.duplicate(<<0xE9, 0x9B, 0xAA>>, 85) <> "x"
+    true = Ipse.ToolCall.valid_id?(opaque)
+    false = Ipse.ToolCall.valid_id?(opaque <> "x")
+    source = %{"tool_calls" => [%{"id" => opaque, "function" => %{"name" => "fixture", "arguments" => "{}"}}]}
+    true = Ipse.Extensions.Invocation.source_call_valid?(source, opaque, "fixture", %{})
     call = %{"id" => "duplicate", "function" => %{"name" => "write", "arguments" => "{}"}}
     assistant = %{"role" => "assistant", "content" => "", "tool_calls" => [call, call]}
     result = %{"role" => "tool", "tool_call_id" => "duplicate", "content" => "First completed"}
@@ -105,7 +111,7 @@ defmodule Ipse.PackageVerifier do
     run!(launcher, ["eval", expression], release, env, "recovery and sandbox authority")
 
     IO.puts(
-      "PASS: installed shell uncertainty, historical results, sandbox floor and metadata aliases."
+      "PASS: installed shell uncertainty, call-ID bounds, write refusals, historical results, sandbox floor and metadata aliases."
     )
   end
 

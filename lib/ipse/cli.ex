@@ -474,6 +474,8 @@ defmodule Ipse.CLI do
             busy: prompt != nil,
             cancelling: false,
             approval: nil,
+            approval_display: nil,
+            approval_context: nil,
             question: nil,
             question_answers: %{},
             queued: [],
@@ -528,6 +530,19 @@ defmodule Ipse.CLI do
 
   defp client_loop(s) do
     pid = s.pid
+
+    if s.approval != nil do
+      {name, args, context} = s.approval_display
+
+      if context,
+        do:
+          Terminal.puts(:stderr, "External MCP target:\n" <> Jason.encode!(context, pretty: true))
+
+      Terminal.puts(
+        :stderr,
+        "\nWaiting for approval: #{name}\nAllow #{name}?\n#{Jason.encode!(args, pretty: true)}\nType y to allow, anything else to deny."
+      )
+    end
 
     receive do
       {:input, :eof} ->
@@ -761,7 +776,7 @@ defmodule Ipse.CLI do
 
       {:ipse, ^pid, {:mcp_approval_context, manifest}} ->
         Terminal.puts(:stderr, "External MCP target:\n" <> Jason.encode!(manifest, pretty: true))
-        client_loop(s)
+        client_loop(%{s | approval_context: manifest})
 
       {:ipse, ^pid, {:question, id, arguments}} ->
         if s.exit do
@@ -784,12 +799,12 @@ defmodule Ipse.CLI do
           Ipse.Session.approve(s.pid, ref, false)
           client_loop(s)
         else
-          Terminal.puts(
-            :stderr,
-            "\nWaiting for approval: #{name}\nAllow #{name}?\n#{Jason.encode!(args, pretty: true)}\nType y to allow, anything else to deny."
-          )
-
-          client_loop(%{s | approval: ref})
+          client_loop(%{
+            s
+            | approval: ref,
+              approval_display: {name, args, s.approval_context},
+              approval_context: nil
+          })
         end
 
       {:ipse, ^pid, {:error, error}} ->

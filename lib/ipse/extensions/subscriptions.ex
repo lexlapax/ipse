@@ -502,8 +502,8 @@ defmodule Ipse.Extensions.Subscriptions do
   defp reduce(%{"type" => "lifecycle_question_sources"} = event, s, _, _) do
     if keys?(event, ~w(type version turn_id question_id received_source effective_source)) and
          event["version"] === 1 and s.marker != nil and s.active == nil and not s.settling and
-         question_id(s.previous) == event["question_id"] and is_binary(event["question_id"]) and
-         byte_size(event["question_id"]) in 1..256 and String.valid?(event["question_id"]) and
+         question_id(s.previous) == event["question_id"] and
+         Ipse.ToolCall.valid_id?(event["question_id"]) and
          event["turn_id"] == s.marker["turn_id"] and
          event["received_source"] == s.marker["received_source"] and
          Source.matches?(event["effective_source"], s.marker) and

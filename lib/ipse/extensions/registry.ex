@@ -345,6 +345,7 @@ defmodule Ipse.Extensions.Registry do
       Ipse.Extensions.TextConsumer,
       Ipse.Journal,
       Ipse.Journal.Writer,
+      Ipse.ToolCall,
       Ipse.Lifecycle.Source,
       Ipse.Lifecycle.Event,
       Ipse.Lifecycle.Metadata,

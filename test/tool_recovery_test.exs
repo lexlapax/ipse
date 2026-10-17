@@ -160,7 +160,7 @@ defmodule Ipse.ToolRecoveryTest do
   end
 
   test "missing, empty and non-string tool identities never reach approval", c do
-    for id <- [nil, "", 17] do
+    for id <- [nil, "", 17, String.duplicate("x", 257), String.duplicate("雪", 86)] do
       pid = start(c, [call(id, "write", %{"path" => "invalid", "content" => "x"})], :ask)
       :ok = Session.prompt(pid, "Synthetic invalid ID")
       assert_receive {:ipse, ^pid, {:done, :error}}, 2_000

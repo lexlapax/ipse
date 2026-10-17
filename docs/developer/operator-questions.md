@@ -20,7 +20,13 @@ It does not relax tool permissions or accept extra schema keys.
 ## Session and client interface
 
 Session emits `{:ipse, pid, {:question, id, arguments}}`. `id` is the persisted
-provider call ID, separate from individual question IDs. `Session.info/1` includes
+provider call ID, separate from individual question IDs. `Ipse.ToolCall.valid_id?/1`
+defines the shared live/checkpoint contract: opaque valid UTF-8, 1–256 bytes.
+Admission rejects the whole proposed call batch before approval or question
+emission if any ID is invalid or duplicated. Extension invocation/source validators
+use the same bound. Handoff exports additionally encode unsafe display identifiers
+as hashes; their restricted display alphabet is not a provider-ID requirement.
+`Session.info/1` includes
 the pending ID/arguments and phase `:question`. `Session.answer/3` accepts exactly
 one map entry for every question: an option ID for `single`, a nonempty unique list
 of option IDs for `multiple`, or nonblank text. Invalid/stale/duplicate answers

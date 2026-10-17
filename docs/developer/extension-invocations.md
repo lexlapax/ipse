@@ -72,6 +72,10 @@ Every model tool invocation needs full argument approval unless the operator
 explicitly selected session-wide execution. Headless denial, child policy and
 lease checks remain core-owned. Invalid schemas, duplicate provider call IDs and
 duplicate JSON keys refuse execution before approval/code initialization.
+Provider call IDs use the shared `Ipse.ToolCall` contract: opaque valid UTF-8,
+1–256 bytes, unique within a proposed response. Live admission, saved question
+restoration and extension source/parent validation agree on that bound. These
+identifiers are separate from ASCII catalog names and internal invocation IDs.
 
 An explicit idle embedded call
 `Session.invoke_export(pid, :command | :service, name, arguments)` starts an owned

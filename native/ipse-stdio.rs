@@ -376,8 +376,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
             }
             Err(mpsc::RecvTimeoutError::Timeout) => {
                 // A descendant can fork while the first group signal is being
-                // delivered. Retry only during the original bounded drain and
-                // stop once the group is gone; detached children remain outside it.
+                // delivered. Retry during the original bounded drain or until
+                // pipe disconnect. The unreaped anchor can keep the group present;
+                // detached children remain outside it.
                 if cleanup_pending {
                     cleanup_pending = signal_group(&slot);
                 }

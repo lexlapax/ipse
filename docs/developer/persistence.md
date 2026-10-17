@@ -30,6 +30,16 @@ truncation, links and permission changes. A detected write/file failure closes
 the writer; mandatory journaling failure stops the session. Status reports omit
 record contents and private paths.
 
+Writer calls have an explicit five-second acknowledgment deadline. A call exit
+returns `journal_write_unconfirmed` without including private call arguments;
+every mandatory Session append path exits deliberately as `journal_unavailable`
+on refusal. A timeout proves neither absence nor completion of a write. Session
+termination shuts down owned work, kills its writer and waits for writer exit
+before releasing the advisory lock. It never retries a timed-out record. If kernel
+IO delays process termination, cleanup can outlast client deadlines; this contract
+does not promise bounded disk latency. Resume trusts only validated durable records
+and keeps started effects without recorded results unknown.
+
 These checks are not a live cryptographic prefix proof: a same-size in-place
 rewrite is not revalidated on every append. The journal is exclusively owned
 while its session holds the advisory lock; other programs must not edit it.
@@ -61,7 +71,9 @@ extension must not promise them by deleting only its own retrieval state.
 
 Regression checks cover source offsets, optional versus mandatory records,
 owner-only calls, initial corruption, file changes, normal/abrupt owner exit,
-writer loss during inference, retained memory and append CPU across 2/64 MiB
+writer loss during inference, controlled callback stalls beyond the acknowledgment
+deadline, owned-worker cleanup, unknown-effect resume without replay, retained
+memory and append CPU across 2/64 MiB
 histories. Timing probes separately measure the actual filesystem and Session
 approval path. See [verification evidence](testing.md#current-evidence-and-next-checks)
 for measured results and platform limits; no power-failure certification is made.

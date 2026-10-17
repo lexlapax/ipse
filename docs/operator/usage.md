@@ -234,6 +234,10 @@ Unicode, newlines and tabs remain readable; ANSI styling and cursor/clipboard
 commands from returned content do not execute. This is a display transformation:
 saved messages, tool arguments and provider-native content retain their originals.
 JSON commands remain valid JSON and decode to the original field values.
+While an action is waiting for approval, the CLI repeats its full proposal after
+interleaved output, including sibling results, and after local commands. Review
+that final approval block and its full arguments before entering `y`; returned
+text can contain imitations of prompts. MCP target details repeat with the proposal.
 An error clears queued input with a visible message, preventing further queued
 requests after an account or usage-limit failure. Review the error and send a
 fresh task when ready.

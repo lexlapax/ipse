@@ -37,6 +37,10 @@ worker failure can leave an effect unknown even when an error was displayed.
 Inspect files and external systems before explicitly retrying; resume does not
 rerun the action. Validation/setup refusals remain known failures. New malformed
 or duplicate tool-call IDs stop the response before any approval or execution.
+New IDs must be valid UTF-8 and occupy 1–256 bytes, including for questions and
+extension tools. IDs are opaque and may contain Unicode or punctuation. Older
+oversized pending questions are not silently rewritten; use saved diagnosis and
+an explicit fresh-session handoff if the original checkpoint cannot be resumed.
 Older duplicate IDs never allow one saved result to settle two calls; unmatched
 history remains unknown and the original transcript stays intact.
 
@@ -44,8 +48,12 @@ A running session exclusively owns its journal. Do not edit or append it from
 another program while the session is active. Its append process checks file
 identity, protection and expected length and stops on detected changes; it does
 not revalidate a same-size rewrite on every write. Resume still validates saved
-history before accepting work. Storage stalls can delay a durable acknowledgment;
-an error is not permission to repeat an uncertain effect.
+history before accepting work. A journal acknowledgment that fails or exceeds
+five seconds stops the session as `journal_unavailable`; it never retries the
+record. The record may already have reached disk. Shutdown stops the writer
+before releasing the session lock, then resume inspects the durable history.
+An unrecorded result remains unknown. Storage can still delay writer termination
+and cleanup confirmation; an error is not permission to repeat an uncertain effect.
 
 A missing Session acknowledgment also leaves uncertainty: an approved request
 may already have taken effect. The CLI reports this explicitly, exits nonzero,

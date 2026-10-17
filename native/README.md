@@ -276,7 +276,9 @@ process group. An independent watchdog enforces the deadline even when output
 is blocked and allows at most one additional second before forcing supervisor
 exit. After server exit, output drains for at most 500 milliseconds. Idle
 five-millisecond polls repeat group SIGKILL to catch ordinary children created
-during the first signal's delivery, stopping after a failed signal or pipe EOF.
+during the first signal's delivery, within the original drain deadline or until
+pipe disconnect. The unreaped anchor can keep the group present after ordinary
+children have exited, so a successful signal does not establish remaining live work.
 Retained pipes that exceed the original bound still produce a transport failure
 without an `X` completion; this includes detached pipe holders. Input relay buffering
 is bounded to one MiB plus the current chunks and OS pipe buffers. Overload fails

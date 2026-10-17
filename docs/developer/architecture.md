@@ -38,8 +38,12 @@ every CLI-owned output write, preserving ordinary Unicode/newline/tab display.
 Its visible escapes also retain JSON round-trip values, including supplementary
 format characters. Encoding-aware writes preserve UTF-8 values on Unicode and
 latin1 IO devices, including the installed verifier's restricted locale. Source
-messages, arguments and native/provider data are not
-rewritten; the renderer is not a content-authenticity or permission boundary.
+messages, arguments and native/provider data are not rewritten. The client retains
+the actual pending approval's reference, name, full arguments and any MCP target
+manifest. It redraws that complete block after interleaved output and local commands
+before waiting for another input. This prevents a sibling's newline-delimited text
+from remaining below the authoritative action proposal, without buffering output.
+Returned prose remains untrusted; the renderer does not authenticate its contents.
 
 ```text
 CLI ──prompt / approval / cancel──> Session GenServer

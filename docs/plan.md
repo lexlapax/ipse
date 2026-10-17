@@ -22,8 +22,10 @@ provider/account combinations, unattended self-development or production knowled
 quality. Subscription, API and installed Ollama checks have separate
 [provider verification](developer/testing.md#provider-verification-status).
 
-P23 is complete within its one-shot text/accounting scope. P24 is the active gate,
-with scoped repairs verified and independent follow-up coverage still required.
+P23 is complete within its one-shot text/accounting scope. P24 is the active gate:
+the same-reviewer follow-up accepts earlier repairs but identifies adjacent gaps
+with local repairs verified and hosted checks pending. Fresh-session coverage of
+omitted surfaces is still required.
 The operator's 2026-10-17 direction
 puts independent architectural challenge, security review and a large supervised
 self-development trial ahead of media. P24 now owns architecture/security
@@ -36,7 +38,7 @@ new source transfer or dependency, or select a production engine.
 | Milestone or gate | Current state | Next result |
 | --- | --- | --- |
 | [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within selected scope; source/native/package/installed and hosted Linux/macOS passed | Retain accounting invariants through P24/P25 review and repairs |
-| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | First critique triaged; scoped repairs verified through `b570ef8`; follow-up brief prepared; no scan yet | Independent delta/omitted-surface review, any resulting repairs and triaged baseline OpenAI security audit |
+| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Earlier repairs verified through `b570ef8`; A1–A5 local handoff passed; hosted checks and fresh independent coverage pending; no scan yet | Hosted repair verification, fresh independent omitted-surface review, then triaged baseline OpenAI security audit |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Planned revised scope; unstarted | Independent Codex/Ipse research, Ipse-authored repairs, fresh acceptance runs and final architecture/security review |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Deferred; proposed scope subject to P25 decisions | Independently selectable working/long-term memory tools and optional lifecycle policies |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; proposed scope subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
@@ -45,8 +47,10 @@ new source transfer or dependency, or select a production engine.
 
 Feature status and runner readiness are separate. Accounted-model candidate
 `21e59fe` passed hosted Linux/macOS source, package and both independent installed
-proofs, including both Mac enforcement steps. P24's local Git review targets that
-revision. Later runtime changes need their own baseline before P25's runner is frozen.
+proofs, including both Mac enforcement steps. The first review targeted that
+revision; the same-reviewer follow-up targeted repaired source `b570ef8` with
+documentation at `d14d6ac`. New repairs need their own baseline and refreshed
+independent coverage before P25's runner is frozen.
 Actual revisions, platform results and investigation belong in
 [testing](developer/testing.md#current-evidence-and-next-checks).
 
@@ -136,8 +140,17 @@ and arbitrary trusted out-of-band calls cannot establish an invoice ceiling.
 
 ## P24: independent architecture validation and baseline security
 
-**In progress; applicable repairs and independent coverage gate.** The first
-partial static critique reviewed committed Git objects at `21e59fe`; its proposed
+**In progress; follow-up repairs and independent coverage gate.** The follow-up
+source review at `b570ef8`, checked against documentation at `d14d6ac`, accepts the
+earlier scoped repairs but identified approval interleaving, journal acknowledgment
+timeouts and inconsistent call-ID bounds. These now have reproduced local fixtures
+and verified repairs, alongside missing-parent write refusal and corrected native
+cleanup guidance. Hosted verification is pending. The report came from
+the original reviewer's existing session, so it supplies follow-up evidence rather
+than the required fresh independent coverage. No tests were run by that reviewer.
+Journal growth and linear ledger hashing remain explicit residual limits.
+
+The first partial static critique reviewed committed Git objects at `21e59fe`; its proposed
 runtime regressions were unrun by the reviewer. The
 [disposition register](developer/architecture-review-dispositions.md) owns the
 seven findings, three additional concerns, nine design items and coverage limits.
@@ -158,10 +171,12 @@ reservation. Keep that refusal and document the lack of private response quarant
 future memory identity/migration/deletion proposals must distinguish retained host
 evidence from retrieval state.
 
-Use the [prepared follow-up brief](operator/architecture-review.md), pinned to
-`b570ef8`, for the independent delta/omitted-surface review. It preserves the
-initial source assessment before checking repair dispositions; the original brief
-is archived with provenance. Then run the triaged baseline security scan on the
+Verify the A1–A5 repairs, then refresh the [review handoff](operator/architecture-review.md)
+to pin the resulting source and prioritize unread validators, text/feed consumers,
+context/skills/auth, MCP client/schema/config, lifecycle/observability, sandbox code
+and their test bodies. Require a fresh session without either prior critique;
+preserve its own source assessment before checking dispositions. The same-session
+report does not close that gate. Then run the triaged baseline scan on the
 resulting exact revision. P24 and
 P25 execution remain gated; repaired findings do not certify omitted surfaces.
 Read-only Security Cloud access checks found the repository and available scan

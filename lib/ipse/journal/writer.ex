@@ -17,10 +17,16 @@ defmodule Ipse.Journal.Writer do
 
   def start(_, _, _), do: {:error, :journal_unavailable}
 
-  def append(writer, event), do: GenServer.call(writer, {:append, :plain, event})
-  def append_observed(writer, event), do: GenServer.call(writer, {:append, :observed, event})
-  def append_with_source(writer, event), do: GenServer.call(writer, {:append, :source, event})
-  def close(writer), do: GenServer.call(writer, :close)
+  def append(writer, event), do: call(writer, {:append, :plain, event})
+  def append_observed(writer, event), do: call(writer, {:append, :observed, event})
+  def append_with_source(writer, event), do: call(writer, {:append, :source, event})
+  def close(writer), do: call(writer, :close)
+
+  defp call(writer, request) do
+    GenServer.call(writer, request, 5_000)
+  catch
+    :exit, _ -> {:error, :journal_write_unconfirmed}
+  end
 
   @impl true
   def init({directory, id, owner}) do

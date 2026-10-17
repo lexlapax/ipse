@@ -101,7 +101,11 @@ an assumption register and attack invariants with concrete sequences, expected
 versus actual behavior, source references and falsifiable tests. Retain this first
 critique before offering rebuttals or requesting follow-up. Later passes inspect
 the repair delta and omitted surfaces at a new pinned source revision. Preserve
-a fresh independent assessment before checking supervisor dispositions. Pin the
+a fresh independent assessment before checking supervisor dispositions. Continuing
+the original review session is useful follow-up evidence but does not satisfy a
+fresh-session requirement. Record that provenance explicitly. Prioritize remaining
+unread surfaces and actual test bodies in the next brief; name coverage omissions
+even when every repair disposition is accepted. Pin the
 committed evidence-document revision separately when hosted results postdate
 the source; evidence for later changed code does not certify the earlier target.
 Use these scenarios:

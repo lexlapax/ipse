@@ -121,7 +121,7 @@ defmodule Ipse.Handoff do
   end
 
   defp valid_identifier?(id),
-    do: byte_size(id) <= 256 and Regex.match?(~r/\A[A-Za-z0-9_.:-]+\z/, id)
+    do: Ipse.ToolCall.valid_id?(id) and Regex.match?(~r/\A[A-Za-z0-9_.:-]+\z/, id)
 
   defp sha256(bytes), do: Base.encode16(:crypto.hash(:sha256, bytes), case: :lower)
 
@@ -160,7 +160,7 @@ defmodule Ipse.Handoff do
   def export(_, _, _), do: {:error, "Supply an explicit operator note with --note."}
 
   defp safe_id(id) when is_binary(id) do
-    if byte_size(id) <= 256 and Regex.match?(~r/\A[A-Za-z0-9_.:-]+\z/, id),
+    if valid_identifier?(id),
       do: id,
       else: "sha256:" <> Base.encode16(:crypto.hash(:sha256, id), case: :lower)
   end
