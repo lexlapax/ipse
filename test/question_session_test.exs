@@ -226,7 +226,7 @@ defmodule Ipse.QuestionSessionTest do
   test "headless and child clarification fail explicitly instead of hanging", ctx do
     for extra <- [
           %{operator_questions: false},
-          %{delegation_origin: %{"parent_session_id" => "p", "call_id" => "c"}}
+          %{delegation_origin: %{"parent_session_id" => Ipse.Usage.id(), "call_id" => "c"}}
         ] do
       {:ok, pid} = start(ctx, extra)
       :ok = Session.prompt(pid, "Ask")

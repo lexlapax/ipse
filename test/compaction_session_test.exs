@@ -11,7 +11,8 @@ defmodule Ipse.CompactionSessionTest do
             Process.sleep(:infinity)
 
           :invalid ->
-            {:ok, %{"role" => "assistant", "content" => "not JSON"}, %{}}
+            {:ok, %{"role" => "assistant", "content" => "not JSON"},
+             %{"input_tokens" => 11, "output_tokens" => 7}}
 
           _ ->
             emit.({:text, "private summary stream must not appear"})
@@ -213,6 +214,32 @@ defmodule Ipse.CompactionSessionTest do
     refute Enum.any?(events, &(&1["type"] == "context_compacted"))
     assert Enum.count(events, &(&1["type"] == "message")) == length(ctx.original) + 1
     refute_receive {:normal_request, _}, 50
+  end
+
+  test "rejected summary retains completed provider usage rather than losing its cost facts",
+       ctx do
+    {:ok, events} = Ipse.Journal.load(ctx.dir, ctx.id)
+    [session | tail] = events
+    session = put_in(session, ["metadata", "provider"], "openai")
+    path = Path.join(ctx.dir, ctx.id <> ".jsonl")
+    File.write!(path, Enum.map_join([session | tail], "\n", &Jason.encode!/1) <> "\n")
+    {:ok, pid} = start(ctx, %{summary_mode: :invalid, provider: :openai})
+    :ok = Ipse.Session.prompt(pid, "Continue.")
+    assert_receive {:ipse, ^pid, {:done, :error}}, 2_000
+
+    assert [
+             %{
+               "kind" => "compaction",
+               "outcome" => "completed",
+               "finality" => "final",
+               "usage" => %{"counts" => %{"total_tokens" => 18}}
+             }
+           ] = Ipse.Session.info(pid).accounting["requests"]
+
+    :ok = Ipse.Session.close(pid)
+    {:ok, resumed} = start(ctx, %{summary_mode: :invalid, provider: :openai})
+    assert Ipse.Session.info(resumed).accounting["legacy_unmetered"]
+    refute_receive {:normal_request, _}, 20
   end
 
   test "a corrupt checkpoint is rejected rather than silently changing resumed context", ctx do

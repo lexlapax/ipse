@@ -156,10 +156,14 @@ defmodule Ipse.Provider.Ollama do
         usage =
           if data["done"],
             do: %{
-              "input_tokens" => data["prompt_eval_count"] || 0,
-              "output_tokens" => data["eval_count"] || 0
+              "input_tokens" => data["prompt_eval_count"],
+              "output_tokens" => data["eval_count"],
+              "input_cached_tokens" => data["prompt_eval_cached_count"],
+              "provider_duration_ns" => data["total_duration"]
             },
             else: state.usage
+
+        if data["done"] == true, do: emit.({:provider_usage, usage})
 
         {:ok,
          %{

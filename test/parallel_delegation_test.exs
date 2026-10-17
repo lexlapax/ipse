@@ -146,6 +146,23 @@ defmodule Ipse.ParallelDelegationTest do
     id = Session.info(pid).id
     {:ok, events} = Journal.load(ctx.state, id)
     assert Enum.count(events, &(&1["type"] == "delegation_started")) == 2
+    parent_request = Enum.find(events, &(&1["type"] == "request_admitted"))["request_id"]
+
+    for config <- [config0, config1] do
+      assert config.delegation_origin["parent_session_id"] == id
+      assert config.delegation_origin["parent_request_id"] == parent_request
+    end
+
+    child_paths = Path.wildcard(Path.join([ctx.state, "subagents", id, "*.jsonl"]))
+    assert length(child_paths) == 2
+
+    for path <- child_paths do
+      {:ok, child_events} = Journal.load(Path.dirname(path), Path.basename(path, ".jsonl"))
+
+      assert [%{"parent_request_id" => ^parent_request}] =
+               Enum.filter(child_events, &(&1["type"] == "request_admitted"))
+    end
+
     assert :sys.get_state(pid).delegations == 2
     :ok = Session.close(pid)
 

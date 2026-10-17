@@ -2523,3 +2523,27 @@ packaging and extracted-package verification passed on both; the macOS native
 enforcement step also passed. This establishes hosted macOS hook/package
 verification, not a local macOS run on Serenity. The matrix used credential-free
 fixtures and did not validate a paid account or publish a release.
+
+## P22 request accounting (2026-10-16)
+
+On Linux Serenity, source build, formatting and warnings-as-errors compilation
+passed. `mix test --include native_sandbox` passed **406 tests, 14 macOS excluded**.
+After tightening malformed-data recovery, **37 focused normalization/accounting/
+session/question/delegation tests** passed. Tests use synthetic provider output and
+local HTTP; no paid inference, audio device or subscription billing check ran.
+
+Fixtures establish intent before dispatch, cumulative snapshot deduplication,
+inclusive cache/reasoning semantics, omitted Ollama counters remaining unknown,
+partial failed/cancelled usage, unknown crash outcomes, unchanged idle resume,
+pre-tail-repair corruption refusal, retained usage after rejected summaries,
+parent attribution across parallel children and original native-data integrity.
+The source extension fixture also checks content-free usage and unchanged
+accounting on idle resume. Pricing and budget enforcement remain unimplemented.
+See the [developer contract](usage-accounting.md) and
+[operator inspection](../operator/usage-accounting.md).
+
+The Linux glibc-2.44 archive rebuilt with the current OTP 29.1.1 notices and
+passed `scripts/verify-package.exs` in extracted runtime isolation, including the
+extended hook/accounting fixture. The archive remains a local artifact; this
+increment has no new hosted macOS or live-account evidence yet. Documentation
+review checked **62 Markdown files / 590 local file and heading links**.

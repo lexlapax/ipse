@@ -116,14 +116,16 @@ defmodule Ipse.Provider.Anthropic do
       {:error,
        "Anthropic reported an error. Check model access, account limits, and request settings."}
 
-  defp event(state, %{"type" => "message_start", "message" => message}, _),
-    do:
-      {:ok,
-       %{
-         state
-         | usage: message["usage"] || %{},
-           reported_model: Ipse.RuntimeInfo.model_name(message["model"])
-       }}
+  defp event(state, %{"type" => "message_start", "message" => message}, emit) do
+    emit.({:provider_usage, message["usage"]})
+
+    {:ok,
+     %{
+       state
+       | usage: message["usage"] || %{},
+         reported_model: Ipse.RuntimeInfo.model_name(message["model"])
+     }}
+  end
 
   defp event(
          state,
@@ -160,12 +162,15 @@ defmodule Ipse.Provider.Anthropic do
     end
   end
 
-  defp event(state, %{"type" => "message_delta"} = data, _) do
+  defp event(state, %{"type" => "message_delta"} = data, emit) do
+    usage = Map.merge(state.usage, data["usage"] || %{})
+    emit.({:provider_usage, usage})
+
     {:ok,
      %{
        state
        | stop_reason: data["delta"]["stop_reason"],
-         usage: Map.merge(state.usage, data["usage"] || %{})
+         usage: usage
      }}
   end
 

@@ -160,7 +160,12 @@ defmodule Ipse.DelegationSessionTest do
     parent_events = events(ctx.dir, parent_id)
     assert Enum.any?(parent_events, &(&1["type"] == "tool_started" and &1["name"] == "delegate"))
     {origin, child_config, child_messages, child_tools, _provider_pid} = child_provider_call()
-    assert origin == %{"parent_session_id" => parent_id, "call_id" => "call-delegate"}
+    assert origin["parent_session_id"] == parent_id
+    assert origin["call_id"] == "call-delegate"
+
+    assert origin["parent_request_id"] ==
+             Enum.find(parent_events, &(&1["type"] == "request_admitted"))["request_id"]
+
     assert child_config.provider == :demo
     assert child_config.model == "fixture-model"
     assert child_config.sandbox == :native

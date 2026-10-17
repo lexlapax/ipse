@@ -68,6 +68,7 @@ defmodule Ipse.Session do
 
     with {:ok, handoff} <- handoff_option(opts),
          :ok <- extension_configuration(config),
+         :ok <- Ipse.Usage.configuration(config),
          {:ok, cwd} <- WorkspaceContext.canonical_path(requested_cwd),
          true <- File.dir?(cwd),
          {:ok, id, _events} <- open(dir, id, cwd, config),
@@ -75,6 +76,7 @@ defmodule Ipse.Session do
          {:ok, lock} <- acquire_lock(Path.join(dir, id <> ".lock"), 10),
          :ok <- Journal.repair_tail(dir, id),
          {:ok, events} <- Journal.load(dir, id),
+         {:ok, accounting} <- Ipse.Usage.restore(events, id),
          {:ok, messages} <- restore(events),
          {:ok, _research} <- Ipse.Research.restore(events),
          {:ok, question, messages} <- restore_question(events, messages),
@@ -110,6 +112,10 @@ defmodule Ipse.Session do
         steps: if(question, do: question.steps, else: 0),
         lock: lock,
         usage: %{},
+        accounting: accounting,
+        active_request: nil,
+        last_request_id: saved_request(events, "request_id"),
+        turn_id: saved_request(events, "turn_id") || Ipse.Usage.id(),
         final: Projection.presentation(events),
         extension_intent: nil,
         mcp_tools: [],
@@ -288,6 +294,7 @@ defmodule Ipse.Session do
       |> Map.put(:subagents, Ipse.Delegation.enabled?(s.config))
       |> Map.put(:configuration, Map.get(s.config, :configuration))
       |> Map.put(:extensions, Ipse.Extensions.Registry.manifests(s.config))
+      |> Map.put(:accounting, Ipse.Usage.snapshot(s.accounting))
       |> Map.put(:question, if(s.question, do: Map.take(s.question, [:id, :arguments])))
 
     {:reply, info, s}
@@ -303,6 +310,7 @@ defmodule Ipse.Session do
        "approval_waiting" => not is_nil(s.approval),
        "question_waiting" => not is_nil(s.question),
        "active_worker" => not is_nil(s.task),
+       "accounting" => Ipse.Usage.snapshot(s.accounting),
        "context" => Ipse.Diagnostics.context(s.messages, s.config, system_message(s))
      }, s}
   end
@@ -350,7 +358,7 @@ defmodule Ipse.Session do
     end
 
     s = append_message(s, %{"role" => "user", "content" => text})
-    s = %{s | steps: 0, final: "", mcp_ready: false, delegations: 0}
+    s = %{s | steps: 0, final: "", mcp_ready: false, delegations: 0, turn_id: Ipse.Usage.id()}
 
     next =
       if Host.enabled?(s.config, "transform.prompt"),
@@ -454,7 +462,7 @@ defmodule Ipse.Session do
   end
 
   defp stop_work(s, record_cancel \\ true) do
-    if s.task, do: measure_request(s, :cancelled)
+    s = if s.task, do: measure_request(s, :cancelled), else: s
     s = close_question(s)
     child_cleanup = Enum.map(Map.keys(s.delegation_resources), &close/1)
 
@@ -535,13 +543,31 @@ defmodule Ipse.Session do
     {:noreply, next_delegated_approval(s)}
   end
 
+  def handle_info(
+        {:progress, ref, {:provider_usage, usage}},
+        %{job_ref: ref, active_request: request} = s
+      )
+      when ref != nil and request != nil do
+    entry = s.accounting.requests[request["request_id"]]
+    event = Ipse.Usage.observation(request, usage, entry.sequence + 1)
+
+    if entry.sequence < 64 and event["usage"] != entry.observation do
+      {:noreply, account(s, event)}
+    else
+      {:noreply, s}
+    end
+  end
+
+  def handle_info({:progress, ref, {:provider_usage, _}}, %{job_ref: ref} = s),
+    do: {:noreply, s}
+
   def handle_info({:progress, ref, event}, %{job_ref: ref} = s) when ref != nil do
     if s.phase != :idle, do: notify(s, event)
     {:noreply, s}
   end
 
   def handle_info({ref, result}, %{task: %{ref: ref}} = s) do
-    measure_request(s, result)
+    s = measure_request(s, result)
     Process.demonitor(ref, [:flush])
     phase = if s.phase == :delegated_approval, do: :tool, else: s.phase
     s = %{s | task: nil}
@@ -676,7 +702,7 @@ defmodule Ipse.Session do
   end
 
   def handle_info({:DOWN, ref, :process, _pid, _reason}, %{task: %{ref: ref}} = s) do
-    measure_request(s, :worker_down)
+    s = measure_request(s, :worker_down)
 
     {:noreply,
      fail(
@@ -816,6 +842,9 @@ defmodule Ipse.Session do
           "Reached the #{Map.get(s.config, :max_steps, 30)}-step limit. Send another message to continue."
         )
 
+      not Ipse.Usage.capacity?(s.accounting) ->
+        fail(s, "The session request-accounting limit was reached; start a fresh session.")
+
       true ->
         system = system_message(s)
 
@@ -824,13 +853,21 @@ defmodule Ipse.Session do
             launch_model(s, [system | s.messages])
 
           {:ok, plan} ->
+            config = Ipse.Compaction.request_config(s.config)
+            s = admit_request(s, config, "compaction")
+            owner = self()
+            job_ref = make_ref()
+
             task =
               owned_task(fn ->
                 request(
-                  Ipse.Compaction.request_config(s.config),
+                  config,
                   plan.summary_messages,
                   [],
-                  fn _ -> :ok end
+                  fn
+                    {:provider_usage, _} = event -> send(owner, {:progress, job_ref, event})
+                    _ -> :ok
+                  end
                 )
               end)
 
@@ -843,7 +880,7 @@ defmodule Ipse.Session do
                 compaction: plan,
                 steps: s.steps + 1,
                 request_started_at: System.monotonic_time(:millisecond),
-                job_ref: nil
+                job_ref: job_ref
             }
 
           {:tool_results, messages, event} ->
@@ -858,6 +895,7 @@ defmodule Ipse.Session do
   end
 
   defp launch_model(s, messages) do
+    s = admit_request(s, s.config, "model")
     owner = self()
     job_ref = make_ref()
 
@@ -926,6 +964,7 @@ defmodule Ipse.Session do
       {:ok, messages, checkpoint, stats} ->
         record(s, %{
           "type" => "context_compacted",
+          "request_id" => s.last_request_id,
           "version" => 1,
           "covered_messages" => length(s.compaction.prefix),
           "prefix_sha256" => Ipse.Compaction.digest(s.compaction.prefix),
@@ -1139,6 +1178,7 @@ defmodule Ipse.Session do
                 owner: owner,
                 job_ref: job_ref,
                 id: s.id,
+                request_id: s.last_request_id,
                 dir: s.dir,
                 cwd: s.cwd,
                 config: s.config,
@@ -1354,7 +1394,14 @@ defmodule Ipse.Session do
   end
 
   defp append_message(s, message) do
-    record(s, %{"type" => "message", "message" => message})
+    event = %{"type" => "message", "message" => message}
+
+    event =
+      if message["role"] == "assistant",
+        do: Map.put(event, "request_id", s.last_request_id),
+        else: event
+
+    record(s, event)
     %{s | messages: s.messages ++ [message]}
   end
 
@@ -1367,8 +1414,32 @@ defmodule Ipse.Session do
 
   defp notify(s, event), do: send(s.subscriber, {:ipse, self(), event})
 
-  defp measure_request(%{phase: phase, request_started_at: started} = s, result)
-       when phase in [:model, :compaction] and is_integer(started) do
+  defp saved_request(events, field) do
+    events
+    |> Enum.reverse()
+    |> Enum.find_value(fn
+      %{"type" => "request_admitted", "kind" => "model"} = event -> event[field]
+      _ -> nil
+    end)
+  end
+
+  defp admit_request(s, config, kind) do
+    event = Ipse.Usage.admission(s.id, config, kind, s.turn_id)
+    s = account(s, event)
+    %{s | active_request: event, last_request_id: event["request_id"]}
+  end
+
+  defp account(s, event) do
+    {:ok, accounting} = Ipse.Usage.apply_event(s.accounting, event)
+    record(s, event)
+    %{s | accounting: accounting}
+  end
+
+  defp measure_request(
+         %{phase: phase, request_started_at: started, active_request: admission} = s,
+         result
+       )
+       when phase in [:model, :compaction] and is_integer(started) and admission != nil do
     outcome =
       cond do
         result == :cancelled -> "cancelled"
@@ -1382,14 +1453,28 @@ defmodule Ipse.Session do
       "outcome" => outcome,
       "duration_ms" => max(System.monotonic_time(:millisecond) - started, 0)
     })
+
+    observed = s.accounting.requests[admission["request_id"]].observation
+
+    event =
+      Ipse.Usage.completion(
+        admission,
+        result,
+        max(System.monotonic_time(:millisecond) - started, 0),
+        observed
+      )
+
+    s = account(s, event)
+    %{s | active_request: nil, request_started_at: nil}
   end
 
-  defp measure_request(_, _), do: :ok
+  defp measure_request(s, _), do: s
 
   defp open(dir, nil, cwd, config) do
     with {:ok, id} <-
            Journal.create(dir, %{
              "cwd" => cwd,
+             "usage_version" => 1,
              "provider" => to_string(config.provider),
              "model" => config.model,
              "sandbox" => to_string(Map.get(config, :sandbox, :off)),
@@ -1419,6 +1504,7 @@ defmodule Ipse.Session do
              meta["execution"] == json_execution(config[:execution]) and
              Map.get(meta, "extensions", []) == Ipse.Extensions.Registry.manifests(config),
          :ok <- Ipse.Handoff.validate_events(events),
+         {:ok, _} <- Ipse.Usage.restore(events, id),
          {:ok, _messages} <- restore_context(events) do
       {:ok, id, events}
     else
@@ -1472,6 +1558,7 @@ defmodule Ipse.Session do
   @doc "Validate saved effective context without starting inference, tools or a session."
   def restore_context(events) do
     with :ok <- Ipse.Handoff.validate_events(events),
+         {:ok, _} <- Ipse.Usage.restore(events),
          :ok <- Projection.validate_events(events) do
       restore_validated_context(events)
     end

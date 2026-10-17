@@ -3,7 +3,11 @@ defmodule Ipse.Delegation.Worker do
   alias Ipse.{Delegation, Session}
 
   def run(host, args) do
-    origin = %{"parent_session_id" => host.id, "call_id" => host.call_id}
+    origin = %{
+      "parent_session_id" => host.id,
+      "call_id" => host.call_id,
+      "parent_request_id" => Map.get(host, :request_id)
+    }
 
     with {:ok, config} <- Ipse.Profiles.child_config(host.config, origin, args) do
       opts = [

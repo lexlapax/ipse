@@ -1,5 +1,10 @@
 # Architecture
 
+Mandatory [request accounting](usage-accounting.md) is separate from optional
+diagnostics: Session journals admission before provider dispatch and normalized
+outcomes before assistant/summary validation. Unknown failed/interrupted usage
+survives inert resume. Pricing and budget policy remain separate capabilities.
+
 Ipse is an MIT-licensed, general-purpose local AI harness built around Elixir
 and OTP. The host role supports general-purpose tasks, with focused changes
 when requested and workload stacks chosen from user requirements and environment.

@@ -307,6 +307,12 @@ choose a suitable `--context-bytes` ceiling. Compaction is not unlimited memory
 or a provider token-count guarantee.
 
 
+## Request accounting
+
+`/diagnostics`, `/session` and saved `ipse diagnose` show durable normalized
+[usage facts](usage-accounting.md), request/parent identities and unknown
+outcomes. They do not calculate an invoice or enforce a spend budget.
+
 ## Runtime identity
 
 

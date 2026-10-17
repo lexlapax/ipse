@@ -25,6 +25,8 @@ supplies its context ceiling; legacy embedded sessions without one are labelled
 are exported. Up to 16 validated model/compaction duration measurements show
 completed, failed or cancelled requests. They measure owned request work, not
 tool execution or operator approval wait; they are not full distributed tracing.
+Saved diagnostics also include [normalized request accounting](usage-accounting.md),
+with partial usage and unknown outcomes, separately from context bytes.
 
 If safe compaction remains impossible, write a short operator-reviewed note with
 the remaining goal, decisions, relevant files and unresolved effects:

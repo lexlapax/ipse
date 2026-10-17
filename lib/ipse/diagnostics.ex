@@ -44,6 +44,7 @@ defmodule Ipse.Diagnostics do
   def saved(dir, id) do
     with {:ok, events} <- Journal.load(dir, id),
          {:ok, messages} <- Session.restore_context(events),
+         {:ok, accounting} <- Ipse.Usage.restore(events, id),
          {:ok, _} <- Ipse.Research.restore(events) do
       saved_limit = get_in(hd(events), ["metadata", "configuration", "settings", "context_bytes"])
       limit = saved_limit || 400_000
@@ -51,6 +52,7 @@ defmodule Ipse.Diagnostics do
       {:ok,
        %{
          "version" => 1,
+         "accounting" => Ipse.Usage.snapshot(accounting),
          "context" => context(messages, %{context_bytes: limit}),
          "limit_source" =>
            if(saved_limit, do: "saved_configuration", else: "default_not_recorded"),

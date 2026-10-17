@@ -184,6 +184,74 @@ defmodule Ipse.Provider.HTTPTest do
     end
   end
 
+  test "Ollama omitted counters stay unknown while optional cache and duration remain facts" do
+    for metrics <- [
+          %{},
+          %{
+            "prompt_eval_count" => 9,
+            "eval_count" => 2,
+            "prompt_eval_cached_count" => 3,
+            "total_duration" => 500_000
+          }
+        ] do
+      body =
+        Jason.encode!(Map.merge(%{"message" => %{"content" => "done"}, "done" => true}, metrics)) <>
+          "\n"
+
+      {base, server} = fixture(body)
+      owner = self()
+
+      assert {:ok, _, usage} =
+               Provider.complete(
+                 %{provider: :ollama, model: "fixture", base_url: base, timeout_ms: 5000},
+                 [],
+                 [],
+                 &send(owner, &1)
+               )
+
+      assert usage["input_tokens"] == metrics["prompt_eval_count"]
+      assert usage["output_tokens"] == metrics["eval_count"]
+      assert usage["input_cached_tokens"] == metrics["prompt_eval_cached_count"]
+      assert usage["provider_duration_ns"] == metrics["total_duration"]
+      assert_received {:provider_usage, ^usage}
+      Task.await(server)
+    end
+  end
+
+  test "OpenAI incomplete output retains reported usage without admitting tools or visible reasoning" do
+    usage = %{"input_tokens" => 9, "output_tokens" => 2}
+
+    body =
+      event(%{
+        "type" => "response.incomplete",
+        "response" => %{
+          "usage" => usage,
+          "output" => [%{"type" => "reasoning", "text" => "synthetic-private-reasoning"}]
+        }
+      })
+
+    {base, server} = fixture(body)
+    owner = self()
+
+    assert {:error, _} =
+             Provider.complete(
+               %{
+                 provider: :openai,
+                 model: "fixture",
+                 api_key: "fixture-key",
+                 base_url: base,
+                 timeout_ms: 5000
+               },
+               [],
+               [],
+               &send(owner, &1)
+             )
+
+    assert_received {:provider_usage, ^usage}
+    refute_received {:text, _}
+    Task.await(server)
+  end
+
   test "Ollama requires done and converts native tool arguments" do
     body =
       Jason.encode!(%{

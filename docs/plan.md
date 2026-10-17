@@ -1051,9 +1051,17 @@ projections are journaled, preserve original/native data and restore without cal
 Resume pins artifact/options/runtime/host identity and refuses corruption/missing code
 before journal repair. Child scope, expiry and actual worker cancellation are tested.
 Source and extracted-package fixtures exercise both examples. Broader lifecycle/
-tools/commands/state/services/jobs, usage/stream foundations, live controls and the
+tools/commands/state/services/jobs, stream foundations, live controls and the
 extension-only memory/workflow proof remain in progress. See the
 [implemented hook contract](developer/extension-hooks.md).
+
+P22A5 implements [durable request accounting](developer/usage-accounting.md):
+request/attempt/turn/parent identity, cumulative allowlisted usage observations,
+final/partial/unknown outcomes, rejected-summary retention, child attribution and
+pre-repair resume validation. Linux native-suite and focused recovery/provider tests
+pass; counters remain independent of optional tracing. P23 estimates/budgets and
+the remaining P22 contracts are still in progress. See
+[operator inspection](operator/usage-accounting.md).
 
 Acceptance:
 

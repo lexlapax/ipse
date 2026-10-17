@@ -167,7 +167,9 @@ defmodule Ipse.Provider.OpenAI do
     {:ok, %{state | items: Map.put(state.items, index, item)}}
   end
 
-  defp event(state, %{"type" => "response.completed", "response" => response}, _) do
+  defp event(state, %{"type" => "response.completed", "response" => response}, emit) do
+    emit.({:provider_usage, response["usage"]})
+
     if response["status"] in [nil, "completed"] do
       {:ok, %{state | terminal: true, response: response}}
     else
@@ -175,15 +177,18 @@ defmodule Ipse.Provider.OpenAI do
     end
   end
 
-  defp event(state, %{"type" => type} = data, _)
+  defp event(state, %{"type" => type} = data, emit)
        when type in ["error", "response.failed"] do
+    if is_map(data["response"]), do: emit.({:provider_usage, data["response"]["usage"]})
     Ipse.Provider.Error.stream(data, state.provider, state[:request_id])
   end
 
-  defp event(_, %{"type" => "response.incomplete"}, _),
-    do:
-      {:error,
-       "OpenAI response failed or was incomplete. Check model access, account limits, and request settings."}
+  defp event(_, %{"type" => "response.incomplete"} = data, emit) do
+    if is_map(data["response"]), do: emit.({:provider_usage, data["response"]["usage"]})
+
+    {:error,
+     "OpenAI response failed or was incomplete. Check model access, account limits, and request settings."}
+  end
 
   defp event(state, _, _), do: {:ok, state}
 

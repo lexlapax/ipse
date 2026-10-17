@@ -96,6 +96,21 @@ defmodule Ipse.ExtensionDemo do
       end
 
       info = Ipse.Session.info(session)
+      accounting = info.accounting
+
+      %{
+        "request_count" => 1,
+        "legacy_unmetered" => false,
+        "requests" => [
+          %{
+            "outcome" => "completed",
+            "billing_mode" => "local",
+            "usage" => %{"quality" => "unavailable"}
+          }
+        ]
+      } = accounting
+
+      false = String.contains?(Jason.encode!(accounting), "synthetic-private-native")
       "<answer>fixture answer</answer>" = info.final
       {:ok, events} = Ipse.Journal.load(opts[:state_dir], info.id)
       {:ok, [_user, assistant]} = Ipse.Session.restore_context(events)
@@ -112,6 +127,7 @@ defmodule Ipse.ExtensionDemo do
         DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, opts ++ [id: info.id]})
 
       :idle = Ipse.Session.info(resumed).phase
+      ^accounting = Ipse.Session.info(resumed).accounting
       "<answer>fixture answer</answer>" = Ipse.Session.info(resumed).final
       ^bytes = File.read!(path)
       :ok = Ipse.Session.close(resumed)

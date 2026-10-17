@@ -29,6 +29,10 @@ JSONSchex through the existing bounded schema adapter, OTP `Version`/filesystem/
 crypto APIs and the Rust helper's advisory locks. Custom code is limited to
 Ipse's descriptor constraints, snapshot identity and publication policy;
 no compiler, package loader, archive extractor or remote schema loader runs on import.
+P22A5 request accounting adds no dependency. It reuses the bounded plain-JSON
+adapter, Jason, OTP crypto/clock and owned provider tasks. Its small pure reducer
+implements journal-specific admission, cumulative revisions and no-replay recovery;
+it does not implement a general accounting framework or pricing service.
 P22A2's worker bridge reuses the current ERTS, Elixir, Jason and native stdio
 helper, adding no dependency. The synthetic independent artifact fixture uses
 the existing Elixir compiler in a separate VM. A small Ipse bootstrap implements

@@ -59,7 +59,8 @@ children may survive cancellation with workspace access. Windows is future work.
 Automatic context compaction retains the original journal. Older-turn summaries
 use the selected provider; a long-turn fallback excerpts older settled tool output
 without a model request; see [operation and limits](docs/operator/usage.md#context-compaction).
-Use `/diagnostics` or local `ipse diagnose` for context byte accounting. For an
+Use `/diagnostics` or local `ipse diagnose` for context byte accounting and
+[provider usage facts](docs/operator/usage-accounting.md). For an
 explicit reviewed recovery into a fresh idle chat, export a bounded handoff note
 and import it with `chat --handoff PATH`; see [context recovery](docs/operator/recovery.md).
 Run from any working directory or use `--cwd`; `/context` shows applicable saved

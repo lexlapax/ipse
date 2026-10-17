@@ -15,13 +15,12 @@ HTTP/SSE request handling and cancellation exist. There is no supported extensio
 stream-subscription API, multimodal session interface or audio device/backend.
 Text deltas are chunks, not necessarily individual tokens.
 
-OpenAI/Anthropic adapters return provider usage maps; Ollama maps evaluation
-counts. Session stores the latest successful request's map and emits a usage
-notification, including after accepted model compaction. This is not a cumulative,
-normalized, durable usage ledger or a cost report. P19 context measurements are
-encoded JSON bytes, not tokens. No pricing table, monetary budget enforcement,
-audio usage or voice billing mode is implemented. Existing Ollama missing-count
-fallbacks to zero must not be carried into a canonical unknown-usage contract.
+P22 now implements [durable request accounting](usage-accounting.md): request/
+attempt/parent identities, normalized cumulative usage snapshots, final/partial/
+unknown outcomes, rejected-summary retention and inert resume. Ollama omitted
+counters stay unknown. The old latest-successful usage map remains compatible.
+P19 context measurements are encoded JSON bytes, not tokens. Pricing, monetary
+budget enforcement and audio usage remain P23/P24 implementation work.
 
 P19's local on-demand diagnostics and request timing are available. Optional
 observability controls and developer tracing remain planned; their authoritative
