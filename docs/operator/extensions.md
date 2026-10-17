@@ -90,6 +90,8 @@ trust ceiling must cover every declared capability:
 | `host.services` | Calls through explicit operator service bindings | [Composition](#service-composition) |
 | `host.context` | Bounded caller-scoped context publications | [Context/evidence](#context-and-evidence) |
 | `stream.text` | Acknowledged private visible-text delivery through a scoped worker handle | [Text clients](#visible-text-clients) |
+| `event.notify` | Declared read-only original/effective prompt event notifications; metadata only without a private read capability | [Event subscribers](#prompt-event-subscribers) |
+| `event.prompt.original`, `event.prompt.effective` | The selected original or final-effective user-text view | [Event subscribers](#prompt-event-subscribers) |
 
 Every `host.*` operation capability also requires `host.actions`; `stream.text`
 is a separate read-only capability. Unsupported
@@ -180,13 +182,32 @@ session memory API. These transform callbacks cannot request state writes or
 model calls. The separate explicit invocation/action contracts below support
 scoped effects.
 
-Generic lifecycle subscriptions and automatic prompt-driven graph/memory jobs
-are still planned, with separate permission to read private prompt content and
-to store or send it elsewhere. They are not enabled by selecting a formatter,
-text consumer or diagnostic sink. See the [event design and current gaps](../developer/lifecycle-events.md#model-and-current-coverage);
-it does not introduce usable manifest fields or CLI flags yet. The implemented
-internal source/view adapter reads committed journal facts without callbacks;
-it grants no subscription authority and does not automatically ingest history.
+Read-only prompt subscribers use their own manifest declarations and trust grants,
+as described below. Automatic graph/memory actions remain pending; notification
+access does not authorize storage, model requests or transfer to another system.
+
+## Prompt event subscribers
+
+An imported artifact may declare notifications for original input and final
+effective user text. Select it with the existing extension configuration/flags,
+after reviewing its code and declared capabilities. `event.notify` alone receives
+metadata; private views additionally require the corresponding `event.prompt.*`
+grant. Installing the artifact does not activate it, and diagnostic capture may
+remain off. See the [SDK declaration and limits](../developer/extension-events.md).
+
+Callbacks run in order after all prompt transforms and before MCP discovery or
+model requests for that input. Each uses a fresh owned VM and can only acknowledge
+the event. A required failure stops that attempt before inference. An optional
+failure is recorded and reported, then ordinary work can continue. There are at
+most eight selected declarations; the existing SDK byte bounds and five-second
+initialization/callback deadlines apply. Overflow refuses without truncation.
+
+Idle resume runs no subscriber, and an unfinished delivery is never retried
+automatically. A new explicit input creates new occurrence/delivery IDs. Live
+diagnostics show admitted/pending delivery and unconfirmed cleanup without prompt
+content. A timeout may stop the VM without confirming final cleanup; close/cancel
+reports that uncertainty. Notifications cannot perform host actions or alter the
+current prompt. Event-triggered jobs and awaited memory recall remain P22 work.
 
 ## Scoped state host calls
 
@@ -359,7 +380,7 @@ cancellation do not themselves provide an OS sandbox. Initialize/transform
 callbacks must follow the SDK's effect-free contract; arbitrary trusted programs
 cannot be constrained by a return-value schema alone.
 
-Generic private lifecycle subscriptions, triggered jobs, ordered recall,
+Broader lifecycle subscriptions, triggered jobs, ordered recall,
 diagnostic controls and the independent installed memory/workflow proof remain
 [P22 work](../plan.md#p22-extension-scaffold-and-lifecycle-hooks). Remote installers,
 build assistants and live activation are future capabilities. Current import and

@@ -83,7 +83,8 @@ defmodule Ipse.Extensions.Projection do
 
     registered? = match?([%{"metadata" => %{"extensions" => [_ | _]}} | _], events)
 
-    with :ok <- Ipse.Extensions.Invocation.validate_events(events),
+    with :ok <- Ipse.Extensions.Subscriptions.validate_events(events),
+         :ok <- Ipse.Extensions.Invocation.validate_events(events),
          :ok <- Ipse.Extensions.TextResources.validate_events(events),
          :ok <- Ipse.Extensions.Actions.validate_events(events) do
       if extensions? or registered?, do: validate_extension_events(events), else: :ok
@@ -175,7 +176,7 @@ defmodule Ipse.Extensions.Projection do
   end
 
   defp validate_event(%{"type" => type}, state, _registered)
-       when type in ~w(extension_text_intent extension_text_ready extension_text_closed),
+       when type in ~w(extension_text_intent extension_text_ready extension_text_closed extension_event_intent extension_event_result),
        do: {:ok, state}
 
   defp validate_event(%{"type" => type}, state, _registered)

@@ -48,6 +48,73 @@ defmodule Ipse.Extensions.Host do
     end
   end
 
+  def notify_events(plans, owner, ref) do
+    Enum.reduce_while(plans, :ok, fn plan, :ok ->
+      with {:ok, intent, entry, payload} <-
+             GenServer.call(
+               owner,
+               {:extension_event_begin, ref, plan.instance, plan.declaration["id"]}
+             ),
+           {outcome, cleanup} <- notify_event(entry, payload),
+           result = Ipse.Extensions.Subscriptions.result(intent, outcome, cleanup),
+           :ok <- GenServer.call(owner, {:extension_event_commit, ref, result}) do
+        if outcome == "acknowledged" or not plan.declaration["required"],
+          do: {:cont, :ok},
+          else:
+            {:halt,
+             {:error, "Required event subscriber did not acknowledge; no delivery was replayed."}}
+      else
+        _ -> {:halt, {:error, "Event subscription admission failed; no delivery was replayed."}}
+      end
+    end)
+  catch
+    :exit, _ ->
+      {:error, "Event subscription was interrupted; inspect its saved intent before retrying."}
+  end
+
+  defp notify_event(_entry, nil), do: {"not_started", true}
+
+  defp notify_event(entry, payload) do
+    with true <- Registry.live?(entry.identity),
+         {:ok, worker} <-
+           Worker.start(
+             owner: self(),
+             store: entry.store,
+             digest: entry.identity["artifact"],
+             trusted: entry.identity["artifact"],
+             artifact_sha256: entry.identity["artifact_sha256"],
+             options: entry.options
+           ) do
+      try do
+        acknowledged =
+          with {:ok, _} <- Worker.call(worker, "initialize", entry.options),
+               {:ok, reply} <- Worker.call(worker, "event.notify", payload),
+               true <-
+                 reply == %{
+                   "api_version" => 1,
+                   "kind" => "ack",
+                   "delivery_id" => payload["delivery_id"],
+                   "event_id" => payload["event"]["event_id"]
+                 },
+               true <- Registry.live?(entry.identity),
+               do: true
+
+        cleanup = Worker.close(worker) == :ok
+
+        {if(acknowledged == true and cleanup and Registry.live?(entry.identity),
+           do: "acknowledged",
+           else: "unknown"
+         ), cleanup}
+      after
+        if Process.alive?(worker), do: Worker.close(worker)
+      end
+    else
+      _ -> {"not_started", true}
+    end
+  catch
+    :exit, _ -> {"unknown", false}
+  end
+
   def invoke_export(stage, name, arguments, owner, job_ref) do
     with {:ok, intent, entry} <-
            GenServer.call(owner, {:extension_invoke_begin, job_ref, stage, name, arguments}) do

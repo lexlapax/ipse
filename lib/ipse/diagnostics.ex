@@ -44,6 +44,7 @@ defmodule Ipse.Diagnostics do
   def saved(dir, id) do
     with {:ok, events} <- Journal.load(dir, id),
          {:ok, messages} <- Session.restore_context(events),
+         :ok <- Ipse.Extensions.Subscriptions.validate_sources(dir, id, events),
          {:ok, accounting} <- Ipse.Usage.restore(events, id),
          {:ok, _} <- Ipse.Research.restore(events) do
       saved_limit = get_in(hd(events), ["metadata", "configuration", "settings", "context_bytes"])

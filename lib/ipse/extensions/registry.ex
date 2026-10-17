@@ -84,6 +84,8 @@ defmodule Ipse.Extensions.Registry do
           "options_sha256" => Ipse.Compaction.digest([instance["options"]]),
           "exports_sha256" => Ipse.Extensions.Catalog.digest(artifact.manifest["exports"]),
           "requires_sha256" => Ipse.Extensions.Services.digest(artifact.manifest["requires"]),
+          "subscriptions_sha256" =>
+            Ipse.Extensions.Subscriptions.digest(artifact.manifest["subscriptions"]),
           "services" => [],
           "scope" => instance["scope"],
           "source_sha256" => Manifest.sha256(instance["source"]),
@@ -109,6 +111,7 @@ defmodule Ipse.Extensions.Registry do
                 store: store,
                 exports: artifact.manifest["exports"] || Ipse.Extensions.Catalog.empty(),
                 requires: artifact.manifest["requires"] || Ipse.Extensions.Services.empty(),
+                subscriptions: artifact.manifest["subscriptions"] || [],
                 bindings:
                   Enum.filter(
                     Map.get(ceiling, "service_bindings", []),
@@ -145,6 +148,7 @@ defmodule Ipse.Extensions.Registry do
     entries = Map.get(config, :extensions, [])
 
     is_list(entries) and length(entries) <= 8 and
+      length(Ipse.Extensions.Subscriptions.declarations(config)) <= 8 and
       Enum.count(entries, &("stream.text" in &1.identity["capabilities"])) <= 4 and
       Enum.all?(entries, fn entry ->
         is_map(entry) and
@@ -154,7 +158,8 @@ defmodule Ipse.Extensions.Registry do
             :identity,
             :options,
             :requires,
-            :store
+            :store,
+            :subscriptions
           ] and
           Ipse.Extensions.Projection.identity_valid?(entry.identity) and
           live?(entry.identity, now) and
@@ -163,7 +168,13 @@ defmodule Ipse.Extensions.Registry do
           Ipse.Extensions.Catalog.digest(entry.exports) == entry.identity["exports_sha256"] and
           entry.identity["runtime"] == runtime() and is_binary(entry.store) and
           Ipse.Extension.validate(entry.options) == :ok and
-          entry.identity["options_sha256"] == Ipse.Compaction.digest([entry.options])
+          entry.identity["options_sha256"] == Ipse.Compaction.digest([entry.options]) and
+          Ipse.Extensions.Subscriptions.validate(
+            entry.subscriptions,
+            entry.identity["capabilities"]
+          ) == :ok and
+          Ipse.Extensions.Subscriptions.digest(entry.subscriptions) ==
+            entry.identity["subscriptions_sha256"]
       end) and
       entries == Enum.sort_by(entries, &{&1.identity["order"], &1.identity["instance"]}) and
       length(entries) == length(Enum.uniq_by(entries, & &1.identity["instance"])) and
@@ -190,6 +201,7 @@ defmodule Ipse.Extensions.Registry do
                   true <-
                     (artifact.manifest["requires"] || Ipse.Extensions.Services.empty()) ==
                       entry.requires,
+                  true <- (artifact.manifest["subscriptions"] || []) == entry.subscriptions,
                   :ok <-
                     Ipse.MCP.Schema.validate_arguments(
                       artifact.manifest["options_schema"],
@@ -253,6 +265,7 @@ defmodule Ipse.Extensions.Registry do
       Ipse.Journal,
       Ipse.Lifecycle.Source,
       Ipse.Lifecycle.Event,
+      Ipse.Extensions.Subscriptions,
       Ipse.Session
     ]
     |> Enum.map(fn module ->

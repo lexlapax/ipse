@@ -206,27 +206,41 @@ and [runtime identity](#p1-runtime-identity-2026-10-15).
 
 | Checkpoint | Evidence | Scope and remaining limits |
 | --- | --- | --- |
-| Lifecycle source/views, Linux Serenity | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters, 494 native-suite tests with 14 macOS exclusions; nine focused lifecycle fixtures passed | Internal journal/view adapter and unchanged real-session idle resume; subscriber admission/jobs remain unimplemented |
-| Hosted worker-text baseline `dc07fb5` | [Ubuntu/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39004356777) passed build, format, compile, tests, demo and extracted packages; macOS native and default experimental sandbox checks passed | Job/step conclusions inspected; does not establish the independent installed-package proof or stronger macOS descendant containment |
-| Lifecycle source/extracted fixture | Credential-free demo, updated extension fixture and Linux glibc-2.44 package/extracted verification passed with matching OTP 29.1.1 notices and utility-only PATH | Bundled source/view adapter proof; neither an independently installed subscriber package nor new macOS evidence |
-| Provider acceptance | [Explicit live provider checks](#live-provider-acceptance-follow-up-2026-10-15) | Recorded account/model/platform combinations only; fixture tests do not establish billing, hardware or arbitrary-model support |
+| Prompt subscriptions, Linux Serenity | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters and 504 native-suite tests with 14 macOS exclusions passed | Includes ten independent-worker subscription fixtures; broader lifecycle subscriptions and event-driven actions remain pending |
+| Hosted source/view baseline `2bdae40` | [Ubuntu/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39007049833) passed build, format, compile, tests, demo and extracted packages; macOS native and default experimental sandbox steps passed | Job/step conclusions inspected; this precedes the notification implementation and does not prove its hosted/package behavior or stronger descendant containment |
+| Source/extracted compatibility | Credential-free CLI demo, bundled extension/accounting/text/source-view fixture and Linux glibc-2.44 package verification passed with matching OTP 29.1.1 notices and utility-only PATH | General bundled-runtime compatibility; independently installed subscriber proof remains a P22 gate |
+| Provider acceptance | [Explicit live provider checks](#live-provider-acceptance-follow-up-2026-10-15) | Recorded account/model/platform combinations only; fixtures do not establish billing, hardware or arbitrary-model support |
 
-The nine lifecycle fixtures cover stable occurrences across rereads and repeated
-prompts, actual byte positions in legacy JSON, bounded pages/records, incomplete
-tails, duplicate keys/scalars, altered source bindings, private-view overflow and
-secret exclusion. A real selected transform session checks distinct committed
-prompt stages and byte-identical idle resume of the original session ID. The
-bundled extension fixture now exercises source IDs and metadata/private views,
-including unchanged IDs after resume; source and extracted Linux execution passed.
-Documentation checks passed 75 Markdown documents / 916 local file and heading
-links with no errors. No new model, audio device, exporter or remote service was used.
-See the [internal source/view contract](lifecycle-events.md#internal-journal-source-and-prompt-views).
+Subscription fixtures exercise separately granted original/final-effective views,
+metadata secret exclusion, final transformed text, synced ordered receipts,
+disabled behavior and no action bypass. Bounds cover private payloads, source
+input and selected declaration count. Required/optional failures, timeout, actual
+worker VM shutdown, byte-identical original-session idle resume and fresh identical
+prompts are tested. A self-consistent forged source/payload chain passes pure
+projection checks but is refused by physical-source validation in resume/saved
+diagnostics before tail repair. Missing receipts are also refused. See the
+[subscription contract](extension-events.md).
 
-Worker text coverage includes seven independent-artifact fixtures and a broker
-enrollment check. Its focused text suite passed 20 tests; the full Linux suite
-covers owner-death idle resume. See
-[resource contract](text-streams.md) and
-[context/evidence checkpoint](#p22-session-context-and-evidence-2026-10-16).
+Timeout evidence distinguishes actual VM exit from complete cleanup confirmation:
+when the terminating worker cannot acknowledge close, its receipt stays unknown
+with unconfirmed cleanup and Session close reports that uncertainty. No retry or
+inference is manufactured. The nine [source/view fixtures](lifecycle-events.md#internal-journal-source-and-prompt-views)
+and existing worker-text/context/service tests remain in the full suite. Source
+and extracted baselines, independent artifacts and hosted results are separate
+claims; no new live provider, audio device, exporter or remote service was used.
+Documentation checks passed 76 Markdown documents / 931 local file and heading
+links with no errors.
+
+P22 still needs event-triggered action jobs, awaited recall, broader lifecycle
+types/feeds, observability/debugging, the independent installed-package proof and
+supervised review. The [event/graph scenarios](lifecycle-events.md#knowledge-graph-acceptance-proof)
+remain pending executable acceptance cases beyond the read-only subscription
+fixtures. P23–P25 and the final license transition remain open; the [plan](../plan.md)
+owns acceptance/status.
+
+## Historical verification records
+
+### Extension CI compatibility follow-up (2026-10-16)
 
 The earlier [service run](https://github.com/lexlapax/ipse/actions/runs/38999961420)
 stopped at formatting. The [context run](https://github.com/lexlapax/ipse/actions/runs/39000762785)
@@ -236,15 +250,6 @@ skipped. `51513e8` adds an explicit catalog-ready barrier, retaining the configu
 server/RPC and resource-outcome limits and no-replay assertions. Fourteen focused
 catalog/session tests and the subsequent full hosted matrix passed. This is
 fixture coordination evidence, not a production timeout or permission change.
-
-P22 still needs generic private event subscriptions, triggered jobs, ordered
-recall, observability/debugging, the independent installed-package proof and
-supervised review. The [event/graph scenarios](lifecycle-events.md#knowledge-graph-acceptance-proof)
-are design acceptance cases, not executed fixtures. P23–P25 and the final license transition remain open;
-the [plan](../plan.md) owns acceptance/status. Current source/package results,
-hosted platforms and live trials are separate verification claims.
-
-## Historical verification records
 
 The dated records below preserve what ran at each checkpoint, including failures,
 interventions and superseded limitations. A claim that work was pending describes

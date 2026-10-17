@@ -18,9 +18,10 @@ Current contracts are organized by responsibility:
 | Explicit continuation and approved effects | [Questions](extension-questions.md), [workflow tools](extension-tool-actions.md) |
 | Typed dependency composition and contextual evidence | [Services](extension-services.md), [context](extension-context.md) |
 | Durable request facts and embedded/worker private delivery | [Usage accounting](usage-accounting.md), [text channel](text-streams.md) |
-| Internal journal occurrence identity and typed prompt views | [Lifecycle source/view adapter](lifecycle-events.md#internal-journal-source-and-prompt-views); subscriber admission remains pending |
+| Internal journal occurrence identity and typed prompt views | [Lifecycle source/view adapter](lifecycle-events.md#internal-journal-source-and-prompt-views); private journal pages remain host-only |
+| Declared read-only prompt delivery | [Event subscriptions](extension-events.md), with separate metadata/private authority and required/optional receipts |
 
-Generic private lifecycle subscriptions, event-triggered jobs,
+Broader lifecycle subscriptions, event-triggered jobs,
 observability/developer controls and the
 independent installed-package/supervised proofs remain open. The
 [plan](../plan.md#p22-extension-scaffold-and-lifecycle-hooks) owns current status;
@@ -221,8 +222,10 @@ incomplete, with no automatic model request. Do not promise exactly-once executi
 of arbitrary extension code.
 
 A required prompt transform that crashes, times out or returns invalid data stops
-before inference; no silent untransformed fallback. A failed optional observer
-is disabled/reported without failing an otherwise successful tool. A failed
+before inference; no silent untransformed fallback. A failed optional diagnostic
+sink is disabled/reported without failing an otherwise successful tool. Prompt
+notifications use their separate per-delivery required/optional policy; a fresh
+explicit input may make a new delivery attempt. A failed
 display formatter visibly falls back to the saved original answer, since the
 model/effects may already have completed. Callbacks cannot relabel failed/unknown
 effects successful. Journal failures retain the existing host failure boundary.
@@ -338,7 +341,7 @@ interpreted as effects. Current interfaces and remaining proposals are distinct:
 | Prompt/presentation | Implemented `append` or `prefix`/`suffix` objects | Journal source-bound derived projection; preserve originals/native data |
 | Context contribution | Implemented `context.publish` sets with provenance | Accept/refuse within budgets, then pin exact main-request snapshots |
 | Tool/command/service | Implemented declared result schemas or explicit `host_call` proposals | Owned invocation; full tool approval and finite separately admitted actions |
-| Lifecycle subscriptions | Internal stable journal sources and typed prompt views; generic delivery/admission pending | Diagnostic delivery never changes context/actions or replaces mandatory journals |
+| Lifecycle subscriptions | Stable journal sources and declared read-only original/final-effective prompt notifications | Exact acknowledgment; separate private-view authority, required/optional receipts and no replay |
 | Triggered work and ordered recall | Pending generic event-to-job and pre-request hook contracts | Separate action admission; committed source/provenance and deterministic request snapshots |
 | Before-settlement scheduling | Future explicitly negotiated capability | Must validate remaining budgets/phase; no arbitrary auto-continuation exists |
 

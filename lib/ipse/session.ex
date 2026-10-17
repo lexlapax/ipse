@@ -2,7 +2,7 @@ defmodule Ipse.Session do
   @moduledoc "One supervised owner per agent conversation. I/O runs in monitored tasks."
   use GenServer
   alias Ipse.{Journal, Skills, Tools, WorkspaceContext, Questions}
-  alias Ipse.Extensions.{Host, Projection, Catalog, Invocation, Actions}
+  alias Ipse.Extensions.{Host, Projection, Catalog, Invocation, Actions, Subscriptions}
 
   def start_link(opts) do
     config = Keyword.fetch!(opts, :config)
@@ -82,6 +82,7 @@ defmodule Ipse.Session do
          {:ok, locked_events} <- Journal.load(dir, id),
          {:ok, _} <- restore_context(locked_events),
          :ok <- Ipse.Extensions.TextResources.validate_events(locked_events, id),
+         :ok <- Subscriptions.validate_sources(dir, id, locked_events),
          :ok <- Journal.repair_tail(dir, id),
          {:ok, events} <- Journal.load(dir, id),
          {:ok, accounting} <- Ipse.Usage.restore(events, id),
@@ -141,6 +142,12 @@ defmodule Ipse.Session do
         extension_text_count: Ipse.Extensions.TextResources.count(events),
         extension_text_turn: nil,
         extension_text_cleanup_failed: false,
+        event_received: nil,
+        event_committed: nil,
+        event_turn: nil,
+        event_intent: nil,
+        event_count: Enum.count(events, &(&1["type"] == "extension_event_intent")),
+        event_cleanup_failed: false,
         final: Projection.presentation(events),
         extension_intent: nil,
         extension_invocation: if(question && question[:kind] == :extension, do: question.parent),
@@ -262,6 +269,67 @@ defmodule Ipse.Session do
   end
 
   def handle_call({:extension_commit, _, _}, _, s), do: {:reply, {:error, :cancelled}, s}
+
+  def handle_call(
+        {:extension_event_begin, ref, instance, subscription},
+        {caller, _},
+        %{job_ref: ref, task: %{pid: caller}, phase: :extension_events, event_intent: nil} = s
+      )
+      when ref != nil do
+    with entry when is_map(entry) <-
+           Enum.find(s.config.extensions, &(&1.identity["instance"] == instance)),
+         declaration when is_map(declaration) <-
+           Enum.find(entry.subscriptions, &(&1["id"] == subscription)),
+         true <- s.event_count < 10_000 and Ipse.Extensions.Registry.live?(entry.identity),
+         fact =
+           if(declaration["event"] == "prompt.received",
+             do: s.event_received,
+             else: s.event_committed
+           ),
+         true <- fact != nil,
+         {intent, payload} =
+           Subscriptions.intent(entry.identity, declaration, fact.source, fact.record, s.turn_id) do
+      record(s, intent)
+
+      {:reply, {:ok, intent, entry, payload},
+       %{s | event_intent: intent, event_count: s.event_count + 1}}
+    else
+      _ -> {:reply, {:error, :event_admission_refused}, s}
+    end
+  end
+
+  def handle_call(
+        {:extension_event_commit, ref, result},
+        {caller, _},
+        %{job_ref: ref, task: %{pid: caller}, phase: :extension_events, event_intent: intent} = s
+      )
+      when ref != nil and intent != nil do
+    if Subscriptions.valid_result?(result, intent) and
+         (result["outcome"] != "acknowledged" or
+            Ipse.Extensions.Registry.live?(intent["identity"])) do
+      record(s, result)
+
+      if result["outcome"] != "acknowledged" and not intent["declaration"]["required"],
+        do:
+          notify(
+            s,
+            {:status,
+             "Optional event subscriber did not acknowledge; inspect its saved delivery receipt."}
+          )
+
+      {:reply, :ok,
+       %{
+         s
+         | event_intent: nil,
+           event_cleanup_failed: s.event_cleanup_failed or not result["cleanup_confirmed"]
+       }}
+    else
+      {:reply, {:error, :event_result_refused}, s}
+    end
+  end
+
+  def handle_call({:extension_event_begin, _, _, _}, _, s), do: {:reply, {:error, :cancelled}, s}
+  def handle_call({:extension_event_commit, _, _}, _, s), do: {:reply, {:error, :cancelled}, s}
 
   def handle_call({:mcp_register, ref, resource}, _from, %{job_ref: ref} = s) when ref != nil do
     monitor = Process.monitor(resource)
@@ -759,6 +827,11 @@ defmodule Ipse.Session do
        "accounting" => Ipse.Usage.snapshot(s.accounting),
        "context" => Ipse.Diagnostics.context(s.messages, s.config, system_message(s)),
        "extension_context" => Ipse.Extensions.Contributions.summary(s.extension_contributions),
+       "extension_events" => %{
+         "admitted_deliveries" => s.event_count,
+         "delivery_pending" => s.event_intent != nil,
+         "unconfirmed_cleanup" => s.event_cleanup_failed
+       },
        "extension_text" => %{
          "active_consumers" =>
            Enum.count(s.extension_text, fn {_, resource} ->
@@ -789,37 +862,64 @@ defmodule Ipse.Session do
 
   def handle_call({:prompt, text}, _from, s) when is_binary(text) and byte_size(text) > 0 do
     original = text
+    turn = Ipse.Usage.id()
 
-    text =
-      Enum.reduce(Skills.explicit(text, s.skills), text, fn name, acc ->
-        case Skills.load(s.skills, name) do
-          {:ok, body} ->
-            notify(s, {:skill, name})
-            acc <> "\n\n" <> body
+    if Subscriptions.declarations(s.config) == [] or
+         match?(
+           {:ok, _},
+           Ipse.Lifecycle.Source.build(s.id, 0, Subscriptions.received(turn, text))
+         ) do
+      s = %{
+        s
+        | turn_id: turn,
+          event_received: nil,
+          event_committed: nil,
+          event_turn: nil,
+          event_intent: nil
+      }
 
-          _ ->
-            acc
+      text =
+        Enum.reduce(Skills.explicit(text, s.skills), text, fn name, acc ->
+          case Skills.load(s.skills, name) do
+            {:ok, body} ->
+              notify(s, {:skill, name})
+              acc <> "\n\n" <> body
+
+            _ ->
+              acc
+          end
+        end)
+
+      s =
+        if Subscriptions.declarations(s.config) != [] do
+          event = Subscriptions.received(s.turn_id, original)
+          source = record_source(s, event)
+          %{s | event_received: %{source: source, record: event}}
+        else
+          if Host.enabled?(s.config, "transform.prompt"),
+            do:
+              record(s, %{
+                "type" => "extension_prompt_received",
+                "version" => 1,
+                "original" => original,
+                "original_sha256" => Ipse.Extensions.Manifest.sha256(original)
+              })
+
+          s
         end
-      end)
 
-    if Host.enabled?(s.config, "transform.prompt") do
-      record(s, %{
-        "type" => "extension_prompt_received",
-        "version" => 1,
-        "original" => original,
-        "original_sha256" => Ipse.Extensions.Manifest.sha256(original)
-      })
+      s = append_message(s, %{"role" => "user", "content" => text})
+      s = %{s | steps: 0, final: "", mcp_ready: false, delegations: 0}
+
+      next =
+        if Host.enabled?(s.config, "transform.prompt"),
+          do: launch_extensions(s, :extension_prompt),
+          else: model(s)
+
+      {:reply, :ok, next}
+    else
+      {:reply, {:error, :subscription_prompt_too_large_or_invalid}, s}
     end
-
-    s = append_message(s, %{"role" => "user", "content" => text})
-    s = %{s | steps: 0, final: "", mcp_ready: false, delegations: 0, turn_id: Ipse.Usage.id()}
-
-    next =
-      if Host.enabled?(s.config, "transform.prompt"),
-        do: launch_extensions(s, :extension_prompt),
-        else: model(s)
-
-    {:reply, :ok, next}
   end
 
   def handle_call({:prompt, _}, _from, s), do: {:reply, {:error, :empty_prompt}, s}
@@ -984,7 +1084,7 @@ defmodule Ipse.Session do
       notify(
         s,
         {:error,
-         "Owned tool or subagent cleanup could not be confirmed. Inspect running processes before retrying."}
+         "Owned work cleanup could not be confirmed. Inspect running processes before retrying."}
       )
 
       notify(s, {:done, :error})
@@ -1069,6 +1169,7 @@ defmodule Ipse.Session do
           extension_action_results: [],
           extension_action_unknown: false,
           extension_request: nil,
+          event_intent: nil,
           extension_text: %{},
           extension_text_turn: nil,
           tool_decision: "not_decided",
@@ -1081,7 +1182,7 @@ defmodule Ipse.Session do
       }
 
     text_cleanup =
-      if s.extension_text_cleanup_failed,
+      if s.extension_text_cleanup_failed or s.event_cleanup_failed,
         do: [{:error, :cleanup_unconfirmed} | text_cleanup],
         else: text_cleanup
 
@@ -1254,6 +1355,12 @@ defmodule Ipse.Session do
 
       {:extension_prompt, :ok} ->
         {:noreply, model(%{s | extension_intent: nil})}
+
+      {:extension_events, :ok} ->
+        {:noreply, model(s)}
+
+      {:extension_events, {:error, error}} ->
+        {:noreply, fail(s, error)}
 
       {:extension_text_start, :ok} ->
         {:noreply, model(s)}
@@ -1581,6 +1688,10 @@ defmodule Ipse.Session do
     servers = Map.get(s.config, :mcp_servers, [])
 
     cond do
+      s.event_received != nil and s.event_received.record["turn_id"] == s.turn_id and
+          s.event_turn != s.turn_id ->
+        start_event_notifications(s)
+
       servers != [] and not s.mcp_ready ->
         resource = %{owner: self(), job_ref: make_ref()}
         task = owned_task(fn -> Ipse.MCP.discover(servers, s.cwd, resource) end)
@@ -1639,6 +1750,38 @@ defmodule Ipse.Session do
       definitions(s.config) ++ Ipse.MCP.definitions(s.mcp_tools),
       :model
     )
+  end
+
+  defp start_event_notifications(s) do
+    event =
+      Subscriptions.committed(
+        s.turn_id,
+        List.last(s.messages)["content"],
+        List.last(s.messages),
+        s.event_received.source
+      )
+
+    if match?({:ok, _}, Ipse.Lifecycle.Source.build(s.id, 0, event)) do
+      source = record_source(s, event)
+
+      s = %{
+        s
+        | event_committed: %{record: event, source: source},
+          event_turn: s.turn_id,
+          event_intent: nil
+      }
+
+      owner = self()
+      ref = make_ref()
+      plans = Subscriptions.declarations(s.config)
+      task = owned_task(fn -> Host.notify_events(plans, owner, ref) end)
+      %{s | task: task, job_ref: ref, phase: :extension_events}
+    else
+      fail(
+        s,
+        "Effective prompt exceeds the event-source bound; no subscriber or inference was started."
+      )
+    end
   end
 
   defp start_extension_text(s) do
@@ -2270,6 +2413,13 @@ defmodule Ipse.Session do
     end
   end
 
+  defp record_source(s, event) do
+    case Journal.append_with_source(s.dir, s.id, event) do
+      {:ok, source} -> source
+      {:error, reason} -> raise "Journal write failed: #{inspect(reason)}"
+    end
+  end
+
   defp notify(s, event), do: send(s.subscriber, {:ipse, self(), event})
 
   defp saved_request(events, field) do
@@ -2344,7 +2494,8 @@ defmodule Ipse.Session do
              "configuration" => Map.get(config, :configuration),
              "execution" => Map.get(config, :execution),
              "extensions" => Ipse.Extensions.Registry.manifests(config),
-             "extension_catalog" => extension_catalog(config)
+             "extension_catalog" => extension_catalog(config),
+             "extension_subscriptions" => Subscriptions.snapshot(config)
            }),
          do: {:ok, id, []}
   end
@@ -2366,6 +2517,9 @@ defmodule Ipse.Session do
          true <-
            Map.get(meta, "extension_catalog", %{"version" => 1, "entries" => []}) ==
              extension_catalog(config),
+         true <-
+           Map.get(meta, "extension_subscriptions", %{"version" => 1, "entries" => []}) ==
+             Subscriptions.snapshot(config),
          :ok <- Ipse.Handoff.validate_events(events),
          {:ok, _} <- Ipse.Usage.restore(events, id),
          {:ok, _messages} <- restore_context(events) do

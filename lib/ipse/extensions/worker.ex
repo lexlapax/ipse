@@ -223,7 +223,8 @@ defmodule Ipse.Extensions.Worker do
         (result["exports"] || Ipse.Extensions.Catalog.empty()) ==
           (state.manifest["exports"] || Ipse.Extensions.Catalog.empty()) and
         (result["requires"] || Ipse.Extensions.Services.empty()) ==
-          (state.manifest["requires"] || Ipse.Extensions.Services.empty())
+          (state.manifest["requires"] || Ipse.Extensions.Services.empty()) and
+        (result["subscriptions"] || []) == (state.manifest["subscriptions"] || [])
 
   defp launch(artifact) do
     root = to_string(:code.root_dir())

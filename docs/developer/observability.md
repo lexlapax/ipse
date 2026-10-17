@@ -1,14 +1,13 @@
 # Runtime diagnostics and tracing proposal
 
-Research/design as of 2026-10-16; no new diagnostic CLI flags, trace exporter,
-extension event bus or debugger endpoint are implemented by this document.
-P19 now supplies local diagnostics, saved inspection, explicit handoff export
-and request durations; see [recovery](../operator/recovery.md). P22 can extend
-those same contracts rather than introduce a second incompatible instrumentation
-layer. The [lifecycle event foundation](lifecycle-events.md) separately defines
-shared source identity, private subscriptions, ordered hooks and event-triggered
-jobs. This guide owns only the sanitized diagnostic view and developer tracing.
-Prompt-driven memory/graph ingestion must not depend on sampled telemetry.
+This guide owns proposed diagnostic capture, sinks/export and developer tracing.
+P19's local diagnostics, saved inspection, explicit handoff export and request
+durations are implemented; see [recovery](../operator/recovery.md). P22 also
+implements shared journal-source/prompt views and selected read-only prompt
+notifications. Those [lifecycle contracts](lifecycle-events.md) are independent
+of sampled diagnostics. General lifecycle capture, off/local/export controls,
+trace sinks and developer leases remain pending; no diagnostic mode flag or
+debugger endpoint is available yet.
 
 ## Existing facilities and gaps
 
@@ -17,14 +16,13 @@ allowlisted runtime/configuration/context information, compaction-failure reason
 and OTP supervision. `format_status/1` limits Session's formatted state to ID and
 phase. MCP processes also implement formatted status. Dependency Telemetry is
 locked at 1.4.2 through Finch/Plug, but Ipse currently emits no application
-`:telemetry` events. The [extension host](extension-hooks.md) now loads explicitly
-selected independent workers for prompt/presentation and
-[typed invocations](extension-invocations.md), but has no observation bus or
-supported operator external trace-export interface. P19 adds content-free context accounting
-and local request measurements, not general lifecycle hooks or remote export.
-The internal source/view adapter can now identify committed journal occurrences
-and project typed prompt metadata/private views without callbacks. It does not
-initialize diagnostic sinks or expose a subscription/export interface.
+`:telemetry` events. The extension host runs reviewed independent workers for
+prompt/presentation, typed invocations and [read-only prompt subscriptions](extension-events.md).
+Shared source identity correlates private/metadata prompt views; source paging
+itself executes no callback. Prompt subscribers are explicitly selected bounded
+callbacks, not a continuously running diagnostic bus. P19 provides content-free
+context accounting and local request measurements, but no general lifecycle
+capture or supported operator external trace-export interface.
 
 ## Enablement and configuration
 

@@ -130,6 +130,7 @@ defmodule Ipse.Handoff do
            String.valid?(note) and byte_size(note) <= @note_bytes and String.trim(note) != "",
          {:ok, events} <- Journal.load(dir, id),
          {:ok, messages} <- Session.restore_context(events),
+         :ok <- Ipse.Extensions.Subscriptions.validate_sources(dir, id, events),
          {:ok, _} <- Ipse.Research.restore(events) do
       unknown = Enum.filter(messages, &(get_in(&1, ["ipse_tool_outcome", "status"]) == "unknown"))
 

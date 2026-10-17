@@ -21,6 +21,7 @@ defmodule Ipse.Extensions.Manifest do
       "options_schema" => %{"type" => "object"},
       "exports" => %{"type" => "object"},
       "requires" => %{"type" => "object"},
+      "subscriptions" => %{"type" => "array", "maxItems" => 4, "items" => %{"type" => "object"}},
       "capabilities" => %{"type" => "array", "maxItems" => 32, "items" => @text},
       "files" => %{
         "type" => "array",
@@ -69,6 +70,11 @@ defmodule Ipse.Extensions.Manifest do
          :ok <- Schema.validate_schema(manifest["options_schema"]),
          true <- manifest["options_schema"]["type"] == "object",
          :ok <- Ipse.Extensions.Catalog.validate(manifest["exports"], manifest["capabilities"]),
+         :ok <-
+           Ipse.Extensions.Subscriptions.validate(
+             manifest["subscriptions"],
+             manifest["capabilities"]
+           ),
          :ok <-
            Ipse.Extensions.Services.validate_requirements(
              manifest["requires"],

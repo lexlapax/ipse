@@ -48,6 +48,10 @@ Import permits incompatible artifacts for storage; activation must call
 The optional `requires` object declares [typed service requirements](extension-services.md),
 not executable dependency discovery. Import validates aliases/version/schemas;
 activation resolves only explicit operator routes to already selected targets.
+Optional `subscriptions` declare bounded read-only original/final-effective prompt
+notifications, with exact event/view/version/mode and required policy. Unknown
+modes or widened read declarations refuse inert validation; see
+[prompt subscriptions](extension-events.md).
 
 Artifact identity is SHA-256 of the **original manifest bytes**, which bind every
 declared file's hash and length. Whitespace changes create a different identity.
@@ -136,8 +140,9 @@ def handle("transform.prompt", payload, state), do: {:ok, payload, state}
 
 `describe/0` returns a JSON object with SDK 1 and capabilities exactly matching
 the reviewed manifest, including exact normalized `exports` for invocation
-artifacts. Missing exports normalize to empty for code without `invoke.*` exports,
-including transform-only and text-consumer artifacts.
+artifacts, exact `requires` for service callers and exact `subscriptions` for event
+consumers. Missing exports/requirements/subscriptions normalize to their respective
+empty values for code without those declarations.
 This executable handshake is not a pre-execution certificate: startup intent
 precedes loading/describe/init. `init/1` receives validated options once; its private
 state stays in that worker. `handle/3` receives a declared capability string and

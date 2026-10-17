@@ -40,6 +40,22 @@ defmodule Ipse.Lifecycle.Event do
     end
   end
 
+  defp describe(%{"type" => "lifecycle_prompt_received"} = record) do
+    if Ipse.Extensions.Subscriptions.valid_received?(record),
+      do:
+        {:ok, "prompt.received", "prompt.original", record["original"],
+         %{"input_bytes" => byte_size(record["original"])}, %{"turn_id" => record["turn_id"]}},
+      else: {:error, :invalid_lifecycle_event}
+  end
+
+  defp describe(%{"type" => "lifecycle_prompt_committed"} = record) do
+    if Ipse.Extensions.Subscriptions.valid_committed?(record),
+      do:
+        {:ok, "prompt.effective_committed", "prompt.effective", record["text"],
+         %{"input_bytes" => byte_size(record["text"])}, %{"turn_id" => record["turn_id"]}},
+      else: {:error, :invalid_lifecycle_event}
+  end
+
   defp describe(%{"type" => "message", "message" => %{"role" => "user", "content" => text}}) do
     if text?(text),
       do:

@@ -537,6 +537,9 @@ grant no trust or action permission.
 declared operator command while idle, without a model request. Explicitly
 negotiated host operations support scoped state, structured questions,
 file/shell workflows, operator-bound value services and contextual evidence.
+Selected artifacts can also receive separately granted
+[read-only original/effective prompt events](extensions.md#prompt-event-subscribers);
+notification replies cannot request effects.
 Normal mutation approval applies. For selection flags, limits and recovery,
 use the [capability procedures](extensions.md#configure-selections).
 

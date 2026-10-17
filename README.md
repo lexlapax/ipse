@@ -89,7 +89,9 @@ with `chat --handoff PATH` into a fresh idle session. See
 operator trust and explicit session selection. The two shipped hooks are
 default-off. Reviewed artifacts can expose typed tools/commands/services and
 negotiate state, questions, workflow tools, service composition, contextual
-evidence or private visible-text consumption. `/ext` inspects the active catalog
+evidence, private visible-text consumption or
+[read-only prompt notifications](docs/operator/extensions.md#prompt-event-subscribers).
+`/ext` inspects the active catalog
 and invokes operator commands.
 Effects retain normal approval; cached receipts/projections restore without
 replay. The full SDK, observability controls and independent package proof

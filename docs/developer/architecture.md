@@ -274,24 +274,26 @@ Separate VMs and process groups are ownership boundaries, not OS sandboxing.
 | Value-service composition | Operator routes, acyclic dependency identities, target lease/schema/cleanup checks and host provenance | [Services](extension-services.md) |
 | Session context | Bounded caller-owned sets, assertion/receipt provenance and exact main-request snapshots | [Context](extension-context.md) |
 | Private text consumers | Owned independent workers, opaque resource handles, acknowledged frames and explicit incomplete cleanup | [Text delivery](text-streams.md) |
+| Prompt event subscribers | Inert declarations, separate private-view grants, ordered owned notification and source-bound no-replay receipts | [Event delivery](extension-events.md) |
 
 Ordinary returned JSON is data; it never implies another host action. Unknown
 outcomes stop without replay. Idle resume validates committed projections and
 receipts without loading callbacks or retrieving again. Mandatory instructions,
 messages and native continuation remain intact. Domain algorithms belong in
 extensions where the supported SDK permits; missing host capabilities require
-reviewed general contracts. The pending [lifecycle foundation](lifecycle-events.md)
+reviewed general contracts. The [lifecycle foundation](lifecycle-events.md)
 uses shared event identity with separate metadata/private views and delivery
 contracts for notifications, ordered hooks and triggered jobs. Event delivery
 does not grant effects, and background work cannot change an admitted request.
-Private subscriptions, job admission, ordered recall, lifecycle observability
+Broader private subscriptions, job admission, ordered recall, lifecycle observability
 and the independent installed-package proof remain [P22 gates](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
 
 The internal lifecycle Source/Event adapter now binds committed journal facts to
 stable occurrence IDs and projects explicit metadata/private prompt views.
 Bounded source pages neither repair tails nor execute/replay callbacks. They
 contain private journal records and are not a diagnostic export or worker API;
-subscriber admission and other lifecycle seams remain pending.
+selected prompt views are delivered only through the separate admitted subscription
+path. Broader lifecycle seams and effectful jobs remain pending.
 
 Keep provider-specific wire formats inside provider adapters and keep session
 state transitions in `Ipse.Session`. Put ordinary filesystem and shell

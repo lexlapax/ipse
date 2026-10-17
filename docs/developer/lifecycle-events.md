@@ -1,8 +1,9 @@
 # Lifecycle events, hooks and subscribers
 
-P22 lifecycle design, with an implemented internal journal-source and prompt-view
-adapter. Generic subscription admission and event-triggered jobs remain pending;
-this is **not an implemented subscription API**. Existing [transforms](extension-hooks.md),
+P22 lifecycle design with implemented journal-source/prompt-view adapters and
+[bounded read-only prompt subscriptions](extension-events.md). Event-triggered
+actions, background jobs and broader lifecycle subscriptions remain pending.
+Existing [transforms](extension-hooks.md),
 [invocations/actions](extension-host-calls.md), [context](extension-context.md)
 and [visible-text delivery](text-streams.md) retain their current wire contracts.
 The [plan](../plan.md#p22-extension-scaffold-and-lifecycle-hooks) owns delivery
@@ -32,11 +33,11 @@ Session with a new event-sourcing or workflow framework.
 The current internal adapter provides stable source references and typed prompt
 views without changing the journal format or initializing any subscriber. The
 [implemented source API](#internal-journal-source-and-prompt-views) below is the
-building block for the remaining delivery contracts, not a new execution path.
+building block for selected prompt notifications and the remaining delivery contracts.
 
 | Needed by a prompt-driven knowledge graph | Current support | Remaining foundation |
 | --- | --- | --- |
-| Read prompt text | Selected prompt transforms receive effective visible user text | Generic subscription with an explicit original/effective view and scope |
+| Read prompt text | Selected transforms and read-only original/final-effective subscriptions with explicit capabilities | Broader lifecycle views and continuous feeds |
 | Extract entities | Extension code can compute on its callback input | Event-triggered owned job; optional model work needs a separately admitted request capability |
 | Store derived facts | Explicit invocations can propose scoped state writes | Event-to-job admission that can use the same action path |
 | Add recalled evidence to an answer | Invocations can publish bounded attributed context | Ordered pre-request retrieval hook with a committed snapshot |
@@ -90,6 +91,8 @@ version-1 envelope for the currently exercised prompt facts:
 | `extension_prompt_received` | `prompt.received` | `prompt.original` |
 | User `message` | `prompt.expanded_committed` | `prompt.expanded` |
 | Validated `transform.prompt` result | `prompt.projection_committed` | `prompt.projection` |
+| Selected subscription's `lifecycle_prompt_received` | `prompt.received` | `prompt.original` |
+| Selected subscription's `lifecycle_prompt_committed` | `prompt.effective_committed` | `prompt.effective` |
 
 Every type also supports a `metadata` view containing only byte counts, stable
 source correlation and, for a transform, operation/artifact correlation. Metadata
@@ -101,15 +104,17 @@ feeds need negotiated resource handles/flow control.
 
 These stages describe the actual saved facts: `expanded_committed` precedes
 transforms, and a projection may precede another configured transform. Neither is
-advertised as the final request prompt. Original input is currently recorded only
-when prompt transforms are selected. Legacy bare prompt records do not carry a
-turn ID, so the adapter does not invent one. Final effective-prompt seams, full
-causal links, ephemeral event identity and other lifecycle types remain pending.
-No manifest/configuration capability exposes these internal functions yet;
-projecting a view in host code is not subscriber authorization. The host API digest
-now pins Journal, Source and Event alongside existing extension contracts.
+advertised as the final request prompt. Selected subscriptions add a distinct
+final-effective user-text marker after all prompt transforms, with received-source
+and turn bindings. Original input is recorded when transforms or prompt subscriptions
+are selected. Legacy bare prompt records do not carry a turn ID, so the adapter
+does not invent one. Full causal links, ephemeral event identity and other lifecycle
+types remain pending. The [subscription contract](extension-events.md) grants
+selected views through the host; projecting a view in host code alone grants no
+authority. The host API digest pins Journal, Source, Event and Subscriptions
+alongside existing extension contracts.
 Neither `Source.valid?/1` nor `Event.project/3` authenticates a worker-supplied
-record/reference pair. Future host admission must resolve references against its
+record/reference pair. Host admission resolves saved references against its
 owned validated journal; workers cannot manufacture authoritative host facts.
 
 Nine Linux source fixtures in `test/lifecycle_test.exs` exercise stable identities,
@@ -128,6 +133,7 @@ private content must not acquire it by subscribing to a metadata topic.
 
 | Contract | Ordering and overload | Permitted response |
 | --- | --- | --- |
+| Implemented prompt notification | Finite ordered post-transform plan, one active callback, explicit required/optional outcomes | Exact acknowledgment only; metadata or separately granted private view |
 | Diagnostic notification | Independent bounded queues; sampling/drop counts are visible; sink failures do not fail the turn | Acknowledge metadata only; no host actions or context changes |
 | Private content feed | Per-subscription sequence, bounded bytes/in-flight delivery, acknowledgment and explicit gaps/incomplete closure | Acknowledge the selected content view; effects require separate job admission |
 | Ordered boundary hook | Host awaits handlers in configured order at a named seam; deadline or invalid required result stops that transition | Schema-checked projection, context contribution or restrictive decision permitted at that seam |
@@ -206,8 +212,10 @@ versions, content view, delivery mode, ordering/required policy, bounded options
 and requested capabilities. Bind the effective selection to artifact/options,
 operator trust, project/session/child scope, activation generation and expiry.
 No executable filter, arbitrary topic wildcard or worker-selected scope runs in
-Session. Unknown declarations fail validation. These fields are design targets,
-not currently accepted manifest/configuration examples.
+Session. Unknown declarations fail validation. The implemented
+[prompt declaration schema](extension-events.md#inert-declaration-and-authority)
+supports only read-only `notify`; other delivery modes and lifecycle types remain
+negotiated design targets.
 
 Prompt access, persistent writes, external transfer and model inference are
 separate grants. Installing or enabling a graph extension does not imply all

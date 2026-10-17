@@ -30,14 +30,14 @@ malformed, stale or expired entries are refused. Disabled discovery performs no
 artifact lookup, installation or executable initialization.
 
 Identities contain instance/reference/artifact SHA-256, options digest, SDK and
-protocol 1, export digest, operator/project scope, configuration-source path hash,
+protocol 1, export/requirement/subscription digests, operator/project scope, configuration-source path hash,
 ordered capabilities, order/lifetime/earliest expiry, child ceiling,
 VM components (Elixir version, OTP major, ERTS version, architecture), host API
 digest and generation 1. The host digest binds `Ipse.Extension`, Identity, Catalog,
 Invocation, Manifest, Store, Registry, Worker, Bootstrap, Host, Projection,
 Actions, Operation, ToolAction, Services, ServiceCall, State, Questions, Tools, Runner, WorkspaceContext,
 the shared schema adapter, usage normalizer/
-ledger, private text channel, Journal, lifecycle Source/Event and Session BEAM bytes. It is an exact API
+ledger, private text channel, Journal, lifecycle Source/Event, Subscriptions and Session BEAM bytes. It is an exact API
 implementation pin, not a signature or full operating-system/toolchain digest.
 Startup checks current VM components and code; resume requires identical pinned
 identities. No migration or hot activation is implemented.
@@ -163,7 +163,7 @@ Registry fixtures cover disabled discovery, schema/capability refusal, trust/lea
 expiry and child subset routing. See [actual evidence](testing.md#session-extension-hooks-2026-10-16).
 
 Worker [visible-text delivery](text-streams.md) is now implemented. P22 still needs
-generic private lifecycle subscriptions, event-triggered owned jobs, an ordered
+broader private lifecycle subscriptions, event-triggered owned jobs, an ordered
 recall seam, accounting report access, observability/debug controls and the
 independent extension-only memory/workflow proof and reviewed supervised trial.
 The [event design](lifecycle-events.md) explains why a prompt transform or stream
