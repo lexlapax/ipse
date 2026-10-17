@@ -69,8 +69,16 @@ ceiling and appears as null/overflow plus overdraw in inspection.
 ## Ledger and recovery
 
 `Budget.Store` uses owner-only JSONL and the existing Rust advisory lock. The
-stable lock inode is retained. Every mutation locks, reads/validates, applies the
-pure transition, appends and fsyncs before releasing. The header binds exact root
+stable lock inode is retained. Every mutation locks, verifies the protected file
+and live prefix, applies the pure transition, appends and fsyncs before releasing.
+The root-owned ETS checkpoint also caches validated reducer state at that exact
+prefix. Subsequent live transactions decode/fold only a new suffix; valid external
+tail records still undergo all transition checks. Cache identity never replaces
+root/policy or prefix validation, and state is pinned only after a successful
+write/sync or fully validated read. Fresh resume and independent inspection still
+decode the full ledger. Every transaction still reads and hashes the bounded
+prefix to detect same-size rewrites and rollback: this is not constant-time IO.
+The header binds exact root
 identity, policy and digest. Closed records are `reserved`, `refused`,
 `dispatch_intent`, `observed` and `settled`; unsupported versions/fields/order,
 duplicate attempts and foreign scope refuse. `Budget.Ledger` caches aggregate

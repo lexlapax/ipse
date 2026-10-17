@@ -15,7 +15,7 @@ start. Use the guides below for operation, development, and project context.
 | [MCP servers](operator/mcp.md) | Explicit stdio/HTTP configuration, TLS, credentials, server sandbox, approvals, recovery, and demos |
 | [Local subagents](operator/subagents.md) | Explicit delegation, child approvals, bounds, journals, and recovery |
 | [Supervised self-development](operator/self-development.md) | P24 review readiness, P25 trial preparation, frozen runner/candidate operation and completed Mac runbook |
-| [Context recovery](operator/recovery.md) | Content-free diagnostics, reviewed handoff export/fresh-chat import and unknown-effect review |
+| [Session recovery](operator/recovery.md) | Content-free diagnostics, journal ownership, unknown effects and reviewed fresh-session handoff |
 | [Diagnostic capture](operator/observability.md) | Default-off local/export policy, selected sinks, immediate stop, limits and recovery |
 | [Usage and cost reports](operator/usage-accounting.md) | Durable counters, default-off own-session/child reports, explicit read grants, unknown coverage and recovery |
 | [Shared admission budgets](operator/budgets.md) | Operator-only session-tree reservations, supported bounds, inspection, refusal and unknown-liability recovery |
@@ -31,6 +31,7 @@ start. Use the guides below for operation, development, and project context.
 | [Contributing](../CONTRIBUTING.md) | Contribution scope and handoff requirements |
 | [Agent instructions](../AGENTS.md) | Rules, code map, documentation and commit requirements |
 | [Architecture](developer/architecture.md) | Modules, ownership, persistence, trust boundaries |
+| [Journal persistence](developer/persistence.md) | Owned durable appends, source offsets, failure handling and growth limits |
 | [Architecture review dispositions](developer/architecture-review-dispositions.md) | Sanitized P24 finding register, independent verification, repairs and remaining coverage gates |
 | [Model-profile contract](developer/model-profiles.md) | Host routing, provider settings and child credential/native-history boundaries |
 | [Configuration contract](developer/configuration.md) | Bounded loader, scope, schema reuse, provenance and resume policy |

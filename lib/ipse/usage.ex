@@ -93,6 +93,7 @@ defmodule Ipse.Usage do
          %{
            requests: %{},
            order: [],
+           attempts: MapSet.new(),
            legacy_unmetered: version != 1,
            bindings: MapSet.new(),
            model_action: nil,
@@ -181,17 +182,15 @@ defmodule Ipse.Usage do
          true <- scope_matches?(ledger, event),
          nil <- ledger.requests[event["request_id"]],
          true <- capacity?(ledger),
-         false <-
-           Enum.any?(ledger.requests, fn {_, r} ->
-             r.admission["attempt_id"] == event["attempt_id"]
-           end) do
+         false <- MapSet.member?(ledger.attempts, event["attempt_id"]) do
       request = %{admission: event, observation: nil, completion: nil, sequence: 0}
       ledger = put_in(ledger, [:requests, event["request_id"]], request)
 
       {:ok,
        %{
          ledger
-         | order: ledger.order ++ [event["request_id"]],
+         | order: [event["request_id"] | ledger.order],
+           attempts: MapSet.put(ledger.attempts, event["attempt_id"]),
            session_id: event["session_id"],
            model_route: if(event["kind"] == "extension", do: nil, else: ledger.model_route)
        }}
@@ -288,8 +287,11 @@ defmodule Ipse.Usage do
     end
   end
 
+  @doc "Validated request IDs in canonical admission order."
+  def order(ledger), do: Enum.reverse(ledger.order)
+
   def snapshot(ledger) do
-    requests = Enum.map(ledger.order, &ledger.requests[&1])
+    requests = Enum.map(order(ledger), &ledger.requests[&1])
 
     %{
       "version" => 1,

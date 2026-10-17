@@ -43,7 +43,7 @@ CLI ──prompt / approval / cancel──> Session GenServer
                                       │                          └─ shell ──> Rust helper
                                       ├── opt-in owned workers ──> MCP / extensions
                                       ├── opt-in child sessions ──> separate jobs/journals
-                                      └── append events ──> private JSONL journal
+                                      └── durable append writer ──> private JSONL journal
 ```
 
 When explicitly enabled, `Ipse.Delegation.Worker` starts serial child sessions by
@@ -397,17 +397,24 @@ The default application home is `~/.ipse` and can be changed with
 journals; journals contain prompts, tool arguments, and results, so those may
 include user secrets. A state directory can be overridden with `--state-dir`.
 
-Each session journal is JSONL. The Rust helper provides a persistent advisory
-lock whose lifetime follows its Port owner; lock files are kept to preserve
-inode identity. Resume loads events into conversation history without replaying
-tool calls. Started interrupted calls are marked with an unknown outcome because
-their external effects may already have happened. Calls cancelled before launch
+Each JSONL journal has one Session owner and an owned append process. The Rust
+helper's persistent advisory lock excludes other sessions; its inode remains in
+place. The writer validates history when opening, then encodes and fsyncs new
+records without decoding all prior events. Session waits for durable acknowledgment
+before effects or source publication. File changes and writer loss fail closed;
+normal or abrupt owner loss closes the writer. The
+[persistence contract](persistence.md) specifies guards, ownership, stateless
+read/append APIs and remaining storage/growth limits.
+
+Resume reconstructs history without replaying tool calls. Started interrupted
+calls are marked with an unknown outcome because their external effects may
+already have happened. Calls cancelled before launch
 are recorded as not started; older unresolved history remains conservative.
 Malformed or duplicate tool-call identities refuse the entire new response
 before approval or dispatch. A private `provider_response_refused` record retains
 the original response/native evidence without placing invalid calls in effective
-context or pretending to settle them. Historical duplicate IDs consume recorded results once, in order;
-an unresolved duplicate cannot inherit another call's result.
+context or pretending to settle them. Historical duplicate IDs consume recorded
+results once, in order; an unresolved duplicate cannot inherit another call's result.
 
 Lost shell supervision, malformed/incomplete helper frames and unexpected tool
 worker exceptions have an unknown machine-readable outcome. Explicit validation

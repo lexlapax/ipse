@@ -224,6 +224,9 @@ defmodule Ipse.Journal do
 
   defp journal_path(state_dir, id), do: Path.join(state_dir, id <> ".jsonl")
 
+  @doc false
+  def validate_complete(contents), do: validate_complete_journal(contents)
+
   defp validate_complete_journal(contents) do
     if contents == "" or not String.ends_with?(contents, "\n") do
       {:error, :incomplete_journal}

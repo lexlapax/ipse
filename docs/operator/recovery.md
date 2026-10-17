@@ -1,16 +1,10 @@
-# Context diagnosis and explicit handoff
+# Inspect sessions and recover safely
 
-When compaction refuses to fit retained context, the original journal remains
-intact. Do not repeat an effect just to reconstruct output. First inspect the
-actual workspace and recorded outcomes, including unknown calls.
+Inspect the workspace and recorded outcomes before continuing interrupted work
+or recovering from a context refusal. The original journal remains the evidence;
+do not repeat an uncertain effect just to reconstruct its output.
 
-Loss of a shell helper, invalid/incomplete helper output, or an unexpected tool
-worker failure can leave an effect unknown even when an error was displayed.
-Inspect files and external systems before explicitly retrying; resume does not
-rerun the action. Validation/setup refusals remain known failures. New malformed
-or duplicate tool-call IDs stop the response before any approval or execution.
-Older duplicate IDs never allow one saved result to settle two calls; unmatched
-history remains unknown and the original transcript stays intact.
+## Inspect current or saved state
 
 In interactive chat, `/diagnostics` shows phase, active worker, step budget,
 approval/question waiting and a content-free byte breakdown of the effective
@@ -36,8 +30,32 @@ tool execution or operator approval wait; they are not full distributed tracing.
 Saved diagnostics also include [normalized request accounting](usage-accounting.md),
 with partial usage and unknown outcomes, separately from context bytes.
 
-If safe compaction remains impossible, write a short operator-reviewed note with
-the remaining goal, decisions, relevant files and unresolved effects:
+## Handle uncertain effects and journal state
+
+Loss of a shell helper, invalid/incomplete helper output, or an unexpected tool
+worker failure can leave an effect unknown even when an error was displayed.
+Inspect files and external systems before explicitly retrying; resume does not
+rerun the action. Validation/setup refusals remain known failures. New malformed
+or duplicate tool-call IDs stop the response before any approval or execution.
+Older duplicate IDs never allow one saved result to settle two calls; unmatched
+history remains unknown and the original transcript stays intact.
+
+A running session exclusively owns its journal. Do not edit or append it from
+another program while the session is active. Its append process checks file
+identity, protection and expected length and stops on detected changes; it does
+not revalidate a same-size rewrite on every write. Resume still validates saved
+history before accepting work. Storage stalls can delay a durable acknowledgment;
+an error is not permission to repeat an uncertain effect.
+
+Journal retention grows independently of the context window. There is no
+automatic journal rotation or disk quota. Context compaction does not delete
+that evidence or implement forgetting. For long work or a context refusal that
+safe compaction cannot resolve, continue through a reviewed fresh-session handoff.
+
+## Continue in a fresh session
+
+Write a short operator-reviewed note with the remaining goal, decisions, relevant
+files and unresolved effects:
 
 ```sh
 ./bin/ipse handoff --resume SESSION_ID --state-dir /path/to/sessions \

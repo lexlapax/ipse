@@ -38,21 +38,22 @@ defmodule Ipse.Budget.Store do
            acquire_lock(path(root, ".lock"), System.monotonic_time(:millisecond) + 1_000) do
       try do
         with :ok <- if(create, do: create(root, policy), else: :ok),
-             {:ok, events, bytes, raw} <- read(root),
+             {:ok, raw} <- read(root),
+             bytes = byte_size(raw),
              :ok <- check_prefix(checkpoint, root, policy, raw),
-             {:ok, state} <- Ledger.restore(events, identity(root), policy) do
+             {:ok, state} <- restore(checkpoint, root, policy, raw) do
           case fun.(state) do
             {:read, result} ->
-              with :ok <- pin(checkpoint, raw, bytes), do: {:ok, result}
+              with :ok <- pin(checkpoint, raw, bytes, state), do: {:ok, result}
 
             {:append, event, result} ->
               encoded = Jason.encode!(event) <> "\n"
 
-              with {:ok, _} <- Ledger.apply_event(state, event),
+              with {:ok, next} <- Ledger.apply_event(state, event),
                    true <-
                      byte_size(encoded) <= @record_bytes and bytes + byte_size(encoded) <= @bytes,
                    :ok <- append(root, encoded),
-                   :ok <- pin(checkpoint, [raw, encoded], bytes + byte_size(encoded)) do
+                   :ok <- pin(checkpoint, [raw, encoded], bytes + byte_size(encoded), next) do
                 {:ok, result}
               else
                 _ -> {:error, :budget_write_refused}
@@ -120,10 +121,36 @@ defmodule Ipse.Budget.Store do
     end
   end
 
-  defp pin(nil, _, _), do: :ok
+  defp restore(nil, root, policy, raw) do
+    with {:ok, events} <- decode(raw), do: Ledger.restore(events, identity(root), policy)
+  end
 
-  defp pin(table, raw, bytes) do
-    true = :ets.insert(table, {:prefix, bytes, :crypto.hash(:sha256, raw)})
+  defp restore(table, root, policy, raw) do
+    case {:ets.lookup(table, :prefix), :ets.lookup(table, :ledger_state)} do
+      {[{:prefix, bytes, _}], [{:ledger_state, bytes, state}]} ->
+        with {:ok, events} <- decode(binary_part(raw, bytes, byte_size(raw) - bytes)) do
+          Enum.reduce_while(events, {:ok, state}, fn event, {:ok, current} ->
+            case Ledger.apply_event(current, event) do
+              {:ok, next} -> {:cont, {:ok, next}}
+              _ -> {:halt, {:error, :invalid_budget_ledger}}
+            end
+          end)
+        end
+
+      _ ->
+        restore(nil, root, policy, raw)
+    end
+  end
+
+  defp pin(nil, _, _, _), do: :ok
+
+  defp pin(table, raw, bytes, state) do
+    true =
+      :ets.insert(table, [
+        {:prefix, bytes, :crypto.hash(:sha256, raw)},
+        {:ledger_state, bytes, state}
+      ])
+
     :ok
   end
 
@@ -232,24 +259,7 @@ defmodule Ipse.Budget.Store do
       try do
         with {:ok, raw} <- :file.read(file, @bytes + 1),
              true <- byte_size(raw) <= @bytes and String.ends_with?(raw, "\n") do
-          deadline = System.monotonic_time(:millisecond) + 5_000
-
-          raw
-          |> String.split("\n")
-          |> Enum.drop(-1)
-          |> Enum.reduce_while({:ok, []}, fn line, {:ok, events} ->
-            with true <- System.monotonic_time(:millisecond) <= deadline,
-                 {:ok, event} <- Ipse.Extensions.Manifest.decode_json(line, @record_bytes),
-                 true <- is_map(event) do
-              {:cont, {:ok, [event | events]}}
-            else
-              _ -> {:halt, {:error, :invalid_budget_ledger}}
-            end
-          end)
-          |> case do
-            {:ok, events} -> {:ok, Enum.reverse(events), byte_size(raw), raw}
-            error -> error
-          end
+          {:ok, raw}
         else
           _ -> {:error, :invalid_budget_ledger}
         end
@@ -258,6 +268,27 @@ defmodule Ipse.Budget.Store do
       end
     else
       _ -> {:error, :budget_store_unavailable}
+    end
+  end
+
+  defp decode(raw) do
+    deadline = System.monotonic_time(:millisecond) + 5_000
+
+    raw
+    |> String.split("\n")
+    |> Enum.drop(-1)
+    |> Enum.reduce_while({:ok, []}, fn line, {:ok, events} ->
+      with true <- System.monotonic_time(:millisecond) <= deadline,
+           {:ok, event} <- Ipse.Extensions.Manifest.decode_json(line, @record_bytes),
+           true <- is_map(event) do
+        {:cont, {:ok, [event | events]}}
+      else
+        _ -> {:halt, {:error, :invalid_budget_ledger}}
+      end
+    end)
+    |> case do
+      {:ok, events} -> {:ok, Enum.reverse(events)}
+      error -> error
     end
   end
 

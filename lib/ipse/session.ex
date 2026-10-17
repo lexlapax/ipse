@@ -2,6 +2,7 @@ defmodule Ipse.Session do
   @moduledoc "One supervised owner per agent conversation. I/O runs in monitored tasks."
   use GenServer
   alias Ipse.{Journal, Skills, Tools, WorkspaceContext, Questions}
+  alias Ipse.Journal.Writer
 
   alias Ipse.Extensions.{
     Host,
@@ -147,10 +148,13 @@ defmodule Ipse.Session do
          {:ok, event_question} <-
            Subscriptions.restore_question(question, event_question, dir, id, events),
          {:ok, context_snapshot, context_is_new} <-
-           workspace_snapshot(events, cwd, home, opts[:context_snapshot]) do
+           workspace_snapshot(events, cwd, home, opts[:context_snapshot]),
+         {:ok, writer} <- Writer.start(dir, id, self()) do
       state = %{
         id: id,
         dir: dir,
+        journal_writer: writer,
+        journal_writer_ref: Process.monitor(writer),
         cwd: cwd,
         config: config,
         context_home: Path.expand(home),
@@ -1986,6 +1990,9 @@ defmodule Ipse.Session do
     {:stop, :normal, close_epoch(next, "owner_down", false)}
   end
 
+  def handle_info({:DOWN, ref, :process, _pid, _reason}, %{journal_writer_ref: ref} = s),
+    do: {:stop, :journal_unavailable, s}
+
   def handle_info({:DOWN, ref, :process, _pid, _reason}, %{task: %{ref: ref}} = s) do
     s = measure_request(s, :worker_down)
 
@@ -3288,7 +3295,7 @@ defmodule Ipse.Session do
   end
 
   defp optional_source(s, event) do
-    case Journal.append_observed(s.dir, s.id, event) do
+    case Writer.append_observed(s.journal_writer, event) do
       {:ok, source} ->
         offer_record(s, source, event)
         source
@@ -3322,8 +3329,8 @@ defmodule Ipse.Session do
     result =
       if (s.observation != nil and s.observation.policy["mode"] != "off") or
            Feeds.active?(s.feeds),
-         do: Journal.append_observed(s.dir, s.id, event),
-         else: Journal.append(s.dir, s.id, event)
+         do: Writer.append_observed(s.journal_writer, event),
+         else: Writer.append(s.journal_writer, event)
 
     case result do
       :ok -> :ok
@@ -3333,7 +3340,7 @@ defmodule Ipse.Session do
   end
 
   defp record_source(s, event) do
-    case Journal.append_with_source(s.dir, s.id, event) do
+    case Writer.append_with_source(s.journal_writer, event) do
       {:ok, source} ->
         offer_record(s, source, event)
         source
@@ -3349,7 +3356,7 @@ defmodule Ipse.Session do
     if s.observation, do: Ipse.Observability.Resources.offer(s.observation, source, event)
 
     Feeds.offer(s.feeds, source, event, fn intent ->
-      case Journal.append(s.dir, s.id, intent) do
+      case Writer.append(s.journal_writer, intent) do
         :ok -> :ok
         {:error, reason} -> raise "Journal write failed: #{inspect(reason)}"
       end
@@ -3702,7 +3709,7 @@ defmodule Ipse.Session do
 
   defp record_wait_subject(s, event) do
     if match?(%{active: true}, s.lifecycle) or Feeds.active?(s.feeds) do
-      case Journal.append_with_source(s.dir, s.id, event) do
+      case Writer.append_with_source(s.journal_writer, event) do
         {:ok, source} -> source
         {:error, reason} -> raise "Journal write failed: #{inspect(reason)}"
       end

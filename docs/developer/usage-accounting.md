@@ -35,6 +35,12 @@ retains its recorded turn identity on resume. Original assistant/native messages
 remain unchanged: the enclosing journal event binds to the request ID. Accepted
 summary checkpoints similarly bind to their request. Restore checks these bindings.
 
+The in-memory reducer indexes attempt IDs and accumulates admission order without
+scanning or copying all prior requests at every admission. `Usage.order/1`
+projects canonical chronological IDs; snapshots and own/child accounting readers
+use that order. This changes no persisted record, paging fingerprint or SDK wire
+schema. Duplicate attempts remain invalid even under different request IDs.
+
 ## Counter semantics
 
 Adapters send internal usage observations only to the current owned Session job.

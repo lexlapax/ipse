@@ -104,15 +104,19 @@ defmodule Ipse.Extensions.ChildUsage do
                snapshot ||
                  Map.merge(base(c, 3), %{
                    "child_id" => r["child_id"],
-                   "request_count" => length(ledger.order),
+                   "request_count" => length(Usage.order(ledger)),
                    "legacy_unmetered" => ledger.legacy_unmetered,
                    "bytes" => bytes,
                    "sha256" => digest
                  }),
              true <-
-               snapshot["request_count"] == length(ledger.order) and
+               snapshot["request_count"] == length(Usage.order(ledger)) and
                  snapshot["legacy_unmetered"] == ledger.legacy_unmetered do
-          page(r, snapshot, Enum.map(ledger.order, &Usage.request_record(ledger.requests[&1])))
+          page(
+            r,
+            snapshot,
+            Enum.map(Usage.order(ledger), &Usage.request_record(ledger.requests[&1]))
+          )
         else
           nil ->
             failed(if(c.state.overflow, do: "usage_children_limit", else: "usage_child_missing"))
@@ -337,9 +341,9 @@ defmodule Ipse.Extensions.ChildUsage do
             if snapshot["version"] == 3 do
               with {:ok, ledger, _, _} <-
                      read_child(directory, session, state.index[snapshot["child_id"]], snapshot) do
-                rows = Enum.map(ledger.order, &Usage.request_record(ledger.requests[&1]))
+                rows = Enum.map(Usage.order(ledger), &Usage.request_record(ledger.requests[&1]))
 
-                length(ledger.order) == snapshot["request_count"] and
+                length(Usage.order(ledger)) == snapshot["request_count"] and
                   ledger.legacy_unmetered == snapshot["legacy_unmetered"] and
                   Enum.all?(pages[operation], fn e ->
                     page(e["request"], snapshot, rows) == {:ok, e["outcome"]["value"]}
@@ -417,7 +421,7 @@ defmodule Ipse.Extensions.ChildUsage do
                end),
              digest =
                Ipse.Compaction.digest([
-                 Enum.map(ledger.order, &Usage.request_record(ledger.requests[&1]))
+                 Enum.map(Usage.order(ledger), &Usage.request_record(ledger.requests[&1]))
                ]),
              true <- snapshot == nil or snapshot["sha256"] == digest do
           if accounting_events do

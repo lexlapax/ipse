@@ -57,7 +57,7 @@ defmodule Ipse.Extensions.UsageRead do
       request["cursor"] > snapshot["request_count"] ->
         failed("usage_cursor")
 
-      snapshot["request_count"] > length(ledger.order) ->
+      snapshot["request_count"] > length(Usage.order(ledger)) ->
         failed("usage_snapshot")
 
       true ->
@@ -73,7 +73,7 @@ defmodule Ipse.Extensions.UsageRead do
       "source" => source,
       "operation_id" => intent["operation_id"],
       "identity_sha256" => intent["identity_sha256"],
-      "request_count" => length(ledger.order),
+      "request_count" => length(Usage.order(ledger)),
       "legacy_unmetered" => ledger.legacy_unmetered
     }
   end
@@ -82,7 +82,7 @@ defmodule Ipse.Extensions.UsageRead do
     cursor = request["cursor"]
 
     rows =
-      ledger.order
+      Usage.order(ledger)
       |> Enum.drop(cursor)
       |> Enum.take(min(request["limit"], snapshot["request_count"] - cursor))
       |> Enum.map(&Usage.request_record(ledger.requests[&1]))

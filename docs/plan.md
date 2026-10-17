@@ -145,13 +145,15 @@ Linux/macOS source/package/installed gates passed. The project endpoint/credenti
 issue is also reproduced; its authority/disclosure repair passed local source/
 native/package/installed and hosted Linux/macOS checks. The operator selected
 project-only sandbox tightening; its floor/provenance regressions reproduce the
-old downgrade; its enforcement passed source/native/demo/package/installed checks
-and awaits hosted verification. Budget observation/resume failure is
+old downgrade; its enforcement passed source/native/demo/package/installed and
+hosted Linux/macOS checks. Budget observation/resume failure is
 now reproduced with a real lock; its write-ahead repair passed source/native/
-demo/package/installed and hosted Linux/macOS checks. Journal growth is measured.
-Uncertain-tool-outcome and duplicate-ID recovery repairs passed local source/
-native/demo/package/installed checks and await hosted verification; performance
-and filesystem-alias work remain open. Other
+demo/package/installed and hosted Linux/macOS checks. Uncertain-tool-outcome and
+duplicate-ID recovery repairs also passed those local and hosted gates. The owned
+journal writer, protected ledger-state cache and linear usage-admission repair
+passed source/native/demo/package/installed checks and Btrfs timing probes;
+hosted verification remains open, with startup/retention and prefix-check costs
+explicit. Filesystem-alias work and other
 source-consistent findings require their own evidence and repairs.
 The security scan and P25 execution remain behind triage and applicable
 repairs; omitted architectural surfaces need a follow-up pass.

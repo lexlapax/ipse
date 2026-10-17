@@ -308,6 +308,40 @@ defmodule Ipse.BudgetTest do
     refute_receive :unexpected_budget_dispatch, 20
   end
 
+  test "live cached state folds a valid external tail and still rejects invalid tails or same-size rewrites",
+       c do
+    {id, config} = attached(c)
+    first = admission(config, id)
+    assert {:ok, :reserved} = Budget.decide(config, first)
+    assert {:ok, %{"request_count" => 1}} = Budget.snapshot(config)
+    second = admission(config, id)
+
+    assert {:ok, :reserved} =
+             Store.transaction(config.budget_root, config.budget, fn state ->
+               assert {:ok, event, _, :reserved} = Ledger.decide(state, second)
+               {:append, event, :reserved}
+             end)
+
+    assert {:ok, %{"request_count" => 2}} = Budget.snapshot(config)
+    assert {:ok, :refused} = Budget.decide(config, admission(config, id))
+
+    ledger = Path.join([c.dir, "budgets", id <> ".jsonl"])
+    bytes = File.read!(ledger)
+    changed = String.replace(bytes, "cost-fixture", "lost-fixture")
+    assert byte_size(changed) == byte_size(bytes) and changed != bytes
+    File.write!(ledger, changed)
+    assert {:error, _} = Budget.snapshot(config)
+
+    {other_id, other} = attached(c)
+    assert {:ok, :reserved} = Budget.decide(other, admission(other, other_id))
+    assert {:ok, _} = Budget.snapshot(other)
+    path = Path.join([c.dir, "budgets", other_id <> ".jsonl"])
+    File.write!(path, "{\"type\":\"unsupported\"}\n", [:append])
+    invalid = File.read!(path)
+    assert {:error, _} = Budget.snapshot(other)
+    assert File.read!(path) == invalid
+  end
+
   test "session resume is inert; a valid-prefix ledger rollback refuses before tail repair", c do
     config = %{
       provider: :openai,

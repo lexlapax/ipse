@@ -107,6 +107,7 @@ are needed for tests or the demo.
 | Isolated HTTP profile ownership | `lib/ipse/http_profile.ex` |
 | Authentication and protected storage | `lib/ipse/auth.ex`, `lib/ipse/auth/` |
 | Context, skills, JSONL persistence | `lib/ipse/context.ex`, `skills.ex`, `journal.ex` |
+| Session-owned durable appends | `lib/ipse/journal/writer.ex` |
 | Opt-in local delegation | `lib/ipse/delegation.ex`, `lib/ipse/delegation/worker.ex` |
 | File tools and native Port protocol | `lib/ipse/tools.ex`, `runner.ex` |
 | Unix process groups and advisory locks | `native/ipse-runner.rs` |

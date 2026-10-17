@@ -8,6 +8,31 @@ defmodule Ipse.UsageTest do
     Usage.admission(session_id, %{provider: :openai, model: "fixture-model"}, "model", Usage.id())
   end
 
+  test "large restores retain chronological projections and reject reused attempts without quadratic work" do
+    session = Usage.id()
+
+    probe = fn count ->
+      requests = for _ <- 1..count, do: admitted(session)
+      {:reductions, before} = Process.info(self(), :reductions)
+      assert {:ok, ledger} = Usage.restore([metadata() | requests])
+      {:reductions, after_count} = Process.info(self(), :reductions)
+      assert Usage.order(ledger) == Enum.map(requests, & &1["request_id"])
+
+      assert Enum.map(Usage.snapshot(ledger)["requests"], & &1["request_id"]) ==
+               Enum.map(Enum.take(requests, -16), & &1["request_id"])
+
+      first = hd(requests)
+      reused = %{admitted(session) | "attempt_id" => first["attempt_id"]}
+      assert {:error, :invalid_usage_journal} = Usage.apply_event(ledger, reused)
+      after_count - before
+    end
+
+    probe.(100)
+    small = probe.(1000)
+    large = probe.(4000)
+    assert large < small * 8
+  end
+
   test "snapshots replace cumulative observations and exact duplicates do not double count" do
     request = admitted()
     one = Usage.observation(request, %{"input_tokens" => 8, "output_tokens" => 1}, 1)
