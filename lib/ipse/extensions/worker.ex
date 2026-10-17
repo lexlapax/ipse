@@ -230,7 +230,13 @@ defmodule Ipse.Extensions.Worker do
     root = to_string(:code.root_dir())
     erts = "erts-" <> to_string(:erlang.system_info(:version))
     executable = Path.join([root, erts, "bin", "erl"])
-    paths = Enum.map([:elixir, :jason, :ipse], &Application.app_dir(&1, "ebin"))
+
+    paths =
+      Enum.map(
+        [:elixir, :jason, :jsonschex, :ex_json_pointer, :ipse],
+        &Application.app_dir(&1, "ebin")
+      )
+
     boot = clean_boot(root)
 
     args =

@@ -104,7 +104,8 @@ or explicitly granted tool input/results, with bounded queues and visible incomp
 coverage on failure. [Admitted-tool sources](docs/developer/tool-events.md) retain
 host tool IDs, actual source links and normal approvals.
 `/ext` inspects the active catalog
-and invokes operator commands.
+and invokes operator commands, including optional
+[configured cost pages](docs/operator/usage-accounting.md#enable-the-optional-report).
 Effects retain normal approval; cached receipts/projections restore without
 replay. Default-off [diagnostic capture](docs/operator/observability.md) supports
 bounded local sink workers and separate export authority. Synthetic extension

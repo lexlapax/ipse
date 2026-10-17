@@ -282,6 +282,8 @@ defmodule Ipse.Extensions.Host do
   defp execute_action(context, intent, %{"op" => "context.publish"}),
     do: Ipse.Extensions.Contributions.execute(context, intent)
 
+  defp execute_action(context, _intent, %{"op" => "usage.read"}), do: context.usage_read
+
   defp execute_action(context, intent, %{"op" => "history.read"}) do
     task = Task.async(fn -> Ipse.Extensions.History.execute(context, intent) end)
 

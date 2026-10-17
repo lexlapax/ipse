@@ -279,6 +279,7 @@ Separate VMs and process groups are ownership boundaries, not OS sandboxing.
 | Workflow tools | Existing file/Runner policy, instruction preflight, linked owned tasks and output-completeness facts | [Tool actions](extension-tool-actions.md) |
 | Value-service composition | Operator routes, acyclic dependency identities, target lease/schema/cleanup checks and host provenance | [Services](extension-services.md) |
 | Session context | Bounded caller-owned sets, assertion/receipt provenance and exact main-request snapshots | [Context](extension-context.md) |
+| Accounting reads | Caller/session-bound canonical request pages, fixed admitted prefixes, content exclusion and cached/source validation | [Usage read SDK](usage-accounting.md#extension-accounting-reads) |
 | Private text consumers | Owned independent workers, opaque resource handles, acknowledged frames and explicit incomplete cleanup | [Text delivery](text-streams.md) |
 | Prompt event subscribers | Inert declarations, separate private-view grants, ordered owned notification and source-bound no-replay receipts | [Event delivery](extension-events.md) |
 

@@ -4,9 +4,11 @@ P23 starts with `Ipse.Extensions.Costs`, a pure extension-side calculator over
 explicit data. It validates a versioned rate card and estimates one canonical
 cumulative request snapshot. It performs no IO, pricing lookup, model request,
 state mutation, subscription or request admission. No rates ship enabled and no
-provider/model price is embedded. The operator CLI still exposes counters only;
-the report extension, accounted model operations and budget enforcement remain
-P23 delivery work.
+provider/model price is embedded. The default-off `builtin:cost-report:1` extension
+now uses the granted accounting-read SDK for explicit own-session pages. See
+[operator selection](../operator/usage-accounting.md#enable-the-optional-report).
+Whole-session/child aggregation, accounted model operations and budget enforcement
+remain P23 delivery work.
 
 ## Rate identity and selection
 
@@ -90,16 +92,42 @@ report caller must retain request/attempt identity, replace revisions and avoid
 counting a child twice. Card changes produce a different digest and estimate;
 they do not rewrite saved request facts or retrospectively certify a bill.
 
-## Evidence and next integration
+## Report extension and evidence
+
+`Ipse.Extensions.Examples.CostReport` declares one operator command and no model
+tool or lifecycle subscription. `host.actions` plus `host.usage` permits a bounded
+`usage.read` operation; it grants no prompt/history, write, model or child access.
+The [accounting-read contract](usage-accounting.md#extension-accounting-reads)
+owns snapshot identity, canonical records, paging and recovery validation.
+
+Each explicit report prices at most four returned requests. Its groups are page
+totals separated by provider, billing and estimate basis. Unknown costs do not
+become zero, and a summed amount can overflow even when individual quotes fit;
+both cases keep the total null. Request/attempt/parent/profile identities remain
+available for future aggregation. The configured rate card is identified once
+per report, with row/input policy, components and model attribution per request.
+Repeated/overlapping pages must not be added blindly. The report never claims a
+whole-session or child balance, and old cached reports do not reprice on resume.
+
+Semantic card errors return `invalid_rate_card`; malformed snapshots return
+`invalid_arguments` or the host's fixed failure code. A report exceeding the SDK
+object bound returns `report_bounds` with an unchanged retry cursor and snapshot,
+without silently dropping requests. Bundled artifact identity pins the report
+and calculator BEAM files, while host identity pins the read implementation.
 
 Fifteen focused fixtures cover exact arithmetic/rounding, cache/TTL partitions,
 reasoning inclusion, missing/zero/contradictory counters, partial work, subscription/
 local/demo distinction, request/duration extras, dates/bands, exact model/endpoint
 matching, revision provenance, invalid schemas/decimal inputs and overflow. They
-use synthetic rates and no service/account. See [actual checks](testing.md#current-evidence-and-next-checks).
+use synthetic rates and no service/account. Independent-worker reader fixtures
+cover private exclusion, stable pages beyond sixteen requests, caller/session
+refusal, unknown/legacy usage, snapshot limits, source/page forgery, cancellation
+and inert resume. Report fixtures cover real callbacks, separated billing groups,
+unknown totals, group overflow and known invalid-card results. The credential-free
+`priv/cost-report-demo.exs` also runs in extracted-package verification. See
+[actual checks](testing.md#current-evidence-and-next-checks).
 
-P23 next needs a bounded, explicitly granted accounting-read operation and a
-default-off report extension, including parent/child aggregation. Atomic covered
+P23 next needs complete request-revision/parent-child aggregation. Atomic covered
 request reservations, partial/unknown liability and provider-enforceable output
 bounds belong in host admission. Generic accounted extraction/embedding requests
 are required for P25. A calculator or event observer cannot supply those guarantees.

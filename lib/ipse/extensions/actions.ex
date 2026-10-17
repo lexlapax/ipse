@@ -169,9 +169,11 @@ defmodule Ipse.Extensions.Actions do
     {:ok, _} = Ipse.Lifecycle.Runtime.restore(events)
     {:ok, catalog} = Ipse.Extensions.Catalog.from_metadata(metadata)
     :ok = Ipse.Extensions.Services.validate_metadata(Map.get(metadata, "extensions", []), catalog)
+    {:ok, usage_reads} = Ipse.Extensions.UsageRead.restore(events)
 
     initial = %{
       parent: nil,
+      usage_reads: usage_reads,
       action: nil,
       step: 0,
       seen: MapSet.new(),

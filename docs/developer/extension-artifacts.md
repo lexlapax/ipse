@@ -127,14 +127,19 @@ host supplies it only after operator policy validation. Import/inspect/list CLI
 commands remain inert; the session host admits explicit hooks and typed invocations.
 
 Admission revalidates the installed snapshot, runtime compatibility and options
-schema. The worker launches the current ERTS with existing Elixir/Jason/Ipse
-code paths and the selected artifact in a separate VM using the current clean
+schema. The worker launches the current ERTS with existing Elixir/Jason/Ipse and
+the pure JSONSchex/ex_json_pointer dependency code paths, plus the selected artifact
+in a separate VM using the current clean
 boot script. Executable module loading waits for `initialize`; it starts Elixir,
 not Ipse's application/session tree. Neither code-path changes nor module-name atom
 creation happen in the host. The OS helper clears inherited environment, preserving
 only the selected caller PATH and baseline LANG; the ERTS launcher derives its
 own runtime variables. No credentials, auth
-configuration, provider continuation or Session state is passed.
+configuration, provider continuation or Session state is passed. The shared bounded
+schema adapter therefore works inside an owned callback without duplicating
+validation or enabling a remote schema loader. Adding code paths starts no host
+application or network service. Bundled multi-module features inventory and hash
+their helper BEAM files as part of artifact identity.
 
 An extension implements:
 

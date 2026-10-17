@@ -211,25 +211,52 @@ defmodule Ipse.Usage do
       "request_count" => length(requests),
       "unknown_outcome_count" => Enum.count(requests, &is_nil(&1.completion)),
       "shown_request_count" => min(length(requests), 16),
-      "requests" =>
-        Enum.map(Enum.take(requests, -16), fn request ->
-          Map.merge(
-            Map.delete(request.admission, "type"),
-            if(request.completion,
-              do: Map.drop(request.completion, ~w(type version request_id attempt_id)),
-              else: %{
-                "outcome" => "unknown",
-                "finality" => "partial",
-                "duration_ms" => nil,
-                "reported_model" => nil,
-                "usage" =>
-                  request.observation ||
-                    Normalizer.normalize(@providers[request.admission["provider"]], nil)
-              }
-            )
-          )
-        end)
+      "requests" => Enum.map(Enum.take(requests, -16), &request_record/1)
     }
+  end
+
+  @doc "Project one validated ledger entry without conversation or provider-native content."
+  def request_record(request) do
+    Map.merge(
+      Map.delete(request.admission, "type"),
+      if(request.completion,
+        do: Map.drop(request.completion, ~w(type version request_id attempt_id)),
+        else: %{
+          "outcome" => "unknown",
+          "finality" => "partial",
+          "duration_ms" => nil,
+          "reported_model" => nil,
+          "usage" =>
+            request.observation ||
+              Normalizer.normalize(@providers[request.admission["provider"]], nil)
+        }
+      )
+    )
+  end
+
+  @doc "Validate the closed accounting projection; this does not authenticate a supplied ledger."
+  def valid_request_record?(record) do
+    fields =
+      ~w(version request_id attempt_id attempt session_id turn_id parent_session_id parent_request_id kind provider model billing_mode selected_profile endpoint_sha256 admitted_at_ms)
+
+    admission = record |> Map.take(fields) |> Map.put("type", "request_admitted")
+
+    result =
+      record
+      |> Map.drop(fields)
+      |> Map.merge(Map.take(record, ~w(version request_id attempt_id)))
+      |> Map.put("type", "request_finished")
+
+    valid_admission?(admission) and
+      closed?(record, fields ++ ~w(outcome finality duration_ms reported_model usage)) and
+      if(record["outcome"] == "unknown",
+        do:
+          record["finality"] == "partial" and record["duration_ms"] == nil and
+            record["reported_model"] == nil and Normalizer.valid?(record["usage"]),
+        else: valid_result?(result)
+      )
+  rescue
+    _ -> false
   end
 
   defp valid_admission?(e) do

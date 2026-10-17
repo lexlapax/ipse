@@ -25,9 +25,10 @@ P22 now implements [durable request accounting](usage-accounting.md): request/
 attempt/parent identities, normalized cumulative usage snapshots, final/partial/
 unknown outcomes, rejected-summary retention and inert resume. Ollama omitted
 counters stay unknown. The old latest-successful usage map remains compatible.
-P19 context measurements are encoded JSON bytes, not tokens. P23 now has a pure
-[configured rate-card estimator](costs.md); its report integration, monetary
-budget enforcement and P24 audio usage remain implementation work.
+P19 context measurements are encoded JSON bytes, not tokens. P23 adds a pure
+[configured rate-card estimator and opt-in page report](costs.md) through separately
+granted accounting reads. Whole-session/child aggregation, monetary budget
+enforcement and P24 audio usage remain implementation work.
 
 P19's local on-demand diagnostics and request timing are available. Optional
 metadata capture, bounded sink workers, stop controls and opt-in synthetic

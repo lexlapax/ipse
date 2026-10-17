@@ -5,6 +5,18 @@ defmodule Ipse.Extensions.Registry do
   @host_capabilities Ipse.Extensions.Catalog.capabilities()
   @text %{"type" => "string", "maxLength" => 4096}
   @builtins %{
+    "builtin:cost-report:1" => %{
+      module: Ipse.Extensions.Examples.CostReport,
+      modules: [Ipse.Extensions.Examples.CostReport, Ipse.Extensions.Costs],
+      capabilities: ~w(invoke.command host.actions host.usage),
+      exports: Ipse.Extensions.Examples.CostReport.exports(),
+      schema: %{
+        "type" => "object",
+        "additionalProperties" => false,
+        "required" => ["rate_card"],
+        "properties" => %{"rate_card" => Ipse.Extensions.Costs.schema()}
+      }
+    },
     "builtin:local-trace:1" => %{
       module: Ipse.Extensions.Examples.LocalTrace,
       capabilities: ["observe.local"],
@@ -261,6 +273,7 @@ defmodule Ipse.Extensions.Registry do
       Ipse.Extensions.ToolAction,
       Ipse.Extensions.State,
       Ipse.Extensions.History,
+      Ipse.Extensions.UsageRead,
       Ipse.Questions,
       Ipse.Tools,
       Ipse.Runner,
@@ -313,8 +326,14 @@ defmodule Ipse.Extensions.Registry do
     root = Application.app_dir(:ipse)
     module = Atom.to_string(metadata.module)
 
+    paths =
+      Enum.map(
+        Map.get(metadata, :modules, [metadata.module]),
+        &("ebin/" <> Atom.to_string(&1) <> ".beam")
+      ) ++ ["priv/extensions/LICENSE"]
+
     files =
-      Enum.map(["ebin/" <> module <> ".beam", "priv/extensions/LICENSE"], fn path ->
+      Enum.map(paths, fn path ->
         bytes = File.read!(Path.join(root, path))
         %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Manifest.sha256(bytes)}
       end)
@@ -337,6 +356,9 @@ defmodule Ipse.Extensions.Registry do
         "platforms" => [to_string(:erlang.system_info(:system_architecture))]
       }
     }
+
+    manifest =
+      if metadata[:exports], do: Map.put(manifest, "exports", metadata.exports), else: manifest
 
     {:ok, %{digest: Ipse.Compaction.digest([manifest]), manifest: manifest, path: root}}
   rescue

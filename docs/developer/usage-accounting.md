@@ -2,8 +2,9 @@
 
 `Ipse.Usage` and `Ipse.Usage.Normalizer` implement P22's mandatory, content-free
 request facts independently of optional tracing and extensions. P23's pure
-[configured cost calculator](costs.md) consumes explicit normalized snapshots;
-host accounting does not fetch rates, quote prices or enforce a budget yet. See
+[configured cost calculator and report](costs.md) consume explicit normalized
+snapshots through a separate own-session read grant. Host accounting does not
+fetch rates, quote prices or enforce a budget yet. See
 [operator inspection](../operator/usage-accounting.md) and
 [future costs/streams](runtime-capabilities.md#usage-facts-and-costs).
 
@@ -60,6 +61,56 @@ for Ollama, and none for demo. These are routing facts, not prices or entitlemen
 When input/output totals are known and total absent, their sum is marked derived.
 Reasoning/cached subcounts are never added twice. Provider metering is neither a
 visible-text token measurement nor an invoice.
+
+## Extension accounting reads
+
+`Ipse.Extensions.UsageRead` implements `usage.read`, available only with
+`host.actions` and separately trusted `host.usage`. It is independent of historical
+content capabilities. The request has exactly `op: "usage.read"`, `cursor`
+(request index 0–10,000), `limit` (1–4) and nullable `snapshot`. It accepts no
+directory, other session ID, child selector, provider call or state mutation.
+
+A first read syncs its ordinary action intent before admission. Session supplies
+the source reference, calling identity, current request-count boundary and legacy
+flag; a successful committed result registers that snapshot. Later pages must
+match the registered snapshot and caller/session. Cursors may select any index
+within its fixed prefix; new admissions are excluded. Each page contains the
+latest canonical cumulative record per selected request, not every provider
+observation and not a truncated latest-sixteen display.
+
+The closed version-1 snapshot contains `source` (metadata-only journal reference),
+`operation_id`, `identity_sha256`, `request_count` and `legacy_unmetered`. Its
+reference is identity, not authentication or a new permission. Pages carry
+version 1, `scope: "session"`, `coverage: "canonical_requests"`, snapshot, cursor,
+next cursor/null and `requests`. Rows reuse `Usage.request_record/1`; the strict
+validator accepts only admission identity/billing/profile/endpoint hash and
+normalized completion/partial/unknown counters. Prompt/answer/native data,
+credentials and raw endpoints never enter this projection.
+
+At supported invocation/job boundaries the owned model request has settled.
+Previously admitted request facts cannot subsequently be completed by replay;
+only a new request ID can begin new work. This makes the fixed admitted prefix
+stable across later prompts and restarts. This is not a concurrent cross-session
+snapshot API; child reads and future concurrent request capabilities need their
+own negotiated contract.
+
+Page construction copies at most four bounded records from Session's validated
+ledger; it does no filesystem scan or provider work in the GenServer. Existing
+owned action tasks deliver the prepared result and Session checks it against the
+expected page before committing. Pages are bounded to 12 KiB within the SDK's
+16 KiB object limit; overflow refuses rather than truncating. At most 10,000
+initial successful snapshots are retained per durable session. Exhaustion denies
+fresh snapshots while existing admitted ranges remain readable.
+
+Recovery reuses `Usage` to reconstruct accounting once alongside the saved read
+intents. Cached pages are compared to the facts at their original read, including
+exact ordering/fields and legacy/unknown states. Physical validation resolves each
+initial read's source once to its actual intent before tail repair, diagnostics
+or handoff. A self-consistent changed page or unrelated source is refused; no
+balance is reread from a provider and no callback runs. An interrupted read stays
+historical incomplete/unknown. Failed requests retain fixed `usage_snapshot`,
+`usage_cursor`, `usage_bounds` or `usage_limit` codes. No write authority or budget
+reservation follows from a read acknowledgment.
 
 ## Recovery and bounds
 

@@ -96,6 +96,7 @@ trust ceiling must cover every declared capability:
 | `host.services` | Calls through explicit operator service bindings | [Composition](#service-composition) |
 | `host.context` | Bounded caller-scoped context publications | [Context/evidence](#context-and-evidence) |
 | `host.history`, `host.history.*` | Explicit reads of this session's metadata or separately granted private views | [History](#explicit-history-and-catch-up) |
+| `host.usage` | Explicit bounded own-session canonical accounting pages, with `host.actions`; no content/child read or effects | [Usage and cost reports](usage-accounting.md) |
 | `stream.text` | Acknowledged private visible-text delivery through a scoped worker handle | [Text clients](#visible-text-clients) |
 | `stream.text.events` | Explicit v2 frame/source format; requires `stream.text`, grants no effects | [Text event identity](../developer/stream-events.md) |
 | `lifecycle.record` | Record bounded session epochs and operator waits independently of diagnostic capture; no callback or read/action grant | [Runtime facts](../developer/lifecycle-events.md#runtime-epochs-and-operator-waits) |

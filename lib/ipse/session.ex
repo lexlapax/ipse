@@ -177,6 +177,7 @@ defmodule Ipse.Session do
         lock: lock,
         usage: %{},
         accounting: accounting,
+        usage_reads: extension_state.usage_reads,
         active_request: nil,
         last_request_id: saved_request(events, "request_id"),
         turn_id:
@@ -940,16 +941,16 @@ defmodule Ipse.Session do
            }}
 
         true ->
-          context =
-            if Ipse.Extensions.Operation.history?(request) and request["snapshot"] == nil do
-              source = record_source(s, intent)
-
-              extension_execution_context(s, intent)
-              |> Map.put(:history_snapshot, Ipse.Extensions.History.snapshot(source, intent))
+          source =
+            if (Ipse.Extensions.Operation.history?(request) or
+                  Ipse.Extensions.Operation.usage?(request)) and request["snapshot"] == nil do
+              record_source(s, intent)
             else
               record(s, intent)
-              extension_execution_context(s, intent)
+              nil
             end
+
+          context = extension_execution_context(s, intent, source)
 
           reply =
             if approval == "denied",
@@ -962,7 +963,7 @@ defmodule Ipse.Session do
           {:reply, reply,
            %{
              s
-             | extension_action: %{intent: intent},
+             | extension_action: %{intent: intent, usage_read: context[:usage_read]},
                extension_actions: s.extension_actions + 1,
                extension_tool_context: nil
            }}
@@ -988,6 +989,7 @@ defmodule Ipse.Session do
          true <-
            is_nil(intent["service"]) or
              Ipse.Extensions.Registry.live?(intent["service"]["identity"]),
+         {:ok, usage_reads} <- commit_usage_read(s, intent, event),
          {:ok, contributions} <-
            Ipse.Extensions.Contributions.apply_result(
              s.extension_contributions,
@@ -1004,6 +1006,7 @@ defmodule Ipse.Session do
        %{
          s
          | extension_action: nil,
+           usage_reads: usage_reads,
            extension_contributions: contributions,
            extension_action_unknown: event["outcome"]["status"] == "unknown",
            extension_action_results: s.extension_action_results ++ [event]
@@ -3642,7 +3645,7 @@ defmodule Ipse.Session do
     end
   end
 
-  defp extension_execution_context(s, intent) do
+  defp extension_execution_context(s, intent, source \\ nil) do
     context = %{
       root: Path.join(s.context_home, "extension-state-v1"),
       cwd: s.cwd,
@@ -3658,12 +3661,44 @@ defmodule Ipse.Session do
         do: Map.merge(context, %{history_dir: s.dir, history_session: s.id}),
         else: context
 
+    context =
+      if source != nil and Ipse.Extensions.Operation.history?(intent["request"]),
+        do: Map.put(context, :history_snapshot, Ipse.Extensions.History.snapshot(source, intent)),
+        else: context
+
+    context =
+      if Ipse.Extensions.Operation.usage?(intent["request"]),
+        do:
+          Map.put(
+            context,
+            :usage_read,
+            Ipse.Extensions.UsageRead.prepare(
+              s.accounting,
+              s.usage_reads,
+              intent,
+              if(source, do: elem(Ipse.Lifecycle.Source.metadata(source), 1))
+            )
+          ),
+        else: context
+
     if intent["service"] do
       target = Enum.find(s.config.extensions, &(&1.identity == intent["service"]["identity"]))
       Map.merge(context, %{service_entry: target, session_id: s.id, turn_id: s.turn_id})
     else
       context
     end
+  end
+
+  defp commit_usage_read(s, intent, event) do
+    if Ipse.Extensions.Operation.usage?(intent["request"]),
+      do:
+        Ipse.Extensions.UsageRead.commit(
+          s.usage_reads,
+          intent,
+          event,
+          s.extension_action.usage_read
+        ),
+      else: {:ok, s.usage_reads}
   end
 
   defp restore_extension_question(events, messages, native) do
