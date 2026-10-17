@@ -1,10 +1,10 @@
 defmodule Ipse.Extensions.Feeds do
-  @moduledoc "Declared metadata feeds, bounded admission and source-bound no-replay receipts."
+  @moduledoc "Declared scoped feeds, bounded admission and source-bound no-replay receipts."
   alias Ipse.Extensions.{FeedChannel, Identity}
   alias Ipse.Lifecycle.{Source, Event}
 
   @types ~w(extension_feed_intent extension_feed_ready extension_feed_delivery_intent extension_feed_delivery_result extension_feed_closed)
-  @reasons ~w(consumer_down stopped cancelled session_close capacity source_unavailable payload_limit session_limit startup_failed callback_failed)
+  @reasons ~w(consumer_down stopped cancelled session_close capacity source_unavailable payload_limit session_limit startup_failed callback_failed view_unavailable)
   @limit 10_000
   @error {:error, :invalid_extension_feed}
   def record_types, do: @types
@@ -39,11 +39,15 @@ defmodule Ipse.Extensions.Feeds do
   def declaration?(d) do
     keys?(d, ~w(id event event_version view mode queue_events)) and
       is_binary(d["id"]) and Regex.match?(~r/\A[a-z][a-z0-9_-]{0,31}\z/, d["id"]) and
-      d["event_version"] === 1 and d["view"] == "metadata" and d["mode"] == "feed" and
+      d["event_version"] === 1 and d["view"] in views(d["event"]) and d["mode"] == "feed" and
       d["event"] in types() and is_integer(d["queue_events"]) and d["queue_events"] in 1..32
   rescue
     _ -> false
   end
+
+  defp views("tool.intent_committed"), do: ~w(metadata tool.input)
+  defp views("tool.outcome_recorded"), do: ~w(metadata tool.result)
+  defp views(_), do: ["metadata"]
 
   def declarations(config),
     do:
@@ -131,8 +135,27 @@ defmodule Ipse.Extensions.Feeds do
     case Event.project(source, record, "metadata") do
       {:ok, event} ->
         Enum.each(feeds.resources, fn {id, r} ->
-          if FeedChannel.active?(r) and r.intent["declaration"]["event"] == event["type"],
-            do: admit(feeds, id, r, source, event, append)
+          cond do
+            not FeedChannel.active?(r) ->
+              :ok
+
+            event["type"] == "tool.recording_stopped" and
+                r.intent["declaration"]["event"] in ~w(tool.intent_committed tool.outcome_recorded) ->
+              FeedChannel.stop(r, "source_unavailable")
+
+            r.intent["declaration"]["event"] == event["type"] ->
+              case Event.project(source, record, r.intent["declaration"]["view"]) do
+                {:ok, selected} ->
+                  admit(feeds, id, r, source, selected, append)
+
+                _ ->
+                  :ets.insert(r.pending, {:gap, source})
+                  FeedChannel.stop(r, "view_unavailable")
+              end
+
+            true ->
+              :ok
+          end
         end)
 
       _ ->
@@ -346,7 +369,8 @@ defmodule Ipse.Extensions.Feeds do
         uint?(e["admitted"]) and e["admitted"] <= @limit and uint?(e["acknowledged"]) and
         e["acknowledged"] <= e["admitted"] and
         (e["gap_source"] == nil or Source.valid?(e["gap_source"])) and
-        (e["reason"] not in ~w(capacity payload_limit session_limit) or e["gap_source"] != nil)
+        (e["reason"] not in ~w(capacity payload_limit session_limit view_unavailable) or
+           e["gap_source"] != nil)
 
   def valid_record?(_), do: false
 
@@ -458,7 +482,7 @@ defmodule Ipse.Extensions.Feeds do
                    Ipse.Journal.source_page(directory, session, e["source"]["byte_offset"], 1),
                  true <- source == e["source"],
                  :ok <- delivery_position(directory, session, e, source["byte_offset"], 10),
-                 {:ok, event} <- Event.project(source, record, "metadata"),
+                 {:ok, event} <- Event.project(source, record, intent["declaration"]["view"]),
                  true <- event["type"] == intent["declaration"]["event"],
                  true <-
                    digest(payload(intent, anchor, e["sequence"], event)) == e["payload_sha256"] do

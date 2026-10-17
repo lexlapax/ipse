@@ -1,5 +1,5 @@
 defmodule Ipse.Extensions.FeedChannel do
-  @moduledoc "Owned serial metadata callbacks; pressure closes coverage instead of silently dropping events."
+  @moduledoc "Owned serial event callbacks; pressure closes coverage instead of silently dropping events."
   use GenServer
   alias Ipse.Extensions.{Worker, WorkerLease, Registry, Feeds}
 

@@ -378,13 +378,18 @@ resume never synthesizes a successful finish or replays a handler. Logical close
 is recorded before process exit and carries only the cleanup confirmation actually
 available. No termination callback writes after the lock helper is lost.
 
-Live [metadata feeds](extension-feeds.md) enroll on explicit work and own separate
+Live [scoped feeds](extension-feeds.md) enroll on explicit work and own separate
 serial workers. Session syncs source-bound delivery intent before enqueueing and
 an exact acknowledgment receipt before releasing capacity. Queue pressure ends
 coverage visibly. Feed control records cannot trigger themselves; acknowledgment
 grants no effect authority. Source validation preserves question-checkpoint
 adjacency, resolves anchors and bounds the source-to-intent scan. Idle resume
 restores receipts without starting callbacks or reconstructing a queue.
+Opt-in [tool recording](tool-events.md) adds host occurrence IDs for admitted
+model-selected executions. Bounded private input/result projections share source
+identity with metadata, retain actual request/turn/epoch and intent/result bindings,
+and preserve native history. Resumed tool questions retain their original IDs;
+duration is unavailable across restart. Unknown/interrupted effects are not replayed.
 
 `ipse sessions` reads listings directly through `Journal.list/1`, without starting
 or resuming sessions or authenticating. The default text output is unchanged;

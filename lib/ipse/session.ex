@@ -224,6 +224,7 @@ defmodule Ipse.Session do
         request_started_at: nil,
         observation: nil,
         lifecycle: nil,
+        tool_lifecycle: nil,
         feeds: Feeds.new(events, id)
       }
 
@@ -251,6 +252,12 @@ defmodule Ipse.Session do
         lifecycle_records(
           state,
           Ipse.Lifecycle.Runtime.open(config, capture.policy, events, id, opts[:id] != nil)
+        )
+
+      state =
+        tool_records(
+          state,
+          Ipse.Lifecycle.Tool.open(config, events, id, state.lifecycle, dir, question)
         )
 
       state =
@@ -968,6 +975,7 @@ defmodule Ipse.Session do
        "phase" => Atom.to_string(s.phase),
        "observability" => Ipse.Observability.Resources.snapshot(s.observation),
        "extension_feeds" => Feeds.snapshot(s.feeds),
+       "tool_events" => Ipse.Lifecycle.Tool.snapshot(s.tool_lifecycle),
        "steps" => s.steps,
        "max_steps" => Map.get(s.config, :max_steps, 30),
        "approval_waiting" => not is_nil(s.approval),
@@ -2517,7 +2525,7 @@ defmodule Ipse.Session do
     name = get_in(call, ["function", "name"])
     external = Ipse.MCP.tool(s.mcp_tools, name)
 
-    record(s, %{
+    event = %{
       "type" => "tool_started",
       "call_id" => call["id"],
       "name" => name,
@@ -2528,7 +2536,20 @@ defmodule Ipse.Session do
         ),
       "mcp" => if(external, do: Ipse.MCP.Client.manifest(external)),
       "sandbox_requested" => to_string(Map.get(s.config, :sandbox, :off))
-    })
+    }
+
+    s =
+      if Ipse.Lifecycle.Tool.recording?(s.tool_lifecycle) do
+        source = optional_source(s, event)
+
+        tool_records(
+          s,
+          Ipse.Lifecycle.Tool.start(s.tool_lifecycle, source, event, call, length(s.calls))
+        )
+      else
+        record(s, event)
+        s
+      end
 
     notify(s, {:tool, name, args})
     owner = self()
@@ -2747,7 +2768,7 @@ defmodule Ipse.Session do
   end
 
   defp accept_tool_result(s, call, message) do
-    s = append_message(s, message)
+    s = append_tool_message(s, message, true)
     notify(s, {:tool_result, get_in(call, ["function", "name"]), message["content"]})
     next_tool(%{s | calls: tl(s.calls), tool_decision: "not_decided"})
   end
@@ -2761,12 +2782,16 @@ defmodule Ipse.Session do
       status = if started, do: "unknown", else: "not_started"
       outcome = if started, do: text, else: "Not executed: work stopped before this call started."
 
-      append_message(state, %{
-        "role" => "tool",
-        "tool_call_id" => call["id"],
-        "content" => outcome,
-        "ipse_tool_outcome" => %{"status" => status, "approval" => approval}
-      })
+      append_tool_message(
+        state,
+        %{
+          "role" => "tool",
+          "tool_call_id" => call["id"],
+          "content" => outcome,
+          "ipse_tool_outcome" => %{"status" => status, "approval" => approval}
+        },
+        started
+      )
     end)
     |> Map.put(:calls, [])
   end
@@ -2946,8 +2971,59 @@ defmodule Ipse.Session do
         do: Map.put(event, "request_id", s.last_request_id),
         else: event
 
-    record(s, event)
+    s =
+      if message["role"] == "assistant" and is_list(message["tool_calls"]) and
+           message["tool_calls"] != [] and Ipse.Lifecycle.Tool.recording?(s.tool_lifecycle) do
+        source = optional_source(s, event)
+        tool_records(s, Ipse.Lifecycle.Tool.proposal(s.tool_lifecycle, source, event, s.turn_id))
+      else
+        record(s, event)
+        s
+      end
+
     %{s | messages: s.messages ++ [message]}
+  end
+
+  defp append_tool_message(s, message, started) do
+    if started and Ipse.Lifecycle.Tool.active?(s.tool_lifecycle) do
+      event = %{"type" => "message", "message" => message}
+      source = optional_source(s, event)
+      s = tool_records(s, Ipse.Lifecycle.Tool.finish(s.tool_lifecycle, source, event))
+      %{s | messages: s.messages ++ [message]}
+    else
+      append_message(s, message)
+    end
+  end
+
+  defp optional_source(s, event) do
+    case Journal.append_observed(s.dir, s.id, event) do
+      {:ok, source} ->
+        offer_record(s, source, event)
+        source
+
+      {:error, reason} ->
+        raise "Journal write failed: #{inspect(reason)}"
+    end
+  end
+
+  defp tool_records(s, {context, records}) do
+    Enum.reduce(records, %{s | tool_lifecycle: context}, fn event, state ->
+      source = record_source(state, event)
+
+      if event["type"] == "lifecycle_tool_intent" do
+        %{state | tool_lifecycle: Ipse.Lifecycle.Tool.bind(state.tool_lifecycle, source, event)}
+      else
+        if event["type"] == "lifecycle_tool_recording_stopped",
+          do:
+            notify(
+              state,
+              {:status,
+               "Tool lifecycle recording stopped; original tool history and approvals remain active."}
+            )
+
+        state
+      end
+    end)
   end
 
   defp record(s, event) do
@@ -2990,6 +3066,13 @@ defmodule Ipse.Session do
 
   defp enroll_feeds(s) do
     feeds = Feeds.enroll(s.feeds, s.config, self(), &record_source(s, &1))
+
+    if s.tool_lifecycle != nil and not Ipse.Lifecycle.Tool.recording?(s.tool_lifecycle) do
+      Enum.each(feeds.resources, fn {_, resource} ->
+        if resource.intent["declaration"]["event"] in ~w(tool.intent_committed tool.outcome_recorded tool.recording_stopped),
+          do: FeedChannel.stop(resource, "source_unavailable")
+      end)
+    end
 
     if feeds.refused > s.feeds.refused,
       do:
@@ -3173,6 +3256,7 @@ defmodule Ipse.Session do
   def restore_context(events) do
     with :ok <- Ipse.Handoff.validate_events(events),
          {:ok, _} <- Ipse.Lifecycle.Runtime.restore(events),
+         {:ok, _} <- Ipse.Lifecycle.Tool.restore(events),
          :ok <- Ipse.Observability.Resources.validate(events),
          {:ok, _} <- Feeds.validate(events),
          {:ok, _} <- Ipse.Usage.restore(events),

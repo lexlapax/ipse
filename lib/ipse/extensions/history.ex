@@ -8,7 +8,9 @@ defmodule Ipse.Extensions.History do
     "prompt.expanded" => {"host.history.prompt.expanded", ["prompt.expanded_committed"]},
     "prompt.effective" => {"host.history.prompt.effective", ["prompt.effective_committed"]},
     "answer.original" => {"host.history.answer.original", ["answer.committed"]},
-    "answer.presented" => {"host.history.answer.presented", ["answer.committed"]}
+    "answer.presented" => {"host.history.answer.presented", ["answer.committed"]},
+    "tool.input" => {"host.history.tool.input", ["tool.intent_committed"]},
+    "tool.result" => {"host.history.tool.result", ["tool.outcome_recorded"]}
   }
   @page_bytes 12_288
   @errors ~w(history_snapshot history_cursor history_source history_timeout)
@@ -331,14 +333,18 @@ defmodule Ipse.Extensions.History do
     source = event["source"]
     data = event["data"]
 
-    with true <- keys?(row, ~w(kind event)) and keys?(data, ["text"]),
+    with true <- keys?(row, ~w(kind event)),
          true <-
            Source.valid?(source) and event["view"] == view and
              event["type"] in elem(@views[view], 1),
          {:ok, reference} <- Source.metadata(source),
          true <-
-           is_binary(data["text"]) and String.valid?(data["text"]) and
-             byte_size(data["text"]) <= 8192 do
+           if(view in ~w(tool.input tool.result),
+             do: Ipse.Lifecycle.Tool.private_data?(view, data),
+             else:
+               keys?(data, ["text"]) and is_binary(data["text"]) and String.valid?(data["text"]) and
+                 byte_size(data["text"]) <= 8192
+           ) do
       Event.valid_metadata?(%{event | "view" => "metadata", "source" => reference, "data" => %{}})
     else
       _ -> false

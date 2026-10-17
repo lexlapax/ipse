@@ -3,7 +3,7 @@ defmodule Ipse.Lifecycle.Event do
   alias Ipse.Lifecycle.Source
   alias Ipse.Extensions.{Manifest, Projection}
 
-  @doc "Project one supported occurrence into metadata or its explicit private prompt view. No callbacks run."
+  @doc "Project one supported occurrence into metadata or its explicit private view. No callbacks run."
   def project(source, record, view) do
     with true <- is_binary(view) and Source.matches?(source, record),
          {:ok, type, private_view, text, metrics, correlations} <- describe(record, view),
@@ -119,6 +119,13 @@ defmodule Ipse.Lifecycle.Event do
     end
   end
 
+  defp data(source, view, view, value, _metrics)
+       when is_map(value) and view in ~w(tool.input tool.result) do
+    if Ipse.Lifecycle.Tool.private_data?(view, value),
+      do: {:ok, source, value},
+      else: {:error, :private_lifecycle_view_too_large}
+  end
+
   defp data(_, view, view, nil, _), do: {:error, :private_lifecycle_view_too_large}
 
   defp data(_, _, _, _, _), do: {:error, :lifecycle_view_unavailable}
@@ -155,13 +162,13 @@ defmodule Ipse.Lifecycle.Event do
           is_boolean(cleanup)
 
         {"reason", reason} ->
-          reason == "limit"
+          reason in ~w(limit source_unavailable epoch_unavailable binding_unavailable)
 
         {"finality", finality} ->
           finality in ~w(final partial)
 
         {key, outcome} when key in ~w(outcome status approval) ->
-          outcome in ~w(ok error completed failed cancelled interrupted expired unknown denied conflict answered not_started acknowledged approved session_allow not_decided not_required)
+          outcome in ~w(ok error result_recorded completed failed cancelled interrupted expired unknown denied conflict answered not_started acknowledged approved session_allow not_decided not_required)
 
         _ ->
           false
@@ -171,7 +178,7 @@ defmodule Ipse.Lifecycle.Event do
           is_binary(hash) and Regex.match?(~r/\A[0-9a-f]{64}\z/, hash)
 
         {key, id}
-        when key in ~w(epoch_id previous_epoch_id wait_id request_id attempt_id session_id turn_id parent_session_id parent_request_id invocation_id parent_invocation_id operation_id continuation_id delivery_id resource_id causing_event_id child_id) ->
+        when key in ~w(tool_id epoch_id previous_epoch_id wait_id request_id attempt_id session_id turn_id parent_session_id parent_request_id invocation_id parent_invocation_id operation_id continuation_id delivery_id resource_id causing_event_id child_id) ->
           is_binary(id) and Regex.match?(~r/\A[0-9a-f]{32}\z/, id)
 
         _ ->
@@ -185,5 +192,5 @@ defmodule Ipse.Lifecycle.Event do
 
   def metadata_types,
     do:
-      ~w(session.created session.started session.resumed session.close_committed session.recording_stopped wait.started wait.finished prompt.received prompt.expanded_committed prompt.projection_committed prompt.effective_committed answer.committed model.admitted model.usage_observed model.finished model.measured tool.started assistant.committed tool.result_recorded context.workspace_committed context.catalog_committed context.extensions_committed context.compaction_committed context.compaction_failed question.waiting question.answered question.closed child.started turn.settling turn.finished turn.cancelled extension.invocation_admitted extension.invocation_recorded extension.action_admitted extension.action_recorded extension.question_waiting extension.continuation_admitted extension.delivery_admitted extension.delivery_recorded extension.text_admitted extension.text_ready extension.text_closed)
+      ~w(session.created session.started session.resumed session.close_committed session.recording_stopped tool.intent_committed tool.outcome_recorded tool.recording_stopped wait.started wait.finished prompt.received prompt.expanded_committed prompt.projection_committed prompt.effective_committed answer.committed model.admitted model.usage_observed model.finished model.measured tool.started assistant.committed tool.result_recorded context.workspace_committed context.catalog_committed context.extensions_committed context.compaction_committed context.compaction_failed question.waiting question.answered question.closed child.started turn.settling turn.finished turn.cancelled extension.invocation_admitted extension.invocation_recorded extension.action_admitted extension.action_recorded extension.question_waiting extension.continuation_admitted extension.delivery_admitted extension.delivery_recorded extension.text_admitted extension.text_ready extension.text_closed)
 end

@@ -142,6 +142,7 @@ defmodule Ipse.ExtensionDemo do
       history_views(root)
       runtime_epochs(root, config)
       feed_primitives()
+      tool_views()
 
       IO.puts(
         "Extension prompt/presentation and unchanged idle resume fixture passed without inference. Local diagnostic sink fixture passed without network inference."
@@ -262,6 +263,65 @@ defmodule Ipse.ExtensionDemo do
     true = payload["event"]["event_id"] == source["event_id"]
     false = String.contains?(Jason.encode!(payload), "sha256")
     %{"kind" => "ack", "sequence" => 1} = Ipse.Extensions.Feeds.ack(payload)
+  end
+
+  # Projection-only compatibility; synthetic positions confer no physical authority.
+  defp tool_views do
+    session = Ipse.Usage.id()
+    turn = Ipse.Usage.id()
+    request = Ipse.Usage.id()
+    runtime = %{epoch: Ipse.Usage.id(), active: true}
+
+    config = %{
+      extensions: [%{identity: %{"capabilities" => ~w(lifecycle.record lifecycle.tools)}}]
+    }
+
+    {ctx, []} = Ipse.Lifecycle.Tool.open(config, [], session, runtime, nil, nil)
+    call = %{"id" => "synthetic", "function" => %{"name" => "read", "arguments" => "{}"}}
+
+    proposal = %{
+      "type" => "message",
+      "request_id" => request,
+      "message" => %{"role" => "assistant", "tool_calls" => [call]}
+    }
+
+    {:ok, proposal_source} = Ipse.Lifecycle.Source.build(session, 0, proposal)
+    {ctx, []} = Ipse.Lifecycle.Tool.proposal(ctx, proposal_source, proposal, turn)
+
+    legacy = %{
+      "type" => "tool_started",
+      "call_id" => "synthetic",
+      "name" => "read",
+      "approval" => "not_required",
+      "arguments" => nil
+    }
+
+    {:ok, intent_source} = Ipse.Lifecycle.Source.build(session, 1, legacy)
+    {ctx, [intent]} = Ipse.Lifecycle.Tool.start(ctx, intent_source, legacy, call, 1)
+    {:ok, source} = Ipse.Lifecycle.Source.build(session, 2, intent)
+    {:ok, private} = Ipse.Lifecycle.Event.project(source, intent, "tool.input")
+    %{"name" => "read", "arguments_json" => "{}"} = private["data"]
+    {:ok, metadata} = Ipse.Lifecycle.Event.project(source, intent, "metadata")
+    true = Ipse.Lifecycle.Event.valid_metadata?(metadata)
+    true = metadata["event_id"] == private["event_id"]
+    ctx = Ipse.Lifecycle.Tool.bind(ctx, source, intent)
+
+    result = %{
+      "type" => "message",
+      "message" => %{
+        "role" => "tool",
+        "tool_call_id" => "synthetic",
+        "content" => "fixture result",
+        "ipse_tool_outcome" => %{"status" => "result_recorded", "approval" => "not_required"}
+      }
+    }
+
+    {:ok, result_source} = Ipse.Lifecycle.Source.build(session, 3, result)
+    {_, [outcome]} = Ipse.Lifecycle.Tool.finish(ctx, result_source, result)
+    {:ok, source} = Ipse.Lifecycle.Source.build(session, 4, outcome)
+
+    {:ok, %{"data" => %{"text" => "fixture result"}}} =
+      Ipse.Lifecycle.Event.project(source, outcome, "tool.result")
   end
 
   # Primitive compatibility fixture; installed SDK execution is exercised by the

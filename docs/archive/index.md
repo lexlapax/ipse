@@ -5,6 +5,7 @@ Use the [current documentation map](../index.md) for supported guidance.
 
 | Snapshot | Provenance | Current replacements |
 | --- | --- | --- |
+| [2026-10-17 metadata-only feed contract](2026-10-17-before-private-tool-feeds/index.md) | Commit `b8aae70`; original live feed contract before scoped tool views, with rebased links | [Feeds](../developer/extension-feeds.md), [tool sources/views](../developer/tool-events.md) |
 | [2026-10-17 prompt-only delivery contracts](2026-10-17-before-answer-events/index.md) | Commit `22ac9e1`; notification/job contracts before completed-answer delivery, with rebased links | [Subscriptions](../developer/extension-events.md), [event jobs](../developer/extension-event-jobs.md) |
 | [2026-10-17 capture before ring retention](2026-10-17-before-trace-ring/index.md) | Commit `59dd52f`; original operator/developer capture guides | [Operator controls](../operator/observability.md), [ring contract](../developer/observability.md#local-ring-retention) |
 | [2026-10-17 observability proposal](2026-10-17-observability-proposal/index.md) | Commit `1d2d1cc`; original proposal with rebased links | [Operator controls](../operator/observability.md), [developer contract](../developer/observability.md) |

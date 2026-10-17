@@ -51,7 +51,7 @@ activation resolves only explicit operator routes to already selected targets.
 Optional `subscriptions` pin exact event/view/version/mode declarations.
 Prompt/answer [notifications](extension-events.md) add a required policy;
 [event jobs](extension-event-jobs.md) name a typed export and before-request/
-after-turn schedule. Read-only live [metadata feeds](extension-feeds.md) instead
+after-turn schedule. Read-only live [event feeds](extension-feeds.md) instead
 declare finite queue capacity and close coverage on overload. Private reads and
 host actions retain separate grants. Unknown modes or widened declarations
 refuse inert validation.

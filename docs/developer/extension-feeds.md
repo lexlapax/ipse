@@ -1,6 +1,7 @@
-# Live lifecycle metadata feeds
+# Live lifecycle feeds
 
-Selected extensions can consume supported committed metadata while explicit
+Selected extensions can consume supported committed metadata or separately granted
+private tool views while explicit
 session work proceeds. A feed uses one owned worker per declaration and preserves
 its private VM state for that lease. Its exact acknowledgments grant no actions,
 context changes or provider requests. [Prompt/answer notifications](extension-events.md)
@@ -27,12 +28,31 @@ queued callbacks, the in-flight callback and an acknowledgment awaiting durable
 host commit. The existing four-per-artifact/eight-total subscription ceilings
 include feeds, notifications and jobs together. `event.feed` is present exactly
 when a feed declaration exists; `describe/0` must match the inert manifest.
-No required/schedule/filter/handler field, wildcard, private view or arbitrary
+No required/schedule/filter/handler field, wildcard or arbitrary
 topic is admitted. Installation, inspection and disabled selection execute no code.
 
-`Feeds.types/0` lists supported metadata types: model, saved assistant/tool,
+The view is explicit and pinned to the type:
+
+| Event | Views | Private read grant and source prerequisite |
+| --- | --- | --- |
+| `tool.intent_committed` | `metadata`, `tool.input` | `event.tool.input`; source recording requires `lifecycle.tools` and `lifecycle.record` |
+| `tool.outcome_recorded` | `metadata`, `tool.result` | `event.tool.result`; same source prerequisites |
+| Other supported types | `metadata` | No private read grant; source prerequisites below still apply |
+
+For example, replace the sample declaration's event/view with
+`tool.intent_committed`/`tool.input` and request all four capabilities:
+`event.feed`, `event.tool.input`, `lifecycle.tools`, `lifecycle.record`.
+Each private grant is present exactly when its view is declared. The
+[tool-source contract](tool-events.md) owns admission, bounds, causal links and
+recording-stop semantics. Continuous prompt/answer/private-action views remain
+unsupported; their existing boundary/job contracts retain their meaning.
+
+`Feeds.types/0` lists supported committed types: model, saved assistant/tool,
 context/compaction, questions, children, extension activity, waits and turn
 settlement. These use the shared [metadata vocabulary](lifecycle-events.md#committed-metadata).
+All three admitted-tool types additionally require `lifecycle.tools` and its epoch
+recording prerequisite. A stopped recorder closes affected feeds with visible
+incomplete coverage; it does not deny ordinary tools.
 Waits and `session.recording_stopped` additionally require `lifecycle.record` in
 that artifact's trust ceiling so their sources exist with diagnostics off.
 Prompt/answer stages use their existing boundary subscriptions. Creation,
@@ -60,11 +80,12 @@ outside its coverage. Worker startup and all callbacks run outside Session;
 | `subscription_id` | This declaration's ID |
 | `sequence` | Consecutive lease-local admission number, starting at 1 |
 | `after` | Public source reference to the enrollment intent |
-| `event` | Shared version-1 metadata envelope with the original occurrence ID |
+| `event` | Shared version-1 selected-view envelope with the original occurrence ID |
 
-Source references in this payload contain no private content digest. Metadata
+Metadata source references contain no private content digest. Private tool views
+retain their private source binding and only the selected input/result data. Metadata
 excludes arguments, question/answer text, provider continuation, credentials and
-arbitrary errors. It is scoped to the owned session, including metadata about
+arbitrary errors. Every view is scoped to the owned session, including metadata about
 other selected instances there. Children receive only their independently
 permitted selection in their own session. Diagnostic mode and sampling do not
 gate or sample this path.
@@ -89,7 +110,7 @@ writes or extraction model calls need separately admitted jobs/operations.
 
 ## Ordering, pressure and stop
 
-After syncing a source fact, Session projects its selected metadata and reserves
+After syncing a source fact, Session projects its selected view and reserves
 capacity before sending any mailbox message. It syncs a source-bound
 `extension_feed_delivery_intent` before enqueueing the callback. A valid worker
 acknowledgment yields a host `extension_feed_delivery_result`; only after that
@@ -100,7 +121,9 @@ self-triggering acknowledgment loop.
 Across the durable session, at most 10,000 deliveries and 10,000 lease intents
 are admitted. Full queues, the delivery ceiling or an oversized payload close
 the feed with an explicit first rejected source. An unreferenceable oversized
-source closes it with `source_unavailable`. Source journal appends remain intact.
+source closes it with `source_unavailable`. An unavailable private view closes
+only that selected feed with `view_unavailable` and a source gap; metadata can
+continue. Source journal appends remain intact.
 Invalid replies, timeout, expiry or resource loss also end coverage. Ordinary
 agent work proceeds. There is no silent drop-and-continue mode, implicit retry,
 automatic catch-up or hidden inference. Independent source ordering is preserved
@@ -141,5 +164,5 @@ approval observation, pressure and invalid replies, stop/cancel/owner loss,
 question checkpoint recovery, disabled parity, finite receipt bounds and coherent
 payload tampering before repair. Source fixtures and primitive extracted-runtime
 checks are distinct from the pending frozen-core installed graph-package proof.
-Continuous private/media feeds, effectful background lanes, external transport
+Other continuous private/media feeds, effectful background lanes, external transport
 adapters and broader causal source seams remain separately negotiated work.

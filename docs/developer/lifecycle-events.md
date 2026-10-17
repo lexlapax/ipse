@@ -4,8 +4,9 @@ P22 lifecycle design with implemented journal-source, runtime-wait and prompt/an
 [bounded read-only subscriptions](extension-events.md) plus separate
 [event jobs](extension-event-jobs.md) for approved actions, awaited recall and
 after-turn maintenance. Prompt/answer barriers and
-[live committed metadata feeds](extension-feeds.md) are implemented; broader
-private views and full causal coverage remain pending.
+[live scoped feeds](extension-feeds.md) are implemented, including
+[admitted-tool input/results](tool-events.md). Broader private views and full
+causal coverage remain pending.
 Existing [transforms](extension-hooks.md),
 [invocations/actions](extension-host-calls.md), [context](extension-context.md)
 and [visible-text delivery](text-streams.md) retain their current wire contracts.
@@ -42,7 +43,7 @@ building block for selected notifications and the remaining delivery contracts.
 | Needed by a prompt-driven knowledge graph | Current support | Remaining foundation |
 | --- | --- | --- |
 | Read prompt text | Selected transforms and read-only original/final-effective subscriptions with explicit capabilities | Broader private lifecycle views and continuous private feeds |
-| Observe host activity | Exact live metadata subscriptions with bounded queues and explicit incomplete closure | Broader private views, full causal source coverage and independent consumer proof |
+| Observe host activity | Exact live metadata and separately granted admitted-tool views, bounded queues and explicit incomplete closure | Other private views, full causal source coverage and independent consumer proof |
 | Extract entities | Owned prompt jobs can run deterministic extraction | Model work needs a separately admitted, accounted request capability |
 | Store derived facts | Prompt jobs use normal approved state actions with source-bound invocation receipts | Production storage adapters and complete forgetting policies |
 | Add recalled evidence to an answer | Before-request jobs publish bounded attributed context into a frozen request snapshot; explicit history reads expose recorded views | Broader context seams and independent domain catch-up proof |
@@ -142,14 +143,17 @@ no authority.
 
 ### Committed metadata
 
-Other committed facts have metadata-only projections through
-`Ipse.Lifecycle.Metadata`. They use the same source ID, envelope and bounds:
+Other committed facts have allowlisted metadata projections through
+`Ipse.Lifecycle.Metadata`, using the same source ID, envelope and bounds.
+Admitted-tool sources additionally have separately granted private views under
+the [tool event contract](tool-events.md). The table describes metadata only.
 
 | Source family | Event vocabulary | Selected metadata |
 | --- | --- | --- |
 | Session header | `session.created` | No configuration, credentials or paths |
 | Recorded process epoch | `session.started`, `session.resumed`, `session.close_committed`, `session.recording_stopped` | Host epoch/previous-epoch IDs, previous closure state, logical closure/cleanup confirmation or source-limit notice |
 | Operator wait | `wait.started`, `wait.finished` | Host wait/epoch IDs, approval/question domain, actual available turn/request/invocation/operation/child links, selected question's causing-event ID; finish adds outcome and process-local elapsed milliseconds |
+| Admitted-tool input/outcome | `tool.intent_committed`, `tool.outcome_recorded`, `tool.recording_stopped` | Host tool/epoch/turn/request IDs, actual causing sources, encoded view byte counts, approval/status and available process-local duration; no names, arguments, result text or private hashes |
 | Request admission, usage observation, completion and measurement | `model.admitted`, `model.usage_observed`, `model.finished`, `model.measured` | Existing request/attempt/turn/parent IDs, kind, sequence, duration, outcome and finality where saved |
 | Saved assistant/tool text and tool start | `assistant.committed`, `tool.result_recorded`, `tool.started` | Text byte count, existing assistant request ID or approval category; no arguments, result text or raw provider call IDs |
 | Workspace/catalog/extension context and compaction | `context.workspace_committed`, `context.catalog_committed`, `context.extensions_committed`, `context.compaction_committed`, `context.compaction_failed` | Source/tool counts or existing request ID; no paths, contributions, summaries or error strings |
@@ -262,7 +266,7 @@ private content must not acquire it by subscribing to a metadata topic.
 | --- | --- | --- |
 | Implemented prompt/answer notification | Finite ordered boundary plan, one active callback, explicit required/optional outcomes | Exact acknowledgment only; metadata or separately granted private view |
 | Diagnostic notification | Independent bounded queues; sampling/drop counts are visible; sink failures do not fail the turn | Acknowledge metadata only; no host actions or context changes |
-| Implemented live metadata feed | Selected committed facts after explicit enrollment; bounded serial queue, durable intents/acknowledgments, visible incomplete closure on pressure/failure | Exact acknowledgment only; no implicit history, actions or private content |
+| Implemented live scoped feed | Selected committed facts after explicit enrollment; bounded serial queue, durable intents/acknowledgments, visible incomplete closure on pressure/failure | Exact acknowledgment only; metadata or separately granted tool input/result, with no implicit history/actions |
 | Private content feed | Per-subscription sequence, bounded bytes/in-flight delivery, acknowledgment and explicit gaps/incomplete closure | Acknowledge the selected content view; effects require separate job admission |
 | Ordered boundary hook | Host awaits handlers in configured order at a named seam; deadline or invalid required result stops that transition | Schema-checked projection, context contribution or restrictive decision permitted at that seam |
 | Implemented prompt/answer job | Host admits a bounded owned job against a committed source event; action proposals use the ordinary approval/intent/outcome path | Finite negotiated host actions; no recursive turn launch or implicit provider call |
@@ -344,8 +348,9 @@ Session. Unknown declarations fail validation. The implemented
 [notification schema](extension-events.md#inert-declaration-and-authority)
 supports read-only `notify`; [job declarations](extension-event-jobs.md#declarations-and-handlers)
 add a typed handler and before-request/after-turn schedule. The separate
-[feed schema](extension-feeds.md#declare-a-feed) selects supported metadata during
-live work. Other private views and delivery modes remain negotiated design targets.
+[feed schema](extension-feeds.md#declare-a-feed) selects supported metadata or
+separately granted tool input/results during live work. Other private views and
+delivery modes remain negotiated design targets.
 
 Prompt access, persistent writes, external transfer and model inference are
 separate grants. Installing or enabling a graph extension does not imply all
@@ -397,13 +402,17 @@ Tombstones/revisions must prevent a delayed extraction or reindex job from
 resurrecting forgotten facts; deletion of derived stores does not erase original
 journals or prior provider transfers.
 
-Other systems use a reviewed adapter over the same typed event/view contract,
-with explicit endpoints, authentication, export authority, flow control and
-acknowledgment semantics. An MCP connection alone does not imply support for
-event subscriptions. No unauthenticated listener, distributed BEAM node or
-mandatory external broker is needed. A future CloudEvents transport mapping can
-preserve source/ID/type and causal extensions without changing internal delivery
-semantics; no CloudEvents conformance or transport is claimed here.
+The shared envelope is the integration boundary; local SDK consumers need no
+global event bus. Other systems would use a reviewed bridge extension over the
+same typed event/view contract, with explicit endpoint, authentication, private
+read and egress grants. Its delivery/job contract must distinguish local receipt,
+remote acknowledgment and committed remote effects, and specify bounded buffering,
+disconnect recovery and explicit catch-up. Publishing or writing cannot be hidden
+in a read-only acknowledgment. No network subscription endpoint or background
+effectful bridge is currently implemented; an MCP connection alone supplies neither.
+No distributed BEAM node or mandatory broker is needed. A future CloudEvents
+transport mapping can preserve source/ID/type and causal extensions without
+changing internal delivery semantics; no conformance or transport is claimed here.
 
 ## Knowledge-graph acceptance proof
 

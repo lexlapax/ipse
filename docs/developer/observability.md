@@ -3,9 +3,10 @@
 The implemented path projects committed journal facts into shared metadata,
 then dispatches it through bounded owned sink workers. Capture defaults to off;
 operator policy, selection and export capability are separate gates.
-Separate [live metadata feeds](extension-feeds.md) use exact subscriptions and
+Separate [live lifecycle feeds](extension-feeds.md) use exact subscriptions and
 durable acknowledgments with visible incomplete closure on pressure. Diagnostic
-sampling/drop policy does not control them; feed replies retain read-only authority.
+sampling/drop policy does not control them; separately granted tool-content views
+remain private, and feed replies retain read-only authority.
 [Operator procedures](../operator/observability.md) own configuration and stop.
 The [synthetic conformance runner](extension-conformance.md) also supports
 bounded local dispatcher tracing, independently of diagnostic sink selection. The

@@ -1034,6 +1034,7 @@ persistent use. They are design walkthroughs, not execution proofs.
 | Explicit history (A23) | Own-session fixed-range reads share source/view identities, separate private history grants, bounded pages and skipped/gap outcomes; SDK catch-up uses normal actions, questions and no-replay recovery | [History contract](developer/extension-history.md) |
 | Runtime epochs/waits (A24) | Opt-in durable session start/resume/logical close and approval/question waits, bounded recording, process-local duration, actual host links and incomplete restart semantics; no broader subscriber activation | [Runtime facts](developer/lifecycle-events.md#runtime-epochs-and-operator-waits) |
 | Live metadata feeds (A25) | Selected committed activity after explicit enrollment, source-bound intents/acknowledgments, bounded serial queues, visible incomplete closure, independent diagnostic policy and inert idle resume | [Feed contract](developer/extension-feeds.md) |
+| Admitted-tool views (A26) | Host tool IDs and source-bound input/outcome facts, separately granted structured live/history views, metadata privacy, bounded recording and explicit question/cancellation recovery | [Tool event contract](developer/tool-events.md) |
 
 The [verification guide](developer/testing.md#current-evidence-and-next-checks)
 distinguishes source fixtures, extracted-package baselines, hosted platform
@@ -1049,7 +1050,9 @@ independent package proof. Prompt/answer jobs and the pre-request recall seam ar
 fully concurrent effectful scheduling remains a negotiated enhancement. Diagnostic
 capture, bounded sinks, aggregate local retention and synthetic dispatcher tracing
 are implemented, including runtime epoch/wait sources and live committed metadata
-feeds. Broader private delivery, child completion and ephemeral identity remain open. Core
+feeds, with separately granted admitted-tool input/results and actual tool-source
+links. Other private delivery/causal seams, child completion and ephemeral identity
+remain open. Core
 must then be frozen for the independent
 installed memory/workflow/retrieval package proof, followed by supervised independent
 review and the required source/package/platform checks. See the
@@ -1074,6 +1077,10 @@ Acceptance:
    generation; bound delivery/queues and report gaps. Acknowledgment never implies
    action completion. Preserve existing v1 contracts; unsupported subscriptions
    refuse until negotiated and implemented.
+   Keep transport separate from occurrence identity: local SDK consumers need no
+   broker; future external bridges must explicitly negotiate private-view/egress
+   authority, remote acknowledgments, bounded disconnect handling and catch-up.
+   A read-only feed acknowledgment must never acquire storage/publish effects.
 2. Add a backend-independent Elixir SDK/registry and owned workers: bundled
    trusted modules may run in-VM, while independent packages use a versioned
    serializable worker bridge. Define immutable artifacts, installed/trusted

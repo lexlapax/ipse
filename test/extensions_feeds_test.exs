@@ -6,7 +6,7 @@ defmodule Ipse.Extensions.FeedsTest do
   defmodule Model do
     def complete(config, messages, _tools, _emit) do
       send(config.test_pid, {:feed_model, self(), messages})
-      first = not Enum.any?(messages, &(&1["role"] == "tool"))
+      first = List.last(messages)["role"] == "user"
 
       if first and config[:gate_model],
         do:
@@ -29,6 +29,25 @@ defmodule Ipse.Extensions.FeedsTest do
                 }
               ]
 
+            :extension_question ->
+              [
+                %{
+                  "id" => "private-call",
+                  "function" => %{"name" => "ext__feed__clarify", "arguments" => "{}"}
+                }
+              ]
+
+            :shell ->
+              [
+                %{
+                  "id" => "private-call",
+                  "function" => %{
+                    "name" => "shell",
+                    "arguments" => Jason.encode!(%{"command" => "sleep 30"})
+                  }
+                }
+              ]
+
             :question ->
               [
                 %{
@@ -41,6 +60,17 @@ defmodule Ipse.Extensions.FeedsTest do
                           %{"id" => "choice", "kind" => "text", "prompt" => "private question"}
                         ]
                       })
+                  }
+                }
+              ]
+
+            :read ->
+              [
+                %{
+                  "id" => "private-call",
+                  "function" => %{
+                    "name" => "read",
+                    "arguments" => Jason.encode!(%{"path" => "fixture.txt"})
                   }
                 }
               ]
@@ -66,11 +96,22 @@ defmodule Ipse.Extensions.FeedsTest do
     root = Path.join(System.tmp_dir!(), "ipse-feed-artifacts-#{Ipse.Usage.id()}")
 
     artifacts =
-      for kind <- [:normal, :single, :mixed, :question], into: %{} do
+      for kind <- [:normal, :single, :mixed, :question, :tool_private, :tool_metadata],
+          into: %{} do
         events =
-          if kind == :normal,
-            do: ~w(model.admitted wait.started question.waiting turn.finished),
-            else: if(kind == :question, do: ~w(question.waiting), else: ~w(model.admitted))
+          cond do
+            kind == :normal ->
+              ~w(model.admitted wait.started question.waiting turn.finished)
+
+            kind in [:tool_private, :tool_metadata] ->
+              ~w(tool.intent_committed tool.outcome_recorded)
+
+            kind == :question ->
+              ~w(question.waiting)
+
+            true ->
+              ~w(model.admitted)
+          end
 
         declarations =
           for {event, index} <- Enum.with_index(events),
@@ -78,7 +119,12 @@ defmodule Ipse.Extensions.FeedsTest do
                 "id" => "feed#{index}",
                 "event" => event,
                 "event_version" => 1,
-                "view" => "metadata",
+                "view" =>
+                  if(kind == :tool_private,
+                    do:
+                      if(event == "tool.intent_committed", do: "tool.input", else: "tool.result"),
+                    else: "metadata"
+                  ),
                 "mode" => "feed",
                 "queue_events" => if(kind == :single, do: 1, else: 8)
               }
@@ -99,10 +145,60 @@ defmodule Ipse.Extensions.FeedsTest do
                 ],
             else: declarations
 
+        declarations =
+          if kind == :tool_private do
+            declarations ++
+              Enum.map(
+                declarations,
+                &(&1 |> Map.put("id", "meta_" <> &1["id"]) |> Map.put("view", "metadata"))
+              )
+          else
+            declarations
+          end
+
         caps =
           ["event.feed"] ++
             if(kind == :normal, do: ["lifecycle.record"], else: []) ++
-            if(kind in [:mixed, :question], do: ["event.notify"], else: [])
+            if(kind in [:mixed, :question], do: ["event.notify"], else: []) ++
+            if(kind in [:tool_private, :tool_metadata],
+              do: ~w(lifecycle.record lifecycle.tools),
+              else: []
+            ) ++
+            if(kind == :tool_private,
+              do:
+                ~w(event.tool.input event.tool.result invoke.tool invoke.command host.actions host.question host.history host.history.tool.input host.history.tool.result),
+              else: []
+            )
+
+        exports =
+          if kind == :tool_private do
+            Ipse.Extensions.Catalog.empty()
+            |> Map.put("tools", [
+              %{
+                "id" => "clarify",
+                "description" => "Synthetic tool clarification",
+                "arguments_schema" => %{"type" => "object", "additionalProperties" => false},
+                "result_schema" => %{"type" => "object"}
+              }
+            ])
+            |> Map.put("commands", [
+              %{
+                "id" => "catchup",
+                "description" => "Synthetic private tool catch-up",
+                "arguments_schema" => %{
+                  "type" => "object",
+                  "additionalProperties" => false,
+                  "required" => ["view"],
+                  "properties" => %{
+                    "view" => %{"type" => "string", "enum" => ~w(tool.input tool.result)}
+                  }
+                },
+                "result_schema" => %{"type" => "object"}
+              }
+            ])
+          else
+            Ipse.Extensions.Catalog.empty()
+          end
 
         directory = Path.join(root, Atom.to_string(kind))
         File.mkdir_p!(Path.join(directory, "ebin"))
@@ -111,7 +207,7 @@ defmodule Ipse.Extensions.FeedsTest do
         code = """
         defmodule #{module} do
           @behaviour Ipse.Extension
-          def describe, do: %{"sdk" => 1, "capabilities" => #{inspect(caps)}, "subscriptions" => #{inspect(declarations)}}
+          def describe, do: %{"sdk" => 1, "capabilities" => #{inspect(caps)}, "subscriptions" => #{inspect(declarations)}, "exports" => #{inspect(exports)}}
           def init(options) do
             log(options, %{"initialized" => true})
             {:ok, options}
@@ -133,6 +229,23 @@ defmodule Ipse.Extensions.FeedsTest do
             log(state, payload)
             {:ok, %{"api_version" => 1, "kind" => "ack", "delivery_id" => payload["delivery_id"], "event_id" => payload["event"]["event_id"]}, state}
           end
+          def handle("invoke.tool", _, state) do
+            request = %{"op" => "operator.question", "arguments" => %{"questions" => [%{"id" => "choice", "kind" => "text", "prompt" => "Synthetic tool clarification"}]}, "checkpoint" => %{}}
+            {:ok, call(request), state}
+          end
+          def handle("invoke.command", payload, state), do: read(nil, 0, Map.merge(state, %{"history" => true, "view" => payload["arguments"]["view"], "items" => []}))
+          def handle("host.actions", %{"outcome" => %{"status" => "ok", "value" => page}}, %{"history" => true} = state) do
+            items = for %{"kind" => "event", "event" => event} <- page["records"], do: event
+            state = Map.put(state, "items", state["items"] ++ items)
+            if page["next"] == nil do
+              {:ok, %{"api_version" => 1, "kind" => "result", "value" => %{"items" => state["items"]}}, state}
+            else
+              read(page["snapshot"], page["next"], state)
+            end
+          end
+          def handle("host.actions", %{"outcome" => %{"status" => "answered"}}, state), do: {:ok, %{"api_version" => 1, "kind" => "result", "value" => %{"done" => true}}, state}
+          defp call(request), do: %{"api_version" => 1, "kind" => "host_call", "request" => request}
+          defp read(snapshot, cursor, state), do: {:ok, call(%{"op" => "history.read", "view" => state["view"], "snapshot" => snapshot, "cursor" => cursor, "limit" => 8}), state}
           defp log(state, payload), do: File.write!(state["trace"], Jason.encode!(payload) <> "\\n", [:append])
         end
         """
@@ -161,6 +274,7 @@ defmodule Ipse.Extensions.FeedsTest do
           "license_file" => "LICENSE",
           "capabilities" => caps,
           "subscriptions" => declarations,
+          "exports" => exports,
           "options_schema" => %{
             "type" => "object",
             "additionalProperties" => false,
@@ -317,6 +431,193 @@ defmodule Ipse.Extensions.FeedsTest do
     wait = Map.put(d, "event", "wait.started")
     assert {:error, _} = Subscriptions.validate([wait], ["event.feed"])
     assert :ok = Subscriptions.validate([wait], ~w(event.feed lifecycle.record))
+    tool = %{d | "event" => "tool.intent_committed", "view" => "tool.input"}
+
+    assert {:error, _} =
+             Subscriptions.validate([tool], ~w(event.feed lifecycle.record lifecycle.tools))
+
+    assert :ok =
+             Subscriptions.validate(
+               [tool],
+               ~w(event.feed lifecycle.record lifecycle.tools event.tool.input)
+             )
+
+    assert {:error, _} =
+             Ipse.Extensions.Catalog.validate(
+               Ipse.Extensions.Catalog.empty(),
+               ~w(lifecycle.tools)
+             )
+  end
+
+  test "private admitted-tool views share stable source IDs with metadata and retain approval",
+       c do
+    {:ok, pid} = start(c, config(c, :tool_private, scenario: :write))
+    id = Session.info(pid).id
+    :ok = Session.prompt(pid, "private prompt")
+    assert_receive {:ipse, ^pid, {:approval, ref, "write", _}}, 3_000
+    refute Enum.any?(rows(c, id), &(&1["type"] == "lifecycle_tool_intent"))
+    :ok = Session.approve(pid, ref, true)
+    done(pid)
+    eventually(fn -> settled(pid) end)
+    frames = Enum.filter(trace(c), &Map.has_key?(&1, "handle"))
+    assert length(frames) == 4
+    input = Enum.find(frames, &(&1["event"]["view"] == "tool.input"))["event"]
+    result = Enum.find(frames, &(&1["event"]["view"] == "tool.result"))["event"]
+    assert input["data"]["name"] == "write"
+    assert Jason.decode!(input["data"]["arguments_json"])["content"] == "private arguments"
+    assert is_binary(result["data"]["text"])
+    assert input["correlations"]["tool_id"] == result["correlations"]["tool_id"]
+    assert input["correlations"]["request_id"] == result["correlations"]["request_id"]
+    assert result["correlations"]["causing_event_id"] == input["event_id"]
+
+    metadata =
+      Enum.filter(frames, &(&1["event"]["view"] == "metadata")) |> Enum.map(& &1["event"])
+
+    assert Enum.all?(metadata, &Ipse.Lifecycle.Event.valid_metadata?/1)
+
+    assert Enum.sort(Enum.map(metadata, & &1["event_id"])) ==
+             Enum.sort([input["event_id"], result["event_id"]])
+
+    refute String.contains?(Jason.encode!(metadata), [
+             "private",
+             "sha256",
+             c.root,
+             "arguments_json",
+             "proposal_source"
+           ])
+
+    refute String.contains?(Jason.encode!([input, result]), [
+             "private-call",
+             "private native continuation"
+           ])
+
+    assert File.read!(Path.join(c.root, "effect.txt")) == "private arguments"
+    assert {:ok, _} = Session.restore_context(rows(c, id))
+    assert :ok = Subscriptions.validate_sources(c.dir, id, rows(c, id))
+    :ok = Session.close(pid)
+  end
+
+  test "metadata tool observation alone never receives the private tool payload", c do
+    {:ok, pid} = start(c, config(c, :tool_metadata, scenario: :read))
+    File.write!(Path.join(c.root, "fixture.txt"), "private file contents")
+    id = Session.info(pid).id
+    :ok = Session.prompt(pid, "private prompt")
+    done(pid)
+    eventually(fn -> settled(pid) end)
+    frames = Enum.filter(trace(c), &Map.has_key?(&1, "handle"))
+    assert length(frames) == 2
+    assert Enum.all?(frames, &(&1["event"]["view"] == "metadata"))
+    refute String.contains?(Jason.encode!(frames), ["private", "sha256", "fixture.txt"])
+    assert {:ok, saved} = Ipse.Lifecycle.Tool.restore(rows(c, id), id)
+    assert map_size(saved.tools) == 1
+    :ok = Session.close(pid)
+  end
+
+  test "reused provider call IDs across requests retain distinct host tool occurrences", c do
+    {:ok, pid} = start(c, config(c, :tool_metadata, scenario: :read))
+    File.write!(Path.join(c.root, "fixture.txt"), "private data")
+    id = Session.info(pid).id
+
+    for prompt <- ["first private prompt", "second private prompt"] do
+      :ok = Session.prompt(pid, prompt)
+      done(pid)
+      eventually(fn -> settled(pid) end)
+    end
+
+    starts = Enum.filter(rows(c, id), &(&1["type"] == "lifecycle_tool_intent"))
+    assert length(starts) == 2
+    assert Enum.uniq_by(starts, & &1["tool_id"]) == starts
+    assert Enum.uniq_by(starts, & &1["request_id"]) == starts
+    assert {:ok, _} = Session.restore_context(rows(c, id))
+    assert :ok = Subscriptions.validate_sources(c.dir, id, rows(c, id))
+    :ok = Session.close(pid)
+  end
+
+  test "oversized private results close that feed while metadata and native history remain", c do
+    File.write!(Path.join(c.root, "fixture.txt"), String.duplicate("private-data ", 1000))
+    {:ok, pid} = start(c, config(c, :tool_private, scenario: :read))
+    id = Session.info(pid).id
+    :ok = Session.prompt(pid, "private prompt")
+    done(pid)
+
+    eventually(fn ->
+      Enum.any?(status(pid)["feeds"], &(&1["reason"] == "view_unavailable" and &1["closed"]))
+    end)
+
+    eventually(fn ->
+      Enum.all?(status(pid)["feeds"], &(&1["closed"] or (&1["ready"] and &1["pending"] == 0)))
+    end)
+
+    [outcome] = Enum.filter(rows(c, id), &(&1["type"] == "lifecycle_tool_outcome"))
+    assert outcome["result"] == nil and outcome["result_bytes"] > 8192
+
+    assert Enum.any?(
+             trace(c),
+             &(get_in(&1, ["event", "type"]) == "tool.outcome_recorded" and
+                 get_in(&1, ["event", "view"]) == "metadata")
+           )
+
+    assert {:ok, messages} = Session.restore_context(rows(c, id))
+    assert Enum.any?(messages, &(&1["role"] == "tool" and byte_size(&1["content"]) > 8192))
+    assert :ok = Subscriptions.validate_sources(c.dir, id, rows(c, id))
+    :ok = Session.close(pid)
+  end
+
+  test "an extension-tool question preserves its tool ID across restart without inventing elapsed downtime",
+       c do
+    cfg = config(c, :tool_private, scenario: :extension_question)
+    {:ok, pid} = start(c, cfg)
+    id = Session.info(pid).id
+    :ok = Session.prompt(pid, "private prompt")
+    assert_receive {:feed_model, _, _}, 3_000
+    assert_receive {:ipse, ^pid, {:approval, ref, "ext__feed__clarify", _}}, 3_000
+    :ok = Session.approve(pid, ref, true)
+    assert_receive {:ipse, ^pid, {:question, question, _}}, 3_000
+    eventually(fn -> settled(pid) end)
+    [intent] = Enum.filter(rows(c, id), &(&1["type"] == "lifecycle_tool_intent"))
+    monitor = Process.monitor(pid)
+    Process.exit(pid, :kill)
+    assert_receive {:DOWN, ^monitor, :process, ^pid, :killed}, 2_000
+    old = File.read!(c.trace)
+    {:ok, resumed} = resume(c, cfg, id)
+    assert_receive {:ipse, ^resumed, {:question, ^question, _}}, 3_000
+    assert File.read!(c.trace) == old
+    refute_receive {:feed_model, _, _}, 50
+    :ok = Session.answer(resumed, question, %{"choice" => "continue"})
+    done(resumed)
+    eventually(fn -> settled(resumed) end)
+    [outcome] = Enum.filter(rows(c, id), &(&1["type"] == "lifecycle_tool_outcome"))
+    assert outcome["tool_id"] == intent["tool_id"]
+    assert outcome["request_id"] == intent["request_id"]
+    refute outcome["epoch_id"] == intent["epoch_id"]
+    assert outcome["duration_ms"] == nil
+    assert {:ok, _} = Session.restore_context(rows(c, id))
+    assert :ok = Subscriptions.validate_sources(c.dir, id, rows(c, id))
+    :ok = Session.close(resumed)
+  end
+
+  test "explicit history reads require historical grants and retain the selected structured tool view",
+       c do
+    {:ok, pid} = start(c, config(c, :tool_private, scenario: :read))
+    File.write!(Path.join(c.root, "fixture.txt"), "private historical content")
+    id = Session.info(pid).id
+    :ok = Session.prompt(pid, "private prompt")
+    done(pid)
+    eventually(fn -> settled(pid) end)
+    live = Enum.filter(trace(c), &Map.has_key?(&1, "handle"))
+
+    for view <- ~w(tool.input tool.result) do
+      assert Ipse.Extensions.History.capability(%{"view" => view}) == "host.history." <> view
+      :ok = Session.invoke_export(pid, :command, "ext__feed__catchup", %{"view" => view})
+      done(pid)
+      assert [%{"view" => ^view} = event] = Session.info(pid).extension_result["value"]["items"]
+      original = Enum.find(live, &(&1["event"]["view"] == view))["event"]
+      assert event == original
+    end
+
+    assert {:ok, _} = Session.restore_context(rows(c, id))
+    assert :ok = Subscriptions.validate_sources(c.dir, id, rows(c, id))
+    :ok = Session.close(pid)
   end
 
   test "metadata feeds start on explicit work, preserve source identity and do not approve tools",
@@ -461,6 +762,89 @@ defmodule Ipse.Extensions.FeedsTest do
     refute File.exists?(c.trace)
     assert Enum.all?(rows(c, id), &(&1["type"] not in Feeds.record_types()))
     :ok = Session.close(pid)
+  end
+
+  test "denied calls create no admitted-tool occurrence or private execution input", c do
+    cfg = config(c, :tool_metadata, scenario: :write) |> Map.put(:approval, :deny)
+    {:ok, pid} = start(c, cfg)
+    id = Session.info(pid).id
+    :ok = Session.prompt(pid, "private prompt")
+    done(pid)
+    eventually(fn -> settled(pid) end)
+
+    refute Enum.any?(
+             rows(c, id),
+             &(&1["type"] in ~w(lifecycle_tool_intent lifecycle_tool_outcome))
+           )
+
+    refute Enum.any?(trace(c), &Map.has_key?(&1, "handle"))
+    refute File.exists?(Path.join(c.root, "effect.txt"))
+    :ok = Session.close(pid)
+  end
+
+  test "cancel records an admitted tool's unknown outcome without replay on idle resume", c do
+    cfg = config(c, :tool_metadata, scenario: :shell)
+    {:ok, pid} = start(c, cfg)
+    id = Session.info(pid).id
+    :ok = Session.prompt(pid, "private prompt")
+    assert_receive {:ipse, ^pid, {:approval, ref, "shell", _}}, 3_000
+    :ok = Session.approve(pid, ref, true)
+    assert_receive {:ipse, ^pid, {:tool, "shell", _}}, 3_000
+    :ok = Session.cancel(pid)
+    [outcome] = Enum.filter(rows(c, id), &(&1["type"] == "lifecycle_tool_outcome"))
+    assert outcome["status"] == "unknown"
+    assert {:ok, _} = Session.restore_context(rows(c, id))
+    :ok = Session.close(pid)
+    old = trace(c)
+    {:ok, resumed} = resume(c, cfg, id)
+    assert Session.info(resumed).phase == :idle
+    assert trace(c) == old
+    assert status(resumed)["feeds"] == []
+    :ok = Session.close(resumed)
+    assert :ok = Subscriptions.validate_sources(c.dir, id, rows(c, id))
+  end
+
+  test "coherent tool source-position forgery refuses resume before tail repair", c do
+    cfg = config(c, :tool_metadata, scenario: :read)
+    File.write!(Path.join(c.root, "fixture.txt"), "private result")
+    {:ok, pid} = start(c, cfg)
+    id = Session.info(pid).id
+    :ok = Session.prompt(pid, "private prompt")
+    done(pid)
+    eventually(fn -> settled(pid) end)
+    :ok = Session.close(pid)
+    events = rows(c, id)
+    intent = Enum.find(events, &(&1["type"] == "lifecycle_tool_intent"))
+    outcome = Enum.find(events, &(&1["type"] == "lifecycle_tool_outcome"))
+
+    {:ok, %{records: [%{record: legacy}]}} =
+      Journal.source_page(c.dir, id, intent["intent_source"]["byte_offset"], 1)
+
+    {:ok, wrong} =
+      Ipse.Lifecycle.Source.build(id, intent["intent_source"]["byte_offset"] + 1, legacy)
+
+    forged_intent = Map.put(intent, "intent_source", wrong)
+
+    {:ok, forged_source} =
+      Ipse.Lifecycle.Source.build(id, outcome["tool_source"]["byte_offset"], forged_intent)
+
+    forged_outcome = Map.put(outcome, "tool_source", forged_source)
+
+    forged =
+      Enum.map(events, fn e ->
+        cond do
+          e == intent -> forged_intent
+          e == outcome -> forged_outcome
+          true -> e
+        end
+      end)
+
+    assert {:ok, _} = Session.restore_context(forged)
+    path = Path.join(c.dir, id <> ".jsonl")
+    contents = Enum.map_join(forged, "\n", &Jason.encode!/1) <> "\n{"
+    File.write!(path, contents)
+    assert {:error, :invalid_tool_lifecycle} = resume(c, cfg, id)
+    assert File.read!(path) == contents
   end
 
   defp resume(c, cfg, id, attempts \\ 100) do

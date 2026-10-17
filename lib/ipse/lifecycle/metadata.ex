@@ -23,6 +23,10 @@ defmodule Ipse.Lifecycle.Metadata do
     do: result("session.created", %{}, %{})
 
   def describe(%{"type" => type} = record)
+      when type in ~w(lifecycle_tool_intent lifecycle_tool_outcome lifecycle_tool_recording_stopped),
+      do: Ipse.Lifecycle.Tool.describe(record)
+
+  def describe(%{"type" => type} = record)
       when type in ~w(lifecycle_epoch_started lifecycle_epoch_closed lifecycle_wait_started lifecycle_wait_finished lifecycle_recording_stopped),
       do: Ipse.Lifecycle.Runtime.describe(record)
 

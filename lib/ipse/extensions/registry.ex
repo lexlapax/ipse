@@ -287,6 +287,7 @@ defmodule Ipse.Extensions.Registry do
       Ipse.Lifecycle.Metadata,
       Ipse.Lifecycle.Answer,
       Ipse.Lifecycle.Runtime,
+      Ipse.Lifecycle.Tool,
       Ipse.Observability.Config,
       Ipse.Observability.Event,
       Ipse.Observability.Channel,

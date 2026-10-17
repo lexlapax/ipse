@@ -12,7 +12,7 @@ defmodule Ipse.Extensions.Catalog do
 
   def capabilities,
     do:
-      ~w(transform.prompt transform.presentation invoke.tool invoke.command invoke.service host.actions host.state.read host.state.write host.question host.tools host.services host.context stream.text lifecycle.record event.notify event.job event.feed event.prompt.original event.prompt.effective event.answer.original event.answer.presented observe.local observe.export) ++
+      ~w(transform.prompt transform.presentation invoke.tool invoke.command invoke.service host.actions host.state.read host.state.write host.question host.tools host.services host.context stream.text lifecycle.record lifecycle.tools event.notify event.job event.feed event.prompt.original event.prompt.effective event.answer.original event.answer.presented event.tool.input event.tool.result observe.local observe.export) ++
         Ipse.Extensions.History.capabilities()
 
   def empty,
@@ -26,6 +26,7 @@ defmodule Ipse.Extensions.Catalog do
     exports = normalize(exports)
 
     with :ok <- Schema.validate_object(exports),
+         true <- "lifecycle.tools" not in capabilities or "lifecycle.record" in capabilities,
          true <- Enum.sort(Map.keys(exports)) == ~w(commands jobs services tools version),
          true <- exports["version"] === 1,
          true <-

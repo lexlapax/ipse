@@ -42,6 +42,12 @@ defmodule Ipse.Extensions.Subscriptions do
            not Enum.any?(
              declarations,
              &(&1["mode"] == "feed" and
+                 &1["event"] in ~w(tool.intent_committed tool.outcome_recorded tool.recording_stopped))
+           ) or "lifecycle.tools" in capabilities,
+         true <-
+           not Enum.any?(
+             declarations,
+             &(&1["mode"] == "feed" and
                  &1["event"] in ~w(wait.started wait.finished session.recording_stopped))
            ) or "lifecycle.record" in capabilities,
          true <-
@@ -50,7 +56,9 @@ defmodule Ipse.Extensions.Subscriptions do
                {"prompt.original", "event.prompt.original"},
                {"prompt.effective", "event.prompt.effective"},
                {"answer.original", "event.answer.original"},
-               {"answer.presented", "event.answer.presented"}
+               {"answer.presented", "event.answer.presented"},
+               {"tool.input", "event.tool.input"},
+               {"tool.result", "event.tool.result"}
              ],
              fn {view, capability} ->
                Enum.any?(declarations, &(&1["view"] == view)) == capability in capabilities
@@ -233,6 +241,7 @@ defmodule Ipse.Extensions.Subscriptions do
       :ok ->
         with :ok <- Ipse.Extensions.History.validate_sources(directory, session, events),
              :ok <- Ipse.Lifecycle.Runtime.validate_sources(directory, session, events),
+             :ok <- Ipse.Lifecycle.Tool.validate_sources(directory, session, events),
              do: Ipse.Extensions.Feeds.validate_sources(directory, session, events)
 
       error ->

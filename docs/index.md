@@ -41,7 +41,8 @@ start. Use the guides below for operation, development, and project context.
 | [Session extension hooks](developer/extension-hooks.md) | Implemented prompt/presentation transforms, built-in registry, ownership, durable projections and no-replay recovery |
 | [Lifecycle events and subscriptions](developer/lifecycle-events.md) | Shared source identity, runtime epochs/waits, committed-fact metadata, prompt/answer delivery and remaining feeds/graph acceptance cases |
 | [Prompt/answer subscription contract](developer/extension-events.md) | Inert declarations, distinct private views, ordered read-only delivery, completed-answer binding and source-bound recovery |
-| [Live metadata feed contract](developer/extension-feeds.md) | Explicit enrollment, persistent owned consumers, source-bound admission/acknowledgments, bounded queues, incomplete closure and inert resume |
+| [Live event feed contract](developer/extension-feeds.md) | Explicit enrollment, scoped metadata/private-tool views, persistent consumers, source-bound acknowledgments, bounded queues and inert resume |
+| [Admitted-tool events](developer/tool-events.md) | Opt-in execution source IDs, structured input/result views, causal binding, bounded recording and question/interruption recovery |
 | [Event jobs and recall](developer/extension-event-jobs.md) | Typed prompt/answer handlers, approved actions, before-request context, after-turn maintenance and source-bound question recovery |
 | [Extension invocations](developer/extension-invocations.md) | Inert tools/commands/services, scoped catalog identity, owned callbacks and durable result receipts |
 | [Extension host calls](developer/extension-host-calls.md) | Finite continuations, separate write approval, scoped CAS state/tombstones and action-chain recovery |

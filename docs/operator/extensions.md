@@ -98,10 +98,12 @@ trust ceiling must cover every declared capability:
 | `host.history`, `host.history.*` | Explicit reads of this session's metadata or separately granted private views | [History](#explicit-history-and-catch-up) |
 | `stream.text` | Acknowledged private visible-text delivery through a scoped worker handle | [Text clients](#visible-text-clients) |
 | `lifecycle.record` | Record bounded session epochs and operator waits independently of diagnostic capture; no callback or read/action grant | [Runtime facts](../developer/lifecycle-events.md#runtime-epochs-and-operator-waits) |
+| `lifecycle.tools` | Record bounded admitted-tool sources; requires `lifecycle.record`, grants no read/action authority | [Tool sources](../developer/tool-events.md) |
 | `observe.local`, `observe.export` | Read-only metadata sink with separate operator capture policy | [Diagnostic capture](observability.md) |
 | `event.job` | Source-bound prompt handlers using normal finite approved actions, before requests or after answers | [Event jobs](#event-jobs) |
 | `event.notify` | Declared read-only prompt/answer notifications; metadata only without a private read capability | [Event subscribers](#event-subscribers) |
-| `event.feed` | Supported live metadata after explicit enrollment, bounded queue and visible incomplete closure; acknowledgments only | [Live metadata](#live-metadata) |
+| `event.feed` | Supported selected event views after explicit enrollment, bounded queue and visible incomplete closure; acknowledgments only | [Live feeds](#live-event-feeds) |
+| `event.tool.input`, `event.tool.result` | Separately selected structured tool input or result; source prerequisites remain required | [Tool views](../developer/tool-events.md) |
 | `event.prompt.original`, `event.prompt.effective` | The selected original or final-effective user-text view | [Event subscribers](#event-subscribers) |
 | `event.answer.original`, `event.answer.presented` | The selected original or completed presented answer text | [Event subscribers](#event-subscribers) |
 
@@ -238,12 +240,16 @@ private text. A timeout may stop the VM without confirming final cleanup; close/
 reports that uncertainty. Notifications cannot perform host actions or alter the
 current prompt or completed answer.
 
-### Live metadata
+### Live event feeds
 
 Reviewed artifacts may separately declare `event.feed` for supported model,
 tool, context, question, wait, child, extension and turn metadata. Their workers
-see allowlisted counts/categories and source IDs; they receive no arguments or
-private text. Wait sources additionally need `lifecycle.record`. Use the ordinary
+see allowlisted counts/categories and source IDs by default. Explicit
+`event.tool.input`/`event.tool.result` grants select bounded tool arguments or
+result text; metadata and private views retain the same occurrence ID. All admitted-tool
+types need `lifecycle.tools` and `lifecycle.record`; wait sources need
+`lifecycle.record`. Historical tool views need their separate `host.history.tool.*`
+grants. No private view is inferred from older unrecorded history. Use the ordinary
 import, trust, enable/disable and `--extension` selection controls. Diagnostic
 capture can remain off. See the [feed author contract](../developer/extension-feeds.md).
 
@@ -262,6 +268,9 @@ stopped for this process. Use reviewed configuration in a new invocation to enro
 on new work; idle resume never replays old callbacks. Incomplete deliveries need
 explicit bounded catch-up and deduplication. Cleanup uncertainty is reported
 separately from turn success, and an acknowledgment alone is no storage-success claim.
+Tool-source diagnostics also show recording/fact counts and incomplete outcomes
+without disclosing arguments or text. Missing/oversized views close affected
+private feeds visibly; they preserve original native messages and normal approvals.
 
 ## Event jobs
 

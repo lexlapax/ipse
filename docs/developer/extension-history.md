@@ -19,6 +19,8 @@ views have separate grants from live `event.*` subscriptions:
 | `prompt.effective` | `host.history.prompt.effective` | Recorded final-effective prompt boundary |
 | `answer.original` | `host.history.answer.original` | Completed-answer original text |
 | `answer.presented` | `host.history.answer.presented` | Completed-answer final presentation |
+| `tool.input` | `host.history.tool.input` | Recorded admitted-tool name and original arguments JSON |
+| `tool.result` | `host.history.tool.result` | Recorded admitted-tool outcome text |
 
 Operator trust must allow all declared capabilities. A private history capability
 without the base grant, or a host operation without `host.actions`, fails inert
@@ -79,7 +81,11 @@ Every consumed source record produces one row:
 Metadata rows use the shared closed metadata validator and exclude text, provider
 continuation, credentials, arbitrary errors and content hashes. Private event rows
 contain only the selected text/view and its normal source binding. Skipped/gap rows
-never include the raw record type or body.
+never include the raw record type or body. Tool views use their closed structured
+`name`/`arguments_json` or `text` objects, with the same occurrence identity as
+metadata; see [admitted-tool sources and bounds](tool-events.md). Their historical
+grants are separate from live `event.tool.*` capabilities. Older unrecorded tool
+views are not synthesized from native assistant/tool messages.
 
 Original/effective/answer boundaries absent from older history are not invented
 from adjacent records. A saved user message is the distinct `prompt.expanded` view;

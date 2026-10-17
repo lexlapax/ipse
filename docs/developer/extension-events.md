@@ -7,7 +7,7 @@ explicit boundaries in the
 [lifecycle design](lifecycle-events.md). Separately admitted
 [event jobs](extension-event-jobs.md) support finite actions and awaited recall;
 this guide covers ordered boundary delivery. Separate
-[live metadata feeds](extension-feeds.md) observe supported activity during explicit
+[live lifecycle feeds](extension-feeds.md) observe supported activity during explicit
 work and have their own bounded queue/closure contract.
 
 Use [operator selection](../operator/extensions.md#event-subscribers) for
@@ -214,8 +214,9 @@ actions, pre-request recall and after-turn maintenance. Remaining foundation wor
 includes broader private lifecycle views/causal links and the independent domain
 catch-up proof. The [history primitive](extension-history.md) is implemented.
 [Diagnostic sinks](observability.md) have separate metadata capture/stop controls.
-Live metadata [feeds](extension-feeds.md) close visibly when capacity is exhausted.
-Continuous private feeds and external adapters need their own negotiated
+Live scoped [feeds](extension-feeds.md), including separately granted tool views,
+close visibly when capacity is exhausted. Other continuous private feeds and
+external adapters need their own negotiated
 ownership/flow/egress contract. Notification acknowledgments must not silently
 gain effectful semantics in a future implementation. Production graph extraction
 and stores remain P25 work; the extension-only P22 graph proof is still required.
