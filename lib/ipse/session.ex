@@ -2,7 +2,7 @@ defmodule Ipse.Session do
   @moduledoc "One supervised owner per agent conversation. I/O runs in monitored tasks."
   use GenServer
   alias Ipse.{Journal, Skills, Tools, WorkspaceContext, Questions}
-  alias Ipse.Extensions.{Host, Projection}
+  alias Ipse.Extensions.{Host, Projection, Catalog, Invocation}
 
   def start_link(opts) do
     config = Keyword.fetch!(opts, :config)
@@ -57,6 +57,10 @@ defmodule Ipse.Session do
   def info(pid), do: GenServer.call(pid, :info)
   def diagnostics(pid), do: GenServer.call(pid, :diagnostics)
   def subscribe_text(pid), do: GenServer.call(pid, :subscribe_text)
+  def exports(pid), do: GenServer.call(pid, :exports)
+
+  def invoke_export(pid, kind, name, arguments),
+    do: GenServer.call(pid, {:invoke_export, kind, name, arguments})
 
   @impl true
   def init(opts) do
@@ -75,6 +79,8 @@ defmodule Ipse.Session do
          {:ok, id, _events} <- open(dir, id, cwd, config),
          {:ok, _} <- Registry.register(Ipse.Registry, {dir, id}, nil),
          {:ok, lock} <- acquire_lock(Path.join(dir, id <> ".lock"), 10),
+         {:ok, locked_events} <- Journal.load(dir, id),
+         {:ok, _} <- restore_context(locked_events),
          :ok <- Journal.repair_tail(dir, id),
          {:ok, events} <- Journal.load(dir, id),
          {:ok, accounting} <- Ipse.Usage.restore(events, id),
@@ -121,6 +127,11 @@ defmodule Ipse.Session do
         text_stream_monitor: nil,
         final: Projection.presentation(events),
         extension_intent: nil,
+        extension_invocation: nil,
+        extension_request: nil,
+        extension_result: Invocation.latest_display(events),
+        extension_catalog: extension_catalog(config),
+        extension_invocations: Invocation.count(events),
         mcp_tools: [],
         mcp_ready: false,
         mcp_resources: %{},
@@ -298,6 +309,7 @@ defmodule Ipse.Session do
       |> Map.put(:configuration, Map.get(s.config, :configuration))
       |> Map.put(:extensions, Ipse.Extensions.Registry.manifests(s.config))
       |> Map.put(:accounting, Ipse.Usage.snapshot(s.accounting))
+      |> Map.put(:extension_result, s.extension_result)
       |> Map.put(:question, if(s.question, do: Map.take(s.question, [:id, :arguments])))
 
     {:reply, info, s}
@@ -316,6 +328,83 @@ defmodule Ipse.Session do
   end
 
   def handle_call(:subscribe_text, _, s), do: {:reply, {:error, :busy}, s}
+
+  def handle_call(:exports, _, s), do: {:reply, s.extension_catalog, s}
+
+  def handle_call({:invoke_export, kind, name, arguments}, _, %{phase: :idle} = s)
+      when kind in [:command, :service] do
+    stage = "invoke." <> Atom.to_string(kind)
+
+    with {:ok, entry, descriptor} <- Catalog.lookup(s.config, stage, name),
+         true <- s.extension_invocations < Invocation.limit(),
+         true <- Ipse.Extensions.Registry.live?(entry.identity),
+         :ok <- Catalog.validate_call(descriptor, arguments) do
+      owner = self()
+      job_ref = make_ref()
+      task = owned_task(fn -> Host.invoke_export(stage, name, arguments, owner, job_ref) end)
+      request = %{stage: stage, name: name, arguments: arguments}
+      phase = if kind == :command, do: :extension_command, else: :extension_service
+      {:reply, :ok, %{s | phase: phase, task: task, job_ref: job_ref, extension_request: request}}
+    else
+      _ -> {:reply, {:error, :invalid_extension_call}, s}
+    end
+  end
+
+  def handle_call({:invoke_export, _, _, _}, _, s),
+    do: {:reply, {:error, :extension_unavailable_or_busy}, s}
+
+  def handle_call(
+        {:extension_invoke_begin, ref, stage, name, arguments},
+        {caller, _},
+        %{job_ref: ref, task: %{pid: caller}, extension_invocation: nil, phase: phase} = s
+      )
+      when ref != nil and phase in [:tool, :extension_command, :extension_service] do
+    origin =
+      if phase == :tool do
+        call = hd(s.calls)
+
+        with {:ok, parsed} <- Jason.decode(get_in(call, ["function", "arguments"])),
+             true <-
+               stage == "invoke.tool" and get_in(call, ["function", "name"]) == name and
+                 parsed == arguments do
+          {:ok, call["id"], s.last_request_id, s.tool_decision}
+        else
+          _ -> :error
+        end
+      else
+        if s.extension_request == %{stage: stage, name: name, arguments: arguments},
+          do: {:ok, nil, nil, "operator_request"},
+          else: :error
+      end
+
+    with {:ok, parent_call, parent_request, approval} <- origin,
+         true <- s.extension_invocations < Invocation.limit(),
+         {:ok, entry, descriptor} <- Catalog.lookup(s.config, stage, name),
+         true <- Ipse.Extensions.Registry.live?(entry.identity),
+         :ok <- Catalog.validate_call(descriptor, arguments),
+         intent =
+           Invocation.intent(
+             entry.identity,
+             descriptor,
+             arguments,
+             s.id,
+             s.turn_id,
+             parent_call,
+             parent_request,
+             approval
+           ),
+         :ok <- Invocation.validate_intent(intent) do
+      record(s, intent)
+
+      {:reply, {:ok, intent, entry},
+       %{s | extension_invocation: intent, extension_invocations: s.extension_invocations + 1}}
+    else
+      _ -> {:reply, {:error, :extension_admission_refused}, s}
+    end
+  end
+
+  def handle_call({:extension_invoke_begin, _, _, _, _}, _, s),
+    do: {:reply, {:error, :cancelled}, s}
 
   def handle_call(:diagnostics, _from, s) do
     {:reply,
@@ -508,6 +597,8 @@ defmodule Ipse.Session do
           job_ref: nil,
           compaction: nil,
           extension_intent: nil,
+          extension_invocation: nil,
+          extension_request: nil,
           tool_decision: "not_decided",
           mcp_resources: %{},
           delegation_resources: %{},
@@ -590,6 +681,44 @@ defmodule Ipse.Session do
     s = %{s | task: nil}
 
     case {phase, result} do
+      {invocation_phase, {:extension_invocation_result, event}}
+      when invocation_phase in [:tool, :extension_command, :extension_service] ->
+        with intent when is_map(intent) <- s.extension_invocation,
+             {:ok, expected} <-
+               Invocation.build_result(intent, %{
+                 "api_version" => 1,
+                 "kind" => "result",
+                 "value" => event["value"]
+               }),
+             true <- expected == event and Ipse.Extensions.Registry.live?(intent["identity"]) do
+          record(s, event)
+          s = %{s | extension_invocation: nil, extension_request: nil}
+
+          if invocation_phase == :tool do
+            {:noreply, accept_tool_result(s, hd(s.calls), Invocation.tool_message(event))}
+          else
+            display = %{
+              "name" => event["descriptor"]["name"],
+              "stage" => event["descriptor"]["stage"],
+              "value" => event["value"]
+            }
+
+            notify(s, {:extension_result, display})
+            {:noreply, finish(%{s | extension_result: display}, :ok)}
+          end
+        else
+          _ ->
+            {:noreply,
+             fail(
+               s,
+               "Extension result was invalid or its lease expired; inspect the saved intent before retrying."
+             )}
+        end
+
+      {invocation_phase, {:unknown, error}}
+      when invocation_phase in [:extension_command, :extension_service] ->
+        {:noreply, fail(s, error)}
+
       {:extension_prompt, :ok} ->
         {:noreply, model(%{s | extension_intent: nil})}
 
@@ -1125,6 +1254,24 @@ defmodule Ipse.Session do
 
     validation =
       cond do
+        Catalog.external?(name) ->
+          with true <- s.extension_invocations < Invocation.limit(),
+               {:ok, _, descriptor} <- Catalog.lookup(s.config, "invoke.tool", name),
+               {:ok, ^args} <-
+                 Ipse.Extensions.Manifest.decode_json(get_in(call, ["function", "arguments"])),
+               true <-
+                 Invocation.source_call_valid?(
+                   Enum.find(Enum.reverse(s.messages), &(&1["role"] == "assistant")),
+                   call["id"],
+                   name,
+                   args
+                 ),
+               :ok <- Catalog.validate_call(descriptor, args) do
+            :ok
+          else
+            _ -> {:error, "Invalid or unavailable extension tool; no callback executed."}
+          end
+
         external ->
           Ipse.MCP.validate_call(Ipse.MCP.tool(s.mcp_tools, name), args)
 
@@ -1145,7 +1292,8 @@ defmodule Ipse.Session do
       end
 
     requires_approval =
-      Tools.mutating?(name) or external or name in ["delegate", "delegate_parallel"]
+      Tools.mutating?(name) or external or Catalog.external?(name) or
+        name in ["delegate", "delegate_parallel"]
 
     cond do
       name == "ask_operator" ->
@@ -1192,7 +1340,10 @@ defmodule Ipse.Session do
       "call_id" => call["id"],
       "name" => name,
       "approval" => decision,
-      "arguments" => if(external || name in ["delegate", "delegate_parallel"], do: args),
+      "arguments" =>
+        if(external || Catalog.external?(name) || name in ["delegate", "delegate_parallel"],
+          do: args
+        ),
       "mcp" => if(external, do: Ipse.MCP.Client.manifest(external)),
       "sandbox_requested" => to_string(Map.get(s.config, :sandbox, :off))
     })
@@ -1212,6 +1363,9 @@ defmodule Ipse.Session do
     task =
       owned_task(fn ->
         cond do
+          Catalog.external?(name) ->
+            Host.invoke_export("invoke.tool", name, args, owner, job_ref)
+
           external ->
             Ipse.MCP.Client.call(external, args, s.cwd, %{owner: owner, job_ref: job_ref})
 
@@ -1399,9 +1553,12 @@ defmodule Ipse.Session do
     message =
       if provenance, do: Map.put(message, "ipse_external_result", provenance), else: message
 
-    s = append_message(s, message)
+    accept_tool_result(s, call, message)
+  end
 
-    notify(s, {:tool_result, get_in(call, ["function", "name"]), text})
+  defp accept_tool_result(s, call, message) do
+    s = append_message(s, message)
+    notify(s, {:tool_result, get_in(call, ["function", "name"]), message["content"]})
     next_tool(%{s | calls: tl(s.calls), tool_decision: "not_decided"})
   end
 
@@ -1444,6 +1601,8 @@ defmodule Ipse.Session do
         job_ref: nil,
         compaction: nil,
         extension_intent: nil,
+        extension_invocation: nil,
+        extension_request: nil,
         tool_decision: "not_decided"
     }
   end
@@ -1540,7 +1699,8 @@ defmodule Ipse.Session do
              "delegation_origin" => config[:delegation_origin],
              "configuration" => Map.get(config, :configuration),
              "execution" => Map.get(config, :execution),
-             "extensions" => Ipse.Extensions.Registry.manifests(config)
+             "extensions" => Ipse.Extensions.Registry.manifests(config),
+             "extension_catalog" => extension_catalog(config)
            }),
          do: {:ok, id, []}
   end
@@ -1559,6 +1719,9 @@ defmodule Ipse.Session do
              compatible_configuration?(meta["configuration"], config[:configuration]) and
              meta["execution"] == json_execution(config[:execution]) and
              Map.get(meta, "extensions", []) == Ipse.Extensions.Registry.manifests(config),
+         true <-
+           Map.get(meta, "extension_catalog", %{"version" => 1, "entries" => []}) ==
+             extension_catalog(config),
          :ok <- Ipse.Handoff.validate_events(events),
          {:ok, _} <- Ipse.Usage.restore(events, id),
          {:ok, _messages} <- restore_context(events) do
@@ -1568,6 +1731,11 @@ defmodule Ipse.Session do
       {:error, reason} -> {:error, reason}
       _ -> {:error, :invalid_session}
     end
+  end
+
+  defp extension_catalog(config) do
+    {:ok, catalog} = Catalog.snapshot(config)
+    catalog
   end
 
   defp compatible_configuration?(nil, nil), do: true
@@ -1622,6 +1790,17 @@ defmodule Ipse.Session do
 
   defp restore_validated_context(events) do
     Enum.reduce_while(events, {:ok, []}, fn
+      %{"type" => "extension_invocation_result", "descriptor" => %{"stage" => "invoke.tool"}} =
+          event,
+      {:ok, messages} ->
+        {:cont, {:ok, messages ++ [Invocation.tool_message(event)]}}
+
+      %{"type" => "message", "message" => %{"ipse_extension_result" => _} = message},
+      {:ok, messages} ->
+        if List.last(messages) == message,
+          do: {:cont, {:ok, messages}},
+          else: {:halt, {:error, :invalid_extension_invocation}}
+
       %{"type" => "extension_transform_intent"} = event, {:ok, messages} ->
         messages = restore_messages(messages)
 
@@ -1915,6 +2094,7 @@ defmodule Ipse.Session do
 
   defp definitions(config) do
     Tools.definitions(Map.get(config, :sandbox, :off)) ++
+      Catalog.definitions(config) ++
       Ipse.Delegation.definitions(config) ++
       if(config[:delegation_origin], do: [], else: Ipse.Research.definitions()) ++
       [

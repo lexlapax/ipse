@@ -71,6 +71,8 @@ local `ipse config` inspection and resume checks; see [configuration](docs/opera
 `ipse extension import PATH` and `ipse extension inspect DIGEST` provide inert,
 pinned local artifact installation. Scoped trust/selection can enable default-off
 prompt annotations and completed-answer formatting in separate Elixir workers.
+Reviewed artifacts can also declare schema-checked tools, commands and standalone
+services; `/ext` inspects the active catalog and invokes operator commands.
 Resume pins code/configuration and restores committed projections without replay.
 See [extensions](docs/operator/extensions.md) for bounds and current SDK scope.
 Use `$project-orientation` to assess a repository's purpose, current changes,

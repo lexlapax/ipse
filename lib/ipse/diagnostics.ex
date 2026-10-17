@@ -82,7 +82,7 @@ defmodule Ipse.Diagnostics do
   defp category(_message, "ipse_checkpoint", _), do: "checkpoint_data"
 
   defp category(_, key, _)
-       when key in ~w(ipse_tool_outcome ipse_result_excerpt ipse_external_result),
+       when key in ~w(ipse_tool_outcome ipse_result_excerpt ipse_external_result ipse_extension_result),
        do: "tool_provenance"
 
   defp category(%{"ipse_checkpoint" => _}, "content", _), do: "checkpoint_data"

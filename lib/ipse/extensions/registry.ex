@@ -2,7 +2,7 @@ defmodule Ipse.Extensions.Registry do
   @moduledoc "Inert built-in metadata and explicit pinned session admission."
   alias Ipse.Extensions.{Manifest, Store}
   @error {:error, :extension_admission_refused}
-  @host_capabilities ~w(transform.prompt transform.presentation)
+  @host_capabilities ~w(transform.prompt transform.presentation invoke.tool invoke.command invoke.service)
   @text %{"type" => "string", "maxLength" => 4096}
   @builtins %{
     "builtin:prompt-annotation:1" => %{
@@ -82,6 +82,9 @@ defmodule Ipse.Extensions.Registry do
           "artifact" => instance["artifact"],
           "artifact_sha256" => artifact.digest,
           "options_sha256" => Ipse.Compaction.digest([instance["options"]]),
+          "exports_sha256" => Ipse.Extensions.Catalog.digest(artifact.manifest["exports"]),
+          "scope" => instance["scope"],
+          "source_sha256" => Manifest.sha256(instance["source"]),
           "sdk" => 1,
           "protocol" => 1,
           "capabilities" => capabilities,
@@ -95,11 +98,27 @@ defmodule Ipse.Extensions.Registry do
         }
 
         {:cont,
-         {:ok, entries ++ [%{identity: identity, options: instance["options"], store: store}]}}
+         {:ok,
+          entries ++
+            [
+              %{
+                identity: identity,
+                options: instance["options"],
+                store: store,
+                exports: artifact.manifest["exports"] || Ipse.Extensions.Catalog.empty()
+              }
+            ]}}
       else
         _ -> {:halt, @error}
       end
     end)
+    |> case do
+      {:ok, entries} ->
+        if valid_entries?(%{extensions: entries}, now), do: {:ok, entries}, else: @error
+
+      _ ->
+        @error
+    end
   rescue
     _ -> @error
   end
@@ -109,19 +128,24 @@ defmodule Ipse.Extensions.Registry do
   def child_entries(config),
     do: Enum.filter(Map.get(config, :extensions, []), & &1.identity["allow_children"])
 
-  def valid_entries?(config) do
+  def valid_entries?(config, now \\ System.system_time(:second)) do
     entries = Map.get(config, :extensions, [])
 
     is_list(entries) and length(entries) <= 8 and
       Enum.all?(entries, fn entry ->
-        is_map(entry) and Enum.sort(Map.keys(entry)) == [:identity, :options, :store] and
-          Ipse.Extensions.Projection.identity_valid?(entry.identity) and live?(entry.identity) and
+        is_map(entry) and Enum.sort(Map.keys(entry)) == [:exports, :identity, :options, :store] and
+          Ipse.Extensions.Projection.identity_valid?(entry.identity) and
+          live?(entry.identity, now) and
+          Enum.all?(entry.identity["capabilities"], &(&1 in @host_capabilities)) and
+          Ipse.Extensions.Catalog.validate(entry.exports, entry.identity["capabilities"]) == :ok and
+          Ipse.Extensions.Catalog.digest(entry.exports) == entry.identity["exports_sha256"] and
           entry.identity["runtime"] == runtime() and is_binary(entry.store) and
           Ipse.Extension.validate(entry.options) == :ok and
           entry.identity["options_sha256"] == Ipse.Compaction.digest([entry.options])
       end) and
       entries == Enum.sort_by(entries, &{&1.identity["order"], &1.identity["instance"]}) and
-      length(entries) == length(Enum.uniq_by(entries, & &1.identity["instance"]))
+      length(entries) == length(Enum.uniq_by(entries, & &1.identity["instance"])) and
+      match?({:ok, _}, Ipse.Extensions.Catalog.snapshot(config))
   rescue
     _ -> false
   end
@@ -137,6 +161,9 @@ defmodule Ipse.Extensions.Registry do
                   true <- entry.identity["host_sha256"] == host,
                   true <- Manifest.compatible?(artifact.manifest),
                   true <- artifact.manifest["capabilities"] == entry.identity["capabilities"],
+                  true <-
+                    Ipse.Extensions.Catalog.digest(artifact.manifest["exports"]) ==
+                      entry.identity["exports_sha256"],
                   :ok <-
                     Ipse.MCP.Schema.validate_arguments(
                       artifact.manifest["options_schema"],
@@ -170,6 +197,11 @@ defmodule Ipse.Extensions.Registry do
   defp host_digest do
     [
       Ipse.Extension,
+      Ipse.Extensions.Identity,
+      Ipse.Extensions.Catalog,
+      Ipse.Extensions.Invocation,
+      Ipse.Extensions.Manifest,
+      Ipse.Extensions.Store,
       __MODULE__,
       Ipse.Extensions.Worker,
       Ipse.Extensions.Bootstrap,

@@ -2,8 +2,9 @@
 
 P22A4 implements a generic registry/host for two stable capabilities:
 `transform.prompt` and `transform.presentation`. The two compiled examples and
-independent worker artifacts share the same JSON SDK. Broader
-[lifecycle/tool/service/state/workflow contracts](extensions.md) remain targets;
+independent worker artifacts share the same JSON SDK. P22A7 also implements
+[typed tool/command/service invocation](extension-invocations.md). Broader
+[lifecycle/state/composition/workflow contracts](extensions.md) remain targets;
 this increment does not freeze the complete SDK or complete P22.
 See [operator procedures](../operator/extensions.md) and
 [artifact/worker SDK](extension-artifacts.md).
@@ -27,10 +28,12 @@ malformed, stale or expired entries are refused. Disabled discovery performs no
 artifact lookup, installation or executable initialization.
 
 Identities contain instance/reference/artifact SHA-256, options digest, SDK and
-protocol 1, ordered capabilities, order/lifetime/earliest expiry, child ceiling,
+protocol 1, export digest, operator/project scope, configuration-source path hash,
+ordered capabilities, order/lifetime/earliest expiry, child ceiling,
 VM components (Elixir version, OTP major, ERTS version, architecture), host API
-digest and generation 1. The host digest binds `Ipse.Extension`, Registry,
-Worker, Bootstrap, Host, Projection, the shared schema adapter, usage normalizer/
+digest and generation 1. The host digest binds `Ipse.Extension`, Identity, Catalog,
+Invocation, Manifest, Store, Registry, Worker, Bootstrap, Host, Projection,
+the shared schema adapter, usage normalizer/
 ledger, private text channel and Session BEAM bytes. It is an exact API
 implementation pin, not a signature or full operating-system/toolchain digest.
 Startup checks current VM components and code; resume requires identical pinned
@@ -102,8 +105,8 @@ continues unchanged. The CLI prints the completed presentation separately.
 Prompt-transform failure prevents the model call; presentation failure retains
 the already completed original assistant. Previously committed projections remain
 available in either case. Initialize/private VM state lasts for the job; it is
-not durable session state. Generic state/services/jobs and tool/command registration
-remain subsequent P22 increments.
+not durable session state. Generic state/composed services/jobs remain subsequent
+P22 increments; static catalogs and standalone invocations are implemented.
 
 ## Persistence and recovery
 
@@ -153,8 +156,8 @@ projections and verifies annotations cannot grant tool mutation approval.
 Registry fixtures cover disabled discovery, schema/capability refusal, trust/lease
 expiry and child subset routing. See [actual evidence](testing.md#session-extension-hooks-2026-10-16).
 
-P22 still needs the broader lifecycle and SDK seams, accounting/visible-stream
-foundations, observability/debug controls, independent extension-only
+P22 still needs the broader lifecycle and SDK seams, worker access to existing
+accounting/visible-stream foundations, observability/debug controls, independent extension-only
 memory/workflow proof and reviewed supervised trial. Hosted macOS and local Linux
 evidence must remain distinguished. This initial capability set does not claim
 the complete planned extension family is implemented.

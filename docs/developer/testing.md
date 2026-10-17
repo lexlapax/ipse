@@ -2579,3 +2579,42 @@ An additional **9 focused channel tests** passed after strengthening the escaped
 text fixture to include a full 2048-byte NUL frame. No paid provider, audio device,
 release publication or new hosted macOS text-channel verification ran locally.
 Documentation review checked **63 Markdown files / 597 local file and heading links**.
+
+[Hosted verification](https://github.com/lexlapax/ipse/actions/runs/38989190974)
+for text-channel commit `347e4b9` subsequently passed Ubuntu and macOS-14 on
+Elixir 1.18 / OTP 27, including default tests, demo and extracted-package checks
+on both and macOS native enforcement. This is hosted evidence for that commit,
+not local macOS execution on Serenity or verification of later SDK edits.
+
+## P22 typed catalogs and invocation receipts (2026-10-16)
+
+On Linux Serenity, source build, format check and warnings-as-errors compile
+passed. The full `mix test --include native_sandbox` run passed **435 tests, 14
+macOS excluded**. The first full run exposed inconsistent injected/current clocks
+in the final registry lease check; preparation now uses one admission clock,
+while Session admission still rechecks actual current time. After the fix,
+**23 focused registry/invocation/session tests** and the full suite passed.
+Earlier, **31 catalog/invocation/actual CLI tests** passed. No paid inference ran.
+
+Independent artifacts compile in a separate Elixir VM and execute only after
+journaled admission. Fixtures cover inert import/catalog discovery, names and
+schema bounds, full tool denial/approval, duplicate native call IDs, source/scope/
+catalog pins, separate command/service values without model requests, unknown
+failed callbacks, actual worker exit after cancellation/owner death, cached
+receipt recovery across an omitted ordinary tool-message record, and corrupt/
+deleted/replayed result refusal before journal tail repair. Idle resume performs
+no callback initialization. JSON fields that resemble actions remain data.
+
+The source hook/accounting/text fixture and credential-free demo also passed.
+The bundled fixture exercises those built-ins; independently compiled custom
+tools/commands/services are source tests at this point. A separate imported SDK
+artifact proof in extracted runtime isolation remains required before P22
+completion. Host action/state/composition/workflow/observation capabilities are
+not implemented by this increment. See [contract](extension-invocations.md) and
+[operator controls](../operator/extensions.md).
+
+The Linux glibc-2.44 archive rebuilt with the matching OTP 29.1.1 notices and
+passed `scripts/verify-package.exs` under extracted-runtime isolation, a
+utility-only PATH and fresh homes. This is a local archive, not a release or
+live-account/macOS check. Documentation review checked **64 Markdown files /
+619 local file and heading links** with no broken targets.

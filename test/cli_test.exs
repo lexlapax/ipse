@@ -237,6 +237,21 @@ defmodule Ipse.CLITest do
     end)
   end
 
+  test "extension inspection and invalid commands stay local without model requests" do
+    with_fixture_and_cli(fn _fixture, cli ->
+      await_input(cli.stdio)
+      Ipse.CLITest.IOFixture.feed(cli.stdio, "/ext")
+      await_text(cli.stdio, "\"entries\": []")
+      Ipse.CLITest.IOFixture.feed(cli.stdio, "/ext missing {}")
+      await_text(cli.stderr, "Extension command unavailable")
+      Ipse.CLITest.IOFixture.feed(cli.stdio, "/ext missing")
+      await_text(cli.stderr, "Use /ext NAME JSON_OBJECT")
+      refute_receive {:ollama_request, _, _, _}, 50
+      Ipse.CLITest.IOFixture.feed(cli.stdio, :eof)
+      assert Task.await(cli.task, 3000) == 0
+    end)
+  end
+
   test "/info is local and stays available while a model response is pending" do
     with_fixture_and_cli(fn fixture, cli ->
       await_input(cli.stdio)

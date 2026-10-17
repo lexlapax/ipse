@@ -5,6 +5,13 @@ diagnostics: Session journals admission before provider dispatch and normalized
 outcomes before assistant/summary validation. Unknown failed/interrupted usage
 survives inert resume. Pricing and budget policy remain separate capabilities.
 
+Enabled [extension catalogs](extension-invocations.md) are inert manifest data.
+Session owns schema/approval/lease admission and syncs intent before a monitored
+task starts the independent worker VM. Validated receipts reconstruct tool
+messages on resume without running code; standalone command/service values are
+separate from assistant messages. The CLI is a generic catalog/invocation client.
+No host action, state or workflow is inferred from returned domain JSON.
+
 Ipse is an MIT-licensed, general-purpose local AI harness built around Elixir
 and OTP. The host role supports general-purpose tasks, with focused changes
 when requested and workload stacks chosen from user requirements and environment.

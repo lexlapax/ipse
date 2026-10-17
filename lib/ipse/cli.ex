@@ -48,7 +48,7 @@ defmodule Ipse.CLI do
   Chat asks before writes, shell, MCP, and delegation. Headless run denies them without --yes.
   Shell execution uses your user permissions unless --sandbox native is selected.
   Native enforcement fails closed when unavailable; approvals remain required.
-  Chat commands: /help /skills /session /info /diagnostics /context /context refresh /cancel /exit.
+  Chat commands: /help /skills /session /info /diagnostics /context /context refresh /ext [NAME JSON] /cancel /exit.
   Invoke skills with $name.
   EOF finishes accepted work; errors and /cancel clear queued input.
   """
@@ -469,6 +469,32 @@ defmodule Ipse.CLI do
         IO.puts(Jason.encode!(Ipse.Session.diagnostics(s.pid), pretty: true))
         client_loop(s)
 
+      {:input, "/ext"} ->
+        IO.puts(Jason.encode!(Ipse.Session.exports(s.pid), pretty: true))
+        client_loop(s)
+
+      {:input, "/ext " <> input} ->
+        case String.split(input, ~r/\s+/, parts: 2, trim: true) do
+          [name, json] ->
+            with {:ok, arguments} <- Ipse.Extensions.Manifest.decode_json(json),
+                 true <- is_map(arguments),
+                 :ok <- Ipse.Session.invoke_export(s.pid, :command, name, arguments) do
+              client_loop(%{s | busy: true})
+            else
+              _ ->
+                IO.puts(
+                  :stderr,
+                  "Extension command unavailable, invalid, or busy. Use /ext to inspect names and schemas."
+                )
+
+                client_loop(s)
+            end
+
+          _ ->
+            IO.puts(:stderr, "Use /ext NAME JSON_OBJECT; use {} for an empty argument object.")
+            client_loop(s)
+        end
+
       {:input, "/context"} ->
         print_context(Ipse.Session.info(s.pid).context)
         client_loop(s)
@@ -566,6 +592,10 @@ defmodule Ipse.CLI do
 
       {:ipse, ^pid, {:presentation, text}} ->
         IO.puts("\n" <> text)
+        client_loop(s)
+
+      {:ipse, ^pid, {:extension_result, display}} ->
+        IO.puts("\nExtension #{display["name"]}: #{Jason.encode!(display["value"])}")
         client_loop(s)
 
       {:ipse, ^pid, {:tool_output, delta}} ->

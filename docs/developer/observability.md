@@ -11,11 +11,13 @@ incompatible instrumentation layer.
 
 Session has a private durable JSONL journal, client status/progress events,
 allowlisted runtime/configuration/context information, compaction-failure reasons
-and OTP supervision. `format_status/2` limits Session's formatted state to ID and
+and OTP supervision. `format_status/1` limits Session's formatted state to ID and
 phase. MCP processes also implement formatted status. Dependency Telemetry is
 locked at 1.4.2 through Finch/Plug, but Ipse currently emits no application
-`:telemetry` events. There is no general extension/hook loader or supported
-operator external trace-export interface. P19 adds content-free context accounting
+`:telemetry` events. The [extension host](extension-hooks.md) now loads explicitly
+selected independent workers for prompt/presentation and
+[typed invocations](extension-invocations.md), but has no observation bus or
+supported operator external trace-export interface. P19 adds content-free context accounting
 and local request measurements, not general lifecycle hooks or remote export.
 
 ## Enablement and configuration

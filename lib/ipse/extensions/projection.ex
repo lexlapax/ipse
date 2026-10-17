@@ -3,7 +3,6 @@ defmodule Ipse.Extensions.Projection do
   alias Ipse.Extensions.Manifest
   @stages ~w(transform.prompt transform.presentation)
   @intent_keys ~w(type version request_id identity stage input_sha256 context_sha256 source_message_sha256)
-  @identity_keys ~w(instance artifact artifact_sha256 options_sha256 sdk protocol capabilities order lifetime expires_at runtime host_sha256 generation allow_children)
   @invalid {:error, :invalid_extension_projection}
 
   def intent(identity, stage, input, messages) do
@@ -83,7 +82,10 @@ defmodule Ipse.Extensions.Projection do
       end)
 
     registered? = match?([%{"metadata" => %{"extensions" => [_ | _]}} | _], events)
-    if extensions? or registered?, do: validate_extension_events(events), else: :ok
+
+    with :ok <- Ipse.Extensions.Invocation.validate_events(events) do
+      if extensions? or registered?, do: validate_extension_events(events), else: :ok
+    end
   end
 
   defp validate_extension_events(events) do
@@ -129,29 +131,7 @@ defmodule Ipse.Extensions.Projection do
     end)
   end
 
-  def identity_valid?(identity) when is_map(identity) do
-    Enum.sort(Map.keys(identity)) == Enum.sort(@identity_keys) and
-      Ipse.Extension.validate(identity) == :ok and
-      is_binary(identity["instance"]) and
-      Regex.match?(~r/\A[a-z][a-z0-9_-]{0,63}\z/, identity["instance"]) and
-      is_binary(identity["artifact"]) and
-      Regex.match?(
-        ~r/\A(?:[a-f0-9]{64}|builtin:[a-z][a-z0-9_-]{0,63}:[1-9][0-9]{0,3})\z/,
-        identity["artifact"]
-      ) and
-      Enum.all?(~w(artifact_sha256 options_sha256 host_sha256), &hash?(identity[&1])) and
-      identity["sdk"] === 1 and identity["protocol"] === 1 and identity["generation"] === 1 and
-      is_list(identity["capabilities"]) and Enum.all?(identity["capabilities"], &(&1 in @stages)) and
-      length(identity["capabilities"]) == length(Enum.uniq(identity["capabilities"])) and
-      is_integer(identity["order"]) and identity["order"] in 0..1000 and
-      identity["lifetime"] in ~w(session persistent) and
-      is_boolean(identity["allow_children"]) and
-      (is_nil(identity["expires_at"]) or
-         (is_integer(identity["expires_at"]) and identity["expires_at"] >= 0)) and
-      runtime_valid?(identity["runtime"])
-  end
-
-  def identity_valid?(_), do: false
+  def identity_valid?(identity), do: Ipse.Extensions.Identity.valid?(identity)
 
   defp validate_event(%{"type" => "extension_transform_intent"} = event, state, registered) do
     id = event["request_id"]
@@ -190,6 +170,18 @@ defmodule Ipse.Extensions.Projection do
     else
       _ -> @invalid
     end
+  end
+
+  defp validate_event(%{"type" => type}, state, _registered)
+       when type in ~w(extension_invocation_intent extension_invocation_result) do
+    if is_nil(state.active), do: {:ok, state}, else: @invalid
+  end
+
+  defp validate_event(%{"type" => "cancelled"}, state, _), do: {:ok, %{state | active: nil}}
+
+  defp validate_event(%{"type" => "turn_finished", "status" => status}, state, _)
+       when status != "ok" do
+    {:ok, %{state | active: nil}}
   end
 
   defp validate_event(%{"identity" => _, "stage" => _, "request_id" => _}, _state, _registered),
@@ -299,11 +291,4 @@ defmodule Ipse.Extensions.Projection do
     do: result["prefix"] <> input <> result["suffix"]
 
   defp hash?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{64}\z/, value)
-
-  defp runtime_valid?(runtime) when is_map(runtime),
-    do:
-      Enum.sort(Map.keys(runtime)) == ~w(architecture elixir erts otp) and
-        Enum.all?(Map.values(runtime), &(is_binary(&1) and byte_size(&1) in 1..256))
-
-  defp runtime_valid?(_), do: false
 end

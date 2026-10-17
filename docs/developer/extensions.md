@@ -3,13 +3,17 @@
 Research reviewed on 2026-10-16 against repository `3ad33b3`. This is the P22
 design proposal; implementation was subsequently authorized for P22–P25.
 The [artifact contract](extension-artifacts.md) documents the first implemented
-API. Other names and limits below remain proposed contracts. Existing skills, explicit
+API. The implemented [hooks](extension-hooks.md), [typed invocations](extension-invocations.md),
+[usage ledger](usage-accounting.md) and [private text channel](text-streams.md)
+document subsequent increments. Other names and limits below remain proposed contracts. Existing skills, explicit
 MCP tools and provider adapters remain available alongside the
 [initial session hooks](extension-hooks.md).
 The operator's subsequent bundled, third-party and generated-feature scenarios
 are exercised in [scenario analysis](extension-scenarios.md). That review replaces
 the original rebuild-only loading assumption with a backend-independent SDK,
-immutable artifacts and scoped activation. Activation mechanisms are still planned.
+immutable artifacts and scoped activation. Inert local import and explicit
+new-session activation are implemented; remote acquisition, hot activation and
+the remaining SDK coverage gates are still planned.
 
 ## Recommendation
 

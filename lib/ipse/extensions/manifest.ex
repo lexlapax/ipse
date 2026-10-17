@@ -19,6 +19,7 @@ defmodule Ipse.Extensions.Manifest do
       "entrypoint" => @text,
       "license_file" => @text,
       "options_schema" => %{"type" => "object"},
+      "exports" => %{"type" => "object"},
       "capabilities" => %{"type" => "array", "maxItems" => 32, "items" => @text},
       "files" => %{
         "type" => "array",
@@ -66,6 +67,7 @@ defmodule Ipse.Extensions.Manifest do
            Regex.match?(~r/\A[A-Z][A-Za-z0-9_]*(\.[A-Z][A-Za-z0-9_]*)*\z/, manifest["entrypoint"]),
          :ok <- Schema.validate_schema(manifest["options_schema"]),
          true <- manifest["options_schema"]["type"] == "object",
+         :ok <- Ipse.Extensions.Catalog.validate(manifest["exports"], manifest["capabilities"]),
          true <- valid_files?(manifest),
          true <- unique?(manifest["capabilities"]),
          true <-

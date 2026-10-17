@@ -36,6 +36,11 @@ it does not implement a general accounting framework or pricing service.
 P22A6's private text channel adds no dependency. It reuses OTP GenServer calls,
 owner/consumer monitors, bounded maps/queues and timers; it does not install a
 streaming framework, codec or media runtime.
+P22A7 catalogs and durable invocation receipts add no dependency. They reuse
+Jason (including the existing duplicate-key-safe manifest decoder), JSONSchex
+through the bounded schema adapter, OTP maps/crypto/owned tasks and the existing
+worker supervisor. Custom code handles static namespaced registration and
+journal-specific source/approval/result binding, not a general plugin framework.
 P22A2's worker bridge reuses the current ERTS, Elixir, Jason and native stdio
 helper, adding no dependency. The synthetic independent artifact fixture uses
 the existing Elixir compiler in a separate VM. A small Ipse bootstrap implements

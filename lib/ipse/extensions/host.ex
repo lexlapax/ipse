@@ -47,4 +47,40 @@ defmodule Ipse.Extensions.Host do
       end
     end
   end
+
+  def invoke_export(stage, name, arguments, owner, job_ref) do
+    with {:ok, intent, entry} <-
+           GenServer.call(owner, {:extension_invoke_begin, job_ref, stage, name, arguments}),
+         {:ok, worker} <-
+           Worker.start(
+             owner: self(),
+             store: entry.store,
+             digest: entry.identity["artifact"],
+             trusted: entry.identity["artifact"],
+             artifact_sha256: entry.identity["artifact_sha256"],
+             options: entry.options
+           ) do
+      try do
+        with {:ok, _} <- Worker.call(worker, "initialize", entry.options),
+             {:ok, response} <- Worker.call(worker, stage, intent["payload"]),
+             {:ok, event} <- Ipse.Extensions.Invocation.build_result(intent, response),
+             :ok <- Worker.close(worker) do
+          {:extension_invocation_result, event}
+        else
+          _ -> invocation_unknown()
+        end
+      after
+        if Process.alive?(worker), do: Worker.close(worker)
+      end
+    else
+      _ -> invocation_unknown()
+    end
+  catch
+    :exit, _ -> invocation_unknown()
+  end
+
+  defp invocation_unknown,
+    do:
+      {:unknown,
+       "Extension outcome unknown after refusal, failure or interruption. Inspect its receipt before retrying; no callback was replayed."}
 end

@@ -1,9 +1,10 @@
 # Extensions
 
-Ipse supports explicitly selected prompt annotations and completed-answer
-presentation hooks. Both shipped examples are **disabled by default**. Independent
-local artifacts use the same SDK in separate Elixir VMs. Import and discovery
-remain inert; configuration trust and activation are separate.
+Ipse supports explicitly selected prompt/presentation hooks and manifest-declared
+tools, operator commands and standalone typed services. Both shipped hook examples
+are **disabled by default**. Independent local artifacts use the same SDK in
+separate Elixir VMs. Import and discovery remain inert; configuration trust and
+activation are separate.
 
 ## Visible-text clients
 
@@ -77,10 +78,11 @@ Merge these top-level fields into the operator's version-1
 ```
 
 For independent code, replace the built-in reference with its reviewed 64-character
-digest and supply its declared options/capabilities. Current session admission
-supports `transform.prompt` and `transform.presentation` only; unsupported
-capabilities fail explicitly. No tool, command, service or automatic memory API
-is exposed by this increment. Do not put credentials in extension options.
+digest and supply its declared options/capabilities. Supported capabilities are
+`transform.prompt`, `transform.presentation`, `invoke.tool`, `invoke.command`
+and `invoke.service`; unsupported capabilities fail explicitly. Invocation
+exports require inert argument/result schemas in the artifact manifest. Do not
+put credentials in extension options. No automatic memory backend is selected.
 
 Trust declarations are separate from instances and may appear only in operator
 configuration. Project configuration cannot grant trust, including an empty trust
@@ -142,8 +144,9 @@ session memory API.
 
 ## Recovery and execution boundaries
 
-Resume pins exact artifact/options, order/lifetime, VM components, host API digest
-and generation. Required missing/tampered/incompatible code, changed selection
+Resume pins exact artifact/options, catalog, configuration source/scope,
+order/lifetime, VM components, host API digest and generation. Required
+missing/tampered/incompatible code, changed selection
 or corrupt projections refuse resume before journal repair. Committed projections
 restore without invoking callbacks; interrupted intents are never automatically
 replayed. A resumed session stays idle until fresh operator input. Source changes
@@ -167,7 +170,30 @@ Workers inherit no credential environment. Trusted executable code still has
 the operator's OS/filesystem access; ownership, deadlines and process-group
 cancellation do not themselves provide an OS sandbox. Initialize/transform
 callbacks must follow the SDK's effect-free contract; arbitrary trusted programs
-cannot be constrained by a return-value schema alone. Host effect/tool/service
-APIs, broader lifecycle observation, live controls and the extension-only
+cannot be constrained by a return-value schema alone. Host action proposals,
+state/context, worker service composition, broader lifecycle observation,
+live controls and the extension-only
 memory/workflow proof remain [P22 work](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
 See the [implemented hook contract](../developer/extension-hooks.md).
+
+## Tools, commands and services
+
+An enabled artifact's declared tools appear as `ext__INSTANCE__ID` in the model
+catalog. Every invocation needs normal full argument approval unless explicitly
+enabled with session-wide approval; headless execution is denied without `--yes`.
+Malformed arguments and duplicate native call IDs refuse code initialization.
+
+In interactive chat, `/ext` lists the active catalog locally. Invoke a declared
+command explicitly with `/ext ext__INSTANCE__ID {"text":"example"}` using its
+actual schema. This needs no model request, displays the returned JSON separately
+and does not overwrite the assistant answer. Embedded callers can invoke a typed
+service with `Session.invoke_export/4`; worker-to-worker composition is not yet
+available. Commands/services are admitted only while idle.
+
+These callbacks return schema-checked values, not executable host actions.
+Intent is synced before executable startup; result is synced after validation
+and confirmed worker cleanup. Invalid output/crash/interruption has an unknown
+outcome and is never retried automatically. Resume restores committed receipts
+without callback execution, including a result committed just before its ordinary
+tool-message record. Up to 10,000 invocations fit one session; overflow refuses
+admission. See [SDK schemas, bounds and recovery](../developer/extension-invocations.md).

@@ -32,6 +32,13 @@ the next feature sequence on 2026-10-15:
 | [P24](#p24-voice-and-realtime-media) | Voice extensions and owned realtime/media capabilities | Authorized; follows owned stream/provider foundation |
 | [P25](#p25-optional-knowledge-extensions) | Default-off working/long-term memory, research, graph and RAG | Authorized; research gates precede implementation selection |
 
+After P22–P25 are complete, the operator requested changing Ipse's repository
+license from MIT to Apache-2.0. This is the final authorized follow-up, not an
+early change to the active extension work. Replace the project license and
+bundled copies, update current documentation and packaging notices, and verify
+artifact identity/package checks. Preserve third-party licenses and historical
+provenance. Commit and push the verified license transition separately.
+
 Feature completion does not close every live provider acceptance check. On
 2026-10-15, installed Ollama `qwen3.5:9b`, Anthropic `claude-haiku-4-5`, and
 OpenAI API `gpt-4.1-mini` passed basic live acceptance, compaction, native local
@@ -1070,6 +1077,15 @@ Source/package fixtures consume raw visible output alongside completed formattin
 It is separate from droppable diagnostics and excludes summaries/native reasoning.
 Installed-worker SDK access follows the generic host capability work; no audio
 interface is claimed by a text-only channel. Broader P22 and P23–P25 remain active.
+
+P22A7 implements inert manifest-declared tool/command/service catalogs,
+scope/source/export pins and owned generic value-only invocation. Descriptors
+are checked before executable activation. Names/schema/duplicate native calls,
+full tool approval, intent-before-initialization and cached result recovery are
+validated; commands/services need no model request. The terminal's `/ext` lists
+the catalog and `/ext NAME JSON_OBJECT` invokes an operator command. See the
+[invocation contract](developer/extension-invocations.md). Host action proposals,
+state/context, service composition, workflows and observability remain P22 work.
 
 Acceptance:
 

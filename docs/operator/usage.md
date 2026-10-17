@@ -527,19 +527,20 @@ model assessments, not automatic truth or freshness guarantees.
 ## Extension and debugging roadmap
 
 Skills, configured MCP tools and provider adapters are available today. General
-lifecycle extensions, prompt/output transform configuration, cross-session memory
-adapters and an operator trace-export interface are proposed in
-[P22](../plan.md#p22-extension-scaffold-and-lifecycle-hooks), not available CLI
-options. The [extension research](../developer/extensions.md) distinguishes those
+lifecycle observation, cross-session memory adapters and an operator trace-export
+interface remain proposed in [P22](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
+Scoped prompt/output transforms and typed tool/command/service invocations are
+implemented; see [current controls](extensions.md). The
+[extension research](../developer/extensions.md) distinguishes the remaining
 proposals from current behavior. P19 supplies local diagnostics for long-session
 recovery; the [observability design](../developer/observability.md) separates
 sanitized diagnostics from private session journals and raw developer traces.
 No extension script, service, exporter or dependency is installed by this roadmap.
 
-P22 plans three separate operations: acquire/build an immutable package, install
+P22 separates three operations: acquire/build an immutable package, install
 and review its executable scope, then enable/configure an instance for a session.
-Bundled precompiled examples will be default-off and selectable through generic
-configuration/flags. Independently built packages will use an owned worker and
+Bundled precompiled examples are default-off and selectable through generic
+configuration/flags. Independently built packages use an owned worker and
 local import without rebuilding Ipse. Remote download/build assistants follow
 later against the same contracts. Project configuration may select only an
 operator-approved subset; unknown IDs never trigger an automatic install.
@@ -555,9 +556,11 @@ lifetime identity and refuses unavailable or incompatible required code.
 A loaded skill, repository instruction or generated feature cannot grant action
 permission or trust itself. In-VM extensions and trusted local worker programs
 have the user's OS access; separate workers/timeouts are not an OS sandbox. These
-remain proposed activation procedures. [Inert import/inspection commands and scoped
+use the implemented activation procedures. [Inert import/inspection commands and scoped
 selection data](extensions.md) are available. Explicit selections can now run
-bounded prompt annotation/completed presentation hooks with pinned no-replay resume.
+bounded prompt annotation/completed presentation hooks and typed value-only
+tools/commands/services with pinned no-replay resume. `/ext` lists the catalog;
+`/ext NAME JSON_OBJECT` invokes a declared operator command without a model request.
 Broader SDK capabilities and live controls remain in progress. See the [scenario analysis](../developer/extension-scenarios.md) and
 [P22 delivery gates](../developer/extensions.md#delivery-sequence-and-extension-only-proof).
 
@@ -574,8 +577,9 @@ source fixtures can be inspected with Mix test tracing; bounded BEAM tracing and
 extension-conformance procedures are part of P22, while richer viewers/IDE setup
 remain optional. See [controls and debugging](../developer/observability.md).
 
-Visible text already streams in chat. P22 will add a bounded private subscription
-for extensions/clients. P23 plans cost/report extensions over normalized usage and
+Visible text already streams in chat. Embedded clients can explicitly subscribe
+to the [bounded private channel](../developer/text-streams.md); installed-worker
+handles remain P22 work. P23 plans cost/report extensions over normalized usage and
 host budget enforcement; context bytes are not tokens or a bill. P24 plans
 STT/text-agent/TTS and realtime media with explicit provider/device/billing choices.
 Neither voice nor token-cost reporting is implemented today. See

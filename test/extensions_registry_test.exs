@@ -62,6 +62,20 @@ defmodule Ipse.Extensions.RegistryTest do
     assert entry.identity["artifact"] == "builtin:prompt-annotation:1"
     assert entry.identity["options_sha256"] == Ipse.Compaction.digest([%{"text" => "note"}])
     assert byte_size(entry.identity["host_sha256"]) == 64
+    assert entry.identity["scope"] == "operator"
+
+    assert entry.identity["source_sha256"] ==
+             Ipse.Extensions.Manifest.sha256("/fixture/operator.json")
+
+    assert entry.identity["exports_sha256"] == Ipse.Extensions.Catalog.digest(entry.exports)
+
+    refute Registry.valid_entries?(%{
+             extensions: [put_in(entry, [:identity, "scope"], "untrusted")]
+           })
+
+    refute Registry.valid_entries?(%{
+             extensions: [put_in(entry, [:identity, "exports_sha256"], String.duplicate("a", 64))]
+           })
 
     assert {:error, _} =
              Registry.prepare(catalog(%{"options" => %{"unsupported" => true}}), "/fixture/home")

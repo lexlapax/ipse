@@ -218,7 +218,10 @@ defmodule Ipse.Extensions.Worker do
   defp description_valid?(%{ready: true}, _result), do: true
 
   defp description_valid?(state, result),
-    do: result["sdk"] === 1 and result["capabilities"] === state.manifest["capabilities"]
+    do:
+      result["sdk"] === 1 and result["capabilities"] === state.manifest["capabilities"] and
+        (result["exports"] || Ipse.Extensions.Catalog.empty()) ==
+          (state.manifest["exports"] || Ipse.Extensions.Catalog.empty())
 
   defp launch(artifact) do
     root = to_string(:code.root_dir())

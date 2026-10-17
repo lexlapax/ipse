@@ -2,7 +2,8 @@
 
 P22A1 implements inert local directory snapshots in `Ipse.Extensions.Manifest`
 and `Ipse.Extensions.Store`. The [SDK/lifecycle design](extensions.md) remains the
-target beyond the two implemented [session hooks](extension-hooks.md). Import
+target beyond the implemented [session hooks](extension-hooks.md) and
+[typed invocations](extension-invocations.md). Import
 remains inert; explicit scoped selections can execute reviewed workers through
 the SDK below. Configuration and CLI procedures are described in
 [operator extensions](../operator/extensions.md).
@@ -57,8 +58,11 @@ licensing, dependencies or functional compatibility.
 
 Options reuse the bounded JSON Schema subset in
 [MCP schema policy](mcp.md#schema-subset), backed by existing JSONSchex with no
-external loader. Capability strings are declarations, not grants. The future
-host must negotiate its supported capabilities explicitly. Imported artifacts
+external loader. Capability strings are declarations, not grants. The session
+host negotiates its supported capabilities explicitly. The optional `exports`
+field declares inert version-1 tool/command/service descriptors and is required
+for the corresponding `invoke.*` capability; see the
+[catalog contract](extension-invocations.md#inert-declarations). Imported artifacts
 cannot claim the built-in backend or cause arbitrary host atom creation.
 
 ## Store behavior
@@ -105,7 +109,7 @@ trusted: digest, options: options)` explicitly admits execution; omitting or
 mismatching `trusted` refuses startup. This argument is a caller assertion, not a
 persisted trust record, signature or project authorization. The session/config
 host supplies it only after operator policy validation. Import/inspect/list CLI
-commands remain inert; the initial session host admits explicit prompt/presentation selections.
+commands remain inert; the session host admits explicit hooks and typed invocations.
 
 Admission revalidates the installed snapshot, runtime compatibility and options
 schema. The worker launches the current ERTS with existing Elixir/Jason/Ipse
@@ -128,7 +132,10 @@ def handle("transform.prompt", payload, state), do: {:ok, payload, state}
 ```
 
 `describe/0` returns a JSON object with SDK 1 and capabilities exactly matching
-the reviewed manifest. `init/1` receives validated options once; its private
+the reviewed manifest, including exact normalized `exports` for invocation
+artifacts. Missing exports normalize to empty only for transform-only code.
+This executable handshake is not a pre-execution certificate: startup intent
+precedes loading/describe/init. `init/1` receives validated options once; its private
 state stays in that worker. `handle/3` receives a declared capability string and
 bounded JSON object, returning a JSON object plus new private state. Arbitrary
 runtime terms are permitted only in private state. Public objects use the
@@ -155,8 +162,9 @@ failed callbacks are not restarted/replayed. `Worker.close(pid)` reports the
 native helper's cleanup result. Worker status formatting includes only readiness,
 sequence and traffic counters, never options/payloads. P22A4's
 [session host](extension-hooks.md) adds pinned activation identity and durable
-prompt/display projections. The SDK still exposes no host effect/approval,
-tool/command/service or scoped state/job interface; those are later P22 increments.
+prompt/display projections; P22A7 adds [static catalogs and value-only
+invocations](extension-invocations.md). Host action proposals, service composition
+and scoped state/jobs remain later P22 increments.
 
 `test/extensions_worker_test.exs` compiles a uniquely named independent artifact
 with the existing Elixir compiler in a separate VM. It verifies inert import,
