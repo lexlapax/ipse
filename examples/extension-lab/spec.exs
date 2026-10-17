@@ -28,7 +28,9 @@ defmodule IpseLab.Spec do
     exports = %{
       "version" => 1,
       "tools" => Enum.map(~w(remember recall forget catchup), &export/1),
-      "commands" => Enum.map(~w(remember recall forget export workflow catchup), &export/1),
+      "commands" =>
+        Enum.map(~w(remember recall forget export workflow catchup), &export/1) ++
+          [descriptor("stats", object())],
       "services" => [],
       "jobs" =>
         Enum.map(

@@ -512,7 +512,8 @@ cannot be constrained by a return-value schema alone.
 
 Use the procedures above for implemented subscriptions, jobs, ordered recall and
 diagnostic controls; use the [lab walkthrough](extension-lab.md) for separately
-built memory/workflow artifacts. The broader lifecycle coverage audit and
-supervised review remain [P22 work](../plan.md#p22-extension-scaffold-and-lifecycle-hooks). Remote installers,
+built memory/workflow artifacts. The [coverage audit](../developer/lifecycle-events.md#supported-lifecycle-coverage)
+defines supported stages/views; [P22 status](../plan.md#p22-extension-scaffold-and-lifecycle-hooks)
+tracks hosted verification of the lab. Remote installers,
 build assistants and live activation are future capabilities. Current import and
 selection never install a dependency or silently switch providers.

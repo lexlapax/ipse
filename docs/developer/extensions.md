@@ -26,9 +26,11 @@ Current contracts are organized by responsibility:
 | Author conformance inputs | [Synthetic checks](extension-conformance.md), with normal trust/approval, scratch Sessions, explicit answers and content-free assertions |
 | Independent domain package | [Extension lab](extension-proof.md), with separately compiled artifacts, candidate core freeze and unchanged installed-runtime verification |
 
-The lifecycle/private-view/causal coverage audit, hosted lab verification and
-supervised review remain open. The independent lab covers the exercised domain
-seams, not the entire SDK. Synthetic dispatcher tracing and source-debugging
+The [lifecycle coverage audit](lifecycle-events.md#supported-lifecycle-coverage)
+records supported private/causal seams, and the independent lab includes a
+supervised extension-only authoring/review trial. Hosted verification of the
+current lab remains open. The proof covers exercised domain seams, not the entire
+SDK. Synthetic dispatcher tracing and source-debugging
 boundaries are documented under observability. The
 [plan](../plan.md#p22-extension-scaffold-and-lifecycle-hooks) owns current status;
 [testing](testing.md#current-evidence-and-next-checks) owns actual results.
@@ -508,7 +510,7 @@ service is permitted.
    through a synthetic subscriber using only the frozen SDK, including background
    indexing versus awaited recall and no-replay recovery.
    The [current lab evidence](extension-proof.md) records the candidate freeze,
-   33 source/installed assertions and remaining platform/review gates; it does
+   41 source/installed assertions, supervised trial and remaining platform gate; it does
    not certify unexercised contracts or production algorithms.
 4. **P22D — observability and compatibility:** bounded local lifecycle sink,
    transform/event timing and drop counters; documented opt-in local BEAM tracing;

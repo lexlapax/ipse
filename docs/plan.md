@@ -1038,6 +1038,7 @@ persistent use. They are design walkthroughs, not execution proofs.
 | Child outcomes (A27) | Parent-owned start/result binding, authenticated worker completion, bounded metadata feed/history projection and distinct cleanup acknowledgment, with unknown/incomplete recovery | [Child event contract](developer/lifecycle-events.md#delegated-child-outcomes) |
 | Ephemeral text sources (A28) | Negotiated v2 text delivery, broker epochs, fresh stream/range identity, distinct consumer sequence, bounded metadata/private projections and unchanged v1 admission/recovery | [Stream event contract](developer/stream-events.md) |
 | Independent domain proof (A29) | Seven separately compiled artifacts exercise scoped memory/graph extraction, recall, questions/workflows, history/deduplication/forget and private tool/text observers against candidate core `3b0ef78`; unchanged installed Linux archive, temporary CLI selection and persistent configuration verified | [Proof scope](developer/extension-proof.md), [operator lab](operator/extension-lab.md) |
+| Lifecycle audit and supervised extension change (A30) | Supported/unsupported boundaries audited; frozen release authored an operator-only read-only stats command under three separately approved edits, followed by a fresh scoped review, 41 source/installed assertions and unchanged idle resume | [Coverage audit](developer/lifecycle-events.md#supported-lifecycle-coverage), [live trial](developer/testing.md#supervised-extension-only-trial-2026-10-17) |
 
 The [verification guide](developer/testing.md#current-evidence-and-next-checks)
 distinguishes source fixtures, extracted-package baselines, hosted platform
@@ -1046,20 +1047,24 @@ seams; it does not complete P22 or establish production knowledge quality.
 
 ### Remaining completion work
 
-Audit the [shared lifecycle taxonomy](developer/lifecycle-events.md) against the
-acceptance contract below: identify supported private views and actual causal
-links at each stable boundary, implement any required gaps, and explicitly refuse
-unsupported subscriptions. Notifications, ordered transforms, live feeds and
-effectful jobs share occurrence identity without sharing authority. A local
-consumer needs no event broker; remote bridges need separately negotiated egress,
-acknowledgment, disconnect and catch-up contracts.
+The [shared lifecycle audit](developer/lifecycle-events.md#supported-lifecycle-coverage)
+records exact private views, actual causal links, legacy absences and unsupported
+stages at each stable boundary. It found no additional core seam needed by the
+specified P22 scenarios. Notifications, transforms, feeds and effectful jobs share
+vocabulary without sharing authority; remote bridges still require negotiated
+egress, acknowledgment, disconnect and catch-up contracts.
 
-The independent lab freezes candidate core at `3b0ef78` and has passed its 33
-synthetic assertions in source and an unchanged installed Linux release, including
-domain catch-up/deduplication and stale-write rejection after forget. Finish the
-hosted Linux/macOS proof and independently reviewed supervised trial. Any core gap
-found by the audit needs a new candidate freeze and compatibility evidence; do not
-retroactively claim the historical proof covers it. See the
+The independent lab freezes candidate core at `3b0ef78` and passes 41 synthetic
+assertions in source and an unchanged installed Linux release. A frozen release
+also authored a two-file extension change in a separate worktree under individual
+edit approval, followed by a separate read-only review and supervisor verification.
+Both shipped hooks ran in both live sessions; idle resume changed neither journals
+nor source. The remaining gate is hosted verification of the current lab and
+canonical bundle-path correction: `2874da0` passed Ubuntu, while macOS passed
+source/native/ordinary package checks but the new verifier mistook `/private/var`
+for a different runtime path. The corrected verifier still rejects system tools.
+Any future core change requires a new candidate freeze and compatibility evidence;
+do not extend this historical proof by assertion. See the
 [delivery sequence and coverage gate](developer/extensions.md#delivery-sequence-and-extension-only-proof)
 and [actual evidence](developer/testing.md#current-evidence-and-next-checks).
 

@@ -5,8 +5,9 @@ P22 lifecycle design with implemented journal-source, runtime-wait and prompt/an
 [event jobs](extension-event-jobs.md) for approved actions, awaited recall and
 after-turn maintenance. Prompt/answer barriers and
 [live scoped feeds](extension-feeds.md) are implemented, including
-[admitted-tool input/results](tool-events.md). Broader private views and full
-causal coverage remain pending.
+[admitted-tool input/results](tool-events.md). The
+[coverage audit](#supported-lifecycle-coverage) distinguishes stable seams from
+unsupported stages and incomplete legacy correlations.
 Existing [transforms](extension-hooks.md),
 [invocations/actions](extension-host-calls.md), [context](extension-context.md)
 and [visible-text delivery](text-streams.md) retain their current wire contracts.
@@ -43,7 +44,7 @@ building block for selected notifications and the remaining delivery contracts.
 | Needed by a prompt-driven knowledge graph | Current support | Remaining foundation |
 | --- | --- | --- |
 | Read prompt text | Selected transforms, read-only original/final-effective subscriptions and source-bound jobs with explicit capabilities | Broader private lifecycle views and continuous private feeds |
-| Observe host activity | Exact live metadata and separately granted admitted-tool views, bounded queues and explicit incomplete closure; installed consumers verified | Other private views and full causal source coverage audit |
+| Observe host activity | Exact live metadata and separately granted admitted-tool views, bounded queues and explicit incomplete closure; installed consumers verified | Other private views require the explicit enhancements identified by the coverage audit |
 | Extract entities | Owned prompt jobs can run deterministic extraction | Model work needs a separately admitted, accounted request capability |
 | Store derived facts | Prompt jobs use normal approved state actions with source-bound invocation receipts | Production storage adapters and complete forgetting policies |
 | Add recalled evidence to an answer | Before-request jobs publish bounded attributed context into a frozen request snapshot; installed lab exercises explicit history catch-up | Broader context seams and production recall quality |
@@ -56,6 +57,48 @@ performing untracked I/O inside either callback would bypass the intended host
 contract. Worker isolation alone does not prevent reviewed executable code from
 using ordinary OS permissions; capability checks govern supported host APIs and
 do not constitute a new OS sandbox.
+
+## Supported lifecycle coverage
+
+This audit describes candidate core `3b0ef78`, exercised by the independent lab
+at `2874da0`. It checks the actual `Lifecycle.Event`/`Metadata` projectors,
+`Subscriptions` and `Feeds` declaration allowlists, history grants, runtime/tool/
+child source validators and Session's synced record/delivery boundaries. The
+table is the supported surface, not a promise that every internal function emits
+a callback. An unavailable stage/view is refused rather than synthesized from a
+nearby fact. A source ID identifies an occurrence; delivery, invocation and action
+IDs identify separate attempts to consume or act on it.
+
+| Boundary | Implemented observation or hook | Causal/private limits |
+| --- | --- | --- |
+| Configuration/session | Inert registry/configuration inspection; `session.created` in recorded history; opt-in epoch start/resume/logical close | Initialization/close facts are outside live-feed enrollment. No callback can rewrite configuration, trust or auth. Prior unrecorded epochs stay absent |
+| Prompt admission | Ordered `transform.prompt`; original/effective `notify` or `job`; recorded expanded/intermediate projections | Selected prompt markers bind actual turns; each committed projection is its own occurrence. No unrestricted prompt wildcard, implicit private grant or synthetic prompt-refusal event |
+| Context assembly | Bounded caller-owned `context.publish`, awaited before-request recall, frozen request snapshot; workspace/catalog/extension metadata | Extension snapshot binds the request. Older workspace/catalog facts expose counts without invented request/turn links. No complete private system-message subscription |
+| Model execution | Admitted/usage/finished/measured metadata, actual request/attempt/parent identities and independent durable accounting | Usage metadata does not expose counters or pricing through a generic private feed. Accounted extension-origin model requests and budget admission belong to P23; no hidden inference in callbacks |
+| Visible output/answer | Negotiated ephemeral text frames; ordered `transform.presentation`; committed original/presented answer notifications/jobs | Text ranges have broker/stream identity, not journal offsets. The completed answer binds the effective prompt and native request. No hidden reasoning, provider-native payload or audio access |
+| Tools/approvals | Opt-in admitted-tool intent/outcome metadata and separately granted private input/result feed/history; operator wait start/finish | Host tool IDs bind actual admitted request/turn/call and source facts. Denied/invalid/unstarted calls have no fabricated execution event. No proposal/validation veto callback or approval-granting hook |
+| Operator questions | Waiting/answered/closed metadata; actual wait/source identity; explicit extension question continuation | Generic question metadata omits text, answer and raw call ID. Only the admitted question continuation receives its validated answer. Invalid/stale replies do not become accepted events or approvals |
+| Children | Recorded start/result metadata and live feed/history; authenticated parent-side result and cleanup acknowledgment | Completion binds its actual start source and available parent request/turn. Child subscriptions require independent permitted selection; parent private grants do not transfer |
+| Compaction | Committed/refused metadata and separately accounted compaction requests; cached checkpoint validation | No hook may replace native continuation or delete evidence. Legacy commits without request/turn links remain unlinked; prepare/veto/private-summary subscriptions are unsupported |
+| Turn settlement | Settling/finished/cancelled metadata and host-owned after-turn jobs | Settlement retains its actual turn ID; older generic finish/cancel facts have no invented link. A final notification cannot be required for cleanup or effect completion |
+| Owner death/close | Owned resource cancellation, recorded logical closure where ownership still permits it, incomplete open epochs after abrupt loss | No reliable last callback can run after untrappable death or loss of journal ownership. Cleanup confirmation and VM exit are separate facts; incomplete work is not replayed |
+| Custom/external events | No worker-origin host facts or arbitrary publication; local envelopes provide a future bridge boundary | Namespaced domain publication, remote subscription transport, media and concurrent effectful scheduling need explicit versioned contracts, not new strings in existing declarations |
+
+Durable observation uses exact supported versions/views. Notify/job declarations
+select only original/effective prompt or completed-answer boundaries. Live feeds
+select the separate metadata allowlist plus admitted-tool private views; historical
+reads have separate view grants. Source recording, diagnostic capture, subscription
+delivery and action permission are independent switches. There is no global
+cross-session ordering or exactly-once guarantee for arbitrary external effects.
+
+The existing fixtures exercise unknown versions/modes/views refusing before
+initialization, private/metadata separation, physical source/causal validation,
+bounded queues and incomplete closure, disabled parity and inert resume. The
+[installed lab](extension-proof.md) proves the prompt-to-graph, catch-up, workflow
+and private tool/text paths without feature-specific host dispatch. This audit
+finds no additional core seam required by those exercised P22 scenarios. Consumers
+needing a row's unsupported capability require an explicit SDK enhancement;
+P23/P24 and P25's research gates remain responsible for their specified features.
 
 ## Internal journal source and prompt views
 
@@ -488,8 +531,9 @@ delayed write rejected after concurrent forget. Additional SDK fixtures cover
 fixed-range history pagination, private grants, gaps and inert catch-up resume.
 The installed lab adds domain deduplication, bounded catch-up, scopes, versions,
 question/workflow continuation, private tool/text consumers and pressure closure,
-without core changes or a release rebuild. Hosted lab checks, the full causal/private
-coverage audit and supervised independent review remain P22 gates. These checks
+without core changes or a release rebuild. A supervised extension-only trial also
+ran with separate read-only review. The [coverage audit](#supported-lifecycle-coverage)
+defines the stable seams; hosted verification of the current lab remains open. These checks
 do not establish production graph quality. P25 owns researched
 entity extraction, graph storage/retrieval and quality comparisons.
 

@@ -93,6 +93,22 @@ defmodule IpseLab.Proof do
 
       cfg = config(c)
       {pid, tag} = start(c, cfg)
+
+      stats_exports =
+        Session.exports(pid)["entries"] |> Enum.filter(&(&1["name"] == "ext__memory__stats"))
+
+      checked(
+        "stats_is_operator_command_only",
+        Enum.map(stats_exports, & &1["stage"]) == ["invoke.command"]
+      )
+
+      stats(
+        c,
+        pid,
+        %{"sources" => 0, "entities" => 0, "links" => 0, "revision" => 0, "deleted" => true},
+        "missing"
+      )
+
       original = "entity: Ada; link: Ada -> OTP"
       prompt(pid, original)
       first_messages = model(tag)
@@ -109,6 +125,19 @@ defmodule IpseLab.Proof do
 
       first = command(pid, "export", %{})["value"]
       graph = first["value"]
+
+      stats(
+        c,
+        pid,
+        %{
+          "sources" => 1,
+          "entities" => 2,
+          "links" => 1,
+          "revision" => first["revision"],
+          "deleted" => false
+        },
+        "populated"
+      )
 
       checked(
         "graph_extraction",
@@ -241,6 +270,23 @@ defmodule IpseLab.Proof do
         "delete_tombstone_blocks_automatic_revival",
         command(shared, "export", %{})["value"]["deleted"]
       )
+
+      deleted = command(shared, "export", %{})["value"]
+
+      stats(
+        c,
+        shared,
+        %{
+          "sources" => 0,
+          "entities" => 0,
+          "links" => 0,
+          "revision" => deleted["revision"],
+          "deleted" => true
+        },
+        "deleted"
+      )
+
+      checked("stats_preserves_tombstone", command(shared, "export", %{})["value"] == deleted)
 
       id = Session.info(shared).id
       :ok = Session.close(shared)
@@ -638,6 +684,23 @@ defmodule IpseLab.Proof do
     :ok = Session.invoke_export(pid, :command, "ext__#{instance}__#{command}", arguments)
     :ok = drive(pid, :allow)
     Session.info(pid).extension_result["value"]
+  end
+
+  defp stats(c, pid, expected, stage) do
+    before = events(c, pid)
+    count = Session.info(pid).accounting["request_count"]
+    result = command(pid, "stats", %{})
+    added = events(c, pid) |> Enum.drop(length(before))
+
+    actions =
+      for %{"type" => "extension_action_intent", "request" => request} <- added, do: request["op"]
+
+    checked("stats_" <> stage, result == %{"status" => "ok", "value" => expected})
+
+    checked(
+      "stats_" <> stage <> "_read_only",
+      actions == ["state.get"] and Session.info(pid).accounting["request_count"] == count
+    )
   end
 
   defp drive(pid, policy) do

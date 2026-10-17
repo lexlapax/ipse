@@ -99,7 +99,19 @@ defmodule IpseLab.PackageProof do
       true = cli["passed"] and cli["safe_to_continue"] and cli["case_count"] == 2
 
       expression =
-        "found = for name <- ~w(elixir erl mix rustc), path = System.find_executable(name), path != nil, not (name == \"erl\" and String.starts_with?(path, #{inspect(release <> "/erts-")})), do: {name, path}; unless found == [], do: raise(\"Unexpected system toolchain executables: \" <> inspect(found)); Code.require_file(#{inspect(Path.join(__DIR__, "proof.exs"))}); IO.puts(:json.encode(IpseLab.Proof.run(#{inspect(artifacts)})))"
+        """
+        canonical = fn path ->
+          {:ok, resolved} = Ipse.WorkspaceContext.canonical_path(path)
+          resolved
+        end
+        bundled = #{inspect(Path.join(release, "erts-*/bin/erl"))} |> Path.wildcard() |> Enum.map(canonical)
+        found = for name <- ~w(elixir erl mix rustc),
+                    path = System.find_executable(name), path != nil,
+                    not (name == "erl" and canonical.(path) in bundled), do: {name, path}
+        unless found == [], do: raise("Unexpected system toolchain executables: " <> inspect(found))
+        Code.require_file(#{inspect(Path.join(__DIR__, "proof.exs"))})
+        IO.puts(:json.encode(IpseLab.Proof.run(#{inspect(artifacts)})))
+        """
 
       {output, status} =
         System.cmd(Path.join(release, "bin/ipse"), ["eval", expression],

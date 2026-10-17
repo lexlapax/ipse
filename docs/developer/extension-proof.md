@@ -26,7 +26,7 @@ privileged fixture instrumentation is not an extension API or a granted host PID
 
 | Artifact | Domain behavior | Host contracts exercised |
 | --- | --- | --- |
-| Memory, two versions | Deterministic `entity: Name` / `link: From -> To` extraction, scoped records, deduplication, recall/forget/export and a file workflow | Prompt jobs, typed tools/commands, CAS state, context receipts, questions, file actions and bounded history |
+| Memory, two versions | Deterministic `entity: Name` / `link: From -> To` extraction, scoped records, deduplication, recall/forget/export, read-only stats and a file workflow | Prompt jobs, typed tools/commands, CAS state, context receipts, questions, file actions and bounded history |
 | Lookup | Configurable literal synthetic corpus with a deliberate crash option | Typed value service, explicit operator route and required-recall failure |
 | Metadata | Prompt byte-count acknowledgment with no private view grant | Inert notify declaration, exact acknowledgment and private/hash exclusion |
 | Observer | Read-only usage consumer with a deliberate hang option | Independent feed queue, pressure closure/gap and no idle reenrollment |
@@ -74,13 +74,15 @@ executables are rejected. Archive SHA-256 must remain unchanged. Both runs compa
 the host's application BEAM bytes before/after the trial and confirm that the
 domain modules were never loaded into the host.
 
-The 33 assertions cover real graph/provenance, original/effective input distinction,
+The 41 assertions cover real graph/provenance, original/effective input distinction,
 awaited recall, frozen request context, explicit tools/commands, approved writes,
 questions without write permission, inert question/capture resume, repeated-prompt
 identity, deduplication, scoped persistence/isolation, concurrent versions, deletion
 and delayed-write conflict, required recall refusal, queue saturation, installed
-private-tool/text delivery and saved receipt validation. These are synthetic fixtures, not live model or retrieval
-quality measurements.
+private-tool/text delivery, saved receipt validation and read-only stats for
+missing/populated/deleted records. Stats is operator-only; the proof checks exact
+counts/metadata, one state read, no inference and an unchanged tombstone. These
+are synthetic fixtures, not live model or retrieval quality measurements.
 
 The final case deliberately crashes a required service. It proves that inference
 does not start and cleanup is not promoted to confirmed. The successful test
@@ -89,17 +91,30 @@ report therefore ends with `safe_to_continue: false` and
 isolated verifier VM exits. A matched negative case does not certify descendant
 containment or an arbitrary service's effects.
 
-Linux source and installed-release checks have run; hosted proof steps are added
-to both workflow jobs. See [current evidence](testing.md#current-evidence-and-next-checks)
-for actual results. The candidate source freeze is independently reviewable with
+Linux source and installed-release checks have run, including a symlinked temporary
+root. The verifier resolves the actual bundled Erlang executable before comparison;
+macOS's `/var` and `/private/var` aliases must not be mistaken for a system toolchain.
+Hosted proof runs on both workflow jobs. See
+[current evidence](testing.md#current-evidence-and-next-checks) for actual results.
+The candidate source freeze is independently reviewable with
 `git diff 3b0ef78 -- lib native`; future core-feature changes need their own
 compatibility checks rather than pretending this historical reference is current.
 
-## Remaining P22 gates
+## Supervised trial and remaining P22 gates
 
-The installed domain proof establishes exercised SDK seams. P22 still requires
-the remaining lifecycle-taxonomy/private-view/causal-coverage audit, hosted proof
-results and an independently reviewed supervised trial. Unsupported stages, custom
+The frozen release authored the read-only stats command in a separate candidate
+worktree using explicit ChatGPT subscription `gpt-6.1-sol`/high. Three exact edits
+were separately approved; a fresh read-only review session found no actionable
+issue within its two-file scope. The supervisor inspected the changes and added
+the independent runtime assertions above. Both shipped prompt/presentation hooks
+ran in both live sessions, with original/native text preserved and byte-identical
+idle resume. No core edit or release rebuild occurred. The
+[trial record](testing.md#supervised-extension-only-trial-2026-10-17) separates
+live authoring/review from synthetic runtime verification.
+
+The [lifecycle coverage audit](lifecycle-events.md#supported-lifecycle-coverage)
+identifies stable and unsupported seams. Hosted verification of the current lab
+and bundle-path correction remains the P22 completion gate. Unsupported stages, custom
 event publication, concurrent effectful jobs, remote installation and media stay
 explicit negotiated enhancements, not silently available callbacks. The
 [plan](../plan.md#p22-extension-scaffold-and-lifecycle-hooks) retains those gates.

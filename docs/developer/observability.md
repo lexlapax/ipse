@@ -261,8 +261,10 @@ is enabled. Committed runtime epoch/wait sources and negotiated private
 [text-event identity](stream-events.md) are implemented. Diagnostics do not acquire
 that private channel. The [independent lab](extension-proof.md) uses synthetic
 `:sys.get_state/1` inspection solely to verify acknowledged ephemeral counters;
-its domain workers receive no host PID or private state. Broader lifecycle/private
-coverage and supervised review remain [P22 gates](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
+its domain workers receive no host PID or private state. The
+[coverage audit](lifecycle-events.md#supported-lifecycle-coverage) defines current
+private/causal seams; [P22 status](../plan.md#p22-extension-scaffold-and-lifecycle-hooks)
+tracks remaining hosted verification.
 
 Twenty diagnostic fixtures cover off parity, privacy/source identity, stop, export scope,
 blocked/invalid sinks, owner-death VM/slot cleanup, rotation/aggregate bounds,

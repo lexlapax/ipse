@@ -61,6 +61,7 @@ In chat, explicit commands include:
 /ext ext__memory__remember {"text":"entity: Ada; link: Ada -> OTP"}
 /ext ext__memory__recall {"text":"Ada"}
 /ext ext__memory__export {}
+/ext ext__memory__stats {}
 /ext ext__memory__workflow {"path":"lab-note.txt"}
 /ext ext__memory__forget {"entity":"all"}
 ```
@@ -69,6 +70,9 @@ The memory state is project-scoped to this workspace and pinned artifact/instanc
 configuration source. Forget-all retains a tombstone and blocks recreation in that
 namespace; it does not erase journals or old request context. The lab's conservative
 deletion behavior is described in the [developer contract](../developer/extension-proof.md#capture-recall-and-deletion).
+`stats` reads counts plus the host revision/deleted flag without returning labels
+or source identities. Missing/deleted records return zero counts; the command
+does not recreate state, call lookup or publish context.
 
 For deliberate persistent selection, change only the memory/lookup instances to
 `enabled: true` and `lifetime: "persistent"` in that dedicated operator file.

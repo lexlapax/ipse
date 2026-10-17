@@ -23,7 +23,7 @@ defmodule Ipse.ExtensionLabTest do
     {output, status} = System.cmd(elixir, args, stderr_to_stdout: true)
     assert status == 0, output
     report = output |> String.split("\n", trim: true) |> List.last() |> Jason.decode!()
-    assert map_size(report["checks"]) >= 33
+    assert map_size(report["checks"]) >= 41
     assert Enum.all?(report["checks"], fn {_, passed} -> passed == true end)
     assert report["fixture_provider"] == "synthetic"
     assert report["safe_to_continue"] == false

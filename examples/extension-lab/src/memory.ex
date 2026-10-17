@@ -45,6 +45,9 @@ defmodule IpseLab.Memory do
       "export" ->
         read(Map.put(state, :phase, "export"))
 
+      "stats" when stage == "invoke.command" ->
+        read(Map.put(state, :phase, "stats"))
+
       "workflow" ->
         request = %{
           "op" => "operator.question",
@@ -212,6 +215,23 @@ defmodule IpseLab.Memory do
 
   defp continue("export", payload, state),
     do: finish("ok", payload["outcome"]["value"]["record"], state)
+
+  defp continue("stats", payload, state) do
+    record = payload["outcome"]["value"]["record"]
+    graph = if record["deleted"], do: empty(), else: record["value"] || empty()
+
+    finish(
+      "ok",
+      %{
+        "sources" => length(graph["sources"]),
+        "entities" => length(graph["entities"]),
+        "links" => length(graph["links"]),
+        "revision" => record["revision"],
+        "deleted" => record["deleted"]
+      },
+      state
+    )
+  end
 
   defp continue("recall", payload, state) do
     record = payload["outcome"]["value"]["record"]

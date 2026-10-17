@@ -206,6 +206,7 @@ and [runtime identity](#p1-runtime-identity-2026-10-15).
 
 | Checkpoint | Evidence | Scope and remaining limits |
 | --- | --- | --- |
+| Supervised extension-only change, Linux Serenity, 2026-10-17 | Frozen installed release authored operator-only stats in two files under three exact edit approvals; a fresh read-only review found no actionable issue in scope; 41 source/installed assertions, focused integration and all 632 native-suite tests passed (14 macOS exclusions), including symlinked temporary-root verification | Actual ChatGPT subscription `gpt-6.1-sol`/high, eight author and five reviewer requests; both shipped hooks and inert idle resume verified. Runtime assertions use synthetic data/model, not live graph quality |
 | Independent extension lab, Linux Serenity, 2026-10-17 | Seven artifacts compiled separately; 33 source and installed-release assertions passed, including real temporary CLI selection; eight focused tests and 632 native-suite tests passed with 14 macOS exclusions | Candidate core `3b0ef78` unchanged under `lib/`/`native/`; host BEAM bytes unchanged and domain modules never loaded in host. Synthetic extraction/corpus/model only; terminal expected service crash leaves cleanup unconfirmed and `safe_to_continue: false` |
 | Ephemeral text sources, Linux Serenity, 2026-10-17 | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters, 25 focused fixtures and 631 native-suite tests with 14 macOS exclusions passed; real dual-version source SDK fixture, CLI help and isolated demo passed | Negotiated embedded/independent-worker delivery, unchanged v1, shared range identity with unequal chunking, UTF-8/cancelled-pending positions, idle closure, malformed bindings, no-effect replies and inert resume; synthetic provider only |
 | Child outcomes, Linux Serenity, 2026-10-17 | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters, 55 focused fixtures and 623 native-suite tests with 14 macOS exclusions passed; serial/parallel source demos, CLI help and isolated demo passed | Authenticated parent-side result/cleanup receipts, correlation/privacy, timeout/cancellation, forged reports/source positions, exited queued-child approval refusal and inert incomplete resume; synthetic providers only |
@@ -214,7 +215,8 @@ and [runtime identity](#p1-runtime-identity-2026-10-15).
 | Runtime epochs/waits, Linux Serenity, 2026-10-17 | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters, 31 focused causal/recovery fixtures and 589 native-suite tests with 14 macOS exclusions passed; source fixture and isolated CLI demo passed | Recorded session/approval/question boundaries, private-source validation, disabled parity, explicit extension recording with capture off and child-loss interruption; synthetic providers only |
 | Explicit history, Linux Serenity, 2026-10-17 | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters, eleven focused history fixtures and 578 native-suite tests with 14 macOS exclusions passed | Own-session fixed ranges, separate private grants, budget gaps, source/contiguous-span validation, approval/question boundaries and inert resume; synthetic provider only |
 | Hosted child-outcome baseline `6b234c6` | [Ubuntu/macOS matrix, attempt 2](https://github.com/lexlapax/ipse/actions/runs/39031441379/attempts/2) passed all applicable steps: build, format, compile, tests, demo and extracted packages; macOS native/default experimental sandbox steps passed | Actual job/step conclusions inspected. Initial macOS concurrent-ring drain wait failed; unchanged failed-job retry passed. This baseline precedes v2 text sources and does not prove stronger containment or drain latency |
-| Hosted v2-text candidate `3b0ef78` | [Matrix run](https://github.com/lexlapax/ipse/actions/runs/39032443735) ended with Ubuntu success and macOS test failure | The older serial MCP batch test waited five seconds despite discovery and two connections each allowing ten seconds. Its aggregate assertion now allows 35 seconds, retaining call-order/result/cleanup checks; the correction and new installed lab await hosted verification |
+| Hosted v2-text candidate `3b0ef78` | [Matrix run](https://github.com/lexlapax/ipse/actions/runs/39032443735) ended with Ubuntu success and macOS test failure | The older serial MCP batch test waited five seconds despite discovery and two connections each allowing ten seconds. Its aggregate assertion now allows 35 seconds, retaining call-order/result/cleanup checks; macOS tests passed at the next baseline below |
+| Hosted lab baseline `2874da0` | [Matrix run](https://github.com/lexlapax/ipse/actions/runs/39036899179) passed Ubuntu including the installed lab; macOS passed tests, native enforcement, demo and ordinary package verification, then failed the new installed-lab path assertion | macOS resolved `/var/.../release/erts-.../bin/erl` through `/private/var`; the verifier incorrectly compared lexical prefixes. Current code compares canonical bundled executable paths, with Linux symlink-root verification passed; actual macOS confirmation remains pending |
 | Source/extracted compatibility | Credential-free demo, bundled extension/accounting/dual-version-text/lifecycle/local-ring/conformance/history/feed/tool-view fixtures, traced conformance CLI and serial/parallel child demos passed in Linux glibc-2.44 package verification with matching OTP 29.1.1 notices and utility-only PATH | APIs work without a system toolchain; source-debugger modules/debug information are absent. Primitive tool-view positions are synthetic. The separate lab adds installed private tool/text delivery and domain catch-up without changing archive SHA-256 `93f88a3ded9666e0b2c083699932b972ad36d538614c5ed54420b253b140196d` |
 | Provider acceptance | [Explicit live provider checks](#live-provider-acceptance-follow-up-2026-10-15) | Recorded account/model/platform combinations only; fixtures do not establish billing, hardware or arbitrary-model support |
 
@@ -378,16 +380,48 @@ inference stays unstarted, cleanup remains unconfirmed and no later domain
 scenario runs. Passing its assertions does not permit continued effects.
 Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4
 formatters, CLI help and isolated credential-free demo passed for this increment.
-Documentation review checked 96 Markdown documents and 1164 local file/heading
+Documentation review checked 96 Markdown documents and 1179 local file/heading
 links with no errors.
 
-P22 still needs the lifecycle/private-view/causal coverage audit, hosted lab
-verification and supervised review. Synthetic dispatcher tracing and documented source-debugging
-boundaries are implemented; no live GUI/editor debugger trial is claimed. The full
+The [lifecycle audit](lifecycle-events.md#supported-lifecycle-coverage) and supervised
+trial below address those P22 gates; hosted verification of the current lab remains
+open. Synthetic dispatcher tracing and documented source-debugging boundaries are
+implemented; no live GUI/editor debugger trial is claimed. The full
 [event/graph coverage gate](lifecycle-events.md#knowledge-graph-acceptance-proof)
 includes primitive failures and independent domain evidence; neither layer alone
 completes it. P23–P25 and the final license transition remain open; the [plan](../plan.md)
 owns acceptance/status.
+
+### Supervised extension-only trial (2026-10-17)
+
+The supervisor extracted the unchanged Linux archive at core `3b0ef78` and created
+a separate candidate worktree at `2874da0`. Its explicit ChatGPT subscription
+`gpt-6.1-sol`/high author session loaded the bundled self-development skill and
+evidence checklist, read the two relevant files and made three individually
+reviewed edits. Only `examples/extension-lab/spec.exs` and `src/memory.ex` changed:
+an empty-arguments, operator-only stats command uses the existing state-read
+continuation and returns counts/revision/deletion metadata. No core/native edit,
+dependency, shell command, candidate script, commit or push occurred in that session.
+
+A fresh session using the same frozen release/model loaded the review skill and
+checklist, read each target file once and returned no actionable finding within
+the specified read-only/no-disclosure/no-revival question. The reviewer noted the
+ordinary result schema is generic and did not claim runtime verification. The
+supervisor inspected the actual diff and added independent missing/populated/
+deleted-state assertions: exact returned fields, operator-only catalog, one
+`state.get`, no model request and an unchanged tombstone. The lab now passes 41
+assertions in source and the unchanged installed archive, including temporary CLI
+selection and a symlinked temporary root. These checks establish SDK behavior,
+not production extraction quality or a general correctness review of the whole memory example.
+
+Private journal inspection found eight author and five reviewer requests, all
+explicit subscription/model admissions; each session ran one prompt and one
+presentation transform. The effective prompt contained the configured annotation,
+the displayed answer contained the configured wrapper, and original assistant
+text remained unchanged. Both sessions closed successfully; separate idle resumes
+preserved journal bytes and candidate-file digests without prompting or executing
+work. Raw transcripts/authentication remain outside Git. Hosted results and native
+suite evidence are recorded above; Linux checks are not local macOS execution.
 
 ## Historical verification records
 

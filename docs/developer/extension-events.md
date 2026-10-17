@@ -211,7 +211,8 @@ they do not establish installed subscriber execution by themselves. See
 
 The separate [job contract](extension-event-jobs.md) now provides finite host
 actions, pre-request recall and after-turn maintenance. Remaining foundation work
-includes the broader private lifecycle/causal coverage audit and supervised review.
+is tracked against the [private/causal coverage audit](lifecycle-events.md#supported-lifecycle-coverage)
+and actual hosted verification; broader views remain explicit enhancements.
 The [history primitive](extension-history.md) and independent installed
 [domain catch-up proof](extension-proof.md) are implemented.
 [Diagnostic sinks](observability.md) have separate metadata capture/stop controls.

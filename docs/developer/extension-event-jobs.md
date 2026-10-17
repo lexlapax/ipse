@@ -197,7 +197,8 @@ domain extraction, deduplication, catch-up, forget and receipt-backed recall.
 The SDK offers
 explicit [history pages](extension-history.md) and separately enrolled
 [runtime epoch/wait facts](lifecycle-events.md#runtime-epochs-and-operator-waits).
-Neither activates new job triggers or automatic catch-up. The broader lifecycle
-coverage audit, production reindex policy and P23's model/budget admission remain
+Neither activates new job triggers or automatic catch-up. The
+[coverage audit](lifecycle-events.md#supported-lifecycle-coverage) identifies exact
+supported triggers; production reindex policy and P23 model/budget admission remain
 separate work. Optional
 [diagnostic capture](observability.md) does not gate these jobs or their receipts.
