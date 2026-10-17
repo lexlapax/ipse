@@ -95,6 +95,7 @@ are needed for tests or the demo.
 | Application supervision | `lib/ipse/application.ex` |
 | Session state, turn loop, approval, cancellation | `lib/ipse/session.ex` |
 | Bounded context checkpoints | `lib/ipse/compaction.ex` |
+| Canonical usage and shared admission | `lib/ipse/usage.ex`, `lib/ipse/usage/`, `lib/ipse/budget.ex`, `lib/ipse/budget/` |
 | Scoped workspace instruction snapshots | `lib/ipse/workspace_context.ex` |
 | Allowlisted application/provider/model facts | `lib/ipse/runtime_info.ex` |
 | Terminal client and option parsing | `lib/ipse/cli.ex` |

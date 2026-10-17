@@ -71,10 +71,10 @@ safe merely because the transport ended normally.
 
 These controls do not bound input tokens, request count, aggregate parallel work,
 all provider-side charges or an invoice. ChatGPT subscription has no supported
-request output field through the current public interface; future budget policy
-must represent that lack explicitly. Request admission quotas can remain useful
-without inventing an output-token guarantee. Atomic host reservations and generic
-accounted extension model requests remain P23 work.
+request output field through the current public interface. Optional
+[shared budget policy](budgets.md) refuses subscription output quotas, while
+request/input-reservation/estimated-money quotas remain independently selectable.
+Generic accounted extension model requests remain P23 work.
 
 ## Verification scope
 

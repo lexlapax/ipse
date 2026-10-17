@@ -133,14 +133,17 @@ defmodule Ipse.Profiles do
         profile = config.profiles[id]
 
         with :ok <- validate_profile(profile) do
-          Ipse.Provider.Limits.validate(%{
+          effective = %{
             provider: @providers[profile["provider"]],
             max_output_tokens:
               Ipse.Provider.Limits.narrow(
                 config[:max_output_tokens],
                 profile["max_output_tokens"]
               )
-          })
+          }
+
+          with :ok <- Ipse.Provider.Limits.validate(effective),
+               do: Ipse.Budget.Policy.runtime(Map.put(effective, :budget, config[:budget]))
         end
 
       true ->
@@ -172,6 +175,9 @@ defmodule Ipse.Profiles do
             :extensions,
             :parallel_child,
             :max_output_tokens,
+            :budget,
+            :budget_root,
+            :budget_checkpoint,
             :approval,
             :delegation_origin
           ])

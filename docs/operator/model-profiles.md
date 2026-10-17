@@ -80,8 +80,9 @@ selected child profile. Child journals record profile/role/provider/model/effort
 host routing facts accompany the untrusted child result. `/info` shows the active
 profile and effort, separately from provider-reported model identity.
 Child limits remain at most six model calls and 120 seconds, with bounded
-context/results; this is additional to parent work. A shared aggregate token/cost
-budget is not implemented yet. An inherited child keeps the parent's output cap;
+context/results; this is additional to parent work. A configured
+[session-tree budget](budgets.md) shares host reservations across parent and
+children, retaining uncertain liability. An inherited child keeps the parent's output cap;
 a selected child can narrow that cap and cannot remove
 or widen it. Routing an inherited cap to an unsupported provider refuses before
 delegation starts. No automatic fallback or separate summary routing is provided.

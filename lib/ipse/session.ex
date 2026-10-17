@@ -119,16 +119,19 @@ defmodule Ipse.Session do
          :ok <- Ipse.Observability.Config.runtime(config),
          :ok <- Ipse.Usage.configuration(config),
          :ok <- Ipse.Provider.Limits.validate(config),
+         :ok <- Ipse.Budget.Policy.runtime(config),
          {:ok, cwd} <- WorkspaceContext.canonical_path(requested_cwd),
          true <- File.dir?(cwd),
          {:ok, id, _events} <- open(dir, id, cwd, config),
          {:ok, _} <- Registry.register(Ipse.Registry, {dir, id}, nil),
          {:ok, lock} <- acquire_lock(Path.join(dir, id <> ".lock"), 10),
          {:ok, locked_events} <- Journal.load(dir, id),
+         {:ok, config} <- Ipse.Budget.Store.attach(config, dir, id, opts[:id] == nil),
          {:ok, _} <- restore_context(locked_events),
          :ok <- Ipse.Observability.Resources.validate(locked_events, id),
          :ok <- Ipse.Extensions.TextResources.validate_events(locked_events, id),
          :ok <- Subscriptions.validate_sources(dir, id, locked_events),
+         :ok <- Ipse.Budget.validate_sources(config, id, locked_events),
          :ok <- Journal.repair_tail(dir, id),
          {:ok, events} <- Journal.load(dir, id),
          {:ok, accounting} <- Ipse.Usage.restore(events, id),
@@ -2332,7 +2335,7 @@ defmodule Ipse.Session do
       owned_task(fn ->
         receive do
           :provider_start ->
-            request(config, messages, tools, fn event ->
+            emit = fn event ->
               case event do
                 {:text, text} when phase == :model ->
                   :ok = Ipse.TextStream.push(stream, request_id, text)
@@ -2344,6 +2347,10 @@ defmodule Ipse.Session do
                 _ ->
                   if phase == :model, do: send(owner, {:progress, job_ref, event})
               end
+            end
+
+            Ipse.Budget.run(config, s.active_request, emit, fn admitted, emit ->
+              request(admitted, messages, tools, emit)
             end)
         after
           5_000 -> {:error, "Provider dispatch was not admitted."}
@@ -3301,6 +3308,8 @@ defmodule Ipse.Session do
              "cwd" => cwd,
              "usage_version" => 1,
              "max_output_tokens" => config[:max_output_tokens],
+             "budget" => config[:budget],
+             "budget_root" => config[:budget_root],
              "provider" => to_string(config.provider),
              "model" => config.model,
              "sandbox" => to_string(Map.get(config, :sandbox, :off)),
@@ -3324,6 +3333,7 @@ defmodule Ipse.Session do
            old_cwd == cwd and meta["provider"] == to_string(config.provider) and
              meta["model"] == config.model and
              meta["max_output_tokens"] === config[:max_output_tokens] and
+             meta["budget"] === config[:budget] and meta["budget_root"] === config[:budget_root] and
              Map.get(meta, "sandbox", "off") == to_string(Map.get(config, :sandbox, :off)) and
              Map.get(meta, "mcp_servers", []) == Ipse.MCP.fingerprints(config) and
              Map.get(meta, "subagents", false) == Ipse.Delegation.enabled?(config) and

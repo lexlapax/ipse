@@ -231,6 +231,9 @@ try do
   Code.require_file(Path.join(Application.app_dir(:ipse, "priv"), "cost-report-demo.exs"))
   :ok = Ipse.CostReportDemo.run()
 
+  Code.require_file(Path.join(Application.app_dir(:ipse, "priv"), "budget-demo.exs"))
+  :ok = Ipse.BudgetDemo.run()
+
   Code.require_file(Path.join(Application.app_dir(:ipse, "priv"), "self-development-demo.exs"))
   Ipse.SelfDevelopmentDemo.run()
 

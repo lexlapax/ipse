@@ -78,6 +78,9 @@ Automatic compaction retains the original journal. Older-turn summaries use
 the selected provider; a long-turn fallback excerpts older settled tool output
 without a model request. Use `/diagnostics` or local `ipse diagnose` for byte
 accounting and [provider usage facts](docs/operator/usage-accounting.md).
+Optional operator [session-tree budgets](docs/operator/budgets.md) reserve main,
+summary and child requests before provider dispatch and retain unknown liability.
+These estimates do not promise an invoice ceiling.
 When safe compaction cannot continue, export a reviewed handoff and import it
 with `chat --handoff PATH` into a fresh idle session. See
 [compaction limits](docs/operator/usage.md#context-compaction) and

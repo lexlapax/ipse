@@ -19,6 +19,7 @@ defmodule Ipse.CLI do
   ipse extension check --fixture PATH  Exercise selected extensions with synthetic inputs
   ipse research --resume ID        Export a saved session's evidence ledger locally
   ipse diagnose --resume ID        Inspect content-free saved context measurements
+  ipse budget --resume ID          Inspect saved shared admission reservations
   ipse handoff --resume ID --note TEXT  Export an explicit recovery note locally
 
   --provider chatgpt|openai|ollama|anthropic|demo  (default: chatgpt)
@@ -142,6 +143,22 @@ defmodule Ipse.CLI do
   end
 
   defp dispatch(["login"], _opts), do: report(Ipse.Auth.login(auth_dir()))
+
+  defp dispatch(["budget"], opts) do
+    if opts[:resume] do
+      case Ipse.Budget.saved(state_dir(opts), opts[:resume]) do
+        {:ok, snapshot} ->
+          IO.puts(Jason.encode!(snapshot))
+          0
+
+        _ ->
+          report({:error, "Saved budget unavailable; inspect the original journals and ledger."})
+      end
+    else
+      report({:error, "budget requires --resume SESSION_ID"})
+    end
+  end
+
   defp dispatch(["logout"], _opts), do: report(Ipse.Auth.logout(auth_dir()))
 
   defp dispatch(["status"], _opts) do
@@ -396,7 +413,15 @@ defmodule Ipse.CLI do
           IO.puts(
             :stderr,
             "Local subagents enabled: same workspace; configured routine/profile routing or parent provider/model; parent approvals apply. " <>
-              "Concurrency #{Map.get(config, :subagent_concurrency, 1)}; up to two children per turn and six model steps per child, additional to the parent budget."
+              "Concurrency #{Map.get(config, :subagent_concurrency, 1)}; up to two children per turn and six model steps per child. Child requests share a configured session-tree budget."
+          )
+
+      if config[:budget],
+        do:
+          IO.puts(
+            :stderr,
+            "Shared session-tree reservations enabled; unknown liability is retained. " <>
+              "Fresh sessions have separate quotas. Inspect with ipse budget --resume #{info.id} using the same --state-dir."
           )
 
       for server <- config.mcp_servers do
@@ -891,6 +916,7 @@ defmodule Ipse.CLI do
                observability: effective.observability.policy,
                timeout_ms: opts[:timeout_ms],
                max_output_tokens: opts[:max_output_tokens],
+               budget: effective.budget,
                sandbox: sandbox,
                base_url: opts[:base_url],
                max_steps: opts[:max_steps] || 30,

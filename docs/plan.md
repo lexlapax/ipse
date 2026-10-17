@@ -31,7 +31,7 @@ new dependencies or start production engine implementation.
 
 | Milestone or gate | Current state | Next result |
 | --- | --- | --- |
-| [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | In progress; configured own-session/child reports and supported request output caps | Atomic host reservations/reconciliation and accounted extension model operations |
+| [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | In progress; reports, output caps and shared main/summary/child reservations | Hosted follow-up and accounted extension model operations |
 | [P24: voice and media](#p24-voice-and-realtime-media) | Authorized; unimplemented | Chained STT/text/TTS, then explicit realtime/media capability |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Proposed revised scope; unstarted | Independent Codex/Ipse research, measured discrepancies, Ipse-authored repairs and fresh acceptance runs |
 | P25 security gates | Proposed; no service access or scan verified | Baseline audit before broad self-development and final-candidate review/rescan afterward |
@@ -40,8 +40,9 @@ new dependencies or start production engine implementation.
 | [Apache-2.0 transition](#license-transition) | Requested; unimplemented | Separate verified license/package/documentation change after the agreed delivery scope |
 
 Feature status and runner readiness are separate. The latest hosted candidate
-has an unresolved Linux auth fixture failure; it cannot yet serve as P25's passing
-frozen baseline. Actual revisions, platform results and investigation belong in
+failed a Linux auth fixture; the reproduced helper-cleanup repair now passes local
+source/package/installed checks. A new hosted result is required before P25's
+runner can be frozen. Actual revisions, platform results and investigation belong in
 [testing](developer/testing.md#current-evidence-and-next-checks).
 
 Recommended order: finish P23; deliver P24 as
@@ -89,13 +90,15 @@ request/attempt/provider/billing/model facts separately from diagnostics. The
 | P23C | Finite separately granted full own-session enumeration and default-off `builtin:cost-summary:1`, cumulative request replacement and overflow/legacy handling |
 | P23D | Explicit registered-child discovery/reads and default-off `builtin:cost-tree:1`, frozen accounting prefixes, exact origins and visible missing/busy/invalid/legacy/cleanup gaps |
 | P23E1 | Explicit supported provider output ceilings, narrowed child/summary caps and saved-policy resume |
+| P23E2 | Optional atomic session-tree reservations for main/summary/children, conservative settlement, protected inspection and historical-source validation; source/package/installed checks passed, hosted follow-up pending |
 
 [Provider output ceilings](developer/provider-limits.md) apply only to supported
 API/Ollama requests. ChatGPT subscription refuses the unsupported setting; no
 output-token ceiling is invented for that public interface. Verification and
 remaining platform issues are recorded in
 [actual evidence](developer/testing.md#current-evidence-and-next-checks).
-Atomic shared reservations and accounted extension model operations remain open.
+The [shared budget contract](developer/budgets.md) covers main, summary and local
+children independently of reports. Accounted extension model operations remain open.
 
 These reports do not enforce budgets, produce a globally atomic tree balance or
 promise an invoice ceiling. Rates are configured; subscription equivalents,
@@ -104,23 +107,20 @@ or failed-child cleanup cannot be converted to zero liability.
 
 Remaining acceptance:
 
-1. Add optional host-owned admission and durable atomic reservation/reconciliation
-   for covered main, summary, parallel-child and extension requests. Reserve before
-   dispatch, account for actual/partial/unknown results and retain uncertain
-   liability through cancellation, owner death and resume. A callback or report
-   cannot enforce admission; durable recovery must not reset quotas or replay work.
-2. Add generic versioned accounted model operations for extension extraction and
+1. Add generic versioned accounted model operations for extension extraction and
    other selected supported request types. Explicit profiles, private data grants,
    provider limits, cancellation and canonical usage apply; no unaccounted model
    calls inside hooks. Refuse unsupported operations, including embeddings until
    their separate public provider/accounting contract is implemented.
-3. Document configurable limits, coverage and provider-enforceable output bounds.
-   Keep cost/token estimates honest where input or in-flight liability cannot be
-   bounded exactly. No mandatory pricing service or hardcoded price/model choice.
-4. Prove parallel contention, refusal-before-dispatch, reconciliation, missing or
-   corrupt durable policy/state, partial failures and inert recovery with fixtures.
-   Verify reports and the independent installed extension lab on the new candidate;
-   close source/package and supported-platform checks with actual evidence.
+2. Extend the existing shared admission boundary to those model operations, binding
+   canonical requests to their extension intent/result receipts. Preserve uncertain
+   liability through cancellation, owner death and resume without quota reset or
+   automatic replay. Document actual coverage and input/in-flight estimation limits;
+   a callback or report cannot enforce admission or establish an invoice ceiling.
+3. Prove extension/main/summary/child contention, refusal before dispatch, partial
+   failures, private scope and inert recovery with fixtures. Recheck existing cost
+   reports and the independent installed extension lab on the changed candidate,
+   and close source/package/supported-platform checks with actual evidence.
 
 ## P24: voice and realtime media
 

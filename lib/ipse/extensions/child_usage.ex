@@ -12,6 +12,10 @@ defmodule Ipse.Extensions.ChildUsage do
   def operation?(r), do: is_map(r) and r["op"] in ~w(usage.children usage.child.read)
   def new, do: %{index: %{}, order: [], overflow: false, request: nil, reads: %{}}
 
+  @doc false
+  def read_for_budget(directory, parent, child),
+    do: read_child(directory, parent, child, nil, true)
+
   def apply_parent(state, %{"type" => "request_admitted", "kind" => "model"} = e),
     do: %{state | request: e}
 
@@ -357,7 +361,7 @@ defmodule Ipse.Extensions.ChildUsage do
     _ -> @error
   end
 
-  defp read_child(directory, parent, child, snapshot) do
+  defp read_child(directory, parent, child, snapshot, accounting_events \\ false) do
     with true <- is_map(child) and id?(child["child_id"]) and id?(parent),
          {:ok, root} <- WorkspaceContext.canonical_path(directory),
          :ok <- private(root, :directory),
@@ -372,7 +376,7 @@ defmodule Ipse.Extensions.ChildUsage do
       case Runner.lock(lockfile) do
         {:ok, lock} ->
           try do
-            load_child(file, parent, child, snapshot)
+            load_child(file, parent, child, snapshot, accounting_events)
           after
             Runner.unlock(lock)
           end
@@ -387,7 +391,7 @@ defmodule Ipse.Extensions.ChildUsage do
     _ -> failed("usage_child_invalid")
   end
 
-  defp load_child(file, parent, child, snapshot) do
+  defp load_child(file, parent, child, snapshot, accounting_events) do
     with {:ok, stat} <- File.stat(file),
          bytes = if(snapshot, do: snapshot["bytes"], else: stat.size),
          true <- bytes in 1..@bytes and bytes <= stat.size,
@@ -415,7 +419,17 @@ defmodule Ipse.Extensions.ChildUsage do
                  Enum.map(ledger.order, &Usage.request_record(ledger.requests[&1]))
                ]),
              true <- snapshot == nil or snapshot["sha256"] == digest do
-          {:ok, ledger, bytes, digest}
+          if accounting_events do
+            facts =
+              Enum.filter(
+                events,
+                &(&1["type"] in ~w(request_admitted request_usage_observed request_finished))
+              )
+
+            {:ok, ledger, bytes, digest, facts}
+          else
+            {:ok, ledger, bytes, digest}
+          end
         else
           _ -> failed("usage_child_invalid")
         end

@@ -61,7 +61,7 @@ No external framework is selected as an Ipse runtime dependency.
 | Developer diagnosis | Sanitized snapshots, owned trace lease, cleanup and SDK conformance inputs | Timeline viewer, IDE integration and standalone worker tooling | P22 local procedures; richer viewers later |
 | Usage accounting | Provider normalization, request/attempt identity, durable facts and idempotent aggregation | Reports, allocation, dashboards and optional export | Minimal facts in P22; P23 reports |
 | Cost estimates | Expose billing mode and authoritative measured units | Versioned configurable rate tables and estimation strategies | P23 |
-| Monetary/token limits | Request admission, atomic parallel reservations, cancellation and unknown-charge handling | Policy configuration and displays; extension may request stricter limits | P23 host enhancement |
+| Monetary/token limits | Request admission, atomic parallel reservations, cancellation and unknown-charge handling | Policy configuration and displays; extension may request stricter limits | P23 main/summary/child reservations implemented; accounted extension model operations remain open |
 | Visible text streaming | Ordered content channel, sequence/completion identity, flow control and cancellation | Terminal/web renderers and stream consumers | Existing CLI; P22 bounded subscription proof |
 | Stateful stream rewriting | Preserve original messages, enforce required filter/failure policy and buffering limits | Parser/formatter/filter algorithm | Later explicit capability, not the completed-answer hook |
 | Chained voice | Managed input/output resources, admitted text turn, profiles, approval/control separation | STT/TTS adapters, microphone/speaker/client UI | P24 |
@@ -108,19 +108,15 @@ provider-reported charges and actual account invoices. No billing mode/provider
 switch follows from a budget or cost estimate. Provider capabilities and account
 eligibility remain explicit; this research makes no new live billing claim.
 
-Hard budgets require a P23 host capability: gate every covered request, including
-children, compaction and supported nested extension requests; reserve bounded
-liability atomically across parallel work, then reconcile recorded units. Define
-unknown pricing/charge policy and explicit overrides before dispatch. Some
-providers cannot guarantee a monetary ceiling for in-flight work; label such
-limits advisory or conservative estimates, not exact invoice caps. Tool services
-and executable extensions making out-of-band calls are not automatically covered.
-Fully trusted code is not confined by an SDK accounting API. The output-cap
-control refuses ChatGPT subscription requests when a cap is configured, because
-the public subscription interface excludes that field. A future reservation
-policy must represent unsupported bounds and unknown liability explicitly;
-silently dropping a requested bound or switching billing is not an enforcement
-strategy.
+The optional P23 [shared admission host capability](budgets.md) gates covered main,
+summary and local-child requests with atomic reservations, retained unknown
+liability and durable reconciliation. Input/money reservations remain conservative
+estimates; providers cannot guarantee an exact monetary ceiling for in-flight
+work. Accounted nested extension model operations are still open. Tool services
+and executable extensions making out-of-band calls are not automatically covered;
+fully trusted code is not confined by an SDK accounting API. Subscription output
+quotas refuse because its public interface lacks that cap. No requested bound is
+silently dropped and no billing switch follows from a refusal.
 
 ## Text and media are distinct from diagnostics
 

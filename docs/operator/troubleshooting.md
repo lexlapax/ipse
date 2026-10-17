@@ -75,6 +75,7 @@ authorize it through ChatGPT Settings and sign in again.
 | Subscription account/workspace not eligible | Stop and check the selected account or workspace policy. Repeating OAuth is not an eligibility fix. |
 | Subscription usage limit reached | Pause requests and check ChatGPT Settings → Usage. The error does not establish a reset time or whether an app-specific limit caused it. |
 | Temporary routing/usage-check failure | Credentials remain intact. Retry later after reviewing the service/network state. |
+| Credentials busy | Let the other sign-in or refresh finish, then retry. Do not delete the persistent lock file. Earlier builds could also report busy prematurely when a contending helper exited during cleanup; that cleanup path now preserves the retryable lock response. |
 
 If a refresh rotates tokens but removes permission to use your plan, Ipse saves
 the replacement token set and refuses inference. `ipse status` reports plan usage

@@ -14,7 +14,8 @@ the [evaluation protocol](self-hosting-evaluation.md) owns the experiment.
 Production packages are deferred to proposed P26 memory and P27 research/graph/RAG,
 subject to the research outcome. The earlier implementation authorization does
 not override the operator's 2026-10-17 request to reconsider that scope. P23 reports
-are available; atomic budgets and accounted extension model requests remain open.
+and shared main/summary/child budgets are available; accounted extension model
+requests remain open.
 
 ## Research before implementation selection
 

@@ -4,9 +4,10 @@
 request facts independently of optional tracing and extensions. P23's pure
 [configured cost calculator and report](costs.md) consume explicit normalized
 snapshots through a separate own-session read grant. Host accounting does not
-fetch rates, quote prices or enforce a budget yet. See
+fetch rates or quote prices. Separately configured [shared admission](budgets.md)
+uses these facts for durable main/summary/child reservations. See
 [operator inspection](../operator/usage-accounting.md) and
-[future costs/streams](runtime-capabilities.md#usage-facts-and-costs).
+[cost/media boundaries](runtime-capabilities.md#usage-facts-and-costs).
 Separately configured [provider output caps](provider-limits.md) bound supported
 individual requests; they do not change this version-1 accounting schema or
 supply aggregate admission control.
@@ -203,5 +204,6 @@ Fixtures in `usage_normalizer_test.exs`, `usage_test.exs`, `usage_session_test.e
 `compaction_session_test.exs`, `parallel_delegation_test.exs` and provider HTTP
 tests cover normalization, revisions/deduplication, final versus partial facts,
 crash outcomes, pre-repair refusal, rejected summaries, parent attribution and
-native integrity without paid accounts. P23 costs/budgets and P24 audio usage
-remain separate implementation work.
+native integrity without paid accounts. P23 reports and [shared budgets](budgets.md)
+have separate contracts/fixtures; accounted extension model operations and P24
+audio usage remain open.

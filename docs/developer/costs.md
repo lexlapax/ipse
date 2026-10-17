@@ -9,7 +9,8 @@ use the granted accounting-read SDK for explicit own-session pages and captured
 session totals. See
 [operator selection](../operator/usage-accounting.md#enable-the-optional-report).
 The separately granted `builtin:cost-tree:1` adds captured parent/direct-child
-aggregation. Accounted model operations and budget enforcement remain P23 work.
+aggregation. Optional [host admission](budgets.md) enforces shared reservations
+separately; generic accounted extension model operations remain P23 work.
 
 ## Rate identity and selection
 
@@ -190,8 +191,9 @@ protocols, not live prices, account charges or a transactional external ledger.
 
 Optional [provider output caps](provider-limits.md) now supply a supported
 per-request control; subscription requests explicitly refuse that unsupported
-setting. P23 still needs atomic covered-request reservations and partial/unknown
-liability in host admission. Generic accounted extraction
+setting. Optional [host-owned shared reservations](budgets.md) cover main,
+summary and local-child requests, retaining partial/unknown liability independently
+of these reports. Generic accounted extraction
 requests are needed before a selected knowledge package can call a model;
 embeddings need their own supported provider/accounting contract. The proposed
 P25 research trial can use existing explicit provider/tools without implementing

@@ -180,8 +180,9 @@ Subscription usage is not API spend. API usage is not an invoice; local usage
 does not mean hardware/electricity costs nothing. Subscription equivalents require
 an explicit subscription row; local estimates require explicit local rates.
 The report does not enforce monetary/token budgets or promise an invoice ceiling.
-Host reservation/admission remains P23 work; displayed counters or estimates do
-not provide that protection.
+Optional [shared admission budgets](budgets.md) reserve main, summary and child
+requests separately in the host. Displayed counters or estimates do not supply
+that authority; unknown liability remains explicit.
 
 An explicit [`max_output_tokens` setting](configuration.md) can cap individual
 OpenAI API, Anthropic and Ollama requests; children retain or narrow the parent's

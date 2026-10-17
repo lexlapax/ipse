@@ -43,7 +43,8 @@ optional: 16..1000000 for OpenAI API, 1..1000000 for Ollama/Anthropic. ChatGPT
 subscription and demo reject it. Omit it to keep the previous provider behavior.
 Use `IPSE_MAX_OUTPUT_TOKENS` or `--max-output-tokens N` for explicit overrides.
 This is a per-request generation cap, including summary requests, not an aggregate
-budget or invoice limit. Existing lower adapter limits still apply: Anthropic
+budget or invoice limit. Optional operator-only [shared budgets](budgets.md)
+configure aggregate admission separately. Existing lower adapter limits still apply: Anthropic
 defaults to 8192 and Ollama summaries to 4096. Model/account limits may be tighter.
 See [usage and budget boundaries](usage-accounting.md#unknowns-and-recovery).
 
@@ -74,6 +75,9 @@ newly introduced. Current action approvals are always separate from saved data.
 Named model profiles and main/routine/review routing are available; see
 [model profiles](model-profiles.md). Top-level `profiles` and `roles` extend this
 version-1 schema. A later same-ID profile replaces the whole earlier definition.
+Operator-only top-level `budget` pins a per-session-tree policy with explicit
+reservations; project files cannot set or replace it. Omission leaves it disabled.
+It shares the ordinary 16 KiB file limit and source/fingerprint resume checks.
 
 Extension import/inspection and data-only selections are also available through
 `extensions` and operator-only `extension_trust`; see

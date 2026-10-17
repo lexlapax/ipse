@@ -42,6 +42,25 @@ defmodule Ipse.RunnerTest do
     Runner.unlock(next)
   end
 
+  test "contending short-lived helpers preserve the retryable lock refusal", %{cwd: cwd} do
+    path = Path.join(cwd, "contended.lock")
+    assert {:ok, lock} = Runner.lock(path)
+    on_exit(fn -> Runner.unlock(lock) end)
+    inode = File.stat!(path).inode
+
+    1..128
+    |> Task.async_stream(fn _ -> Runner.lock(path) end, max_concurrency: 4, timeout: 5_000)
+    |> Enum.each(fn result ->
+      assert {:ok, {:error, reason}} = result
+      assert String.starts_with?(reason, "cannot acquire session lock")
+    end)
+
+    assert File.stat!(path).inode == inode
+    assert :ok = Runner.unlock(lock)
+    assert {:ok, next} = await_lock(path, 50)
+    assert :ok = Runner.unlock(next)
+  end
+
   test "advisory lock rejects symbolic links", %{cwd: cwd} do
     target = Path.join(cwd, "target")
     File.write!(target, "keep")

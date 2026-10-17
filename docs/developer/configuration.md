@@ -30,6 +30,12 @@ the effective cap for embedded callers before journal repair. See
 [provider output ceilings](provider-limits.md) for wire mappings, inherited child
 limits and the explicit subscription refusal.
 
+Operator-only `budget` uses the closed shared-admission policy schema; project
+presence refuses rather than overriding it. A configured policy participates in
+the manifest/fingerprint; absence preserves old identity. Root/child budget
+descriptors and live ETS authority are host runtime state, not accepted JSON
+configuration. See [shared budget ownership and recovery](budgets.md).
+
 `Session.info/1` exposes the non-secret manifest. Resume compares fingerprints
 before acquiring work or requesting inference. Legacy metadata without a manifest
 accepts only a config with no loaded files, retaining existing provider/model/

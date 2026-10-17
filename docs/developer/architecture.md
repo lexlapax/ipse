@@ -143,6 +143,10 @@ Activation preserves the original receipt-time expiry. Reduced scopes are
 committed before permission denial. Fresh login replaces pending renewal, and
 logout revokes its newest refresh token. Loss before durable storage still
 requires fresh login; an expired unvalidated identity also requires fresh login.
+Credential contention retries the native lock refusal within its existing
+deadline. Failed helper cleanup uses idempotent Port closure so a helper exiting
+after its error frame cannot replace that retryable refusal with a cleanup
+exception. No credential operation runs without the OS lock.
 
 `Provider.Error` formats bounded machine metadata and fixed recovery guidance,
 without echoing server prose. The subscription adapter uses developer messages
@@ -280,6 +284,7 @@ Separate VMs and process groups are ownership boundaries, not OS sandboxing.
 | Value-service composition | Operator routes, acyclic dependency identities, target lease/schema/cleanup checks and host provenance | [Services](extension-services.md) |
 | Session context | Bounded caller-owned sets, assertion/receipt provenance and exact main-request snapshots | [Context](extension-context.md) |
 | Accounting reads | Caller/session-bound pages and separately granted registered-child prefixes; owned IO/locks, exact origin, content exclusion and cached/source validation | [Usage read SDK](usage-accounting.md#extension-accounting-reads) |
+| Shared model admission | Operator policy, durable atomic main/summary/child reservations, retained unknown liability and pre-repair source checks; independent of extension reports | [Budget contract](budgets.md) |
 | Private text consumers | Owned independent workers, opaque resource handles, acknowledged frames and explicit incomplete cleanup | [Text delivery](text-streams.md) |
 | Prompt event subscribers | Inert declarations, separate private-view grants, ordered owned notification and source-bound no-replay receipts | [Event delivery](extension-events.md) |
 

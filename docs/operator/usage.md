@@ -316,7 +316,10 @@ or a provider token-count guarantee.
 
 `/diagnostics`, `/session` and saved `ipse diagnose` show durable normalized
 [usage facts](usage-accounting.md), request/parent identities and unknown
-outcomes. They do not calculate an invoice or enforce a spend budget.
+outcomes. They do not calculate an invoice or enforce a spend budget. Optional
+operator [shared budgets](budgets.md) reserve covered main/summary/child requests;
+inspect that separate ledger with `ipse budget --resume ID` and the matching
+`--state-dir` when customized. Unknown liability is retained across resume.
 
 ## Runtime identity
 
@@ -572,7 +575,7 @@ These available facilities are distinct from the planned capabilities below.
 
 | Milestone | Remaining capability | Status and boundary |
 | --- | --- | --- |
-| P23 | Budget admission and accounted extension model work | Own-session/child reports are available; atomic reservations and covered extension operations remain open. Context bytes are not tokens or an invoice |
+| P23 | Budget admission and accounted extension model work | Own-session/child reports and optional [shared reservations](budgets.md) are available; covered extension model operations remain open. Context bytes are not tokens or an invoice |
 | P24 | STT/text-agent/TTS and realtime media | Planned with explicit device/provider/billing selection; text authentication does not imply audio access |
 | P25 | Larger supervised comparative research/self-development trial | Proposed independent Codex/Ipse study, repairs, reruns and before/after security review; unstarted |
 | P26/P27 | Optional working/long-term memory, research engine, graph and RAG | Production packages deferred pending P25 selection; independently configurable and default-off |

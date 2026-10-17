@@ -57,6 +57,7 @@ defmodule Ipse.Config do
         end)
 
       with {:ok, extensions} <- Ipse.Extensions.Config.resolve(loaded, opts),
+           {:ok, budget} <- Ipse.Budget.Policy.resolve(loaded),
            {:ok, observation} <- Ipse.Observability.Config.resolve(loaded, opts, environment),
            :ok <- Ipse.Profiles.validate(effective.profiles, effective.roles),
            {:ok, profile_id, profile} <-
@@ -95,6 +96,12 @@ defmodule Ipse.Config do
                  provider: String.to_existing_atom(settings["provider"]),
                  max_output_tokens: settings["max_output_tokens"]
                }),
+             :ok <-
+               Ipse.Budget.Policy.runtime(%{
+                 budget: budget,
+                 provider: String.to_existing_atom(settings["provider"]),
+                 max_output_tokens: settings["max_output_tokens"]
+               }),
              true <-
                is_nil(profile_id) or
                  (settings["provider"] == profile["provider"] and
@@ -113,12 +120,14 @@ defmodule Ipse.Config do
               do: identity,
               else: Map.put(identity, "extensions", extensions)
 
+          identity = if budget, do: Map.put(identity, "budget", budget), else: identity
           fingerprint = Compaction.digest([identity])
 
           {:ok,
            %{effective | settings: settings, provenance: provenance}
            |> Map.put(:fingerprint, fingerprint)
            |> Map.put(:extensions, extensions)
+           |> Map.put(:budget, budget)
            |> Map.put(:observability, observation)
            |> Map.put(:execution, execution)}
         else
@@ -152,6 +161,7 @@ defmodule Ipse.Config do
       ])
       |> Map.put(:extensions, Ipse.Extensions.Config.inspect_config(effective.extensions))
       |> Map.put(:observability, effective.observability)
+      |> Map.put(:budget, effective.budget)
 
   def legacy_compatible?(effective), do: effective.sources == []
 
@@ -184,7 +194,8 @@ defmodule Ipse.Config do
             "settings" => settings_schema(),
             "profiles" => %{"type" => "object"},
             "roles" => %{"type" => "object"},
-            "observability" => Ipse.Observability.Config.schema()
+            "observability" => Ipse.Observability.Config.schema(),
+            "budget" => Ipse.Budget.Policy.schema()
           },
           Ipse.Extensions.Config.schema()
         ),

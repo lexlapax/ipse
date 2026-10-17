@@ -25,7 +25,7 @@ defmodule Ipse.Runner do
         ])
 
       result = receive_lock(port, <<>>, System.monotonic_time(:millisecond) + 5_000)
-      if match?({:error, _}, result) and Port.info(port), do: Port.close(port)
+      if match?({:error, _}, result), do: unlock(port)
       result
     end
   rescue
