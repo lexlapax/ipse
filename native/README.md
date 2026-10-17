@@ -7,8 +7,18 @@ also builds it on demand in a source checkout when `rustc` is available. Package
 Arguments are `CWD TIMEOUT_MS COMMAND`. Stdout is a binary frame stream: one type
 byte, a four-byte unsigned big-endian payload length, then that many payload
 bytes. `O` carries stdout/stderr bytes (interleaving follows arrival order), `X`
-carries JSON `{ "exit_code": integer, "timed_out": boolean }`, and `E` carries a
-fatal supervisor error. Output can split UTF-8 characters between frames.
+carries JSON `{ "exit_code": integer, "timed_out": boolean }`, `E` carries a
+known pre-dispatch setup refusal, and `U` carries an uncertain post-dispatch
+failure. Output can split UTF-8 characters between frames. This shell `U` frame
+is separate from the lock subprotocol's unlock acknowledgment below.
+
+Runner returns `{:unknown, reason}` for a lost/timed-out supervisor, malformed or
+incomplete frames/results, post-dispatch failure or an output-consumer exception.
+A refusal following output/result evidence cannot downgrade uncertainty to a
+known error. A valid final result retains the ordinary exit-code/timeout facts.
+Pure validation, helper setup and explicit pre-dispatch refusals remain known
+errors. Keep helper and Elixir Runner from the same installed build; an uncertain
+effect must be inspected rather than replayed.
 
 The caller keeps the helper's stdin pipe open. EOF kills the shell's process
 group. The helper starts `/bin/sh -c COMMAND` in a fresh process group and kills

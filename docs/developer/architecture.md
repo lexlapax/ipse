@@ -402,8 +402,20 @@ lock whose lifetime follows its Port owner; lock files are kept to preserve
 inode identity. Resume loads events into conversation history without replaying
 tool calls. Started interrupted calls are marked with an unknown outcome because
 their external effects may already have happened. Calls cancelled before launch
-are recorded as not started; older unresolved history remains conservative. A final partial record may be
-repaired while holding the session lock. The full transcript remains on disk.
+are recorded as not started; older unresolved history remains conservative.
+Malformed or duplicate tool-call identities refuse the entire new response
+before approval or dispatch. A private `provider_response_refused` record retains
+the original response/native evidence without placing invalid calls in effective
+context or pretending to settle them. Historical duplicate IDs consume recorded results once, in order;
+an unresolved duplicate cannot inherit another call's result.
+
+Lost shell supervision, malformed/incomplete helper frames and unexpected tool
+worker exceptions have an unknown machine-readable outcome. Explicit validation
+and pre-dispatch setup refusals remain known errors; a failed file write is
+conservatively unknown because truncation or partial writes may have occurred.
+The [native protocol](../../native/README.md) distinguishes those boundaries.
+A final partial journal record may be repaired while holding the session lock.
+The full transcript remains on disk.
 
 Optional [runtime facts](lifecycle-events.md#runtime-epochs-and-operator-waits)
 distinguish recorded session epochs and operator waits. Diagnostic capture or a

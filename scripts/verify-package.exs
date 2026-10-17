@@ -67,6 +67,42 @@ defmodule Ipse.PackageVerifier do
     IO.puts("PASS: bundled CLI terminal escaping, original JSON values and unchanged journal.")
   end
 
+  defp verify_recovery!(launcher, release, env, root) do
+    workspace = Path.join(root, "recovery-probe")
+    File.mkdir_p!(Path.join(workspace, ".git"))
+
+    expression = """
+    workspace = #{inspect(workspace)}
+    {:unknown, _} = Ipse.Runner.run(~s(printf effected > effect; kill -KILL "$PPID"), workspace)
+    "effected" = File.read!(Path.join(workspace, "effect"))
+    {:error, _} = Ipse.Runner.run("true", Path.join(workspace, "missing"))
+    call = %{"id" => "duplicate", "function" => %{"name" => "write", "arguments" => "{}"}}
+    assistant = %{"role" => "assistant", "content" => "", "tool_calls" => [call, call]}
+    result = %{"role" => "tool", "tool_call_id" => "duplicate", "content" => "First completed"}
+    events = [%{"type" => "session", "metadata" => %{}},
+      %{"type" => "message", "message" => assistant}, %{"type" => "message", "message" => result}]
+    {:ok, [^assistant, ^result, missing]} = Ipse.Session.restore_context(events)
+    %{"status" => "unknown", "approval" => "historical_unknown"} = missing["ipse_tool_outcome"]
+    operator = Path.join(workspace, "operator")
+    File.mkdir_p!(operator)
+    File.mkdir_p!(Path.join(workspace, ".ipse"))
+    File.write!(Path.join(operator, "config.json"), Jason.encode!(%{version: 1, settings: %{sandbox: "native"}}))
+    File.write!(Path.join(workspace, ".ipse/config.json"), Jason.encode!(%{version: 1, settings: %{sandbox: "off"}}))
+    {:ok, protected} = Ipse.Config.resolve(workspace, operator, [trust_project_config: true], %{})
+    "native" = protected.settings["sandbox"]
+    true = protected.provenance["sandbox"] == Path.join(operator, "config.json")
+    {:ok, explicit} = Ipse.Config.resolve(workspace, operator, [trust_project_config: true, sandbox: "off"], %{})
+    "off" = explicit.settings["sandbox"]
+    "CLI" = explicit.provenance["sandbox"]
+    """
+
+    run!(launcher, ["eval", expression], release, env, "recovery and sandbox authority")
+
+    IO.puts(
+      "PASS: installed shell uncertainty, one-use historical results and project sandbox floor."
+    )
+  end
+
   defp verify!(archive, root, tar) do
     release = Path.join(root, "release")
     home = Path.join(root, "home")
@@ -112,6 +148,7 @@ defmodule Ipse.PackageVerifier do
 
     run!(wrapper, ["--help"], release, env, "bundled CLI help")
     verify_terminal!(wrapper, release, env, root)
+    verify_recovery!(otp_launcher, release, env, root)
 
     [app] = Path.wildcard(Path.join([release, "lib", "ipse-*"]))
 

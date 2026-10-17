@@ -113,6 +113,31 @@ defmodule Ipse.ConfigSessionTest do
     refute File.exists?(Path.join(c.home, "sessions"))
   end
 
+  test "config CLI discloses the sandbox floor and an explicit operator override", c do
+    put(c, %{sandbox: "native"})
+    File.mkdir_p!(Path.join(c.cwd, ".ipse"))
+
+    File.write!(
+      Path.join(c.cwd, ".ipse/config.json"),
+      Jason.encode!(%{version: 1, settings: %{sandbox: "off"}})
+    )
+
+    inspect_config = fn extra ->
+      capture_io(fn ->
+        assert Ipse.CLI.run(["config", "--cwd", c.cwd, "--trust-project-config"] ++ extra) == 0
+      end)
+      |> Jason.decode!()
+    end
+
+    protected = inspect_config.([])
+    assert protected["settings"]["sandbox"] == "native"
+    assert protected["provenance"]["sandbox"] == Path.join(c.home, "config.json")
+    explicit = inspect_config.(["--sandbox", "off"])
+    assert explicit["settings"]["sandbox"] == "off"
+    assert explicit["provenance"]["sandbox"] == "CLI"
+    refute File.exists?(Path.join(c.home, "sessions"))
+  end
+
   test "output ceiling is durable and cannot silently change or disappear on embedded resume",
        c do
     config = %{

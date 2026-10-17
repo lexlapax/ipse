@@ -36,6 +36,11 @@ This loader does not expose private `.ipse` files through general tools.
 Ordinary setting precedence is built-in defaults, operator file, project root, nearer directory,
 `IPSE_*` environment settings, then CLI flags. Environment keys match the setting
 names in uppercase, such as `IPSE_MAX_STEPS`; booleans accept `true` or `false`.
+Sandbox policy is an exception within project scopes: projects may select
+`native` but cannot replace an already selected `native` with `off`, including
+one selected by the operator file or an ancestor project. The stricter value's
+provenance remains visible. Explicit operator `IPSE_SANDBOX` or `--sandbox` still
+overrides those files; `--sandbox off` is an intentional operator choice.
 `--config PATH` or `IPSE_CONFIG` replaces the operator file and must exist.
 Default files may be absent. Each file is at most 16 KiB; at most 17 candidate
 scopes are examined. JSON must use version 1. Model names are bounded to 200
@@ -52,7 +57,7 @@ See [usage and budget boundaries](usage-accounting.md#unknowns-and-recovery).
 
 Repository settings require **`--trust-project-config` on each invocation**.
 Review them before trusting, since they can select a provider/billing mode or
-execution policy. `--no-project-config` ignores them. These flags grant no
+tighten sandbox policy. `--no-project-config` ignores them. These flags grant no
 mutation, shell, MCP or delegation permission; ordinary approvals still apply.
 Automatically discovered project aliases must resolve inside the repository.
 An explicitly selected operator file can be a symlink alias.

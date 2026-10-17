@@ -143,11 +143,15 @@ partial coverage. Its proposed runtime regressions were unrun by the reviewer.
 The terminal display defect is reproduced and repaired, with local and hosted
 Linux/macOS source/package/installed gates passed. The project endpoint/credential
 issue is also reproduced; its authority/disclosure repair passed local source/
-native/package/installed and hosted Linux/macOS checks, with sandbox precedence
-awaiting the operator's separate decision. Budget observation/resume failure is
+native/package/installed and hosted Linux/macOS checks. The operator selected
+project-only sandbox tightening; its floor/provenance regressions reproduce the
+old downgrade; its enforcement passed source/native/demo/package/installed checks
+and awaits hosted verification. Budget observation/resume failure is
 now reproduced with a real lock; its write-ahead repair passed source/native/
-demo/package/installed checks and awaits hosted platform verification. Journal
-growth is measured, with performance and recovery/alias repairs still open. Other
+demo/package/installed and hosted Linux/macOS checks. Journal growth is measured.
+Uncertain-tool-outcome and duplicate-ID recovery repairs passed local source/
+native/demo/package/installed checks and await hosted verification; performance
+and filesystem-alias work remain open. Other
 source-consistent findings require their own evidence and repairs.
 The security scan and P25 execution remain behind triage and applicable
 repairs; omitted architectural surfaces need a follow-up pass.

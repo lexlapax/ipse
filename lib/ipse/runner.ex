@@ -7,7 +7,8 @@ defmodule Ipse.Runner do
   verified signed worker and provides best-effort process-group cleanup.
   `emit` receives `{:tool_output, utf8_chunk}`; retained and streamed output
   share the `output_limit` byte budget. Remaining child output is continuously
-  drained.
+  drained. Known validation/setup refusals return `:error`; loss of supervision
+  after possible shell dispatch returns `:unknown` and must not be replayed.
   """
   @root Path.expand("../..", __DIR__)
   @default_limit 65_536
@@ -346,6 +347,13 @@ defmodule Ipse.Runner do
 
       try do
         receive_output(port, state, deadline)
+      rescue
+        _ ->
+          {:unknown, "Shell supervision failed after possible dispatch. Inspect before retrying."}
+      catch
+        _, _ ->
+          {:unknown,
+           "Shell supervision was interrupted after possible dispatch. Inspect before retrying."}
       after
         if Port.info(port), do: Port.close(port)
       end
@@ -412,19 +420,19 @@ defmodule Ipse.Runner do
       {^port, {:data, bytes}} ->
         case frames(%{state | buffer: state.buffer <> bytes}) do
           {:ok, next} -> receive_output(port, next, deadline)
-          {:error, reason} -> {:error, reason}
+          {:error, reason} -> {:unknown, reason}
         end
 
       {^port, {:exit_status, _code}} ->
         cond do
           state.error ->
-            {:error, state.error}
+            state.error
 
           state.buffer != <<>> ->
-            {:error, "shell supervisor sent an incomplete frame"}
+            {:unknown, "shell supervisor sent an incomplete frame"}
 
           state.result == nil ->
-            {:error, "shell supervisor exited without a result"}
+            {:unknown, "shell supervisor exited without a result"}
 
           true ->
             {:ok,
@@ -435,7 +443,7 @@ defmodule Ipse.Runner do
              })}
         end
     after
-      remaining -> {:error, "shell supervisor stopped responding"}
+      remaining -> {:unknown, "shell supervisor stopped responding"}
     end
   end
 
@@ -486,7 +494,16 @@ defmodule Ipse.Runner do
     end
   end
 
-  defp accept_frame(?E, bytes, state), do: {:ok, %{state | error: sanitize(bytes)}}
+  defp accept_frame(?E, bytes, state) do
+    status =
+      if state.output_bytes > 0 or state.result != nil or match?({:unknown, _}, state.error),
+        do: :unknown,
+        else: :error
+
+    {:ok, %{state | error: {status, sanitize(bytes)}}}
+  end
+
+  defp accept_frame(?U, bytes, state), do: {:ok, %{state | error: {:unknown, sanitize(bytes)}}}
   defp accept_frame(_, _, _), do: {:error, "unknown shell supervisor frame"}
 
   # Keep incomplete multibyte sequences across frames. Incomplete trailing bytes

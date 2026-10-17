@@ -116,6 +116,36 @@ defmodule Ipse.ConfigTest do
     assert Config.runtime_settings(config).provider == "ollama"
   end
 
+  test "project sandbox settings only tighten; explicit operator environment and CLI retain authority",
+       c do
+    operator = Path.join(c.home, "config.json")
+    project = Path.join(c.project, ".ipse/config.json")
+    nearer = Path.join(c.project, "nested/.ipse/config.json")
+    opts = [trust_project_config: true]
+
+    put(operator, %{"sandbox" => "native"})
+    put(project, %{"sandbox" => "off"})
+    put(nearer, %{"sandbox" => "off"})
+    assert {:ok, protected} = Config.resolve(c.cwd, c.home, opts, %{})
+    assert protected.settings["sandbox"] == "native"
+    assert protected.provenance["sandbox"] == operator
+
+    assert {:ok, environment} =
+             Config.resolve(c.cwd, c.home, opts, %{"IPSE_SANDBOX" => "off"})
+
+    assert environment.settings["sandbox"] == "off"
+    assert environment.provenance["sandbox"] == "environment"
+    assert {:ok, cli} = Config.resolve(c.cwd, c.home, opts ++ [sandbox: "off"], %{})
+    assert cli.settings["sandbox"] == "off"
+    assert cli.provenance["sandbox"] == "CLI"
+
+    put(operator, %{"sandbox" => "off"})
+    put(project, %{"sandbox" => "native"})
+    assert {:ok, tightened} = Config.resolve(c.cwd, c.home, opts, %{})
+    assert tightened.settings["sandbox"] == "native"
+    assert tightened.provenance["sandbox"] == project
+  end
+
   test "project config requires explicit trust even for read-only runs and can be disabled", c do
     put(Path.join(c.project, ".ipse/config.json"), %{"provider" => "openai"})
     assert {:error, error} = Config.resolve(c.cwd, c.home, [], %{})

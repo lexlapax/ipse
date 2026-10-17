@@ -57,7 +57,10 @@ defmodule Ipse.Tools do
   def execute(name, args, context) when is_map(args) and is_map(context) do
     dispatch(name, args, context)
   rescue
-    error -> {:error, Exception.message(error) |> String.slice(0, 2_000)}
+    error ->
+      if mutating?(name),
+        do: {:unknown, "Tool failed after possible dispatch. Inspect before retrying."},
+        else: {:error, Exception.message(error) |> String.slice(0, 2_000)}
   end
 
   def execute(_, _, _), do: {:error, "tool arguments and context must be objects"}
@@ -84,10 +87,11 @@ defmodule Ipse.Tools do
     with {:ok, path} <- checked_path(args["path"], context, true),
          :ok <- text_arg(args["content"], "content"),
          :ok <- size_ok(args["content"]),
-         :ok <- File.write(path, args["content"]) do
+         :ok <- write_effect(path, args["content"]) do
       {:ok, "Wrote #{byte_size(args["content"])} bytes."}
     else
       {:error, reason} -> {:error, message(reason)}
+      {:unknown, _} = unknown -> unknown
     end
   end
 
@@ -100,10 +104,11 @@ defmodule Ipse.Tools do
          :ok <- unique_match(original, args["old"]),
          updated = String.replace(original, args["old"], args["new"], global: false),
          :ok <- size_ok(updated),
-         :ok <- File.write(path, updated) do
+         :ok <- write_effect(path, updated) do
       {:ok, "Replaced one occurrence."}
     else
       {:error, reason} -> {:error, message(reason)}
+      {:unknown, _} = unknown -> unknown
     end
   end
 
@@ -121,11 +126,19 @@ defmodule Ipse.Tools do
       {:ok, "Exit code: #{result.exit_code}#{suffix}\n" <> result.output}
     else
       {:error, reason} -> {:error, message(reason)}
+      {:unknown, _} = unknown -> unknown
     end
   end
 
   defp dispatch(name, _, _),
     do: {:error, "unknown tool: #{inspect(name, limit: 20, printable_limit: 100)}"}
+
+  defp write_effect(path, content) do
+    case File.write(path, content) do
+      :ok -> :ok
+      {:error, reason} -> {:unknown, "Write may have changed the file: " <> message(reason)}
+    end
+  end
 
   defp shell_description(:native),
     do:

@@ -200,7 +200,13 @@ fn run() -> Result<(), String> {
                 timed_out = true;
                 kill_group(pid);
             }
-            status = child.try_wait().map_err(|e| format!("cannot wait for shell: {e}"))?;
+            status = match child.try_wait() {
+                Ok(status) => status,
+                Err(error) => {
+                    let _ = frame(b'U', format!("cannot confirm shell outcome: {error}").as_bytes());
+                    return Ok(());
+                }
+            };
             // Stop remaining group members when the initial child exits.
             if status.is_some() {
                 kill_group(pid);

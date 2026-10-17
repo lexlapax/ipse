@@ -13,6 +13,13 @@ unknown-version/field and escaping project aliases fail closed. Missing default
 files are optional; explicit operator paths are required. Project settings require
 explicit current-run trust. This authorization does not replace effect approvals.
 
+Project merges can only tighten sandbox policy: a project `off` cannot replace
+an operator-file or earlier project's `native`. The skipped field does not
+replace its stricter provenance. Other settings keep normal scoped precedence;
+the later operator environment and CLI overlays can explicitly select either
+sandbox mode. This is configuration authority, not a claim that every OS backend
+is available; native setup still fails closed without fallback.
+
 The schema also accepts validated named `profiles` and `roles`; see the
 [profile contract](model-profiles.md). Before merging or selecting execution,
 `profile_authority/1` refuses project endpoints and replacement of operator profile

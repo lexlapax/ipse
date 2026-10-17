@@ -482,7 +482,7 @@ defmodule Ipse.Extensions.InvocationTest do
     ctx = %{ctx | config: ctx.config |> Map.put(:duplicate, true) |> Map.put(:approval, :allow)}
     pid = start(ctx)
     :ok = Session.prompt(pid, "malformed call fixture")
-    assert_receive {:ipse, ^pid, {:done, :ok}}, 2000
+    assert_receive {:ipse, ^pid, {:done, :error}}, 2000
     refute File.exists?(ctx.marker)
     {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
     assert Invocation.count(events) == 0

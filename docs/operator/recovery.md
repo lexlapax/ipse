@@ -4,6 +4,14 @@ When compaction refuses to fit retained context, the original journal remains
 intact. Do not repeat an effect just to reconstruct output. First inspect the
 actual workspace and recorded outcomes, including unknown calls.
 
+Loss of a shell helper, invalid/incomplete helper output, or an unexpected tool
+worker failure can leave an effect unknown even when an error was displayed.
+Inspect files and external systems before explicitly retrying; resume does not
+rerun the action. Validation/setup refusals remain known failures. New malformed
+or duplicate tool-call IDs stop the response before any approval or execution.
+Older duplicate IDs never allow one saved result to settle two calls; unmatched
+history remains unknown and the original transcript stays intact.
+
 In interactive chat, `/diagnostics` shows phase, active worker, step budget,
 approval/question waiting and a content-free byte breakdown of the effective
 request. Categories add exactly to encoded JSON size, including escaping and

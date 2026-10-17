@@ -1900,13 +1900,28 @@ defmodule Ipse.Session do
          compaction_failed(s, "The selected provider's summary request failed.", "summary")}
 
       {:model, {:ok, assistant, usage}} ->
-        s = append_message(s, assistant)
-        calls = Map.get(assistant, "tool_calls", []) || []
+        calls = if is_nil(assistant["tool_calls"]), do: [], else: assistant["tool_calls"]
+        valid_calls = valid_tool_ids?(calls)
+
+        s =
+          if valid_calls do
+            append_message(s, assistant)
+          else
+            record(s, %{
+              "type" => "provider_response_refused",
+              "version" => 1,
+              "request_id" => s.last_request_id,
+              "reason" => "tool_call_identity",
+              "message" => assistant
+            })
+
+            s
+          end
 
         s = %{
           s
           | usage: usage,
-            calls: calls,
+            calls: if(valid_calls, do: calls, else: []),
             final: assistant["content"] || "",
             reported_model: reported_model(assistant)
         }
@@ -1914,6 +1929,13 @@ defmodule Ipse.Session do
         notify(s, {:usage, usage})
 
         cond do
+          not valid_calls ->
+            {:noreply,
+             fail(
+               %{s | calls: []},
+               "Invalid or duplicate tool-call identities; no call was started."
+             )}
+
           calls != [] ->
             {:noreply, next_tool(s)}
 
@@ -2581,6 +2603,15 @@ defmodule Ipse.Session do
     )
   end
 
+  defp valid_tool_ids?(calls) when is_list(calls) do
+    Enum.all?(calls, fn
+      %{"id" => id} when is_binary(id) -> id != ""
+      _ -> false
+    end) and length(Enum.uniq_by(calls, & &1["id"])) == length(calls)
+  end
+
+  defp valid_tool_ids?(_), do: false
+
   defp next_tool(%{calls: []} = s), do: model(s)
 
   defp next_tool(s) do
@@ -2765,46 +2796,49 @@ defmodule Ipse.Session do
     }
 
     task =
-      owned_task(fn ->
-        cond do
-          Catalog.external?(name) ->
-            Host.invoke_export("invoke.tool", name, args, owner, job_ref)
+      owned_task(
+        fn ->
+          cond do
+            Catalog.external?(name) ->
+              Host.invoke_export("invoke.tool", name, args, owner, job_ref)
 
-          external ->
-            Ipse.MCP.Client.call(external, args, s.cwd, %{owner: owner, job_ref: job_ref})
+            external ->
+              Ipse.MCP.Client.call(external, args, s.cwd, %{owner: owner, job_ref: job_ref})
 
-          name == "load_skill" ->
-            Skills.load(s.skills, args["name"] || "")
+            name == "load_skill" ->
+              Skills.load(s.skills, args["name"] || "")
 
-          name == "load_skill_resource" ->
-            Skills.load_resource(s.skills, args["name"], args["path"])
+            name == "load_skill_resource" ->
+              Skills.load_resource(s.skills, args["name"], args["path"])
 
-          name in ["research_source", "research_claim", "research_ledger"] ->
-            Ipse.Research.call(s.dir, s.id, name, args)
+            name in ["research_source", "research_claim", "research_ledger"] ->
+              Ipse.Research.call(s.dir, s.id, name, args)
 
-          name in ["delegate", "delegate_parallel"] ->
-            worker =
-              if name == "delegate", do: Ipse.Delegation.Worker, else: Ipse.Delegation.Group
+            name in ["delegate", "delegate_parallel"] ->
+              worker =
+                if name == "delegate", do: Ipse.Delegation.Worker, else: Ipse.Delegation.Group
 
-            worker.run(
-              %{
-                owner: owner,
-                job_ref: job_ref,
-                id: s.id,
-                request_id: s.last_request_id,
-                dir: s.dir,
-                cwd: s.cwd,
-                config: s.config,
-                context_snapshot: s.context_snapshot,
-                call_id: call["id"]
-              },
-              args
-            )
+              worker.run(
+                %{
+                  owner: owner,
+                  job_ref: job_ref,
+                  id: s.id,
+                  request_id: s.last_request_id,
+                  dir: s.dir,
+                  cwd: s.cwd,
+                  config: s.config,
+                  context_snapshot: s.context_snapshot,
+                  call_id: call["id"]
+                },
+                args
+              )
 
-          true ->
-            Tools.execute(name, args, context)
-        end
-      end)
+            true ->
+              Tools.execute(name, args, context)
+          end
+        end,
+        :unknown
+      )
 
     count =
       cond do
@@ -3628,17 +3662,23 @@ defmodule Ipse.Session do
   defp restore_messages([%{"role" => "assistant", "tool_calls" => calls} = message | rest])
        when is_list(calls) do
     {results, tail} = Enum.split_while(rest, &(&1["role"] == "tool"))
-    by_id = Map.new(results, &{&1["tool_call_id"], &1})
+    by_id = Enum.group_by(results, & &1["tool_call_id"])
 
-    ordered =
-      Enum.map(calls, fn call ->
-        Map.get(by_id, call["id"], %{
-          "role" => "tool",
-          "tool_call_id" => call["id"],
-          "content" =>
-            "Outcome unknown: session interrupted before a result was recorded. Inspect the workspace before retrying.",
-          "ipse_tool_outcome" => %{"status" => "unknown", "approval" => "historical_unknown"}
-        })
+    {ordered, _remaining} =
+      Enum.map_reduce(calls, by_id, fn call, pending ->
+        case Map.get(pending, call["id"], []) do
+          [result | remaining] ->
+            {result, Map.put(pending, call["id"], remaining)}
+
+          [] ->
+            {%{
+               "role" => "tool",
+               "tool_call_id" => call["id"],
+               "content" =>
+                 "Outcome unknown: session interrupted before a result was recorded. Inspect the workspace before retrying.",
+               "ipse_tool_outcome" => %{"status" => "unknown", "approval" => "historical_unknown"}
+             }, pending}
+        end
       end)
 
     [message | ordered] ++ restore_messages(tail)
@@ -4084,7 +4124,7 @@ defmodule Ipse.Session do
     end)
   end
 
-  defp owned_task(fun) do
+  defp owned_task(fun, failure_status \\ :error) do
     owner = self()
 
     Task.Supervisor.async_nolink(Ipse.Tasks, fn ->
@@ -4103,9 +4143,11 @@ defmodule Ipse.Session do
       try do
         fun.()
       rescue
-        _ -> {:error, "Worker failed. Inspect the workspace before retrying any action."}
+        _ -> {failure_status, "Worker failed. Inspect the workspace before retrying any action."}
       catch
-        _, _ -> {:error, "Worker interrupted. Inspect the workspace before retrying any action."}
+        _, _ ->
+          {failure_status,
+           "Worker interrupted. Inspect the workspace before retrying any action."}
       end
     end)
   end

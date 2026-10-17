@@ -46,6 +46,12 @@ defmodule Ipse.Config do
         Enum.reduce(loaded, initial, fn source, acc ->
           values = source.data["settings"] || %{}
 
+          values =
+            if source.scope == "project" and acc.settings["sandbox"] == "native" and
+                 values["sandbox"] == "off",
+               do: Map.delete(values, "sandbox"),
+               else: values
+
           %{
             acc
             | settings: Map.merge(acc.settings, values),
