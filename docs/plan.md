@@ -31,7 +31,7 @@ new dependencies or start production engine implementation.
 
 | Milestone or gate | Current state | Next result |
 | --- | --- | --- |
-| [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | In progress; reports, output caps and shared main/summary/child reservations | Hosted follow-up and accounted extension model operations |
+| [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | In progress; reports, output caps and verified shared main/summary/child reservations | Accounted extension model operations |
 | [P24: voice and media](#p24-voice-and-realtime-media) | Authorized; unimplemented | Chained STT/text/TTS, then explicit realtime/media capability |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Proposed revised scope; unstarted | Independent Codex/Ipse research, measured discrepancies, Ipse-authored repairs and fresh acceptance runs |
 | P25 security gates | Proposed; no service access or scan verified | Baseline audit before broad self-development and final-candidate review/rescan afterward |
@@ -39,10 +39,11 @@ new dependencies or start production engine implementation.
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; proposed scope subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
 | [Apache-2.0 transition](#license-transition) | Requested; unimplemented | Separate verified license/package/documentation change after the agreed delivery scope |
 
-Feature status and runner readiness are separate. The latest hosted candidate
-failed a Linux auth fixture; the reproduced helper-cleanup repair now passes local
-source/package/installed checks. A new hosted result is required before P25's
-runner can be frozen. Actual revisions, platform results and investigation belong in
+Feature status and runner readiness are separate. Shared-budget candidate
+`a815d06` passed hosted Linux/macOS source, package and installed-extension checks,
+including both Mac enforcement steps and the reproduced auth cleanup repair.
+Later runtime changes need their own baseline before P25's runner is frozen.
+Actual revisions, platform results and investigation belong in
 [testing](developer/testing.md#current-evidence-and-next-checks).
 
 Recommended order: finish P23; deliver P24 as
@@ -90,12 +91,12 @@ request/attempt/provider/billing/model facts separately from diagnostics. The
 | P23C | Finite separately granted full own-session enumeration and default-off `builtin:cost-summary:1`, cumulative request replacement and overflow/legacy handling |
 | P23D | Explicit registered-child discovery/reads and default-off `builtin:cost-tree:1`, frozen accounting prefixes, exact origins and visible missing/busy/invalid/legacy/cleanup gaps |
 | P23E1 | Explicit supported provider output ceilings, narrowed child/summary caps and saved-policy resume |
-| P23E2 | Optional atomic session-tree reservations for main/summary/children, conservative settlement, protected inspection and historical-source validation; source/package/installed checks passed, hosted follow-up pending |
+| P23E2 | Optional atomic session-tree reservations for main/summary/children, conservative settlement, protected inspection and historical-source validation; local and hosted Linux/macOS source/package/installed checks passed |
 
 [Provider output ceilings](developer/provider-limits.md) apply only to supported
 API/Ollama requests. ChatGPT subscription refuses the unsupported setting; no
-output-token ceiling is invented for that public interface. Verification and
-remaining platform issues are recorded in
+output-token ceiling is invented for that public interface. Verification scope
+and limitations are recorded in
 [actual evidence](developer/testing.md#current-evidence-and-next-checks).
 The [shared budget contract](developer/budgets.md) covers main, summary and local
 children independently of reports. Accounted extension model operations remain open.
