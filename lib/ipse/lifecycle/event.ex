@@ -147,7 +147,7 @@ defmodule Ipse.Lifecycle.Event do
           uint?(number)
 
         {"kind", kind} ->
-          kind in ~w(model compaction approval question)
+          kind in ~w(model compaction extension approval question)
 
         {"domain", domain} ->
           domain in ~w(tool extension_action delegated_tool native_question extension_question)

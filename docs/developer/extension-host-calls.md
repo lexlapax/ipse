@@ -8,10 +8,11 @@ capability, approval, lifetime and journal admission. The owned task performs IO
 outside Session, keeping cancellation and operator input responsive.
 
 This guide owns the common continuation protocol and scoped state contract.
-Questions, tools, services, history, accounting and context use the same action
+Questions, tools, model calls, services, history, accounting and context use the same action
 chain; their linked guides own operation-specific schemas and failure behavior.
 P22's foundation is complete within its documented coverage. Production knowledge
-algorithms and the remaining P23 accounting capabilities are separate work.
+algorithms remain separate work; P23's accounted model capability has its own
+verification gates.
 
 ## Negotiation and protocol
 
@@ -23,6 +24,7 @@ alongside their `invoke.*` or `event.job` exports:
 | `host.state.read`, `host.state.write` | Scoped get/list and put/delete | State requests below |
 | `host.question` | Explicit structured clarification | [Questions](extension-questions.md) |
 | `host.tools` | Existing bounded file/shell tools | [Workflow tools](extension-tool-actions.md) |
+| `host.model` | Approved one-shot profile-bound inference and canonical usage | [Accounted model calls](extension-model-calls.md) |
 | `host.services` | Operator-bound typed value calls | [Services](extension-services.md) |
 | `host.context` | Caller-scoped contextual evidence | [Context](extension-context.md) |
 | `host.history`, `host.history.*` | Bounded own-session recorded views with separate private grants | [History/catch-up](extension-history.md) |

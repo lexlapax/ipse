@@ -171,6 +171,8 @@ defmodule Ipse.Delegation do
     |> Map.put(:subagent_concurrency, 1)
     |> Map.put(:mcp_servers, [])
     |> Map.put(:extensions, Ipse.Extensions.Registry.child_entries(config))
+    |> Map.put(:model_profiles, Ipse.Extensions.ModelCall.profiles(config))
+    |> Map.put(:model_auth_dir, config[:model_auth_dir] || config[:auth_dir])
     |> Map.put(:approval, :ask)
     |> Map.put(:max_steps, min(parent_max_steps(config), max_steps()))
     |> Map.put(:compact, false)

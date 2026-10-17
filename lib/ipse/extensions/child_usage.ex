@@ -409,6 +409,7 @@ defmodule Ipse.Extensions.ChildUsage do
                },
              true <- is_binary(child["origin_call_id"]),
              {:ok, ledger} <- Usage.restore(events, child["child_id"]),
+             :ok <- validate_model_actions(events),
              true <-
                Enum.all?(ledger.requests, fn {_, r} ->
                  r.admission["parent_session_id"] == parent and
@@ -466,6 +467,12 @@ defmodule Ipse.Extensions.ChildUsage do
   end
 
   defp private_file(path), do: private(path, :regular)
+
+  defp validate_model_actions(events) do
+    if Enum.any?(events, &Ipse.Extensions.ModelCall.operation?(&1["request"])),
+      do: Ipse.Extensions.Actions.validate_events(events),
+      else: :ok
+  end
 
   defp private(path, type) do
     case File.lstat(path) do

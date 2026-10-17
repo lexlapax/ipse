@@ -32,7 +32,12 @@ module, conversations, native payloads, profiles and MCP state. Credential looku
 occurs in its own request task using the fixed reference for its provider; the
 ChatGPT auth directory is passed only to a ChatGPT child. Same-provider inherited
 routing retains existing fixture/embedded-provider behavior but removes unused
-profile catalog/configuration data. Children remain owned by the worker and
+ordinary delegation-role/configuration data. Separately permitted `host.model`
+instances retain a private helper-profile catalog and protected auth-directory
+reference, including when the child's main provider differs. These are not SDK
+payloads or inherited API keys; helper requests resolve their explicitly selected
+provider's credential after admission. See [accounted model calls](extension-model-calls.md).
+Children remain owned by the worker and
 parent, with existing cancellation, process-group cleanup, separate journal,
 mutation approvals, conflict serialization and unknown-effect handling.
 
@@ -40,7 +45,7 @@ Child execution metadata is persisted before inference. `RuntimeInfo` exposes
 only profile ID, role and effort alongside the existing provider/model facts.
 Successful child results carry host routing facts before the explicitly untrusted
 model result; this prevents the parent relying on child self-description. Limits
-remain at most six model calls/120 seconds and the parent's context ceiling.
+remain at most six admitted model/helper calls, 120 seconds and the parent's context ceiling.
 An optional output cap also ceilings inherited/selected children: the selected
 profile can narrow it but cannot widen or omit a parent bound. Combined provider
 capability/range checks occur before delegation approval; unsupported subscription

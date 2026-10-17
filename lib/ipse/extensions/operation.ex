@@ -2,6 +2,9 @@ defmodule Ipse.Extensions.Operation do
   @moduledoc "Closed host-operation contracts; proposals are not permission grants."
   alias Ipse.Extensions.State
 
+  def validate(%{"op" => "model.complete"} = request),
+    do: Ipse.Extensions.ModelCall.validate(request)
+
   def validate(%{"op" => "history.read"} = request), do: Ipse.Extensions.History.validate(request)
   def validate(%{"op" => "usage.read"} = request), do: Ipse.Extensions.UsageRead.validate(request)
 
@@ -34,6 +37,7 @@ defmodule Ipse.Extensions.Operation do
   def question?(request), do: is_map(request) and request["op"] == "operator.question"
   def tool?(request), do: is_map(request) and request["op"] == "tool.call"
   def service?(request), do: is_map(request) and request["op"] == "service.call"
+  def model?(request), do: Ipse.Extensions.ModelCall.operation?(request)
   def history?(request), do: Ipse.Extensions.History.operation?(request)
 
   def usage?(request),
@@ -53,11 +57,14 @@ defmodule Ipse.Extensions.Operation do
   def capability(%{"op" => "service.call"}), do: "host.services"
   def capability(%{"op" => "tool.call"}), do: "host.tools"
   def capability(%{"op" => "operator.question"}), do: "host.question"
+  def capability(%{"op" => "model.complete"}), do: "host.model"
   def capability(request), do: State.capability(request)
   def mutating?(%{"op" => "tool.call", "name" => name}), do: Ipse.Tools.mutating?(name)
+  def mutating?(%{"op" => "model.complete"}), do: true
   def mutating?(request), do: State.mutating?(request)
 
   def namespace(_identity, %{"op" => "operator.question"}, _cwd, _id), do: {:ok, nil}
+  def namespace(_identity, %{"op" => "model.complete"}, _cwd, id), do: {:ok, id}
   def namespace(_identity, %{"op" => "tool.call"}, _cwd, _id), do: {:ok, nil}
   def namespace(_identity, %{"op" => "service.call"}, _cwd, _id), do: {:ok, nil}
   def namespace(_identity, %{"op" => "context.publish"}, _cwd, _id), do: {:ok, nil}
@@ -80,6 +87,9 @@ defmodule Ipse.Extensions.Operation do
 
   def valid_outcome?(%{"op" => "tool.call"} = request, status, value, _),
     do: Ipse.Extensions.ToolAction.valid_outcome?(request, status, value)
+
+  def valid_outcome?(%{"op" => "model.complete"} = request, status, value, id),
+    do: Ipse.Extensions.ModelCall.valid_outcome?(request, status, value, id)
 
   def valid_outcome?(%{"op" => "history.read"} = request, status, value, id),
     do: Ipse.Extensions.History.valid_outcome?(request, status, value, id)

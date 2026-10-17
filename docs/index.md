@@ -51,11 +51,13 @@ start. Use the guides below for operation, development, and project context.
 | [Extension history](developer/extension-history.md) | Explicit own-session recorded views, private grants, fixed-range pagination, skipped/gap records and no-replay catch-up primitives |
 | [Extension questions](developer/extension-questions.md) | Structured clarification, bounded checkpoints, explicit answered continuations and inert recovery |
 | [Extension tool actions](developer/extension-tool-actions.md) | Approved bounded file/shell workflows, instruction preflight, output completeness and durable receipts |
+| [Accounted extension model calls](developer/extension-model-calls.md) | Explicit one-shot text profiles, egress approvals, shared budgets, private native receipts, child concurrency and inert recovery |
 | [Extension services](developer/extension-services.md) | Typed requirements, explicit operator routes, acyclic activation pins and owned value-service jobs |
 | [Extension context](developer/extension-context.md) | Bounded session contributions, assertion/evidence provenance, request snapshots and cached recovery |
 | [Extension adoption scenarios](developer/extension-scenarios.md) | Bundled/third-party/generated feature walkthroughs, artifact installation, temporary use and deferred host capabilities |
 | [Extension conformance](developer/extension-conformance.md) | Synthetic SDK scenarios, ordinary trust/approvals, scratch state, structured answers, reports and optional dispatcher tracing |
 | [Independent extension proof](developer/extension-proof.md) | Candidate core freeze, installed memory/workflow artifacts, source provenance, catch-up, deletion and negative cleanup evidence |
+| [Model-call artifact example](../examples/model-calls/README.md) | Independent SDK artifact with the same credential-free source/unchanged-package proof and no system development toolchain at runtime |
 | [Runtime capability boundaries](developer/runtime-capabilities.md) | Framework comparison, usage/cost facts, text/voice streams and core versus extension ownership |
 | [Usage accounting](developer/usage-accounting.md) | Canonical facts, granted own-session/registered-child pages and cached/source recovery validation |
 | [Provider output ceilings](developer/provider-limits.md) | Explicit supported request caps, subscription refusal, child narrowing, truncation and pinned resume |

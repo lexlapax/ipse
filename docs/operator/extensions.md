@@ -93,6 +93,7 @@ trust ceiling must cover every declared capability:
 | `host.state.read`, `host.state.write` | Scoped get/list or separately approved put/delete | [State](#scoped-state-host-calls) |
 | `host.question` | Explicit structured clarification | [Questions](#structured-questions) |
 | `host.tools` | Existing bounded read/write/edit/shell calls | [Workflow tools](#workflow-tools) |
+| `host.model` | Separately approved one-shot inference through a named profile, with canonical usage and shared admission | [Model calls](#accounted-model-calls) |
 | `host.services` | Calls through explicit operator service bindings | [Composition](#service-composition) |
 | `host.context` | Bounded caller-scoped context publications | [Context/evidence](#context-and-evidence) |
 | `host.history`, `host.history.*` | Explicit reads of this session's metadata or separately granted private views | [History](#explicit-history-and-catch-up) |
@@ -408,6 +409,40 @@ failure stops with an unknown outcome; inspect before retrying. Cancellation kil
 the owned tool task and ordinary shell process group, with existing macOS cleanup
 limits. See
 [protocol and limits](../developer/extension-tool-actions.md).
+
+## Accounted model calls
+
+A reviewed artifact with `host.actions` and `host.model` can request one-shot text
+inference from a named [model profile](model-profiles.md). Configure that profile
+normally, then import/trust/select the artifact and invoke its tool, `/ext` command
+or enabled event job. The artifact supplies the complete instruction/input and a
+bounded result size/deadline; it cannot replace the provider, endpoint or credential
+through call arguments. No model/service is downloaded or chosen automatically.
+
+The call has its own approval, showing the full input/instruction and
+profile/provider/model/billing facts. Approving its enclosing tool or answering a
+question does not approve inference; `--yes` grants session-wide action authority
+and headless denial never dispatches. Prompt/history/memory access still needs
+separate grants. Only this call's text and normalized usage return to its caller;
+helper text does not enter the main conversation or visible-text stream.
+
+Calls consume model steps and the same optional [tree budget](budgets.md) as main,
+summary and child requests. Explicitly permitted child instances can use configured
+profiles; model-egress approvals do not take file-mutation leases. Existing mutation
+conflict checks remain active. Output ceilings and deadlines narrow inherited
+policy; unsupported subscription output caps refuse without provider/billing fallback.
+
+Use cancellation to stop owned active work. Failed/interrupted inference may have
+consumed resources, so retained quota and unavailable usage do not imply zero cost.
+Idle resume starts no model/worker and restores committed receipts; changed profile
+catalogs refuse resume. Disable future use by removing the artifact's selection
+or grant for a new session. Existing pinned sessions require their saved configuration.
+Embeddings and audio need separately supported contracts.
+
+The [request and recovery contract](../developer/extension-model-calls.md) owns
+bounds and failure codes. The [credential-free artifact example](../../examples/model-calls/README.md)
+demonstrates source/package verification with a synthetic loopback provider; it
+does not establish live provider/account or model-quality coverage.
 
 ## Service composition
 

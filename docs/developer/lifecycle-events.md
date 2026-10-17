@@ -74,7 +74,7 @@ IDs identify separate attempts to consume or act on it.
 | Configuration/session | Inert registry/configuration inspection; `session.created` in recorded history; opt-in epoch start/resume/logical close | Initialization/close facts are outside live-feed enrollment. No callback can rewrite configuration, trust or auth. Prior unrecorded epochs stay absent |
 | Prompt admission | Ordered `transform.prompt`; original/effective `notify` or `job`; recorded expanded/intermediate projections | Selected prompt markers bind actual turns; each committed projection is its own occurrence. No unrestricted prompt wildcard, implicit private grant or synthetic prompt-refusal event |
 | Context assembly | Bounded caller-owned `context.publish`, awaited before-request recall, frozen request snapshot; workspace/catalog/extension metadata | Extension snapshot binds the request. Older workspace/catalog facts expose counts without invented request/turn links. No complete private system-message subscription |
-| Model execution | Admitted/usage/finished/measured metadata, actual request/attempt/parent identities and independent durable accounting | Generic feeds do not expose counters/pricing. P23 adds a separate own-session `usage.read` grant; accounted extension model requests and budgets remain host work, with no hidden callback inference |
+| Model execution | Admitted/usage/finished/measured metadata, actual request/attempt/parent identities and independent durable accounting; one-shot extension calls use canonical kind `extension` | Generic feeds do not expose counters/pricing. Separately granted `usage.read` supplies counters; explicit `host.model` calls use host admission/receipts without hidden callback inference or main text-stream delivery |
 | Visible output/answer | Negotiated ephemeral text frames; ordered `transform.presentation`; committed original/presented answer notifications/jobs | Text ranges have broker/stream identity, not journal offsets. The completed answer binds the effective prompt and native request. No hidden reasoning, provider-native payload or audio access |
 | Tools/approvals | Opt-in admitted-tool intent/outcome metadata and separately granted private input/result feed/history; operator wait start/finish | Host tool IDs bind actual admitted request/turn/call and source facts. Denied/invalid/unstarted calls have no fabricated execution event. No proposal/validation veto callback or approval-granting hook |
 | Operator questions | Waiting/answered/closed metadata; actual wait/source identity; explicit extension question continuation | Generic question metadata omits text, answer and raw call ID. Only the admitted question continuation receives its validated answer. Invalid/stale replies do not become accepted events or approvals |
@@ -442,8 +442,8 @@ Prompt access, persistent writes, external transfer and model inference are
 separate grants. Installing or enabling a graph extension does not imply all
 four. Deterministic extraction can use the owned worker without inference;
 model-based extraction needs an explicit profile, usage/budget admission and
-provider/billing authority. Current host actions do not yet expose that generic
-model-request capability. Storage/network proposals still require their normal
+provider/billing authority through the [accounted model operation](extension-model-calls.md).
+Embeddings need a separate contract. Storage/network proposals still require their normal
 approval policy even when prompted by an authorized subscription.
 
 Every delivery/job owns its worker/resource lifetimes and bounded cancellation.

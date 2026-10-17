@@ -13,7 +13,9 @@ starting a model or repairing its journal:
 Accounting shows total request count, unknown-outcome count, whether historical
 usage is unmetered, and the latest 16 request records. Records identify provider,
 requested/reported model, selected profile where configured, billing mode,
-main/summary kind and nullable normalized counters. Child records live in their
+main/summary/extension kind and nullable normalized counters. An approved extension
+call records its actual selected profile/provider, even if they differ from the
+main model; its text/native payload is excluded from accounting. Child records live in their
 own journals under `sessions/subagents/PARENT_SESSION_ID` and identify the parent
 request. The built-in parent display shows its own requests; the optional tree
 report below combines granted child accounting. See

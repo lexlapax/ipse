@@ -35,6 +35,10 @@ jobs:
         run: |
           elixir examples/extension-lab/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-extension-lab"
           elixir examples/extension-lab/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-extension-lab"
+      - name: Independent installed model-call proof
+        run: |
+          elixir examples/model-calls/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-model-calls"
+          elixir examples/model-calls/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-model-calls"
       - name: Experimental macOS App Sandbox enforcement
         if: runner.os == 'macOS'
         run: |

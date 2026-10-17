@@ -9,6 +9,7 @@ defmodule Ipse.Session do
     Catalog,
     Invocation,
     Actions,
+    ModelCall,
     Subscriptions,
     EventJob,
     Feeds,
@@ -118,6 +119,7 @@ defmodule Ipse.Session do
          :ok <- extension_configuration(config),
          :ok <- Ipse.Observability.Config.runtime(config),
          :ok <- Ipse.Usage.configuration(config),
+         :ok <- ModelCall.configuration(config),
          :ok <- Ipse.Provider.Limits.validate(config),
          :ok <- Ipse.Budget.Policy.runtime(config),
          {:ok, cwd} <- WorkspaceContext.canonical_path(requested_cwd),
@@ -184,6 +186,7 @@ defmodule Ipse.Session do
         usage_reads: extension_state.usage_reads,
         child_usage: extension_state.child_usage,
         active_request: nil,
+        extension_model: nil,
         last_request_id: saved_request(events, "request_id"),
         turn_id:
           if(question && question[:kind] == :extension,
@@ -912,6 +915,7 @@ defmodule Ipse.Session do
          true <- not Ipse.Extensions.Operation.question?(request) or questions_enabled?(s.config),
          {:ok, context_hash} <- extension_action_context(s, request),
          {:ok, service} <- extension_service_context(s, request),
+         :ok <- extension_model_configuration(s.config, request),
          {:ok, intent} <-
            Actions.intent(
              parent,
@@ -946,6 +950,14 @@ defmodule Ipse.Session do
             "request" => request
           }
 
+          proposed =
+            if ModelCall.operation?(request) do
+              {:ok, _, execution} = ModelCall.prepare(s.config, request)
+              Map.put(proposed, "execution", execution)
+            else
+              proposed
+            end
+
           notify(s, {:approval, approval_ref, "extension:" <> request["op"], proposed})
 
           {:noreply,
@@ -958,13 +970,14 @@ defmodule Ipse.Session do
            }}
 
         true ->
-          source =
-            if (Ipse.Extensions.Operation.history?(request) or
-                  Ipse.Extensions.Operation.usage?(request)) and request["snapshot"] == nil do
-              record_source(s, intent)
-            else
-              record(s, intent)
-              nil
+          {s, source} =
+            cond do
+              (Ipse.Extensions.Operation.history?(request) or
+                 Ipse.Extensions.Operation.usage?(request)) and request["snapshot"] == nil ->
+                {s, record_source(s, intent)}
+
+              true ->
+                {record_extension_action(s, intent), nil}
             end
 
           context = extension_execution_context(s, intent, source)
@@ -998,6 +1011,117 @@ defmodule Ipse.Session do
     do: {:reply, {:error, :extension_action_refused}, s}
 
   def handle_call(
+        {:extension_model_begin, ref, intent},
+        {caller, _},
+        %{
+          job_ref: ref,
+          task: %{pid: caller},
+          extension_action: %{intent: intent},
+          extension_model: nil,
+          phase: phase
+        } = s
+      )
+      when ref != nil and
+             phase in [:tool, :extension_command, :extension_service, :extension_events] do
+    with true <- ModelCall.operation?(intent["request"]),
+         true <- intent["approval"] in ~w(approved session_allow),
+         true <- Ipse.Extensions.Registry.live?(s.extension_invocation["identity"]),
+         true <- s.steps < Map.get(s.config, :max_steps, 30),
+         true <- Ipse.Usage.capacity?(s.accounting),
+         {:ok, config, execution} <- ModelCall.prepare(s.config, intent["request"]) do
+      admission =
+        Ipse.Usage.admission(s.id, config, "extension", s.turn_id)
+        |> Map.put("request_id", intent["operation_id"])
+
+      s = account(s, ModelCall.source(intent, admission, execution))
+      s = account(s, admission)
+      active = %{admission: admission, started: System.monotonic_time(:millisecond)}
+      {:reply, {:ok, config, admission}, %{s | extension_model: active, steps: s.steps + 1}}
+    else
+      _ -> {:reply, {:error, :extension_model_refused}, s}
+    end
+  end
+
+  def handle_call({:extension_model_begin, _, _}, _, s),
+    do: {:reply, {:error, :extension_model_refused}, s}
+
+  def handle_call(
+        {:extension_model_usage, ref, id, usage},
+        {caller, _},
+        %{
+          job_ref: ref,
+          task: %{pid: caller},
+          extension_model: %{admission: %{"request_id" => id} = admission}
+        } = s
+      )
+      when ref != nil do
+    entry = s.accounting.requests[id]
+
+    if Ipse.Usage.Normalizer.valid?(usage) do
+      s =
+        if entry.sequence < 64 and entry.observation != usage do
+          event = %{
+            "type" => "request_usage_observed",
+            "version" => 1,
+            "request_id" => id,
+            "attempt_id" => admission["attempt_id"],
+            "sequence" => entry.sequence + 1,
+            "usage" => usage
+          }
+
+          account(s, event)
+        else
+          s
+        end
+
+      {:reply, :ok, s}
+    else
+      {:reply, {:error, :invalid_extension_usage}, s}
+    end
+  end
+
+  def handle_call({:extension_model_usage, _, _, _}, _, s),
+    do: {:reply, {:error, :extension_model_refused}, s}
+
+  def handle_call(
+        {:extension_model_finish, ref, intent, result, assistant, reason},
+        {caller, _},
+        %{
+          job_ref: ref,
+          task: %{pid: caller},
+          extension_action: %{intent: intent},
+          extension_model: %{admission: admission}
+        } = s
+      )
+      when ref != nil do
+    {s, retained} =
+      case ModelCall.response(admission, assistant) do
+        {:ok, event} -> {account(s, event), true}
+        _ -> {s, false}
+      end
+
+    s = measure_request(s, result)
+    completion = s.accounting.requests[admission["request_id"]].completion
+
+    outcome =
+      cond do
+        reason in ~w(model_cancelled model_timeout) ->
+          {:failed, %{"code" => reason}}
+
+        match?({:ok, _, _}, result) and not retained ->
+          {:failed, %{"code" => "model_response"}}
+
+        true ->
+          ModelCall.value_from_completion(intent["request"], admission, completion, assistant)
+      end
+
+    {:reply, outcome, s}
+  end
+
+  def handle_call({:extension_model_finish, _, _, _, _, _}, _, s),
+    do: {:reply, {:error, :extension_model_refused}, s}
+
+  def handle_call(
         {:extension_action_commit, ref, event},
         {caller, _},
         %{job_ref: ref, task: %{pid: caller}, extension_action: %{intent: intent}, phase: phase} =
@@ -1019,7 +1143,7 @@ defmodule Ipse.Session do
              s.extension_action_results,
              event
            ) do
-      record(s, event)
+      s = record_extension_action(s, event)
 
       if Ipse.Extensions.Operation.tool?(intent["request"]),
         do: notify(s, {:tool_result, "extension:tool.call", Jason.encode!(event["outcome"])})
@@ -1241,7 +1365,7 @@ defmodule Ipse.Session do
       Map.put(action.intent, "approval", if(allowed == true, do: "approved", else: "denied"))
 
     if Ipse.Extensions.Registry.live?(s.extension_invocation["identity"]) do
-      record(s, intent)
+      s = record_extension_action(s, intent)
       s = finish_wait(s, if(allowed == true, do: "approved", else: "denied"))
 
       reply =
@@ -2405,33 +2529,8 @@ defmodule Ipse.Session do
     %{s | phase: phase, task: task, job_ref: job_ref, extension_intent: nil}
   end
 
-  defp request(config, messages, tools, emit) do
-    provider =
-      Map.get(
-        config,
-        :provider_module,
-        if(config.provider == :demo, do: Ipse.Provider.Demo, else: Ipse.Provider)
-      )
-
-    credentials =
-      if config.provider == :chatgpt do
-        case Ipse.Auth.token(config.auth_dir) do
-          {:ok, token} -> {:ok, Map.put(config, :api_key, token)}
-          error -> error
-        end
-      else
-        key =
-          case config.provider do
-            :openai -> System.get_env("OPENAI_API_KEY")
-            :anthropic -> System.get_env("ANTHROPIC_API_KEY")
-            _ -> nil
-          end
-
-        {:ok, Map.put_new(config, :api_key, key)}
-      end
-
-    with {:ok, config} <- credentials, do: provider.complete(config, messages, tools, emit)
-  end
+  defp request(config, messages, tools, emit),
+    do: Ipse.Provider.Request.complete(config, messages, tools, emit)
 
   defp complete_compaction(s, assistant, usage) do
     case Ipse.Compaction.finish(s.compaction, assistant, system_message(s), s.config) do
@@ -2749,13 +2848,23 @@ defmodule Ipse.Session do
   end
 
   defp next_delegated_approval(%{approval: approval} = s) when approval != nil, do: s
-  defp next_delegated_approval(%{delegation_effect: child} = s) when child != nil, do: s
   defp next_delegated_approval(%{delegation_queue: []} = s), do: s
 
   defp next_delegated_approval(s) do
-    [{worker, child, ref, name, args} | rest] = s.delegation_queue
-    s = %{s | delegation_queue: rest}
+    index =
+      Enum.find_index(s.delegation_queue, fn {_, _, _, name, args} ->
+        s.delegation_effect == nil or ModelCall.delegated_approval?(name, args)
+      end)
 
+    if index == nil do
+      s
+    else
+      {item, rest} = List.pop_at(s.delegation_queue, index)
+      dispatch_delegated_approval(%{s | delegation_queue: rest}, item)
+    end
+  end
+
+  defp dispatch_delegated_approval(s, {worker, child, ref, name, args}) do
     case s.delegation_resources[child] do
       %{id: id, worker: ^worker, down: false, finished: false} ->
         mode = Map.get(s.config, :approval, :ask)
@@ -2859,17 +2968,23 @@ defmodule Ipse.Session do
   defp delegated_conflict?(s, child, name, args) do
     target = delegated_target(s, name, args)
 
-    Enum.any?(s.delegation_claims, fn {claimed, owner} ->
-      owner != child and (target == "*" or claimed == "*" or target == claimed)
-    end)
+    not ModelCall.delegated_approval?(name, args) and
+      Enum.any?(s.delegation_claims, fn {claimed, owner} ->
+        owner != child and (target == "*" or claimed == "*" or target == claimed)
+      end)
   end
 
-  defp claim_delegated_effect(s, child, name, args),
-    do: %{
+  defp claim_delegated_effect(s, child, name, args) do
+    if ModelCall.delegated_approval?(name, args) do
       s
-      | delegation_effect: child,
-        delegation_claims: Map.put(s.delegation_claims, delegated_target(s, name, args), child)
-    }
+    else
+      %{
+        s
+        | delegation_effect: child,
+          delegation_claims: Map.put(s.delegation_claims, delegated_target(s, name, args), child)
+      }
+    end
+  end
 
   defp tool_result(s, call, text, status, approval) do
     name = get_in(call, ["function", "name"])
@@ -3266,6 +3381,30 @@ defmodule Ipse.Session do
     %{s | accounting: accounting}
   end
 
+  defp record_extension_action(s, event) do
+    if ModelCall.operation?(event["request"]) do
+      account(s, event)
+    else
+      record(s, event)
+      s
+    end
+  end
+
+  defp measure_request(%{extension_model: %{admission: admission, started: started}} = s, result) do
+    observed = s.accounting.requests[admission["request_id"]].observation
+
+    event =
+      Ipse.Usage.completion(
+        admission,
+        result,
+        max(System.monotonic_time(:millisecond) - started, 0),
+        observed
+      )
+
+    s = account(s, event)
+    %{s | extension_model: nil}
+  end
+
   defp measure_request(
          %{phase: phase, request_started_at: started, active_request: admission} = s,
          result
@@ -3308,6 +3447,7 @@ defmodule Ipse.Session do
              "cwd" => cwd,
              "usage_version" => 1,
              "max_output_tokens" => config[:max_output_tokens],
+             "model_profiles" => ModelCall.snapshot(config),
              "budget" => config[:budget],
              "budget_root" => config[:budget_root],
              "provider" => to_string(config.provider),
@@ -3333,6 +3473,7 @@ defmodule Ipse.Session do
            old_cwd == cwd and meta["provider"] == to_string(config.provider) and
              meta["model"] == config.model and
              meta["max_output_tokens"] === config[:max_output_tokens] and
+             meta["model_profiles"] === ModelCall.snapshot(config) and
              meta["budget"] === config[:budget] and meta["budget_root"] === config[:budget_root] and
              Map.get(meta, "sandbox", "off") == to_string(Map.get(config, :sandbox, :off)) and
              Map.get(meta, "mcp_servers", []) == Ipse.MCP.fingerprints(config) and
@@ -3711,6 +3852,11 @@ defmodule Ipse.Session do
     }
 
     context =
+      if ModelCall.operation?(intent["request"]),
+        do: Map.merge(context, %{owner: self(), job_ref: s.job_ref}),
+        else: context
+
+    context =
       if Ipse.Extensions.Operation.history?(intent["request"]),
         do: Map.merge(context, %{history_dir: s.dir, history_session: s.id}),
         else: context
@@ -3756,6 +3902,17 @@ defmodule Ipse.Session do
       Map.merge(context, %{service_entry: target, session_id: s.id, turn_id: s.turn_id})
     else
       context
+    end
+  end
+
+  defp extension_model_configuration(config, request) do
+    if ModelCall.operation?(request) do
+      case ModelCall.prepare(config, request) do
+        {:ok, _, _} -> :ok
+        _ -> {:error, :invalid_extension_model_configuration}
+      end
+    else
+      :ok
     end
   end
 

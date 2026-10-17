@@ -38,7 +38,7 @@ defmodule Ipse.Lifecycle.Metadata do
         [],
         ~w(request_id attempt_id session_id turn_id),
         ~w(parent_session_id parent_request_id),
-        %{"kind" => ~w(model compaction)}
+        %{"kind" => ~w(model compaction extension)}
       )
 
   def describe(%{"type" => "request_usage_observed", "version" => 1} = record),

@@ -10,7 +10,7 @@ session totals. See
 [operator selection](../operator/usage-accounting.md#enable-the-optional-report).
 The separately granted `builtin:cost-tree:1` adds captured parent/direct-child
 aggregation. Optional [host admission](budgets.md) enforces shared reservations
-separately; generic accounted extension model operations remain P23 work.
+separately, including [accounted extension model operations](extension-model-calls.md).
 
 ## Rate identity and selection
 
@@ -192,9 +192,9 @@ protocols, not live prices, account charges or a transactional external ledger.
 Optional [provider output caps](provider-limits.md) now supply a supported
 per-request control; subscription requests explicitly refuse that unsupported
 setting. Optional [host-owned shared reservations](budgets.md) cover main,
-summary and local-child requests, retaining partial/unknown liability independently
-of these reports. Generic accounted extraction
-requests are needed before a selected knowledge package can call a model;
+summary, local-child and explicitly accounted extension requests, retaining
+partial/unknown liability independently of these reports. Selected knowledge
+packages can request one-shot text inference through the approved host operation;
 embeddings need their own supported provider/accounting contract. The planned
 P25 research trial can use existing explicit provider/tools without implementing
 a production engine. A calculator or event observer cannot enforce admission.

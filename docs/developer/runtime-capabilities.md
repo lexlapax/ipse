@@ -30,8 +30,8 @@ P19 context measurements are encoded JSON bytes, not tokens. P23 adds a pure
 through separately granted accounting reads. Supported
 [provider output ceilings](provider-limits.md) are an explicit per-request control.
 Optional [shared monetary/token reservations](budgets.md) now cover main,
-summary and local-child requests. Accounted extension model operations remain
-open P23 work; audio usage belongs to deferred P28.
+summary, local-child and [accounted extension model](extension-model-calls.md)
+requests. P23F validation remains open; audio usage belongs to deferred P28.
 
 P19's local on-demand diagnostics and request timing are available. Optional
 metadata capture, bounded sink workers, stop controls and opt-in synthetic
@@ -63,7 +63,7 @@ No external framework is selected as an Ipse runtime dependency.
 | Developer diagnosis | Sanitized snapshots, owned trace lease, cleanup and SDK conformance inputs | Timeline viewer, IDE integration and standalone worker tooling | P22 local procedures; richer viewers later |
 | Usage accounting | Provider normalization, request/attempt identity, durable facts and idempotent aggregation | Reports, allocation, dashboards and optional export | Minimal facts in P22; P23 reports |
 | Cost estimates | Expose billing mode and authoritative measured units | Versioned configurable rate tables and estimation strategies | P23 |
-| Monetary/token limits | Request admission, atomic parallel reservations, cancellation and unknown-charge handling | Policy configuration and displays; extension may request stricter limits | P23 main/summary/child reservations implemented; accounted extension model operations remain open |
+| Monetary/token limits | Request admission, atomic parallel reservations, cancellation and unknown-charge handling | Policy configuration and displays; extension may request stricter limits | P23 main/summary/child reservations and accounted one-shot extension text calls implemented; P23F final verification open |
 | Visible text streaming | Ordered content channel, sequence/completion identity, flow control and cancellation | Terminal/web renderers and stream consumers | Existing CLI; P22 bounded subscription proof |
 | Stateful stream rewriting | Preserve original messages, enforce required filter/failure policy and buffering limits | Parser/formatter/filter algorithm | Later explicit capability, not the completed-answer hook |
 | Chained voice | Managed input/output resources, admitted text turn, profiles, approval/control separation | STT/TTS adapters, microphone/speaker/client UI | Deferred P28 |
@@ -114,7 +114,8 @@ The optional P23 [shared admission host capability](budgets.md) gates covered ma
 summary and local-child requests with atomic reservations, retained unknown
 liability and durable reconciliation. Input/money reservations remain conservative
 estimates; providers cannot guarantee an exact monetary ceiling for in-flight
-work. Accounted nested extension model operations are still open. Tool services
+work. Explicit `host.model` calls share this boundary, with their own approved
+source and selected profile; embeddings remain unsupported. Tool services
 and executable extensions making out-of-band calls are not automatically covered;
 fully trusted code is not confined by an SDK accounting API. Subscription output
 quotas refuse because its public interface lacks that cap. No requested bound is
@@ -188,8 +189,8 @@ trace CLI runs in source and extracted packages; source breakpoints remain a
 separate development procedure with existing debuggers. No audio provider or
 remote tracing account is needed for P22 fixtures.
 
-P23 supplies cost reports and shared main/summary/child reservations; accounted
-extension model operations remain open. Its evidence distinguishes rate changes,
+P23 supplies cost reports, shared main/summary/child reservations and accounted
+extension text calls. P23F's final verification remains open. Its evidence distinguishes rate changes,
 missing/partial usage, concurrency and resume from live billing guarantees.
 P24 now challenges these runtime boundaries through independent external
 architecture validation and baseline security review. P25 compares Codex/Ipse

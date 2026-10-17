@@ -167,8 +167,10 @@ defmodule Ipse.Extensions.UsageRead do
       Enum.reduce_while(events, {:ok, %{ledger: ledger, snapshots: %{}, pending: nil}}, fn event,
                                                                                            {:ok,
                                                                                             state} ->
-        case apply_saved(event, state) do
-          {:ok, next} -> {:cont, {:ok, next}}
+        with {:ok, ledger} <- Usage.apply_event(state.ledger, event),
+             {:ok, next} <- apply_saved(event, %{state | ledger: ledger}) do
+          {:cont, {:ok, next}}
+        else
           _ -> {:halt, @error}
         end
       end)
@@ -210,10 +212,7 @@ defmodule Ipse.Extensions.UsageRead do
     end
   end
 
-  defp apply_saved(event, state) do
-    with {:ok, ledger} <- Usage.apply_event(state.ledger, event),
-         do: {:ok, %{state | ledger: ledger}}
-  end
+  defp apply_saved(_event, state), do: {:ok, state}
 
   @doc "Resolve each initial read intent once; no raw transcript or later damaged tail is scanned."
   def validate_sources(directory, session, events) do

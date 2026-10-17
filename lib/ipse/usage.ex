@@ -95,8 +95,16 @@ defmodule Ipse.Usage do
            order: [],
            legacy_unmetered: version != 1,
            bindings: MapSet.new(),
+           model_action: nil,
+           model_route: nil,
+           model_sources: %{},
+           model_responses: %{},
            session_id: expected_session_id,
-           scope: Map.take(metadata, ~w(provider model delegation_origin))
+           scope:
+             Map.take(
+               metadata,
+               ~w(provider model delegation_origin model_profiles max_output_tokens budget)
+             )
          }},
         fn event, {:ok, ledger} ->
           case apply_event(ledger, event) do
@@ -112,6 +120,62 @@ defmodule Ipse.Usage do
     _ -> {:error, :invalid_usage_journal}
   end
 
+  def apply_event(
+        ledger,
+        %{"type" => "extension_action_intent", "request" => %{"op" => "model.complete"}} = event
+      ),
+      do: {:ok, %{ledger | model_action: event, model_route: nil}}
+
+  def apply_event(ledger, %{"type" => "extension_model_request"} = event) do
+    if ledger.model_route == nil and
+         not Map.has_key?(ledger.model_sources, event["operation_id"]) and
+         Ipse.Extensions.ModelCall.valid_source?(event, ledger.model_action, ledger.scope),
+       do:
+         {:ok,
+          %{
+            ledger
+            | model_route: event["admission"],
+              model_sources: Map.put(ledger.model_sources, event["operation_id"], event)
+          }},
+       else: {:error, :invalid_usage_journal}
+  end
+
+  def apply_event(ledger, %{"type" => "extension_model_response"} = event) do
+    request = ledger.requests[event["request_id"]]
+
+    if request != nil and request.admission["kind"] == "extension" and
+         request.completion == nil and
+         not Map.has_key?(ledger.model_responses, event["request_id"]) and
+         Ipse.Extensions.ModelCall.valid_response?(event, request.admission),
+       do:
+         {:ok,
+          %{ledger | model_responses: Map.put(ledger.model_responses, event["request_id"], event)}},
+       else: {:error, :invalid_usage_journal}
+  end
+
+  def apply_event(
+        ledger,
+        %{"type" => "extension_action_result", "request" => %{"op" => "model.complete"}} = event
+      ) do
+    id = event["operation_id"]
+
+    if Ipse.Extensions.Actions.result_intent(event) == ledger.model_action and
+         Ipse.Extensions.Actions.valid_result?(event) and
+         Ipse.Extensions.ModelCall.valid_result_source?(
+           event,
+           ledger.requests[id],
+           ledger.model_responses[id]
+         ) and
+         ledger.model_route == nil,
+       do:
+         {:ok,
+          %{ledger | model_action: nil, model_responses: Map.delete(ledger.model_responses, id)}},
+       else: {:error, :invalid_usage_journal}
+  end
+
+  def apply_event(ledger, %{"type" => type}) when type in ~w(cancelled turn_finished),
+    do: {:ok, %{ledger | model_action: nil, model_route: nil}}
+
   def apply_event(ledger, %{"type" => "request_admitted"} = event) do
     with true <- valid_admission?(event),
          true <- scope_matches?(ledger, event),
@@ -125,7 +189,12 @@ defmodule Ipse.Usage do
       ledger = put_in(ledger, [:requests, event["request_id"]], request)
 
       {:ok,
-       %{ledger | order: ledger.order ++ [event["request_id"]], session_id: event["session_id"]}}
+       %{
+         ledger
+         | order: ledger.order ++ [event["request_id"]],
+           session_id: event["session_id"],
+           model_route: if(event["kind"] == "extension", do: nil, else: ledger.model_route)
+       }}
     else
       %{admission: ^event} -> {:ok, ledger}
       _ -> {:error, :invalid_usage_journal}
@@ -135,7 +204,8 @@ defmodule Ipse.Usage do
   def apply_event(ledger, %{"type" => type} = event) when type in @types do
     with %{} = request <- ledger.requests[event["request_id"]],
          true <- event["attempt_id"] == request.admission["attempt_id"],
-         true <- valid_result?(event) do
+         true <- valid_result?(event),
+         true <- response_matches?(ledger, request, event) do
       case type do
         "request_usage_observed" ->
           cond do
@@ -179,6 +249,22 @@ defmodule Ipse.Usage do
       do: {:error, :invalid_usage_journal},
       else: {:ok, ledger}
   end
+
+  defp response_matches?(
+         ledger,
+         request,
+         %{"type" => "request_finished", "outcome" => "completed"} = event
+       ) do
+    response = ledger.model_responses[event["request_id"]]
+
+    request.admission["kind"] != "extension" or response == nil or
+      event["reported_model"] ==
+        Ipse.RuntimeInfo.model_name(
+          get_in(response, ["assistant", "provider_data", "reported_model"])
+        )
+  end
+
+  defp response_matches?(_, _, _), do: true
 
   defp bind(ledger, event, kind) do
     request = ledger.requests[event["request_id"]]
@@ -267,7 +353,7 @@ defmodule Ipse.Usage do
       e["version"] === 1 and e["attempt"] === 1 and
       Enum.all?(~w(request_id attempt_id session_id turn_id), &id?(e[&1])) and
       Enum.all?(~w(parent_session_id parent_request_id), &(is_nil(e[&1]) or id?(e[&1]))) and
-      e["kind"] in ~w(model compaction) and Map.has_key?(@providers, e["provider"]) and
+      e["kind"] in ~w(model compaction extension) and Map.has_key?(@providers, e["provider"]) and
       e["billing_mode"] == Normalizer.billing_mode(@providers[e["provider"]]) and
       (is_nil(e["selected_profile"]) or model?(e["selected_profile"])) and
       (is_nil(e["endpoint_sha256"]) or
@@ -280,9 +366,13 @@ defmodule Ipse.Usage do
     origin = ledger.scope["delegation_origin"] || %{}
 
     (is_nil(ledger.session_id) or ledger.session_id == event["session_id"]) and
-      Enum.all?(~w(provider model), fn field ->
-        not Map.has_key?(ledger.scope, field) or ledger.scope[field] == event[field]
-      end) and
+      if event["kind"] == "extension" do
+        ledger.model_route === event
+      else
+        Enum.all?(~w(provider model), fn field ->
+          not Map.has_key?(ledger.scope, field) or ledger.scope[field] == event[field]
+        end)
+      end and
       Enum.all?(~w(parent_session_id parent_request_id), fn field ->
         origin[field] == event[field]
       end)

@@ -575,7 +575,7 @@ These available facilities are distinct from the planned capabilities below.
 
 | Milestone | Remaining capability | Status and boundary |
 | --- | --- | --- |
-| P23 | Accounted extension model work | Own-session/child reports and optional [shared reservations](budgets.md) are available; covered extension model operations remain open. Context bytes are not tokens or an invoice |
+| P23 | Final accounted-model verification | Own-session/child reports, optional [shared reservations](budgets.md) and explicit [extension text calls](extensions.md#accounted-model-calls); final source/package/platform gates remain open. Context bytes are not tokens or an invoice |
 | P24 | Independent architecture validation and baseline security | Planned external adversarial review, such as Claude, followed by triaged OpenAI security audit; neither has run |
 | P25 | Larger supervised comparative research/self-development trial | Independent Codex/Ipse study, repairs, held-out reruns and final architecture/security review; unstarted |
 | P26/P27 | Optional working/long-term memory, research engine, graph and RAG | Production packages deferred pending P25 selection; independently configurable and default-off |

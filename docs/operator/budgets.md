@@ -1,8 +1,9 @@
 # Shared admission budgets
 
-An optional operator policy limits reservations for one session tree: its main
-and summary requests and its local children, including parallel children. The
-host enforces admission before the provider path. It works independently of
+An optional operator policy limits reservations for one session tree: main and
+summary requests, local-child requests and accounted extension model calls from
+any session in that tree. Parallel children use the same ledger. The host enforces
+admission before the provider path. It works independently of
 cost-report extensions and diagnostic capture. With no policy, no budget worker,
 directory, ledger or provider cap is created.
 
@@ -10,8 +11,9 @@ This is a session-tree quota, not an operator-wide spending account or an invoic
 ceiling. A new root session gets a separate quota. Input usage and configured
 cost estimates can exceed their reservations; unsupported or missing metering
 cannot establish an exact charge. Tool effects, MCP services, embeddings, audio
-and direct external inference are not covered. Accounted extension model calls
-remain a separate P23 acceptance item.
+and direct external inference are not covered. Reviewed extensions use the
+[accounted model operation](extensions.md#accounted-model-calls) to share admission;
+trusted executable code making out-of-band calls is not confined by this API.
 
 ## Configure the operator policy
 

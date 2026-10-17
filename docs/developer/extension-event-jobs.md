@@ -101,8 +101,11 @@ proposal. The existing invocation/action runner owns execution: journal intent,
 validate current lease/schema/scope, ask for full mutation approval, execute
 outside Session, then commit the bounded outcome. Selection, an event, a prior
 tool approval or a clarification answer cannot approve a new write. Headless
-mutation remains denied without explicit enabling; model/provider calls remain
-unsupported unless a separate accounted host capability is negotiated.
+mutation remains denied without explicit enabling. A separately trusted
+[`host.model`](extension-model-calls.md) operation supplies explicit one-shot text
+inference with its own profile, egress approval, canonical usage and shared budget.
+Metadata notification alone grants no prompt/history access or model authority;
+embeddings remain unsupported.
 
 No resource is shared with a read-only text consumer or another callback VM.
 Worker initialization/callback deadlines, 16 KiB SDK objects, 8 KiB strings and

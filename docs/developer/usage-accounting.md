@@ -5,7 +5,8 @@ request facts independently of optional tracing and extensions. P23's pure
 [configured cost calculator and report](costs.md) consume explicit normalized
 snapshots through a separate own-session read grant. Host accounting does not
 fetch rates or quote prices. Separately configured [shared admission](budgets.md)
-uses these facts for durable main/summary/child reservations. See
+uses these facts for durable main/summary/child and
+[extension model](extension-model-calls.md) reservations. See
 [operator inspection](../operator/usage-accounting.md) and
 [cost/media boundaries](runtime-capabilities.md#usage-facts-and-costs).
 Separately configured [provider output caps](provider-limits.md) bound supported
@@ -15,11 +16,17 @@ supply aggregate admission control.
 ## Identity and admission
 
 Session synchronously journals closed version-1 `request_admitted` before starting
-a model or summary task. It carries random 128-bit hexadecimal request/attempt/
+a model, summary or approved extension-inference task. It carries 128-bit hexadecimal request/attempt/
 turn IDs, session ID, kind, selected provider/model/profile, billing mode,
 admission time and optional SHA-256 of an explicitly configured endpoint. Raw
 URLs and credentials are excluded. There is one attempt per request and no
 automatic retry; adding retries requires an explicit contract enhancement.
+
+Extension kind `extension` uses its action operation ID as request ID, a fresh
+attempt ID and the selected helper profile's actual provider/billing/model. Its
+approved source and private response bind the canonical facts and returned text;
+they never widen main/summary scope or become conversation messages. Separate
+private-data grants and normal egress approval remain required.
 
 Children carry the originating model request ID and parent session ID, including
 when selecting another profile. Their journals remain separate; the parent
@@ -205,5 +212,6 @@ Fixtures in `usage_normalizer_test.exs`, `usage_test.exs`, `usage_session_test.e
 tests cover normalization, revisions/deduplication, final versus partial facts,
 crash outcomes, pre-repair refusal, rejected summaries, parent attribution and
 native integrity without paid accounts. P23 reports and [shared budgets](budgets.md)
-have separate contracts/fixtures; accounted extension model operations and
-deferred P28 audio usage remain open.
+have separate contracts/fixtures. Accounted extension inference has its
+[own source/package fixtures](extension-model-calls.md#recovery-and-verification);
+deferred P28 audio usage remains open.

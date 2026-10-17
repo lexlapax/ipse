@@ -79,7 +79,8 @@ the selected provider; a long-turn fallback excerpts older settled tool output
 without a model request. Use `/diagnostics` or local `ipse diagnose` for byte
 accounting and [provider usage facts](docs/operator/usage-accounting.md).
 Optional operator [session-tree budgets](docs/operator/budgets.md) reserve main,
-summary and child requests before provider dispatch and retain unknown liability.
+summary, child and accounted extension model requests before provider dispatch
+and retain unknown liability.
 These estimates do not promise an invoice ceiling.
 When safe compaction cannot continue, export a reviewed handoff and import it
 with `chat --handoff PATH` into a fresh idle session. See
@@ -91,7 +92,7 @@ with `chat --handoff PATH` into a fresh idle session. See
 [Extensions](docs/operator/extensions.md) use inert local import, separate
 operator trust and explicit session selection. The two shipped hooks are
 default-off. Reviewed artifacts can expose typed tools/commands/services and
-negotiate state, questions, workflow tools, service composition, contextual
+negotiate state, questions, workflow tools, [accounted one-shot model calls](docs/operator/extensions.md#accounted-model-calls), service composition, contextual
 evidence and private visible-text consumption. Prompt delivery has separate
 [read-only notifications](docs/operator/extensions.md#event-subscribers) and
 [approved jobs](docs/operator/extensions.md#event-jobs) for before-request recall

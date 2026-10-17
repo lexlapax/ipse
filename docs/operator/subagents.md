@@ -23,6 +23,12 @@ later writes, edits, or shell commands. Ordinary file reads and skill loading
 retain their existing policy. Rejecting one proposal grants no permission to
 evade it. Children cannot delegate recursively or use configured MCP servers.
 
+Separately permitted child extensions can propose [accounted model calls](extensions.md#accounted-model-calls)
+through named profiles. Those calls need their own full approval, retain the child
+origin and share the tree quota. Pure model-egress approvals can overlap and do
+not release an enclosing tool's filesystem mutation lease; existing file/shell/
+opaque-extension conflict policy still applies.
+
 Headless delegation is denied without `--yes`. With explicit `--yes`, the session
 allowance also covers child mutations:
 
@@ -40,7 +46,7 @@ still apply. See [shell policy](usage.md#shell-policy).
 ## Bounds and recovery
 
 Children run serially by default, with at most two child tasks in one parent
-turn. Each child has at most six model steps and two minutes of active work;
+turn. Each child has at most six admitted main/helper model steps and two minutes of active work;
 waiting for your approval pauses that budget. Tasks
 and selected context are each limited to 8 KiB; final child results to 16 KiB.
 Oversized results stop with uncertainty instead of silently truncating evidence.

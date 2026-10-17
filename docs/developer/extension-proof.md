@@ -123,7 +123,8 @@ event publication, concurrent effectful jobs, remote installation and media stay
 explicit negotiated enhancements, not silently available callbacks. The
 [plan](../plan.md#p22-extension-scaffold-and-lifecycle-hooks) records the completion
 scope and future capabilities.
-P23's remaining work includes accounted extension model operations. P24 now
+P23F adds a separate [accounted model artifact proof](../../examples/model-calls/README.md);
+its verification does not alter this lab's historical frozen scope. P24 now
 challenges the architecture externally and establishes baseline security review;
 P25 researches knowledge designs and exercises self-development, including final
 architecture/security review. Production adapters defer to P26/P27; media moves

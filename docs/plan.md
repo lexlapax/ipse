@@ -33,7 +33,7 @@ new source transfer or dependency, or select a production engine.
 
 | Milestone or gate | Current state | Next result |
 | --- | --- | --- |
-| [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | In progress; reports, output caps and verified shared main/summary/child reservations | Accounted extension model operations |
+| [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | In progress; model-call source/package/installed checks passed | Close hosted Linux/macOS gates on the final candidate |
 | [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Planned; no external review or scan run | Independent adversarial architecture review, evidence-based dispositions and triaged baseline OpenAI security audit |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Planned revised scope; unstarted | Independent Codex/Ipse research, Ipse-authored repairs, fresh acceptance runs and final architecture/security review |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Deferred; proposed scope subject to P25 decisions | Independently selectable working/long-term memory tools and optional lifecycle policies |
@@ -98,7 +98,7 @@ request/attempt/provider/billing/model facts separately from diagnostics. The
 [configured cost implementation](developer/costs.md) and
 [operator guide](operator/usage-accounting.md) define the available reports:
 
-| Increment | Implemented scope |
+| Increment | Delivery state and scope |
 | --- | --- |
 | P23A | Pure versioned rate-card estimator with exact configured identities, fixed-point arithmetic, cache partitions, provenance and explicit unknown/partial values |
 | P23B | Separately granted own-session `usage.read`, fixed prefixes, source-bound cached recovery and default-off `builtin:cost-report:1` pages |
@@ -106,6 +106,7 @@ request/attempt/provider/billing/model facts separately from diagnostics. The
 | P23D | Explicit registered-child discovery/reads and default-off `builtin:cost-tree:1`, frozen accounting prefixes, exact origins and visible missing/busy/invalid/legacy/cleanup gaps |
 | P23E1 | Explicit supported provider output ceilings, narrowed child/summary caps and saved-policy resume |
 | P23E2 | Optional atomic session-tree reservations for main/summary/children, conservative settlement, protected inspection and historical-source validation; local and hosted Linux/macOS source/package/installed checks passed |
+| P23F | Explicit one-shot `host.model` text requests, profile-bound approvals/receipts, canonical usage and shared reservations; source/native/package and both independent artifact proofs passed; hosted Linux/macOS validation remains open |
 
 [Provider output ceilings](developer/provider-limits.md) apply only to supported
 API/Ollama requests. ChatGPT subscription refuses the unsupported setting; no
@@ -113,7 +114,9 @@ output-token ceiling is invented for that public interface. Verification scope
 and limitations are recorded in
 [actual evidence](developer/testing.md#current-evidence-and-next-checks).
 The [shared budget contract](developer/budgets.md) covers main, summary and local
-children independently of reports. Accounted extension model operations remain open.
+children and [extension model operations](developer/extension-model-calls.md)
+independently of reports. P23F's source and installed proofs passed; the milestone
+remains open until its final hosted verification gates pass.
 
 These reports do not enforce budgets, produce a globally atomic tree balance or
 promise an invoice ceiling. Rates are configured; subscription equivalents,
@@ -122,20 +125,15 @@ or failed-child cleanup cannot be converted to zero liability.
 
 Remaining acceptance:
 
-1. Add generic versioned accounted model operations for extension extraction and
-   other selected supported request types. Explicit profiles, private data grants,
-   provider limits, cancellation and canonical usage apply; no unaccounted model
-   calls inside hooks. Refuse unsupported operations, including embeddings until
-   their separate public provider/accounting contract is implemented.
-2. Extend the existing shared admission boundary to those model operations, binding
-   canonical requests to their extension intent/result receipts. Preserve uncertain
-   liability through cancellation, owner death and resume without quota reset or
-   automatic replay. Document actual coverage and input/in-flight estimation limits;
-   a callback or report cannot enforce admission or establish an invoice ceiling.
-3. Prove extension/main/summary/child contention, refusal before dispatch, partial
-   failures, private scope and inert recovery with fixtures. Recheck existing cost
-   reports and the independent installed extension lab on the changed candidate,
-   and close source/package/supported-platform checks with actual evidence.
+1. Close supported hosted Linux/macOS gates on the exact commit, including both
+   macOS enforcement steps, ordinary package verification, the
+   [independently built model artifact](../examples/model-calls/README.md) and the
+   existing seven-artifact compatibility lab. Local source/native/demo and both
+   installed proofs passed; preserve that evidence and its byte/toolchain bounds.
+2. Reconcile operator/developer guidance with the terminal hosted results before
+   completion. One-shot text is the selected operation; embeddings/audio remain
+   unsupported pending separate contracts. In-flight input/money estimation and
+   arbitrary trusted out-of-band calls cannot establish an invoice ceiling.
 
 ## P24: independent architecture validation and baseline security
 

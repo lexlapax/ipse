@@ -79,7 +79,7 @@ history, credentials, endpoint and opaque provider payloads do not cross to a
 selected child profile. Child journals record profile/role/provider/model/effort;
 host routing facts accompany the untrusted child result. `/info` shows the active
 profile and effort, separately from provider-reported model identity.
-Child limits remain at most six model calls and 120 seconds, with bounded
+Child limits remain at most six admitted main/helper calls and 120 seconds, with bounded
 context/results; this is additional to parent work. A configured
 [session-tree budget](budgets.md) shares host reservations across parent and
 children, retaining uncertain liability. An inherited child keeps the parent's output cap;
@@ -89,3 +89,10 @@ delegation starts. No automatic fallback or separate summary routing is provided
 Main-model compaction stays on the main
 profile. Changing profile definitions/roles invalidates resume conservatively;
 start a new session after policy changes.
+
+Reviewed extensions with `host.model` can separately name a profile for one-shot
+inference. They supply explicit input and need their own egress approval; they do
+not inherit the main conversation, API key or native continuation. A permitted
+child extension can use the same host-managed profile catalog, while its requests
+retain the child's origin and share tree admission. Profile roles do not select
+these calls implicitly. See [model-call operation](extensions.md#accounted-model-calls).

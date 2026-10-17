@@ -1,8 +1,9 @@
 # Host-owned shared admission
 
-`Ipse.Budget` covers main, summary and registered local-child provider requests.
+`Ipse.Budget` covers main, summary, registered local-child and
+[accounted extension model](extension-model-calls.md) provider requests.
 It supplies optional per-session-tree admission independently of diagnostic
-capture and report extensions. Extension model operations, embeddings, audio,
+capture and report extensions. Embeddings, audio,
 MCP/tool charges and operator-wide quotas are not implemented by this increment.
 See [operator configuration and recovery](../operator/budgets.md) for procedures.
 
@@ -116,6 +117,11 @@ follow-up call refuses, default-off creates no ledger, and idle resume changes n
 journal/ledger bytes. A separate last-slot race covers fail-fast sibling
 cancellation while preserving booked liability, rather than assuming every
 reservation reaches the provider.
+The separate [model-call artifact](../../examples/model-calls/README.md) exercises
+the same admission boundary through an independent worker and actual loopback
+provider in source and the extracted runtime. Model-job fixtures hold two real
+child HTTP requests open together and validate registered-child source facts;
+model cancellation/owner loss retain liability without replay.
 All providers/rates/credentials in these checks are synthetic. See
 [actual evidence](testing.md#current-evidence-and-next-checks) for commands and
 results; fixtures do not establish paid inference enforcement or invoice accuracy.

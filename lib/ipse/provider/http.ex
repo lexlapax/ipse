@@ -2,6 +2,32 @@ defmodule Ipse.Provider.HTTP do
   @moduledoc false
 
   def stream(url, headers, payload, config, state, consume) do
+    case config[:max_response_bytes] do
+      nil ->
+        stream_request(url, headers, payload, config, state, consume)
+
+      limit when is_integer(limit) and limit in 1..1_048_576 ->
+        bounded = fn {current, count}, bytes ->
+          next_count = count + byte_size(bytes)
+
+          if next_count <= limit do
+            with {:ok, next} <- consume.(current, bytes), do: {:ok, {next, next_count}}
+          else
+            {:error, "Provider response exceeds the configured byte limit."}
+          end
+        end
+
+        case stream_request(url, headers, payload, config, {state, 0}, bounded) do
+          {:ok, {next, _}} -> {:ok, next}
+          error -> error
+        end
+
+      _ ->
+        {:error, "Invalid provider response byte limit."}
+    end
+  end
+
+  defp stream_request(url, headers, payload, config, state, consume) do
     Application.ensure_all_started(:inets)
     Application.ensure_all_started(:ssl)
     uri = URI.parse(url)
@@ -94,6 +120,8 @@ defmodule Ipse.Provider.HTTP do
         {:error, "Provider request timed out."}
     end
   end
+
+  defp put_request_id({state, count}, request_id), do: {put_request_id(state, request_id), count}
 
   defp put_request_id(state, request_id) when is_map(state) and is_binary(request_id),
     do: Map.put(state, :request_id, request_id)

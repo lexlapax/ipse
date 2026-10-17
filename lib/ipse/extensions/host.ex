@@ -242,7 +242,7 @@ defmodule Ipse.Extensions.Host do
   defp continue(_, response, _, _, _, actions), do: {:ok, response, actions}
 
   defp continue_action(worker, request, entry, owner, job_ref, actions) do
-    with {:ok, intent, outcome} <- run_action(owner, job_ref, request),
+    with {:ok, intent, outcome} <- run_action(owner, job_ref, worker, request),
          {:ok, event} <- Actions.result(intent, outcome),
          {:ok, payload} <- GenServer.call(owner, {:extension_action_commit, job_ref, event}),
          true <- payload["outcome"]["status"] != "unknown",
@@ -253,17 +253,17 @@ defmodule Ipse.Extensions.Host do
     end
   end
 
-  defp run_action(owner, job_ref, request) do
+  defp run_action(owner, job_ref, worker, request) do
     with :ok <- tool_context(owner, job_ref, request) do
-      run_admitted_action(owner, job_ref, request)
+      run_admitted_action(owner, job_ref, worker, request)
     end
   end
 
-  defp run_admitted_action(owner, job_ref, request) do
+  defp run_admitted_action(owner, job_ref, worker, request) do
     case GenServer.call(owner, {:extension_action_begin, job_ref, request}, :infinity) do
       {:ok, intent, context} ->
         outcome =
-          case execute_action(context, intent, request) do
+          case execute_action(Map.put(context, :worker, worker), intent, request) do
             {:ok, value} -> %{"status" => "ok", "value" => value}
             {:conflict, value} -> %{"status" => "conflict", "value" => value}
             {:failed, value} -> %{"status" => "failed", "value" => value}
@@ -279,6 +279,9 @@ defmodule Ipse.Extensions.Host do
         {:error, :extension_action_refused}
     end
   end
+
+  defp execute_action(context, intent, %{"op" => "model.complete"}),
+    do: Ipse.Extensions.ModelCall.execute(context, intent)
 
   defp execute_action(context, _intent, %{"op" => "tool.call"} = request),
     do: Ipse.Extensions.ToolAction.execute(request, context)

@@ -7,38 +7,64 @@ defmodule Ipse.Extensions.InvocationTest do
     def complete(config, messages, tools, _emit) do
       send(config.test_pid, {:sdk_model, messages, tools})
 
-      if Enum.any?(messages, &(&1["role"] == "tool")) do
-        {:ok,
-         %{
-           "role" => "assistant",
-           "content" => "finished",
-           "provider_data" => %{"native" => "synthetic-private-native"}
-         }, %{}}
-      else
-        response =
+      cond do
+        config[:parallel_model_calls] == true and config[:delegation_origin] == nil and
+            not Enum.any?(messages, &(&1["role"] == "tool")) ->
           {:ok,
            %{
              "role" => "assistant",
              "content" => "",
-             "provider_data" => %{"native" => "synthetic-private-native"},
              "tool_calls" => [
                %{
-                 "id" => "native-extension-call",
+                 "id" => "parallel",
                  "type" => "function",
                  "function" => %{
-                   "name" => "ext__sdk__echo",
-                   "arguments" => Jason.encode!(config[:tool_args] || %{"text" => "hello"})
+                   "name" => "delegate_parallel",
+                   "arguments" =>
+                     Jason.encode!(%{
+                       "tasks" => [
+                         %{"task" => "First synthetic extension", "context" => "Public fixture"},
+                         %{"task" => "Second synthetic extension", "context" => "Public fixture"}
+                       ]
+                     })
                  }
                }
              ]
            }, %{}}
 
-        if config[:duplicate] do
-          {:ok, assistant, usage} = response
-          {:ok, Map.update!(assistant, "tool_calls", &(&1 ++ &1)), usage}
-        else
-          response
-        end
+        Enum.any?(messages, &(&1["role"] == "tool")) ->
+          {:ok,
+           %{
+             "role" => "assistant",
+             "content" => "finished",
+             "provider_data" => %{"native" => "synthetic-private-native"}
+           }, %{}}
+
+        true ->
+          response =
+            {:ok,
+             %{
+               "role" => "assistant",
+               "content" => "",
+               "provider_data" => %{"native" => "synthetic-private-native"},
+               "tool_calls" => [
+                 %{
+                   "id" => "native-extension-call",
+                   "type" => "function",
+                   "function" => %{
+                     "name" => "ext__sdk__echo",
+                     "arguments" => Jason.encode!(config[:tool_args] || %{"text" => "hello"})
+                   }
+                 }
+               ]
+             }, %{}}
+
+          if config[:duplicate] do
+            {:ok, assistant, usage} = response
+            {:ok, Map.update!(assistant, "tool_calls", &(&1 ++ &1)), usage}
+          else
+            response
+          end
       end
     end
   end
@@ -82,7 +108,7 @@ defmodule Ipse.Extensions.InvocationTest do
       end)
 
     capabilities =
-      ~w(invoke.tool invoke.command invoke.service host.actions host.state.read host.state.write host.question host.tools)
+      ~w(invoke.tool invoke.command invoke.service host.actions host.state.read host.state.write host.question host.tools host.model)
 
     code = """
     defmodule #{entrypoint} do
@@ -473,6 +499,544 @@ defmodule Ipse.Extensions.InvocationTest do
 
   defp host_outcome(pid),
     do: Session.info(pid).extension_result["value"]["text"] |> Jason.decode!()
+
+  test "explicit extension inference uses a different profile, full approval and canonical usage",
+       ctx do
+    {base, server} = model_fixture(self())
+    config = model_config(ctx.config, base)
+    pid = start(%{ctx | config: config})
+    request = model_request()
+    :ok = host_command(pid, request)
+    assert_receive {:ipse, ^pid, {:approval, ref, "extension:model.complete", proposed}}, 3000
+    assert proposed["request"] == request
+    assert proposed["execution"]["provider"] == "ollama"
+    assert proposed["execution"]["id"] == "extract"
+    assert proposed["execution"]["max_output_tokens"] == 32
+    refute_receive {:model_http, _, _}, 20
+    :ok = Session.approve(pid, ref, true)
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+    assert_receive {:model_http, headers, payload}, 1000
+    refute String.downcase(headers) =~ "authorization"
+    assert payload["model"] == "helper-fixture"
+    assert payload["tools"] == []
+    assert payload["options"] == %{"num_predict" => 32}
+
+    assert payload["messages"] == [
+             %{"role" => "system", "content" => request["instruction"]},
+             %{"role" => "user", "content" => request["input"]}
+           ]
+
+    assert :ok = Task.await(server)
+    assert %{"status" => "ok", "value" => value} = host_outcome(pid)
+    assert value["text"] == "entities"
+    assert value["reported_model"] == "helper-reported"
+    assert value["usage"]["counts"]["total_tokens"] == 10
+    refute Jason.encode!(value) =~ "private-thinking"
+    refute_receive {:ipse, ^pid, {:text, _}}, 20
+    refute_receive {:sdk_model, _, _}, 20
+    {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+    assert {:ok, ledger} = Ipse.Usage.restore(events, Session.info(pid).id)
+    [record] = Ipse.Usage.snapshot(ledger)["requests"]
+    assert record["kind"] == "extension"
+    assert record["provider"] == "ollama"
+    assert record["model"] == "helper-fixture"
+    assert record["selected_profile"] == "extract"
+    assert record["request_id"] == value["request_id"]
+    assert :ok = Ipse.Extensions.Projection.validate_events(events)
+    assert {:ok, []} = Session.restore_context(events)
+    native = Enum.find(events, &(&1["type"] == "extension_model_response"))
+
+    assert get_in(native, ["assistant", "provider_data", "message", "thinking"]) ==
+             "private-thinking"
+
+    id = Session.info(pid).id
+    :ok = Session.close(pid)
+    bytes = File.read!(Path.join(ctx.dir, id <> ".jsonl"))
+    calls = File.read!(ctx.called)
+    resumed = start(%{ctx | config: config}, id)
+    assert Session.info(resumed).phase == :idle
+    assert File.read!(Path.join(ctx.dir, id <> ".jsonl")) == bytes
+    assert File.read!(ctx.called) == calls
+    refute_receive {:model_http, _, _}, 20
+  end
+
+  test "denied extension inference never dispatches or consumes shared quota", ctx do
+    {base, _} = model_fixture(self())
+
+    config =
+      model_config(ctx.config, base)
+      |> Map.merge(%{approval: :deny, budget: %{"version" => 1, "max_requests" => 1}})
+
+    pid = start(%{ctx | config: config})
+    :ok = host_command(pid, model_request())
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+    assert host_outcome(pid) == %{"status" => "denied", "value" => %{}}
+    refute_receive {:model_http, _, _}, 100
+    {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+    assert :ok = Ipse.Extensions.Projection.validate_events(events)
+    assert Session.info(pid).accounting["request_count"] == 0
+    assert {:ok, snapshot} = Ipse.Budget.saved(ctx.dir, Session.info(pid).id)
+    assert snapshot["request_count"] == 0
+  end
+
+  test "interactive refusal records no model dispatch or shared reservation", ctx do
+    {base, _} = model_fixture(self())
+
+    config =
+      model_config(ctx.config, base) |> Map.put(:budget, %{"version" => 1, "max_requests" => 1})
+
+    pid = start(%{ctx | config: config})
+    :ok = host_command(pid, model_request())
+    assert_receive {:ipse, ^pid, {:approval, ref, "extension:model.complete", proposed}}, 3000
+    assert proposed["request"] == model_request()
+    :ok = Session.approve(pid, ref, false)
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+    assert host_outcome(pid)["status"] == "denied"
+    refute_receive {:model_http, _, _}, 20
+    assert Session.info(pid).accounting["request_count"] == 0
+    {:ok, budget} = Ipse.Budget.saved(ctx.dir, Session.info(pid).id)
+    assert budget["request_count"] == 0
+    {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+    assert {:ok, []} = Session.restore_context(events)
+  end
+
+  test "child model approval can proceed inside an enclosing extension mutation lease", ctx do
+    {base, server} = model_fixture(self(), wait: true)
+
+    source = %{
+      scope: "operator",
+      path: Path.join(ctx.root, "children.json"),
+      data: %{
+        "extensions" => [
+          %{
+            "instance" => "sdk",
+            "artifact" => ctx.digest,
+            "enabled" => true,
+            "options" => %{},
+            "order" => 1,
+            "lifetime" => "persistent"
+          }
+        ],
+        "extension_trust" => [
+          %{
+            "artifact" => ctx.digest,
+            "capabilities" => ctx.capabilities,
+            "allow_project" => false,
+            "allow_children" => true
+          }
+        ]
+      }
+    }
+
+    {:ok, catalog} = Config.resolve([source], [])
+    {:ok, entries} = Registry.prepare(catalog, ctx.home)
+    request = model_request()
+
+    config =
+      model_config(ctx.config, base)
+      |> Map.merge(%{
+        extensions: entries,
+        parallel_model_calls: true,
+        subagents: true,
+        subagent_concurrency: 2,
+        budget: %{"version" => 1, "max_requests" => 7},
+        tool_args: %{"text" => "nested model fixture", "host_request" => request}
+      })
+
+    pid = start(%{ctx | config: config})
+    :ok = Session.prompt(pid, "Exercise nested child inference approvals.")
+    assert_receive {:ipse, ^pid, {:approval, group_ref, "delegate_parallel", _}}, 3000
+    :ok = Session.approve(pid, group_ref, true)
+    assert_receive {:ipse, ^pid, {:approval, tool_ref, tool_name, arguments}}, 3000
+    assert String.ends_with?(tool_name, "/ext__sdk__echo")
+    assert arguments["host_request"] == request
+    :ok = Session.approve(pid, tool_ref, true)
+    assert_receive {:ipse, ^pid, {:approval, model_ref, model_name, proposed}}, 3000
+    assert String.ends_with?(model_name, "/extension:model.complete")
+    assert proposed["request"] == request
+    :ok = Session.approve(pid, model_ref, true)
+    assert_receive {:model_http, _, _}, 3000
+    assert_receive {:model_socket, _}, 1000
+    refute_receive {:ipse, ^pid, {:approval, _, _, _}}, 20
+    send(server.pid, :respond)
+    assert :ok = Task.await(server)
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5000
+    {:ok, budget} = Ipse.Budget.saved(ctx.dir, Session.info(pid).id)
+    assert budget["request_count"] == 7
+    {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+
+    assert Enum.count(
+             events,
+             &(&1["type"] == "delegation_approval" and &1["decision"] == "conflict_denied")
+           ) == 1
+
+    assert {:ok, _} = Session.restore_context(events)
+  end
+
+  test "extension and main model work share admission and retain refusal accounting", ctx do
+    {base, server} = model_fixture(self())
+
+    config =
+      model_config(ctx.config, base)
+      |> Map.merge(%{approval: :allow, budget: %{"version" => 1, "max_requests" => 1}})
+
+    pid = start(%{ctx | config: config})
+    :ok = host_command(pid, model_request())
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+    assert host_outcome(pid)["status"] == "ok"
+    assert :ok = Task.await(server)
+    :ok = host_command(pid, model_request())
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+
+    assert host_outcome(pid) == %{
+             "status" => "failed",
+             "value" => %{"code" => "model_request_failed"}
+           }
+
+    :ok = Session.prompt(pid, "This main request must also be refused before dispatch.")
+    assert_receive {:ipse, ^pid, {:done, :error}}, 3000
+    refute_receive {:sdk_model, _, _}, 20
+    assert {:ok, snapshot} = Ipse.Budget.saved(ctx.dir, Session.info(pid).id)
+    assert snapshot["request_count"] == 1
+    assert snapshot["refused_count"] == 2
+    assert Session.info(pid).accounting["request_count"] == 3
+    {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+    assert :ok = Ipse.Extensions.Projection.validate_events(events)
+    assert {:ok, _} = Session.restore_context(events)
+    id = Session.info(pid).id
+    :ok = Session.close(pid)
+    resumed = start(%{ctx | config: config}, id)
+    assert Session.info(resumed).accounting["request_count"] == 3
+    refute_receive {:sdk_model, _, _}, 20
+  end
+
+  test "rejected extension output remains metered with private response retained", ctx do
+    {base, server} = model_fixture(self())
+    config = model_config(ctx.config, base) |> Map.put(:approval, :allow)
+    pid = start(%{ctx | config: config})
+    :ok = host_command(pid, Map.put(model_request(), "max_output_bytes", 1))
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+    assert :ok = Task.await(server)
+    assert host_outcome(pid) == %{"status" => "failed", "value" => %{"code" => "model_response"}}
+    [record] = Session.info(pid).accounting["requests"]
+    assert record["outcome"] == "completed"
+    assert record["usage"]["counts"]["total_tokens"] == 10
+    {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+    assert Enum.any?(events, &(&1["type"] == "extension_model_response"))
+    assert {:ok, []} = Session.restore_context(events)
+  end
+
+  test "extension overdraw retains observed provider usage and stops future admission", ctx do
+    {base, server} = model_fixture(self())
+
+    config =
+      model_config(ctx.config, base)
+      |> Map.merge(%{
+        approval: :allow,
+        budget: %{"version" => 1, "max_input_tokens" => 4, "reserve_input_tokens" => 2}
+      })
+
+    pid = start(%{ctx | config: config})
+    :ok = host_command(pid, model_request())
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+    assert :ok = Task.await(server)
+    assert host_outcome(pid)["status"] == "failed"
+    [record] = Session.info(pid).accounting["requests"]
+    assert record["outcome"] == "failed"
+    assert record["usage"]["counts"]["input_tokens"] == 7
+    {:ok, budget} = Ipse.Budget.saved(ctx.dir, Session.info(pid).id)
+    assert budget["overdrawn"]
+    assert budget["request_count"] == 1
+    :ok = host_command(pid, model_request())
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+    {:ok, budget} = Ipse.Budget.saved(ctx.dir, Session.info(pid).id)
+    assert budget["request_count"] == 1
+    assert budget["refused_count"] == 1
+    {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+    assert {:ok, []} = Session.restore_context(events)
+    id = Session.info(pid).id
+    :ok = Session.close(pid)
+    resumed = start(%{ctx | config: config}, id)
+    assert Session.info(resumed).phase == :idle
+  end
+
+  test "cancelling extension inference closes the actual HTTP connection and retains liability",
+       ctx do
+    {base, server} = model_fixture(self(), wait: true)
+
+    config =
+      model_config(ctx.config, base)
+      |> Map.merge(%{approval: :allow, budget: %{"version" => 1, "max_requests" => 1}})
+
+    pid = start(%{ctx | config: config})
+    :ok = host_command(pid, model_request())
+    assert_receive {:model_http, _, _}, 3000
+    assert_receive {:model_socket, socket}, 1000
+    :ok = Session.cancel(pid)
+    assert {:error, :closed} = :gen_tcp.recv(socket, 0, 3000)
+    send(server.pid, :respond)
+    assert :ok = Task.await(server)
+    [record] = Session.info(pid).accounting["requests"]
+    assert record["outcome"] == "cancelled"
+    assert record["usage"]["quality"] == "unavailable"
+    {:ok, snapshot} = Ipse.Budget.saved(ctx.dir, Session.info(pid).id)
+    assert snapshot["request_count"] == 1
+    assert snapshot["unknown_liability_count"] == 1
+    {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+    assert :ok = Ipse.Extensions.Projection.validate_events(events)
+    refute Enum.any?(events, &(&1["type"] == "extension_action_result"))
+  end
+
+  test "worker death stops extension inference without unmetered orphan work", ctx do
+    {base, server} = model_fixture(self(), wait: true)
+    config = model_config(ctx.config, base) |> Map.put(:approval, :allow)
+    pid = start(%{ctx | config: config})
+    :ok = host_command(pid, model_request())
+    assert_receive {:model_http, _, _}, 3000
+    assert_receive {:model_socket, socket}, 1000
+    os_pid = await_pid(ctx.pid_file)
+    assert {:ok, %{exit_code: 0}} = Ipse.Runner.run("kill -KILL " <> os_pid, ctx.root)
+    assert_receive {:ipse, ^pid, {:done, :error}}, 3000
+    assert {:error, :closed} = :gen_tcp.recv(socket, 0, 3000)
+    send(server.pid, :respond)
+    assert :ok = Task.await(server)
+    [record] = Session.info(pid).accounting["requests"]
+    assert record["outcome"] == "cancelled"
+    assert record["usage"]["quality"] == "unavailable"
+    {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+    assert {:ok, []} = Session.restore_context(events)
+  end
+
+  test "abrupt session owner loss leaves unknown liability and inert resume", ctx do
+    {base, server} = model_fixture(self(), wait: true)
+
+    config =
+      model_config(ctx.config, base)
+      |> Map.merge(%{approval: :allow, budget: %{"version" => 1, "max_requests" => 1}})
+
+    pid = start(%{ctx | config: config})
+    id = Session.info(pid).id
+    :ok = host_command(pid, model_request())
+    assert_receive {:model_http, _, _}, 3000
+    assert_receive {:model_socket, socket}, 1000
+    monitor = Process.monitor(pid)
+    Process.exit(pid, :kill)
+    assert_receive {:DOWN, ^monitor, :process, ^pid, :killed}, 3000
+    assert {:error, :closed} = :gen_tcp.recv(socket, 0, 3000)
+    send(server.pid, :respond)
+    assert :ok = Task.await(server)
+    {:ok, budget} = Ipse.Budget.saved(ctx.dir, id)
+    assert budget["request_count"] == 1
+    assert budget["unsettled_count"] == 1
+    {:ok, events} = Journal.load(ctx.dir, id)
+    assert {:ok, _} = Session.restore_context(events)
+    path = Path.join(ctx.dir, id <> ".jsonl")
+    bytes = File.read!(path)
+    calls = File.read!(ctx.called)
+    resumed = start(%{ctx | config: config}, id)
+    assert Session.info(resumed).phase == :idle
+    assert Session.info(resumed).accounting["unknown_outcome_count"] == 1
+    assert File.read!(path) == bytes
+    assert File.read!(ctx.called) == calls
+  end
+
+  test "extension response-byte refusal remains a failed accounted attempt", ctx do
+    {base, server} = model_fixture(self(), text: String.duplicate("x", 70_000))
+    config = model_config(ctx.config, base) |> Map.put(:approval, :allow)
+    pid = start(%{ctx | config: config})
+    :ok = host_command(pid, model_request())
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+    assert :ok = Task.await(server)
+
+    assert host_outcome(pid) == %{
+             "status" => "failed",
+             "value" => %{"code" => "model_request_failed"}
+           }
+
+    [record] = Session.info(pid).accounting["requests"]
+    assert record["outcome"] == "failed"
+    assert record["usage"]["quality"] == "unavailable"
+    {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+    refute Enum.any?(events, &(&1["type"] == "extension_model_response"))
+    assert {:ok, []} = Session.restore_context(events)
+  end
+
+  test "extension request deadline stops slow provider work", ctx do
+    {base, server} = model_fixture(self(), wait: true)
+    config = model_config(ctx.config, base) |> Map.put(:approval, :allow)
+    pid = start(%{ctx | config: config})
+    :ok = host_command(pid, Map.put(model_request(), "timeout_ms", 1000))
+    assert_receive {:model_http, _, _}, 3000
+    assert_receive {:model_socket, socket}, 1000
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+    assert {:error, :closed} = :gen_tcp.recv(socket, 0, 3000)
+    send(server.pid, :respond)
+    assert :ok = Task.await(server)
+    assert host_outcome(pid)["status"] == "failed"
+    assert host_outcome(pid)["value"]["code"] in ~w(model_timeout model_request_failed)
+    [record] = Session.info(pid).accounting["requests"]
+    assert record["outcome"] in ~w(failed cancelled)
+    assert record["usage"]["quality"] == "unavailable"
+    {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+    assert {:ok, []} = Session.restore_context(events)
+  end
+
+  test "model source and returned text corruption refuse before torn-tail repair", ctx do
+    {base, server} = model_fixture(self())
+    config = model_config(ctx.config, base) |> Map.put(:approval, :allow)
+    pid = start(%{ctx | config: config})
+    :ok = host_command(pid, model_request())
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+    assert :ok = Task.await(server)
+    id = Session.info(pid).id
+    :ok = Session.close(pid)
+    {:ok, events} = Journal.load(ctx.dir, id)
+
+    for corrupt <- [
+          Enum.reject(events, &(&1["type"] == "extension_model_request")),
+          Enum.reject(events, &(&1["type"] == "extension_model_response")),
+          Enum.map(events, fn event ->
+            if event["type"] == "extension_model_request",
+              do: put_in(event, ["execution", "provider"], "openai"),
+              else: event
+          end),
+          Enum.map(events, fn event ->
+            if event["type"] == "extension_action_result" do
+              outcome = put_in(event["outcome"], ["value", "text"], "forged")
+
+              event
+              |> Map.put("outcome", outcome)
+              |> Map.put("outcome_sha256", Ipse.Compaction.digest([outcome]))
+            else
+              event
+            end
+          end)
+        ] do
+      assert {:error, _} = Ipse.Usage.restore(corrupt, id)
+      path = Path.join(ctx.dir, id <> ".jsonl")
+      bytes = Enum.map_join(corrupt, "", &(Jason.encode!(&1) <> "\n")) <> "{partial"
+      File.write!(path, bytes)
+
+      assert {:error, _} =
+               DynamicSupervisor.start_child(
+                 Ipse.Sessions,
+                 {Session,
+                  config: config, cwd: ctx.root, state_dir: ctx.dir, subscriber: self(), id: id}
+               )
+
+      assert File.read!(path) == bytes
+    end
+
+    path = Path.join(ctx.dir, id <> ".jsonl")
+    bytes = Enum.map_join(events, "", &(Jason.encode!(&1) <> "\n")) <> "{partial"
+    File.write!(path, bytes)
+    changed = put_in(config, [:profiles, "extract", "model"], "changed")
+
+    assert {:error, :resume_configuration_mismatch} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Session,
+                config: changed, cwd: ctx.root, state_dir: ctx.dir, subscriber: self(), id: id}
+             )
+
+    assert File.read!(path) == bytes
+  end
+
+  defp model_request,
+    do: %{
+      "op" => "model.complete",
+      "version" => 1,
+      "profile" => "extract",
+      "instruction" => "Extract entities only.",
+      "input" => "Synthetic explicit input",
+      "max_output_bytes" => 1024,
+      "timeout_ms" => 5000
+    }
+
+  defp model_config(config, base) do
+    Map.merge(config, %{
+      provider: :openai,
+      model: "main-fixture",
+      api_key: "main-only-fixture",
+      profiles: %{
+        "extract" => %{
+          "provider" => "ollama",
+          "model" => "helper-fixture",
+          "base_url" => base,
+          "max_output_tokens" => 32
+        }
+      },
+      max_output_tokens: 64
+    })
+  end
+
+  defp model_fixture(owner, opts \\ []) do
+    {:ok, listener} =
+      :gen_tcp.listen(0, [:binary, active: false, reuseaddr: true, ip: {127, 0, 0, 1}])
+
+    {:ok, {_, port}} = :inet.sockname(listener)
+
+    task =
+      Task.async(fn ->
+        case :gen_tcp.accept(listener, 5000) do
+          {:ok, socket} ->
+            {headers, payload} = model_http_request(socket, "")
+            send(owner, {:model_http, headers, Jason.decode!(payload)})
+
+            if opts[:wait] do
+              send(owner, {:model_socket, socket})
+              receive do: (:respond -> :ok)
+            end
+
+            body =
+              Jason.encode!(%{
+                "model" => "helper-reported",
+                "done" => true,
+                "prompt_eval_count" => 7,
+                "eval_count" => 3,
+                "message" => %{
+                  "content" => opts[:text] || "entities",
+                  "thinking" => "private-thinking"
+                }
+              }) <> "\n"
+
+            :gen_tcp.send(
+              socket,
+              "HTTP/1.1 200 OK\r\ncontent-type: application/x-ndjson\r\ncontent-length: #{byte_size(body)}\r\nconnection: close\r\n\r\n" <>
+                body
+            )
+
+            :gen_tcp.close(socket)
+
+          {:error, :closed} ->
+            :ok
+        end
+
+        :gen_tcp.close(listener)
+        :ok
+      end)
+
+    {"http://127.0.0.1:#{port}", task}
+  end
+
+  defp model_http_request(socket, buffer) do
+    case :binary.split(buffer, "\r\n\r\n") do
+      [headers, body] ->
+        [_, size] = Regex.run(~r/content-length:\s*(\d+)/i, headers)
+        {headers, model_http_body(socket, body, String.to_integer(size))}
+
+      [_] ->
+        {:ok, bytes} = :gen_tcp.recv(socket, 0, 5000)
+        model_http_request(socket, buffer <> bytes)
+    end
+  end
+
+  defp model_http_body(_, body, size) when byte_size(body) >= size, do: body
+
+  defp model_http_body(socket, body, size) do
+    {:ok, bytes} = :gen_tcp.recv(socket, 0, 5000)
+    model_http_body(socket, body <> bytes, size)
+  end
 
   test "host writes need their own full approval and reads recover without executing callbacks",
        ctx do

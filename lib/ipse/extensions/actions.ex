@@ -332,6 +332,19 @@ defmodule Ipse.Extensions.Actions do
     end
   end
 
+  defp validate_event(%{"type" => "extension_model_request"} = event, state, _) do
+    if state.action != nil and Operation.model?(state.action["request"]) and
+         event["operation_id"] == state.action["operation_id"] and
+         event["parent_invocation_id"] == state.parent["invocation_id"] and
+         event["admission"]["session_id"] == state.parent["payload"]["session_id"] and
+         event["admission"]["turn_id"] == state.parent["payload"]["turn_id"] and
+         state.action["approval"] in ~w(approved session_allow) do
+      {:ok, state}
+    else
+      @error
+    end
+  end
+
   defp validate_event(%{"type" => "request_admitted", "kind" => "model"} = event, state, _) do
     if is_nil(state.context_request) and is_nil(state.question) do
       request = if map_size(state.contributions) > 0, do: event
