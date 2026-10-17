@@ -19,7 +19,8 @@ Current contracts are organized by responsibility:
 | Typed dependency composition and contextual evidence | [Services](extension-services.md), [context](extension-context.md) |
 | Durable request facts and embedded/worker private delivery | [Usage accounting](usage-accounting.md), [text channel](text-streams.md) |
 
-Lifecycle observability/developer controls and the
+Generic private lifecycle subscriptions, event-triggered jobs,
+observability/developer controls and the
 independent installed-package/supervised proofs remain open. The
 [plan](../plan.md#p22-extension-scaffold-and-lifecycle-hooks) owns current status;
 [testing](testing.md#current-evidence-and-next-checks) owns actual results.
@@ -30,8 +31,13 @@ remote acquisition, builders and hot activation remain future capabilities.
 ## Recommendation
 
 
-Use a small versioned Elixir behaviour and OTP-owned workers, with two distinct
-interfaces: lifecycle observation and narrowly scoped data transformation.
+Use a small versioned Elixir behaviour and OTP-owned workers around a shared
+lifecycle event vocabulary. A hook is a selected handler at a documented boundary;
+its delivery contract determines whether it observes, returns an ordered
+projection or proposes separately admitted work. Separate private content access
+from sanitized metadata, and event delivery from action permission. The
+[event/subscription design](lifecycle-events.md) owns those distinctions and the
+prompt-to-knowledge-graph acceptance proof.
 Keep approvals, provider selection, journaling, compaction validation and process
 ownership in the host. Reuse skills for instructions and MCP for explicitly
 configured external capabilities. An extension may compose those facilities;
@@ -63,9 +69,9 @@ The implemented scaffold separates `Ipse.Extension` (behaviour),
 `Ipse.Extensions.Registry` (inert activation), `Host` (owned dispatch) and `Worker`
 (independent VM/protocol ownership). Session retains admission and journal state.
 Callback contexts are purpose-built JSON values, never the entire Session struct,
-credential configuration, environment or provider-native data. Lifecycle observer
-envelopes remain a separate pending contract, with version/correlation/timing and
-allowlisted payload requirements described below.
+credential configuration, environment or provider-native data. Generic lifecycle
+envelopes remain pending, with source identity, versions, metadata/private views
+and delivery contracts specified in the [event design](lifecycle-events.md).
 Elixir [behaviours](https://elixir.hexdocs.pm/Module.html#module-behaviour) supply
 callback contracts; [Task.Supervisor](https://elixir.hexdocs.pm/Task.Supervisor.html)
 supplies owned work. Runtime return values still require host validation.
@@ -154,14 +160,19 @@ Preserve cross-process locking for intentionally shared durable stores.
 ## Lifecycle map
 
 Design an event taxonomy for every meaningful lifecycle boundary, but implement
-and stabilize only the events exercised by the first adapters. Observe before
-exposing mutation rights. Observation never includes hidden reasoning or auth.
+and stabilize only exercised seams. Events describe occurrences; hooks subscribe
+to boundaries under explicit delivery contracts. Diagnostic notifications,
+private feeds, ordered hooks and event-triggered jobs share correlation while
+retaining different permissions, ordering and recovery. The
+[lifecycle contract](lifecycle-events.md) defines source identity, original versus
+effective prompt views, bounded delivery, causal loops and no-replay semantics.
+Neither private access nor metadata includes hidden reasoning or auth.
 
 | Stage | Useful observations | Proposed transformation/effect boundary |
 | --- | --- | --- |
 | Configuration and session | Resolution, validation, start, resume, explicit close | Inspect selected extension manifest; executable activation remains operator-owned |
-| Prompt admission | Original received, derived projection ready or failed | Bounded preprocessor before inference; preserve original operator input |
-| Context assembly | Instruction/skill sources and sizes, retrieval contributions | Later memory/context contributions with provenance and context budget |
+| Prompt admission | Original received, effective projection committed or failed | Existing bounded transform; pending private subscriptions and separately admitted extraction jobs |
+| Context assembly | Instruction/skill sources and sizes, retrieval contributions | Existing bounded publications; pending ordered recall hook that freezes its snapshot before request dispatch |
 | Model request | Start, first visible token, completion, error, cancellation, usage | P22 observes metadata; provider/model/billing and native continuation stay host-owned |
 | Stream and completed answer | Visible output counts, final response saved, presentation ready | Initial postprocessor affects completed display only, not individual stream chunks |
 | Tool lifecycle | Proposed, validated, approval requested/answered, intent synced, started, recorded/unknown/denied | P22 observes; future veto can restrict, never grant approval or rewrite a reviewed call |
@@ -179,8 +190,12 @@ callbacks. Avoid one giant callback with arbitrary access at every seam.
 ## Ordering, persistence and failure
 
 Transforms run sequentially in explicit configuration order. Later transforms
-see earlier validated projections. Observers receive sanitized immutable events;
-their relative completion order has no effect on model or tool execution.
+see earlier validated projections. Diagnostic observers receive sanitized immutable
+views; private subscribers need separate content authority. Read-only feeds cannot
+return host actions. Effectful subscriptions admit owned jobs through the ordinary
+approval/intent/outcome path. Background completion cannot alter an admitted model
+request; same-turn recall uses an awaited boundary hook. Diagnostic sink completion
+order has no effect on model or tool execution.
 All slow work stays outside the Session GenServer in owned cancellable workers.
 Reject synchronous reentry into the same Session while it waits for a callback.
 
@@ -190,7 +205,8 @@ deadlines are five seconds; workflow tools have their separately bounded tool
 deadline. Hook input/output and global contextual evidence have distinct limits
 in their authoritative guides. These replace the research draft's provisional
 200–2000 ms transform timing. A transformer cannot raise the context ceiling.
-Observer queue/file quotas and visible drop counts still need implementation.
+Subscriber/job admission, queue bounds, diagnostic file quotas and visible
+drop/gap counts still need implementation.
 Validate encoded bytes, JSON shape and UTF-8; owned task shutdown is not hard
 memory/OS containment. Unexercised observer contracts remain provisional.
 
@@ -321,14 +337,17 @@ interpreted as effects. Current interfaces and remaining proposals are distinct:
 | Prompt/presentation | Implemented `append` or `prefix`/`suffix` objects | Journal source-bound derived projection; preserve originals/native data |
 | Context contribution | Implemented `context.publish` sets with provenance | Accept/refuse within budgets, then pin exact main-request snapshots |
 | Tool/command/service | Implemented declared result schemas or explicit `host_call` proposals | Owned invocation; full tool approval and finite separately admitted actions |
-| Observation | Pending sanitized lifecycle event/sink contract | Must never change context/actions or replace mandatory journals |
+| Lifecycle subscriptions | Pending shared event identity and metadata/private views | Diagnostic delivery never changes context/actions or replaces mandatory journals |
+| Triggered work and ordered recall | Pending generic event-to-job and pre-request hook contracts | Separate action admission; committed source/provenance and deterministic request snapshots |
 | Before-settlement scheduling | Future explicitly negotiated capability | Must validate remaining budgets/phase; no arbitrary auto-continuation exists |
 
-The linked operation guides own exact envelope fields and bounds. Invocations
-and durable actions carry host-issued correlation IDs and source identities;
-transform projections pin input/output/context digests. The planned lifecycle
-envelope must separately define event IDs, stage, monotonic timing and sanitized
-outcomes. Tool/context text is private capability data, not diagnostic payload.
+The linked operation guides own exact implemented envelope fields and bounds.
+Invocations and durable actions carry host-issued correlation IDs and source
+identities; transform projections pin input/output/context digests. The planned
+[lifecycle envelope](lifecycle-events.md#event-identity-and-views) adds durable
+source identity, causal links, versions and explicit views. Tool/context text is
+private capability data, not diagnostic payload. A hook result remains a typed
+projection or proposal rather than an editable broadcast event.
 Unknown result keys/kinds fail validation;
 no returned command string is implicitly executed. Any policy veto may reduce
 capabilities only. It cannot grant approval, rewrite already reviewed arguments,
@@ -336,7 +355,9 @@ change credential/provider selection or erase unknown outcomes.
 
 Serialize stateful invocations per adapter/session, keeping slow work in an owned
 worker and versioning the state snapshot committed with a derived projection.
-Observers use a separate bounded channel and cannot mutate that durable state.
+Diagnostic observers use a separate bounded channel and cannot mutate that
+durable state. A private subscriber requesting writes must enter the negotiated
+event-triggered job/action contract; acknowledgment alone grants no effect.
 Do not promise exactly-once callback invocation across a crash: only committed
 results restore, while uncommitted transforms stop for explicit recovery and
 effect intents retain unknown-outcome semantics. Specify init/shutdown failures
@@ -437,7 +458,11 @@ service is permitted.
    configuration, session leases and a versioned activation-generation boundary.
    Include canonical request/attempt/parent identity and durable normalized usage
    facts with explicit unknowns. Separate droppable diagnostics, durable facts and
-   private content subscriptions; stabilize bounded read-only text delivery and
+   private content subscriptions. Add durable source/causal identity, explicitly
+   selected original/effective prompt views, event-triggered owned jobs and an
+   ordered pre-request recall seam. Keep read authority separate from action/model
+   authority; test gaps, duplicate delivery, self-trigger loops and stale writes
+   after forget. Stabilize bounded read-only text delivery and
    version future media/resource capabilities without implementing voice.
    Define versioned service `provides`/`requires`, host-mediated typed invocation,
    scope/provenance and bounded jobs; reject unsupported dependencies, cycles and
@@ -463,7 +488,10 @@ service is permitted.
    Production memory stores, elaborate workflows, assisted download/build UI and
    live activation remain follow-ons against these same versioned contracts.
    Add a small synthetic retrieval service to prove declared composition and
-   source-attributed context without building P25's production engines.
+   source-attributed context without building P25's production engines. Exercise
+   the [prompt-event graph scenario](lifecycle-events.md#knowledge-graph-acceptance-proof)
+   through a synthetic subscriber using only the frozen SDK, including background
+   indexing versus awaited recall and no-replay recovery.
 4. **P22D — observability and compatibility:** bounded local lifecycle sink,
    transform/event timing and drop counters; documented opt-in local BEAM tracing;
    conformance fixtures, package checks and a supervised extension-only trial.

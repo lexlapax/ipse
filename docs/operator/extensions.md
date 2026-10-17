@@ -176,7 +176,15 @@ or expiry fails explicitly, retaining committed input/output. It never silently
 truncates the prompt or rewrites provider data. Presentation failure leaves the
 original completed answer in history. Each transform uses a fresh owned VM and
 five-second initialization/callback deadlines; private VM state is not a durable
-session memory API.
+session memory API. These transform callbacks cannot request state writes or
+model calls. The separate explicit invocation/action contracts below support
+scoped effects.
+
+Generic lifecycle subscriptions and automatic prompt-driven graph/memory jobs
+are still planned, with separate permission to read private prompt content and
+to store or send it elsewhere. They are not enabled by selecting a formatter,
+text consumer or diagnostic sink. See the [event design and current gaps](../developer/lifecycle-events.md#model-and-current-coverage);
+it does not introduce usable manifest fields or CLI flags yet.
 
 ## Scoped state host calls
 
@@ -349,8 +357,8 @@ cancellation do not themselves provide an OS sandbox. Initialize/transform
 callbacks must follow the SDK's effect-free contract; arbitrary trusted programs
 cannot be constrained by a return-value schema alone.
 
-Broader nested service contracts, lifecycle observation,
-live controls and the independent installed memory/workflow proof remain
+Generic private lifecycle subscriptions, triggered jobs, ordered recall,
+diagnostic controls and the independent installed memory/workflow proof remain
 [P22 work](../plan.md#p22-extension-scaffold-and-lifecycle-hooks). Remote installers,
 build assistants and live activation are future capabilities. Current import and
 selection never install a dependency or silently switch providers.

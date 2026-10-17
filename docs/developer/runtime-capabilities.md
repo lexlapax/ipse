@@ -111,18 +111,21 @@ Fully trusted code is not confined by an SDK accounting API.
 
 ## Text and media are distinct from diagnostics
 
-P22 needs a typed visible-text subscription with stream/session/generation/request
-identity, monotonic sequence, text chunks and one logical terminal outcome.
+The implemented [visible-text contract](text-streams.md) carries
+stream/session/generation/request identity, monotonic sequence, text chunks and
+one logical terminal outcome.
 Sequence IDs reject duplicate/late deliveries; crash/disconnect may leave delivery
 incomplete even when a request finished. Do not promise exactly-once delivery.
 It is a private content capability, separate from sanitized diagnostic observers;
-hidden reasoning/native payloads are excluded. Implement a read-only stream
-consumer proof against both builtin and external worker backends. Preserve the
+hidden reasoning/native payloads are excluded. Embedded and independent-worker
+source fixtures exercise read-only consumption; the independent installed-package
+completion gate remains separate. Preserve the
 saved provider message and native continuation. A formatter cannot retract text
 already displayed; the initial completed-answer wrapper remains a separate view.
 
-Define delivery classes rather than one event bus: diagnostics may drop with
-counters; usage/effect/projection facts are durable; visible content is ordered
+The [lifecycle design](lifecycle-events.md) shares event vocabulary and correlation
+while separating delivery contracts: diagnostics may drop with counters;
+usage/effect/projection facts are durable; visible content is ordered
 with bounded buffering/credit. Coalesce text only while preserving its concatenated
 value/order. A slow/disconnected consumer must apply supported backpressure or
 receive an explicit termination/error, not silently lose chunks or grow an

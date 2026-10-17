@@ -1030,10 +1030,12 @@ extension-only package proof or complete P22.
 
 ### Remaining completion work
 
-Lifecycle observation with off/local/export controls, bounded diagnostic sinks
-and developer conformance/debugging remain
-to be implemented. Core must then be frozen for the independent installed
-memory/workflow/retrieval package proof, followed by supervised independent
+The [shared lifecycle event foundation](developer/lifecycle-events.md) still needs
+generic private subscriptions, committed source/causal identity, event-triggered
+owned jobs and an ordered pre-request recall seam. Diagnostic observation is one
+separate metadata view, with off/local/export controls, bounded sinks and developer
+conformance/debugging also pending. Core must then be frozen for the independent
+installed memory/workflow/retrieval package proof, followed by supervised independent
 review and the required source/package/platform checks. See the
 [delivery sequence and coverage gate](developer/extensions.md#delivery-sequence-and-extension-only-proof).
 
@@ -1050,6 +1052,12 @@ Acceptance:
    validation/approval/intent/outcome, operator questions, children, compaction,
    turn completion/error/cancellation and owner death. Implement only documented
    stable seams, with observation distinct from permission to transform or act.
+   Treat hooks as typed subscriptions to shared lifecycle boundaries: distinguish
+   metadata notifications, private content feeds, ordered hooks and triggered jobs.
+   Pin original/effective prompt views, durable source IDs, causal origin and
+   generation; bound delivery/queues and report gaps. Acknowledgment never implies
+   action completion. Preserve existing v1 contracts; unsupported subscriptions
+   refuse until negotiated and implemented.
 2. Add a backend-independent Elixir SDK/registry and owned workers: bundled
    trusted modules may run in-VM, while independent packages use a versioned
    serializable worker bridge. Define immutable artifacts, installed/trusted
@@ -1073,6 +1081,12 @@ Acceptance:
    stale/conflicting data, deletion and bounded continuation. Prove the generic
    SDK with a separate synthetic local memory/workflow package after core is
    frozen: no edits under core/native and no feature-name dispatch branches.
+   Prove a private prompt subscriber can perform deterministic entity extraction
+   and separately approved scoped storage, with provenance/deduplication, no
+   self-trigger loop and no resurrection after forget. Compare background indexing
+   with awaited recall; an admitted request cannot change with background timing.
+   Exercise queue saturation, interruption/idle resume and explicit bounded catch-up
+   without automatic effect replay. See the [event acceptance cases](developer/lifecycle-events.md#knowledge-graph-acceptance-proof).
    Production memory backends and elaborate workflows remain follow-on extensions.
    No mandatory memory store, embedding service, workflow framework or exporter.
    Exercise a separately built worker artifact in temporary-session use and

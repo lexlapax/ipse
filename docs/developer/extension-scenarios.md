@@ -63,6 +63,10 @@ revised contract has an explicit route; implementation still needs its fixtures.
 | Report costs with tracing disabled | Read durable request facts, including children/compaction; missing usage stays unknown; rates carry identity. | Request/attempt IDs, canonical usage facts and generic report surface. | P23 report extension and budget host capability. |
 | Consume text while generated | Read ordered private visible-text chunks with bounded flow/cancellation; saved provider history stays unchanged. | Content subscription and slow-consumer/terminal policy, separate from diagnostics. | Stateful incremental rewrites. |
 | Add voice or duplex audio | Negotiate owned media/provider capabilities; unsupported audio refuses until implemented. | Versioned resource/data-plane boundary and explicit billing/approval ownership. | P24 voice/realtime transport/playback capability. |
+| Maintain a graph from prompts | Subscribe to an explicitly granted original/effective prompt view; admit an owned extraction job and propose scoped writes. | Shared event IDs, private-view authority, separate action approval, bounded job admission, causation and duplicate/gap handling. | P25 extraction/graph algorithms; fully concurrent effectful jobs need negotiated core support. |
+| Recall memory for the current answer | Await a selected pre-request hook and commit its bounded evidence snapshot before inference. | Ordered recall seam; background completion cannot alter an admitted request. | Retrieval/ranking quality and production backends. |
+| Resume or catch up a subscriber | Restore committed receipts without executable startup/replay; explicit bounded catch-up is a new approved job over authorized history. | Source IDs, unknown outcomes, retention gaps and tombstone/revision checks against delayed resurrection. | Durable external broker/cursor integrations, if separately justified. |
+| Subscribe from another system | Use a reviewed typed adapter with configured endpoint, authentication and export authority. | Same event/view/delivery contract; no default listener or implicit private-feed export through MCP. | Remote transport adapters and optional CloudEvents mapping. |
 | Enable memory/research/graph/RAG independently | Select known instances/hooks/providers; disabled packages start nothing; retrieval need not create permanent memory. | Context/store/retrieval contracts, provenance, approved jobs and explicit package capabilities. | P25 default-off extension family. |
 
 All scenarios now have a defined route. The key correction is that package
@@ -191,7 +195,8 @@ configuration/lease/provenance, the worker bridge and local immutable import. P2
 proves bundled default-off configuration/flag behavior and both pre/post examples.
 P22C adds a separately built local worker using the SDK after core is frozen,
 including a temporary session trial and explicit persistent configuration. It also
-exercises the existing memory/workflow coverage gate. P22D verifies compatibility,
+exercises the memory/workflow coverage gate and the [prompt-event graph proof](lifecycle-events.md#knowledge-graph-acceptance-proof),
+including background indexing versus awaited recall. P22D verifies compatibility,
 concurrent pinned versions, crash/interruption/owner cleanup, expiry/revocation,
 invalid artifacts/configuration and package/source operation on Linux/hosted Mac.
 

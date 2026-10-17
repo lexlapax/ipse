@@ -4,7 +4,7 @@ P22A4 implements a generic registry/host for two stable capabilities:
 `transform.prompt` and `transform.presentation`. The two compiled examples and
 independent worker artifacts share the same JSON SDK. P22A7 also implements
 [typed tool/command/service invocation](extension-invocations.md). Broader
-[lifecycle contracts](extensions.md) remain targets; scoped state, questions,
+[lifecycle subscriptions](lifecycle-events.md) remain targets; scoped state, questions,
 workflow tools, value services and [context publications](extension-context.md)
 are now implemented as separately negotiated invocation host calls;
 this increment does not freeze the complete SDK or complete P22.
@@ -55,9 +55,10 @@ instances in configured order, opening a fresh Worker VM per transform. Before
 opening executable resources, it requests a Session-journaled intent. Worker
 startup itself waits for `initialize` before loading the executable module; the
 host's intent therefore precedes `on_load`/initialization and callback execution.
-Callbacks must be effect-free. There is no host effect/approval API yet; process
-separation cannot prevent arbitrary trusted code from using the operator's OS
-permissions directly.
+Transform callbacks must be effect-free and cannot return host-action proposals.
+The separate invocation contract supports approved effects; it is not yet wired
+to generic event subscriptions. Process separation cannot prevent arbitrary
+trusted code from using the operator's OS permissions directly.
 
 The worker receives validated options and `{"text": visible_text}` only. No
 credentials, complete Session state, provider-native continuation or hidden
@@ -161,8 +162,11 @@ projections and verifies annotations cannot grant tool mutation approval.
 Registry fixtures cover disabled discovery, schema/capability refusal, trust/lease
 expiry and child subset routing. See [actual evidence](testing.md#session-extension-hooks-2026-10-16).
 
-P22 still needs the broader lifecycle and SDK seams, worker access to existing
-accounting/visible-stream foundations, observability/debug controls, independent extension-only
-memory/workflow proof and reviewed supervised trial. Hosted macOS and local Linux
+Worker [visible-text delivery](text-streams.md) is now implemented. P22 still needs
+generic private lifecycle subscriptions, event-triggered owned jobs, an ordered
+recall seam, accounting report access, observability/debug controls and the
+independent extension-only memory/workflow proof and reviewed supervised trial.
+The [event design](lifecycle-events.md) explains why a prompt transform or stream
+acknowledgment alone cannot maintain a knowledge graph. Hosted macOS and local Linux
 evidence must remain distinguished. This initial capability set does not claim
 the complete planned extension family is implemented.

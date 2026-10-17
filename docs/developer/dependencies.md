@@ -302,25 +302,29 @@ no compiler download, new toolchain package or runtime dependency is introduced.
 
 ### P22 extension and diagnostics evaluation
 
-The [extension proposal](extensions.md) and [observability proposal](observability.md)
-reuse Elixir behaviours, OTP supervisors/tasks, existing Jason/configuration and
-the journal contracts. No dependency or external service is added by this research.
-If implementation directly emits Telemetry events, promote the already locked
-1.4.2 package above to a declared direct dependency and update its runtime scope.
-OpenTelemetry API/SDK/OTLP exporter packages are optional evaluated future sinks,
-not installed dependencies or mandatory collectors; record selected versions,
-licenses and explicit export configuration before adoption. Memory storage and
-remote catalog/signature/download packages remain unselected. P22's adoption
-design now requires a local immutable artifact contract and a standalone Elixir
-worker proof alongside builtin adapters. Evaluate current OTP stdio ownership,
-Rust helper, Jason/JSONSchex and maintained packages before adding framing or
-installation machinery. No worker bridge, installer or dependency is implemented
-by that design update. Extension artifacts must carry their own locked dependency,
-runtime-target and license inventory; builds use declared tooling rather than
-assuming a bundled release includes Mix. Non-Elixir/Rust dependencies still need
-explicit developer approval. See [scenario boundaries](extension-scenarios.md).
-No upstream OpenCode/Pi/
-Codex/Claude runtime, plugin or script is installed or redistributed.
+The extension foundation reuses Elixir behaviours, OTP-owned workers, the existing
+Jason/schema adapters, journals and Rust stdio/process ownership. Local immutable
+import, the worker bridge and typed host actions are implemented without a new
+package or external runtime. Artifacts carry their own locked dependency,
+runtime-target and license inventory; author builds do not assume that a bundled
+release includes Mix. Non-Elixir/Rust dependencies still need explicit developer
+approval. No upstream harness/plugin runtime is installed or redistributed.
+
+The [lifecycle design](lifecycle-events.md#reuse-decisions-and-sources) evaluates
+Telemetry 1.4.2, Phoenix.PubSub and CloudEvents 1.0.2. Telemetry's synchronous
+unordered handlers cannot provide ordered transforms or durable approved jobs;
+PubSub topic fan-out alone does not provide bounded admission, private-view
+authority or recovery. The initial design uses existing local OTP/worker/journal
+facilities for those host-specific policies. Phoenix.PubSub/CloudEvents packages
+are not adopted. Telemetry remains a locked transitive Finch/Plug dependency;
+promote it explicitly if Ipse begins calling its API directly.
+
+OpenTelemetry API/SDK/OTLP exporter packages remain optional future sinks, not
+installed dependencies or mandatory collectors. Inventory selected versions and
+licenses before adoption, with explicit endpoints/export authority. Memory engines,
+remote catalogs/signatures and download helpers remain unselected. Package
+acquisition, building and trust are separate from event subscription and execution;
+see [adoption scenarios](extension-scenarios.md).
 
 The follow-on [runtime](runtime-capabilities.md) and [knowledge](knowledge-extensions.md)
 reviews compare OpenAI Agents SDK/voice, LangGraph/LangSmith, ADK, ElixirLS/OTP

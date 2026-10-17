@@ -280,8 +280,12 @@ outcomes stop without replay. Idle resume validates committed projections and
 receipts without loading callbacks or retrieving again. Mandatory instructions,
 messages and native continuation remain intact. Domain algorithms belong in
 extensions where the supported SDK permits; missing host capabilities require
-reviewed general contracts. Lifecycle observability and
-the independent installed-package proof remain [P22 gates](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
+reviewed general contracts. The pending [lifecycle foundation](lifecycle-events.md)
+uses shared event identity with separate metadata/private views and delivery
+contracts for notifications, ordered hooks and triggered jobs. Event delivery
+does not grant effects, and background work cannot change an admitted request.
+Private subscriptions, job admission, ordered recall, lifecycle observability
+and the independent installed-package proof remain [P22 gates](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
 
 Keep provider-specific wire formats inside provider adapters and keep session
 state transitions in `Ipse.Session`. Put ordinary filesystem and shell

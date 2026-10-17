@@ -38,6 +38,7 @@ start. Use the guides below for operation, development, and project context.
 | [Extension proposal](developer/extensions.md) | P22 comparison, SDK/core boundary, lifecycle/trust/versioning and extension-only delivery gates |
 | [Extension artifact contract](developer/extension-artifacts.md) | Inert manifest/store API, pinned identity and explicit independent worker SDK/lifecycle boundaries |
 | [Session extension hooks](developer/extension-hooks.md) | Implemented prompt/presentation transforms, built-in registry, ownership, durable projections and no-replay recovery |
+| [Lifecycle events and subscriptions](developer/lifecycle-events.md) | P22 event design: metadata/private views, ordered hooks, triggered jobs, recovery and prompt-driven graph acceptance cases |
 | [Extension invocations](developer/extension-invocations.md) | Inert tools/commands/services, scoped catalog identity, owned callbacks and durable result receipts |
 | [Extension host calls](developer/extension-host-calls.md) | Finite continuations, separate write approval, scoped CAS state/tombstones and action-chain recovery |
 | [Extension questions](developer/extension-questions.md) | Structured clarification, bounded checkpoints, explicit answered continuations and inert recovery |

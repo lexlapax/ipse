@@ -206,8 +206,9 @@ and [runtime identity](#p1-runtime-identity-2026-10-15).
 
 | Checkpoint | Evidence | Scope and remaining limits |
 | --- | --- | --- |
-| Worker text resources, Linux Serenity | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters, 485 native-suite tests with 14 macOS exclusions | Source fixtures; new worker/resource behavior needs independent installed-package and hosted platform evidence |
-| Hosted baseline `51513e8` | [Ubuntu/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39001726434) passed build, format, compile, tests, demo and extracted packages; macOS native checks passed | Establishes the preceding context/service and MCP-readiness baseline, not subsequent worker-text changes |
+| Worker text resources, Linux Serenity | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters, 485 native-suite tests with 14 macOS exclusions | Source fixtures; independently installed package proof remains open |
+| Hosted worker-text baseline `dc07fb5` | [Ubuntu/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39004356777) passed build, format, compile, tests, demo and extracted packages; macOS native and default experimental sandbox checks passed | Job/step conclusions inspected; does not establish the independent installed-package proof or stronger macOS descendant containment |
+| Lifecycle/event design review | 75 Markdown documents / 911 local file and heading links passed; existing compiled CLI inert extension listing verified | Documentation/acceptance update only; private event subscriptions, triggered jobs and graph cases are not implemented or executed by this review |
 | Provider acceptance | [Explicit live provider checks](#live-provider-acceptance-follow-up-2026-10-15) | Recorded account/model/platform combinations only; fixture tests do not establish billing, hardware or arbitrary-model support |
 
 The worker-text increment adds seven independent-artifact fixtures and a broker
@@ -225,8 +226,10 @@ server/RPC and resource-outcome limits and no-replay assertions. Fourteen focuse
 catalog/session tests and the subsequent full hosted matrix passed. This is
 fixture coordination evidence, not a production timeout or permission change.
 
-P22 still needs observability/debugging, the independent installed-package proof
-and supervised review. P23–P25 and the final license transition remain open;
+P22 still needs generic private event subscriptions, triggered jobs, ordered
+recall, observability/debugging, the independent installed-package proof and
+supervised review. The [event/graph scenarios](lifecycle-events.md#knowledge-graph-acceptance-proof)
+are design acceptance cases, not executed fixtures. P23–P25 and the final license transition remain open;
 the [plan](../plan.md) owns acceptance/status. Current source/package results,
 hosted platforms and live trials are separate verification claims.
 
@@ -2900,8 +2903,10 @@ The Linux glibc-2.44 package rebuilt with matching OTP 29.1.1 notices and passed
 extracted help/demo, isolated homes, default/explicit workspaces, utility-only
 PATH and bundled MCP/delegation/extension checks. This is the package baseline,
 not an independently installed worker-text artifact proof in an extracted release.
-The current increment still needs hosted platform results; the preceding
-`51513e8` Linux/macOS matrix is recorded in the current summary. No live provider,
+The subsequent [hosted `dc07fb5` matrix](https://github.com/lexlapax/ipse/actions/runs/39004356777)
+passed both Ubuntu and macOS, including source tests, demo and extracted-package
+checks; macOS native/default experimental checks passed. Job/step conclusions
+were inspected after completion. No live provider,
 audio, exporter, external dependency or production knowledge backend was used.
 Documentation checks passed **74 Markdown files / 889 local file and heading
 links**, with no errors.

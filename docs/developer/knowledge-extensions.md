@@ -114,47 +114,46 @@ RAG extension should accept capability-declared retrieval adapters and allow a
 local keyword baseline without a mandatory embedding service. No Python/JavaScript
 framework, vector engine or database is adopted by this research.
 
-## P22 foundational additions
+## P22 foundation and remaining gaps
 
-1. **Service composition:** manifests declare namespaced versioned `provides`/
-   `requires` capabilities and selected instance aliases, separate from package
-   build dependencies. Host-mediated typed service calls validate declared schemas,
-   caller scope, budgets, ownership and correlation. No direct worker-to-worker
-   PIDs or unbounded callback recursion. Reject unsupported interfaces, missing
-   services, circular dependencies and reentrant call chains before dispatch.
-   The first proof can use a small local fake retriever; no general service graph
-   framework is required.
-2. **Common evidence contract:** retrieved chunks/memory records carry stable IDs,
-   namespace/scope, source/version/digest, timestamps, excerpt/reference, provenance
-   and optional score/uncertainty. Scores are ranking signals, not truth. Context
-   contributions name their exact snapshot and fit the host budget; untrusted
-   source content never becomes an instruction/permission level. Reuse P14 source/
-   claim identity and validation instead of inventing an incompatible citation
-   ledger. Keep any internal entities/index IDs mapped to original evidence.
-3. **Owned work and effects:** approved store/index writes and network/model
-   requests use ordinary host proposals, journals, cancellation and usage facts.
-   Slow ingestion/extraction runs as owned bounded jobs outside Session, with
-   progress, operation IDs and explicit unknown outcomes. Optional inference uses
-   explicit existing profiles/delegation or a negotiated host request capability;
-   no hidden model HTTP call or private provider interface. Unsupported operations
-   refuse, rather than spawning an unaccounted workflow inside a hook.
-4. **Snapshot/state lifecycle:** session scratch, durable memory and derived indexes
-   have separate namespaces and retention. Recall is committed before inference;
-   resume restores that projection without a new retrieval or automatic write.
-   Define stale/conflicting records, export, TTL, tombstones and indexing version
-   before storage. Forget/delete propagates to owned graph/vector derivatives,
-   with job status and scope; it does not promise erasure from private journals,
-   backups or remote services outside the stated deletion operation.
-5. **Provider/configuration independence:** typed options select store/search/fetch/
-   embedding/rerank/graph instances and profiles. Validate capabilities and runtime
-   compatibility without hardcoded endpoints or feature-specific Session branches.
-   Project scopes can narrow operator grants; they cannot activate data egress or
-   widen memory access. Durable store locking remains cross-process.
+Knowledge features use generic host contracts; they do not get a special branch
+in Session. Separate implemented primitives from the remaining automatic-policy
+seams before choosing a production memory, graph or retrieval engine:
 
-These are generic SDK/store/retrieval/job contracts and fixture requirements.
-P22 does not need production graph queries, embeddings, a database installer or
-full automated research. Exercise composition, provenance and scoped memory through
-the coverage gate before freezing core; later adapters implement the feature logic.
+| Responsibility | Implemented foundation | Remaining contract/proof |
+| --- | --- | --- |
+| Composition | Operator-bound typed value services, pinned dependencies and acyclic routing | Independent synthetic retriever proof; nested effectful services remain a negotiated enhancement |
+| Evidence/context | Caller-scoped bounded publications, assertion/receipt provenance and exact main-request snapshots | Domain records mapped to P14 source/claim identity; awaited recall at a documented pre-request seam |
+| State/deletion | Scoped CAS records, revision/generation checks, locks and tombstones through approved actions | TTL, derivative deletion/export policy and delayed-job rejection after forget |
+| Owned work | Explicit invocations with finite actions, cancellation, durable intents/outcomes and structured questions | Event-to-job admission, private prompt subscriptions, bounded ingestion/catch-up and source-event deduplication |
+| Optional model work | Existing explicit provider/profile and delegation paths | A negotiated accounted host request capability for extraction/embedding; current callbacks cannot silently call a model |
+
+The [lifecycle event design](lifecycle-events.md) makes prompt-driven graph
+ingestion a P22 acceptance scenario. Hooks subscribe to shared boundaries, but
+metadata notification, private content delivery, ordered recall and effectful
+jobs have distinct contracts. A graph can subscribe to a selected original or
+effective prompt view, extract entities deterministically in an owned worker and
+propose approved scoped writes. Acknowledgment alone grants no storage or model
+authority. Background indexing cannot change an admitted request; same-turn
+recall must be awaited and committed before inference. Resume restores committed
+snapshots without retrieving or writing again.
+
+Retrieved chunks and memory records need stable identity, namespace/scope,
+source/version/digest, timestamps, excerpt/reference and provenance. Optional
+scores indicate ranking, not truth. Keep entities/index IDs linked to original
+evidence, and extension content below the instruction/permission boundary.
+Record source event and extractor version; reject stale writes after forget so
+queued extraction/reindex cannot resurrect deleted facts. Deleting a derived
+store does not erase journals, backups or prior remote/provider transfers.
+
+Typed options select store/search/fetch/embedding/rerank/graph instances and
+profiles; no backend or endpoint is mandatory. Project selections may narrow
+operator grants, not authorize egress or widen memory access. Unsupported
+operations refuse instead of hiding unaccounted work inside a hook. Use the
+independent installed-package gate to exercise these generic contracts before
+declaring the foundation complete. P22 needs a synthetic graph subscriber and
+retrieval service, not production graph queries, embeddings, database installation
+or a full research engine; those algorithms and their measurements belong to P25.
 
 ## P25 delivery and acceptance
 
@@ -162,9 +161,10 @@ Treat these as independent packages with shared contracts, not one mandatory
 pipeline. Deliver short-term/long-term memory first, then the research engine and
 RAG adapters as useful; graph storage/traversal remains independently selectable.
 This feature-family work can proceed independently of voice or cost UI once its
-required P22 capabilities exist. Each implementation choice follows the research
-gate above. No implementation goal is started by this plan entry; the operator
-requested the plain-English sequence for approval before runtime changes begin.
+required P22 capabilities exist. The operator authorized P22–P25 implementation
+on 2026-10-16; each production choice still follows the research gate above.
+Request operator input only for a material unresolved choice or an additional
+dependency/action that requires approval, not for already authorized routine work.
 
 Ship a minimal configurable local baseline and explicit provider interfaces, with
 no default remote store, embeddings, search service or model. Evaluate existing

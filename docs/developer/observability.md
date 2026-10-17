@@ -4,8 +4,11 @@ Research/design as of 2026-10-16; no new diagnostic CLI flags, trace exporter,
 extension event bus or debugger endpoint are implemented by this document.
 P19 now supplies local diagnostics, saved inspection, explicit handoff export
 and request durations; see [recovery](../operator/recovery.md). P22 can extend
-those same contracts rather than introduce a second
-incompatible instrumentation layer.
+those same contracts rather than introduce a second incompatible instrumentation
+layer. The [lifecycle event foundation](lifecycle-events.md) separately defines
+shared source identity, private subscriptions, ordered hooks and event-triggered
+jobs. This guide owns only the sanitized diagnostic view and developer tracing.
+Prompt-driven memory/graph ingestion must not depend on sampled telemetry.
 
 ## Existing facilities and gaps
 
@@ -102,7 +105,9 @@ handlers. Use a small internal adapter with fast trusted instrumentation handler
 handoff slow sinks through a bounded owner-managed channel. Merely sending to a
 process mailbox does not bound its queue. Define overload/drop accounting and
 shutdown behavior. Never use Telemetry handler results to rewrite prompts, approve
-tools or run memory I/O. P22's ordered transform dispatcher is a different contract.
+tools or run memory I/O. P22's ordered hooks and event-triggered jobs are different
+delivery contracts over the shared lifecycle vocabulary; neither executes in a
+Telemetry handler.
 
 If Ipse calls Telemetry directly, promote locked 1.4.2 to a declared direct
 dependency and update its inventory/scope. No promotion/install is performed in
@@ -191,9 +196,13 @@ P22's local event schema should version a fixed stage/outcome vocabulary and
 bounded correlation IDs, elapsed monotonic duration, request kind, phase and
 byte/count measurements. Record approval/question wait separately from active
 provider/tool/extension work. Do not log model text, tool payloads, filesystem
-contents, arbitrary extension labels or raw exceptions. Extension observers see
-only the allowlisted event view; context/tool capabilities receive separate,
-explicitly private callback values that must not enter the diagnostic sink.
+contents, arbitrary extension labels or raw exceptions. Diagnostic subscribers
+see only the allowlisted metadata view. Private prompt/context/tool subscriptions
+have separately granted schemas, scopes and
+delivery contracts; their content must not enter the diagnostic sink. Turning
+diagnostics off does not revoke an independently selected private subscriber or
+stop mandatory job/action receipts. Stopping that subscriber is a separate
+owned-resource operation.
 
 Start with proposed configurable caps: 256 queued events, 16 KiB encoded event,
 10 MiB local trace rotation and two retained files, owner-only permissions and
