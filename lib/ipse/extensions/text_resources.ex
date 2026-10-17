@@ -4,6 +4,10 @@ defmodule Ipse.Extensions.TextResources do
   @types ~w(extension_text_intent extension_text_ready extension_text_closed)
   @error {:error, :invalid_extension_text_resource}
   def types, do: @types
+
+  def frame_version(identity),
+    do: if("stream.text.events" in identity["capabilities"], do: 2, else: 1)
+
   def count(events), do: Enum.count(events, &(&1["type"] == "extension_text_intent"))
 
   def entries(config),

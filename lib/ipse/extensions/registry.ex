@@ -289,6 +289,7 @@ defmodule Ipse.Extensions.Registry do
       Ipse.Lifecycle.Runtime,
       Ipse.Lifecycle.Tool,
       Ipse.Lifecycle.Child,
+      Ipse.Lifecycle.Ephemeral,
       Ipse.Observability.Config,
       Ipse.Observability.Event,
       Ipse.Observability.Channel,

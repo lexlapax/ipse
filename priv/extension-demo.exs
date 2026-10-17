@@ -85,9 +85,11 @@ defmodule Ipse.ExtensionDemo do
 
       {:ok, session} = DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, opts})
       {:ok, text_handle} = Ipse.Session.subscribe_text(session)
+      {:ok, event_handle} = Ipse.Session.subscribe_text(session, 2)
       :ok = Ipse.Session.prompt(session, "original fixture task")
       await(session)
       "fixture answer" = visible_text(text_handle)
+      "fixture answer" = visible_text(event_handle)
 
       receive do
         {:extension_fixture_context, [_system, user]} ->
@@ -572,8 +574,21 @@ defmodule Ipse.ExtensionDemo do
   end
 
   defp visible_text(handle, text \\ "") do
+    subscription = handle.subscription_id
+
     receive do
-      {:ipse_text, server, %{"sequence" => sequence} = frame} when server == handle.server ->
+      {:ipse_text, server, %{"subscription_id" => ^subscription, "sequence" => sequence} = frame}
+      when server == handle.server ->
+        if frame["version"] == 2 do
+          true = Ipse.Lifecycle.Ephemeral.valid_frame?(frame)
+          {:ok, metadata} = Ipse.Lifecycle.Ephemeral.project(frame, "metadata")
+
+          if frame["kind"] == "text" do
+            {:ok, private} = Ipse.Lifecycle.Ephemeral.project(frame, "text.visible")
+            true = metadata["event_id"] == private["event_id"]
+          end
+        end
+
         :ok = Ipse.TextStream.ack(handle, sequence)
         text = text <> (frame["text"] || "")
 

@@ -92,6 +92,9 @@ defmodule Ipse.Extensions.TextConsumer do
     payload = %{"api_version" => 1, "handle" => s.intent["resource_id"], "frame" => frame}
 
     with true <- frame["subscription_id"] == s.handle.subscription_id,
+         true <-
+           frame["version"] === Ipse.Extensions.TextResources.frame_version(s.intent["identity"]),
+         true <- frame["version"] == 1 or Ipse.Lifecycle.Ephemeral.valid_frame?(frame),
          true <- frame["session_id"] == s.intent["session_id"],
          true <- frame["kind"] == "closed" or sequence == s.sequence + 1,
          true <- Registry.live?(s.entry.identity),

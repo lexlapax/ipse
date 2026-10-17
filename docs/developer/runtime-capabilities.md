@@ -17,6 +17,8 @@ HTTP/SSE request handling and cancellation exist. P22 now adds an explicit
 [private text subscription](text-streams.md) with bounded coalescing and
 acknowledgments for embedded clients and selected installed workers. There is no
 multimodal session interface or audio device/backend yet.
+Explicit [v2 negotiation](stream-events.md) adds live epoch/stream/range identity
+without changing v1 consumers or treating a delivery acknowledgment as playback.
 Text deltas are chunks, not necessarily individual tokens.
 
 P22 now implements [durable request accounting](usage-accounting.md): request/

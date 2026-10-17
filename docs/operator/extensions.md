@@ -97,6 +97,7 @@ trust ceiling must cover every declared capability:
 | `host.context` | Bounded caller-scoped context publications | [Context/evidence](#context-and-evidence) |
 | `host.history`, `host.history.*` | Explicit reads of this session's metadata or separately granted private views | [History](#explicit-history-and-catch-up) |
 | `stream.text` | Acknowledged private visible-text delivery through a scoped worker handle | [Text clients](#visible-text-clients) |
+| `stream.text.events` | Explicit v2 frame/source format; requires `stream.text`, grants no effects | [Text event identity](../developer/stream-events.md) |
 | `lifecycle.record` | Record bounded session epochs and operator waits independently of diagnostic capture; no callback or read/action grant | [Runtime facts](../developer/lifecycle-events.md#runtime-epochs-and-operator-waits) |
 | `lifecycle.tools` | Record bounded admitted-tool sources; requires `lifecycle.record`, grants no read/action authority | [Tool sources](../developer/tool-events.md) |
 | `observe.local`, `observe.export` | Read-only metadata sink with separate operator capture policy | [Diagnostic capture](observability.md) |
@@ -456,6 +457,10 @@ Changes to pinned code/config still require the documented recovery path.
 Embedded clients may explicitly subscribe while idle. An installed artifact
 trusted/selected for `stream.text` receives the same bounded private frames in
 its owned worker; select it through the usual configuration or `--extension`.
+V1 stays the default. An artifact additionally trusted for `stream.text.events`
+selects v2 frames with live stream/range identity; embedded clients request
+`Session.subscribe_text(session, 2)`. This changes the format, not effect authority
+or the permitted content. See [event identity and limits](../developer/stream-events.md).
 There is no separate stream CLI flag. Consumers get raw visible model text,
 excluding summaries, native reasoning, credentials and completed formatting.
 

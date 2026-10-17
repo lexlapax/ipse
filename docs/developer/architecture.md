@@ -63,6 +63,9 @@ is mandatory and independent of optional tracing; pricing/budget policy remains
 separate. The [private text channel](text-streams.md) carries only visible output
 with bounded acknowledgments/pressure. Its chunks/subscriptions are ephemeral,
 while completed assistant/native data and accounting stay in the journal.
+Optional [v2 event sources](stream-events.md) identify broker epochs and accepted
+stream byte ranges independently of consumer-local delivery sequence. V1 remains
+unchanged; neither channel supplies history replay or playback confirmation.
 
 `Ipse.HTTPProfile` owns per-request HTTP lifetimes for authentication, providers,
 and network MCP. A monitored guardian starts a standalone OTP HTTP profile or

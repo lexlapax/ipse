@@ -1036,6 +1036,7 @@ persistent use. They are design walkthroughs, not execution proofs.
 | Live metadata feeds (A25) | Selected committed activity after explicit enrollment, source-bound intents/acknowledgments, bounded serial queues, visible incomplete closure, independent diagnostic policy and inert idle resume | [Feed contract](developer/extension-feeds.md) |
 | Admitted-tool views (A26) | Host tool IDs and source-bound input/outcome facts, separately granted structured live/history views, metadata privacy, bounded recording and explicit question/cancellation recovery | [Tool event contract](developer/tool-events.md) |
 | Child outcomes (A27) | Parent-owned start/result binding, authenticated worker completion, bounded metadata feed/history projection and distinct cleanup acknowledgment, with unknown/incomplete recovery | [Child event contract](developer/lifecycle-events.md#delegated-child-outcomes) |
+| Ephemeral text sources (A28) | Negotiated v2 text delivery, broker epochs, fresh stream/range identity, distinct consumer sequence, bounded metadata/private projections and unchanged v1 admission/recovery | [Stream event contract](developer/stream-events.md) |
 
 The [verification guide](developer/testing.md#current-evidence-and-next-checks)
 distinguishes source fixtures, extracted-package baselines, hosted platform
@@ -1052,8 +1053,8 @@ fully concurrent effectful scheduling remains a negotiated enhancement. Diagnost
 capture, bounded sinks, aggregate local retention and synthetic dispatcher tracing
 are implemented, including runtime epoch/wait sources and live committed metadata
 feeds, with separately granted admitted-tool input/results, actual tool-source
-links and parent-owned child outcomes. Other private delivery/causal seams and
-ephemeral identity remain open. Core must then be frozen for the independent
+links, parent-owned child outcomes and negotiated ephemeral text identity. Other
+private delivery/causal seams remain open. Core must then be frozen for the independent
 installed memory/workflow/retrieval package proof, followed by supervised independent
 review and the required source/package/platform checks. See the
 [delivery sequence and coverage gate](developer/extensions.md#delivery-sequence-and-extension-only-proof).

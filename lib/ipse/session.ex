@@ -99,6 +99,7 @@ defmodule Ipse.Session do
   def stop_observability(pid), do: GenServer.call(pid, :stop_observability)
   def stop_feeds(pid), do: GenServer.call(pid, :stop_feeds, :infinity)
   def subscribe_text(pid), do: GenServer.call(pid, :subscribe_text)
+  def subscribe_text(pid, version), do: GenServer.call(pid, {:subscribe_text, version})
   def exports(pid), do: GenServer.call(pid, :exports)
 
   def invoke_export(pid, kind, name, arguments),
@@ -575,13 +576,19 @@ defmodule Ipse.Session do
     {:reply, info, s}
   end
 
-  def handle_call(:subscribe_text, {consumer, _}, %{phase: :idle} = s) do
+  def handle_call(:subscribe_text, from, s), do: handle_call({:subscribe_text, 1}, from, s)
+
+  def handle_call({:subscribe_text, version}, {consumer, _}, %{phase: :idle} = s)
+      when version in [1, 2] do
     s = ensure_text_stream(s)
 
-    {:reply, Ipse.TextStream.subscribe(s.text_stream, consumer), s}
+    {:reply, Ipse.TextStream.subscribe(s.text_stream, consumer, version), s}
   end
 
-  def handle_call(:subscribe_text, _, s), do: {:reply, {:error, :busy}, s}
+  def handle_call({:subscribe_text, version}, _, s) when version not in [1, 2],
+    do: {:reply, {:error, :unsupported_text_version}, s}
+
+  def handle_call({:subscribe_text, _}, _, s), do: {:reply, {:error, :busy}, s}
 
   def handle_call(
         {:extension_text_begin, ref, identity},
@@ -631,7 +638,12 @@ defmodule Ipse.Session do
     with %{intent: ^intent, pid: nil} = resource <- s.extension_text[intent["resource_id"]],
          true <- is_pid(consumer) and Process.alive?(consumer),
          s = ensure_text_stream(s),
-         {:ok, handle} <- Ipse.TextStream.subscribe(s.text_stream, consumer) do
+         {:ok, handle} <-
+           Ipse.TextStream.subscribe(
+             s.text_stream,
+             consumer,
+             Ipse.Extensions.TextResources.frame_version(intent["identity"])
+           ) do
       resource = %{
         resource
         | pid: consumer,

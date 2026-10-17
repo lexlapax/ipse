@@ -257,8 +257,9 @@ Formatted status redaction does not protect
 [`sys.get_state`](https://www.erlang.org/doc/apps/stdlib/sys.html#get_state/2)
 or raw messages/arguments. Use synthetic inputs for breakpoints, and never suspend
 a live Session while effects continue. No debugger listener or distributed node
-is enabled. Committed runtime epoch/wait sources are implemented; ephemeral identity,
-broader private lifecycle delivery/causal links and the independent package proof remain open in
+is enabled. Committed runtime epoch/wait sources and negotiated private
+[text-event identity](stream-events.md) are implemented. Diagnostics do not acquire
+that private channel. Broader private lifecycle delivery/causal links and the independent package proof remain open in
 [P22](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
 
 Twenty diagnostic fixtures cover off parity, privacy/source identity, stop, export scope,

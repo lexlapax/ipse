@@ -8,7 +8,9 @@ defmodule Ipse.TextStream do
   @deadline 5_000
 
   def start(owner, session_id), do: GenServer.start(__MODULE__, {owner, session_id})
-  def subscribe(server, consumer), do: GenServer.call(server, {:subscribe, consumer})
+
+  def subscribe(server, consumer, version \\ 1),
+    do: GenServer.call(server, {:subscribe, consumer, version})
 
   def enrolled?(nil, _, _), do: false
 
@@ -45,6 +47,7 @@ defmodule Ipse.TextStream do
          owner: owner,
          monitor: Process.monitor(owner),
          session_id: session_id,
+         epoch_id: Ipse.Usage.id(),
          subscribers: %{},
          active: nil,
          pending: nil
@@ -55,8 +58,8 @@ defmodule Ipse.TextStream do
   end
 
   @impl true
-  def handle_call({:subscribe, consumer}, {owner, _}, %{owner: owner} = s)
-      when is_pid(consumer) do
+  def handle_call({:subscribe, consumer, version}, {owner, _}, %{owner: owner} = s)
+      when is_pid(consumer) and version in [1, 2] do
     if map_size(s.subscribers) < @subscribers and is_nil(s.active) do
       id = Ipse.Usage.id()
 
@@ -66,7 +69,8 @@ defmodule Ipse.TextStream do
         queue: [],
         bytes: 0,
         outstanding: nil,
-        sequence: 0
+        sequence: 0,
+        version: version
       }
 
       handle = %{server: self(), subscription_id: id}
@@ -82,7 +86,16 @@ defmodule Ipse.TextStream do
   def handle_call({:begin, request_id, producer}, {owner, _}, %{owner: owner, active: nil} = s)
       when is_pid(producer) do
     if id?(request_id) do
-      s = %{s | active: %{request_id: request_id, producer: producer}}
+      s = %{
+        s
+        | active: %{
+            request_id: request_id,
+            producer: producer,
+            stream_id: Ipse.Usage.id(),
+            offset: 0
+          }
+      }
+
       {:reply, :ok, enqueue_control(s, request_id, %{"kind" => "start"})}
     else
       {:reply, {:error, :invalid_text_request}, s}
@@ -103,6 +116,9 @@ defmodule Ipse.TextStream do
 
       text == "" ->
         {:reply, :ok, s}
+
+      s.active.offset + byte_size(text) > 9_007_199_254_740_991 ->
+        {:reply, {:error, :text_position_limit}, close_all(s, "position_limit")}
 
       fits?(s, request_id, text) ->
         {:reply, :ok, enqueue_text(s, request_id, text)}
@@ -147,7 +163,7 @@ defmodule Ipse.TextStream do
   def handle_call({:ack, id, sequence}, {consumer, _}, s) do
     case s.subscribers[id] do
       %{pid: ^consumer, outstanding: %{sequence: ^sequence}} = sub ->
-        s = put_in(s, [:subscribers, id], pump(%{sub | outstanding: nil}, id, s.session_id))
+        s = put_in(s, [:subscribers, id], pump(%{sub | outstanding: nil}, id, s))
         {:reply, :ok, flush_pending(s)}
 
       _ ->
@@ -192,29 +208,39 @@ defmodule Ipse.TextStream do
     end)
   end
 
-  defp fits?(s, request_id, text) do
+  defp fits?(s, _request_id, text) do
     Enum.all?(s.subscribers, fn {_, sub} ->
       sub.bytes + byte_size(text) <= @bytes and
-        (length(sub.queue) < @frames or coalescible?(List.last(sub.queue), request_id))
+        (length(sub.queue) < @frames or coalescible?(List.last(sub.queue), s.active.stream_id))
     end)
   end
 
   defp enqueue_text(s, request_id, text) do
     subscribers =
       Map.new(s.subscribers, fn {id, sub} ->
-        frame = %{"kind" => "text", "request_id" => request_id, "text" => text}
+        frame = %{
+          "kind" => "text",
+          "request_id" => request_id,
+          "text" => text,
+          "stream_id" => s.active.stream_id,
+          "offset" => s.active.offset
+        }
 
         queue =
-          if coalescible?(List.last(sub.queue), request_id) do
+          if coalescible?(List.last(sub.queue), s.active.stream_id) do
             List.update_at(sub.queue, -1, &Map.update!(&1, "text", fn prior -> prior <> text end))
           else
             sub.queue ++ [frame]
           end
 
-        {id, pump(%{sub | queue: queue, bytes: sub.bytes + byte_size(text)}, id, s.session_id)}
+        {id, pump(%{sub | queue: queue, bytes: sub.bytes + byte_size(text)}, id, s)}
       end)
 
-    %{s | subscribers: subscribers}
+    %{
+      s
+      | subscribers: subscribers,
+        active: %{s.active | offset: s.active.offset + byte_size(text)}
+    }
   end
 
   defp enqueue_control(s, request_id, fields) do
@@ -222,21 +248,32 @@ defmodule Ipse.TextStream do
       if length(sub.queue) >= @frames do
         remove(acc, id, "control_queue_full")
       else
-        frame = Map.put(fields, "request_id", request_id)
-        sub = pump(%{sub | queue: sub.queue ++ [frame]}, id, s.session_id)
+        frame =
+          Map.merge(fields, %{
+            "request_id" => request_id,
+            "stream_id" => s.active.stream_id,
+            "offset" => s.active.offset
+          })
+
+        sub = pump(%{sub | queue: sub.queue ++ [frame]}, id, s)
         put_in(acc, [:subscribers, id], sub)
       end
     end)
   end
 
-  defp pump(%{outstanding: nil, queue: [frame | tail]} = sub, id, session_id) do
+  defp pump(%{outstanding: nil, queue: [frame | tail]} = sub, id, context) do
     {frame, queue, bytes} =
       case frame do
         %{"kind" => "text", "text" => text} ->
           size = utf8_boundary(text, min(byte_size(text), @chunk))
           chunk = binary_part(text, 0, size)
           rest = binary_part(text, size, byte_size(text) - size)
-          queue = if rest == "", do: tail, else: [Map.put(frame, "text", rest) | tail]
+
+          queue =
+            if rest == "",
+              do: tail,
+              else: [frame |> Map.put("text", rest) |> Map.update!("offset", &(&1 + size)) | tail]
+
           {Map.put(frame, "text", chunk), queue, sub.bytes - size}
 
         _ ->
@@ -247,13 +284,25 @@ defmodule Ipse.TextStream do
 
     payload =
       Map.merge(frame, %{
-        "version" => 1,
-        "session_id" => session_id,
+        "version" => sub.version,
+        "session_id" => context.session_id,
         "generation" => 1,
-        "stream_id" => frame["request_id"],
+        "stream_id" => if(sub.version == 1, do: frame["request_id"], else: frame["stream_id"]),
         "subscription_id" => id,
         "sequence" => sequence
       })
+
+    payload =
+      if sub.version == 2,
+        do:
+          Map.put(
+            payload,
+            "source",
+            Ipse.Lifecycle.Ephemeral.source(context.epoch_id, payload, frame["offset"])
+          ),
+        else: payload
+
+    payload = Map.delete(payload, "offset")
 
     send(sub.pid, {:ipse_text, self(), payload})
 
@@ -292,26 +341,33 @@ defmodule Ipse.TextStream do
 
     send(
       sub.pid,
-      {:ipse_text, self(),
-       %{
-         "version" => 1,
-         "kind" => "closed",
-         "subscription_id" => id,
-         "session_id" => s.session_id,
-         "complete" => false,
-         "reason" => reason,
-         "unsent_bytes" => sub.bytes,
-         "unsent_frames" => length(sub.queue),
-         "pending_bytes" => if(s.pending, do: byte_size(s.pending.text), else: 0),
-         "unacknowledged_bytes" => if(sub.outstanding, do: sub.outstanding.bytes, else: 0)
-       }}
+      {:ipse_text, self(), closed_frame(s, id, sub, reason)}
     )
 
     %{s | subscribers: Map.delete(s.subscribers, id)}
   end
 
+  defp closed_frame(s, id, sub, reason) do
+    frame = %{
+      "version" => sub.version,
+      "kind" => "closed",
+      "subscription_id" => id,
+      "session_id" => s.session_id,
+      "complete" => false,
+      "reason" => reason,
+      "unsent_bytes" => sub.bytes,
+      "unsent_frames" => length(sub.queue),
+      "pending_bytes" => if(s.pending, do: byte_size(s.pending.text), else: 0),
+      "unacknowledged_bytes" => if(sub.outstanding, do: sub.outstanding.bytes, else: 0)
+    }
+
+    if sub.version == 2,
+      do: Map.put(frame, "source", Ipse.Lifecycle.Ephemeral.source(s.epoch_id, frame, 0)),
+      else: frame
+  end
+
   defp close_all(s, reason), do: Enum.reduce(Map.keys(s.subscribers), s, &remove(&2, &1, reason))
-  defp coalescible?(%{"kind" => "text", "request_id" => id}, id), do: true
+  defp coalescible?(%{"kind" => "text", "stream_id" => id}, id), do: true
   defp coalescible?(_, _), do: false
 
   defp utf8_boundary(text, size) do

@@ -136,7 +136,7 @@ advertised as the final request prompt. Selected subscriptions add a distinct
 final-effective user-text marker after all prompt transforms, with received-source
 and turn bindings. Original input is recorded when transforms or prompt subscriptions
 are selected. Legacy bare prompt records do not carry a turn ID, so the adapter
-does not invent one. Full causal links, ephemeral event identity and broader
+does not invent one. Full causal links and broader
 lifecycle delivery remain pending. The [subscription contract](extension-events.md)
 grants selected views through the host; projecting a view in host code alone grants
 no authority.
@@ -175,7 +175,8 @@ into public identifiers or invent a cause from adjacent records.
 This is a display projection, not a complete journal validator, authentication,
 subscriber admission or an exporter. Owned Session recovery validation and physical
 source resolution remain prerequisites for actions. Unknown source types refuse.
-Ephemeral stream occurrences still need their own documented source contracts.
+Negotiated [visible-text events](stream-events.md) have a separate ephemeral
+source contract and never enter journal history or these committed-type feeds.
 The session header describes creation; the optional runtime
 facts below distinguish subsequent process epochs. A saved tool
 message proves that a result was recorded, not the success of its underlying effect.
@@ -284,6 +285,17 @@ Real delegation tests cover authorized reports, cancellation, timeout, parallel
 child loss, inert resume and source refusal before repair. The live-feed fixture
 checks shared start/completion identity through independently compiled consumers;
 the serial bundled demo checks real receipts in source/extracted runtimes.
+
+### Ephemeral visible-text occurrences
+
+The opt-in v2 private text channel carries broker epochs, fresh stream IDs and
+accepted byte ranges. Metadata/private projections share range identity while
+consumer-local delivery sequences and coalescing remain separate. Subscription
+closure has no invented request position. The [stream event contract](stream-events.md)
+owns negotiation, schemas and limits. Durability, history, diagnostics and live
+metadata feeds do not automatically acquire this private channel. Other progress
+and media variants require their own negotiated contracts; no audio, exporter or
+playback semantics are implied.
 
 ## Delivery contracts
 

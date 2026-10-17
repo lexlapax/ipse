@@ -3,8 +3,9 @@
 `Ipse.TextStream` owns bounded private visible-text delivery independently of
 optional diagnostics. Embedded clients enroll through Session; installed workers
 enroll through an explicitly trusted/selected `stream.text` capability. Both use
-the same acknowledged frame channel. There is no audio transport or separate
-stream CLI flag.
+the same acknowledged frame channel. V1 remains the default; explicit v2
+negotiation adds [ephemeral event sources](stream-events.md) with stream/range
+identity. There is no audio transport or separate stream CLI flag.
 
 Only main-request visible `{:text, delta}` output enters the channel. Summary
 text, native reasoning/signatures, tool payloads, auth and completed presentation
@@ -19,7 +20,12 @@ the server. Subscription fails while the Session is busy. Without an embedded
 enrollment or selected worker consumer, ordinary CLI/model operation creates no
 broker.
 
-Messages are `{:ipse_text, server, payload}`. Normal frames carry version 1,
+Use `Session.subscribe_text(session, 2)` for source-bearing v2 frames. Independent
+workers additionally declare `stream.text.events` alongside `stream.text`.
+Version selection changes no approval or effect authority. See
+[v2 fields and identity](stream-events.md#occurrence-identity-and-delivery-position).
+
+Messages are `{:ipse_text, server, payload}`. Normal frames carry their negotiated version,
 session ID, generation 1, request/stream ID, subscription ID, consecutive sequence
 number and `kind`:
 
@@ -29,6 +35,11 @@ number and `kind`:
 | `text` | Valid UTF-8 `text`, at most 2048 bytes. Chunks are not individual tokens. |
 | `end` | Completed/failed/cancelled/unknown `outcome`; `complete` only for completed provider transport with preceding accepted text acknowledged. |
 | `closed` | Explicit incomplete shutdown with fixed reason, unsent frame/byte, pending-byte and unacknowledged-byte counts. Unsequenced and not acknowledged. |
+
+V1 uses its request ID as stream ID. V2 has a fresh stream ID, retains request
+correlation and adds a typed `source`; subscription closure has its own scope.
+Event identity and delivery sequence are separate because coalescing can differ
+between consumers. Every consumer retains the same acknowledgment/flow rules.
 
 Call `Ipse.TextStream.ack(handle, sequence)` after consuming each normal frame.
 Only the enrolled consumer PID can acknowledge its current outstanding sequence.

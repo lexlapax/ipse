@@ -92,8 +92,48 @@ defmodule Ipse.Extensions.TextTest do
     File.write!(Path.join(source, "extension.json"), Jason.encode!(manifest))
     home = Path.join(root, "home")
     {:ok, artifact} = Store.import(source, Path.join(home, "extensions/artifacts"))
+    events_source = Path.join(root, "artifact-events")
+    File.mkdir_p!(Path.join(events_source, "ebin"))
+    events_module = module <> "Events"
+    events_file = Path.join(root, "fixture-events.ex")
+
+    File.write!(
+      events_file,
+      File.read!(file)
+      |> String.replace(module, events_module)
+      |> String.replace(~s(["stream.text"]), ~s(["stream.text", "stream.text.events"]))
+    )
+
+    events_arguments = [
+      "-pa",
+      Application.app_dir(:ipse, "ebin"),
+      "-o",
+      Path.join(events_source, "ebin"),
+      events_file
+    ]
+
+    {events_output, events_status} =
+      System.cmd(System.find_executable("elixirc"), events_arguments, stderr_to_stdout: true)
+
+    assert events_status == 0, events_output
+    File.cp!(Path.join(source, "LICENSE"), Path.join(events_source, "LICENSE"))
+
+    events_manifest = %{
+      manifest
+      | "version" => "0.2.0",
+        "entrypoint" => events_module,
+        "capabilities" => ~w(stream.text stream.text.events),
+        "files" =>
+          Enum.map(["LICENSE", "ebin/Elixir.#{events_module}.beam"], fn path ->
+            bytes = File.read!(Path.join(events_source, path))
+            %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Manifest.sha256(bytes)}
+          end)
+    }
+
+    File.write!(Path.join(events_source, "extension.json"), Jason.encode!(events_manifest))
+    {:ok, events_artifact} = Store.import(events_source, Path.join(home, "extensions/artifacts"))
     on_exit(fn -> File.rm_rf!(root) end)
-    %{artifact_root: root, artifact: artifact, home: home}
+    %{artifact_root: root, artifact: artifact, events_artifact: events_artifact, home: home}
   end
 
   setup ctx do
@@ -121,7 +161,7 @@ defmodule Ipse.Extensions.TextTest do
         "extension_trust" => [
           %{
             "artifact" => ctx.artifact.digest,
-            "capabilities" => ["stream.text"],
+            "capabilities" => ctx.artifact.manifest["capabilities"],
             "allow_project" => false,
             "allow_children" => false
           }
@@ -204,6 +244,50 @@ defmodule Ipse.Extensions.TextTest do
     assert :ok = Session.close(pid)
   end
 
+  test "an independently selected v2 worker receives scoped sources without idle replay", ctx do
+    ctx = %{ctx | artifact: ctx.events_artifact}
+    disabled = start(ctx, config(ctx, "normal", false))
+    :ok = Session.prompt(disabled, "disabled event consumer")
+    assert_receive {:ipse, ^disabled, {:done, :ok}}, 5_000
+    refute File.exists?(ctx.path <> ".init")
+    cfg = config(ctx)
+    pid = start(ctx, cfg)
+    :ok = Session.prompt(pid, "selected event consumer")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+    await(fn -> Enum.any?(frames(ctx), &(&1["frame"]["kind"] == "end")) end)
+    received = frames(ctx)
+    assert Enum.all?(received, &Ipse.Lifecycle.Ephemeral.valid_frame?(&1["frame"]))
+    deltas = Enum.filter(received, &(&1["frame"]["kind"] == "text"))
+    assert Enum.map_join(deltas, "", & &1["frame"]["text"]) == "visible λ"
+
+    assert Enum.all?(deltas, fn p ->
+             {:ok, private} = Ipse.Lifecycle.Ephemeral.project(p["frame"], "text.visible")
+             {:ok, metadata} = Ipse.Lifecycle.Ephemeral.project(p["frame"], "metadata")
+             assert private["event_id"] == metadata["event_id"]
+             refute Jason.encode!(metadata) =~ "visible"
+             true
+           end)
+
+    refute inspect(received) =~ "hidden reasoning"
+    refute inspect(received) =~ "native continuation"
+    epoch = hd(received)["frame"]["source"]["epoch_id"]
+    id = Session.info(pid).id
+    :ok = Session.close(pid)
+    before = File.read!(Path.join(ctx.dir, id <> ".jsonl"))
+    old_frames = File.read!(ctx.path)
+    File.rm!(ctx.path <> ".init")
+    resumed = start(ctx, cfg, id)
+    assert Session.info(resumed).phase == :idle
+    assert File.read!(ctx.path) == old_frames
+    assert File.read!(Path.join(ctx.dir, id <> ".jsonl")) == before
+    refute File.exists?(ctx.path <> ".init")
+    :ok = Session.prompt(resumed, "new explicit event enrollment")
+    assert_receive {:ipse, ^resumed, {:done, :ok}}, 5_000
+    await(fn -> Enum.count(frames(ctx), &(&1["frame"]["kind"] == "end")) == 2 end)
+    refute List.last(frames(ctx))["frame"]["source"]["epoch_id"] == epoch
+    :ok = Session.close(resumed)
+  end
+
   test "disabled adapters initialize nothing and idle resume creates no subscription", ctx do
     disabled = start(ctx, config(ctx, "normal", false))
     assert :ok = Session.prompt(disabled, "no sink")
@@ -230,22 +314,25 @@ defmodule Ipse.Extensions.TextTest do
   end
 
   test "read-only reply cannot acquire effects and reports incomplete closure", ctx do
-    pid = start(ctx, config(ctx, "wrong"))
-    assert :ok = Session.prompt(pid, "bad consumer")
-    assert_receive {:ipse, ^pid, {:done, :ok}}, 5000
+    for artifact <- [ctx.artifact, ctx.events_artifact] do
+      ctx = %{ctx | artifact: artifact, path: ctx.path <> artifact.digest}
+      pid = start(ctx, config(ctx, "wrong"))
+      assert :ok = Session.prompt(pid, "bad consumer")
+      assert_receive {:ipse, ^pid, {:done, :ok}}, 5000
 
-    await(fn ->
+      await(fn ->
+        {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+        Enum.any?(events, &(&1["type"] == "extension_text_closed"))
+      end)
+
+      refute File.exists?(Path.join(ctx.root, "unapproved"))
       {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
-      Enum.any?(events, &(&1["type"] == "extension_text_closed"))
-    end)
-
-    refute File.exists?(Path.join(ctx.root, "unapproved"))
-    {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
-    closed = Enum.find(events, &(&1["type"] == "extension_text_closed"))
-    assert closed["reason"] == "consumer_failed"
-    assert closed["cleanup_confirmed"]
-    assert :ok = TextResources.validate_events(events)
-    assert :ok = Session.close(pid)
+      closed = Enum.find(events, &(&1["type"] == "extension_text_closed"))
+      assert closed["reason"] == "consumer_failed"
+      assert closed["cleanup_confirmed"]
+      assert :ok = TextResources.validate_events(events)
+      assert :ok = Session.close(pid)
+    end
   end
 
   test "full private channel refuses activation before loading code or inference", ctx do

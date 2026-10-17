@@ -206,13 +206,14 @@ and [runtime identity](#p1-runtime-identity-2026-10-15).
 
 | Checkpoint | Evidence | Scope and remaining limits |
 | --- | --- | --- |
+| Ephemeral text sources, Linux Serenity, 2026-10-17 | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters, 25 focused fixtures and 631 native-suite tests with 14 macOS exclusions passed; real dual-version source SDK fixture, CLI help and isolated demo passed | Negotiated embedded/independent-worker delivery, unchanged v1, shared range identity with unequal chunking, UTF-8/cancelled-pending positions, idle closure, malformed bindings, no-effect replies and inert resume; synthetic provider only |
 | Child outcomes, Linux Serenity, 2026-10-17 | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters, 55 focused fixtures and 623 native-suite tests with 14 macOS exclusions passed; serial/parallel source demos, CLI help and isolated demo passed | Authenticated parent-side result/cleanup receipts, correlation/privacy, timeout/cancellation, forged reports/source positions, exited queued-child approval refusal and inert incomplete resume; synthetic providers only |
 | Admitted-tool views, Linux Serenity, 2026-10-17 | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters and 615 native-suite tests with 14 macOS exclusions passed; source SDK primitive, CLI help and isolated demo passed | Private input/result and metadata parity, independent live/history grants, separate write approval, reused provider IDs, unavailable views, cancellation, extension-question restart and physical-source refusal before repair; synthetic providers only |
 | Live metadata feeds, Linux Serenity, 2026-10-17 | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters, thirteen focused feed fixtures and 602 native-suite tests with 14 macOS exclusions passed; source primitive, CLI help and isolated demo passed | Independent compiled consumers, exact metadata/acknowledgments, finite queues/receipts, pressure/timeout cleanup, question recovery and physical-source refusal; synthetic providers only |
 | Runtime epochs/waits, Linux Serenity, 2026-10-17 | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters, 31 focused causal/recovery fixtures and 589 native-suite tests with 14 macOS exclusions passed; source fixture and isolated CLI demo passed | Recorded session/approval/question boundaries, private-source validation, disabled parity, explicit extension recording with capture off and child-loss interruption; synthetic providers only |
 | Explicit history, Linux Serenity, 2026-10-17 | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters, eleven focused history fixtures and 578 native-suite tests with 14 macOS exclusions passed | Own-session fixed ranges, separate private grants, budget gaps, source/contiguous-span validation, approval/question boundaries and inert resume; synthetic provider only |
-| Hosted private-tool baseline `fabb118` | [Ubuntu/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39030301157) passed all applicable steps: build, format, compile, tests, demo and extracted packages; macOS native/default experimental sandbox steps passed | Actual job/step conclusions inspected. This baseline includes private tool views, precedes child outcome receipts and does not prove stronger descendant containment |
-| Source/extracted compatibility | Credential-free demo, bundled extension/accounting/text/shared-source/runtime-epoch/local-ring/conformance/history/feed/tool-view fixtures, traced conformance CLI and serial/parallel child demos passed in Linux glibc-2.44 package verification with matching OTP 29.1.1 notices and utility-only PATH | Runtime, history/feed/tool-view, child receipt and trace APIs are available without a system toolchain; source-debugger modules/debug information are absent. Tool-view projection positions are synthetic; child receipts use the actual serial demo. Installed feed execution and independent domain catch-up remain P22 gates |
+| Hosted child-outcome baseline `6b234c6` | [Ubuntu/macOS matrix, attempt 2](https://github.com/lexlapax/ipse/actions/runs/39031441379/attempts/2) passed all applicable steps: build, format, compile, tests, demo and extracted packages; macOS native/default experimental sandbox steps passed | Actual job/step conclusions inspected. Initial macOS concurrent-ring drain wait failed; unchanged failed-job retry passed. This baseline precedes v2 text sources and does not prove stronger containment or drain latency |
+| Source/extracted compatibility | Credential-free demo, bundled extension/accounting/dual-version-text/lifecycle/local-ring/conformance/history/feed/tool-view fixtures, traced conformance CLI and serial/parallel child demos passed in Linux glibc-2.44 package verification with matching OTP 29.1.1 notices and utility-only PATH | APIs work without a system toolchain; source-debugger modules/debug information are absent. V2 text and child receipts use real Sessions; tool-view projection positions are synthetic. Installed stream/feed execution and independent domain catch-up remain P22 gates |
 | Provider acceptance | [Explicit live provider checks](#live-provider-acceptance-follow-up-2026-10-15) | Recorded account/model/platform combinations only; fixtures do not establish billing, hardware or arbitrary-model support |
 
 Conformance fixtures exercise independently compiled tools/commands/services and
@@ -248,10 +249,10 @@ all nine cleanup fixtures passed 51 consecutive executions locally. The subseque
 passed all applicable steps, including
 extracted packages; the earlier failed run remains recorded rather than relabeled.
 
-The later answer baseline's first macOS attempt failed its existing concurrent-ring
-drain wait, not an answer assertion. Rerunning only that failed job passed all steps
-without a code change. This is evidence of an intermittent wait; it is not a ring
-runtime repair or a guaranteed drain-latency result.
+The answer and child-outcome baselines each had a first macOS attempt fail the
+existing concurrent-ring drain wait, outside their feature assertions. Each
+failed-job retry passed all steps without a code change. This is evidence of an
+intermittent wait; it is not a ring runtime repair or guaranteed drain latency.
 
 Diagnostic fixtures cover default-off parity, private/hash exclusion, shared source
 identity, operator/export scope, immediate stop, bounded overload, rotation and
@@ -362,11 +363,11 @@ inference is manufactured. The nine [source/view fixtures](lifecycle-events.md#i
 and existing worker-text/context/service tests remain in the full suite. Source
 and extracted baselines, independent artifacts and hosted results are separate
 claims; no new live provider, audio device, exporter or remote service was used.
-Documentation checks passed 92 Markdown documents / 1116 local file and heading
+Documentation checks passed 93 Markdown documents / 1128 local file and heading
 links with no errors.
 
-P22 still needs broader private lifecycle delivery and causal links, ephemeral
-identity, the independent installed-package catch-up/deduplication proof
+P22 still needs broader private lifecycle delivery and causal links,
+the independent installed-package catch-up/deduplication proof
 and supervised review. Synthetic dispatcher tracing and documented source-debugging
 boundaries are implemented; no live GUI/editor debugger trial is claimed. The full
 [event/graph proof](lifecycle-events.md#knowledge-graph-acceptance-proof) remains
