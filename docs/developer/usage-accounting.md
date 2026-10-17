@@ -51,6 +51,14 @@ owner crash leaves an unknown outcome. Failed work may consume resources. Older
 sessions without `usage_version: 1` stay explicitly `legacy_unmetered`; no historical
 zero-token balance is inferred.
 
+Configured shared budgets add a write-ahead requirement: their ledger must accept
+an observation before Session records it. A failed observation write or final
+settlement cannot publish counters beyond that durable liability. Earlier
+committed observations survive; unavailable measurements and reservations remain
+explicitly unknown. See [budget durability and recovery](budgets.md#ledger-and-recovery)
+for the lock-refusal and crash boundaries. Unbudgeted request accounting keeps
+the ordinary observation path.
+
 Counts are integers from zero through 10^12. Missing/null stays null; reported
 zero stays zero. Invalid types, negatives, overflow or inconsistent totals
 invalidate counters instead of producing a plausible bill. The closed normalized

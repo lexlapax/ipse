@@ -116,6 +116,15 @@ in final usage refuses assistant/tool admission and preserves the counters.
 Already streamed text cannot be retracted. Future admissions refuse while the
 tree is overdrawn or another configured dimension is exhausted.
 
+With a budget enabled, the ledger must durably accept a usage observation before
+it enters canonical accounting. If a busy or unwritable ledger prevents that
+write, the request stops and the reservation stays unknown; unwritten counters
+are unavailable, not zero. A failed final settlement also withholds uncovered
+final-only counters while preserving earlier committed observations. Once a
+temporary lock is released, an otherwise consistent session can resume idle
+without replay. This does not recover previously inconsistent or corrupt files,
+and fixed reservations cannot bound actual unmetered usage.
+
 Cancellation and `/quit` use ordinary owned shutdown. Resume is inert: it does
 not refund unknown work, redispatch requests or reset quotas. Keep the original
 operator configuration to resume; changing/removing its policy is a mismatch.

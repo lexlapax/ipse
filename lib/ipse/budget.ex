@@ -27,8 +27,6 @@ defmodule Ipse.Budget do
             result
 
           _ ->
-            emit_final_usage(result, emit)
-
             {:error,
              "Budget settlement is unconfirmed. Inspect the original ledger before continuing; no request was replayed."}
         end
@@ -49,19 +47,21 @@ defmodule Ipse.Budget do
 
   defp execute_guarded(config, admission, emit, execute) do
     execute.(config, fn message ->
-      emit.(message)
-
       case message do
         {:provider_usage, raw} ->
           usage = Ipse.Usage.observation(admission, raw, 1)["usage"]
 
           case observe(config, admission, usage) do
-            {:ok, :ok} -> :ok
-            _ -> throw(:budget_observation_refused)
+            {:ok, status} when status in [:ok, :overdrawn] ->
+              emit.(message)
+              if status == :overdrawn, do: throw(:budget_observation_refused), else: :ok
+
+            _ ->
+              throw(:budget_observation_refused)
           end
 
         _ ->
-          :ok
+          emit.(message)
       end
     end)
   rescue

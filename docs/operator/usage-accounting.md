@@ -184,7 +184,12 @@ an explicit subscription row; local estimates require explicit local rates.
 The report does not enforce monetary/token budgets or promise an invoice ceiling.
 Optional [shared admission budgets](budgets.md) reserve main, summary and child
 requests separately in the host. Displayed counters or estimates do not supply
-that authority; unknown liability remains explicit.
+that authority; unknown liability remains explicit. A budget ledger must durably
+accept counters before canonical accounting publishes them. Failed persistence
+leaves unwritten counters unavailable and the reservation held, while preserving
+earlier committed observations. This can understate actual consumption; it is
+neither a zero measurement nor an invoice ceiling. See the budget guide's
+[recovery procedure and limits](budgets.md#inspect-stop-and-recover).
 
 An explicit [`max_output_tokens` setting](configuration.md) can cap individual
 OpenAI API, Anthropic and Ollama requests; children retain or narrow the parent's

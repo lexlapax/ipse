@@ -14,6 +14,15 @@ defmodule Ipse.BudgetTest do
       )
 
       cond do
+        config[:fixture_observation_gate] ->
+          receive do
+            :observe ->
+              emit.({:provider_usage, %{"input_tokens" => 60, "output_tokens" => 3}})
+
+              {:ok, %{"role" => "assistant", "content" => "done"},
+               %{"input_tokens" => 60, "output_tokens" => 3}}
+          end
+
         config[:fixture_summary] == true and tools == [] ->
           {:ok,
            %{
@@ -545,12 +554,99 @@ defmodule Ipse.BudgetTest do
     assert Enum.any?(events, &(&1["type"] == "context_compacted"))
   end
 
+  test "usage reaches the canonical consumer only after the ledger covers it", c do
+    {id, config} = attached(c)
+
+    assert {:ok, _, _} =
+             Budget.run(
+               config,
+               admission(config, id),
+               fn {:provider_usage, %{"input_tokens" => 60}} ->
+                 assert {:ok, snapshot} = Budget.snapshot(config)
+                 assert booked(snapshot)["input_tokens"] == 60
+               end,
+               fn _, emit ->
+                 emit.({:provider_usage, %{"input_tokens" => 60, "output_tokens" => 3}})
+                 response(60, 3)
+               end
+             )
+  end
+
+  test "observation lock refusal does not strand an honest session on resume", c do
+    config = %{
+      provider: :openai,
+      model: "cost-fixture",
+      provider_module: Model,
+      test_pid: self(),
+      fixture_observation_gate: true,
+      home: Path.join(c.root, "home"),
+      budget: policy(),
+      approval: :deny
+    }
+
+    assert {:ok, pid} = start(c, config)
+    id = Session.info(pid).id
+    :ok = Session.prompt(pid, "Synthetic observation above reservation")
+    assert_receive {:budget_provider, provider, nil, 32}, 5_000
+    assert {:ok, lock} = Ipse.Runner.lock(Path.join([c.dir, "budgets", id <> ".lock"]))
+
+    try do
+      send(provider, :observe)
+      assert done(pid) == :error
+    after
+      Ipse.Runner.unlock(lock)
+    end
+
+    assert {:ok, snapshot} = Budget.saved(c.dir, id)
+    assert booked(snapshot)["input_tokens"] == 40
+    assert snapshot["unknown_liability_count"] == 1
+    assert {:ok, events} = Ipse.Journal.load(c.dir, id)
+    refute Enum.any?(events, &(&1["type"] == "request_usage_observed"))
+    assert {:ok, usage} = Usage.restore(events, id)
+    [request] = Map.values(usage.requests)
+    assert request.completion["outcome"] == "failed"
+    assert request.completion["usage"]["quality"] == "unavailable"
+    assert :ok = Session.close(pid)
+    journal = Path.join(c.dir, id <> ".jsonl")
+    before = File.read!(journal)
+    assert {:ok, resumed} = start(c, config, id)
+    assert File.read!(journal) == before
+    refute_receive {:budget_provider, _, _, _}, 50
+    assert :ok = Session.close(resumed)
+  end
+
+  test "worker loss after ledger commit cannot leave canonical usage ahead of liability", c do
+    {id, config} = attached(c)
+    admitted = admission(config, id)
+
+    {worker, monitor} =
+      spawn_monitor(fn ->
+        Budget.run(
+          config,
+          admitted,
+          fn {:provider_usage, _} -> Process.exit(self(), :kill) end,
+          fn _, emit ->
+            emit.({:provider_usage, %{"input_tokens" => 60, "output_tokens" => 3}})
+            response(60, 3)
+          end
+        )
+      end)
+
+    assert_receive {:DOWN, ^monitor, :process, ^worker, :killed}, 5_000
+    assert {:ok, snapshot} = Budget.snapshot(config)
+    assert snapshot["unsettled_count"] == 1
+    assert booked(snapshot)["input_tokens"] == 60
+    assert :ok = Budget.validate_sources(config, id, [admitted])
+  end
+
   test "observed overdraw persists liability and prevents further dispatch", c do
     limits = policy() |> Map.put("max_input_tokens", 50)
     {id, config} = attached(c, limits)
 
+    owner = self()
+
     assert {:error, _} =
-             Budget.run(config, admission(config, id), fn _ -> :ok end, fn _, emit ->
+             Budget.run(config, admission(config, id), &send(owner, &1), fn _, emit ->
                emit.({:provider_usage, %{"input_tokens" => 60, "output_tokens" => 1}})
                send(self(), :unexpected_budget_dispatch)
                response(7, 3)
@@ -560,6 +656,7 @@ defmodule Ipse.BudgetTest do
     assert snapshot["overdrawn"]
     assert booked(snapshot)["input_tokens"] == 60
     assert snapshot["unknown_liability_count"] == 1
+    assert_receive {:provider_usage, %{"input_tokens" => 60, "output_tokens" => 1}}
 
     assert {:error, _} =
              Budget.run(config, admission(config, id), fn _ -> :ok end, fn _, _ ->
@@ -586,7 +683,8 @@ defmodule Ipse.BudgetTest do
     assert booked(snapshot)["input_tokens"] == 60
   end
 
-  test "unconfirmed settlement still forwards final usage and retains the original booking", c do
+  test "unconfirmed settlement cannot publish uncovered final usage and retains unknown liability",
+       c do
     {id, config} = attached(c)
     ledger = Path.join([c.dir, "budgets", id <> ".jsonl"])
     owner = self()
@@ -594,11 +692,11 @@ defmodule Ipse.BudgetTest do
     assert {:error, error} =
              Budget.run(config, admission(config, id), &send(owner, &1), fn _, _ ->
                File.chmod!(ledger, 0o644)
-               response(7, 3)
+               response(60, 3)
              end)
 
     assert error =~ "settlement is unconfirmed"
-    assert_receive {:provider_usage, %{"input_tokens" => 7, "output_tokens" => 3}}
+    refute_receive {:provider_usage, _}, 20
     File.chmod!(ledger, 0o600)
     assert {:ok, snapshot} = Budget.snapshot(config)
     assert snapshot["unsettled_count"] == 1

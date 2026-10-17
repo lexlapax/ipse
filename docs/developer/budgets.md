@@ -45,14 +45,18 @@ the active GenServer callback. With a policy, the task:
    The provider task's credential lookup/inference follows admission; ordinary
    CLI auth preflight is separate and OAuth traffic is not a model quota. Each attempt is unique;
    retries and summaries need their own canonical request and reservation.
-3. Forwards ordinary usage observations and persists their normalized peaks.
-   Duplicate observations are suppressed. Overdraw or accounting failure stops
-   dispatch; original provider continuation/admission rules remain applicable.
+3. Persists and fsyncs normalized usage peaks before forwarding observations to
+   Session's canonical accounting. Duplicate observations are suppressed. A
+   committed overdraw still forwards its counters before stopping the provider
+   path. An unsuccessful write forwards no observation; its counters remain
+   unavailable and the request retains unknown liability, never a zero balance.
+   Original provider continuation/admission rules remain applicable.
 4. Fsyncs settlement before returning the result to Session. Successful known
    dimensions release unused booking to at least their observed peak. Every other
    dimension retains at least its booking/peak. Final-only overdraw emits actual
    usage before refusing assistant/tool admission. Unconfirmed settlement returns
-   an explicit error, never an automatic retry or refund.
+   an explicit error without publishing uncovered final-only counters, retrying
+   or refunding. Previously committed observations remain available.
 
 Request-count bookings are never refunded, including a reserved request whose
 provider setup fails. Different billing bases never offset one another. Only
@@ -92,6 +96,16 @@ This reuses the existing child reader's 16 MiB/10,000-request
 bounds. Validation precedes journal tail repair. Idle resume leaves both ledgers
 unchanged and never starts a provider.
 
+Observation durability precedes publication, so loss of the request worker at
+the publication boundary leaves a conservative ledger ahead of the journal,
+rather than making honest canonical accounting exceed its backing liability.
+A temporary observation/settlement lock refusal stops the request; after the
+lock is released, an otherwise valid idle resume remains possible without replay.
+Measurements whose writes failed are unavailable in canonical accounting. Fixed
+reservations still cannot bound actual unmetered usage; this ordering is not a
+guaranteed invoice ceiling. Do not infer that an unknown reservation is an exact
+measurement or relax source validation to recover previously inconsistent files.
+
 An interrupted reservation/dispatch retains unknown liability. A crash between
 canonical intent and the durable decision leaves a source mismatch and refuses
 resume; there is no automated reconciliation/repair command. Likewise missing or
@@ -109,8 +123,9 @@ requests. Optional reports do not mutate this ledger or enforce admission.
 Fixtures exercise atomic competing processes, actual parallel children, profile
 authority, output-cap refusal, known release, failed/unknown holds, observed and
 final-only overdraw, money basis separation/overflow, cancellation/owner death,
-live and resumed rollback, historical parent/child peaks, unsafe/missing storage
-and pre-repair source validation.
+live and resumed rollback, historical parent/child peaks, unsafe/missing storage,
+real observation-lock refusal followed by inert resume, worker loss between
+ledger commit and publication, and pre-repair source validation.
 The same `priv/budget-demo.exs` runs in source tests and extracted-package checks:
 one parent and two successful child provider entries share the quota, the parent's
 follow-up call refuses, default-off creates no ledger, and idle resume changes no
