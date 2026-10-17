@@ -237,6 +237,9 @@ defmodule Ipse.Extensions.Actions do
        when type in ~w(lifecycle_tool_intent lifecycle_tool_outcome lifecycle_tool_recording_stopped),
        do: if(Ipse.Lifecycle.Tool.valid?(event), do: {:ok, state}, else: @error)
 
+  defp validate_event(%{"type" => "delegation_finished"} = event, state, _),
+    do: if(Ipse.Lifecycle.Child.valid_record?(event), do: {:ok, state}, else: @error)
+
   defp validate_event(%{"type" => "extension_invocation_intent"} = event, state, _) do
     if is_nil(state.parent),
       do:

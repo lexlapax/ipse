@@ -45,7 +45,10 @@ selected task,
 context, and saved workspace snapshot. Required child mutation approvals return
 through the parent session. The child uses a configured profile/role or inherited
 provider/model and shares the workspace; it does not inherit MCP servers or parent conversation history. See
-the [delegation contract](delegation.md).
+the [delegation contract](delegation.md). Parent-side result receipts bind actual
+start sources and distinguish bounded results, unknown work and acknowledged
+logical cleanup. Child PID death alone cannot manufacture completion; idle resume
+starts no child and replays no effect.
 
 `Ipse.Provider` selects a provider adapter. Adapters stream text and
 normalized tool calls into the session; provider-specific continuation data is

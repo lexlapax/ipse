@@ -46,7 +46,12 @@ defmodule Ipse.Session do
   def answer(pid, id, answers), do: GenServer.call(pid, {:answer, id, answers})
   def cancel(pid), do: GenServer.call(pid, :cancel, 10_000)
 
-  def close(pid) do
+  def close(pid), do: close(pid, false)
+
+  @doc "Require the owned session's actual cleanup acknowledgment as well as process exit."
+  def close_confirmed(pid), do: close(pid, true)
+
+  defp close(pid, require_ack) do
     monitor = Process.monitor(pid)
     drain_observations(pid, System.monotonic_time(:millisecond) + 500)
 
@@ -54,7 +59,8 @@ defmodule Ipse.Session do
       try do
         GenServer.call(pid, :close, 5_000)
       catch
-        :exit, _ -> if Process.alive?(pid), do: {:error, :cleanup_unconfirmed}, else: :ok
+        :exit, _ ->
+          if require_ack or Process.alive?(pid), do: {:error, :cleanup_unconfirmed}, else: :ok
       end
 
     result =
@@ -477,11 +483,12 @@ defmodule Ipse.Session do
       )
       when ref != nil and phase in [:tool, :delegated_approval] do
     if worker == coordinator or MapSet.member?(s.delegation_workers, worker) do
-      record(s, %{
-        "type" => "delegation_started",
-        "child_id" => id,
-        "call_id" => hd(s.calls)["id"]
-      })
+      source =
+        record_source(s, %{
+          "type" => "delegation_started",
+          "child_id" => id,
+          "call_id" => hd(s.calls)["id"]
+        })
 
       monitor = Process.monitor(child)
       notify(s, {:subagent, id, :started})
@@ -490,7 +497,18 @@ defmodule Ipse.Session do
        %{
          s
          | delegation_resources:
-             Map.put(s.delegation_resources, child, %{monitor: monitor, id: id, worker: worker})
+             Map.put(s.delegation_resources, child, %{
+               monitor: monitor,
+               id: id,
+               worker: worker,
+               source: source,
+               turn: s.turn_id,
+               request: s.last_request_id,
+               job_ref: ref,
+               started: System.monotonic_time(:millisecond),
+               down: false,
+               finished: false
+             })
        }}
     else
       {:reply, {:error, :cancelled}, s}
@@ -521,6 +539,24 @@ defmodule Ipse.Session do
 
   def handle_call({:delegation_register, _, _, _}, _from, s),
     do: {:reply, {:error, :cancelled}, s}
+
+  def handle_call({:delegation_finished, ref, child, status, reason, cleanup}, {worker, _}, s) do
+    case s.delegation_resources[child] do
+      %{worker: ^worker, job_ref: ^ref, finished: false} = resource when ref == s.job_ref ->
+        event = Ipse.Lifecycle.Child.finished(resource, status, reason, cleanup)
+
+        if s.task != nil and Ipse.Lifecycle.Child.valid_record?(event) do
+          record(s, event)
+          Process.demonitor(resource.monitor, [:flush])
+          {:reply, :ok, next_delegated_approval(retire_child(s, child))}
+        else
+          {:reply, {:error, :cancelled}, s}
+        end
+
+      _ ->
+        {:reply, {:error, :cancelled}, s}
+    end
+  end
 
   def handle_call(:info, _from, s) do
     info =
@@ -1138,7 +1174,7 @@ defmodule Ipse.Session do
           s
       ) do
     case s.delegation_resources[child] do
-      %{id: id, worker: ^worker} ->
+      %{id: id, worker: ^worker, down: false, finished: false} ->
         s = finish_wait(s, if(allowed == true, do: "approved", else: "denied"))
 
         record(s, %{
@@ -1332,6 +1368,12 @@ defmodule Ipse.Session do
     s = if s.task, do: measure_request(s, :cancelled), else: s
     s = close_question(s)
     child_cleanup = Enum.map(Map.keys(s.delegation_resources), &close/1)
+    child_reason = if feed_reason == "consumer_down", do: "owner_down", else: "cancelled"
+    s = settle_children(s, child_reason)
+
+    Enum.each(s.delegation_resources, fn {_, child} ->
+      Process.demonitor(child.monitor, [:flush])
+    end)
 
     cleanup =
       s.mcp_resources
@@ -1430,7 +1472,7 @@ defmodule Ipse.Session do
       )
       when ref != nil and phase in [:tool, :delegated_approval] do
     case s.delegation_resources[child] do
-      %{worker: ^worker} when length(s.delegation_queue) < 2 ->
+      %{worker: ^worker, down: false, finished: false} when length(s.delegation_queue) < 2 ->
         item = {worker, child, child_ref, name, args}
         {:noreply, next_delegated_approval(%{s | delegation_queue: s.delegation_queue ++ [item]})}
 
@@ -1909,8 +1951,20 @@ defmodule Ipse.Session do
 
     {children, child_down} =
       case s.delegation_resources[pid] do
-        %{monitor: ^ref} -> {Map.delete(s.delegation_resources, pid), true}
-        _ -> {s.delegation_resources, false}
+        %{monitor: ^ref} = child ->
+          if not child.finished and s.task != nil and s.job_ref == child.job_ref and
+               Process.alive?(child.worker) do
+            {Map.put(s.delegation_resources, pid, %{child | down: true}), true}
+          else
+            if not child.finished,
+              do:
+                record(s, Ipse.Lifecycle.Child.finished(child, "unknown", "worker_failed", false))
+
+            {Map.delete(s.delegation_resources, pid), true}
+          end
+
+        _ ->
+          {s.delegation_resources, false}
       end
 
     s = %{s | mcp_resources: resources, delegation_resources: children}
@@ -2656,7 +2710,7 @@ defmodule Ipse.Session do
     s = %{s | delegation_queue: rest}
 
     case s.delegation_resources[child] do
-      %{id: id, worker: ^worker} ->
+      %{id: id, worker: ^worker, down: false, finished: false} ->
         mode = Map.get(s.config, :approval, :ask)
         conflict = delegated_conflict?(s, child, name, args)
 
@@ -2714,6 +2768,35 @@ defmodule Ipse.Session do
   end
 
   defp delegated_target(_, _, _), do: "*"
+
+  defp retire_child(s, child) do
+    s = %{s | delegation_resources: Map.delete(s.delegation_resources, child)}
+
+    s =
+      case s.approval do
+        {:delegated, _, _, ^child, _, _, _} ->
+          finish_wait(%{s | approval: nil, phase: :tool}, "interrupted")
+
+        _ ->
+          s
+      end
+
+    if s.delegation_effect == child, do: %{s | delegation_effect: nil}, else: s
+  end
+
+  defp settle_children(s, reason) do
+    Enum.reduce(s.delegation_resources, s, fn {pid, child}, state ->
+      if not child.finished,
+        do: record(state, Ipse.Lifecycle.Child.finished(child, "unknown", reason, false))
+
+      if child.down do
+        Process.demonitor(child.monitor, [:flush])
+        retire_child(state, pid)
+      else
+        put_in(state, [:delegation_resources, pid], %{child | finished: true})
+      end
+    end)
+  end
 
   defp delegated_conflict?(s, child, name, args) do
     target = delegated_target(s, name, args)
@@ -2798,6 +2881,7 @@ defmodule Ipse.Session do
 
   defp fail(s, error) do
     s = finish_wait(s, "interrupted")
+    s = settle_children(s, "worker_failed")
     notify(s, {:error, error})
 
     s
@@ -3257,6 +3341,7 @@ defmodule Ipse.Session do
     with :ok <- Ipse.Handoff.validate_events(events),
          {:ok, _} <- Ipse.Lifecycle.Runtime.restore(events),
          {:ok, _} <- Ipse.Lifecycle.Tool.restore(events),
+         {:ok, _} <- Ipse.Lifecycle.Child.restore(events),
          :ok <- Ipse.Observability.Resources.validate(events),
          {:ok, _} <- Feeds.validate(events),
          {:ok, _} <- Ipse.Usage.restore(events),

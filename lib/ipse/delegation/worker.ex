@@ -43,17 +43,39 @@ defmodule Ipse.Delegation.Worker do
 
           await(host, child, ref, id, System.monotonic_time(:millisecond) + timeout, 0, 0)
         else
-          _ -> unknown(id)
+          _ -> unknown(id, "admission_refused")
         end
       rescue
-        _ -> unknown(id)
+        _ -> unknown(id, "worker_failed")
       catch
-        :exit, _ -> unknown(id)
+        :exit, _ -> unknown(id, "worker_failed")
       end
 
-    cleanup = Session.close(child)
+    cleanup = Session.close_confirmed(child)
     Process.demonitor(ref, [:flush])
-    if cleanup == :ok, do: result, else: unknown(id)
+
+    result =
+      if match?({:ok, _}, result) and cleanup != :ok,
+        do: unknown(id, "cleanup_unconfirmed"),
+        else: result
+
+    {status, reason, public_result} =
+      case result do
+        {:ok, text} -> {"result_recorded", "completed", {:ok, text}}
+        {:unknown, text, reason} -> {"unknown", reason, {:unknown, text}}
+      end
+
+    try do
+      case GenServer.call(
+             host.owner,
+             {:delegation_finished, host.job_ref, child, status, reason, cleanup == :ok}
+           ) do
+        :ok -> public_result
+        _ -> public_unknown(id)
+      end
+    catch
+      :exit, _ -> public_unknown(id)
+    end
   end
 
   defp prompt(args) do
@@ -64,7 +86,7 @@ defmodule Ipse.Delegation.Worker do
 
   defp await(_host, _child, _ref, id, _deadline, messages, bytes)
        when messages > 4096 or bytes > 1_048_576 do
-    unknown(id)
+    unknown(id, "bounds")
   end
 
   defp await(host, child, ref, id, deadline, messages, bytes) do
@@ -99,13 +121,13 @@ defmodule Ipse.Delegation.Worker do
              {:ok,
               "Host routing facts: #{Jason.encode!(info.runtime)}\nUntrusted result from child #{id}:\n" <>
                 final},
-           else: unknown(id)
+           else: unknown(id, "result_unavailable")
 
       {:ipse, ^child, {:done, _}} ->
-        unknown(id)
+        unknown(id, "child_failed")
 
       {:DOWN, ^ref, :process, ^child, _} ->
-        unknown(id)
+        unknown(id, "child_down")
 
       {:ipse, ^child, {:text, text}} when is_binary(text) ->
         await(host, child, ref, id, deadline, messages + 1, bytes + byte_size(text))
@@ -117,13 +139,13 @@ defmodule Ipse.Delegation.Worker do
         send(host.owner, {:delegated_progress, host.job_ref, child, event})
         await(host, child, ref, id, deadline, messages + 1, bytes)
     after
-      remaining -> unknown(id)
+      remaining -> unknown(id, "timeout")
     end
   end
 
   defp await_approval(_host, _child, _ref, id, _deadline, messages, bytes, _approval, _since)
        when messages > 4096 or bytes > 1_048_576 do
-    unknown(id)
+    unknown(id, "bounds")
   end
 
   defp await_approval(host, child, ref, id, deadline, messages, bytes, approval, since) do
@@ -134,10 +156,10 @@ defmodule Ipse.Delegation.Worker do
         await(host, child, ref, id, deadline + paused, messages + 1, bytes)
 
       {:DOWN, ^ref, :process, ^child, _} ->
-        unknown(id)
+        unknown(id, "child_down")
 
       {:ipse, ^child, {:done, _}} ->
-        unknown(id)
+        unknown(id, "child_failed")
 
       {:ipse, ^child, event} ->
         size =
@@ -160,7 +182,13 @@ defmodule Ipse.Delegation.Worker do
     end
   end
 
-  defp unknown(id),
+  defp unknown(id, reason),
+    do:
+      {:unknown,
+       "Delegated outcome unknown. Inspect child journal #{id} and the workspace before retrying; no child was replayed.",
+       reason}
+
+  defp public_unknown(id),
     do:
       {:unknown,
        "Delegated outcome unknown. Inspect child journal #{id} and the workspace before retrying; no child was replayed."}

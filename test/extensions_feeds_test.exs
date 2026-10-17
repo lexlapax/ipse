@@ -6,7 +6,7 @@ defmodule Ipse.Extensions.FeedsTest do
   defmodule Model do
     def complete(config, messages, _tools, _emit) do
       send(config.test_pid, {:feed_model, self(), messages})
-      first = List.last(messages)["role"] == "user"
+      first = List.last(messages)["role"] == "user" and config[:delegation_origin] == nil
 
       if first and config[:gate_model],
         do:
@@ -17,6 +17,21 @@ defmodule Ipse.Extensions.FeedsTest do
       calls =
         if first do
           case config[:scenario] do
+            :delegate ->
+              [
+                %{
+                  "id" => "private-call",
+                  "function" => %{
+                    "name" => "delegate",
+                    "arguments" =>
+                      Jason.encode!(%{
+                        "task" => "private child task",
+                        "context" => "private context"
+                      })
+                  }
+                }
+              ]
+
             :write ->
               [
                 %{
@@ -96,10 +111,13 @@ defmodule Ipse.Extensions.FeedsTest do
     root = Path.join(System.tmp_dir!(), "ipse-feed-artifacts-#{Ipse.Usage.id()}")
 
     artifacts =
-      for kind <- [:normal, :single, :mixed, :question, :tool_private, :tool_metadata],
+      for kind <- [:normal, :single, :mixed, :question, :tool_private, :tool_metadata, :child],
           into: %{} do
         events =
           cond do
+            kind == :child ->
+              ~w(child.started child.finished)
+
             kind == :normal ->
               ~w(model.admitted wait.started question.waiting turn.finished)
 
@@ -752,6 +770,35 @@ defmodule Ipse.Extensions.FeedsTest do
     assert length(trace(c)) == length(String.split(old, "\n", trim: true)) + 2
     :ok = Session.close(resumed)
     assert {:ok, _} = Session.restore_context(rows(c, id))
+  end
+
+  test "child completion feeds preserve source identity and omit task/result content", c do
+    cfg =
+      config(c, :child, scenario: :delegate)
+      |> Map.put(:subagents, true)
+      |> Map.put(:approval, :allow)
+
+    {:ok, pid} = start(c, cfg)
+    id = Session.info(pid).id
+    :ok = Session.prompt(pid, "private prompt")
+    done(pid)
+    eventually(fn -> settled(pid) end)
+    frames = Enum.filter(trace(c), &Map.has_key?(&1, "handle"))
+    assert Enum.sort(Enum.map(frames, & &1["event"]["type"])) == ~w(child.finished child.started)
+    completed = Enum.find(frames, &(&1["event"]["type"] == "child.finished"))["event"]
+    started = Enum.find(frames, &(&1["event"]["type"] == "child.started"))["event"]
+    assert completed["correlations"]["child_id"] == started["correlations"]["child_id"]
+    assert completed["correlations"]["causing_event_id"] == started["event_id"]
+    assert completed["data"]["status"] == "result_recorded"
+    assert completed["data"]["cleanup_confirmed"]
+    refute Jason.encode!(frames) =~ "private"
+    assert :ok = Subscriptions.validate_sources(c.dir, id, rows(c, id))
+    :ok = Session.close(pid)
+    old = trace(c)
+    {:ok, resumed} = resume(c, cfg, id)
+    assert trace(c) == old
+    assert status(resumed)["feeds"] == []
+    :ok = Session.close(resumed)
   end
 
   test "disabled selections execute no worker and create no feed lease", c do

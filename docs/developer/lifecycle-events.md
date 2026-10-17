@@ -157,7 +157,8 @@ the [tool event contract](tool-events.md). The table describes metadata only.
 | Request admission, usage observation, completion and measurement | `model.admitted`, `model.usage_observed`, `model.finished`, `model.measured` | Existing request/attempt/turn/parent IDs, kind, sequence, duration, outcome and finality where saved |
 | Saved assistant/tool text and tool start | `assistant.committed`, `tool.result_recorded`, `tool.started` | Text byte count, existing assistant request ID or approval category; no arguments, result text or raw provider call IDs |
 | Workspace/catalog/extension context and compaction | `context.workspace_committed`, `context.catalog_committed`, `context.extensions_committed`, `context.compaction_committed`, `context.compaction_failed` | Source/tool counts or existing request ID; no paths, contributions, summaries or error strings |
-| Native questions and child start | `question.waiting`, `question.answered`, `question.closed`, `child.started` | Existing host child ID where present; no question/answer or arbitrary call ID |
+| Native questions | `question.waiting`, `question.answered`, `question.closed` | No question/answer or arbitrary call ID |
+| Delegated child start/result | `child.started`, `child.finished` | Host child ID; result adds actual parent turn/request/start-event links, status, fixed reason, duration and cleanup acknowledgment; no task/result text or raw call ID |
 | Extension receipts | `extension.invocation_admitted/recorded`, `extension.action_admitted/recorded`, `extension.question_waiting`, `extension.continuation_admitted`, `extension.delivery_admitted/recorded`, `extension.text_admitted/ready/closed` (each slash denotes separate types) | Existing invocation/operation/continuation/delivery/resource IDs, action count and host action/delivery outcomes where saved |
 | Turn settlement, completion and cancellation | `turn.settling`, `turn.finished`, `turn.cancelled` | Existing settlement turn ID or bounded status category |
 
@@ -173,9 +174,9 @@ into public identifiers or invent a cause from adjacent records.
 
 This is a display projection, not a complete journal validator, authentication,
 subscriber admission or an exporter. Owned Session recovery validation and physical
-source resolution remain prerequisites for actions. Unknown source types refuse;
-child completion and ephemeral stream occurrences still need their own documented
-source contracts. The session header describes creation; the optional runtime
+source resolution remain prerequisites for actions. Unknown source types refuse.
+Ephemeral stream occurrences still need their own documented source contracts.
+The session header describes creation; the optional runtime
 facts below distinguish subsequent process epochs. A saved tool
 message proves that a result was recorded, not the success of its underlying effect.
 The host API digest pins these lifecycle, subscription and history adapters
@@ -256,6 +257,33 @@ refusal before repair and disabled parity. Independent event-job fixtures exerci
 restart; delegated fixtures check child correlation and lost-child wait closure.
 The bundled runtime fixture exercises idle start/close/resume and metadata
 projection. These source/SDK contracts leave the independent domain-package proof open.
+
+### Delegated child outcomes
+
+Opt-in delegation always saves its existing start record. Its parent-side
+`delegation_finished` receipt binds the real start source and parent request/turn
+to a host child ID. The registered worker reports after the bounded result and
+child close; unrelated callers and stale jobs refuse. `child.finished` projects
+only status, fixed reason, process-local duration and cleanup acknowledgment.
+It is available through ordinary metadata feeds/history independently of
+diagnostic capture and requires no private child-text grant.
+
+`result_recorded` requires a bounded result and the owned child's actual logical
+cleanup acknowledgment before exit. It does not establish business success or
+detached-descendant containment. `unknown` covers timeout, unavailable results,
+child/worker failure or parent cancellation; the reason is a closed enum, never
+an arbitrary error. A monitor exit cannot promote unknown work to success.
+Abrupt parent death may leave no outcome at all. Old starts stay readable without
+invented completions, and idle resume appends or replays none. Strict reduction
+and physical start-source resolution run before tail repair. See
+[delegation ownership and bounds](delegation.md#lifetime-and-recovery).
+
+`lifecycle_child_test.exs` covers projection privacy, malformed/duplicate receipts,
+parent/source bindings and the absence of cleanup acknowledgment from a dead PID.
+Real delegation tests cover authorized reports, cancellation, timeout, parallel
+child loss, inert resume and source refusal before repair. The live-feed fixture
+checks shared start/completion identity through independently compiled consumers;
+the serial bundled demo checks real receipts in source/extracted runtimes.
 
 ## Delivery contracts
 

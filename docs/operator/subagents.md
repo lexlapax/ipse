@@ -59,8 +59,13 @@ Resume never restarts a child or replays its tools.
 Child journals are separate private files under
 `STATE_DIR/subagents/PARENT_SESSION_ID/CHILD_SESSION_ID.jsonl`, with parent/call
 provenance. They cannot be resumed as standalone root CLI sessions. The parent
-history retains only the selected task, approval records, relationship, and
-bounded untrusted child result.
+history retains the selected task, approvals, relationship, bounded untrusted
+result and a parent-side completion receipt. The receipt distinguishes an observed
+bounded result from an unknown outcome and records whether the child acknowledged
+cleanup. A process exit alone is insufficient; an abruptly killed parent may
+leave an incomplete start. None of these statuses certifies a child's claims.
+Selected lifecycle consumers can observe metadata through
+[event feeds](extensions.md#live-event-feeds); task/result text is not included.
 
 See [usage](usage.md), [the developer contract](../developer/delegation.md), and
 [the plan](../plan.md#p9-parallel-local-subagents). Remote agents, automatic

@@ -206,12 +206,13 @@ and [runtime identity](#p1-runtime-identity-2026-10-15).
 
 | Checkpoint | Evidence | Scope and remaining limits |
 | --- | --- | --- |
+| Child outcomes, Linux Serenity, 2026-10-17 | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters, 55 focused fixtures and 623 native-suite tests with 14 macOS exclusions passed; serial/parallel source demos, CLI help and isolated demo passed | Authenticated parent-side result/cleanup receipts, correlation/privacy, timeout/cancellation, forged reports/source positions, exited queued-child approval refusal and inert incomplete resume; synthetic providers only |
 | Admitted-tool views, Linux Serenity, 2026-10-17 | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters and 615 native-suite tests with 14 macOS exclusions passed; source SDK primitive, CLI help and isolated demo passed | Private input/result and metadata parity, independent live/history grants, separate write approval, reused provider IDs, unavailable views, cancellation, extension-question restart and physical-source refusal before repair; synthetic providers only |
 | Live metadata feeds, Linux Serenity, 2026-10-17 | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters, thirteen focused feed fixtures and 602 native-suite tests with 14 macOS exclusions passed; source primitive, CLI help and isolated demo passed | Independent compiled consumers, exact metadata/acknowledgments, finite queues/receipts, pressure/timeout cleanup, question recovery and physical-source refusal; synthetic providers only |
 | Runtime epochs/waits, Linux Serenity, 2026-10-17 | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters, 31 focused causal/recovery fixtures and 589 native-suite tests with 14 macOS exclusions passed; source fixture and isolated CLI demo passed | Recorded session/approval/question boundaries, private-source validation, disabled parity, explicit extension recording with capture off and child-loss interruption; synthetic providers only |
 | Explicit history, Linux Serenity, 2026-10-17 | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters, eleven focused history fixtures and 578 native-suite tests with 14 macOS exclusions passed | Own-session fixed ranges, separate private grants, budget gaps, source/contiguous-span validation, approval/question boundaries and inert resume; synthetic provider only |
-| Hosted metadata-feed baseline `b8aae70` | [Ubuntu/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39027769267) passed all applicable steps: build, format, compile, tests, demo and extracted packages; macOS native/default experimental sandbox steps passed | Actual job/step conclusions inspected. This baseline includes metadata feeds, precedes private tool views and does not prove stronger descendant containment |
-| Source/extracted compatibility | Credential-free demo, bundled extension/accounting/text/shared-source/runtime-epoch/local-ring/conformance/history/feed/tool-view primitives and actual traced conformance CLI passed in Linux glibc-2.44 package verification with matching OTP 29.1.1 notices and utility-only PATH | Runtime epochs, history/feed/tool-view primitives and trace APIs are available without a system toolchain; source-debugger modules/debug information are absent in this package. Primitive tool-view positions are synthetic, not installed delivery proof. Installed feed execution and the independent domain catch-up proof remain P22 gates |
+| Hosted private-tool baseline `fabb118` | [Ubuntu/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39030301157) passed all applicable steps: build, format, compile, tests, demo and extracted packages; macOS native/default experimental sandbox steps passed | Actual job/step conclusions inspected. This baseline includes private tool views, precedes child outcome receipts and does not prove stronger descendant containment |
+| Source/extracted compatibility | Credential-free demo, bundled extension/accounting/text/shared-source/runtime-epoch/local-ring/conformance/history/feed/tool-view fixtures, traced conformance CLI and serial/parallel child demos passed in Linux glibc-2.44 package verification with matching OTP 29.1.1 notices and utility-only PATH | Runtime, history/feed/tool-view, child receipt and trace APIs are available without a system toolchain; source-debugger modules/debug information are absent. Tool-view projection positions are synthetic; child receipts use the actual serial demo. Installed feed execution and independent domain catch-up remain P22 gates |
 | Provider acceptance | [Explicit live provider checks](#live-provider-acceptance-follow-up-2026-10-15) | Recorded account/model/platform combinations only; fixtures do not establish billing, hardware or arbitrary-model support |
 
 Conformance fixtures exercise independently compiled tools/commands/services and
@@ -308,7 +309,11 @@ deduplication/forget proof. See [history limits and evidence](extension-history.
 
 Committed-fact metadata fixtures cover model, tool, context, question, child,
 extension and turn boundaries with fixed dimensions and stable source IDs.
-Admission fixtures retain actual parent request/session IDs. Real sessions establish
+Admission fixtures retain actual parent request/session IDs. Child fixtures check
+registered-worker completion, actual start-source binding, distinct result/cleanup
+status and refusal of forged reports, duplicate receipts and wrong physical offsets
+before tail repair. Serial/parallel cases cover timeout, cancellation, child loss
+and incomplete abrupt-death recovery without replay. Real sessions establish
 request and source-to-delivery-to-invocation links and private/native/hash exclusion.
 Idle resume remains byte-identical when optional recording/capture is off. Arbitrary
 extension business values cannot relabel host action outcomes. The bundled
@@ -331,6 +336,7 @@ graph extension or a guarantee that a final close fact reaches a closing sink.
 
 Live-feed fixtures exercise compiled independent workers and source-bound
 admission/acknowledgment with diagnostic capture off, metadata secret exclusion,
+separately granted tool input/results and correlated child start/completion,
 normal write approval, notifications alongside feeds, pressure and invalid replies,
 deadline cleanup uncertainty, explicit stop, cancellation and owner death.
 Question checkpoint adjacency and explicit-answer enrollment survive abrupt
@@ -356,11 +362,11 @@ inference is manufactured. The nine [source/view fixtures](lifecycle-events.md#i
 and existing worker-text/context/service tests remain in the full suite. Source
 and extracted baselines, independent artifacts and hosted results are separate
 claims; no new live provider, audio device, exporter or remote service was used.
-Documentation checks passed 89 Markdown documents / 1090 local file and heading
+Documentation checks passed 92 Markdown documents / 1116 local file and heading
 links with no errors.
 
-P22 still needs broader private lifecycle delivery and causal links, child completion,
-ephemeral identity, the independent installed-package catch-up/deduplication proof
+P22 still needs broader private lifecycle delivery and causal links, ephemeral
+identity, the independent installed-package catch-up/deduplication proof
 and supervised review. Synthetic dispatcher tracing and documented source-debugging
 boundaries are implemented; no live GUI/editor debugger trial is claimed. The full
 [event/graph proof](lifecycle-events.md#knowledge-graph-acceptance-proof) remains

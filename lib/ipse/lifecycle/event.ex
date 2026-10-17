@@ -162,7 +162,7 @@ defmodule Ipse.Lifecycle.Event do
           is_boolean(cleanup)
 
         {"reason", reason} ->
-          reason in ~w(limit source_unavailable epoch_unavailable binding_unavailable)
+          reason in ~w(limit source_unavailable epoch_unavailable binding_unavailable completed admission_refused worker_failed child_failed child_down timeout bounds result_unavailable cleanup_unconfirmed cancelled owner_down)
 
         {"finality", finality} ->
           finality in ~w(final partial)
@@ -192,5 +192,5 @@ defmodule Ipse.Lifecycle.Event do
 
   def metadata_types,
     do:
-      ~w(session.created session.started session.resumed session.close_committed session.recording_stopped tool.intent_committed tool.outcome_recorded tool.recording_stopped wait.started wait.finished prompt.received prompt.expanded_committed prompt.projection_committed prompt.effective_committed answer.committed model.admitted model.usage_observed model.finished model.measured tool.started assistant.committed tool.result_recorded context.workspace_committed context.catalog_committed context.extensions_committed context.compaction_committed context.compaction_failed question.waiting question.answered question.closed child.started turn.settling turn.finished turn.cancelled extension.invocation_admitted extension.invocation_recorded extension.action_admitted extension.action_recorded extension.question_waiting extension.continuation_admitted extension.delivery_admitted extension.delivery_recorded extension.text_admitted extension.text_ready extension.text_closed)
+      ~w(session.created session.started session.resumed session.close_committed session.recording_stopped tool.intent_committed tool.outcome_recorded tool.recording_stopped wait.started wait.finished prompt.received prompt.expanded_committed prompt.projection_committed prompt.effective_committed answer.committed model.admitted model.usage_observed model.finished model.measured tool.started assistant.committed tool.result_recorded context.workspace_committed context.catalog_committed context.extensions_committed context.compaction_committed context.compaction_failed question.waiting question.answered question.closed child.started child.finished turn.settling turn.finished turn.cancelled extension.invocation_admitted extension.invocation_recorded extension.action_admitted extension.action_recorded extension.question_waiting extension.continuation_admitted extension.delivery_admitted extension.delivery_recorded extension.text_admitted extension.text_ready extension.text_closed)
 end

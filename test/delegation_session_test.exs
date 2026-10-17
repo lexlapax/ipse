@@ -200,6 +200,7 @@ defmodule Ipse.DelegationSessionTest do
     assert intent < started
     assert started < approved
     assert Enum.at(parent_events, started)["child_id"] == child_id
+    assert_child_receipt(ctx, parent_id, child_id, "result_recorded", "completed", true)
 
     child_dir = Path.join([ctx.dir, "subagents", parent_id])
     assert [{^child_id, child_events}] = child_journals(child_dir)
@@ -275,6 +276,7 @@ defmodule Ipse.DelegationSessionTest do
     assert [{^child_id, _}] = child_journals(child_dir)
     refute_receive {:delegation_provider, _, _, _, _, _}, 100
     refute_receive {:ipse, ^resumed, {:subagent, _, :started}}, 50
+    assert_child_receipt(ctx, parent_id, child_id, "result_recorded", "completed", true)
   end
 
   test "parent cancellation marks its started delegation unknown and child approval not started",
@@ -292,6 +294,8 @@ defmodule Ipse.DelegationSessionTest do
     refute File.exists?(Path.join(ctx.cwd, "child.txt"))
 
     parent_events = events(ctx.dir, Session.info(parent).id)
+
+    assert_child_receipt(ctx, Session.info(parent).id, child_id, "unknown", "cancelled", false)
 
     assert Enum.any?(parent_events, fn event ->
              get_in(event, ["message", "ipse_tool_outcome", "status"]) == "unknown"
@@ -328,6 +332,7 @@ defmodule Ipse.DelegationSessionTest do
 
     resumed = start(ctx, %{subagents: true}, parent_id)
     assert Session.info(resumed).phase == :idle
+    refute Enum.any?(events(ctx.dir, parent_id), &(&1["type"] == "delegation_finished"))
 
     assert Enum.any?(:sys.get_state(resumed).messages, fn message ->
              get_in(message, ["ipse_tool_outcome", "status"]) == "unknown"
@@ -438,6 +443,7 @@ defmodule Ipse.DelegationSessionTest do
       |> Enum.map(&get_in(&1, ["message", "ipse_tool_outcome", "status"]))
 
     assert tool_outcomes == ["unknown", "not_started"]
+    assert_child_receipt(ctx, Session.info(parent).id, child_id, "unknown", "timeout", true)
     child_dir = Path.join([ctx.dir, "subagents", Session.info(parent).id])
     assert [{^child_id, _}] = child_journals(child_dir)
     refute Registry.lookup(Ipse.Registry, {child_dir, child_id}) |> Enum.any?()
@@ -466,6 +472,78 @@ defmodule Ipse.DelegationSessionTest do
     assert Enum.any?(oversized_events, fn event ->
              get_in(event, ["message", "ipse_tool_outcome", "status"]) == "unknown"
            end)
+  end
+
+  test "only the registered worker can report completion and cancellation records it once", ctx do
+    parent = start(ctx, %{subagents: true, approval: :allow, delegation_behavior: :wait})
+    :ok = Session.prompt(parent, "wait for an authenticated child receipt")
+    assert_receive {:ipse, ^parent, {:subagent, child_id, :started}}, 2_000
+    assert_receive {:delegation_child_waiting, _, _}, 2_000
+    state = :sys.get_state(parent)
+    [{child, _}] = Map.to_list(state.delegation_resources)
+
+    assert {:error, :cancelled} =
+             GenServer.call(
+               parent,
+               {:delegation_finished, state.job_ref, child, "result_recorded", "completed", true}
+             )
+
+    refute Enum.any?(events(ctx.dir, state.id), &(&1["type"] == "delegation_finished"))
+    assert :ok = Session.cancel(parent)
+    assert_child_receipt(ctx, state.id, child_id, "unknown", "cancelled", false)
+  end
+
+  test "physical child source refusal precedes torn-tail repair", ctx do
+    parent = start(ctx, %{subagents: true, approval: :allow})
+    :ok = Session.prompt(parent, "complete before corrupting the synthetic source")
+    assert_receive {:ipse, ^parent, {:subagent, child_id, :started}}, 2_000
+    assert_receive {:ipse, ^parent, {:done, :ok}}, 3_000
+    id = Session.info(parent).id
+    config = :sys.get_state(parent).config
+    assert :ok = Session.close(parent)
+    saved = events(ctx.dir, id)
+    start = Enum.find(saved, &(&1["type"] == "delegation_started"))
+    done = Enum.find(saved, &(&1["type"] == "delegation_finished"))
+    assert done["child_id"] == child_id
+
+    {:ok, wrong} =
+      Ipse.Lifecycle.Source.build(id, done["started_source"]["byte_offset"] + 1, start)
+
+    forged =
+      Enum.map(saved, fn e ->
+        if e == done, do: Map.put(done, "started_source", wrong), else: e
+      end)
+
+    assert {:ok, _} = Ipse.Lifecycle.Child.restore(forged)
+    path = Path.join(ctx.dir, id <> ".jsonl")
+    bytes = Enum.map_join(forged, "", &(Jason.encode!(&1) <> "\n")) <> "{\"torn\":"
+    File.write!(path, bytes)
+
+    assert {:error, :invalid_child_lifecycle} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Session,
+                config: config, cwd: ctx.cwd, state_dir: ctx.dir, id: id, subscriber: self()}
+             )
+
+    assert File.read!(path) == bytes
+  end
+
+  defp assert_child_receipt(ctx, parent, child, status, reason, cleanup) do
+    saved = events(ctx.dir, parent)
+
+    assert [receipt] =
+             Enum.filter(
+               saved,
+               &(&1["type"] == "delegation_finished" and &1["child_id"] == child)
+             )
+
+    assert receipt["status"] == status
+    assert receipt["reason"] == reason
+    assert receipt["cleanup_confirmed"] == cleanup
+    assert {:ok, _} = Ipse.Lifecycle.Child.restore(saved)
+    assert :ok = Ipse.Lifecycle.Child.validate_sources(ctx.dir, parent, saved)
+    receipt
   end
 
   defp start(ctx, overrides, id \\ nil) do

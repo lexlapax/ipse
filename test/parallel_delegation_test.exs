@@ -146,6 +146,10 @@ defmodule Ipse.ParallelDelegationTest do
     id = Session.info(pid).id
     {:ok, events} = Journal.load(ctx.state, id)
     assert Enum.count(events, &(&1["type"] == "delegation_started")) == 2
+    completed = Enum.filter(events, &(&1["type"] == "delegation_finished"))
+    assert length(completed) == 2
+    assert Enum.all?(completed, &(&1["status"] == "result_recorded" and &1["cleanup_confirmed"]))
+    assert :ok = Ipse.Lifecycle.Child.validate_sources(ctx.state, id, events)
     parent_request = Enum.find(events, &(&1["type"] == "request_admitted"))["request_id"]
 
     for config <- [config0, config1] do
@@ -228,6 +232,8 @@ defmodule Ipse.ParallelDelegationTest do
     id = Session.info(pid).id
     :ok = Session.prompt(pid, "Run child writes")
     approve_group(pid)
+    assert_receive {:child_started, 0, _, _, _}, 3_000
+    assert_receive {:child_started, 1, _, _, _}, 3_000
     assert_receive {:ipse, ^pid, {:approval, ref, _, _}}, 3_000
     {:delegated, ^ref, _, child, _, _, _} = :sys.get_state(pid).approval
     Process.exit(child, :kill)
@@ -251,9 +257,58 @@ defmodule Ipse.ParallelDelegationTest do
       )
 
     assert finish["outcome"] == "interrupted"
+    receipts = Enum.filter(events, &(&1["type"] == "delegation_finished"))
+    assert length(receipts) == 2
+    assert Enum.all?(receipts, &(&1["status"] == "unknown"))
+
+    assert Enum.any?(
+             receipts,
+             &(&1["child_id"] == wait["child_id"] and not &1["cleanup_confirmed"])
+           )
+
     refute File.exists?(Path.join(ctx.root, "child-0.txt"))
     refute File.exists?(Path.join(ctx.root, "child-1.txt"))
     assert {:ok, _} = Session.restore_context(events)
+  end
+
+  test "an exited queued child cannot acquire a stale approval while its report is pending",
+       ctx do
+    {pid, _} = start(ctx, :write)
+    parent_id = Session.info(pid).id
+    :ok = Session.prompt(pid, "Queue two child approvals")
+    approve_group(pid)
+    assert_receive {:child_started, 0, _, _, _}, 3_000
+    assert_receive {:child_started, 1, _, _, _}, 3_000
+    assert_receive {:ipse, ^pid, {:approval, first, _, _}}, 3_000
+    eventually(fn -> length(:sys.get_state(pid).delegation_queue) == 1 end)
+    [{worker, child, _, _, _}] = :sys.get_state(pid).delegation_queue
+    id = :sys.get_state(pid).delegation_resources[child].id
+    true = :erlang.suspend_process(worker)
+    Process.exit(child, :kill)
+    eventually(fn -> :sys.get_state(pid).delegation_resources[child].down end)
+    :ok = Session.approve(pid, first, false)
+    refute_receive {:ipse, ^pid, {:approval, _, _, _}}, 100
+    Process.exit(worker, :kill)
+    assert_receive {:ipse, ^pid, {:done, :error}}, 3_000
+    :ok = Session.close(pid)
+    {:ok, events} = Journal.load(ctx.state, parent_id)
+
+    receipts =
+      Enum.filter(events, &(&1["type"] == "delegation_finished" and &1["child_id"] == id))
+
+    assert [%{"status" => "unknown", "cleanup_confirmed" => false}] = receipts
+  end
+
+  defp eventually(fun, attempts \\ 100)
+  defp eventually(fun, 0), do: assert(fun.())
+
+  defp eventually(fun, attempts) do
+    if fun.() do
+      :ok
+    else
+      Process.sleep(10)
+      eventually(fun, attempts - 1)
+    end
   end
 
   test "cross-child target conflicts are denied rather than overwrite a sibling result", ctx do

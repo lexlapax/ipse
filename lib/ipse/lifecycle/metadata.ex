@@ -99,6 +99,19 @@ defmodule Ipse.Lifecycle.Metadata do
   def describe(%{"type" => "delegation_started"} = record),
     do: fields("child.started", record, [], ~w(child_id))
 
+  def describe(%{"type" => "delegation_finished"} = record) do
+    if Ipse.Lifecycle.Child.valid_record?(record) do
+      result(
+        "child.finished",
+        Map.take(record, ~w(status cleanup_confirmed duration_ms reason)),
+        Map.take(record, ~w(child_id turn_id request_id))
+        |> Map.put("causing_event_id", record["started_source"]["event_id"])
+      )
+    else
+      @error
+    end
+  end
+
   def describe(%{"type" => "lifecycle_turn_settling", "version" => 1} = record),
     do: fields("turn.settling", record, [], ~w(turn_id))
 

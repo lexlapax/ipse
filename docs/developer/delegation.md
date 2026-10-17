@@ -1,11 +1,10 @@
 # Local delegation contract
 
-Status: P6 is complete within this scope. Arch source, package, and live checks
-passed; Linux/macOS hosted source/package checks also passed.
-The developer selected local subagent
-delegation with parent-controlled approvals, followed by expanded MCP in P7.
-See the [plan](../plan.md), [architecture](architecture.md), and prior
-[protocol proposal](protocol-proposal.md).
+This guide owns serial/parallel child policy, parent-controlled approvals and
+result recovery. Lifecycle consumers use the shared
+[child outcome contract](lifecycle-events.md#delegated-child-outcomes).
+The [plan](../plan.md) owns current delivery status; dated P6/P9 evidence below
+does not establish checks for later lifecycle additions.
 
 ## Scope and context
 
@@ -63,6 +62,30 @@ new attempt. Parent resume never starts a child or replays its effects. Child
 journals retain parent/call provenance and cannot be resumed as standalone
 root sessions. Completed child results stay in the parent history; complete
 child transcripts remain separate private data.
+
+The existing `delegation_started` record retains its original format. Before
+returning a child result, the registered worker reports to the parent's active
+job after closing the child. Parent syncs `delegation_finished` against the actual
+start source, child/request/turn IDs and process-local elapsed duration. Only that
+registered worker may report the result. A monitor exit is kept separate so it
+cannot race ahead and erase the worker's completion identity. Retaining that
+identity does not keep the exited child's approvals active: new proposals,
+queued approvals and stale decisions refuse once it is down or settled.
+
+`result_recorded` means a bounded child result was observed and the child's owned
+session acknowledged logical cleanup before exiting. It does not certify the
+result's assertions or strengthen OS containment. `Session.close_confirmed/1`
+requires that acknowledgment; ordinary `close/1` retains its existing idempotent
+dead-process behavior. Timeout, failure, cancellation and lost workers yield an
+`unknown` receipt with a fixed reason; an abrupt parent kill may leave only the
+start. Parent-driven cancellation records no speculative child cleanup success.
+Per-turn child and durable request ceilings bound these records.
+
+Restore rejects duplicate outcomes, mismatched parent/request/turn/start bindings
+and malformed statuses. Physical source resolution runs before tail repair.
+Idle resume leaves incomplete historical children incomplete and starts none.
+The metadata `child.finished` event exposes correlation, status, fixed reason,
+elapsed duration and cleanup acknowledgment, with no task, result or raw call ID.
 
 ## Required verification
 

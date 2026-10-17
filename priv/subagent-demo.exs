@@ -162,6 +162,14 @@ defmodule Ipse.SubagentDemo do
     [started] = Enum.filter(parent_events, &(&1["type"] == "delegation_started"))
     child_id = started["child_id"]
     true = is_binary(child_id)
+    [finished] = Enum.filter(parent_events, &(&1["type"] == "delegation_finished"))
+    ^child_id = finished["child_id"]
+    "result_recorded" = finished["status"]
+    true = finished["cleanup_confirmed"]
+    :ok = Ipse.Lifecycle.Child.validate_sources(state_dir, parent_id, parent_events)
+
+    {:ok, %{records: [%{record: ^started}]}} =
+      Ipse.Journal.source_page(state_dir, parent_id, finished["started_source"]["byte_offset"], 1)
 
     [parent_intent] =
       Enum.filter(parent_events, &(&1["type"] == "tool_started" and &1["name"] == "delegate"))
