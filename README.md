@@ -97,8 +97,9 @@ or after-turn maintenance.
 and invokes operator commands.
 Effects retain normal approval; cached receipts/projections restore without
 replay. Default-off [diagnostic capture](docs/operator/observability.md) supports
-bounded local sink workers and separate export authority. The full SDK,
-developer tracing and independent package proof remain
+bounded local sink workers and separate export authority. Synthetic extension
+checks offer optional [dispatcher tracing](docs/developer/observability.md#synthetic-dispatcher-tracing).
+Broader lifecycle contracts and the independent package proof remain
 [P22 work](docs/plan.md#p22-extension-scaffold-and-lifecycle-hooks).
 
 Explicit stdio and Streamable HTTP [MCP tools](docs/operator/mcp.md) use

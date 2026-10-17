@@ -40,6 +40,7 @@ dependency. The main choices are:
 | Request accounting and text delivery | OTP crypto/clocks, GenServer/monitors/queues, existing Worker/native ownership and provider tasks | Durable facts, resource leases and private acknowledged delivery have different failure semantics from optional telemetry; no stream/media framework is added |
 | Diagnostic capture and local sink | OTP atomics/monitors/tasks/filesystem, existing Worker/Runner/native advisory locks/Journal/Source and schema adapters | Atomic queue admission and a bounded backend ring protect active writers and disk limits; shared metadata/policy/receipts remain harness-specific. No broker, collector, logging package or direct Telemetry API is added |
 | Synthetic SDK conformance | Existing Config/Registry/Session/Questions/Diagnostics and bounded JSON Schema adapter | Real host callbacks/approvals/recovery validators are exercised with a synthetic provider and scratch state; no duplicate worker protocol, effect replay framework or test service is added |
+| Synthetic developer tracing | OTP 27+ kernel `trace` sessions, match specifications and ordinary processes/monitors | VM-side one-in-flight admission and arity-only fixed dispatchers avoid unbounded trace mailboxes and private arguments; no tracer package, distributed node or source-debugger runtime is added |
 
 [DETS](https://www.erlang.org/doc/apps/stdlib/dets.html) was evaluated for the
 scoped store. The 256-record/1 MiB contract needs exact JSON snapshots,
@@ -331,8 +332,10 @@ see [adoption scenarios](extension-scenarios.md).
 
 The follow-on [runtime](runtime-capabilities.md) and [knowledge](knowledge-extensions.md)
 reviews compare OpenAI Agents SDK/voice, LangGraph/LangSmith, ADK, ElixirLS/OTP
-debugging, LlamaIndex and Haystack primary documentation. None is adopted or
-installed. Pricing services, source-debugger/GUI dependencies, codecs, audio
+debugging, LlamaIndex and Haystack primary documentation. Ipse reuses the shipped
+OTP kernel trace API for synthetic dispatcher samples; ElixirLS and the optional
+OTP GUI debugger were evaluated but no source-debugger integration was installed.
+Pricing services, source-debugger/GUI dependencies, codecs, audio
 devices/transports, memory databases, embedding/rerank providers and graph/vector
 engines remain unselected. P22 uses existing OTP/helper/schema/journal facilities
 where suitable; P23–P25 must evaluate/inventory packages and obtain any required

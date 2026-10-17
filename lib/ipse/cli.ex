@@ -47,6 +47,9 @@ defmodule Ipse.CLI do
   --no-extensions                      Disable configured extension instances
   --fixture PATH                       Synthetic inputs for extension check
   --keep-fixture                       Retain its private scratch state and journals
+  --developer-trace                    Sample synthetic Session dispatcher calls
+  --trace-ms N                         Capture deadline, 1..5000 ms (default 1000)
+  --trace-events N                     Sample limit, 1..128 (default 32)
   --observability off|local|export      Operator diagnostic capture policy (default off)
 
   Chat asks before writes, shell, MCP, and delegation. Headless run denies them without --yes.
@@ -96,6 +99,9 @@ defmodule Ipse.CLI do
           observability: :string,
           fixture: :string,
           keep_fixture: :boolean,
+          developer_trace: :boolean,
+          trace_ms: :integer,
+          trace_events: :integer,
           json: :boolean,
           note: :string,
           help: :boolean,
@@ -109,9 +115,12 @@ defmodule Ipse.CLI do
         IO.puts(:stderr, "Unknown options: #{inspect(invalid)}")
         1
 
-      (Keyword.has_key?(opts, :fixture) or Keyword.has_key?(opts, :keep_fixture)) and
+      Enum.any?(
+        ~w(fixture keep_fixture developer_trace trace_ms trace_events)a,
+        &Keyword.has_key?(opts, &1)
+      ) and
           (rest != ["extension", "check"] or opts[:demo] == true) ->
-        report({:error, "Fixture options require extension check."})
+        report({:error, "Fixture and developer trace options require extension check."})
 
       Keyword.has_key?(opts, :handoff) and
           (rest not in [[], ["chat"]] or Keyword.has_key?(opts, :resume) or opts[:demo] == true or
@@ -202,9 +211,10 @@ defmodule Ipse.CLI do
 
   defp dispatch(["extension", "check"], opts) do
     allowed =
-      ~w(config cwd trust_project_config project_config extension extensions yes sandbox observability fixture keep_fixture json)a
+      ~w(config cwd trust_project_config project_config extension extensions yes sandbox observability fixture keep_fixture developer_trace trace_ms trace_events json)a
 
     with true <- is_binary(opts[:fixture]) and Enum.all?(Keyword.keys(opts), &(&1 in allowed)),
+         {:ok, _} <- Ipse.DeveloperTrace.policy(opts),
          {:ok, fixture, digest} <- Ipse.Extensions.Conformance.read(opts[:fixture]),
          {:ok, effective} <- Ipse.Config.resolve(opts[:cwd] || default_cwd(), home(), opts) do
       IO.puts(
@@ -214,12 +224,16 @@ defmodule Ipse.CLI do
 
       sandbox = if effective.settings["sandbox"] == "native", do: :native, else: :off
 
-      case Ipse.Extensions.Conformance.run(effective.extensions, home(), fixture,
-             yes: opts[:yes] == true,
-             keep: opts[:keep_fixture] == true,
-             sandbox: sandbox,
-             observability: effective.observability.policy
-           ) do
+      check_opts =
+        [
+          yes: opts[:yes] == true,
+          keep: opts[:keep_fixture] == true,
+          sandbox: sandbox,
+          observability: effective.observability.policy,
+          developer_trace: opts[:developer_trace] == true
+        ] ++ Keyword.take(opts, [:trace_ms, :trace_events])
+
+      case Ipse.Extensions.Conformance.run(effective.extensions, home(), fixture, check_opts) do
         {:ok, result} ->
           IO.puts(Jason.encode!(Map.put(result, "fixture_sha256", digest), pretty: true))
           if result["passed"], do: 0, else: 1

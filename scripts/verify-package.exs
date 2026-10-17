@@ -83,7 +83,10 @@ defmodule Ipse.PackageVerifier do
           Path.join(app, "priv/conformance-demo.json"),
           "--extension",
           "annotation",
-          "--no-project-config"
+          "--no-project-config",
+          "--developer-trace",
+          "--trace-events",
+          "2"
         ],
         default_workspace,
         env,
@@ -92,6 +95,10 @@ defmodule Ipse.PackageVerifier do
 
     unless String.contains?(check, "\"provider\": \"synthetic\""),
       do: raise("release conformance CLI did not identify its synthetic provider")
+
+    unless String.contains?(check, "\"sampling\": \"one_in_flight\"") and
+             String.contains?(check, "\"cleanup_confirmed\": true"),
+           do: raise("release conformance CLI did not report bounded developer tracing")
 
     # The first run exercises default cwd from a directory outside the release.
     run!(

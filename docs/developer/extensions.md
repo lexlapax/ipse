@@ -302,7 +302,7 @@ do not add a feature-name conditional to Session or the CLI to work around it.
 | Customized workflows | Bounded host-action proposals at admission or before settlement | Cancellation, step/time budgets, child ownership, approvals and unknown-effect stop |
 | Research integrations | Custom tools plus attributable context/source contributions | Research ledger validation, citations/provenance and effect policy |
 | Optional provider integration | Registered provider-adapter contract with capability declaration | Explicit profile/model/billing selection, credential resolution and wire continuation integrity |
-| Debugging/tracing | Sanitized lifecycle events, snapshots and diagnostic sinks | Private journal integrity, secret exclusion, quotas and owner cleanup |
+| Debugging/tracing | Shared lifecycle metadata, snapshots, diagnostic sinks and bounded synthetic dispatcher samples | Private journal integrity, argument exclusion, VM-side trace admission, quotas and owner cleanup |
 | Usage/cost reporting | Canonical request/attempt usage facts and generic command/context registration | Durable identity/normalization; future budget admission/reservations |
 | Streaming presentation | Typed private visible-content subscription | Sequence/flow control, cancellation and original provider history |
 | Voice and realtime clients | Versioned owned-resource/media/provider capabilities | Turn/transport lifetime, approvals, playback reconciliation and explicit billing |

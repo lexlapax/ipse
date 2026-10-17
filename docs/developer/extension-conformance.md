@@ -4,7 +4,8 @@
 using a synthetic model and scratch workspace/state. Built-in and installed
 worker artifacts share the existing callback, approval, question, context and
 recovery validators. It does not replay a saved journal or use host model credentials.
-Raw BEAM tracing remains separate [developer work](observability.md#developer-diagnosis-and-remaining-gates).
+Optional [dispatcher tracing](observability.md#synthetic-dispatcher-tracing) samples
+only the synthetic Sessions created by this runner.
 
 ## Review and select code
 
@@ -62,6 +63,14 @@ artifact/runtime/API identities. It excludes input text, options, answers, retur
 values and journal content. Exit is nonzero for invalid configuration, an unexpected
 result or a suite stopped before all declared cases ran. Matching negative cases
 are behavioural evidence, not a safety certificate or independent OS-containment proof.
+
+Add `--developer-trace` to include bounded, argument-free dispatcher samples in
+each case report. `--trace-ms` is 1..5000 (default 1000); `--trace-events` is 1..128
+(default 32). Both limit flags require tracing to be enabled. These are explicit
+operator options, not fixture fields or extension grants. Capture failure makes
+the check fail; reaching a normal time/sample limit does not. The
+[tracing contract](observability.md#synthetic-dispatcher-tracing) explains sampling
+gaps, cleanup and the distinction from source debugging.
 
 ## Fixture and execution contract
 
@@ -144,6 +153,6 @@ without the flag; ownership cleanup and filesystem deletion are separate concern
 
 The current checker validates declared scenarios, not arbitrary extension quality,
 production services, real account providers, all crash schedules or compatibility
-with every runtime. The independent frozen-core package proof and bounded raw
-tracing remain [P22 gates](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
+with every runtime. The independent frozen-core package proof and broader lifecycle
+contracts remain [P22 gates](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
 See [verification scope](testing.md#current-evidence-and-next-checks).

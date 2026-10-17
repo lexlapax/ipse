@@ -1,6 +1,6 @@
 defmodule Ipse.Extensions.Conformance do
   @moduledoc "Explicit synthetic SDK exercise through ordinary owned Sessions, never a provider replay."
-  alias Ipse.{Session, Journal, MCP.Schema}
+  alias Ipse.{Session, Journal, MCP.Schema, DeveloperTrace}
   alias Ipse.Extensions.{Manifest, Registry}
   @text %{"type" => "string", "maxLength" => 8192}
   @object %{"type" => "object"}
@@ -152,7 +152,8 @@ defmodule Ipse.Extensions.Conformance do
   end
 
   def run(catalog, installation_home, fixture, opts \\ []) do
-    with :ok <- validate(fixture),
+    with {:ok, trace_policy} <- DeveloperTrace.policy(opts),
+         :ok <- validate(fixture),
          true <- selected?(catalog, fixture),
          root = Path.join(System.tmp_dir!(), "ipse-conformance-#{Ipse.Usage.id()}"),
          :ok <- File.mkdir(root),
@@ -167,7 +168,16 @@ defmodule Ipse.Extensions.Conformance do
         cases =
           Enum.reduce_while(fixture["cases"], [], fn scenario, completed ->
             result =
-              exercise(catalog, installation_home, fixture, scenario, root, workspace, home, opts)
+              exercise(
+                catalog,
+                installation_home,
+                fixture,
+                scenario,
+                root,
+                workspace,
+                home,
+                Keyword.put(opts, :trace_policy, trace_policy)
+              )
 
             next = [result | completed]
 
@@ -265,7 +275,7 @@ defmodule Ipse.Extensions.Conformance do
                 ]}
              ) do
           {:ok, session} ->
-            exercise_session(session, scenario, ref, directory, cwd)
+            exercise_traced(session, scenario, ref, directory, cwd, opts[:trace_policy])
             |> Map.put(
               "selected_artifacts",
               Enum.map(
@@ -283,6 +293,44 @@ defmodule Ipse.Extensions.Conformance do
 
       _ ->
         result(scenario, "refused", [], 0, %{}, true, %{}, cwd)
+    end
+  end
+
+  defp exercise_traced(session, scenario, ref, directory, cwd, policy) do
+    case DeveloperTrace.start(session, policy) do
+      {:ok, tracer} ->
+        try do
+          report = exercise_session(session, scenario, ref, directory, cwd)
+
+          case DeveloperTrace.stop(tracer) do
+            {:ok, nil} ->
+              report
+
+            {:ok, trace} ->
+              report
+              |> Map.put("developer_trace", trace)
+              |> Map.update!(
+                "passed",
+                &(&1 and trace["cleanup_confirmed"] and
+                    trace["reason"] not in ["trace_error", "watchdog_down"])
+              )
+
+            _ ->
+              report
+              |> Map.put("passed", false)
+              |> Map.put("developer_trace", %{"error" => "capture_lost"})
+          end
+        after
+          if tracer != nil and Process.alive?(tracer), do: DeveloperTrace.stop(tracer)
+          if Process.alive?(session), do: Session.close(session)
+        end
+
+      _ ->
+        cleanup = Session.close(session) == :ok
+
+        result(scenario, "refused", [], 0, %{}, cleanup, %{}, cwd)
+        |> Map.put("passed", false)
+        |> Map.put("developer_trace", %{"error" => "capture_unavailable"})
     end
   end
 

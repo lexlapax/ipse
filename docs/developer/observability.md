@@ -4,8 +4,8 @@ The implemented path projects committed journal facts into shared metadata,
 then dispatches it through bounded owned sink workers. Capture defaults to off;
 operator policy, selection and export capability are separate gates.
 [Operator procedures](../operator/observability.md) own configuration and stop.
-The [synthetic conformance runner](extension-conformance.md) is available; raw
-developer tracing remains P22 work. The
+The [synthetic conformance runner](extension-conformance.md) also supports
+bounded local dispatcher tracing, independently of diagnostic sink selection. The
 [dated proposal](../archive/2026-10-17-observability-proposal/observability.md)
 preserves the earlier design.
 
@@ -173,24 +173,80 @@ investigate failure.
 
 Use the [conformance runner](extension-conformance.md) for synthetic callback,
 question, action and context scenarios through the ordinary Session validators.
-P22 still needs bounded local BEAM tracing.
-Evaluate [ElixirLS DAP](https://elixir-lsp.github.io/elixir-ls/getting-started/vscode/)
-and [OTP debugger](https://www.erlang.org/doc/apps/debugger/debugger_chapter.html)
-before adding source-debugging infrastructure.
-[OTP trace sessions](https://www.erlang.org/doc/apps/kernel/trace.html) need narrow
-targets, duration/event budgets and destruction on cancellation/tracer-owner
-death. Verify runtime applications/debug information in development and extracted
-releases before offering commands.
+Choose dispatcher samples below for host scheduling evidence, or a development
+source debugger for breakpoints and local variables. Neither diagnostic mode
+changes approval, persistence or callback recovery policy.
+
+### Synthetic dispatcher tracing
+
+```sh
+./bin/ipse extension check --config priv/conformance-operator.json --fixture priv/conformance-demo.json --extension annotation --no-project-config --developer-trace --trace-ms 1000 --trace-events 32
+```
+
+`Ipse.DeveloperTrace` creates an isolated
+[OTP trace session](https://www.erlang.org/doc/apps/kernel/trace.html) for each
+new synthetic Session. Only exported `Ipse.Session.handle_call/3` and
+`handle_info/2` calls on that PID are eligible. The VM's `arity` flag excludes
+arguments before collector admission; no message, return, exception, state or
+stack trace is requested. Reports contain fixed module/function/arity, sample
+sequence and relative monotonic microseconds. They contain no PID or content.
+Worker VMs, provider bodies and arbitrary live sessions are outside this scope.
+There is no user-supplied PID, wildcard, MFA or match specification.
+
+The [match specification](https://www.erlang.org/doc/apps/erts/match_spec.html)
+disables the target's call flag while emitting each sample. The collector re-arms
+only after consuming it, so at most one VM-generated trace sample is pending;
+this bounds emission rather than merely truncating a stored list. Calls while
+disarmed are uncounted gaps. Reports always say `sampling: "one_in_flight"` and
+`complete: false`; sequence counts captured samples, not all calls. It is not a
+latency profiler, complete execution timeline or lossless knowledge feed.
+
+Per-case bounds are 1..5000 ms and 1..128 stored samples, defaults 1000/32.
+The collector checks the deadline before re-arming. An independent monitor-based
+watchdog destroys the isolated trace session at the deadline or dependency death,
+including when the collector is suspended. As with OTP timers, execution depends
+on scheduler availability; this is not a hard realtime deadline. Collector/owner
+death, target exit, explicit stop and conformance cancellation remove trace
+settings. Watchdog loss also fails closed. Destruction does not affect other OTP
+trace sessions. A stopped capture retains only its bounded report until the case
+collects it or its owner dies; it does not keep tracing.
+
+Normal stop/time/event limits are visible report reasons. Missing capture,
+watchdog/trace errors or unconfirmed cleanup make the conformance check fail.
+Disabled tracing creates no collector or trace session. Flags apply only to
+`extension check`, cannot be requested by fixtures and are independent of
+`--observability`. OTP 27's session API is required; unavailable support refuses
+instead of falling back to global legacy tracing. Extracted-package verification
+exercises the actual CLI without a system toolchain.
+
+### Source debugging
+
+[ElixirLS DAP](https://elixir-lsp.github.io/elixir-ls/getting-started/vscode/)
+already supports Mix task debugging and test-file loading through `requireFiles`.
+Use that maintained adapter in a developer checkout with a focused synthetic test;
+Ipse adds no editor plugin, debug server or separate source-debugger protocol.
+The [OTP debugger](https://www.erlang.org/doc/apps/debugger/debugger_chapter.html)
+uses interpreted modules and a GUI, so it is a development alternative rather
+than a bundled CLI requirement. Breakpoints alter scheduling and may cause
+ordinary worker deadlines to expire; those results cannot prove normal timing.
+
+Local Serenity inspection found OTP 29.1.1's `debugger`, `int` and `wx` modules
+and debug information in the development Session BEAM. This establishes module
+availability only: no GUI/DAP session or editor breakpoint was exercised. The
+matching extracted Linux release has `trace`, but no `debugger`, `int` or `wx`
+modules and no Session debug-information chunk. Releases provide the narrow trace
+CLI rather than a source-debugger environment or editor integration. No GUI/runtime
+dependency is added; macOS availability requires its own package evidence.
 
 Formatted status redaction does not protect
 [`sys.get_state`](https://www.erlang.org/doc/apps/stdlib/sys.html#get_state/2)
-or raw messages/arguments. Never trace all processes or suspend a live Session
-while effects continue. No raw tracing command, debugger listener, distributed node
-or GUI dependency is enabled here. Approval/question wait spans, ephemeral identity,
-broader lifecycle delivery and the independent package proof
-remain open in [P22](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
+or raw messages/arguments. Use synthetic inputs for breakpoints, and never suspend
+a live Session while effects continue. No debugger listener or distributed node
+is enabled. Approval/question wait spans, ephemeral identity, broader lifecycle
+delivery and the independent package proof remain open in
+[P22](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
 
-Twenty fixtures cover off parity, privacy/source identity, stop, export scope,
+Twenty diagnostic fixtures cover off parity, privacy/source identity, stop, export scope,
 blocked/invalid sinks, owner-death VM/slot cleanup, rotation/aggregate bounds,
 active-writer protection, mismatched limits, unsafe paths, legacy preservation,
 filtering, historical resume and corruption. [Testing](testing.md#current-evidence-and-next-checks)

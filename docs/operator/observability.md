@@ -110,6 +110,11 @@ shipped or live remote exporter verified. Only metadata crosses this host path;
 reviewed worker code retains ordinary OS permissions, so these checks are not a
 network sandbox.
 
-Use the [developer contract](../developer/observability.md) for SDK details and
-remaining tracing work. [Recovery](recovery.md) owns saved inspection and reviewed
-handoff export; a private journal is not a sanitized trace.
+For a reproducible extension issue, use a dedicated synthetic
+[conformance fixture](../developer/extension-conformance.md). Its optional
+`--developer-trace` flag samples only newly created synthetic Session dispatchers,
+with bounded time/event limits and no arguments or message contents. This is
+independent of sink capture and does not attach to an existing account session.
+The [developer contract](../developer/observability.md#synthetic-dispatcher-tracing)
+owns tracing and source-debugging details. [Recovery](recovery.md) owns saved
+inspection and reviewed handoff export; a private journal is not a sanitized trace.

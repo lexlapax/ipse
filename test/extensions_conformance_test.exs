@@ -360,11 +360,48 @@ defmodule Ipse.Extensions.ConformanceTest do
     assert Jason.decode!(output)["passed"]
     refute output =~ "synthetic-private"
 
+    traced =
+      ExUnit.CaptureIO.capture_io(fn ->
+        ExUnit.CaptureIO.capture_io(:stderr, fn ->
+          assert Ipse.CLI.run(args ++ ["--developer-trace", "--trace-events", "1"]) == 0
+        end)
+      end)
+
+    assert [%{"developer_trace" => %{"captured" => 1, "cleanup_confirmed" => true}}] =
+             Jason.decode!(traced)["cases"]
+
+    refute traced =~ "synthetic-private"
+
     ExUnit.CaptureIO.capture_io(:stderr, fn ->
       assert Ipse.CLI.run(args ++ ["--provider", "openai"]) == 1
       assert Ipse.CLI.run(args ++ ["--resume", Ipse.Usage.id()]) == 1
       assert Ipse.CLI.run(["config", "--fixture", fixture_file]) == 1
+      assert Ipse.CLI.run(["demo", "--developer-trace"]) == 1
+      assert Ipse.CLI.run(args ++ ["--trace-ms", "10"]) == 1
+      assert Ipse.CLI.run(args ++ ["--developer-trace", "--trace-events", "129"]) == 1
     end)
+  end
+
+  test "trace policy stays outside fixture authority and cancellation cleans capture", c do
+    cancelled =
+      scenario("cancel-traced", "command", "hang", %{"status" => "cancelled"})
+      |> Map.put("cancel_after_ms", 100)
+
+    input = fixture([cancelled])
+
+    assert {:error, :invalid_conformance_fixture} =
+             Conformance.validate(Map.put(input, "developer_trace", true))
+
+    assert {:error, :invalid_conformance_configuration} =
+             Conformance.run(c.catalog, c.home, input, trace_ms: 10)
+
+    assert {:ok, report} =
+             Conformance.run(c.catalog, c.home, input, developer_trace: true, trace_ms: 5000)
+
+    assert report["passed"]
+    assert [%{"developer_trace" => trace}] = report["cases"]
+    assert trace["cleanup_confirmed"]
+    assert trace["captured"] in 1..32
   end
 
   test "an unexpected failure prevents later effectful cases", c do

@@ -1,10 +1,12 @@
 # Observability, usage and streaming boundaries
 
-Research/design reviewed on 2026-10-16 against `cdaa003`. This extends the
-[P22 SDK](extensions.md) and [adoption scenarios](extension-scenarios.md), not the
-implemented feature set. External references were read as primary documentation/
-source; no compared framework, debugger, media service or exporter was installed.
-Recommendations below are architectural inferences, not interoperability results.
+The comparison was originally reviewed on 2026-10-16 against `cdaa003` and informs
+the [P22 SDK](extensions.md) and [adoption scenarios](extension-scenarios.md).
+Current implementation coverage is summarized below; later sections distinguish
+delivery targets from existing contracts. External references were read as primary
+documentation/source; no compared framework, source debugger, media service or
+exporter was installed. Recommendations are architectural inferences, not
+interoperability results.
 
 ## Current Ipse behavior
 
@@ -12,8 +14,8 @@ Provider adapters already emit visible `{:text, delta}` events. Session forwards
 progress from its current job and CLI writes text as it arrives. The saved
 assistant message/native continuation remains separate from the live display.
 HTTP/SSE request handling and cancellation exist. P22 now adds an explicit
-[private embedded subscription](text-streams.md) with bounded coalescing and
-acknowledgments. Installed-worker SDK access is still pending; there is no
+[private text subscription](text-streams.md) with bounded coalescing and
+acknowledgments for embedded clients and selected installed workers. There is no
 multimodal session interface or audio device/backend yet.
 Text deltas are chunks, not necessarily individual tokens.
 
@@ -25,8 +27,8 @@ P19 context measurements are encoded JSON bytes, not tokens. Pricing, monetary
 budget enforcement and audio usage remain P23/P24 implementation work.
 
 P19's local on-demand diagnostics and request timing are available. Optional
-metadata capture, bounded sink workers and stop controls are implemented; developer
-tracing remains planned. Their authoritative
+metadata capture, bounded sink workers, stop controls and opt-in synthetic
+dispatcher tracing are implemented. Their authoritative
 [configuration/debugging contract](observability.md) distinguishes recovery
 journals from optional sinks and raw developer inspection.
 
@@ -173,9 +175,10 @@ P22 adds default-off/local/export control fixtures, sink-stop, secret exclusion,
 request IDs and durable usage normalization/deduplication with unknown counts,
 and bounded read-only text subscriptions (split chunks, slow consumer, cancelled
 request, terminal outcome and unchanged provider history). Its extension conformance
-runner uses synthetic inputs; it is not a journal/effect replay engine. Raw BEAM
-debugging remains a separately bounded local procedure with release-capability
-checks. No audio provider or remote tracing account is needed for P22 fixtures.
+runner uses synthetic inputs; it is not a journal/effect replay engine. Its bounded
+trace CLI runs in source and extracted packages; source breakpoints remain a
+separate development procedure with existing debuggers. No audio provider or
+remote tracing account is needed for P22 fixtures.
 
 P23 adds cost/report extensions and foreseen budget admission/reservation support,
 with parallel child/summary accounting, rate changes, missing/partial usage and

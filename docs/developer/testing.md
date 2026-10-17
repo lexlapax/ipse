@@ -206,9 +206,9 @@ and [runtime identity](#p1-runtime-identity-2026-10-15).
 
 | Checkpoint | Evidence | Scope and remaining limits |
 | --- | --- | --- |
-| Synthetic conformance, Linux Serenity, 2026-10-17 | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters and 548 native-suite tests with 14 macOS exclusions passed | Includes ten author-runner fixtures and twenty observability fixtures; no live provider or raw developer tracing |
-| Hosted ring baseline `b722818` | [Ubuntu/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39016208467) passed build, format, compile, tests, demo and extracted packages; macOS native and default experimental sandbox steps passed | Job/step conclusions inspected; this precedes conformance and does not prove its hosted behavior or stronger descendant containment |
-| Source/extracted compatibility | Credential-free demo, bundled extension/accounting/text/shared-source/local-ring/conformance fixtures and actual conformance CLI passed in Linux glibc-2.44 package verification with matching OTP 29.1.1 notices and utility-only PATH | Bundled author-runner/local-sink and general runtime compatibility; independently installed subscriber proof remains a P22 gate |
+| Developer tracing, Linux Serenity, 2026-10-17 | Build, warnings-as-errors compilation, both actual Elixir 1.18.4/1.20.4 formatters, twenty focused trace/conformance fixtures and 558 native-suite tests with 14 macOS exclusions passed | Includes nine trace, eleven author-runner and twenty diagnostic fixtures; synthetic fixed-arity dispatcher samples, no live provider or source-debugger integration |
+| Hosted conformance baseline `1ac694b` | [Ubuntu/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39018696102) passed build, format, compile, tests, demo and extracted packages; macOS native and default experimental sandbox steps passed | Job/step conclusions inspected; this precedes dispatcher tracing and does not prove its hosted behavior or stronger descendant containment |
+| Source/extracted compatibility | Credential-free demo, bundled extension/accounting/text/shared-source/local-ring/conformance fixtures and actual traced conformance CLI passed in Linux glibc-2.44 package verification with matching OTP 29.1.1 notices and utility-only PATH | Bundled trace API available without system toolchain; source-debugger modules/debug information absent in this package. Independently installed subscriber proof remains a P22 gate |
 | Provider acceptance | [Explicit live provider checks](#live-provider-acceptance-follow-up-2026-10-15) | Recorded account/model/platform combinations only; fixtures do not establish billing, hardware or arbitrary-model support |
 
 Conformance fixtures exercise independently compiled tools/commands/services and
@@ -222,6 +222,16 @@ fixtures additionally check the built-in pair through the runner. Reports descri
 declared assertions and Session close acknowledgments, not a separate native
 containment proof or production extension quality certificate. See the
 [author contract](extension-conformance.md).
+
+Developer-trace fixtures additionally verify fixed arities and target isolation,
+VM-side one-in-flight admission during a 10,000-call burst with the collector
+suspended, independent deadline cleanup, owner/collector/watchdog death, explicit
+stop, target exit and coexistence with another OTP trace session. Conformance
+fixtures cover traced cancellation, private-value exclusion and refusal of trace
+controls outside synthetic checks. These establish bounded dispatcher samples,
+not a complete timeline, source-debugger integration or production tracing safety.
+The extracted verifier invokes the same trace CLI with only bundled runtime and
+utility executables available.
 
 Diagnostic fixtures cover default-off parity, private/hash exclusion, shared source
 identity, operator/export scope, immediate stop, bounded overload, rotation and

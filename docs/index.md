@@ -49,12 +49,12 @@ start. Use the guides below for operation, development, and project context.
 | [Extension services](developer/extension-services.md) | Typed requirements, explicit operator routes, acyclic activation pins and owned value-service jobs |
 | [Extension context](developer/extension-context.md) | Bounded session contributions, assertion/evidence provenance, request snapshots and cached recovery |
 | [Extension adoption scenarios](developer/extension-scenarios.md) | Bundled/third-party/generated feature walkthroughs, artifact installation, temporary use and deferred host capabilities |
-| [Extension conformance](developer/extension-conformance.md) | Synthetic SDK scenarios, ordinary trust/approvals, scratch state, structured answers and content-free reports |
+| [Extension conformance](developer/extension-conformance.md) | Synthetic SDK scenarios, ordinary trust/approvals, scratch state, structured answers, reports and optional dispatcher tracing |
 | [Runtime capability boundaries](developer/runtime-capabilities.md) | Framework comparison, usage/cost facts, text/voice streams and core versus extension ownership |
 | [Usage accounting](developer/usage-accounting.md) | Implemented identities, normalized usage snapshots and recovery validation |
 | [Private text streams](developer/text-streams.md) | Embedded/worker enrollment, opaque resource handles, acknowledgment, pressure and ephemeral recovery |
 | [Knowledge extension family](developer/knowledge-extensions.md) | Default-off working/long-term memory, pluggable research, graph/RAG and composition/evidence contracts |
-| [Observability contract](developer/observability.md) | Shared metadata capture, bounded owned sinks, ring quotas, lease recovery and remaining developer tracing gates |
+| [Observability contract](developer/observability.md) | Shared metadata capture, bounded owned sinks, ring quotas, lease recovery, synthetic dispatcher tracing and source-debugging boundaries |
 | [MCP client contract](developer/mcp.md) | Reused packages, transport ownership, descriptor binding, schema policy, and recovery |
 | [Local delegation contract](developer/delegation.md) | Parent/child ownership, explicit context, approvals, budgets, and unknown outcomes |
 | [Dependencies](developer/dependencies.md) | Runtime/build/CI inventory, script policy, approval requirements |
