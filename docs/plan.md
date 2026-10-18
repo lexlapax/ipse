@@ -198,6 +198,8 @@ provider/model, retrieval and assistance differences.
 
 The [evaluation protocol](developer/self-hosting-evaluation.md) owns the rubric,
 artifact manifest, proposed round limits, held-out cases and review process.
+The [frozen common brief](developer/p25-common-brief.md) pins the initial research
+controls and identical source manifest before scored execution.
 The [knowledge design](developer/knowledge-extensions.md) owns domain questions and
 selection gates. Existing P14 tools/skills/ledger and P22 SDK are available; engine
 installation or production implementation is not required by this milestone.

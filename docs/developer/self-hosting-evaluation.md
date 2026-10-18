@@ -33,6 +33,10 @@ they do not establish this larger trial's result or unattended self-development.
 
 ## Freeze the task and comparison
 
+The [P25 common brief](p25-common-brief.md) pins the initial research task, rubric,
+source manifest and resource/tool controls. It is frozen before scored execution;
+later changes need a new cohort record rather than silently changing the bar.
+
 Before either track starts, commit a common brief, rubric and public/synthetic
 input manifest. Record the repository revision, installed runner archive digest,
 toolchain/OS, skills, extension artifacts and supported capabilities. Keep private
