@@ -1,17 +1,21 @@
 # Architecture review and supervised self-development
 
-P24/P25 review and evaluation protocol, revised 2026-10-17. This guide defines
+P24/P25 review and evaluation protocol, revised 2026-10-18. This guide defines
 independent architectural challenge, security gates and the supervised experiment;
 the [plan](../plan.md#current-priorities-and-status) owns scheduling and acceptance
 status. The consolidated `a5912ab` assessment has returned without acceptance.
-Required-delivery cancellation and abnormal-death lock ownership are being
-repaired, and pool loss has an explicit fail-closed recovery policy. Material
-independent SDK/sandbox coverage remains open. The
+Required-delivery cancellation and abnormal-death lock ownership repairs passed
+source/package and hosted Linux/macOS checks; pool loss has an explicit fail-closed
+recovery policy. A focused subscription review of the recorded independent
+SDK/sandbox and related omissions is running on the operator's 2026-10-18
+authorization. Material coverage remains open until its actual report is checked. The
 [internal audit](architecture-self-audit.md) records actual counterexamples and
 limits; the [register](architecture-review-dispositions.md) owns current
 dispositions and independent omissions. The
-[used brief](../operator/architecture-review.md) is archived, with no additional
-R/S/C/O sequence scheduled. No comparative run or security scan has executed.
+[review checkpoint](../operator/architecture-review.md) identifies the current
+snapshot and access. Previous briefs are archived; no R/S/C/O sequence is
+scheduled. Security environment setup is approved, while no comparative run or
+security scan has executed.
 Use the [operator runbook](../operator/self-development.md) for runner/candidate
 separation and the [knowledge design](knowledge-extensions.md) for research
 questions. Production knowledge packages remain deferred to P26/P27.
@@ -287,8 +291,10 @@ repairs. Pin the scanned revision separately from the architectural review packe
 record any changed surfaces and refresh affected coverage.
 Prefer [Codex Security Cloud](https://learn.chatgpt.com/docs/security/setup): it
 scans connected GitHub repositories in a cloud environment. Workspace entitlement,
-the caller's GitHub connection and repository access must be verified at execution;
-their availability has not been tested here. Confirm the actual scanned revision,
+the caller's GitHub connection and repository access must be verified at execution.
+Read-only checks on 2026-10-18 confirmed access and available credits; the operator
+then approved creating the missing Ipse environment. Setup is in progress, not a
+scan result. Confirm the actual scanned revision,
 terminal status, validation evidence and coverage before accepting results.
 
 The local [Security scan guidance](https://learn.chatgpt.com/docs/security/plugin/scans)
@@ -301,10 +307,9 @@ Python. Installing it for this repository would require the explicit external
 dependency approval and inventory entry; this proposal adds neither dependency.
 No silent fallback to API billing, local installation or recurring monitoring.
 
-Prepare reviewed, non-secret threat-model context before scanning. A root
-`SECURITY.md` can hold persistent security context/reporting guidance when that
-work begins; reconcile it with existing policies rather than creating duplicate
-instructions. Prioritize these Ipse-specific surfaces:
+Use the root [security context and reporting policy](../../SECURITY.md) for the
+non-secret threat model and private evidence handling. Review it against the
+actual candidate before scanning. Prioritize these Ipse-specific surfaces:
 
 - Repository/config/skill/model text crossing instruction, extension trust and
   permission boundaries; installed artifact/runtime pins and private grants.

@@ -39,8 +39,12 @@ children before releasing its slot.
 The repaired runtime passed frozen source/native/package/installed checks; the
 final source and tests passed hosted Linux/macOS verification at `e8f7ad5`.
 Failed intermediate runs and their unconfirmed causes remain in the evidence
-record. The used consolidated brief is archived; no additional R/S/C/O review
-sequence is scheduled. The
+record. On 2026-10-18 the operator authorized a focused independent completion of
+the recorded omissions, then the baseline scan. A read-only Claude subscription
+pass is running against the Git-exported `86d4d69` snapshot and repair delta;
+runtime/tests match `e8f7ad5`. Security Cloud environment creation was separately
+approved and is in progress; high reasoning was selected for the scan. The used
+consolidated brief is archived, and no R/S/C/O sequence is scheduled. The
 [register](developer/architecture-review-dispositions.md) owns dispositions and
 remaining independent omissions; the [internal audit](developer/architecture-self-audit.md)
 records implementation-side counterexamples and limits.
@@ -56,7 +60,7 @@ new source transfer or dependency, or select a production engine.
 | Milestone or gate | Current state | Next result |
 | --- | --- | --- |
 | [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within selected scope; source/native/package/installed and hosted Linux/macOS passed | Retain accounting invariants through P24/P25 review and repairs |
-| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Consolidated repairs verified; independent coverage, architectural acceptance and baseline scan open | Resolve material independent coverage and acceptance, then triage the baseline security scan on the repaired source |
+| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Repairs verified; focused independent completion running; scan environment setup in progress | Resolve material coverage and acceptance, then triage the baseline security scan on the repaired source |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Planned revised scope; unstarted | Independent Codex/Ipse research, Ipse-authored repairs, fresh acceptance runs and final architecture/security review |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Deferred; proposed scope subject to P25 decisions | Independently selectable working/long-term memory tools and optional lifecycle policies |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; proposed scope subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
@@ -75,8 +79,8 @@ Execution order:
    [internal audit](developer/architecture-self-audit.md) and
    [register](developer/architecture-review-dispositions.md). Resolve the recorded
    material independent coverage before accepting architecture or starting the
-   baseline security scan on the repaired source. No new external assignment is
-   launched by recording these gates.
+   baseline security scan on the repaired source. The operator has authorized the
+   focused completion now running; recording later gates alone starts no new task.
 2. Execute P25's independent research, discrepancy comparison, Ipse-authored
    repairs and fresh same-input/held-out reruns. Finish with an external
    architecture delta review and security review/rescan of the final candidate.
@@ -157,7 +161,7 @@ and arbitrary trusted out-of-band calls cannot establish an invoice ceiling.
 
 ## P24: independent architecture validation and baseline security
 
-**In progress; consolidated repairs verified; architectural acceptance and baseline scan open.**
+**In progress; focused independent completion running; architectural acceptance and baseline scan open.**
 The external assessment of source `a5912ab` and evidence `a21469e` confirms the
 previous ownership/egress/context repairs within its inspected scope. It found
 no High/Critical defect there, but B-1's required-consumer cancellation and A1's
@@ -185,11 +189,14 @@ source, receipts and platform scope; none supplies independent acceptance.
 
 Independent SDK authority and sandbox coverage remains materially incomplete.
 Internal inspection and passing fixtures cannot close those external omissions.
-The [disposition register](developer/architecture-review-dispositions.md) retains
-the cumulative independent checkpoint and current policy decisions; the
-[operator review page](operator/architecture-review.md) records the returned
-assessment and archived prompt rather than another assignment. Baseline security
-and P25 remain gated.
+The operator authorized a bounded completion on 2026-10-18, using a fresh
+read-only Claude subscription session and a Git-exported `86d4d69` snapshot,
+without prior critiques or implementation-side verdicts. Its actual findings and
+coverage must be checked before accepting the foundation. The
+[disposition register](developer/architecture-review-dispositions.md) retains the
+cumulative checkpoint and current policy decisions; the
+[operator review page](operator/architecture-review.md) owns execution details.
+Baseline security and P25 remain gated pending that result.
 
 Torn-ledger continuation preserves the damaged tree and its liability; automatic
 ledger repair remains unavailable. Synthetic startup still takes about 20 seconds
@@ -217,9 +224,12 @@ detached-descendant cleanup. Future memory migration/deletion proposals must
 distinguish retrieval state from retained host evidence. Then run the triaged
 baseline scan on the resulting exact revision. P25 execution remains gated;
 repaired findings do not certify omitted surfaces.
-Read-only Security Cloud access checks found the repository and available scan
-credits; no matching environment was found and no scan or billing change was
-started. Access readiness does not close either review gate.
+Read-only Security Cloud checks on 2026-10-18 confirmed repository access and
+available credits, with no matching environment. The operator then separately
+approved creating the missing environment and selected high reasoning for the
+offered scan model. Onboarding is in progress; no scan or billing-mode change has
+started. The root [security context](../SECURITY.md) supplies the non-secret threat
+model and private reporting policy. Setup does not close either review gate.
 
 Challenge the foundation before the large self-development
 trial. An external agent, such as Claude, reviews a pinned repository/design

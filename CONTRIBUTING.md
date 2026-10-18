@@ -3,6 +3,8 @@
 Run `./scripts/build.sh`, then `mix test`. A small change with a clear problem,
 observable behavior, and relevant verification is welcome. Open an issue for
 larger changes before expanding the architecture.
+Use the [private security reporting policy](SECURITY.md#reporting) for potential
+vulnerabilities; the same guide supplies the review threat model and evidence rules.
 
 Ordinary tests exclude host-dependent native sandbox enforcement. On a supported
 Linux host, also run `mix test --include native_sandbox` for OS-boundary changes;

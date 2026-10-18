@@ -21,7 +21,7 @@ start. Use the guides below for operation, development, and project context.
 | [Shared admission budgets](operator/budgets.md) | Operator-only session-tree reservations, supported bounds, inspection, refusal and unknown-liability recovery |
 | [Extensions](operator/extensions.md) | Review/import, operator trust and selection, capability procedures, limits and recovery |
 | [Independent extension lab](operator/extension-lab.md) | Build, review and select synthetic artifacts against an existing checkout or unchanged release |
-| [Architecture-review checkpoint](operator/architecture-review.md) | Returned consolidated assessment, archived prompt, repair gates and remaining independent coverage |
+| [Architecture-review checkpoint](operator/architecture-review.md) | Focused independent completion, scan setup, retained consolidated assessment and readiness gates |
 | [Troubleshooting](operator/troubleshooting.md) | Build, callback, account, lock, and recovery problems |
 
 ## Develop Ipse
@@ -29,6 +29,7 @@ start. Use the guides below for operation, development, and project context.
 | Guide | Covers |
 | --- | --- |
 | [Contributing](../CONTRIBUTING.md) | Contribution scope and handoff requirements |
+| [Security context and reporting](../SECURITY.md) | Private reporting, assets, threat model, review boundaries and safe evidence |
 | [Agent instructions](../AGENTS.md) | Rules, code map, documentation and commit requirements |
 | [Architecture](developer/architecture.md) | Modules, ownership, persistence, trust boundaries |
 | [Journal persistence](developer/persistence.md) | Owned durable appends, source offsets, failure handling and growth limits |

@@ -327,8 +327,12 @@ skills and compaction core; Linux/macOS sandbox/process-group/cache sources;
 budget ledger/policy, normalization and delegation/parallel arbitration, plus
 older test bodies. Internal inspection does not close those omissions. Hosted
 receipts support execution scope, not independent source reading or acceptance.
-The used consolidated brief is archived. No further R/S/C/O assignment sequence,
-security scan or P25 run is scheduled by this record.
+The used consolidated brief is archived. On 2026-10-18 the operator authorized a
+focused independent completion against the Git-exported `86d4d69` snapshot, whose
+runtime/tests match `e8f7ad5`, followed by the baseline scan. The pass is running
+with read-only tools through the local Claude subscription; its report and
+coverage have not yet been assessed. Security environment creation was separately
+approved. No R/S/C/O sequence is scheduled and no scan or P25 run has executed.
 
 ## Execution order and completion
 
@@ -343,5 +347,6 @@ The reports retain their actual provenance and partial coverage. The consolidate
 assessment has returned and its used brief is archived. Complete applicable
 repairs, exact-source verification and material independent coverage before
 acceptance. The [current review page](../operator/architecture-review.md) records
-that checkpoint; it does not launch another review sequence. Baseline security
-and P25 remain gated. No scan has run; P24 is open.
+that checkpoint and the now-authorized focused completion. Its applicable findings
+and material coverage must be assessed before baseline security and P25 proceed.
+No scan has run; P24 is open.

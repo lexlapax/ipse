@@ -10,35 +10,31 @@ repeating its already integrated feature. Other hosts use their repository/platf
 checks and matching runtime. Use the local
 [context recovery tools](recovery.md) for diagnosis or explicit handoff.
 
-Next comes P24's external adversarial architecture validation and baseline OpenAI
-security audit, followed by P25's larger independent Codex/Ipse research and
-self-development comparison. The first critique, same-session follow-up and fresh
-cloud review have returned;
-[repair verification and remaining review coverage](../developer/architecture-review-dispositions.md)
-are recorded separately. The cloud pass satisfies fresh-session provenance but
-withholds acceptance for findings and remaining coverage. The resulting egress,
-task-owned cleanup, text-delivery/context, catalog, approval, login and recovery
-repairs passed local and hosted Linux/macOS gates through `091b2bd`. A new
-independent pass must cover the
-omissions and resulting repair delta. No security scan or larger trial has run. The
-[review and evaluation protocol](../developer/self-hosting-evaluation.md) defines
-the critique, dispositions, source-based comparison, Ipse-authored repairs,
-held-out reruns and final architecture/security reviews. The
-[plan](../plan.md#current-priorities-and-status) owns scope and order; former-P24
-voice/media is deferred to P28 and does not block this text/research work.
+P24's architecture/security gate precedes P25's larger independent Codex/Ipse
+research and self-development comparison. Consolidated repairs passed local and
+hosted Linux/macOS checks through `e8f7ad5`; independent coverage and baseline
+security remain open. On 2026-10-18 the operator authorized a bounded completion
+of the recorded SDK/sandbox and related omissions, followed by the scan. That
+read-only subscription review is running against a Git-exported snapshot of
+`86d4d69`, whose runtime/tests match `e8f7ad5`. It has no credentials, ignored
+files, private journals, execution tools or implementation-side verdicts.
 
-Use the [fresh-session architecture-review handoff](architecture-review.md) for the
-operator's selected Claude cloud/subscription route with a prepared Git checkout.
-The same brief supports the existing Serenity checkout without a fixed path.
-Its pinned Git objects and source exclusions define the review inputs; a plain
-file snapshot cannot silently replace them. Use a passing candidate from
-the [verification record](../developer/testing.md#current-evidence-and-next-checks).
-Normally ask an independent external reviewer, such as Claude, to challenge it
-before scanning. Establish reviewer/service access, source-sharing authority,
-authentication, billing and resource limits before sending material. Prior
-ChatGPT permission does not authorize another provider. Exclude `.env`, auth
-files, private journals and unrelated projects; retain raw findings privately.
-This runbook provisions no service and installs no external review/scan tooling.
+Use the [review checkpoint](architecture-review.md) for current execution state
+and the [disposition register](../developer/architecture-review-dispositions.md)
+for findings and coverage. Earlier prompts are archived historical inputs. A new
+review must declare its exact source, access method, exclusions and assistance;
+it cannot silently substitute a snapshot for a promised Git-history review.
+Establish the selected provider, source-sharing authority, authentication and
+billing before sending material. The current Claude run uses the signed-in
+subscription with API credentials removed and no extra integrations or subagents.
+Security Cloud environment setup was separately approved; no scan or larger trial
+has run. Keep raw reports private and use the
+[security threat model](../../SECURITY.md) for safe scan context.
+
+The [evaluation protocol](../developer/self-hosting-evaluation.md) defines the
+comparison, Ipse-authored repairs, held-out reruns and final reviews. The
+[plan](../plan.md#current-priorities-and-status) owns scope and order; deferred
+P28 voice/media does not block this text/research work.
 
 Triage counterexamples and scan findings against actual code, repair applicable
 blockers and refresh affected reviews on the changed revision. Obtain the
