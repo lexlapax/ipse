@@ -361,8 +361,9 @@ runtime enforcement. Security-repair/follow-up platform verification has passed
 at `375e607`. The supervisor's
 [scoped P24 readiness decision](architecture-review-dispositions.md#p24-scoped-readiness-decision)
 assesses that evidence and accepted limits for supervised P25. It supplies no
-new independent post-fix verdict. P25 preparation is underway; scored execution
-has not started and no further P24 architecture-review sequence is scheduled.
+new independent post-fix verdict. P25's first live package is executing; its
+[record](p25-evaluation.md) retains actual access failures and assistance. No
+comparative score/acceptance or further P24 architecture-review sequence is claimed.
 
 During P23E2 iteration, a full run overlapped a focused recompile and produced
 eight artifact-admission failures; that run was discarded. Final verification

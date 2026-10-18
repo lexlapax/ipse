@@ -14,7 +14,7 @@ start. Use the guides below for operation, development, and project context.
 | [Research](operator/research.md) | Configurable search/retrieval, source ledger, citations and recovery |
 | [MCP servers](operator/mcp.md) | Explicit stdio/HTTP configuration, TLS, credentials, server sandbox, approvals, recovery, and demos |
 | [Local subagents](operator/subagents.md) | Explicit delegation, child approvals, bounds, journals, and recovery |
-| [Supervised self-development](operator/self-development.md) | P24 review readiness, P25 trial preparation, frozen runner/candidate operation and completed Mac runbook |
+| [Supervised self-development](operator/self-development.md) | Scoped P24 readiness, P25 execution controls, frozen runner/candidate operation and completed Mac runbook |
 | [Session recovery](operator/recovery.md) | Content-free diagnostics, journal ownership, unknown effects and reviewed fresh-session handoff |
 | [Diagnostic capture](operator/observability.md) | Default-off local/export policy, selected sinks, immediate stop, limits and recovery |
 | [Usage and cost reports](operator/usage-accounting.md) | Durable counters, default-off own-session/child reports, explicit read grants, unknown coverage and recovery |

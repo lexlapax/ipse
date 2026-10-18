@@ -60,6 +60,25 @@ extra clean success or an unreported expansion. Ipse's independent first L1
 continues unchanged, with no access to reference work. There are no comparative
 scores until supported reports and actual limits are checked.
 
+## Ipse request timeout and explicit continuation
+
+The first installed Ipse L1 run made 18 canonical requests and 85 tool calls,
+including 13 retrievals/five searches. Its validated ledger contains 16 source
+entries and 25 linked claims; provenance validation does not certify their truth.
+The final provider request hit the frozen 120-second timeout. The run finished
+with an error after 416.2 seconds and confirmed cleanup, with no denial or operator
+question. Its last pre-tool assistant text is retained as a partial checkpoint,
+not a completed research report or a passing score.
+
+The supervisor explicitly resumed the same idle session and requested a shorter
+report from existing evidence, with no more retrieval or effect replay. Provider,
+model, reasoning, timeout, source and scoring criteria stay unchanged. Prior
+counts carry forward; a conservative ten-minute continuation deadline stays
+inside the original thirty-minute wall allowance. Both attempts, receipts and
+the original partial checkpoint remain retained. This is a recorded intervention,
+not an uninterrupted first-pass success. No completion claim is made while the
+continuation is pending.
+
 ## Remaining trial gates
 
 Finish and freeze independent L1/L2 reports and source-aware synthesis, then build
