@@ -540,7 +540,59 @@ assertions pass with previously compiled artifacts, archive SHA-256
 Six retained live-trial journals restore unchanged under the bounded reader;
 five UTF-8/escaped-JSON boundary probes preserve values/source offsets.
 These security repairs are supervisor work, not additional Ipse-authorship credit.
+The exact `81b67f5` [hosted matrix](https://github.com/lexlapax/ipse/actions/runs/39150357202)
+then passed on Linux/macOS: 908 tests/zero failures/32 exclusions each, enabled
+Mac 36/0/6, four Rust checks, signed enforcement and all four parsed installed
+receipts (41 legacy/nine model assertions per host). Its failed predecessor is
+retained: Linux passed, while Mac received the expected text-pressure closure
+after the fixture's six-second deadline and skipped later gates. The real-timer
+module now runs serially with unchanged production and assertion deadlines;
+the actual scheduling cause remains unconfirmed.
+
+P25's completion audit required a fresh architecture-delta review of the larger
+journal/confirmation change, separately from the earlier authored preflight patch.
+Installed Ipse reviewed the frozen `641dcae` → `81b67f5` runtime/test delta and
+supporting callers using the already authorized own subscription, explicit
+GPT-6.1 Sol/high. The 477-file packet excludes prior verdicts/findings/results.
+Its manifest is SHA-256
+`79dda4b918cf21da242d841e7f96505199c111c9160cfaf4e40b0f1850a8c8cb`.
+The twenty-minute/40-request/128-proposal/96-started-call limits, 1,200,000 context
+bytes and 300-second request timeout were fixed before execution; compaction was
+disabled. The subscription supports no native output-token cap. The requested
+14,000-character report ceiling was checked externally, not claimed as a token
+or invoice ceiling.
+
+Two supervisor allowlist mistakes interrupted legitimate inert skill reads.
+Explicit continuations used the same Session and original cumulative limits;
+attempts are retained. Final usage was 451.4 seconds, 28 requests/86 proposals,
+78 started calls (74 file reads and four inert skill/resource loads), with confirmed
+cleanup. The report is 13,825 characters, SHA-256
+`06d4965ea3df36eb6cdbe60ef25b4618ca9966de62724f7af65284aedb055aa9`.
+The supervisor read it completely and verified all packet hashes, actual limits,
+journal restoration and absence of effect/network tools. The reviewer inspected
+every changed runtime module and meaningful changed test body, but did not locate
+two supplied developer contracts; this is partial contract conformance and a
+separate same-provider context, not different-vendor or whole-design acceptance.
+Future read-only packets need an explicit file index when listing/search tools
+are unavailable; this packet remains unchanged rather than retroactively repaired.
+
+Two Medium findings were reproduced: temporary inactive writers could outlive
+append/close timeouts, and CLI preflight loaded full history before applying
+smaller operator bounds. A real-lock probe confirms a late append under the next
+owner's lock; both new regressions fail before repair. The candidate eliminates
+temporary writers in favor of synchronous tracked completion, and discovers only
+a bounded header before operator policy resolution. Targeted writer/recovery/quota
+checks pass, including all three inactive modes, caller-death guardian retention
+and each lower-bound CLI case. These are further supervisor corrections, not
+Ipse-authorship credit. [Dispositions](architecture-review-dispositions.md#independent-repair-delta-review)
+own their gates. The frozen follow-up passes 896 native-inclusive tests with
+15 exclusions, strict build/compile, both actual formatter floors, isolated demo
+and the real configuration example. Six retained live-trial journals restore
+unchanged. Package verification and the old compiled artifacts pass all 41
+legacy/nine model assertions; archive SHA-256
+`c74a494de94196fa25809d12880d22736aca6f71ac9ed87c59b42ae081474187`.
 Hosted platform verification and refreshed affected security review remain open;
-no additional scan has been launched.
+no additional scan has been launched. Earlier platform receipts do not certify
+these subsequent changes.
 The researched P26/P27 proposal is in the [knowledge design](knowledge-extensions.md);
 no production engine is installed. The requested license transition remains open.

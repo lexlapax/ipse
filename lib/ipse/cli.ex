@@ -1165,8 +1165,8 @@ defmodule Ipse.CLI do
 
   defp resume_options(opts) do
     if opts[:resume] do
-      with {:ok, [%{"metadata" => meta} | _]} <-
-             Ipse.Journal.load(state_dir(opts), opts[:resume]) do
+      with {:ok, %{"type" => "session", "metadata" => meta}} when is_map(meta) <-
+             Ipse.Journal.header(state_dir(opts), opts[:resume]) do
         saved = get_in(meta, ["configuration", "settings"]) || %{}
 
         saved =

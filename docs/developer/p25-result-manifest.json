@@ -1,4 +1,32 @@
 {
+  "architecture_delta_review": {
+    "base": "641dcaefd5c1e7cfd58204e1997ee9211adc2721",
+    "candidate": "81b67f5264455043758e2d05828d2fa314be0705",
+    "checked_receipt_sha256": "564150ff5a84eabccecaeb8f5b9159b3565c0e475f93048cd2ab5a78fcff96f8",
+    "elapsed_ms": 451359,
+    "findings": [
+      "P25-DA1",
+      "P25-DA2"
+    ],
+    "model": "gpt-6.1-sol",
+    "packet_files": 477,
+    "packet_sha256": "79dda4b918cf21da242d841e7f96505199c111c9160cfaf4e40b0f1850a8c8cb",
+    "private_artifact": "ipse-security-delta-review/report.md",
+    "proposed_calls": 86,
+    "provider": "own_chatgpt_subscription",
+    "reasoning_effort": "high",
+    "report_characters": 13825,
+    "report_sha256": "06d4965ea3df36eb6cdbe60ef25b4618ca9966de62724f7af65284aedb055aa9",
+    "requests": 28,
+    "scope": "All changed runtime and meaningful changed test bodies reviewed; incomplete six-contract conformance; not whole-design acceptance",
+    "started_calls": 78,
+    "supervisor_controller_interruptions": 2,
+    "unread_contracts": [
+      "docs/developer/persistence.md",
+      "docs/developer/configuration.md"
+    ],
+    "whole_design_acceptance": false
+  },
   "assistance": [
     "reference_read_only_MCP_adapter_after_shell_failure",
     "explicit_300_second_timeout_continuations_with_original_wall_and_cumulative_limits",
@@ -330,10 +358,25 @@
       "usage_usd": "22.8826316"
     }
   },
+  "security_followup_validation": {
+    "archive_sha256": "c74a494de94196fa25809d12880d22736aca6f71ac9ed87c59b42ae081474187",
+    "hosted_platforms": "pending",
+    "local_native_passed": 896,
+    "local_platform_exclusions": 15,
+    "old_compiled_installed_assertions": 50,
+    "parent_revision": "81b67f5264455043758e2d05828d2fa314be0705",
+    "private_receipt": "final-security/validation/delta-final-checked-receipt.json",
+    "receipt_sha256": "a6b4cac98b543ab1ab0693b4e529b4c8cccad363d243f9a31a786c878834aee8",
+    "refreshed_security_review": "not_started",
+    "runtime_diff_sha256": "11092e9ea8e872e084750a2ca9d58a63cdea4a479c7a55a148f9427ef8276197"
+  },
   "security_repair_validation": {
     "archive_sha256": "d5d6636355bbc498ac058b72a0c42c1c1f738fdeae73cdc21aa8feb0795f7bd7",
-    "hosted_platforms": "pending",
+    "hosted_matrix": "https://github.com/lexlapax/ipse/actions/runs/39150357202",
+    "hosted_platforms": "passed",
+    "hosted_revision": "81b67f5264455043758e2d05828d2fa314be0705",
     "installed_assertions": 50,
+    "later_followup_fixes_not_covered": true,
     "local_native_passed": 893,
     "local_platform_exclusions": 15,
     "parent_revision": "641dcaefd5c1e7cfd58204e1997ee9211adc2721",
@@ -341,6 +384,7 @@
     "receipt_sha256": "58882c14b292f0f49e5cbfdf4eef36f49d672509ab9d5a81979cf8f03461e4c6",
     "refreshed_security_review": "not_started",
     "retained_trial_journals_restore_unchanged": 6,
+    "runtime_revision": "e021a8fa267e260d5c88e9ef69652f18b6fc789c",
     "utf8_escape_boundary_probes": 5
   },
   "source_claim_records": [

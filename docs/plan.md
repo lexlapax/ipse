@@ -48,16 +48,17 @@ repair, two fresh reports meet every criterion at 14/21, matching the checked
 reference. Held-out cases pass with formatting assistance; question/resume,
 compaction and cancellation controls pass after a supervisor fixture correction.
 The repair passes independent source, installed-package and hosted platform checks.
-The final one-time Security Cloud scan completed at `b5ddd02` with explicitly
-approved GPT-5.6 Sol/high. It reports two Medium findings and partial static
-coverage. The reproduced approval/input candidate passes 30 CLI tests; finite
-journal bounds and pending-question/effect recovery pass their focused checks.
-The frozen combined source passes 893 local native-inclusive tests, both formatter
-floors, strict compile/demo, package verification and both installed extension
-proofs. Hosted platform checks, refreshed affected security coverage and trial
-acceptance remain open.
-The subject is optional
-working/long-term memory, research, graph and RAG, including the operator's
+The final one-time Security Cloud scan at `b5ddd02` reports two Medium findings
+and partial coverage. Its confirmation/journal repairs passed local and hosted
+checks through `81b67f5`. The required fresh architecture-delta review then found
+two integration gaps in inactive-writer ownership and resume admission; both are
+reproduced and their corrections pass local source/native/package/installed
+checks. Hosted verification of those corrections, refreshed affected security
+coverage and trial acceptance remain open.
+[Testing](developer/testing.md#current-evidence-and-next-checks) owns
+the exact source, failed attempts, checks and exclusions.
+The research subject is optional working/long-term memory, research, graph and
+RAG, including the operator's
 Zero-Mem inspiration. Production engines remain deferred to P26/P27, and the
 former media milestone is deferred P28. External services remain configurable;
 no production engine, database or mandatory backend is selected.

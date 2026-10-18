@@ -37,7 +37,7 @@ truncation, links and permission changes. A detected write/file failure closes
 the writer; mandatory journaling failure stops the session. Status reports omit
 record contents and private paths.
 
-Writer calls have an explicit five-second acknowledgment deadline. A call exit
+Active writer calls have an explicit five-second acknowledgment deadline. A call exit
 returns `journal_write_unconfirmed` without including private call arguments;
 mandatory Session append paths exit deliberately as `journal_unavailable` on
 unconfirmed IO or invalid records. Confirmed quota exhaustion instead stops as
@@ -71,8 +71,13 @@ resume/source validation remains mandatory. In particular, this journal strategy
 does not replace the budget ledger's stronger live prefix-hash check.
 
 Use the stateless `Journal.append*` functions only for inactive journals under
-the appropriate lock. They validate history and use the same owned writer for
-admission and fsync; repeatedly opening them still has linear validation cost.
+the appropriate lock. They validate history and reuse the writer's admission
+and fsync primitives synchronously inside a filesystem completion owner. They do
+not create a temporary GenServer or return while an append/close timeout leaves
+queued work behind. Slow storage can keep the call pending until actual completion.
+An existing Session lock guardian or task scope tracks that completion owner;
+embedding callers remain responsible for their own lock lifetime. Repeatedly
+opening inactive journals still has linear validation cost.
 All active Session append paths, including feed receipts and operator-wait
 sources, use the owned writer. Its BEAM participates in extension host identity;
 the persisted JSONL and source-offset formats do not change.
@@ -110,6 +115,10 @@ Decoded history is still retained for recovery, within those configured bounds.
 Each reader scan is linear; complete Session startup repeats higher-level
 validation/projection and can have additional costs with historical questions.
 Sessions listing reads only a bounded header and does not certify the later tail.
+CLI resume also discovers only that host-bounded header to recover workspace and
+saved settings, then resolves operator policy before loading complete history.
+The header is not a successful resume or proof that the later file fits the
+operator's smaller bounds.
 A legacy file over the host ceiling is refused unchanged rather than truncated.
 `Journal.source_page` permits bounded inspection only for records within its
 separate 1 MiB record bound; it is not a universal legacy export. Larger records

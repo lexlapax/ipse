@@ -34,6 +34,34 @@ independent architecture omissions retain their own identities; they are not
 silently expanded by this report. P25 remains open through repair and affected
 coverage refresh. No additional scan or whole-design review has been launched.
 
+### Independent repair-delta review
+
+A fresh read-only installed-Ipse session reviewed `641dcae` → `81b67f5` using
+the already approved own ChatGPT subscription, explicit GPT-6.1 Sol/high, and a
+477-file frozen base/candidate packet. Prior findings, verdicts, results and private
+data were excluded. It read every changed runtime module and meaningful changed
+test body, including the complete Session implementation and supporting reducers.
+Two of six supplied contract documents were not located; conformance coverage is
+partial. This is a separate model context, not different-vendor or whole-design
+acceptance.
+
+The report completed within its original limits: 451.4 seconds, 28 requests,
+86 proposals and 78 started calls. Only reads/inert skill loads occurred; cleanup
+was confirmed. Two supervisor allowlist mistakes interrupted legitimate skill
+reads; both explicit continuations and cumulative limits are retained. The
+13,825-character private report is SHA-256
+`06d4965ea3df36eb6cdbe60ef25b4618ca9966de62724f7af65284aedb055aa9`.
+
+| ID | Finding and evidence | Candidate correction and gate |
+| --- | --- | --- |
+| P25-DA1, Medium | Inactive append could return after two writer-call timeouts while its temporary writer retained a queued mutation. A controlled real-lock probe reproduced a late append under the next owner's acquired lock; the regression fails before repair | Reuse admission/fsync synchronously inside a tracked filesystem completion owner, with no temporary GenServer or hidden cleanup timeout. All three append modes retain the real lock across a delayed mutation; a caller-death fixture verifies guardian retention. Full local native/package checks pass; hosted platform and affected security checks remain required |
+| P25-DA2, Medium | CLI resume called whole-history load before resolving lowered operator journal limits. Tracing the real CLI reproduces the default-policy full load; the regression fails before repair | Discover only a bounded header, then resolve operator policy before full Session loading. Byte, event and record-bound cases pass with unchanged history. Full local native/package checks pass; hosted platform and affected security checks remain required |
+
+The returned interruption/combination test ideas remain coverage limitations,
+not additional reproduced defects. No findings are promoted to closed on source
+inspection alone. The successful `81b67f5` hosted matrix covers the reviewed code,
+not these subsequent corrections; refreshed affected security review remains open.
+
 ## Provenance and coverage
 
 **Current decision:** P24's scoped supervisor readiness gate is accepted for the

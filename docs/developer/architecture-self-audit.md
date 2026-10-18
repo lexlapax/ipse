@@ -243,6 +243,30 @@ runs serially; neither the production five-second timer nor assertion deadline
 changes. The actual scheduling cause remains unconfirmed, and the failed matrix
 is retained rather than being treated as a successful Mac check.
 
+The subsequent `81b67f5` matrix passes on both hosts, but a fresh installed-Ipse
+delta review exposes two further composition failures missed by this internal
+review: inactive append's temporary writer could outlive two call timeouts, and
+CLI resume decoded full history before resolving smaller operator bounds. The
+complete private report was read; its actual source/test scope, two controller
+interruptions and missing contract reads are recorded in the
+[register](architecture-review-dispositions.md#independent-repair-delta-review).
+It is not independent whole-design acceptance.
+
+A controlled real-lock probe reproduces the first finding, including a late
+append under a subsequently acquired lock. Both new regressions fail before
+repair. Inactive operations now reuse the admission/fsync primitives synchronously
+inside a tracked filesystem completion owner; there is no temporary GenServer or
+hidden timed-out append. CLI preflight discovers a bounded header, resolves
+operator policy, then admits full history. All three inactive modes and actual
+caller-death lock retention pass; the three lowered-bound CLI cases pass with
+unchanged history. The frozen follow-up passes 896 native-inclusive tests with
+15 exclusions, both formatter floors, strict build/compile/demo and package
+verification. Existing compiled artifacts pass all 41 legacy/nine model checks.
+Hosted platforms and refreshed affected security coverage remain open.
+The follow-up internal review checks both active and inactive call sites,
+completion-owner tracking and close order, plus header discovery versus actual
+resume validation. No new permission, billing or extension capability is added.
+
 Residuals are explicit: journal startup/decoded-memory and per-question prefix
 projection cost within the new per-file bounds, no whole-directory storage quota
 or same-size rewrite authentication at every append, linear bounded-ledger prefix

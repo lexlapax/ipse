@@ -127,6 +127,8 @@ Routed/inherited children keep the policy for their separate journals. These are
 not whole-directory disk, process-memory or invoice guarantees. No CLI/environment
 override disables the guard. Config inspection displays the effective limits;
 file/source fingerprint rules remain unchanged.
+Resume discovers the workspace and saved settings from a bounded header first;
+the resolved operator limits apply before the complete history is decoded.
 
 Exhaustion preserves history and seals the journal; ordinary resume cannot reopen
 it. Saved diagnosis reports the reason/limits. Review uncertain effects, then use

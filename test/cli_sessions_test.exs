@@ -17,6 +17,59 @@ defmodule Ipse.CLISessionsTest do
     %{root: root, home: home, dir: Path.join(home, "sessions")}
   end
 
+  test "resume discovers only a header before applying each lowered operator journal bound", c do
+    alias Ipse.Journal.Reader
+    Code.ensure_loaded!(Reader)
+    :erlang.trace_pattern({Reader, :path, 3}, true, [:local])
+
+    try do
+      for policy <- [
+            %{"max_bytes" => 1_024},
+            %{"max_events" => 2},
+            %{"max_record_bytes" => 512}
+          ] do
+        {:ok, id} =
+          Ipse.Journal.create(c.dir, %{
+            "provider" => "demo",
+            "model" => "fixture",
+            "cwd" => c.root
+          })
+
+        path = Path.join(c.dir, id <> ".jsonl")
+
+        File.write!(
+          path,
+          String.duplicate(Jason.encode!(%{"padding" => String.duplicate("x", 700)}) <> "\n", 3),
+          [:append]
+        )
+
+        before = File.read!(path)
+        operator = Path.join(c.home, "config.json")
+        File.write!(operator, Jason.encode!(%{"version" => 1, "journal" => policy}))
+
+        task =
+          Task.Supervisor.async_nolink(Ipse.Tasks, fn ->
+            receive do: (:go -> :ok)
+
+            capture_io(:stderr, fn ->
+              assert 1 == Ipse.CLI.run(["chat", "--resume", id, "--state-dir", c.dir])
+            end)
+          end)
+
+        :erlang.trace(task.pid, true, [:call, {:tracer, self()}])
+        send(task.pid, :go)
+        output = Task.await(task, 5_000)
+        assert output =~ "Journal resource limit reached"
+        pid = task.pid
+        assert_receive {:trace, ^pid, :call, {Reader, :path, [^path, nil, :header]}}
+        refute_receive {:trace, ^pid, :call, {Reader, :path, [_, nil, :load]}}, 0
+        assert File.read!(path) == before
+      end
+    after
+      :erlang.trace_pattern({Reader, :path, 3}, false, [:local])
+    end
+  end
+
   test "JSON is one sorted array with only public listing fields", c do
     first = String.duplicate("1", 32)
     last = String.duplicate("f", 32)

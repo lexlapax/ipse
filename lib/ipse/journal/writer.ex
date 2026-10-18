@@ -25,6 +25,23 @@ defmodule Ipse.Journal.Writer do
   def append_with_source(writer, event), do: call(writer, {:append, :source, event})
   def close(writer), do: call(writer, :close)
 
+  @doc false
+  def append_inactive(directory, id, event, mode)
+      when is_map(event) and mode in [:plain, :observed, :source] do
+    Ipse.FileEffect.run(fn ->
+      with {:ok, state} <- open(directory, id, self(), nil) do
+        try do
+          case append_record(state, mode, event) do
+            {:reply, result, _} -> result
+            {:stop, :normal, result, _} -> result
+          end
+        after
+          :file.close(state.file)
+        end
+      end
+    end)
+  end
+
   defp call(writer, request) do
     GenServer.call(writer, request, 5_000)
   catch
@@ -33,6 +50,13 @@ defmodule Ipse.Journal.Writer do
 
   @impl true
   def init({directory, id, owner, policy}) do
+    case open(directory, id, owner, policy) do
+      {:ok, state} -> {:ok, Map.put(state, :monitor, Process.monitor(owner))}
+      {:error, reason} -> {:stop, reason}
+    end
+  end
+
+  defp open(directory, id, owner, policy) do
     with {:ok, limits} <- Limits.normalize(policy),
          true <- is_pid(owner) and Regex.match?(~r/\A[0-9a-f]{32}\z/, id),
          path = Path.join(directory, id <> ".jsonl"),
@@ -54,18 +78,18 @@ defmodule Ipse.Journal.Writer do
 
       case validate_open(state) do
         {:ok, count} ->
-          {:ok, state |> Map.put(:count, count) |> Map.put(:monitor, Process.monitor(owner))}
+          {:ok, Map.put(state, :count, count)}
 
         {:error, :journal_limit_reached} ->
           :file.close(file)
-          {:stop, :journal_limit_reached}
+          {:error, :journal_limit_reached}
 
         _ ->
           :file.close(file)
-          {:stop, :journal_unavailable}
+          {:error, :journal_unavailable}
       end
     else
-      _ -> {:stop, :journal_unavailable}
+      _ -> {:error, :journal_unavailable}
     end
   end
 
@@ -75,6 +99,15 @@ defmodule Ipse.Journal.Writer do
 
   def handle_call({:append, mode, event}, {owner, _}, %{owner: owner} = state)
       when mode in [:plain, :observed, :source] and is_map(event) do
+    append_record(state, mode, event)
+  end
+
+  def handle_call(:close, {owner, _}, %{owner: owner} = state),
+    do: {:stop, :normal, :ok, state}
+
+  def handle_call(_, _, state), do: {:reply, {:error, :journal_owner_or_record_invalid}, state}
+
+  defp append_record(state, mode, event) do
     case encode(state, mode, event) do
       {:ok, line, result} ->
         with :ok <- unchanged(state),
@@ -92,11 +125,6 @@ defmodule Ipse.Journal.Writer do
         {:reply, {:error, :journal_record_refused}, state}
     end
   end
-
-  def handle_call(:close, {owner, _}, %{owner: owner} = state),
-    do: {:stop, :normal, :ok, state}
-
-  def handle_call(_, _, state), do: {:reply, {:error, :journal_owner_or_record_invalid}, state}
 
   @impl true
   def handle_info({:DOWN, ref, :process, owner, _}, %{monitor: ref, owner: owner} = state),

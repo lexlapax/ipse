@@ -32,22 +32,15 @@ defmodule Ipse.Journal do
   def append_with_source(state_dir, id, event), do: inactive_append(state_dir, id, event, :source)
 
   defp inactive_append(state_dir, id, event, mode) when is_map(event) do
-    with :ok <- validate_id(id),
-         {:ok, stats} <- Reader.path(journal_path(state_dir, id), nil, :validate),
-         :ok <- complete(stats),
-         :ok <- ensure_state_dir(state_dir),
-         :ok <- normalize_inactive(journal_path(state_dir, id)),
-         {:ok, writer} <- Writer.start(state_dir, id, self()) do
-      try do
-        case mode do
-          :plain -> Writer.append(writer, event)
-          :observed -> Writer.append_observed(writer, event)
-          :source -> Writer.append_with_source(writer, event)
-        end
-      after
-        if Process.alive?(writer), do: Writer.close(writer)
+    Ipse.FileEffect.run(fn ->
+      with :ok <- validate_id(id),
+           {:ok, stats} <- Reader.path(journal_path(state_dir, id), nil, :validate),
+           :ok <- complete(stats),
+           :ok <- ensure_state_dir(state_dir),
+           :ok <- normalize_inactive(journal_path(state_dir, id)) do
+        Writer.append_inactive(state_dir, id, event, mode)
       end
-    end
+    end)
   end
 
   defp inactive_append(_, _, _, _), do: {:error, :event_must_be_a_map}
@@ -83,6 +76,13 @@ defmodule Ipse.Journal do
          {:ok, stats} <- Reader.path(journal_path(state_dir, id), policy) do
       {:ok, stats.events}
     end
+  end
+
+  @doc "Read only a bounded discovery header; this does not validate the later history."
+  def header(state_dir, id) do
+    with :ok <- validate_id(id),
+         {:ok, %{header: header}} <- Reader.path(journal_path(state_dir, id), nil, :header),
+         do: {:ok, header}
   end
 
   @doc "Repair only a bounded final unterminated record. Caller holds the session lock."
