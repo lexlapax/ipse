@@ -376,6 +376,49 @@ or success assertion is relaxed. An MCP assertion is staged at dispatch and the
 observed effect before the unchanged completion check, matching its existing
 server budget. Final model recovery remains unproven until reports are assessed.
 
+## Final reports and bounded control corrections
+
+Both fresh final reports completed with zero retrieval, no denials and confirmed
+cleanup. No source-fit coaching or interim answer was supplied:
+
+| Run | Actual result |
+| --- | --- |
+| Final 1 | 222.7 seconds; 25 requests, 75 proposals/69 started calls, 39 successful source reads; 14,539 characters; SHA-256 `60bac6a1f62e7aef989147fb607ec4b316d53956fe9e63d395d44dce6f13bd6d` |
+| Final 2 | 252.0 seconds; 38 requests, 68 proposals/64 started calls, 37 successful source reads; 13,132 characters; SHA-256 `1e835b81aa00d9b5a67c8615a841eb7c4fae71c139cb8a5edf6b8bc7f552a624` |
+
+Both retried reads after scoped guidance, inspected the required frozen contracts
+and qualify implementation versus proposed gaps. Source checks support two on
+each of the seven criteria: 14/21 each, matching the checked reference's total
+and meeting every minimum. Neither a shared conclusion nor successful transport
+alone earned that score. Cached-context revocation remains a future design gap;
+neither a backend tombstone nor old delivery retention establishes safe forgetting.
+Earlier failed reports and resource/intervention differences remain unchanged.
+
+The first held-out report completed in 143 seconds, eight requests/28 proposals
+(23 started), zero retrieval and clean close, but exceeds its separate
+12,000-character bound: 19,163 bytes, SHA-256
+`a9151f7884e14ae1288407bfdfa477684794b66970e3905ebe454be36c23c81b`.
+It is retained as a formatting failure, not silently trimmed. One explicit
+same-session shorter continuation uses existing evidence only, carrying forward
+eight requests/28 proposals and the original 16:43:00 UTC deadline. Its rubric,
+provider, model and hard length bound remain unchanged.
+
+The live control recorded its native answer after pending-question restart, then
+refused compaction at preparation: protected user text alone is 35,573 bytes,
+above the configured 32,000-byte target; full effective context is 43,607 against
+the unchanged 64,000 ceiling. This is an intentional preservation boundary, not
+a license to discard user history. Saved diagnosis/restoration validate and no
+effect started. The supervisor fixture incorrectly expected a summary from
+uncompressible user inputs, so the control did not pass as scripted.
+
+A separately retained corrective fixture uses short prompts and up to six
+synthetic assistant-output segments, stopping once actual compaction is observed,
+then cancels an unapproved write and checks idle resume. It keeps the same
+64,000/32,000 byte settings, 300-second requests and original 16:33:00 UTC wall
+deadline. The first four requests remain charged: at most ten additional requests
+under the original fourteen across both control sessions. This is supervisor
+test-design correction, not a product repair or an unassisted control pass.
+
 ## Remaining trial gates
 
 The initial comparison and its failed criterion remain recorded. The authored

@@ -205,6 +205,10 @@ projections, raw journal retention and secure erasure. The present private histo
 grant can expose original prompts/tool inputs/results; it does not implement
 redacted history or true forgetting. A requirement to hide/redact retained host
 evidence needs a reviewed generic core contract, not an extension's deletion claim.
+Saved recall publications also restore without querying a backend: a backend
+tombstone alone cannot exclude that text from a future resumed prompt. Broad
+revocation needs a reviewed projection/invalidation contract or an explicit
+affected-session handoff policy, distinct from erasing past provider transfers.
 P25 should propose the boundary and assess its cost without implementing speculative
 erasure or weakening mandatory recovery records.
 
