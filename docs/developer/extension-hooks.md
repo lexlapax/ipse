@@ -6,7 +6,8 @@ same JSON SDK. [Lifecycle events](lifecycle-events.md) supply the common occurre
 model; selected notifications, live feeds and event jobs have separate delivery
 contracts. Transforms return projections, while [typed invocations](extension-invocations.md)
 can propose separately admitted state, question, tool and context operations.
-These available contracts do not freeze the complete SDK or complete P22.
+These contracts form part of the completed P22 foundation. New host capabilities
+still need explicit review and versioned compatibility; the SDK is not frozen.
 See [operator procedures](../operator/extensions.md) and
 [artifact/worker SDK](extension-artifacts.md).
 

@@ -14,7 +14,10 @@ passes. Its approved GPT-5.6 Sol/high verification scan completed at that exact
 candidate with one new Medium provider-stream finding and partial static coverage.
 The reproduced stream repair and three focused-review composition corrections
 pass the full local source/native/package/installed checks and bounded source
-follow-up. Exact corrected-source hosted checks and trial acceptance remain open.
+follow-up. The exact `3307563` [Linux/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39158172263)
+passes all applicable source/native/package/installed gates. P25 is accepted as a
+scoped supervised evaluation with declared assistance; see the
+[decision](../developer/p25-evaluation.md#scoped-acceptance-decision).
 The prior provider matrix passed Mac but failed Linux's strict diagnostic-question
 cleanup assertion; its cause remains unconfirmed. The
 [current dispositions](../developer/architecture-review-dispositions.md#p25-final-security-triage)

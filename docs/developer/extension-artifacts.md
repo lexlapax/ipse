@@ -1,11 +1,10 @@
 # Extension artifact contract
 
-P22A1 implements inert local directory snapshots in `Ipse.Extensions.Manifest`
-and `Ipse.Extensions.Store`. The [SDK/lifecycle design](extensions.md) remains the
-target beyond the implemented [session hooks](extension-hooks.md) and
-[typed invocations](extension-invocations.md). Import
-remains inert; explicit scoped selections can execute reviewed workers through
-the SDK below. Configuration and CLI procedures are described in
+`Ipse.Extensions.Manifest` and `Ipse.Extensions.Store` implement inert local
+directory snapshots. The completed P22 foundation includes the
+[SDK/lifecycle contracts](extensions.md), [session hooks](extension-hooks.md) and
+[typed invocations](extension-invocations.md). Import remains inert; explicit
+scoped selections can execute reviewed workers through the SDK below. Configuration and CLI procedures are described in
 [operator extensions](../operator/extensions.md).
 See [operator status](../operator/extensions.md) before trying installation.
 

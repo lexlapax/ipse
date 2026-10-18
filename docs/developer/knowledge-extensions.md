@@ -12,8 +12,9 @@ P24's scoped architecture/security readiness gate passed at `375e607`. P25's
 live and corrected-packet reports are frozen; its
 [execution record](p25-evaluation.md) owns source checks, failed criteria,
 supervisor interventions and the authored diagnostic repair. Two fresh reports,
-assisted held-out cases and corrected live controls pass; final security review
-and acceptance remain open. This guide owns proposed domain decisions;
+assisted held-out cases and corrected live controls pass. Final security triage,
+affected reviews and exact-source platform checks support
+[scoped P25 acceptance](p25-evaluation.md#scoped-acceptance-decision). This guide owns proposed domain decisions;
 the [plan](../plan.md#p25-comparative-research-and-supervised-self-development)
 owns scheduling and the [protocol](self-hosting-evaluation.md) owns acceptance.
 Production memory, research, graph and RAG remain deferred to P26/P27. P23 reports

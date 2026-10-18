@@ -1,4 +1,21 @@
 {
+  "acceptance": {
+    "date": "2026-10-18",
+    "decision": "supervisor_scoped_acceptance",
+    "decision_document": "docs/developer/p25-evaluation.md#scoped-acceptance-decision",
+    "held_out": "six_cases_pass_after_declared_formatting_continuation",
+    "live_controls": "question_resume_two_compactions_cancellation_inert_resume_pass_with_declared_fixture_correction",
+    "media": "deferred_P28",
+    "original_failures_and_assistance_retained": true,
+    "production_knowledge_engines": "deferred_P26_P27",
+    "research": "two_fresh_reports_each_14_of_21_all_criteria_at_least_two_match_checked_reference",
+    "runtime_revision": "3307563a840f309489d426a0047a72a5b03e9430",
+    "security": "partial_cloud_scans_findings_triaged_corrected_deltas_reviewed_and_verified_no_high_or_critical_unresolved",
+    "security_certification": false,
+    "self_development": "meaningful_Ipse_authored_repair_1fc50b5_independently_reviewed_with_failed_baseline_and_passing_candidate",
+    "unattended_self_development": false,
+    "whole_design_independent_acceptance": false
+  },
   "architecture_delta_review": {
     "base": "641dcaefd5c1e7cfd58204e1997ee9211adc2721",
     "candidate": "81b67f5264455043758e2d05828d2fa314be0705",
@@ -189,7 +206,6 @@
     "whole_design_acceptance": false
   },
   "remaining_limits": [
-    "final_security_coverage_and_triage_pending",
     "historical_independent_architecture_omissions_and_withheld_verdicts_retained",
     "intermittent_CI_causes_unconfirmed",
     "deliberate_service_crash_cleanup_unconfirmed_safe_to_continue_false",
@@ -197,7 +213,7 @@
     "macOS_detached_descendants_best_effort",
     "no_unattended_self_development_or_statistical_parity_claim",
     "no_production_memory_research_graph_RAG_engine_installed",
-    "license_transition_timing_pending"
+    "license_transition_next_separate_authorized_change"
   ],
   "reports": [
     {
@@ -412,7 +428,7 @@
       "finding_ids": [
         "csf_3bd48e9866059c02fcc3e7b7"
       ],
-      "findings_triage": "provider_stream_repair_in_validation",
+      "findings_triage": "provider_repair_and_compositions_closed_within_reviewed_and_executed_scope",
       "historical_docs_and_remaining_test_bodies_deferred": true,
       "model": "gpt-5.6-sol",
       "one_time_explicitly_approved": true,
@@ -454,10 +470,24 @@
   "security_provider_composition_validation": {
     "affected_review": "same_reviewer_source_check_complete",
     "archive_sha256": "42ba975adf5de9a2fd9ca511c78d11daade56f97fddbc2bddc5a5af3f4f28fc5",
-    "hosted_platforms": "pending",
+    "finding_dispositions": "closed_within_reviewed_and_executed_scope",
+    "hosted_archive_sha256": [
+      "3df84e6d910fb4a0c51b9b2a3f8f8ddcfd7727dcef2a8fa8f271ffe0c9f63ddf",
+      "400843af85cfe0d7c6e3ffbb3d9861d90c239ea44a347a0a2ff4f182d9ee22ed"
+    ],
+    "hosted_matrix": "https://github.com/lexlapax/ipse/actions/runs/39158172263",
+    "hosted_platforms": "passed",
+    "hosted_private_receipt": "final-security/verification/composition-validation/hosted-3307563-checked-receipt.json",
+    "hosted_receipt_sha256": "b51f863ad637808ff00561e50e732a9449dcf236b219818c68f6e4118d3984a0",
+    "installed_assertions_per_host": 50,
     "local_native_passed": 914,
     "local_platform_exclusions": 15,
+    "mac_enabled_exclusions": 6,
+    "mac_enabled_tests": 36,
+    "mac_rust_checks": 4,
     "old_compiled_installed_assertions": 50,
+    "ordinary_exclusions_per_host": 32,
+    "ordinary_tests_per_host": 929,
     "parent_revision": "01966894ffe62c5fb0348bb900e331f5cea50db3",
     "private_receipt": "final-security/verification/composition-validation/checked-receipt.json",
     "provider_checks": 67,
@@ -474,12 +504,13 @@
       "test/provider/http_test.exs": "97a4741935540c588c86bdfc2548d00d69becd1439347273477fb7043b20fe5b",
       "test/provider/stream_bounds_test.exs": "1f8926bd8dbbe64cd1eee5e4eb7e1b6218b824f3f84b922dc6aa2775a8fc5e8f"
     },
+    "runtime_revision": "3307563a840f309489d426a0047a72a5b03e9430",
     "runtime_test_patch_sha256": "a3caf8dfdd7ea082e737546d71acdf54cb98002b5fb26c193b2c86380610c170"
   },
   "security_provider_validation": {
     "affected_independent_review": "completed_with_three_composition_findings",
     "archive_sha256": "8b4790b923d33ce08389fe88d2d99e5b55861e7c250a74b395df238905cb79f2",
-    "full_native_platform_package_checks": "local_passed_hosted_pending",
+    "full_native_platform_package_checks": "local_passed_hosted_mac_passed_linux_failed",
     "hosted_matrix": "https://github.com/lexlapax/ipse/actions/runs/39155854298",
     "hosted_platforms": "mac_passed_linux_cleanup_assertion_failed",
     "hosted_private_receipt": "final-security/verification/hosted-0196689-checked-receipt.json",
@@ -543,5 +574,5 @@
       "scope": "material_claim_checks_and_discrepancy_dispositions"
     }
   ],
-  "status": "final_provider_composition_hosted_verification_pending"
+  "status": "accepted_scoped_supervised_evaluation_with_declared_assistance"
 }

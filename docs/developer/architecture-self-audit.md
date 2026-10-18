@@ -283,7 +283,8 @@ no new actionable defect. The [register](architecture-review-dispositions.md#pro
 records scope and immutable identities. The frozen full suite passes 914
 native-inclusive cases/15 platform exclusions; both formatter floors, strict
 build/compile, demo/recovery/package and unchanged precompiled 41+9 proofs pass.
-Exact corrected-source hosted verification remains open. The preceding `0196689`
+Exact `3307563` hosted verification passes both complete platform jobs, including
+native enforcement and all installed assertions. The preceding `0196689`
 matrix passed Mac but failed Linux's strict diagnostic-question cleanup assertion;
 the current local pass does not establish that failure's cause.
 

@@ -1,8 +1,8 @@
 # P25 execution record
 
-P25 has completed its supervised research, authored-repair and rerun stages;
-final security review and milestone acceptance remain open. Installed Ipse authored
-a reproduced harness repair, independently reviewed and verified on both platforms. The
+P25 is accepted as a scoped supervised research/self-development evaluation at
+`3307563`, with declared assistance and retained failures/limits. Installed Ipse
+authored a reproduced harness repair, independently reviewed and verified on both platforms. The
 [common brief](p25-common-brief.md) and [source manifest](p25-input-manifest.json)
 were committed at `c91fa94` before either scored session. The
 [protocol](self-hosting-evaluation.md) owns acceptance; the [plan](../plan.md)
@@ -10,12 +10,14 @@ owns scheduling. The initial Ipse packet report failed source fit. After the rep
 two fresh reports meet every rubric minimum at 14/21, matching the checked reference.
 Held-out cases pass with declared formatting assistance; live controls pass after
 a supervisor fixture correction. These are scoped results, not unattended-development
-evidence or P25 acceptance.
+evidence. The final scoped decision below assesses these results and security
+follow-through.
 Raw reports, journals and operational logs remain private outside Git.
 The [versioned result manifest](p25-result-manifest.json) ties input/report hashes,
 reviewed scores, declared assistance, authored commit, installed runners, control
-receipts, platform evidence and security identities together. Its pending states
-are explicit; hashes establish identity, not semantic correctness or acceptance.
+receipts, platform evidence and security identities together. Its scoped acceptance
+and remaining limits are explicit; hashes establish identity, not semantic
+correctness or acceptance.
 
 ## Frozen baseline and preparation
 
@@ -122,7 +124,8 @@ Initial reports are retained unchanged and separately from later synthesis:
 Both Codex package reports exceed the frozen 24,000-character bound; they are
 not passing references merely because they completed. One Ipse source excerpt
 contains 27 words against the task's 25-word bound. These are retained instruction
-misses, not silently trimmed artifacts. Full claim/rubric assessment remains open.
+misses, not silently trimmed artifacts. The later source checks and rubric
+assessment below distinguish these failed attempts from passing final reports.
 Both tracks identify small explicit notes as a baseline and distinguish raw
 retention from recall deletion. Independent source checks, not agreement alone,
 must establish support.
@@ -499,8 +502,8 @@ lifecycle-enabled preflight—remain coverage ideas, not reproduced defects.
 No tests or project code ran in the review. This is a separate context on the same
 model/provider, not a different-vendor adversarial architecture certification.
 
-Final Security Cloud coverage and triage of the pushed candidate remain required
-before accepting P25. The completed baseline does not cover the later repair.
+Final Security Cloud coverage and triage were required separately from the
+baseline, which does not cover later repairs.
 The separately approved final one-time scan started on 2026-10-18 against
 `b5ddd0205a57b14afdc3038bd73c04ec7fdfb9c2`, run
 `wfr_3b03c34c933a9aebe79f0641425405058caa5dd0bac7f68555a421c31e32c8c9`.
@@ -653,8 +656,41 @@ compile, 914 native-inclusive tests/15 exclusions, isolated demo and six unchang
 trial-journal restores. Package verification and old precompiled 41+9 proofs pass
 against archive
 `42ba975adf5de9a2fd9ca511c78d11daade56f97fddbc2bddc5a5af3f4f28fc5`.
-Exact corrected-source hosted verification and trial acceptance remain open;
-no further Cloud run is launched. These security corrections are supervisor work,
+The exact corrected-source [hosted matrix](https://github.com/lexlapax/ipse/actions/runs/39158172263)
+passes every applicable Linux/macOS step: 929 tests/zero failures/32 exclusions per
+host, enabled Mac 36/0/6, four Rust checks, signed App Sandbox and all four parsed
+installed receipts (41 legacy/nine model assertions per host). The supervisor
+checked full logs and exact revision/job/step conclusions. No further Cloud run
+is launched. These security corrections are supervisor work,
 separate from the frozen Ipse-authored change and comparative scores.
 The researched P26/P27 proposal is in the [knowledge design](knowledge-extensions.md);
-no production engine is installed. The requested license transition remains open.
+no production engine is installed. The requested license transition follows this campaign.
+
+## Scoped acceptance decision
+
+On 2026-10-18 the supervisor accepts P25 at
+`3307563a840f309489d426a0047a72a5b03e9430` for supervised research and
+self-development in the tested trusted-workspace conditions. This decision joins
+the frozen comparative evidence, meaningful Ipse-authored repair at `1fc50b5`,
+independent patch/delta reviews, fresh same-input and held-out results, live
+controls, triaged security findings and exact-source local/hosted/installed checks.
+The common-packet reference and both final Ipse reports score 14/21 with every
+criterion at least two. This is matched rubric performance, not word agreement,
+statistical parity or proof of equal native budgets.
+
+Original live timeouts, over-length/source-fit failures, controller/fixture
+corrections, formatting continuation and failed matrices remain recorded. Final
+security repairs are supervisor work, not extra Ipse-authorship credit. Scans
+remain partial at their pinned revisions; affected corrective bytes have focused
+source review and regression/platform evidence, without claiming a later clean
+Cloud scan. No applicable unresolved High/Critical finding or reproduced
+foundational correctness gap remains in the accepted scope.
+
+Historical independent architecture omissions and withheld verdicts are unchanged.
+Deliberate service-crash cleanup remains unconfirmed with `safe_to_continue: false`;
+intermittent CI causes are unconfirmed. Trusted extensions/shell have user
+permissions, macOS detached cleanup is best effort, and documented storage,
+accounting and recovery limits remain. This is supervisor acceptance of a bounded
+trial, not independent whole-design acceptance, a security certification or
+permission for unattended self-development. Production knowledge engines and
+media remain deferred to separately selected P26/P27/P28 work.

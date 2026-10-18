@@ -41,33 +41,28 @@ for a trusted, cooperative workspace under supervision, not a new independent
 post-fix verdict, a second scan, or a security certification. Raw findings remain
 private. No R/S/C/O review sequence or continuous monitoring is scheduled.
 
-P25's supervised research, authored repair and reruns have completed. The
-[execution record](developer/p25-evaluation.md) retains the initial source-fit
-failure, actual interventions and rubric scores. After the Ipse-authored diagnostic
-repair, two fresh reports meet every criterion at 14/21, matching the checked
-reference. Held-out cases pass with formatting assistance; question/resume,
-compaction and cancellation controls pass after a supervisor fixture correction.
-The repair passes independent source, installed-package and hosted platform checks.
-The P25 candidate Security Cloud scan at `b5ddd02` reports two Medium findings
-and partial coverage. Its confirmation/journal repairs passed local and hosted
-checks through `81b67f5`. The required fresh architecture-delta review then found
-two integration gaps in inactive-writer ownership and resume admission; both are
-reproduced and their corrections pass local source/native/package/installed
-checks and the complete hosted Linux/macOS matrix at `f467de9`. The operator
-approved one verification security scan of that candidate. It completed with
-GPT-5.6 Sol/high, reporting one new Medium provider-stream resource finding and
-partial static coverage; no approval/journal finding was repeated. A bounded
-assembly repair passes a before/after resource probe. Its focused review found
-three composition gaps; those corrections pass the full local source/native
-baseline, installed-package proofs and their bounded same-reviewer repair check.
-Final hosted verification and trial acceptance remain open. The prior hosted run passed Mac
-but failed Linux's strict diagnostic-question cleanup assertion; that outcome
-and its unconfirmed cause remain recorded rather than being counted as a pass.
-[Testing](developer/testing.md#current-evidence-and-next-checks) owns
-the exact source, failed attempts, checks and exclusions.
+P25 is complete as a scoped supervised evaluation at `3307563`. Installed Ipse
+authored a meaningful diagnostic repair; two fresh reports meet every criterion
+at 14/21, matching the checked reference. Held-out cases and live question/resume,
+compaction and cancellation controls pass with declared assistance. The
+[acceptance decision](developer/p25-evaluation.md#scoped-acceptance-decision)
+retains initial failures, interventions, resource differences and unconfirmed
+intermittent CI causes. This establishes supervised research/self-development
+within those conditions, not unattended operation or statistical parity.
+
+Final Security Cloud scans have partial coverage and findings, not a clean-scan
+verdict. All applicable findings and subsequent review gaps are reproduced,
+corrected and closed within their documented scopes. The final provider patch
+passes affected source review, bounded same-reviewer follow-up, local native and
+installed checks, and the complete exact-source Linux/macOS matrix at `3307563`.
+Earlier independent architecture omissions and withheld verdicts remain unchanged;
+no security certification or further review/scan loop is claimed. The
+[verification record](developer/testing.md#current-evidence-and-next-checks)
+owns exact source, failed attempts, checks and exclusions. The requested license
+transition follows this completed campaign as a separate verified change.
+
 The research subject is optional working/long-term memory, research, graph and
-RAG, including the operator's
-Zero-Mem inspiration. Production engines remain deferred to P26/P27, and the
+RAG, including the operator's Zero-Mem inspiration. Production engines remain deferred to P26/P27, and the
 former media milestone is deferred P28. External services remain configurable;
 no production engine, database or mandatory backend is selected.
 
@@ -75,26 +70,17 @@ no production engine, database or mandatory backend is selected.
 | --- | --- | --- |
 | [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within selected scope | Preserve accounting through the trial |
 | [P24: architecture/security readiness](#p24-independent-architecture-validation-and-baseline-security) | Complete for supervised P25 at `375e607`; accepted limits recorded | Refresh affected validation after trial changes |
-| [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Authored repair, two fresh reports, assisted held-out cases and corrected live controls pass; intermittent CI failures retained | Final candidate security triage and acceptance decision |
+| [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Complete within declared supervision/assistance at `3307563`; security findings triaged and corrected scopes verified | Preserve frozen evidence; select a later production increment separately |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Deferred; subject to P25 decisions | Independently selectable working/long-term memory tools and optional policies |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
 | [P28: voice and media](#p28-voice-and-realtime-media) | Deferred; unimplemented | Explicit media contracts and later device/service validation |
-| [Apache-2.0 transition](#license-transition) | Requested; unimplemented; placement still to resolve | Separate verified license/package/documentation change |
+| [Apache-2.0 transition](#license-transition) | Authorized after the completed P22–P25 campaign; next | Separate verified license/package/documentation change |
 
-Execution order:
-
-1. Freeze P25's common brief/rubric, blinded source packet, installed runner,
-   candidate separation, explicit profiles/tools and resource limits. Retain P24's
-   exact review/scan/repair identities and limits; newer docs do not rescan code.
-2. Execute independent live research before the common evidence packet. Compare
-   checked claims, reproduce material discrepancies, have Ipse author useful fixes,
-   and run fresh same-input/held-out acceptance cases within declared round limits.
-3. Review P25's final changes and security on its exact final candidate. The
-   baseline cannot certify later changes. Preserve actual failures/interventions;
-   do not start another broad architecture-review loop to substitute for triage.
-4. Select P26/P27 production increments from evidence. Keep P28 deferred. Resolve
-   the requested license-transition placement before changing the license rather
-   than allowing deferred features to hide it indefinitely.
+Next work is the requested separate license transition. Preserve P25's frozen
+inputs, runners, source/review/scan identities, scores and failed attempts; newer
+documentation does not rescan code or expand an earlier verdict. Select any P26/P27
+production increment separately from its evidence-backed proposal. Keep P28
+deferred. No further broad architecture-review loop or Cloud scan is scheduled.
 
 The [register](developer/architecture-review-dispositions.md) owns dispositions,
 the [internal audit](developer/architecture-self-audit.md) owns supervisor methods,
@@ -193,7 +179,7 @@ Accepted limits remain explicit: trusted user-permission code; non-atomic host
 file checks under hostile concurrent workspace changes; same-user journal/storage
 rewriting; Mac shared-container and detached-descendant boundaries; unknown remote
 effects and unconfirmed cleanup; journal growth/startup cost at that revision
-(reopened by P25's final scan and addressed in its pending repair); fixed
+(reopened by P25's final scan and addressed by its verified bounded-journal repair); fixed
 reservations, fail-closed tree overdraw and torn-ledger continuation. Immutable
 host evidence is not a memory-erasure interface. These limits constrain the
 supervised trial and future contracts; they are not claims that attacks or defects
@@ -211,7 +197,7 @@ the [evaluation protocol](developer/self-hosting-evaluation.md) owns trial contr
 
 ## P25: comparative research and supervised self-development
 
-**Research, authored repair and rerun gates pass within recorded assistance; final security/acceptance open.** Replace P25's production-engine delivery
+**Complete as a scoped supervised evaluation at `3307563`, with recorded assistance and accepted limits.** Replace P25's production-engine delivery
 with a large supervised evaluation using those engines as a research/planning
 problem. Track A uses Codex; Track B uses stable installed Ipse. Both research
 working/long-term memory, configurable research providers, graph and RAG, including
@@ -241,7 +227,7 @@ research, long-task recovery and actual self-development have separate evidence.
 | C — evidence-based comparison | Codex reviews both reports against the sources and common rubric; record material discrepancies, root-cause hypotheses, uncertainty and supervisor assistance |
 | D — Ipse-authored repairs | Stable Ipse develops meaningful harness/extension/skill fixes with regressions and documentation in a separate candidate; Codex independently reviews and verifies |
 | E — fresh reruns | Clean same-input and held-out evaluations after fixes; real behavior change, context pressure, operator question, interruption/resume and independent review, plus source/native/package/platform checks |
-| F — final architecture, security and acceptance | External architecture delta review and OpenAI security review/rescan of the exact final candidate; disposition findings, verify repairs, publish sanitized evidence and the researched P26/P27 proposal |
+| F — final architecture, security and acceptance | Completed partial OpenAI security scans, affected delta reviews, reproduced repairs and exact corrected-source platform/installed checks; scoped supervisor acceptance, sanitized evidence and researched P26/P27 proposal. Scan revisions and later corrective patches remain distinct |
 
 Research acceptance means source-supported correctness, required coverage and a
 useful implementation plan at comparable declared limits. Codex's report is a
@@ -342,13 +328,10 @@ See [media boundaries](developer/runtime-capabilities.md#text-and-media-are-dist
 
 ## License transition
 
-The operator requested MIT → Apache-2.0 after the extension work. That request
-remains open. Production knowledge implementation and former-P24 media are now
-deferred, so the exact transition point needs to be settled against that changed
-scope. The proposed placement is after P23 and the P24/P25 review/trial gates,
-before a later optional-feature campaign. Confirm that placement with the operator
-before changing the license; do not silently interpret “after all this” as either
-including or excluding deferred P26–P28 work. This planning edit changes no license.
+The operator requested MIT → Apache-2.0 after this work. The current P22–P25
+campaign is complete; the authorized transition follows it as a separate change,
+before any separately selected deferred P26–P28 feature work. This planning status
+does not itself change the license.
 
 The eventual separate change must replace Ipse's license and bundled copies,
 reconcile current README/contribution/operator/developer guidance and packaging

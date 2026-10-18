@@ -24,7 +24,7 @@ Raw artifacts and reproduction details remain private.
 | --- | --- | --- | --- |
 | FSC-1 (`csf_d8fb991afccccf6790b8e749`) | Proposal-bound terminal confirmations | Reproduced with a real CLI/loopback fixture. Fresh per-proposal codes prevent buffered/replayed input. Internal review also reproduced buffered structured answers; per-question codes fix that adjacent case. All 30 CLI tests, full local handoff and hosted `f467de9` checks pass | Closed within the tested scope and refreshed static approval review at `f467de9`; no whole-design certification |
 | FSC-2 (`csf_07c9aa59e131a3393e3639f5`) | Durable journal growth and bounded recovery/listing | Finite operator-narrowable limits, a reserved terminal receipt, incremental decoding and header-only listing pass quota/question/unknown-effect fixtures, full local handoff, old compiled proofs and hosted `f467de9` checks. Independent delta findings below are also reproduced and repaired | Closed within bounded per-file policy and refreshed static persistence review at `f467de9`; total-directory storage and other stated limits remain |
-| FSC-3 (`csf_3bd48e9866059c02fcc3e7b7`), Medium | Provider stream assembly and intermediate work | Retained-line amplification and three admission failures reproduced on scanned source. Bounded assembly passes the resource probe. Focused review found three composition gaps below; their corrected reducers preserve earlier observations, reject late success and charge EOF tails. All 67 provider cases and the full local handoff pass | Affected source review and same-reviewer corrective-patch check complete; exact corrected-source hosted verification remains open |
+| FSC-3 (`csf_3bd48e9866059c02fcc3e7b7`), Medium | Provider stream assembly and intermediate work | Retained-line amplification and three admission failures reproduced on scanned source. Bounded assembly passes the resource probe. Focused review found three composition gaps below; their corrected reducers preserve earlier observations, reject late success and charge EOF tails. All 67 provider cases and the full local handoff pass | Closed within reviewed/executed scope: affected source review, bounded corrective-patch check, local native/installed and exact `3307563` hosted gates pass; no later clean Cloud scan or whole-design certification |
 
 The scan prioritizes major runtime boundaries but defers full file-level review
 of parts of Session, budget/accounting, compaction, lifecycle, text delivery,
@@ -96,7 +96,9 @@ The frozen correction passes build, both actual formatter floors, strict compile
 restores. Package verification and the unchanged precompiled artifacts pass all
 41 legacy/nine model assertions against archive
 `42ba975adf5de9a2fd9ca511c78d11daade56f97fddbc2bddc5a5af3f4f28fc5`.
-Exact-source hosted checks remain required. The preceding
+The exact `3307563` [hosted matrix](https://github.com/lexlapax/ipse/actions/runs/39158172263)
+passes every applicable Linux/macOS gate, with full logs and four installed receipts
+checked. The preceding
 [`0196689` matrix](https://github.com/lexlapax/ipse/actions/runs/39155854298)
 passed every Mac gate, but Linux failed the unchanged strict diagnostic-question
 cleanup assertion and skipped later package stages. Its root cause is unconfirmed;
