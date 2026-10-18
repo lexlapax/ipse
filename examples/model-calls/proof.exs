@@ -9,7 +9,8 @@ defmodule IpseModelExample.Proof do
     File.mkdir_p!(root)
     File.chmod!(root, 0o700)
     Process.put(:model_proof_sessions, [])
-    {base, server, listener} = fixture(self())
+    Process.put(:model_proof_server, nil)
+    {base, listener} = fixture()
 
     try do
       cwd = Path.join(root, "workspace")
@@ -108,6 +109,8 @@ defmodule IpseModelExample.Proof do
           5000 -> raise "Model approval was not displayed"
         end
 
+      server = serve_fixture(listener, self())
+      Process.put(:model_proof_server, server)
       :ok = Session.approve(pid, ref, true)
       done(pid, :ok)
       {headers, wire} = Task.await(server)
@@ -193,7 +196,7 @@ defmodule IpseModelExample.Proof do
       end)
 
       :gen_tcp.close(listener)
-      Task.shutdown(server, :brutal_kill)
+      if server = Process.get(:model_proof_server), do: Task.shutdown(server, :brutal_kill)
       File.rm_rf!(root)
     end
   end
@@ -247,40 +250,40 @@ defmodule IpseModelExample.Proof do
     end
   end
 
-  defp fixture(owner) do
+  defp fixture do
     {:ok, listener} =
       :gen_tcp.listen(0, [:binary, active: false, reuseaddr: true, ip: {127, 0, 0, 1}])
 
     {:ok, {_, port}} = :inet.sockname(listener)
+    {"http://127.0.0.1:#{port}", listener}
+  end
 
-    server =
-      Task.async(fn ->
-        {:ok, socket} = :gen_tcp.accept(listener, 5000)
-        {headers, body} = read_request(socket, "")
-        send(owner, :model_fixture_dispatched)
+  defp serve_fixture(listener, owner) do
+    Task.async(fn ->
+      {:ok, socket} = :gen_tcp.accept(listener, 5000)
+      {headers, body} = read_request(socket, "")
+      send(owner, :model_fixture_dispatched)
 
-        response =
-          Jason.encode!(%{
-            "done" => true,
-            "message" => %{"content" => "entities", "thinking" => "private-fixture"},
-            "model" => "fixture-reported",
-            "prompt_eval_count" => 7,
-            "eval_count" => 3
-          }) <> "\n"
+      response =
+        Jason.encode!(%{
+          "done" => true,
+          "message" => %{"content" => "entities", "thinking" => "private-fixture"},
+          "model" => "fixture-reported",
+          "prompt_eval_count" => 7,
+          "eval_count" => 3
+        }) <> "\n"
 
-        :ok =
-          :gen_tcp.send(
-            socket,
-            "HTTP/1.1 200 OK\r\ncontent-type: application/x-ndjson\r\ncontent-length: #{byte_size(response)}\r\nconnection: close\r\n\r\n" <>
-              response
-          )
+      :ok =
+        :gen_tcp.send(
+          socket,
+          "HTTP/1.1 200 OK\r\ncontent-type: application/x-ndjson\r\ncontent-length: #{byte_size(response)}\r\nconnection: close\r\n\r\n" <>
+            response
+        )
 
-        :gen_tcp.close(socket)
-        :gen_tcp.close(listener)
-        {headers, Jason.decode!(body)}
-      end)
-
-    {"http://127.0.0.1:#{port}", server, listener}
+      :gen_tcp.close(socket)
+      :gen_tcp.close(listener)
+      {headers, Jason.decode!(body)}
+    end)
   end
 
   defp read_request(socket, buffer) do
