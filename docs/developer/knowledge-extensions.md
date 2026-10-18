@@ -1,31 +1,30 @@
 # Optional memory, research, graph and RAG extensions
 
-These are proposed shipped capabilities, **all disabled by default**, with no
-production engine or backend selected. P14 already supplies a research skill,
+This guide proposes P26/P27 delivery from the P25 research; it does not select or
+install a production engine. All optional capabilities remain independently
+**disabled by default**. P14 already supplies a research skill,
 configured MCP retrieval and a durable evidence ledger. P22's
 [synthetic installed memory/workflow lab](extension-proof.md) proves exercised SDK
 seams, including prompt-driven graph capture and explicit catch-up. Those are
 foundations, not production memory, graph, RAG or a pluggable research engine.
 
-The [revised plan](../plan.md#p25-comparative-research-and-supervised-self-development)
-places P24's external adversarial architecture validation and baseline security
-before P25's independent Codex/Ipse research, comparison and supervised harness
-improvement. This guide owns the domain questions and selection requirements;
-the [review and evaluation protocol](self-hosting-evaluation.md) owns the independent
-critique and experiment. The critique challenges scope, deletion, event and
-retrieval assumptions without preselecting a backend or contaminating the two
-research tracks; material architectural changes receive a final delta review.
-Production packages are deferred to proposed P26 memory and P27 research/graph/RAG,
-subject to the research outcome. The earlier implementation authorization does
-not override the operator's 2026-10-17 request to reconsider that scope. P23 reports
-and shared main/summary/child budgets are available.
+P24's scoped architecture/security readiness gate passed at `375e607`. P25's
+live and corrected-packet reports are frozen; its
+[execution record](p25-evaluation.md) owns source checks, failed criteria,
+supervisor interventions and the authored diagnostic repair. Fresh evaluation
+and final acceptance remain open. This guide owns proposed domain decisions;
+the [plan](../plan.md#p25-comparative-research-and-supervised-self-development)
+owns scheduling and the [protocol](self-hosting-evaluation.md) owns acceptance.
+Production memory, research, graph and RAG remain deferred to P26/P27. P23 reports
+and shared main/summary/child budgets are available, within their covered operations.
 [Accounted one-shot text calls](extension-model-calls.md) now supply the optional
 model seam verified in P23F; embeddings and production engines remain separate.
 
 ## Research before implementation selection
 
-The operator selected **Zero-Mem as inspiration**, not an adoption decision. The
-[paper](https://arxiv.org/html/2607.29377v1) preserves interaction evidence and
+The operator selected **Zero-Mem as inspiration**, not an adoption decision.
+Yilin Xiao and colleagues' 2026
+[paper, version 1](https://arxiv.org/abs/2607.29377v1) preserves interaction evidence and
 combines relational and temporal access with deterministic retrieval/calibration,
 without intermediate LLM memory-operation calls; it accounts for encoder work
 separately. Evaluate that method against a simple scoped lexical/raw-turn baseline.
@@ -33,17 +32,32 @@ Do not equate no maintenance LLM calls with free embeddings, storage, computatio
 or final-answer tokens. Report local measurements, not the paper's benchmark
 claims as Ipse results.
 
-The [paper-linked repository](https://github.com/Zero-Mem/Zero-mem) and independent
-[Rust zeromem implementation](https://github.com/ptaranat/zeromem) are distinct
-research targets. The latter documents a tool-driven MCP interface plus ingestion
-hooks, and warns about current-session recall and deletion resurrection while a
-session keeps writing. Those are useful scope/deletion test cases, not proof of
-Ipse interoperability or reasons to copy its cross-project defaults. No package
-is installed or code copied. Pin the actual sources, inspect current implementation,
-runtime dependencies and licenses before any reuse; keep Ipse's own logic in Elixir.
+The [paper-linked repository](https://github.com/Zero-Mem/Zero-mem), pinned at
+`8c34fdb…` during P25, is a release placeholder. The independent
+[Rust zeromem implementation](https://github.com/ptaranat/zeromem), pinned at
+`eda2126…`, describes a clean-room implementation and different encoder/entity
+extraction choices. Its workspace declares 0.3.0/MIT; its separate crate manifest
+defaults to `fastembed`. The documented first-use encoder download and shared
+cross-project store are adoption decisions, not Ipse defaults. Its live-session
+forget/resurrection warning is a required test case. A
+[third independent implementation](https://github.com/skorotkiewicz/zero-mem)
+disclaims benchmark reproduction; route-dependent fallback statements do not
+establish universal availability. None is interchangeable with the authors' code.
 
-Every candidate needs a research/decision record before implementation selection.
-P25's two tracks produce these records independently:
+The [40-entry packet](p25-evidence-packet.json) retains locators, pins, capture
+times, excerpt hashes and evidence limits; entries P05/P15/P27/P29/P37/P38 own
+these distinctions. A pin proves identity, not benchmark reproduction, semantic
+support, current maintenance or complete license clearance. The packet is a
+compressed candidate screen, not a substitute for full implementation/dependency
+inspection before adoption. No code was copied and no engine was installed.
+
+The researched baseline is explicit bounded task notes and approved project facts,
+with deterministic lexical recall. Keep extraction, embeddings and global sharing
+optional. Compare this baseline with Zero-Mem-inspired retrieval before adopting
+an engine; no intermediate LLM calls does not remove encoder or storage costs.
+Alternative framework lessons below inform interface design, not runtime adoption.
+
+Every adoption decision must complete the source screen with:
 
 1. Primary papers/docs/source, exact revisions, maintenance/maturity, licensing,
    dependencies and reproducibility. Distinguish authors' code, independent
@@ -89,16 +103,16 @@ to implement each one as a host extension. Hooks run only for enabled instances 
 within their declared capability/scope/budget; a hook notification never grants
 permission to write memory, fetch a URL or call a model.
 
-| Extension | Proposed behavior and hooks | Configurable dependencies |
-| --- | --- | --- |
-| Short-term working memory | Session/task scratch facts and decisions; context contribution at model-context assembly; explicit remember/update/forget commands or proposed post-turn updates. | Session-scoped bounded state, optional approved extraction profile; no long-term store required. |
-| Long-term memory | Cross-session scoped recall; explicit remember/forget/export; bounded context recall plus approved durable mutations. | Store adapter, operator/project namespace, retention/TTL, retrieval policy and optional extraction profile. |
-| Research engine | Clarify/plan, query decomposition, search/fetch, evidence comparison and cited synthesis; explicit research command/tool and bounded before-settlement workflow actions. | Pluggable named search/fetch/retrieval/rerank providers and explicit model profiles; memory optional. |
-| Graph memory | Entity/relation storage and traversal over attributable memory/source records; approved indexing mutations and optional graph-recall contribution. | Compatible graph-store adapter, extraction profile, relation schema and traversal budget; no mandatory graph service. |
-| RAG | Approved corpus ingestion/chunk/index jobs; retrieval/rerank and cited context contributions for a task. | Keyword/vector/hybrid/graph retriever, corpus/store, optional embedding and reranker profiles; persistent conversational memory optional. |
+| Capability | Minimal delivery and optional hooks | Alternatives and adoption risks | Required configuration |
+| --- | --- | --- | --- |
+| Working memory | Explicit bounded task cards in session state; optional awaited context publication and proposed post-turn updates | MemGPT's virtual-context concept (P02); LangGraph's scope distinction below. Letta V1 blocks are legacy, not a current integration contract (P09/P10/P20) | Capacity, lifetime and update policy; optional approved extraction profile; no long-term store |
+| Long-term memory | Approved project facts, deterministic lexical recall and explicit remember/forget/selected-note export | Zero-Mem variants; [Mem0](https://github.com/mem0ai/mem0) and [Letta](https://docs.letta.com/concepts/shared-memory/). Managed Mem0 benchmark claims include proprietary optimizations; example API defaults are not Ipse defaults (P22/P23). Letta cloud sharing and local MemFS differ (P08/P21) | Operator/project namespace, store, retention, promotion policy and optional extraction profile |
+| Research | Inert research skill plus configured search/fetch and existing source/claim ledger; optional owned orchestration only after host gaps are resolved | [Open Deep Research](https://github.com/langchain-ai/open_deep_research) has multiple model roles; [STORM](https://github.com/stanford-oval/storm) uses DSPy (P19/P31/P35). Neither justifies a mandatory framework or hidden helper inference | Named search/fetch/retrieval/rerank services, profiles, call/time limits; memory remains optional |
+| Graph | Explicit attributable entities/edges and bounded deterministic traversal; approved indexing and optional recall | [Graphiti](https://github.com/getzep/graphiti) invalidation retains history (P17); [GraphRAG](https://github.com/microsoft/graphrag) warns about indexing cost (P24); [LightRAG](https://github.com/HKUDS/LightRAG) deletion/recovery needs proof (P12/P13). No deletion guarantee follows from a README | Schema, store, source generations, traversal budget; extraction and graph service separately optional |
+| RAG | Selected documents, bounded chunks, lexical retrieval and exact source citations; approved ingestion and optional context publication | SQLite FTS5, pgvector exact search or Qdrant hybrid fusion (P25/P33/P40). An exact-neighbor claim is not semantic answer recall. Ollama/TEI encoders and reranking need truncation/resource policies (P07/P11/P18) | Roots/corpus, chunker, store, top-k/byte limits; embedding/reranker/profile only when selected |
 
 Each package may ship metadata/code with Ipse, yet disabled instances must create
-no store, worker, indexing job, endpoint connection or model call. Graph and RAG
+no domain store, worker, indexing job, endpoint connection or model call. Graph and RAG
 are not automatically enabled by enabling memory; research does not silently
 install either. Missing required providers produce an actionable configuration
 error. Operator-declared alternatives may be selected explicitly; no silent
@@ -139,9 +153,10 @@ seams before choosing a production memory, graph or retrieval engine:
 
 | Responsibility | Implemented foundation | Remaining contract/proof |
 | --- | --- | --- |
-| Composition | Operator-bound typed value services, pinned dependencies, acyclic routing and installed synthetic lookup proof | Production retrievers; nested effectful services remain a negotiated enhancement |
+| Composition | Operator-bound typed value services, pinned dependencies, acyclic routing and installed synthetic lookup proof | Production retrievers and an approved MCP bridge if workflows need it; nested effectful services remain a negotiated enhancement |
 | Evidence/context | Bounded attributed publications, receipt-backed awaited recall and frozen snapshots, exercised by the installed lab | Domain records mapped to P14 source/claim identity and production retrieval quality |
-| State/deletion | Scoped CAS records, locks/tombstones and installed rejection of delayed prompt writes after concurrent forget | Domain TTL, complete derivative deletion/export policy and production concurrency coverage |
+| Research ledger | Literal capture tied to successful recorded MCP results, at most 16 sources/32 claims/64 KiB per session; semantic support remains a model assessment | Explicit bounded study partitioning or reviewed pagination/cross-session evidence authority; not an unlimited corpus store |
+| State/deletion | Scoped CAS records, locks/tombstones and installed rejection of delayed prompt writes after concurrent forget | TTL, persistent source-generation suppression, derivative deletion/export and production concurrency coverage |
 | Owned work | Explicit invocations, prompt/answer jobs, fixed-range history, cancellation, receipts/questions and installed domain deduplication/catch-up | Production ingestion/reindex policy; fully concurrent effectful jobs remain a negotiated enhancement |
 | Event source/views | Stable journal references, scoped history, prompt/answer delivery and selected live metadata/private-tool feeds, with separate ephemeral text sources | Unsupported view families and causal links listed in the lifecycle audit; cross-session history authorization |
 | Optional model work | Explicit profile-bound `host.model` one-shot text calls, canonical usage/shared budget and private input grants; P23F source/package/platform checks passed | Embeddings need a separate public provider/accounting contract; callbacks cannot silently call a model |
@@ -157,6 +172,17 @@ authority. Background indexing cannot change an admitted request; same-turn
 recall must be awaited and committed before inference. Resume restores committed
 snapshots without retrieving or writing again.
 
+Existing `tool.call` refuses MCP IDs, and value services cannot return effects or
+nested host calls. Start research with the main model's configured MCP tools and
+inert skill. Autonomous extension-driven external search needs a reviewed generic
+bridge with approval, ownership, receipts and accounting boundaries; do not hide
+it in worker networking. Likewise, `host.model` is one-shot text, not embeddings.
+Embedding destinations, vector bounds, downloads and known/unknown costs need a
+separate versioned contract. Current tree budgets do not cover MCP or embedding
+charges. See [tool actions](extension-tool-actions.md),
+[services](extension-services.md), [model calls](extension-model-calls.md) and
+[budget coverage](budgets.md).
+
 Retrieved chunks and memory records need stable identity, namespace/scope,
 source/version/digest, timestamps, excerpt/reference and provenance. Optional
 scores indicate ranking, not truth. Keep entities/index IDs linked to original
@@ -168,6 +194,10 @@ that execution identity from stable logical memory identity and propose explicit
 export, migration and collection across upgraded artifacts and moved configs.
 Never silently reassign old state to new code. Forget/no-resurrection and retention
 must cover retained namespace versions and derivative graph/RAG indexes.
+CAS alone is not a forgetting policy: an explicit write using the current
+tombstone revision can recreate a key. Capture a logical source generation before
+extraction and persist suppression across reingestion, migrations and late work;
+do not simply read the newest revision and write forgotten content back.
 
 Deleting a derived store does not erase journals, backups or prior remote/provider
 transfers. Separately specify retrieval tombstones, history-access/redaction
@@ -191,27 +221,42 @@ to do it; it need not implement these engines.
 
 ## Research handoff and deferred production acceptance
 
-P25 should deliver source-backed decisions for each family, rejected alternatives,
-a baseline and quality/resource evaluation design, dependency/license findings,
-an explicit tool/skill/MCP/extension/core map and an implementable P26/P27 proposal.
-Compare both tracks against the same requirements and inspected evidence; record
-remaining uncertainty and material operator choices. Codex's preferred design is
-not automatically correct. No package install, graph store or embedding service is
-needed merely to produce this research handoff.
+The proposed order is small explicit capabilities, lifecycle integrity, then
+optional automation and backends. The reference's checked packet proposal supports
+this direction; Ipse's first proposals remain provisional where source inspection
+failed. A shared recommendation is not proof, and final reruns do not retroactively
+repair earlier reports. The [trial record](p25-evaluation.md) owns acceptance.
 
-For later implementation, treat the capabilities as independent packages with
-shared contracts. Proposed P26 delivers working/long-term memory; proposed P27
-delivers research, graph and RAG increments in the order supported by P25. Their
-selection can change after the study. These packages have no intrinsic voice or
-cost-UI dependency, but required host accounting/admission and other SDK gaps must
-be closed before the operations that need them. Request input for material
-unresolved choices or actions/dependencies that require approval.
+| Proposed increment | Delivery and measurable gate |
+| --- | --- |
+| P26A — explicit notes | Independent default-off working/project-memory tools, bounded state/context and selected-note export; deterministic scope, permission, quota and disabled-side-effect cases all pass |
+| P26B — lifecycle integrity | Source-generation suppression, TTL/conflicts, derivative inventory and explicit migration/collection design; zero forbidden resurrection across delayed work, reingestion, restart and import fixtures |
+| P27A — research and lexical RAG | Pluggable configured tools, cited sources/claims and bounded lexical retrieval; useful without memory, graphs or embeddings; explicit partial results on unavailable services |
+| P27B — optional comparisons | Independently test extraction, embeddings/hybrid retrieval and graph adapters after generic host gaps/dependency approvals; publish matched baseline quality/resource deltas before selection |
 
-Ship a minimal configurable local baseline and explicit provider interfaces, with
-no default remote store, embeddings, search service or model. Evaluate existing
-OTP/files and maintained Elixir/Rust packages before selecting store/index/graph
-implementations, and record all dependencies/licenses/approvals. Use ordinary
-Elixir modules/processes; research orchestration need not become a workflow engine.
+No stage requires voice, a cost UI, a mandatory database or a workflow framework.
+Required host authority/accounting gaps must close before operations that need
+them. Current state is a small bounded store, not a scalable corpus engine.
+Evaluate maintained Elixir/OTP facilities and packages before writing or selecting
+storage/index machinery; a SQLite binding or native service is not approved by
+its appearance in this table.
+
+For future quality evaluation, propose a seeded 100-record/100-question corpus
+across two projects and three sessions per project, with exact evidence spans,
+unanswerable questions, updates, temporal conflicts and deletion races. Freeze
+it and reference hardware/model/resource allocations before measurement. Initial
+proposed quality gates are at least 90% supported answers/abstentions and 95%
+semantic citation precision; every citation must resolve to its exact source/span.
+Report recall@5, nDCG@10, p50/p95 latency, peak memory/storage, encoder work,
+model calls and separately known/unknown costs. These are proposed criteria,
+not measured scores or portable latency promises. Deterministic authority,
+cross-project isolation, no-replay and no-resurrection cases require zero failures.
+
+Sharing scope, retention periods, remote disclosure, hardware/resource ceilings,
+profiles/billing and backup-erasure obligations remain material operator choices.
+Keep affected features unavailable until configured; a research recommendation
+or suggested answer does not supply consent. Full candidate/license/dependency,
+weight, dataset and hosted-terms review remains necessary before adoption.
 
 Memory fixtures cover scope/TTL/conflict handling, approved writes, no automatic
 promotion, concurrent locking, deletion and unchanged resumed recall. Graph/RAG

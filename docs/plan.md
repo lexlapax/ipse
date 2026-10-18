@@ -258,8 +258,11 @@ and [security execution constraints](developer/self-hosting-evaluation.md#securi
 selectable session/task working-memory and cross-session memory capabilities,
 initially explicit recall/remember/forget/export tools or existing MCP where that
 meets the need. Add optional lifecycle recall/capture adapters only when justified.
-Choose a configurable local baseline through the research gate; Zero-Mem is
-inspiration, not a selected package or reproduced benchmark result.
+The researched proposal starts with bounded explicit task cards/project notes and
+lexical recall, then proves source-generation suppression and migration before
+automatic capture. Zero-Mem is inspiration, not a selected package or reproduced
+benchmark result. The [knowledge design](developer/knowledge-extensions.md#research-handoff-and-deferred-production-acceptance)
+owns the proposed P26A/P26B gates and unresolved choices.
 
 Acceptance: default-off parity; explicit namespace/project/operator scopes;
 stable logical identity with explicit export/migration/collection across artifact
@@ -271,7 +274,7 @@ model, remote service or silent promotion. Keep core conversation/recovery intac
 when optional memory is off. Measure quality and resources separately from
 protocol correctness; document actual dependency, configuration and recovery.
 
-P25's research may change this split. No production backend is selected or started
+Final P25 evaluation may change this split. No production backend is selected or started
 by this proposal. See the authoritative [knowledge design](developer/knowledge-extensions.md).
 
 ## P27: optional research, graph and RAG
@@ -281,6 +284,10 @@ research orchestration, graph augmentation and corpus retrieval packages on
 P14/P22/P23 and selected shared knowledge contracts. Prefer explicit tools and
 existing MCP adapters before hooks or services. Memory, research, graph and RAG
 must remain independently configurable; enabling one does not enable the rest.
+The researched proposal delivers configured research/lexical RAG before optional
+embedding/graph comparisons. Extension-driven MCP effects and embeddings require
+their separately reviewed generic host contracts; current value services and
+one-shot text calls are not substitutes.
 
 Acceptance: named pluggable search/fetch/store/retrieval/embedding/rerank profiles;
 source/chunk/version/citation identity; bounded ingestion/traversal/retrieval;

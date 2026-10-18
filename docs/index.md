@@ -74,7 +74,7 @@ start. Use the guides below for operation, development, and project context.
 | [Private text streams](developer/text-streams.md) | Optional/required embedded/worker delivery, acknowledgment, pressure, ownership and ephemeral recovery |
 | [Ephemeral text events](developer/stream-events.md) | Negotiated v2 frame sources, shared stream/range identity, distinct delivery sequence and metadata/private projections |
 | [Architecture review and self-development evaluation](developer/self-hosting-evaluation.md) | P24 external adversarial architecture validation/baseline security; P25 independent Codex/Ipse research, repairs, held-out reruns and final reviews |
-| [Knowledge extension family](developer/knowledge-extensions.md) | P25 research questions and deferred P26/P27 default-off memory, research, graph/RAG selection and acceptance |
+| [Knowledge extension family](developer/knowledge-extensions.md) | Source-screened P26/P27 proposals, minimal baselines/alternatives, existing SDK versus generic gaps, lifecycle and default-off acceptance |
 | [Observability contract](developer/observability.md) | Shared metadata capture, bounded owned sinks, ring quotas, lease recovery, synthetic dispatcher tracing and source-debugging boundaries |
 | [MCP client contract](developer/mcp.md) | Reused packages, transport ownership, descriptor binding, schema policy, and recovery |
 | [Local delegation contract](developer/delegation.md) | Parent/child ownership, explicit context, approvals, budgets, and unknown outcomes |
