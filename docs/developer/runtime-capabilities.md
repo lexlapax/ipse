@@ -123,6 +123,12 @@ silently dropped and no billing switch follows from a refusal.
 
 ## Text and media are distinct from diagnostics
 
+The implemented private text channel defaults to optional delivery. A stalled
+consumer detaches while inference continues; explicit operator-required consumers
+may refuse response admission on loss or deadline. Startup validation and actual
+worker cleanup remain independent checks. See [the current delivery contract](text-streams.md)
+for enrollment, acknowledgment and recovery. This does not supply audio/media IO.
+
 The implemented [visible-text contract](text-streams.md) carries
 stream/session/generation/request identity, monotonic sequence, text chunks and
 one logical terminal outcome.
@@ -130,8 +136,9 @@ Sequence IDs reject duplicate/late deliveries; crash/disconnect may leave delive
 incomplete even when a request finished. Do not promise exactly-once delivery.
 It is a private content capability, separate from sanitized diagnostic observers;
 hidden reasoning/native payloads are excluded. Embedded and independent-worker
-source fixtures exercise read-only consumption; the independent installed-package
-completion gate remains separate. Preserve the
+source and independently precompiled installed-package fixtures exercise read-only
+consumption; exact revisions and remaining limits belong to [testing](testing.md).
+Preserve the
 saved provider message and native continuation. A formatter cannot retract text
 already displayed; the initial completed-answer wrapper remains a separate view.
 

@@ -2,6 +2,8 @@ defmodule Ipse.CLI do
   @moduledoc "Owning terminal client for the Ipse session API."
   alias Ipse.CLI.Terminal
 
+  @deferred_display ~w(status compacted context_refreshed subagent text presentation extension_result tool_output tool tool_result skill)a
+
   @help """
   Ipse 0.1 — a general-purpose local AI agent
 
@@ -476,6 +478,10 @@ defmodule Ipse.CLI do
             approval: nil,
             approval_display: nil,
             approval_context: nil,
+            approval_redraw: true,
+            deferred_display: [],
+            deferred_bytes: 0,
+            deferred_dropped: 0,
             question: nil,
             question_answers: %{},
             queued: [],
@@ -529,9 +535,10 @@ defmodule Ipse.CLI do
   end
 
   defp client_loop(s) do
+    s = if is_nil(s.approval), do: release_display(s), else: s
     pid = s.pid
 
-    if s.approval != nil do
+    if s.approval != nil and s.approval_redraw do
       {name, args, context} = s.approval_display
 
       if context,
@@ -544,7 +551,26 @@ defmodule Ipse.CLI do
       )
     end
 
+    s = %{s | approval_redraw: true}
+
     receive do
+      {:ipse, ^pid, event}
+      when s.approval != nil and is_tuple(event) and elem(event, 0) in @deferred_display ->
+        bytes = :erlang.external_size(event)
+
+        next =
+          if length(s.deferred_display) < 64 and s.deferred_bytes + bytes <= 65_536 do
+            %{
+              s
+              | deferred_display: [event | s.deferred_display],
+                deferred_bytes: s.deferred_bytes + bytes
+            }
+          else
+            %{s | deferred_dropped: s.deferred_dropped + 1}
+          end
+
+        client_loop(%{next | approval_redraw: false})
+
       {:input, :eof} ->
         if s.question, do: Ipse.Session.cancel(s.pid)
 
@@ -588,7 +614,7 @@ defmodule Ipse.CLI do
         client_loop(s)
 
       {:input, "/skills"} ->
-        print_skills(s.cwd)
+        Terminal.puts(Ipse.Skills.catalog(Ipse.Session.info(s.pid).context["skills"]))
         client_loop(s)
 
       {:input, "/session"} ->
@@ -887,6 +913,18 @@ defmodule Ipse.CLI do
 
         1
     end
+  end
+
+  defp release_display(s) do
+    if s.deferred_dropped > 0 do
+      Terminal.puts(
+        :stderr,
+        "Deferred display overflow: #{s.deferred_dropped} events omitted while approval was pending. Saved records are unchanged."
+      )
+    end
+
+    Enum.each(Enum.reverse(s.deferred_display), &send(self(), {:ipse, s.pid, &1}))
+    %{s | deferred_display: [], deferred_bytes: 0, deferred_dropped: 0}
   end
 
   defp config(opts, interactive) do

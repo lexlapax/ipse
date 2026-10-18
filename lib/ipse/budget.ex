@@ -65,6 +65,7 @@ defmodule Ipse.Budget do
       end
     end)
   rescue
+    error in Ipse.TextStream.RequiredFailure -> {:error, Exception.message(error)}
     _ -> {:error, "Budgeted provider request failed; its reservation remains accounted."}
   catch
     _, _ ->

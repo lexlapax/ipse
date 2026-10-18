@@ -89,6 +89,81 @@ defmodule Ipse.WorkspaceSessionTest do
     pid
   end
 
+  test "resume retains the skill catalog, detects new shadows and requires refresh for changed bodies",
+       ctx do
+    user = Path.join(ctx.home, "skills/review/SKILL.md")
+    project = Path.join(ctx.cwd, ".agents/skills/review/SKILL.md")
+    File.mkdir_p!(Path.dirname(user))
+
+    File.write!(
+      user,
+      "---\nname: review\ndescription: saved-catalog-description\n---\nsaved-body"
+    )
+
+    session = start(ctx)
+    id = Ipse.Session.info(session).id
+    assert :ok = Ipse.Session.close(session)
+    bytes = File.read!(Path.join(ctx.dir, id <> ".jsonl"))
+    File.mkdir_p!(Path.dirname(project))
+
+    File.write!(
+      project,
+      "---\nname: review\ndescription: new-shadow-description\n---\nnew-shadow-body"
+    )
+
+    resumed = start(ctx, %{}, id)
+    assert File.read!(Path.join(ctx.dir, id <> ".jsonl")) == bytes
+
+    assert Enum.any?(
+             Ipse.Session.info(resumed).context["diagnostics"],
+             &String.contains?(&1, "Skill catalog changed")
+           )
+
+    assert :ok = Ipse.Session.prompt(resumed, "$review")
+    assert_receive {:model_input, [system, reference, user_message]}, 2_000
+    assert reference["role"] == "user"
+    assert reference["content"] =~ "saved-catalog-description"
+    refute system["content"] =~ "saved-catalog-description"
+    refute system["content"] =~ "new-shadow-description"
+    assert user_message["content"] =~ "saved-body"
+    assert_receive {:ipse, ^resumed, {:done, :ok}}, 2_000
+    File.write!(user, "---\nname: review\ndescription: changed-selected\n---\nchanged-body")
+    assert {:error, :skill_catalog_changed} = Ipse.Session.prompt(resumed, "$review")
+    assert_receive {:ipse, ^resumed, {:done, :error}}, 2_000
+    refute_receive {:model_input, _}, 50
+    assert :ok = Ipse.Session.refresh_context(resumed)
+    assert_receive {:ipse, ^resumed, {:done, :ok}}, 2_000
+    assert :ok = Ipse.Session.prompt(resumed, "$review")
+    assert_receive {:model_input, messages}, 2_000
+    assert Enum.at(messages, 1)["content"] =~ "new-shadow-description"
+    refute hd(messages)["content"] =~ "new-shadow-description"
+    assert List.last(messages)["content"] =~ "new-shadow-body"
+    assert_receive {:ipse, ^resumed, {:done, :ok}}, 2_000
+    assert :ok = Ipse.Session.close(resumed)
+    again = start(ctx, %{}, id)
+    assert Ipse.Session.info(again).phase == :idle
+    assert :ok = Ipse.Session.close(again)
+  end
+
+  test "corrupt skill metadata refuses recovery before tail repair", ctx do
+    session = start(ctx)
+    id = Ipse.Session.info(session).id
+    assert :ok = Ipse.Session.close(session)
+    path = Path.join(ctx.dir, id <> ".jsonl")
+    checkpoint = Ipse.Skills.checkpoint([]) |> Map.put("sha256", String.duplicate("0", 64))
+    bytes = File.read!(path) <> Jason.encode!(checkpoint) <> "\npartial-tail"
+    File.write!(path, bytes)
+
+    assert {:error, :invalid_skill_catalog_snapshot} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Ipse.Session,
+                config: config(ctx), cwd: ctx.cwd, state_dir: ctx.dir, id: id, subscriber: self()}
+             )
+
+    assert File.read!(path) == bytes
+  end
+
   test "startup snapshots instructions, resume uses saved content, and explicit refresh adopts changes",
        ctx do
     agents = Path.join(ctx.cwd, "AGENTS.md")
@@ -113,10 +188,11 @@ defmodule Ipse.WorkspaceSessionTest do
            |> Enum.any?(&String.contains?(&1, "changed:"))
 
     :ok = Ipse.Session.prompt(resumed, "show saved context")
-    assert_receive {:model_input, [system | _]}, 2_000
-    assert system["content"] =~ "workspace-v1"
-    assert system["content"] =~ "global-v1"
-    refute system["content"] =~ "workspace-v2"
+    assert_receive {:model_input, [system, reference | _]}, 2_000
+    assert reference["content"] =~ "workspace-v1"
+    assert reference["content"] =~ "global-v1"
+    refute reference["content"] =~ "workspace-v2"
+    refute system["content"] =~ "workspace-v1"
     assert_receive {:ipse, ^resumed, {:done, :ok}}, 2_000
 
     assert :ok = Ipse.Session.refresh_context(resumed)
@@ -124,9 +200,10 @@ defmodule Ipse.WorkspaceSessionTest do
     assert Enum.any?(manifest["sources"], &(&1["sha256"] != ""))
     assert_receive {:ipse, ^resumed, {:done, :ok}}, 2_000
     :ok = Ipse.Session.prompt(resumed, "show refreshed context")
-    assert_receive {:model_input, [system | _]}, 2_000
-    assert system["content"] =~ "workspace-v2"
-    assert system["content"] =~ "global-v2"
+    assert_receive {:model_input, [system, reference | _]}, 2_000
+    assert reference["content"] =~ "workspace-v2"
+    assert reference["content"] =~ "global-v2"
+    refute system["content"] =~ "workspace-v2"
     assert_receive {:ipse, ^resumed, {:done, :ok}}, 2_000
   end
 
@@ -139,8 +216,9 @@ defmodule Ipse.WorkspaceSessionTest do
 
     :ok = Ipse.Session.prompt(pid, "write the nested file")
     assert_receive {:model_input, _first_messages}, 2_000
-    assert_receive {:model_input, [system | replanned_messages]}, 2_000
-    assert system["content"] =~ "nested-scope-v1"
+    assert_receive {:model_input, [system, reference | replanned_messages]}, 2_000
+    assert reference["content"] =~ "nested-scope-v1"
+    refute system["content"] =~ "nested-scope-v1"
 
     assert Enum.count(
              replanned_messages,
@@ -165,8 +243,8 @@ defmodule Ipse.WorkspaceSessionTest do
            end) == 2
 
     :ok = Ipse.Session.approve(pid, ref, true)
-    assert_receive {:model_input, [system | _]}, 2_000
-    assert system["content"] =~ "nested-scope-v1"
+    assert_receive {:model_input, [_system, reference | _]}, 2_000
+    assert reference["content"] =~ "nested-scope-v1"
     assert_receive {:ipse, ^pid, {:done, :ok}}, 2_000
     assert File.read!(Path.join(nested, "result.txt")) == "after review"
   end

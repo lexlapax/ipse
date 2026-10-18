@@ -7,10 +7,32 @@ defmodule Ipse.TextStream do
   @subscribers 4
   @deadline 5_000
 
+  defmodule RequiredFailure do
+    defexception message:
+                   "Required visible-text delivery failed; inspect stream coverage before retrying."
+  end
+
   def start(owner, session_id), do: GenServer.start(__MODULE__, {owner, session_id})
 
-  def subscribe(server, consumer, version \\ 1),
-    do: GenServer.call(server, {:subscribe, consumer, version})
+  def subscribe(server, consumer, version \\ 1, required \\ false),
+    do: GenServer.call(server, {:subscribe, consumer, version, required})
+
+  def begin_with_policy(server, request_id, producer),
+    do: GenServer.call(server, {:begin_with_policy, request_id, producer})
+
+  def deliver(server, request_id, text, required) do
+    result =
+      try do
+        push_delta(server, request_id, text)
+      catch
+        :exit, _ -> {:error, :text_stream_unavailable}
+      end
+
+    if required and result != :ok, do: raise(RequiredFailure)
+    :ok
+  end
+
+  def check(server, request_id), do: GenServer.call(server, {:check, request_id})
 
   def enrolled?(nil, _, _), do: false
 
@@ -54,7 +76,7 @@ defmodule Ipse.TextStream do
   def finish(nil, _, _), do: :ok
 
   def finish(server, request_id, outcome),
-    do: GenServer.call(server, {:finish, request_id, outcome})
+    do: GenServer.call(server, {:finish, request_id, outcome}, 10_000)
 
   def ack(%{server: server, subscription_id: id}, sequence),
     do: GenServer.call(server, {:ack, id, sequence})
@@ -81,8 +103,8 @@ defmodule Ipse.TextStream do
   end
 
   @impl true
-  def handle_call({:subscribe, consumer, version}, {owner, _}, %{owner: owner} = s)
-      when is_pid(consumer) and version in [1, 2] do
+  def handle_call({:subscribe, consumer, version, required}, {owner, _}, %{owner: owner} = s)
+      when is_pid(consumer) and version in [1, 2] and is_boolean(required) do
     if map_size(s.subscribers) < @subscribers and is_nil(s.active) do
       id = Ipse.Usage.id()
 
@@ -93,7 +115,8 @@ defmodule Ipse.TextStream do
         bytes: 0,
         outstanding: nil,
         sequence: 0,
-        version: version
+        version: version,
+        required: required
       }
 
       handle = %{server: self(), subscription_id: id}
@@ -106,6 +129,22 @@ defmodule Ipse.TextStream do
   def handle_call({:enrolled, id, consumer}, {owner, _}, %{owner: owner} = s),
     do: {:reply, match?(%{pid: ^consumer}, s.subscribers[id]), s}
 
+  def handle_call({:begin_with_policy, request_id, producer}, from, s) do
+    required = Enum.any?(s.subscribers, fn {_, sub} -> sub.required end)
+
+    case handle_call({:begin, request_id, producer}, from, s) do
+      {:reply, :ok, next} -> {:reply, {:ok, required}, next}
+      other -> other
+    end
+  end
+
+  def handle_call(
+        {:check, request_id},
+        {producer, _},
+        %{active: %{request_id: request_id, producer: producer}} = s
+      ),
+      do: {:reply, delivery_status(s), s}
+
   def handle_call({:begin, request_id, producer}, {owner, _}, %{owner: owner, active: nil} = s)
       when is_pid(producer) do
     if id?(request_id) do
@@ -115,7 +154,8 @@ defmodule Ipse.TextStream do
             request_id: request_id,
             producer: producer,
             stream_id: Ipse.Usage.id(),
-            offset: 0
+            offset: 0,
+            required_failed: false
           }
       }
 
@@ -131,6 +171,9 @@ defmodule Ipse.TextStream do
         %{active: %{request_id: request_id, producer: producer}, pending: nil} = s
       ) do
     cond do
+      s.active.required_failed ->
+        {:reply, {:error, :required_text_consumer_closed}, s}
+
       map_size(s.subscribers) == 0 ->
         {:reply, :ok, s}
 
@@ -158,7 +201,8 @@ defmodule Ipse.TextStream do
                request_id: request_id,
                text: text,
                token: token,
-               timer: timer
+               timer: timer,
+               kind: :text
              }
          }}
     end
@@ -166,21 +210,45 @@ defmodule Ipse.TextStream do
 
   def handle_call(
         {:finish, request_id, outcome},
-        {owner, _},
-        %{owner: owner, active: %{request_id: request_id}} = s
+        {caller, _} = from,
+        %{active: %{request_id: request_id}} = s
       )
-      when outcome in ~w(completed failed cancelled unknown) do
+      when outcome in ~w(completed failed cancelled unknown) and
+             (caller == s.owner or caller == s.active.producer) do
+    sealing = s.pending != nil and s.pending.kind == :finish
     outcome = if s.pending != nil and outcome == "completed", do: "unknown", else: outcome
     s = release_pending(s, {:error, :text_request_finished})
 
     s =
-      enqueue_control(s, request_id, %{
-        "kind" => "end",
-        "outcome" => outcome,
-        "complete" => outcome == "completed"
-      })
+      if sealing do
+        close_all(s, "request_finished")
+      else
+        enqueue_control(s, request_id, %{
+          "kind" => "end",
+          "outcome" => outcome,
+          "complete" => outcome == "completed"
+        })
+      end
 
-    {:reply, :ok, %{s | active: nil}}
+    if outcome == "completed" and delivery_status(s) == :ok and not required_drained?(s) do
+      token = make_ref()
+      timer = Process.send_after(self(), {:backpressure_timeout, token}, @deadline)
+
+      {:noreply,
+       %{
+         s
+         | pending: %{
+             from: from,
+             request_id: request_id,
+             text: "",
+             token: token,
+             timer: timer,
+             kind: :finish
+           }
+       }}
+    else
+      {:reply, delivery_status(s), %{s | active: nil}}
+    end
   end
 
   def handle_call({:ack, id, sequence}, {consumer, _}, s) do
@@ -217,8 +285,15 @@ defmodule Ipse.TextStream do
   end
 
   def handle_info({:backpressure_timeout, token}, %{pending: %{token: token}} = s) do
-    {:noreply,
-     close_all(s, "backpressure_timeout") |> release_pending({:error, :text_backpressure_timeout})}
+    blocked =
+      Enum.filter(s.subscribers, fn {_, sub} ->
+        if s.pending.kind == :finish,
+          do: sub.required and (sub.outstanding != nil or sub.queue != []),
+          else: not fits_sub?(sub, s.pending.text, s.active.stream_id)
+      end)
+
+    next = Enum.reduce(blocked, s, fn {id, _}, acc -> remove(acc, id, "backpressure_timeout") end)
+    {:noreply, flush_pending(next)}
   end
 
   def handle_info(_, s), do: {:noreply, s}
@@ -233,10 +308,25 @@ defmodule Ipse.TextStream do
 
   defp fits?(s, _request_id, text) do
     Enum.all?(s.subscribers, fn {_, sub} ->
-      sub.bytes + byte_size(text) <= @bytes and
-        (length(sub.queue) < @frames or coalescible?(List.last(sub.queue), s.active.stream_id))
+      fits_sub?(sub, text, s.active.stream_id)
     end)
   end
+
+  defp fits_sub?(sub, text, stream_id),
+    do:
+      sub.bytes + byte_size(text) <= @bytes and
+        (length(sub.queue) < @frames or coalescible?(List.last(sub.queue), stream_id))
+
+  defp delivery_status(%{active: %{required_failed: true}}),
+    do: {:error, :required_text_consumer_closed}
+
+  defp delivery_status(_), do: :ok
+
+  defp required_drained?(s),
+    do:
+      Enum.all?(s.subscribers, fn {_, sub} ->
+        not sub.required or (sub.outstanding == nil and sub.queue == [])
+      end)
 
   defp enqueue_text(s, request_id, text) do
     subscribers =
@@ -342,6 +432,16 @@ defmodule Ipse.TextStream do
 
   defp flush_pending(%{pending: nil} = s), do: s
 
+  defp flush_pending(%{active: %{required_failed: true}} = s) do
+    finishing = s.pending.kind == :finish
+    s = release_pending(s, {:error, :required_text_consumer_closed})
+    if finishing, do: %{s | active: nil}, else: s
+  end
+
+  defp flush_pending(%{pending: %{kind: :finish}} = s) do
+    if required_drained?(s), do: %{release_pending(s, :ok) | active: nil}, else: s
+  end
+
   defp flush_pending(%{pending: pending} = s) do
     if fits?(s, pending.request_id, pending.text) do
       s |> enqueue_text(pending.request_id, pending.text) |> release_pending(:ok)
@@ -367,7 +467,10 @@ defmodule Ipse.TextStream do
       {:ipse_text, self(), closed_frame(s, id, sub, reason)}
     )
 
-    %{s | subscribers: Map.delete(s.subscribers, id)}
+    active =
+      if s.active != nil and sub.required, do: %{s.active | required_failed: true}, else: s.active
+
+    %{s | subscribers: Map.delete(s.subscribers, id), active: active}
   end
 
   defp closed_frame(s, id, sub, reason) do

@@ -142,6 +142,13 @@ request intent and its budget decision also requires inspection rather than
 guessing whether quota can be released. Preserve all original files for diagnosis.
 Same-user filesystem control is not an adversarial security boundary.
 
+A torn ledger is still a refusal, not an automatic tail repair. For deliberate
+continuation, an explicit reviewed handoff can export the validated conversation
+without activating the damaged budget tree. Import it into a fresh idle session
+and inspect unknown effects before new work. Preserve the original ledger/journal:
+the new root has a separate quota and does not release or transfer old liability.
+This is continuation with evidence retained, not resumption or repair of the tree.
+
 See [the developer contract](../developer/budgets.md) for durability, bounds and
 verification, and [troubleshooting](troubleshooting.md#session-locks-and-interrupted-work)
 for session ownership and unknown effects.

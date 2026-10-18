@@ -52,7 +52,10 @@ defmodule Ipse.SkillsTest do
     refute Enum.any?(Skills.discover(project, user), &(&1["name"] in ["bad", "huge"]))
   end
 
-  test "load reports the hash of the bytes read after discovery", %{project: project, user: user} do
+  test "load refuses changed bytes until discovery is explicitly refreshed", %{
+    project: project,
+    user: user
+  } do
     path = Path.join(project, ".agents/skills/review/SKILL.md")
     File.write!(path, "---\nname: review\ndescription: Original\n---\nOriginal body\n")
     [skill] = Skills.discover(project, user) |> Enum.filter(&(&1["name"] == "review"))
@@ -60,7 +63,10 @@ defmodule Ipse.SkillsTest do
     updated = "---\nname: review\ndescription: Updated\n---\nUpdated body\n"
     File.write!(path, updated)
 
-    assert {:ok, loaded} = Skills.load([skill], "review")
+    assert {:error, error} = Skills.load([skill], "review")
+    assert error =~ "skill_catalog_changed"
+    assert {:error, _} = Skills.load_resource([skill], "review", "SKILL.md")
+    assert {:ok, loaded} = Skills.load(Skills.discover(project, user), "review")
     expected_hash = :crypto.hash(:sha256, updated) |> Base.encode16(case: :lower)
     assert loaded =~ "SHA-256: #{expected_hash}"
     refute loaded =~ "SHA-256: #{skill["sha256"]}"

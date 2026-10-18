@@ -92,7 +92,11 @@ defmodule Ipse.ExtensionDemo do
       "fixture answer" = visible_text(event_handle)
 
       receive do
-        {:extension_fixture_context, [_system, user]} ->
+        {:extension_fixture_context, [system, reference, user]} ->
+          "system" = system["role"]
+          "user" = reference["role"]
+          true = String.starts_with?(reference["content"], "Untrusted reference context")
+          false = String.contains?(system["content"], "Fixture context")
           true = String.starts_with?(user["content"], "original fixture task")
           true = String.contains?(user["content"], "Fixture context")
       after

@@ -3,6 +3,85 @@ defmodule Ipse.Skills do
 
   @max_skill_bytes 64 * 1024
 
+  @doc "Bounded metadata checkpoint; skill bodies remain explicitly loaded resources."
+  def checkpoint(skills),
+    do: %{
+      "type" => "skill_catalog_snapshot",
+      "version" => 1,
+      "skills" => skills,
+      "sha256" => Ipse.Compaction.digest(skills)
+    }
+
+  def restore(events, discovered) do
+    Enum.reduce_while(events, {:ok, nil}, fn
+      %{"type" => "skill_catalog_snapshot"} = event, _ ->
+        if Enum.sort(Map.keys(event)) == ~w(sha256 skills type version) and
+             event["version"] === 1 and valid_catalog?(event["skills"]) and
+             event["sha256"] == Ipse.Compaction.digest(event["skills"]),
+           do: {:cont, {:ok, event["skills"]}},
+           else: {:halt, {:error, :invalid_skill_catalog_snapshot}}
+
+      _, state ->
+        {:cont, state}
+    end)
+    |> case do
+      {:ok, nil} ->
+        if valid_catalog?(discovered),
+          do: {:ok, discovered, false},
+          else: {:error, :skill_catalog_too_large}
+
+      {:ok, saved} ->
+        {:ok, saved, true}
+
+      error ->
+        error
+    end
+  rescue
+    _ -> {:error, :invalid_skill_catalog_snapshot}
+  end
+
+  def valid_catalog?(skills) do
+    is_list(skills) and length(skills) <= 256 and
+      Enum.all?(skills, fn skill ->
+        is_map(skill) and
+          Enum.sort(Map.keys(skill)) ==
+            ~w(canonical_path description name path sha256 shadowed_paths) and
+          Enum.all?(
+            ~w(name description path canonical_path),
+            &(is_binary(skill[&1]) and skill[&1] != "" and String.valid?(skill[&1]))
+          ) and
+          Path.type(skill["path"]) == :absolute and
+          Path.type(skill["canonical_path"]) == :absolute and
+          is_binary(skill["sha256"]) and Regex.match?(~r/\A[0-9a-f]{64}\z/, skill["sha256"]) and
+          is_list(skill["shadowed_paths"]) and length(skill["shadowed_paths"]) <= 256 and
+          Enum.all?(
+            skill["shadowed_paths"],
+            &(is_binary(&1) and String.valid?(&1) and Path.type(&1) == :absolute)
+          )
+      end) and length(Enum.uniq_by(skills, & &1["name"])) == length(skills) and
+      byte_size(Jason.encode!(skills)) <= 262_144
+  rescue
+    _ -> false
+  end
+
+  def validate_events(events) do
+    case restore(events, []) do
+      {:ok, _, _} -> :ok
+      error -> error
+    end
+  end
+
+  def expand(prompt, skills) do
+    names = explicit(prompt, skills)
+
+    Enum.reduce_while(names, {:ok, prompt, names}, fn name, {:ok, text, names} ->
+      case load(skills, name) do
+        {:ok, body} -> {:cont, {:ok, text <> "\n\n" <> body, names}}
+        _ -> {:halt, {:error, :skill_catalog_changed}}
+      end
+    end)
+  end
+
   @doc """
   Discover project > Ipse user > shared operator > bundled skills.
 
@@ -61,7 +140,7 @@ defmodule Ipse.Skills do
         {:error, "Unknown skill: #{name}"}
 
       skill ->
-        case read_limited(skill["path"]) do
+        case selected_bytes(skill) do
           {:ok, raw} ->
             case extract_frontmatter(raw) do
               {:ok, _metadata, body} ->
@@ -93,6 +172,7 @@ defmodule Ipse.Skills do
   @doc "Read one explicitly selected skill-relative resource without following further links."
   def load_resource(skills, name, relative) do
     with skill when is_map(skill) <- Enum.find(skills, &(&1["name"] == name)),
+         {:ok, _} <- selected_bytes(skill),
          {:ok, source} <-
            Ipse.WorkspaceContext.read_skill_resource(Path.dirname(skill["path"]), relative) do
       {:ok,
@@ -109,6 +189,17 @@ defmodule Ipse.Skills do
     case :code.priv_dir(:ipse) do
       path when is_list(path) -> Path.join(List.to_string(path), "skills")
       _ -> Path.expand("../../priv/skills", __DIR__)
+    end
+  end
+
+  defp selected_bytes(skill) do
+    with {:ok, canonical} <- Ipse.WorkspaceContext.canonical_path(skill["path"]),
+         true <- canonical == skill["canonical_path"],
+         {:ok, raw} <- read_limited(skill["path"]),
+         true <- Base.encode16(:crypto.hash(:sha256, raw), case: :lower) == skill["sha256"] do
+      {:ok, raw}
+    else
+      _ -> {:error, :skill_catalog_changed}
     end
   end
 

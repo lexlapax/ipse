@@ -3,7 +3,8 @@
 P24/P25 review and evaluation protocol, revised 2026-10-17. This guide defines
 independent architectural challenge, security gates and the supervised experiment;
 the [plan](../plan.md#current-priorities-and-status) owns scheduling and acceptance
-status. The first partial static architecture critique has returned; the
+status. Three partial static architecture passes have returned, including a fresh
+cloud session whose coverage is still incomplete; the
 [disposition register](architecture-review-dispositions.md) owns verification and
 repair status. No comparative run or security scan has executed. Use the
 [operator runbook](../operator/self-development.md) for

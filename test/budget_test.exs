@@ -374,6 +374,61 @@ defmodule Ipse.BudgetTest do
     refute_receive {:budget_provider, _, _, _}, 20
   end
 
+  test "a torn ledger refuses resume while an explicit handoff preserves its evidence and quota",
+       c do
+    config = %{
+      provider: :openai,
+      model: "cost-fixture",
+      provider_module: Model,
+      test_pid: self(),
+      home: Path.join(c.root, "home"),
+      budget: policy(),
+      approval: :deny
+    }
+
+    assert {:ok, pid} = start(c, config)
+    :ok = Session.prompt(pid, "synthetic completed request")
+    assert done(pid) == :ok
+    assert_receive {:budget_provider, _, nil, 32}, 2_000
+    id = Session.info(pid).id
+    assert :ok = Session.close(pid)
+    ledger = Path.join([c.dir, "budgets", id <> ".jsonl"])
+    journal = Path.join(c.dir, id <> ".jsonl")
+    File.write!(ledger, "{\"type\":\"obs", [:append])
+    File.write!(journal, "{torn", [:append])
+    original_ledger = File.read!(ledger)
+    original_journal = File.read!(journal)
+    assert {:error, _} = start(c, config, id)
+
+    assert {:ok, artifact} =
+             Ipse.Handoff.export(
+               c.dir,
+               id,
+               "Inspect original budget liability and effects before continuing with a separate quota."
+             )
+
+    assert artifact["requires_effect_review"] == true
+
+    assert {:ok, continued} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Session,
+                config: config,
+                cwd: c.root,
+                state_dir: c.dir,
+                subscriber: self(),
+                handoff: Jason.encode!(artifact)}
+             )
+
+    assert Session.info(continued).id != id
+    assert Session.info(continued).phase == :idle
+    assert Session.info(continued).accounting["request_count"] == 0
+    assert :ok = Session.close(continued)
+    refute_receive {:budget_provider, _, _, _}, 50
+    assert File.read!(ledger) == original_ledger
+    assert File.read!(journal) == original_journal
+  end
+
   test "real parallel children share the parent's remaining admission quota", c do
     config = %{
       provider: :openai,

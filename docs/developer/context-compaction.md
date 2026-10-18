@@ -30,7 +30,9 @@ provide recovery evidence; inspect current state before repeating an effect.
 
 ## Bounds and failure behavior
 
-The default conservative encoded context ceiling is 400,000 bytes. Automatic
+The default conservative encoded context ceiling is 400,000 bytes. Core system
+instructions and the separate untrusted user-role reference message both count
+toward planning, admission and diagnostics. Automatic
 compaction is attempted above 80% of that ceiling at the model-request boundary,
 after tools have settled. The model-summary path requires a complete older prefix; unresolved calls
 cannot be split away. The summary request must fit the ceiling, the generated
@@ -127,6 +129,13 @@ OpenAI also offers [native compaction](https://developers.openai.com/api/docs/gu
 whose returned window must be used intact. Ipse's current implementation is a
 provider-neutral host checkpoint, not that endpoint or server-side compaction.
 
+For Anthropic, a validated historical checkpoint is projected to user-role context
+on the wire, leaving the canonical assistant checkpoint and retained native
+continuations unchanged. Adapter fixtures verify this projection, not a live
+service failure. The official [Messages contract](https://platform.claude.com/docs/en/api/messages/create)
+describes alternating roles and merging adjacent turns; it does not establish the
+review's speculative assistant-first rejection. No new paid check is claimed.
+
 See [testing and actual evidence](testing.md#p2-context-compaction-2026-10-15)
 for fixtures and the separate live ChatGPT scratch check. The later
 [provider acceptance](testing.md#live-provider-acceptance-follow-up-2026-10-15)
@@ -137,7 +146,8 @@ preserve failure, cancellation, checkpoint integrity, and no-replay behavior.
 ## Diagnostics and explicit handoff
 
 `Ipse.Diagnostics.context/3` partitions the exact JSON encoding into fixed
-categories, including map/list framing, escaped field names/values, instructions,
+categories, including map/list framing, escaped field names/values, core instructions,
+reference context,
 user/assistant text, the newest two result batches, older results, tool-call
 arguments/envelopes, provider-native data, checkpoint data and host provenance.
 Only numbers and fixed labels leave that calculation. Original field content is
@@ -148,7 +158,7 @@ not model tokens or independent minimum checkpoint sizes.
 `Session.diagnostics/1` adds current phase/step/wait/worker facts. Saved inspection
 uses the public pure `Session.restore_context/1` restoration path and research
 ledger validation without opening a live Session, repairing a tail or inference.
-Its scope omits current system/skill instructions and labels a missing saved
+Its scope omits derived system/reference headers and labels a missing saved
 ceiling. Compaction refusals now record exact request measurements in a private
 `compaction_failed` event. Model/summary workers record bounded-category completion,
 failure/cancellation and elapsed milliseconds; approval/tool time is excluded.
@@ -178,8 +188,8 @@ source-journal lookup, signature check or secret scanner is introduced.
 Embedding passes the same raw bytes as the Session `:handoff` option; Session
 validates them before creating any state and rejects the option alongside any
 existing `:id`. Callers cannot supply a prebuilt projection to bypass validation.
-The fresh journal records one `handoff_imported` event after its initial workspace
-snapshot, containing the original artifact bytes, SHA-256 and deterministic
+The fresh journal records one `handoff_imported` event immediately after its header,
+before instruction/catalog snapshots, containing the original artifact bytes, SHA-256 and deterministic
 user-role projection. The projection attributes the source and labels the note
 as untrusted historical text, never a fresh task or permission. Import leaves the
 session idle until a new prompt; current provider/model/approval/tool configuration

@@ -371,6 +371,76 @@ defmodule Ipse.AuthTest do
     assert clean["client_id"] == "oaiapp_test"
   end
 
+  for operation <- [:refresh, :logout, :empty_logout] do
+    test "a pending browser login permits #{operation} and refuses a stale completion", ctx do
+      save(
+        ctx.dir,
+        if(unquote(operation) == :empty_logout, do: %{}, else: Map.put(record(), "expires_at", 0))
+      )
+
+      parent = self()
+
+      login =
+        Task.async(fn ->
+          HTTP.with_transport(
+            fn _, _, _ -> flunk("stale login must not exchange a grant") end,
+            fn ->
+              Auth.login(ctx.dir,
+                output: fn message ->
+                  [_, url | _] = String.split(message, "\n")
+                  send(parent, {:browser_wait, URI.parse(url).query |> URI.decode_query()})
+                end
+              )
+            end
+          )
+        end)
+
+      try do
+        assert_receive {:browser_wait, params}, 2_000
+        assert {:ok, _} = Store.with_lock(ctx.dir, fn -> Store.read(ctx.dir) end, 100)
+
+        transport = fn
+          :post, "https://auth.openai.com/api/accounts/oauth/token", fields ->
+            assert fields["grant_type"] == "refresh_token"
+
+            {:ok,
+             %{
+               "access_token" => "new-access",
+               "refresh_token" => "new-refresh",
+               "expires_in" => 3600,
+               "token_type" => "Bearer"
+             }}
+
+          :get, "https://auth.openai.com/.well-known/openid-configuration", _ ->
+            {:ok, discovery()}
+
+          :post, "https://auth.openai.com/oauth/revoke", _ ->
+            {:ok, %{}}
+        end
+
+        result =
+          HTTP.with_transport(transport, fn ->
+            if unquote(operation) == :refresh, do: Auth.token(ctx.dir), else: Auth.logout(ctx.dir)
+          end)
+
+        assert result == if(unquote(operation) == :refresh, do: {:ok, "new-access"}, else: :ok)
+        assert {:ok, changed} = Store.read(ctx.dir)
+
+        callback(params, %{
+          "state" => params["state"],
+          "code" => "stale-code",
+          "client_id" => "oaiapp_test"
+        })
+
+        assert {:error, message} = Task.await(login, 2_000)
+        assert message =~ "changed while sign-in was pending"
+        assert {:ok, ^changed} = Store.read(ctx.dir)
+      after
+        Task.shutdown(login, :brutal_kill)
+      end
+    end
+  end
+
   defp save(dir, record), do: Store.with_lock(dir, fn -> Store.write(dir, record) end)
 
   defp claims(nonce),

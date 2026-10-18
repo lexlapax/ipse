@@ -2,7 +2,7 @@ defmodule Ipse.Diagnostics do
   @moduledoc "Content-free, additive encoded-context measurements and saved-session inspection."
   alias Ipse.{Journal, Session}
 
-  @categories ~w(instructions user_text assistant_text recent_tool_results older_tool_results tool_calls native_continuation checkpoint_data tool_provenance envelope)
+  @categories ~w(instructions reference_context user_text assistant_text recent_tool_results older_tool_results tool_calls native_continuation checkpoint_data tool_provenance envelope)
 
   def context(messages, config, system \\ nil) do
     recent =
@@ -13,17 +13,24 @@ defmodule Ipse.Diagnostics do
       |> Enum.flat_map(& &1["tool_calls"])
       |> MapSet.new(& &1["id"])
 
-    all = if system, do: [system | messages], else: messages
+    header = List.wrap(system)
+    all = header ++ messages
     initial = Map.new(@categories, &{&1, 0})
     initial = Map.put(initial, "envelope", 2 + max(length(all) - 1, 0))
 
     categories =
-      Enum.reduce(all, initial, fn message, totals ->
+      Enum.reduce(Enum.with_index(all), initial, fn {message, index}, totals ->
         totals = Map.update!(totals, "envelope", &(&1 + 2 + max(map_size(message) - 1, 0)))
 
         Enum.reduce(message, totals, fn {key, value}, acc ->
           bytes = byte_size(Jason.encode!(%{key => value})) - 2
-          Map.update!(acc, category(message, key, recent), &(&1 + bytes))
+
+          category =
+            if index < length(header) and message["role"] == "user",
+              do: "reference_context",
+              else: category(message, key, recent)
+
+          Map.update!(acc, category, &(&1 + bytes))
         end)
       end)
 

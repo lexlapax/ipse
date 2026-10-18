@@ -36,11 +36,14 @@ defmodule Ipse.Compaction do
         }
 
   @doc "Prepares a provider-neutral summary request for a safe old transcript prefix."
+  def prepare(messages, config, system_message) when is_map(system_message),
+    do: prepare(messages, config, [system_message])
+
   def prepare(messages, config, system_message)
-      when is_list(messages) and is_map(config) and is_map(system_message) do
+      when is_list(messages) and is_map(config) and is_list(system_message) do
     limit = positive(config[:context_bytes], @default_context_bytes)
     target = target_bytes(config, limit)
-    before_bytes = encoded_bytes([system_message | messages])
+    before_bytes = encoded_bytes(system_message ++ messages)
 
     cond do
       config[:compact] == false and before_bytes <= limit ->
@@ -101,8 +104,8 @@ defmodule Ipse.Compaction do
         :unavailable
       else
         projected = excerpt_results(messages, indices)
-        before_bytes = encoded_bytes([system | messages])
-        after_bytes = encoded_bytes([system | projected])
+        before_bytes = encoded_bytes(system ++ messages)
+        after_bytes = encoded_bytes(system ++ projected)
 
         if after_bytes < before_bytes and after_bytes <= target do
           event = %{
@@ -206,15 +209,18 @@ defmodule Ipse.Compaction do
   end
 
   @doc "Validates summary output and creates the compacted effective message projection."
+  def finish(plan, assistant, system_message, config) when is_map(system_message),
+    do: finish(plan, assistant, [system_message], config)
+
   def finish(plan, assistant, system_message, config)
-      when is_map(plan) and is_map(assistant) and is_map(system_message) and is_map(config) do
+      when is_map(plan) and is_map(assistant) and is_list(system_message) and is_map(config) do
     max_summary = positive(config[:compact_summary_bytes], @default_summary_bytes)
 
     with :ok <- valid_summary_response(assistant, max_summary),
          {:ok, summary} <- decode_summary(assistant["content"]),
          checkpoint = checkpoint_message(summary, plan.user_intents, plan.actions),
          projected = [checkpoint | plan.tail],
-         final_bytes = encoded_bytes([system_message | projected]),
+         final_bytes = encoded_bytes(system_message ++ projected),
          :ok <- final_fits?(final_bytes, plan) do
       {:ok, projected, checkpoint,
        %{
@@ -349,7 +355,7 @@ defmodule Ipse.Compaction do
 
     normalized = Enum.map(prefix, &normalize/1)
     messages = [instruction, %{"role" => "user", "content" => Jason.encode!(normalized)}]
-    bytes = encoded_bytes([system_message | messages])
+    bytes = encoded_bytes(system_message ++ messages)
 
     if bytes <= limit do
       {:ok, messages, bytes}
@@ -474,7 +480,7 @@ defmodule Ipse.Compaction do
         actions
       )
 
-    size = encoded_bytes([system, checkpoint | tail])
+    size = encoded_bytes(system ++ [checkpoint | tail])
 
     if size <= target,
       do: :ok,

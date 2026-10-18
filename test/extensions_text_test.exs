@@ -143,7 +143,7 @@ defmodule Ipse.Extensions.TextTest do
     %{root: root, dir: Path.join(root, "sessions"), path: path}
   end
 
-  defp config(ctx, mode \\ "normal", enabled \\ true) do
+  defp config(ctx, mode \\ "normal", enabled \\ true, required \\ false) do
     source = %{
       scope: "operator",
       path: "/fixture/operator.json",
@@ -163,7 +163,8 @@ defmodule Ipse.Extensions.TextTest do
             "artifact" => ctx.artifact.digest,
             "capabilities" => ctx.artifact.manifest["capabilities"],
             "allow_project" => false,
-            "allow_children" => false
+            "allow_children" => false,
+            "text_required" => required
           }
         ]
       }
@@ -212,11 +213,64 @@ defmodule Ipse.Extensions.TextTest do
     end
   end
 
+  test "operator-required worker delivery pins policy and completes before admission", ctx do
+    selected = config(ctx, "normal", true, true)
+    pid = start(ctx, selected)
+    id = Session.info(pid).id
+    :ok = Session.prompt(pid, "synthetic required worker")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 7_000
+    assert List.last(frames(ctx))["frame"]["kind"] == "end"
+    {:ok, events} = Journal.load(ctx.dir, id)
+    intent = Enum.find(events, &(&1["type"] == "extension_text_intent"))
+    assert intent["identity"]["text_required"] == true
+    assert :ok = Session.close(pid)
+
+    {:ok, resumed} =
+      DynamicSupervisor.start_child(
+        Ipse.Sessions,
+        {Session, config: selected, cwd: ctx.root, state_dir: ctx.dir, id: id, subscriber: self()}
+      )
+
+    assert Session.info(resumed).phase == :idle
+    assert :ok = Session.close(resumed)
+
+    assert {:error, :resume_configuration_mismatch} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Session,
+                config: config(ctx), cwd: ctx.root, state_dir: ctx.dir, id: id, subscriber: self()}
+             )
+  end
+
+  test "a required worker callback failure refuses the response with a delivery error", ctx do
+    pid = start(ctx, config(ctx, "hang", true, true))
+    :ok = Session.prompt(pid, "synthetic required callback failure")
+    assert_receive {:ipse, ^pid, {:error, error}}, 8_000
+    assert error =~ "Required visible-text delivery failed"
+    assert_receive {:ipse, ^pid, {:done, :error}}, 2_000
+
+    await(fn ->
+      Enum.all?(:sys.get_state(pid).extension_text, fn {_, resource} -> resource.closed end)
+    end)
+
+    {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+
+    assert Enum.any?(
+             events,
+             &(&1["type"] == "extension_text_closed" and &1["cleanup_confirmed"] == false)
+           )
+
+    assert {:error, :cleanup_unconfirmed} = Session.close(pid)
+  end
+
   test "selected worker gets private bounded ordered JSON frames after durable intent", ctx do
     pid = start(ctx, config(ctx))
     refute File.exists?(ctx.path <> ".init")
     assert :ok = Session.prompt(pid, "original input")
-    assert_receive {:text_provider, _, [_system, %{"content" => "original input"}]}, 5000
+
+    assert_receive {:text_provider, _, [_system, _reference, %{"content" => "original input"}]},
+                   5000
+
     assert_receive {:ipse, ^pid, {:done, :ok}}, 5000
     await(fn -> Enum.any?(frames(ctx), &(&1["frame"]["kind"] == "end")) end)
     values = frames(ctx)

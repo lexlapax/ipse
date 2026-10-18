@@ -19,93 +19,110 @@ defmodule Ipse.Auth do
 
   @doc "Print a browser sign-in URL and await its loopback callback for five minutes."
   def login(auth_dir, opts \\ []) do
-    Store.with_lock(auth_dir, fn ->
-      with {:ok, existing} <- Store.read(auth_dir),
-           {:ok, existing} <- ensure_host(auth_dir, existing),
-           {:ok, listener} <-
-             :gen_tcp.listen(0, [
-               :binary,
-               active: false,
-               packet: :line,
-               packet_size: 16_384,
-               ip: {127, 0, 0, 1},
-               reuseaddr: true,
-               backlog: 5
-             ]) do
-        try do
-          {:ok, {{127, 0, 0, 1}, port}} = :inet.sockname(listener)
+    snapshot =
+      Store.with_lock(auth_dir, fn ->
+        with {:ok, existing} <- Store.read(auth_dir), do: ensure_host(auth_dir, existing)
+      end)
 
-          pending = %{
-            state: random(),
-            nonce: random(),
-            verifier: random(),
-            redirect_uri: "http://127.0.0.1:#{port}/auth/callback",
-            client_id: existing["client_id"]
-          }
+    with {:ok, existing} <- snapshot,
+         {:ok, listener} <-
+           :gen_tcp.listen(0, [
+             :binary,
+             active: false,
+             packet: :line,
+             packet_size: 16_384,
+             ip: {127, 0, 0, 1},
+             reuseaddr: true,
+             backlog: 5
+           ]) do
+      try do
+        {:ok, {{127, 0, 0, 1}, port}} = :inet.sockname(listener)
 
-          url = authorization_url(existing, pending)
-          # The printed URL never includes an ID token hint or credentials.
-          output = Keyword.get(opts, :output, &IO.puts/1)
+        pending = %{
+          state: random(),
+          nonce: random(),
+          verifier: random(),
+          redirect_uri: "http://127.0.0.1:#{port}/auth/callback",
+          client_id: existing["client_id"]
+        }
 
-          output.(
-            "Continue with ChatGPT:\n#{url}\nWaiting up to five minutes for browser sign-in…"
-          )
+        url = authorization_url(existing, pending)
+        # The printed URL never includes an ID token hint or credentials.
+        output = Keyword.get(opts, :output, &IO.puts/1)
 
-          deadline = System.monotonic_time(:millisecond) + 300_000
+        output.("Continue with ChatGPT:\n#{url}\nWaiting up to five minutes for browser sign-in…")
 
-          with {:ok, callback} <- await_callback(listener, pending, deadline),
-               {:ok, response} <-
-                 HTTP.request(:post, @token_endpoint, %{
-                   "grant_type" => "authorization_code",
-                   "client_id" => callback["client_id"],
-                   "code" => callback["code"],
-                   "code_verifier" => pending.verifier,
-                   "redirect_uri" => pending.redirect_uri,
-                   "resource" => @resource
-                 }),
-               {:ok, claims} <-
-                 validate_identity(
-                   response["id_token"],
-                   callback["client_id"],
-                   pending.nonce,
-                   existing["subject"]
-                 ),
-               {:ok, record} <-
-                 token_record(
-                   Map.drop(existing, [
-                     "scopes",
-                     "access_token",
-                     "refresh_token",
-                     "id_token",
-                     "pending_refresh"
-                   ]),
-                   response,
-                   callback["client_id"],
-                   claims
-                 ),
-               :ok <- Store.write(auth_dir, record),
-               :ok <- permitted(record) do
-            :ok
-          else
-            {:error, {:oauth, "invalid_client"}} ->
-              invalid_client()
+        deadline = System.monotonic_time(:millisecond) + 300_000
 
-            {:error, {:oauth, _}} ->
-              {:error, "ChatGPT sign-in grant was rejected or expired. Run `ipse login`."}
+        with {:ok, callback} <- await_callback(listener, pending, deadline) do
+          Store.with_lock(auth_dir, fn ->
+            with {:ok, current} <- Store.read(auth_dir),
+                 true <- current == existing do
+              complete_login(auth_dir, existing, pending, callback)
+            else
+              false ->
+                {:error,
+                 "ChatGPT credentials changed while sign-in was pending. Run `ipse login` again."}
 
-            error ->
-              error
-          end
-        after
-          :gen_tcp.close(listener)
+              error ->
+                error
+            end
+          end)
         end
-      else
-        {:error, reason} when is_binary(reason) -> {:error, reason}
-        _ -> {:error, "Could not start the ChatGPT loopback callback listener."}
+      after
+        :gen_tcp.close(listener)
       end
-    end)
+    else
+      {:error, reason} when is_binary(reason) -> {:error, reason}
+      _ -> {:error, "Could not start the ChatGPT loopback callback listener."}
+    end
   rescue
     _ -> {:error, "ChatGPT sign-in failed. Retry the login command."}
+  end
+
+  defp complete_login(auth_dir, existing, pending, callback) do
+    with {:ok, response} <-
+           HTTP.request(:post, @token_endpoint, %{
+             "grant_type" => "authorization_code",
+             "client_id" => callback["client_id"],
+             "code" => callback["code"],
+             "code_verifier" => pending.verifier,
+             "redirect_uri" => pending.redirect_uri,
+             "resource" => @resource
+           }),
+         {:ok, claims} <-
+           validate_identity(
+             response["id_token"],
+             callback["client_id"],
+             pending.nonce,
+             existing["subject"]
+           ),
+         {:ok, record} <-
+           token_record(
+             Map.drop(existing, [
+               "scopes",
+               "access_token",
+               "refresh_token",
+               "id_token",
+               "pending_refresh"
+             ]),
+             response,
+             callback["client_id"],
+             claims
+           ),
+         :ok <- Store.write(auth_dir, record),
+         :ok <- permitted(record) do
+      :ok
+    else
+      {:error, {:oauth, "invalid_client"}} ->
+        invalid_client()
+
+      {:error, {:oauth, _}} ->
+        {:error, "ChatGPT sign-in grant was rejected or expired. Run `ipse login`."}
+
+      error ->
+        error
+    end
   end
 
   @doc "Return a usable access token, serializing refreshes across OS processes."
@@ -150,7 +167,7 @@ defmodule Ipse.Auth do
       with {:ok, record} <- Store.read(auth_dir) do
         remote = revoke(revocation_record(record))
 
-        clean = Map.drop(record, @token_fields)
+        clean = record |> Map.drop(@token_fields) |> Map.put("authorization_epoch", random())
 
         with :ok <- Store.write(auth_dir, clean) do
           case remote do
@@ -325,6 +342,7 @@ defmodule Ipse.Auth do
          "expires_in" => expires,
          "expires_at" => now + expires,
          "saved_at" => DateTime.utc_now() |> DateTime.to_iso8601(),
+         "authorization_epoch" => random(),
          "scopes" => scopes
        })}
     else

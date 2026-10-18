@@ -20,7 +20,8 @@ Inspect a saved session locally without starting/resuming it:
 
 Saved diagnostics restore validated compaction projections and count unknown
 calls without repairing a truncated tail or writing state. They exclude the
-current system instruction/catalog because that can change between invocations;
+derived system/reference headers; these are reconstructed for a live request,
+while saved instruction and skill snapshots remain separate recovery inputs;
 the scope field says `effective_transcript_without_system`. A recorded configuration
 supplies its context ceiling; legacy embedded sessions without one are labelled
 `default_not_recorded`. No raw prompts/results, credential data or native reasoning
@@ -69,7 +70,9 @@ this does not expand the documented detached-descendant containment limits.
 
 Journal retention grows independently of the context window. There is no
 automatic journal rotation or disk quota. Context compaction does not delete
-that evidence or implement forgetting. For long work or a context refusal that
+that evidence or implement forgetting. Startup validates complete history and can
+be slow: a synthetic 64 MiB journal with 200 answered questions took about 20
+seconds on Serenity. This is a measured case, not a latency guarantee. For long work or a context refusal that
 safe compaction cannot resolve, continue through a reviewed fresh-session handoff.
 
 ## Continue in a fresh session

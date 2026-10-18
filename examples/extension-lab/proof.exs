@@ -120,7 +120,8 @@ defmodule IpseLab.Proof do
 
       checked(
         "capture_does_not_change_admitted_request",
-        not String.contains?(hd(first_messages)["content"], "Known entities: Ada")
+        not String.contains?(hd(first_messages)["content"], "Known entities: Ada") and
+          not String.contains?(Enum.at(first_messages, 1)["content"], "Known entities: Ada")
       )
 
       first = command(pid, "export", %{})["value"]
@@ -158,7 +159,9 @@ defmodule IpseLab.Proof do
 
       checked(
         "awaited_recall",
-        String.contains?(hd(second_messages)["content"], "Known entities: Ada, OTP")
+        Enum.at(second_messages, 1)["role"] == "user" and
+          String.contains?(Enum.at(second_messages, 1)["content"], "Known entities: Ada, OTP") and
+          not String.contains?(hd(second_messages)["content"], "Known entities: Ada, OTP")
       )
 
       second = command(pid, "export", %{})["value"]

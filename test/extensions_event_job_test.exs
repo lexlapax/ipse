@@ -458,8 +458,9 @@ defmodule Ipse.Extensions.EventJobTest do
     {:ok, reader} = start(c, config(c, :before, "recall"))
     :ok = Session.prompt(reader, "Recall memory")
     done(reader, :ok)
-    assert_receive {:job_model, [system | _]}
-    assert String.contains?(system["content"], "Meridian retained fact")
+    assert_receive {:job_model, [system, reference | _]}
+    assert String.contains?(reference["content"], "Meridian retained fact")
+    refute String.contains?(system["content"], "Meridian retained fact")
     assert Enum.any?(events(c, reader), &(&1["type"] == "extension_context_snapshot"))
     assert Subscriptions.validate_events(events(c, reader)) == :ok
     :ok = Session.close(reader)
@@ -514,12 +515,13 @@ defmodule Ipse.Extensions.EventJobTest do
     {:ok, reader} = start(c, config(c, :after, "recall"))
     :ok = Session.prompt(reader, "first request")
     done(reader, :ok)
-    assert_receive {:job_model, [first | _]}
+    assert_receive {:job_model, [_system, first | _]}
     refute String.contains?(first["content"], "after stored evidence")
     :ok = Session.prompt(reader, "later request")
     done(reader, :ok)
-    assert_receive {:job_model, [later | _]}
+    assert_receive {:job_model, [system, later | _]}
     assert String.contains?(later["content"], "after stored evidence")
+    refute String.contains?(system["content"], "after stored evidence")
     assert Enum.count(events(c, reader), &(&1["type"] == "extension_context_snapshot")) == 1
     assert Subscriptions.validate_events(events(c, reader)) == :ok
     :ok = Session.close(reader)

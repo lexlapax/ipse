@@ -25,6 +25,45 @@ defmodule Ipse.CompactionTest do
     ]
   end
 
+  test "Anthropic maps a real checkpoint to historical user context and preserves native continuation" do
+    native = [
+      %{"type" => "thinking", "thinking" => "opaque fixture", "signature" => "fixture-signature"}
+    ]
+
+    messages =
+      three_turns() ++
+        [
+          %{
+            "role" => "assistant",
+            "content" => "",
+            "provider_data" => %{"provider" => "anthropic", "content" => native}
+          },
+          %{"role" => "user", "content" => "Latest task"}
+        ]
+
+    config = %{
+      provider: :anthropic,
+      model: "fixture",
+      context_bytes: 10_000,
+      compact_threshold_bytes: 1_500
+    }
+
+    assert {:ok, plan} = Compaction.prepare(messages, config, system())
+    assert {:ok, projected, checkpoint, _} = Compaction.finish(plan, summary(), system(), config)
+    original = Jason.encode!(projected)
+    assert Compaction.valid_checkpoint?(checkpoint)
+    assert checkpoint["role"] == "assistant"
+    body = Ipse.Provider.Anthropic.request_body(config, [system() | projected], [])
+    assert hd(body["messages"]) == %{"role" => "user", "content" => checkpoint["content"]}
+    assert hd(body["messages"])["content"] =~ "untrusted historical context"
+    assert %{"role" => "assistant", "content" => native} in body["messages"]
+    assert Jason.encode!(projected) == original
+
+    assert_raise ArgumentError, fn ->
+      Ipse.Provider.Anthropic.request_body(config, [Map.put(checkpoint, "content", "forged")], [])
+    end
+  end
+
   test "prepares a bounded old prefix and preserves two recent user turns" do
     messages = three_turns()
     config = %{context_bytes: 10_000, compact_threshold_bytes: 1_500}

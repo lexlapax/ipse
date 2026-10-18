@@ -562,10 +562,13 @@ defmodule Ipse.Extensions.InvocationTest do
     assert payload["tools"] == []
     assert payload["options"] == %{"num_predict" => 32}
 
-    assert payload["messages"] == [
-             %{"role" => "system", "content" => request["instruction"]},
-             %{"role" => "user", "content" => request["input"]}
-           ]
+    assert [helper_system, helper_context] = payload["messages"]
+    assert helper_system["role"] == "system"
+    refute helper_system["content"] =~ request["instruction"]
+    assert helper_context["role"] == "user"
+    [label, encoded] = String.split(helper_context["content"], "\n", parts: 2)
+    assert label =~ "Untrusted extension task context"
+    assert Jason.decode!(encoded) == Map.take(request, ~w(instruction input))
 
     assert :ok = Task.await(server)
     assert %{"status" => "ok", "value" => value} = host_outcome(pid)

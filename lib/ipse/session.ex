@@ -105,6 +105,14 @@ defmodule Ipse.Session do
   def stop_feeds(pid), do: GenServer.call(pid, :stop_feeds, :infinity)
   def subscribe_text(pid), do: GenServer.call(pid, :subscribe_text)
   def subscribe_text(pid, version), do: GenServer.call(pid, {:subscribe_text, version})
+
+  def subscribe_text(pid, version, opts) do
+    if is_list(opts) and Keyword.keyword?(opts) and Keyword.keys(opts) in [[], [:required]] and
+         is_boolean(Keyword.get(opts, :required, false)),
+       do: GenServer.call(pid, {:subscribe_text, version, Keyword.get(opts, :required, false)}),
+       else: {:error, :invalid_text_policy}
+  end
+
   def exports(pid), do: GenServer.call(pid, :exports)
 
   def invoke_export(pid, kind, name, arguments),
@@ -152,6 +160,13 @@ defmodule Ipse.Session do
            Subscriptions.restore_question(question, event_question, dir, id, events),
          {:ok, context_snapshot, context_is_new} <-
            workspace_snapshot(events, cwd, home, opts[:context_snapshot]),
+         discovered =
+           Skills.discover(
+             cwd,
+             Path.join(Path.expand(home), "skills"),
+             skill_discovery_options(config)
+           ),
+         {:ok, skills, skills_saved} <- Skills.restore(events, discovered),
          {:ok, writer} <- Writer.start(dir, id, self()) do
       state = %{
         id: id,
@@ -166,11 +181,12 @@ defmodule Ipse.Session do
         reported_model: nil,
         historical_model: historical_model(events),
         subscriber: Keyword.fetch!(opts, :subscriber),
-        skills:
-          Skills.discover(
-            cwd,
-            Path.join(Path.expand(home), "skills"),
-            skill_discovery_options(config)
+        skills: skills,
+        skills_saved: skills_saved,
+        skill_drift:
+          if(skills == discovered,
+            do: [],
+            else: ["Skill catalog changed; use /context refresh to adopt current discovery."]
           ),
         messages: messages,
         extension_contributions: extension_state.contributions,
@@ -203,6 +219,7 @@ defmodule Ipse.Session do
           ),
         text_stream: nil,
         text_stream_monitor: nil,
+        text_required: false,
         extension_text: %{},
         extension_text_count: Ipse.Extensions.TextResources.count(events),
         extension_text_turn: nil,
@@ -252,6 +269,14 @@ defmodule Ipse.Session do
         feeds: Feeds.new(events, id)
       }
 
+      state =
+        if handoff do
+          record(state, handoff)
+          %{state | messages: state.messages ++ [handoff["message"]]}
+        else
+          state
+        end
+
       capture =
         Ipse.Observability.Resources.prepare(
           self(),
@@ -263,14 +288,7 @@ defmodule Ipse.Session do
 
       state = %{state | observation: capture}
       state = if context_is_new, do: persist_context(state, context_snapshot, true), else: state
-
-      state =
-        if handoff do
-          record(state, handoff)
-          %{state | messages: state.messages ++ [handoff["message"]]}
-        else
-          state
-        end
+      state = if opts[:id] == nil, do: persist_skills(state, skills), else: state
 
       state =
         lifecycle_records(
@@ -607,17 +625,24 @@ defmodule Ipse.Session do
 
   def handle_call(:subscribe_text, from, s), do: handle_call({:subscribe_text, 1}, from, s)
 
-  def handle_call({:subscribe_text, version}, {consumer, _}, %{phase: :idle} = s)
-      when version in [1, 2] do
-    s = ensure_text_stream(s)
+  def handle_call({:subscribe_text, version}, from, s),
+    do: handle_call({:subscribe_text, version, false}, from, s)
 
-    {:reply, Ipse.TextStream.subscribe(s.text_stream, consumer, version), s}
+  def handle_call({:subscribe_text, version, required}, {consumer, _}, %{phase: :idle} = s)
+      when version in [1, 2] and is_boolean(required) do
+    s = ensure_text_stream(s)
+    result = Ipse.TextStream.subscribe(s.text_stream, consumer, version, required)
+
+    next =
+      if match?({:ok, _}, result), do: %{s | text_required: s.text_required or required}, else: s
+
+    {:reply, result, next}
   end
 
-  def handle_call({:subscribe_text, version}, _, s) when version not in [1, 2],
+  def handle_call({:subscribe_text, version, _}, _, s) when version not in [1, 2],
     do: {:reply, {:error, :unsupported_text_version}, s}
 
-  def handle_call({:subscribe_text, _}, _, s), do: {:reply, {:error, :busy}, s}
+  def handle_call({:subscribe_text, _, _}, _, s), do: {:reply, {:error, :busy}, s}
 
   def handle_call(
         {:extension_text_begin, ref, identity},
@@ -671,7 +696,8 @@ defmodule Ipse.Session do
            Ipse.TextStream.subscribe(
              s.text_stream,
              consumer,
-             Ipse.Extensions.TextResources.frame_version(intent["identity"])
+             Ipse.Extensions.TextResources.frame_version(intent["identity"]),
+             intent["identity"]["text_required"] == true
            ) do
       resource = %{
         resource
@@ -679,6 +705,8 @@ defmodule Ipse.Session do
           monitor: Process.monitor(consumer),
           subscription_id: handle.subscription_id
       }
+
+      s = %{s | text_required: s.text_required or intent["identity"]["text_required"] == true}
 
       {:reply, {:ok, handle},
        %{s | extension_text: Map.put(s.extension_text, intent["resource_id"], resource)}}
@@ -1189,7 +1217,7 @@ defmodule Ipse.Session do
        "question_waiting" => not is_nil(s.question),
        "active_worker" => not is_nil(s.task),
        "accounting" => Ipse.Usage.snapshot(s.accounting),
-       "context" => Ipse.Diagnostics.context(s.messages, s.config, system_message(s)),
+       "context" => Ipse.Diagnostics.context(s.messages, s.config, context_header(s)),
        "extension_context" => Ipse.Extensions.Contributions.summary(s.extension_contributions),
        "extension_events" => %{
          "admitted_deliveries" => s.event_count,
@@ -1258,7 +1286,15 @@ defmodule Ipse.Session do
     task =
       owned_task(fn ->
         with {:ok, snapshot} <- WorkspaceContext.snapshot(s.cwd, s.context_home) do
-          {:ok, snapshot, WorkspaceContext.drift(snapshot)}
+          discovered =
+            Skills.discover(
+              s.cwd,
+              Path.join(s.context_home, "skills"),
+              skill_discovery_options(s.config)
+            )
+
+          with {:ok, skills, _} <- Skills.restore([], discovered),
+               do: {:ok, snapshot, WorkspaceContext.drift(snapshot), skills}
         end
       end)
 
@@ -1273,66 +1309,67 @@ defmodule Ipse.Session do
     original = text
     turn = Ipse.Usage.id()
 
-    if Subscriptions.declarations(s.config) == [] or
-         match?(
-           {:ok, _},
-           Ipse.Lifecycle.Source.build(s.id, 0, Subscriptions.received(turn, text))
-         ) do
-      s = enroll_feeds(s)
+    case Skills.expand(text, s.skills) do
+      {:error, :skill_catalog_changed} = error ->
+        {:reply, error,
+         fail(
+           s,
+           "Selected skill changed or is unavailable. Use /context refresh before loading it."
+         )}
 
-      s = %{
-        s
-        | turn_id: turn,
-          event_received: nil,
-          event_committed: nil,
-          event_answer: nil,
-          event_turn: nil,
-          event_intent: nil,
-          event_schedule: "before_request",
-          event_after_started: false
-      }
+      {:ok, text, names} ->
+        if Subscriptions.declarations(s.config) == [] or
+             match?(
+               {:ok, _},
+               Ipse.Lifecycle.Source.build(s.id, 0, Subscriptions.received(turn, original))
+             ) do
+          s = enroll_feeds(s)
 
-      text =
-        Enum.reduce(Skills.explicit(text, s.skills), text, fn name, acc ->
-          case Skills.load(s.skills, name) do
-            {:ok, body} ->
-              notify(s, {:skill, name})
-              acc <> "\n\n" <> body
+          s = %{
+            s
+            | turn_id: turn,
+              event_received: nil,
+              event_committed: nil,
+              event_answer: nil,
+              event_turn: nil,
+              event_intent: nil,
+              event_schedule: "before_request",
+              event_after_started: false
+          }
 
-            _ ->
-              acc
-          end
-        end)
+          Enum.each(names, &notify(s, {:skill, &1}))
+          s = persist_skills(s, s.skills)
 
-      s =
-        if Subscriptions.declarations(s.config) != [] do
-          event = Subscriptions.received(s.turn_id, original)
-          source = record_source(s, event)
-          %{s | event_received: %{source: source, record: event}}
+          s =
+            if Subscriptions.declarations(s.config) != [] do
+              event = Subscriptions.received(s.turn_id, original)
+              source = record_source(s, event)
+              %{s | event_received: %{source: source, record: event}}
+            else
+              if Host.enabled?(s.config, "transform.prompt"),
+                do:
+                  record(s, %{
+                    "type" => "extension_prompt_received",
+                    "version" => 1,
+                    "original" => original,
+                    "original_sha256" => Ipse.Extensions.Manifest.sha256(original)
+                  })
+
+              s
+            end
+
+          s = append_message(s, %{"role" => "user", "content" => text})
+          s = %{s | steps: 0, final: "", mcp_ready: false, delegations: 0}
+
+          next =
+            if Host.enabled?(s.config, "transform.prompt"),
+              do: launch_extensions(s, :extension_prompt),
+              else: model(s)
+
+          {:reply, :ok, next}
         else
-          if Host.enabled?(s.config, "transform.prompt"),
-            do:
-              record(s, %{
-                "type" => "extension_prompt_received",
-                "version" => 1,
-                "original" => original,
-                "original_sha256" => Ipse.Extensions.Manifest.sha256(original)
-              })
-
-          s
+          {:reply, {:error, :subscription_prompt_too_large_or_invalid}, s}
         end
-
-      s = append_message(s, %{"role" => "user", "content" => text})
-      s = %{s | steps: 0, final: "", mcp_ready: false, delegations: 0}
-
-      next =
-        if Host.enabled?(s.config, "transform.prompt"),
-          do: launch_extensions(s, :extension_prompt),
-          else: model(s)
-
-      {:reply, :ok, next}
-    else
-      {:reply, {:error, :subscription_prompt_too_large_or_invalid}, s}
     end
   end
 
@@ -1907,8 +1944,9 @@ defmodule Ipse.Session do
 
         {:noreply, model(s)}
 
-      {:context_refresh, {:ok, snapshot, drift}} ->
-        s = persist_context(%{s | context_drift: drift}, snapshot)
+      {:context_refresh, {:ok, snapshot, drift, skills}} ->
+        s = persist_context(%{s | context_drift: drift, skill_drift: []}, snapshot)
+        s = persist_skills(s, skills)
         manifest = context_manifest(s)
         notify(s, {:context_refreshed, manifest})
         notify(s, {:done, :ok})
@@ -2173,7 +2211,7 @@ defmodule Ipse.Session do
 
     s =
       if ref == s.text_stream_monitor,
-        do: %{s | text_stream: nil, text_stream_monitor: nil},
+        do: %{s | text_stream: nil, text_stream_monitor: nil, text_required: false},
         else: s
 
     resources =
@@ -2320,10 +2358,15 @@ defmodule Ipse.Session do
           s.context_snapshot,
           Map.get(s.config, :sandbox, :off)
         ) <>
-          delegation_instructions(s.config) <>
-          Ipse.Extensions.Contributions.render(s.extension_contributions)
+          delegation_instructions(s.config)
     }
   end
+
+  defp context_header(s),
+    do: [
+      system_message(s),
+      Ipse.Context.reference(s.skills, s.context_snapshot, s.extension_contributions)
+    ]
 
   defp delegation_instructions(config) do
     cond do
@@ -2380,11 +2423,21 @@ defmodule Ipse.Session do
 
   defp context_manifest(s) do
     manifest = WorkspaceContext.manifest(s.context_snapshot)
-    diagnostics = Enum.uniq(manifest["diagnostics"] ++ s.context_drift)
-    %{manifest | "diagnostics" => diagnostics}
+    diagnostics = Enum.uniq(manifest["diagnostics"] ++ s.context_drift ++ s.skill_drift)
+    Map.merge(manifest, %{"diagnostics" => diagnostics, "skills" => s.skills})
+  end
+
+  defp persist_skills(s, skills) do
+    if not s.skills_saved or s.skills != skills do
+      record(s, Skills.checkpoint(skills))
+      %{s | skills: skills, skills_saved: true}
+    else
+      s
+    end
   end
 
   defp model(s) do
+    s = persist_skills(s, s.skills)
     servers = Map.get(s.config, :mcp_servers, [])
 
     cond do
@@ -2411,11 +2464,11 @@ defmodule Ipse.Session do
         start_extension_text(s)
 
       true ->
-        system = system_message(s)
+        system = context_header(s)
 
         case Ipse.Compaction.prepare(s.messages, s.config, system) do
           :skip ->
-            launch_model(s, [system | s.messages])
+            launch_model(s, system ++ s.messages)
 
           {:ok, plan} ->
             config = Ipse.Compaction.request_config(s.config)
@@ -2537,11 +2590,11 @@ defmodule Ipse.Session do
     task =
       owned_task(fn ->
         receive do
-          :provider_start ->
+          {:provider_start, required, ready} ->
             emit = fn event ->
               case event do
                 {:text, text} when phase == :model ->
-                  :ok = Ipse.TextStream.push_delta(stream, request_id, text)
+                  :ok = Ipse.TextStream.deliver(stream, request_id, text, required)
                   send(owner, {:progress, job_ref, event})
 
                 {:provider_usage, _} ->
@@ -2552,11 +2605,27 @@ defmodule Ipse.Session do
               end
             end
 
-            Ipse.Budget.run(config, s.active_request, emit, fn admitted, emit ->
-              request(admitted, messages, tools, emit)
-            end)
-        after
-          5_000 -> {:error, "Provider dispatch was not admitted."}
+            try do
+              result =
+                Ipse.Budget.run(config, s.active_request, emit, fn admitted, emit ->
+                  if required and (not ready or not text_ready?(stream, request_id)),
+                    do: raise(Ipse.TextStream.RequiredFailure)
+
+                  request(admitted, messages, tools, emit)
+                end)
+
+              outcome = if match?({:ok, _, _}, result), do: "completed", else: "failed"
+              delivery = finish_text(stream, request_id, outcome)
+
+              if required and outcome == "completed" and delivery != :ok do
+                emit.({:provider_usage, elem(result, 2)})
+                {:error, Exception.message(%Ipse.TextStream.RequiredFailure{})}
+              else
+                result
+              end
+            rescue
+              error in Ipse.TextStream.RequiredFailure -> {:error, Exception.message(error)}
+            end
         end
       end)
 
@@ -2570,26 +2639,28 @@ defmodule Ipse.Session do
     }
 
     case begin_text(stream, request_id, task.pid) do
-      :ok ->
-        send(task.pid, :provider_start)
-        s
+      {:ok, required} ->
+        send(task.pid, {:provider_start, required, true})
+        %{s | text_required: required}
 
       _ ->
-        Task.shutdown(task, :brutal_kill)
-
-        fail(
-          measure_request(s, :worker_down),
-          "Visible-text subscription could not admit this request."
-        )
+        send(task.pid, {:provider_start, s.text_required, false})
+        s
     end
   end
 
-  defp begin_text(nil, _, _), do: :ok
+  defp begin_text(nil, _, _), do: {:ok, false}
 
   defp begin_text(stream, id, producer) do
-    Ipse.TextStream.begin(stream, id, producer)
+    Ipse.TextStream.begin_with_policy(stream, id, producer)
   catch
     :exit, _ -> {:error, :text_stream_unavailable}
+  end
+
+  defp text_ready?(stream, id) do
+    Ipse.TextStream.check(stream, id) == :ok
+  catch
+    :exit, _ -> false
   end
 
   defp finish_text(nil, _, _), do: :ok
@@ -2612,7 +2683,7 @@ defmodule Ipse.Session do
     do: Ipse.Provider.Request.complete(config, messages, tools, emit)
 
   defp complete_compaction(s, assistant, usage) do
-    case Ipse.Compaction.finish(s.compaction, assistant, system_message(s), s.config) do
+    case Ipse.Compaction.finish(s.compaction, assistant, context_header(s), s.config) do
       {:ok, messages, checkpoint, stats} ->
         record(s, %{
           "type" => "context_compacted",
@@ -2646,7 +2717,7 @@ defmodule Ipse.Session do
       "type" => "compaction_failed",
       "stage" => stage,
       "reason" => reason,
-      "diagnostics" => Ipse.Diagnostics.context(s.messages, s.config, system_message(s))
+      "diagnostics" => Ipse.Diagnostics.context(s.messages, s.config, context_header(s))
     })
 
     fail(
@@ -3642,6 +3713,7 @@ defmodule Ipse.Session do
   @doc "Validate saved effective context without starting inference, tools or a session."
   def restore_context(events) do
     with :ok <- Ipse.Handoff.validate_events(events),
+         :ok <- Skills.validate_events(events),
          {:ok, _} <- Ipse.Lifecycle.Runtime.restore(events),
          {:ok, _} <- Ipse.Lifecycle.Tool.restore(events),
          {:ok, _} <- Ipse.Lifecycle.Child.restore(events),
@@ -3658,51 +3730,51 @@ defmodule Ipse.Session do
       %{"type" => "extension_invocation_result", "descriptor" => %{"stage" => "invoke.tool"}} =
           event,
       {:ok, messages} ->
-        {:cont, {:ok, messages ++ [Invocation.tool_message(event)]}}
+        {:cont, {:ok, [Invocation.tool_message(event) | messages]}}
 
       %{"type" => "message", "message" => %{"ipse_extension_result" => _} = message},
       {:ok, messages} ->
-        if List.last(messages) == message,
+        if List.first(messages) == message,
           do: {:cont, {:ok, messages}},
           else: {:halt, {:error, :invalid_extension_invocation}}
 
       %{"type" => "extension_transform_intent"} = event, {:ok, messages} ->
-        messages = restore_messages(messages)
+        messages = restore_messages(Enum.reverse(messages))
 
         case Projection.validate_intent_context(messages, event) do
-          :ok -> {:cont, {:ok, messages}}
+          :ok -> {:cont, {:ok, Enum.reverse(messages)}}
           error -> {:halt, error}
         end
 
       %{"type" => "extension_transform_result"} = event, {:ok, messages} ->
-        case Projection.apply(restore_messages(messages), event) do
-          {:ok, projected} -> {:cont, {:ok, projected}}
+        case Projection.apply(restore_messages(Enum.reverse(messages)), event) do
+          {:ok, projected} -> {:cont, {:ok, Enum.reverse(projected)}}
           error -> {:halt, error}
         end
 
       %{"type" => "handoff_imported", "message" => message}, {:ok, messages} ->
-        {:cont, {:ok, messages ++ [message]}}
+        {:cont, {:ok, [message | messages]}}
 
       %{"type" => type, "message" => message}, {:ok, messages}
       when type in ["message", "operator_answer", "operator_question_closed"] and is_map(message) ->
-        {:cont, {:ok, messages ++ [message]}}
+        {:cont, {:ok, [message | messages]}}
 
       %{"type" => "context_compacted"} = event, {:ok, messages} ->
-        messages = restore_messages(messages)
+        messages = restore_messages(Enum.reverse(messages))
         count = event["covered_messages"]
 
         if event["version"] == 1 and is_integer(count) and count > 0 and
              count <= length(messages) and
              Ipse.Compaction.valid_checkpoint?(event["checkpoint"]) and
              Ipse.Compaction.digest(Enum.take(messages, count)) == event["prefix_sha256"] do
-          {:cont, {:ok, [event["checkpoint"] | Enum.drop(messages, count)]}}
+          {:cont, {:ok, Enum.reverse([event["checkpoint"] | Enum.drop(messages, count)])}}
         else
           {:halt, {:error, :invalid_compaction_checkpoint}}
         end
 
       %{"type" => "tool_results_compacted"} = event, {:ok, messages} ->
-        case Ipse.Compaction.restore_tool_results(restore_messages(messages), event) do
-          {:ok, projected} -> {:cont, {:ok, projected}}
+        case Ipse.Compaction.restore_tool_results(restore_messages(Enum.reverse(messages)), event) do
+          {:ok, projected} -> {:cont, {:ok, Enum.reverse(projected)}}
           error -> {:halt, error}
         end
 
@@ -3710,7 +3782,7 @@ defmodule Ipse.Session do
         {:cont, acc}
     end)
     |> case do
-      {:ok, messages} -> {:ok, restore_messages(messages)}
+      {:ok, messages} -> {:ok, restore_messages(Enum.reverse(messages))}
       error -> error
     end
   end
@@ -4081,6 +4153,8 @@ defmodule Ipse.Session do
   end
 
   defp restore_question(events, messages) do
+    # The whole history has already passed restore_context/1. Project each
+    # prefix for its checkpoint hash without repeating every durable reducer.
     events
     |> Enum.with_index()
     |> Enum.reduce_while({:ok, nil}, fn
@@ -4095,7 +4169,7 @@ defmodule Ipse.Session do
              {:ok, ^args} <- Questions.validate(event["arguments"]),
              true <-
                is_integer(event["steps"]) and event["steps"] >= 0 and event["steps"] <= 100_000,
-             {:ok, prefix} <- restore(Enum.take(events, index)),
+             {:ok, prefix} <- restore_validated_context(Enum.take(events, index)),
              prefix = remove_question_placeholder(prefix, call["id"]),
              true <-
                length(prefix) == event["covered_messages"] and

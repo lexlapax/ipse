@@ -37,7 +37,7 @@ start. Use the guides below for operation, development, and project context.
 | [Configuration contract](developer/configuration.md) | Bounded loader, scope, schema reuse, provenance and resume policy |
 | [Operator questions](developer/operator-questions.md) | Native question schema, explicit answers, approvals and durable recovery |
 | [Context compaction](developer/context-compaction.md) | Preserved context, bounds, checkpoint and recovery contract |
-| [Workspace context](developer/workspace-context.md) | Instruction scope, source bounds, snapshots, and refresh |
+| [Workspace context](developer/workspace-context.md) | Instruction scope, skill selection, source bounds, saved snapshots, drift and refresh |
 | [Native shell sandbox](developer/sandbox.md) | OS capabilities, fail-closed selection, and platform limits |
 | [Protocol proposal](developer/protocol-proposal.md) | Proposed MCP, delegation, and remote-execution trust/recovery contracts |
 | [Research contract](developer/research.md) | Provenance-bound source/claim records, bounds, compatibility and resume |
@@ -66,7 +66,7 @@ start. Use the guides below for operation, development, and project context.
 | [Provider output ceilings](developer/provider-limits.md) | Explicit supported request caps, subscription refusal, child narrowing, truncation and pinned resume |
 | [Configured cost estimates](developer/costs.md) | Versioned rate cards, page/session/tree extensions, cumulative aggregation and separation from host admission |
 | [Shared budget contract](developer/budgets.md) | Atomic main/summary/child reservations, protected ledger, live ownership, source validation and conservative settlement |
-| [Private text streams](developer/text-streams.md) | Embedded/worker enrollment, opaque resource handles, acknowledgment, pressure and ephemeral recovery |
+| [Private text streams](developer/text-streams.md) | Optional/required embedded/worker delivery, acknowledgment, pressure, ownership and ephemeral recovery |
 | [Ephemeral text events](developer/stream-events.md) | Negotiated v2 frame sources, shared stream/range identity, distinct delivery sequence and metadata/private projections |
 | [Architecture review and self-development evaluation](developer/self-hosting-evaluation.md) | P24 external adversarial architecture validation/baseline security; P25 independent Codex/Ipse research, repairs, held-out reruns and final reviews |
 | [Knowledge extension family](developer/knowledge-extensions.md) | P25 research questions and deferred P26/P27 default-off memory, research, graph/RAG selection and acceptance |

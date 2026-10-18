@@ -92,10 +92,11 @@ the result is synced before installing that map or continuing the callback.
 Each subsequent main-model request syncs an `extension_context_snapshot` after
 request admission and before provider dispatch. It pins request ID, map digest,
 exact rendered content and content digest. Summary requests do not receive this
-additional context. The main system message appends JSON-encoded data after
-mandatory host instructions and explicitly identifies assertions/provenance limits.
+additional context. A separate user-role reference message contains JSON-encoded
+data and identifies assertions/provenance limits. Core-owned rules alone occupy
+the system message; reference text is neither a new operator request nor permission.
 Original messages, native continuations and mandatory instruction snapshots are
-not edited. Compaction accounts for the additional system bytes.
+not edited. Compaction accounts for both the system and reference-message bytes.
 
 Idle resume restores cached sets/snapshots without initializing an extension,
 retrieving again or silently refreshing a record. Missing/altered snapshots for

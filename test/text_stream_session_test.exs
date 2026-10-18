@@ -5,7 +5,10 @@ defmodule Ipse.TextStreamSessionTest do
   defmodule Visible do
     def complete(config, _messages, _tools, emit) do
       send(config.test_pid, {:visible_worker, self()})
-      content = config[:large_delta] || "é🙂 visible"
+
+      content =
+        config[:large_delta] ||
+          if(config[:flood], do: String.duplicate("a", 65_536) <> "tail", else: "é🙂 visible")
 
       if config[:flood] do
         emit.({:text, String.duplicate("a", 65_536)})
@@ -30,7 +33,7 @@ defmodule Ipse.TextStreamSessionTest do
          "role" => "assistant",
          "content" => content,
          "provider_data" => %{"private" => "synthetic-native-reasoning"}
-       }, %{}}
+       }, config[:usage] || %{}}
     end
   end
 
@@ -119,6 +122,113 @@ defmodule Ipse.TextStreamSessionTest do
     {:ok, messages} = Session.restore_context(events)
     assert List.last(messages)["content"] == text
     assert List.last(messages)["provider_data"]["private"] == "synthetic-native-reasoning"
+  end
+
+  test "optional backpressure closes delivery but preserves successful inference and native history",
+       ctx do
+    pid = start(%{ctx | config: Map.put(ctx.config, :flood, true)})
+    {:ok, handle} = Session.subscribe_text(pid)
+    :ok = Session.prompt(pid, "synthetic optional pressure")
+    assert_receive :first_chunk_accepted, 2_000
+
+    assert_receive {:ipse_text, server,
+                    %{"kind" => "closed", "reason" => "backpressure_timeout"}},
+                   7_000
+
+    assert server == handle.server
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 2_000
+    {:ok, events} = Ipse.Journal.load(ctx.dir, Session.info(pid).id)
+    {:ok, messages} = Session.restore_context(events)
+    assert List.last(messages)["content"] == String.duplicate("a", 65_536) <> "tail"
+    assert List.last(messages)["provider_data"]["private"] == "synthetic-native-reasoning"
+    assert List.last(Session.info(pid).accounting["requests"])["outcome"] == "completed"
+  end
+
+  for required <- [false, true] do
+    test "broker loss with required=#{required} preserves the selected delivery policy", ctx do
+      pid = start(%{ctx | config: Map.put(ctx.config, :large_delta, "gated synthetic text")})
+      {:ok, handle} = Session.subscribe_text(pid, 2, required: unquote(required))
+      assert :ok = Session.prompt(pid, "synthetic broker loss")
+      assert_receive {:visible_worker, worker}, 2_000
+      monitor = Process.monitor(handle.server)
+      Process.exit(handle.server, :kill)
+      assert_receive {:DOWN, ^monitor, :process, _, _}, 2_000
+      send(worker, :emit_large)
+
+      if unquote(required) do
+        assert_receive {:ipse, ^pid, {:error, error}}, 2_000
+        assert error =~ "Required visible-text delivery failed"
+        refute error =~ "invalid response"
+        assert_receive {:ipse, ^pid, {:done, :error}}, 2_000
+      else
+        assert_receive {:ipse, ^pid, {:done, :ok}}, 2_000
+        assert Session.info(pid).final == "gated synthetic text"
+      end
+
+      assert :ok = Session.close(pid)
+    end
+  end
+
+  test "required completion waits for acknowledgment and retains final usage on refusal and resume",
+       ctx do
+    config =
+      Map.merge(ctx.config, %{
+        usage: %{"input_tokens" => 12, "output_tokens" => 3},
+        budget: %{
+          "version" => 1,
+          "max_requests" => 4,
+          "max_input_tokens" => 1000,
+          "reserve_input_tokens" => 128
+        }
+      })
+
+    ctx = %{ctx | config: config}
+    pid = start(ctx)
+    id = Session.info(pid).id
+    {:ok, _} = Session.subscribe_text(pid, 1, required: true)
+    assert {:error, :invalid_text_policy} = Session.subscribe_text(pid, 1, required: "yes")
+    :ok = Session.prompt(pid, "synthetic required completion")
+    assert_receive {:ipse, ^pid, {:error, error}}, 7_000
+    assert error =~ "Required visible-text delivery failed"
+    assert_receive {:ipse, ^pid, {:done, :error}}, 2_000
+    request = List.last(Session.info(pid).accounting["requests"])
+    assert request["outcome"] == "failed"
+    assert :ok = Session.close(pid)
+    resumed = start(ctx, id)
+    assert Session.info(resumed).phase == :idle
+    {:ok, events} = Ipse.Journal.load(ctx.dir, id)
+    assert Enum.any?(events, &(get_in(&1, ["usage", "counts", "input_tokens"]) == 12))
+    refute Enum.any?(events, &(get_in(&1, ["message", "role"]) == "assistant"))
+    assert :ok = Session.close(resumed)
+  end
+
+  test "a healthy explicitly required client acknowledges completion before inference is admitted",
+       ctx do
+    pid = start(ctx)
+    parent = self()
+
+    client =
+      Task.async(fn ->
+        {:ok, handle} = Session.subscribe_text(pid, 2, required: true)
+        send(parent, :required_ready)
+        receive_required(handle)
+      end)
+
+    assert_receive :required_ready, 2_000
+    :ok = Session.prompt(pid, "synthetic required delivery")
+    assert :ok = Task.await(client, 2_000)
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 2_000
+    assert :ok = Session.close(pid)
+  end
+
+  defp receive_required(handle) do
+    receive do
+      {:ipse_text, server, %{"sequence" => sequence} = frame} when server == handle.server ->
+        :ok = TextStream.ack(handle, sequence)
+        if frame["kind"] == "end", do: :ok, else: receive_required(handle)
+    after
+      2_000 -> flunk("required delivery did not finish")
+    end
   end
 
   test "subscriptions are opt-in and visible text preserves final native data", ctx do

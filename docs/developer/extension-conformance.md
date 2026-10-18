@@ -126,7 +126,7 @@ configuration for I/O adapters. Shell sandbox selection retains its ordinary
 - `final`: exact final presentation string.
 - `value`: exact object returned by the last extension invocation.
 - `user_contains`: marker in the latest effective user message of any synthetic request.
-- `context_contains`: marker in system context of any synthetic request, useful for recall.
+- `context_contains`: marker in the labelled user-role reference context of any synthetic request, useful for recall.
 - `records`: exact counts for the named journal types, each 0..1000.
 - `action_statuses`: exact ordered host-action outcome statuses, at most 128.
 - `files`: exact contents at safe relative workspace paths.

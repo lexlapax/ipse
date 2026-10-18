@@ -20,6 +20,7 @@ defmodule Ipse.Provider do
           end
         end
       rescue
+        error in Ipse.TextStream.RequiredFailure -> {:error, Exception.message(error)}
         _ -> {:error, "Provider request failed (invalid response or configuration)."}
       catch
         :exit, _ -> {:error, "Provider connection terminated."}

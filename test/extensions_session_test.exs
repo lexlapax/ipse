@@ -281,7 +281,7 @@ defmodule Ipse.Extensions.SessionTest do
     assert {:ok, pid} = start(c, config)
     assert :idle = Session.info(pid).phase
     assert :ok = Session.prompt(pid, "original task")
-    assert_receive {:model_context, [_system, user]}, 5_000
+    assert_receive {:model_context, [_system, _reference, user]}, 5_000
     assert String.starts_with?(user["content"], "original task")
     [_, first, second] = String.split(user["content"], "[Untrusted extension context:")
     assert first =~ "first; artifact"
@@ -455,7 +455,7 @@ defmodule Ipse.Extensions.SessionTest do
     assert_receive {:ipse, ^resumed, {:done, :ok}}, 5_000
     assert {:ok, events} = Journal.load(c.dir, id)
     assert {:ok, restored} = Session.restore_context(events)
-    assert Enum.drop(context, 1) == Enum.drop(restored, -1)
+    assert Enum.drop(context, 2) == Enum.drop(restored, -1)
     refute File.exists?(Path.join(c.root, "must-not-exist"))
     assert :ok = Session.close(resumed)
   end
@@ -476,7 +476,7 @@ defmodule Ipse.Extensions.SessionTest do
     config = independent(c, "append")
     assert {:ok, pid} = start(c, config)
     assert :ok = Session.prompt(pid, "task")
-    assert_receive {:model_context, [_system, user]}, 5_000
+    assert_receive {:model_context, [_system, _reference, user]}, 5_000
     assert user["content"] =~ "independent note"
     assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
     assert_raise ArgumentError, fn -> String.to_existing_atom("Elixir." <> c.independent_name) end

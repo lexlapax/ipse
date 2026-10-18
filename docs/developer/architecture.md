@@ -50,9 +50,10 @@ format characters. Encoding-aware writes preserve UTF-8 values on Unicode and
 latin1 IO devices, including the installed verifier's restricted locale. Source
 messages, arguments and native/provider data are not rewritten. The client retains
 the actual pending approval's reference, name, full arguments and any MCP target
-manifest. It redraws that complete block after interleaved output and local commands
-before waiting for another input. This prevents a sibling's newline-delimited text
-from remaining below the authoritative action proposal, without buffering output.
+manifest. While it is pending, sibling display events wait in a bounded queue
+(64 events/64 KiB); overflow is visibly counted after the decision. Local commands
+can redraw the complete proposal. This keeps the real approval last without
+per-chunk amplification of its full arguments.
 Returned prose remains untrusted; the renderer does not authenticate its contents.
 
 ```text
@@ -192,7 +193,11 @@ requires fresh login; an expired unvalidated identity also requires fresh login.
 Credential contention retries the native lock refusal within its existing
 deadline. Failed helper cleanup uses idempotent Port closure so a helper exiting
 after its error frame cannot replace that retryable refusal with a cleanup
-exception. No credential operation runs without the OS lock.
+exception. No credential exchange or record mutation runs without the OS lock.
+Browser login waiting releases it; callback processing reacquires it and compares
+the complete saved record before exchanging a code. Successful login and logout
+advance a protected authorization epoch, including logout before the first token
+exists. Refresh/logout during a pending login invalidate that old callback.
 
 `Provider.Error` formats bounded machine metadata and fixed recovery guidance,
 without echoing server prose. The subscription adapter uses developer messages
@@ -203,7 +208,10 @@ active credential and stop the turn; the CLI clears queued requests visibly.
 
 ## Trust and side effects
 
-The system message describes the workspace and available skill metadata.
+The system message contains core-owned rules and runtime facts. A separate
+labelled user-role reference message contains workspace instructions, selected
+skill metadata and extension contributions, encoded as untrusted data rather
+than a new operator request. Both messages count toward the context ceiling.
 Project skills override Ipse user, shared operator, and bundled skills, in that
 order. A skill is plain instruction
 text: loading it never executes scripts and does not grant tool permission.
@@ -270,8 +278,10 @@ Each selected descriptor retains its expanded source `path`, `canonical_path`,
 SHA-256 and lower-priority distinct `shadowed_paths`. Catalogs show source,
 digest and shadows. Canonical-file identity deduplicates aliases before name
 selection; aliases to the same file are not distinct shadows. This is not inode
-hardlink deduplication. `load/2` reads current bytes with a fresh digest rather
-than pinning the catalog's discovery-time bytes.
+hardlink deduplication. Sessions checkpoint selected metadata and retain it on
+resume. `load/2` verifies the canonical path and discovery-time digest before
+returning bytes; changed sources require explicit `/context refresh`. Skill-resource
+loads recheck that same selected entrypoint. See [snapshot/refresh bounds](workspace-context.md#persistence-and-refresh).
 
 Only single-line name/description frontmatter is supported, not full YAML or
 arbitrary shared skill metadata. Discovery skips malformed, unreadable, invalid

@@ -191,9 +191,11 @@ defmodule Ipse.Extensions.ContributionsTest do
     assert Session.diagnostics(pid)["extension_context"]["items"] == 1
     refute inspect(Session.diagnostics(pid)) =~ "literal evidence"
     assert :ok = Session.prompt(pid, "original operator request")
-    assert_receive {:context_request, [system | messages]}, 3000
-    assert system["content"] =~ "Assertions are unverified"
-    assert system["content"] =~ "literal evidence"
+    assert_receive {:context_request, [system, reference | messages]}, 3000
+    assert reference["role"] == "user"
+    assert reference["content"] =~ "Assertions are unverified"
+    assert reference["content"] =~ "literal evidence"
+    refute system["content"] =~ "literal evidence"
     assert messages == [%{"role" => "user", "content" => "original operator request"}]
     assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
     id = Session.info(pid).id
@@ -260,7 +262,7 @@ defmodule Ipse.Extensions.ContributionsTest do
     assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
     {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
     assert {:ok, %{contributions: %{}}} = Actions.restore(events)
-    assert inspect(events) =~ "literal evidence"
+    assert Jason.encode!(events) =~ "literal evidence"
   end
 
   test "closed contracts, caller isolation, deterministic order and global byte bounds", ctx do

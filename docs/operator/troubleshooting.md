@@ -58,8 +58,10 @@ and containers may need explicit port forwarding. Check that the browser
 bypasses its proxy for loopback. Auth, inference and HTTP MCP share proxy selection:
 HTTP proxy URLs are supported, including credentials; unsupported schemes refuse
 instead of silently connecting directly. `HTTPS_PROXY` names the variable for HTTPS
-destinations, while its value must use `http://`. If another login holds the credential lock,
-finish or interrupt it before starting another attempt.
+destinations, while its value must use `http://`. Browser waiting does not hold
+the credential lock. Exchanges, refreshes and writes still serialize under it.
+If refresh, logout or another completed login changes credentials while a browser
+attempt waits, that old callback refuses before exchange; start a new login.
 
 ## Account, model, and provider errors
 

@@ -3,7 +3,9 @@
 `Ipse.TextStream` owns bounded private visible-text delivery independently of
 optional diagnostics. Embedded clients enroll through Session; installed workers
 enroll through an explicitly trusted/selected `stream.text` capability. Both use
-the same acknowledged frame channel. V1 remains the default; explicit v2
+the same acknowledged frame channel. Consumers are optional by default: losing
+their live delivery does not discard successful inference. An operator can
+explicitly require delivery. V1 remains the default; explicit v2
 negotiation adds [ephemeral event sources](stream-events.md) with stream/range
 identity. There is no audio transport or separate stream CLI flag.
 
@@ -24,6 +26,12 @@ Use `Session.subscribe_text(session, 2)` for source-bearing v2 frames. Independe
 workers additionally declare `stream.text.events` alongside `stream.text`.
 Version selection changes no approval or effect authority. See
 [v2 fields and identity](stream-events.md#occurrence-identity-and-delivery-position).
+
+Embedding may opt into `Session.subscribe_text(session, 2, required: true)`.
+Required consumers must acknowledge the completed stream, including its `end`,
+before the response is admitted. Closure, broker loss or the five-second pressure/
+completion deadline then fails the request with a distinct required-delivery
+diagnosis. This policy is private enrollment state, not a new frame version.
 
 Messages are `{:ipse_text, server, payload}`. Normal frames carry their negotiated version,
 session ID, generation 1, request/stream ID, subscription ID, consecutive sequence
@@ -77,6 +85,14 @@ At most four selected worker consumers are admitted; they share the four-consume
 broker capacity with embedded clients. Insufficient capacity refuses startup
 before worker initialization or provider dispatch rather than dropping a peer.
 
+The operator's `extension_trust` entry can add `"text_required": true` when its
+capability ceiling includes `stream.text`. Omission is optional. This setting is
+pinned in activation identity and applies to instances using that artifact;
+project options and the artifact cannot grant themselves required status.
+Readiness/configuration integrity still gates initial activation for every
+selected worker. Optional delivery governs failures after enrollment, not an
+exemption from startup validation.
+
 On model preparation after fresh operator input, Session syncs an
 `extension_text_intent`, registers an owned consumer, then allows its independent
 VM to initialize. All selected consumers must become ready before the first main
@@ -118,8 +134,8 @@ the resource lifetime; ordinary transforms/invocations still use fresh workers.
 Expiry is checked before initialization and every frame/reply acknowledgment.
 Callback/protocol failure or broker loss closes the subscription incomplete and
 reports a fixed status; it does not rewrite provider history or retry a frame.
-The original request may continue after a consumer leaves, or fail if the broker's
-pressure deadline fires first. Cancellation explicitly closes registered workers.
+An optional consumer detaches without failing inference; loss of a required
+consumer fails delivery. Cancellation explicitly closes registered workers.
 An independent owner guardian also stops a blocked consumer after untrappable
 Session death; Worker/native ownership then closes its VM/process group. This
 does not strengthen the documented detached-descendant OS limits.
@@ -148,20 +164,25 @@ without changing concatenation. Delivery splits only at UTF-8 boundaries. Direct
 `push/3` calls retain a 64 KiB bound. Session's provider adapter uses `push_delta/3`
 to split a larger valid visible delta into sequential UTF-8 pieces within that
 bound, reusing the broker's boundary calculation. It forwards the original UI
-delta only after all pieces are accepted; saved assistant/native data remain
+delta after delivery succeeds or optional consumers detach; saved assistant/native data remain
 unchanged. This avoids an invalid-chunk failure caused solely by provider chunk
 size without expanding channel buffers. The provider already owns the original
 delta; fragmentation adds no queue of pending pieces. One producer call of at
 most 64 KiB can wait outside the buffers. If any consumer cannot admit it, the
 provider task waits while Session remains responsive.
-A 5-second pressure deadline closes subscriptions with explicit incomplete notices
-and returns an error to the producer, causing request failure without retry.
+A five-second pressure deadline closes only blocking subscriptions with explicit
+incomplete notices. Healthy peers stay enrolled. The pending producer continues
+when optional consumers detach; required delivery loss fails without retry.
 Stalled start/end controls also have the 64-entry cap: overflow explicitly closes
 the affected consumer. Diagnostic drop/sampling queues are not used for text.
 
 Session journals admission, creates the owned task, registers that exact producer
 and releases a dispatch barrier. Consumer calls cannot become producers. After
-provider outcome accounting commits, Session queues the terminal frame. Cancel
+provider outcome accounting commits, the producer queues the terminal frame.
+Optional consumers do not delay response admission for terminal acknowledgments;
+required consumers do, within the same five-second bound. Paid usage remains
+recorded even when required delivery prevents admission of the completed answer.
+Cancel
 releases a blocked push, marks accepted content incomplete and stops the task.
 Consumer death removes its buffer and releases flow for remaining peers. Session
 death stops the broker and dependent task. Live subscriptions/chunks are ephemeral
@@ -180,5 +201,8 @@ and compaction fixtures
 cover large-delta Unicode concatenation and contiguous v2 source ranges, direct
 push bounds, caller/sequence checks, pressure deadlines,
 cancellation, consumer/owner death, control overload, inert resume and summary/
-native exclusion. The source/package hook fixture consumes the raw private stream
+native exclusion, optional pressure/broker-loss continuation and explicitly
+required completion/failure. An independent worker's unconfirmed OS cleanup still
+causes close/cancel to report failure; successful inference is not a cleanup receipt.
+The source/package hook fixture consumes the raw private stream
 alongside completed formatting and durable accounting. See [verification](testing.md).

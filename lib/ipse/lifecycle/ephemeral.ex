@@ -2,7 +2,7 @@ defmodule Ipse.Lifecycle.Ephemeral do
   @moduledoc "Private v2 text-frame projections; live identities are not journal positions or permission grants."
   @normal ~w(version kind session_id generation stream_id request_id subscription_id sequence source)
   @closed ~w(version kind subscription_id session_id complete reason unsent_bytes unsent_frames pending_bytes unacknowledged_bytes source)
-  @reasons ~w(unsubscribed consumer_down owner_down invalid_chunk backpressure_timeout control_queue_full position_limit)
+  @reasons ~w(unsubscribed consumer_down owner_down invalid_chunk backpressure_timeout control_queue_full position_limit request_finished)
   @types %{
     "start" => "text.started",
     "text" => "text.delta",

@@ -159,6 +159,11 @@ defmodule Ipse.Extensions.Registry do
           "generation" => 1
         }
 
+        identity =
+          if ceiling["text_required"] == true,
+            do: Map.put(identity, "text_required", true),
+            else: identity
+
         {:cont,
          {:ok,
           entries ++
@@ -327,6 +332,8 @@ defmodule Ipse.Extensions.Registry do
       Ipse.Tools,
       Ipse.Runner,
       Ipse.WorkspaceContext,
+      Ipse.Skills,
+      Ipse.Context,
       Ipse.Extensions.Manifest,
       Ipse.Extensions.Store,
       __MODULE__,
@@ -341,6 +348,7 @@ defmodule Ipse.Extensions.Registry do
       Ipse.Usage,
       Ipse.Usage.Normalizer,
       Ipse.TextStream,
+      Ipse.TextStream.RequiredFailure,
       Ipse.Extensions.TextResources,
       Ipse.Extensions.TextConsumer,
       Ipse.Journal,

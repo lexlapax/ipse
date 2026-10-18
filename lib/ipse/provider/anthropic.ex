@@ -58,6 +58,12 @@ defmodule Ipse.Provider.Anthropic do
     }
   end
 
+  defp native(%{"ipse_checkpoint" => _} = message) do
+    if Ipse.Compaction.valid_checkpoint?(message),
+      do: %{"role" => "user", "content" => message["content"]},
+      else: raise(ArgumentError, "invalid historical context checkpoint")
+  end
+
   defp native(%{"role" => "tool"} = message),
     do: %{
       "role" => "user",

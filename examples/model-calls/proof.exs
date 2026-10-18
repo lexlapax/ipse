@@ -112,11 +112,13 @@ defmodule IpseModelExample.Proof do
       done(pid, :ok)
       {headers, wire} = Task.await(server)
 
-      true =
-        wire["messages"] == [
-          %{"role" => "system", "content" => request["instruction"]},
-          %{"role" => "user", "content" => request["input"]}
-        ]
+      [helper_system, helper_context] = wire["messages"]
+      "system" = helper_system["role"]
+      false = String.contains?(helper_system["content"], request["instruction"])
+      "user" = helper_context["role"]
+      [label, encoded] = String.split(helper_context["content"], "\n", parts: 2)
+      true = String.contains?(label, "Untrusted extension task context")
+      true = Jason.decode!(encoded) == Map.take(request, ~w(instruction input))
 
       true = wire["model"] == "fixture-extract" and wire["tools"] == []
       true = wire["options"] == %{"num_predict" => 32}

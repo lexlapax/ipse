@@ -401,10 +401,7 @@ defmodule Ipse.Extensions.ModelCall do
         Ipse.Budget.run(config, admission, emit, fn selected, emit ->
           request = intent["request"]
 
-          messages = [
-            %{"role" => "system", "content" => request["instruction"]},
-            %{"role" => "user", "content" => request["input"]}
-          ]
+          messages = Ipse.Context.helper_messages(request["instruction"], request["input"])
 
           result = Ipse.Provider.Request.complete(selected, messages, [], emit)
 

@@ -138,7 +138,7 @@ defmodule Ipse.CompactionSessionTest do
     assert_receive {:summary_request, _, [%{"role" => "system"}, %{"role" => "user"}]}, 2_000
     assert_receive {:ipse, ^pid, {:compacted, before_bytes, after_bytes}}, 2_000
     assert after_bytes < before_bytes
-    assert_receive {:normal_request, [_system, checkpoint | _]}, 2_000
+    assert_receive {:normal_request, [_system, _reference, checkpoint | _]}, 2_000
 
     assert checkpoint["ipse_checkpoint"]["user_intents"] == [
              "Keep the MIT license and preserve my manual edits.",
@@ -159,7 +159,7 @@ defmodule Ipse.CompactionSessionTest do
     {:ok, resumed} = start(ctx)
     refute_receive {:summary_request, _, _}, 50
     :ok = Ipse.Session.prompt(resumed, "What remains?")
-    assert_receive {:normal_request, [_system, ^checkpoint | _]}, 2_000
+    assert_receive {:normal_request, [_system, _reference, ^checkpoint | _]}, 2_000
     assert_receive {:ipse, ^resumed, {:done, :ok}}, 2_000
     refute_receive {:summary_request, _, _}, 50
     {:ok, events} = Ipse.Journal.load(ctx.dir, ctx.id)
@@ -204,7 +204,7 @@ defmodule Ipse.CompactionSessionTest do
     {:ok, pid} = start(ctx, %{normal_mode: :wait})
     :ok = Ipse.Session.prompt(pid, "Continue.")
     assert_receive {:ipse, ^pid, {:compacted, _, _}}, 2_000
-    assert_receive {:normal_request, [_system, checkpoint | _]}, 2_000
+    assert_receive {:normal_request, [_system, _reference, checkpoint | _]}, 2_000
     assert_receive {:normal_worker, worker}, 2_000
     owner_ref = Process.monitor(pid)
     worker_ref = Process.monitor(worker)
@@ -214,7 +214,7 @@ defmodule Ipse.CompactionSessionTest do
     {:ok, resumed} = start(ctx)
     refute_receive {:normal_worker, _}, 50
     :ok = Ipse.Session.prompt(resumed, "Recover without repeating effects.")
-    assert_receive {:normal_request, [_system, ^checkpoint | _]}, 2_000
+    assert_receive {:normal_request, [_system, _reference, ^checkpoint | _]}, 2_000
     assert_receive {:ipse, ^resumed, {:done, :ok}}, 2_000
     {:ok, events} = Ipse.Journal.load(ctx.dir, ctx.id)
     assert Enum.count(events, &(&1["type"] == "context_compacted")) == 1
@@ -328,7 +328,7 @@ defmodule Ipse.CompactionSessionTest do
     :ok = Ipse.Session.prompt(pid, "Continue the same task without repeating effects.")
     assert_receive {:ipse, ^pid, {:compacted, before_bytes, after_bytes}}, 2000
     assert after_bytes < before_bytes
-    assert_receive {:normal_request, [_system | projected]}, 2000
+    assert_receive {:normal_request, [_system, _reference | projected]}, 2000
     assert Enum.any?(projected, &Map.has_key?(&1, "ipse_result_excerpt"))
     {:ok, events} = Ipse.Journal.load(ctx.dir, ctx.id)
     assert Enum.count(events, &(&1["type"] == "tool_results_compacted")) == 1
@@ -339,7 +339,7 @@ defmodule Ipse.CompactionSessionTest do
 
     {:ok, resumed} = start(ctx, config)
     :ok = Ipse.Session.prompt(resumed, "Report remaining work.")
-    assert_receive {:normal_request, [_system | restored]}, 2000
+    assert_receive {:normal_request, [_system, _reference | restored]}, 2000
     assert Enum.take(restored, length(projected)) == projected
     assert_receive {:ipse, ^resumed, {:done, :ok}}, 2000
     {:ok, events} = Ipse.Journal.load(ctx.dir, ctx.id)
@@ -353,7 +353,7 @@ defmodule Ipse.CompactionSessionTest do
     config = %{context_bytes: 100_000, compact_threshold_bytes: 36_000}
     {:ok, pid} = start(ctx, Map.put(config, :normal_mode, :wait))
     :ok = Ipse.Session.prompt(pid, "Continue.")
-    assert_receive {:normal_request, [_system | projected]}, 2000
+    assert_receive {:normal_request, [_system, _reference | projected]}, 2000
     assert_receive {:normal_worker, worker}, 2000
     owner_ref = Process.monitor(pid)
     worker_ref = Process.monitor(worker)
@@ -363,7 +363,7 @@ defmodule Ipse.CompactionSessionTest do
     {:ok, resumed} = start(ctx, config)
     refute_receive {:normal_request, _}, 30
     :ok = Ipse.Session.prompt(resumed, "Recover without replay.")
-    assert_receive {:normal_request, [_system | restored]}, 2000
+    assert_receive {:normal_request, [_system, _reference | restored]}, 2000
     assert Enum.take(restored, length(projected)) == projected
     assert_receive {:ipse, ^resumed, {:done, :ok}}, 2000
     assert File.read!(Path.join(ctx.root, "kept.txt")) == "manual edit"

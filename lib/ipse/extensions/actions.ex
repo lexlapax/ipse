@@ -190,7 +190,7 @@ defmodule Ipse.Extensions.Actions do
       step: 0,
       seen: MapSet.new(),
       unknown: false,
-      results: [],
+      results_rev: [],
       question: nil,
       resume_needed: nil,
       context_sha256: nil,
@@ -206,6 +206,14 @@ defmodule Ipse.Extensions.Actions do
         _ -> {:halt, @error}
       end
     end)
+    |> case do
+      {:ok, state} ->
+        {reversed, state} = Map.pop!(state, :results_rev)
+        {:ok, Map.put(state, :results, Enum.reverse(reversed))}
+
+      error ->
+        error
+    end
   rescue
     _ -> @error
   end
@@ -264,7 +272,7 @@ defmodule Ipse.Extensions.Actions do
              action: nil,
              step: 0,
              unknown: false,
-             results: [],
+             results_rev: [],
              question: nil,
              resume_needed: nil
          }},
@@ -275,8 +283,8 @@ defmodule Ipse.Extensions.Actions do
     if state.parent != nil and event["invocation_id"] == state.parent["invocation_id"] and
          is_nil(state.action) and not state.unknown and
          is_nil(state.resume_needed) and is_nil(state.question) and
-         event["action_count"] == length(state.results) and
-         event["actions_sha256"] == Ipse.Compaction.digest(state.results),
+         event["action_count"] == state.step and
+         event["actions_sha256"] == Ipse.Compaction.digest(Enum.reverse(state.results_rev)),
        do: {:ok, %{state | parent: nil}},
        else: @error
   end
@@ -314,7 +322,10 @@ defmodule Ipse.Extensions.Actions do
            Ipse.Extensions.Contributions.apply_result(
              state.contributions,
              state.parent,
-             state.results,
+             if(event["request"]["op"] == "context.publish",
+               do: Enum.reverse(state.results_rev),
+               else: []
+             ),
              event
            ) do
       {:ok,
@@ -322,7 +333,7 @@ defmodule Ipse.Extensions.Actions do
          state
          | action: nil,
            unknown: event["outcome"]["status"] in ~w(unknown cancelled),
-           results: state.results ++ [event],
+           results_rev: [event | state.results_rev],
            question: nil,
            resume_needed: if(event["outcome"]["status"] == "answered", do: event),
            contributions: contributions

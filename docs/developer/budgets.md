@@ -132,6 +132,18 @@ resume; there is no automated reconciliation/repair command. Likewise missing or
 corrupt state is not treated as a new quota. A fresh independent root session
 is deliberately a new quota, not a migration or clearance of old liability.
 
+A torn tail remains refused. The tested continuation route exports a bounded
+reviewed handoff without activating budget state, then imports into a fresh idle
+session. Both original ledger and journal remain byte-identical, including a torn
+journal suffix. Old reservations/observations are neither released nor copied
+into the new quota; this route cannot claim repair of the old tree.
+
+Future explicit repair would need all affected ledger/session/tree locks, retained
+original bytes, validation against canonical admissions/observations and registered
+children, and conservative retention of known reservations/peaks. Dropping any
+unterminated line, including valid JSON lacking its newline, without that
+cross-check is not a recovery contract.
+
 `ipse budget --resume` is read-only protected-ledger inspection, using the saved
 policy without acquiring provider authority. It does not establish full source
 coverage; source cross-validation occurs during actual resume. Budget counts

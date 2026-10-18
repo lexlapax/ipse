@@ -208,10 +208,13 @@ defmodule Ipse.Extensions.ModelJobsTest do
     :ok = Session.approve(pid, root_ref, true)
     assert_receive {:helper_http, root_http, payload}, 3000
 
-    assert payload["messages"] == [
-             %{"role" => "system", "content" => request["instruction"]},
-             %{"role" => "user", "content" => request["input"]}
-           ]
+    assert [helper_system, helper_context] = payload["messages"]
+    assert helper_system["role"] == "system"
+    refute helper_system["content"] =~ request["instruction"]
+    assert helper_context["role"] == "user"
+    [label, encoded] = String.split(helper_context["content"], "\n", parts: 2)
+    assert label =~ "Untrusted extension task context"
+    assert Jason.decode!(encoded) == Map.take(request, ~w(instruction input))
 
     send(root_http, :respond)
     assert_receive {:ipse, ^pid, {:approval, delegate_ref, "delegate_parallel", _}}, 3000

@@ -61,7 +61,9 @@ identifies tested revisions and remaining platform gates.
 ### Workspace, skills and configuration
 
 Start from the target directory or use `--cwd`. `/context` shows saved scoped
-instructions; `/context refresh` reloads them while idle. Operator and trusted
+instructions and skill selection; `/context refresh` reloads both while idle.
+Resume keeps saved selections and reports drift rather than adopting changed
+skill bodies silently. Operator and trusted
 project/directory JSON settings have explicit precedence, local `ipse config`
 inspection and pinned resume identity. See [configuration](docs/operator/configuration.md)
 and [workspace instructions](docs/operator/usage.md#workspace-instructions).

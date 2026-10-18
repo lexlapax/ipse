@@ -63,6 +63,12 @@ defmodule Ipse.DiagnosticsTest do
     assert stats["target_bytes"] == 8000
     refute Jason.encode!(stats) =~ "private-"
     assert Diagnostics.context([], %{})["encoded_bytes"] == 2
+    reference = %{"role" => "user", "content" => "private-reference-context"}
+    headers = [system, reference]
+    referenced = Diagnostics.context(messages, %{context_bytes: 10_000}, headers)
+    assert referenced["encoded_bytes"] == byte_size(Jason.encode!(headers ++ messages))
+    assert referenced["categories"]["reference_context"] > 0
+    refute Jason.encode!(referenced) =~ "private-reference-context"
   end
 
   test "P18-shaped long turn cannot reduce native continuation; diagnosis explains and history stays exact" do

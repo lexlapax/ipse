@@ -483,8 +483,9 @@ select a retrieval backend or grant mutation/provider permission.
 Each set has at most eight items with IDs, version labels, text, priority and a
 source. Assertions remain unverified. Receipt-backed excerpts must match literal
 text from an earlier successful host action in that invocation; provenance proves
-recorded text, not truth or freshness. Main requests use attributed JSON context
-after mandatory instructions. Global rendered context is limited to 16 KiB and
+recorded text, not truth or freshness. Main requests use attributed JSON in a
+labelled user-role reference message; core rules alone occupy the system message.
+Global rendered context is limited to 16 KiB and
 full SDK envelopes must fit; refusal preserves existing context without eviction
 or truncation. See [request examples and exact limits](../developer/extension-context.md).
 
@@ -510,12 +511,22 @@ excluding summaries, native reasoning, credentials and completed formatting.
 Worker callbacks acknowledge an opaque scoped handle and sequence; they cannot
 turn a stream reply into tools, state writes or model requests. At most four
 consumers share channel capacity. Selected workers must be ready before provider
-dispatch; capacity/startup refusal stops that attempt. Slow consumers may
-backpressure the request; callback failure closes incomplete with a fixed status.
+dispatch; capacity/startup refusal stops that attempt. Once enrolled, optional
+consumers detach on failure or five-second backpressure timeout while inference
+continues. Healthy peers stay enrolled. A closed stream reports incomplete delivery.
 Large provider deltas are split into bounded UTF-8 frames while preserving their
 exact text and saved response. This does not enlarge buffers or bypass the
-pressure deadline. The provider may continue after a consumer leaves, or fail
-at that deadline.
+pressure deadline.
+
+To require delivery, add `"text_required": true` to that artifact's operator
+`extension_trust` entry, whose ceiling must include `stream.text`. The artifact
+and project options cannot enable this policy themselves. Required consumers
+must acknowledge every frame including completion before answer admission;
+loss or a five-second deadline stops the request with a required-delivery error.
+Already paid usage remains recorded. Embeddings use
+`Session.subscribe_text(session, 2, required: true)` for the same policy.
+Omitting the setting leaves delivery optional; it does not bypass startup checks
+or turn an unconfirmed worker shutdown into confirmed cleanup.
 
 Subscriptions/frames never replay on idle resume. Fresh operator input can enroll
 a new resource; no failed frame is retried. `/diagnostics` reports active count

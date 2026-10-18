@@ -50,12 +50,26 @@ Drift diagnostics identify changed or unavailable saved sources without adopting
 new text. Newly created, previously undiscovered files require an explicit refresh
 to be discovered; drift is not a recursive filesystem watcher.
 
-`/context` displays the manifest without inference or source contents.
-`/context refresh` reloads instructions only while idle through an owned task,
-then commits the new snapshot before replacing the active one. Cancellation
+The selected skill catalog is independently checkpointed with names, descriptions,
+canonical paths, content digests and shadowed-source provenance, capped at 256
+entries and 256 KiB encoded metadata. Resume retains this selection and diagnoses
+fresh discovery drift. Skill loading and resource loading recheck the selected
+source path/digest; changed or missing bodies refuse until explicit refresh.
+Catalog snapshots contain metadata, not skill bodies. Older journals acquire
+their first catalog checkpoint at the next model boundary, not on idle inspection.
+
+`/context` displays instruction and skill manifests without inference or source
+contents; `/skills` shows the saved catalog. The standalone `ipse skills` command
+performs fresh discovery. `/context refresh` reloads both while idle through an owned task,
+then commits the new snapshots before replacing the active selections. Cancellation
 must not commit a partial refresh. These events do not replay effects, transfer
 old approvals, or change provider settings. Journals contain workspace instruction
 text and should be treated as private session data.
+
+Workspace text, selected skill metadata and extension contributions enter a
+labelled user-role reference message. Core rules remain in system text. Explicit
+skill bodies remain in the operator turn that requested them. Reference context
+is not a new task, instruction-authority upgrade or permission grant.
 
 See [operator usage](../operator/usage.md),
 [architecture](architecture.md), and [verification evidence](testing.md).

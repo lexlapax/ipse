@@ -135,7 +135,7 @@ defmodule Ipse.TextStreamTest do
                     }},
                    6000
 
-    assert_receive {:push_result, ^ref, {:error, :text_backpressure_timeout}}, 1000
+    assert_receive {:push_result, ^ref, :ok}, 1000
     assert :ok = TextStream.finish(ctx.server, ctx.request, "failed")
     refute_receive {:ipse_text, _, %{"kind" => "text"}}, 0
   end
@@ -160,6 +160,64 @@ defmodule Ipse.TextStreamTest do
                     }}
 
     refute_receive {:ipse_text, _, _}, 0
+  end
+
+  test "a slow optional peer detaches while a required peer finishes losslessly" do
+    owner = self()
+    {:ok, server} = TextStream.start(owner, Usage.id())
+    {:ok, optional} = TextStream.subscribe(server, owner)
+
+    consumer =
+      spawn(fn ->
+        receive do
+          {:handle, handle} -> required_consume(handle, owner, [])
+        end
+      end)
+
+    {:ok, required} = TextStream.subscribe(server, consumer, 1, true)
+    on_exit(fn -> if Process.alive?(consumer), do: Process.exit(consumer, :kill) end)
+    send(consumer, {:handle, required})
+    request = Usage.id()
+
+    {:ok, producer} =
+      Task.start(fn ->
+        receive do
+          :go ->
+            chunk = String.duplicate("a", 65_536)
+            :ok = TextStream.push(server, request, chunk)
+            :ok = TextStream.push(server, request, "tail")
+            send(owner, {:sealed, TextStream.finish(server, request, "completed")})
+        end
+      end)
+
+    assert {:ok, true} = TextStream.begin_with_policy(server, request, producer)
+    send(producer, :go)
+
+    assert_receive {:ipse_text, ^server,
+                    %{
+                      "kind" => "closed",
+                      "reason" => "backpressure_timeout",
+                      "subscription_id" => id
+                    }},
+                   6500
+
+    assert id == optional.subscription_id
+    assert_receive {:required_text, text}, 1000
+    assert text == String.duplicate("a", 65_536) <> "tail"
+    assert_receive {:sealed, :ok}, 1000
+    GenServer.stop(server)
+  end
+
+  defp required_consume(handle, owner, chunks) do
+    receive do
+      {:ipse_text, server, frame} when server == handle.server ->
+        :ok = TextStream.ack(handle, frame["sequence"])
+        chunks = [frame["text"] || "" | chunks]
+
+        if frame["kind"] == "end",
+          do: send(owner, {:required_text, chunks |> Enum.reverse() |> Enum.join()}),
+          else: required_consume(handle, owner, chunks)
+    end
   end
 
   test "invalid chunks and stale request producers fail explicitly", ctx do

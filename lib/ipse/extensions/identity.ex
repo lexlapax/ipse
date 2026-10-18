@@ -3,7 +3,9 @@ defmodule Ipse.Extensions.Identity do
   @keys ~w(instance artifact artifact_sha256 options_sha256 exports_sha256 requires_sha256 subscriptions_sha256 services scope source_sha256 sdk protocol capabilities order lifetime expires_at runtime host_sha256 generation allow_children)
 
   def valid?(identity) when is_map(identity) do
-    Enum.sort(Map.keys(identity)) == Enum.sort(@keys) and
+    Enum.sort(Map.keys(identity)) in [Enum.sort(@keys), Enum.sort(["text_required" | @keys])] and
+      (not Map.has_key?(identity, "text_required") or
+         (is_boolean(identity["text_required"]) and "stream.text" in identity["capabilities"])) and
       Ipse.Extension.validate(identity) == :ok and
       is_binary(identity["instance"]) and
       Regex.match?(~r/\A[a-z][a-z0-9_-]{0,63}\z/, identity["instance"]) and

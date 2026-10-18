@@ -428,11 +428,18 @@ and one level of local text references also supply bounded context. Sources are
 limited to 32 KiB each, 16 sources, and 128 KiB total; omitted invalid or oversized
 sources produce diagnostics. Symlink and sensitive-path sources are excluded.
 
-`/context` shows source paths, scopes, SHA-256 digests, and diagnostics. Resume
-keeps the saved instruction contents and reports detected drift. To adopt changed
-files, finish or cancel active work and use `/context refresh`. Refresh neither
+`/context` shows instruction and selected skill paths, scopes, SHA-256 digests,
+and diagnostics. `/skills` lists the session's saved catalog; standalone `ipse skills`
+discovers the current filesystem. Resume keeps saved instruction contents and
+skill selection and reports detected drift. Changed skill bodies refuse loading
+until refresh. To adopt changed files or newly shadowing skills, finish or cancel
+active work and use `/context refresh`, which reloads both catalogs. Refresh neither
 executes tools nor changes approval settings. Journals retain instruction text;
 treat them as private session data.
+
+Instructions, skill metadata and extension contributions are labelled reference
+context in a user-role message. Only core-owned rules occupy the system message.
+Reference text grants no tool permission and is not a new operator request.
 
 For deeper file-tool targets, newly discovered nested instructions return the
 pending proposals as not started so the model can reconsider them before approval.

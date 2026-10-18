@@ -148,15 +148,23 @@ withheld acceptance because findings and coverage remain incomplete. Prioritize
 task-owned OS cleanup confirmation, text-consumer failure policy, proxy/endpoint
 consistency and skill-catalog drift. Also verify approval normalization, duplicate
 extension-call receipts, contribution framing, browser-login locking, Anthropic
-compaction compatibility and startup costs. Reconsider torn-ledger recovery only
-with a conservative, evidence-preserving contract. Decisions on optional versus
-required text consumers and untrusted context placement are with the operator.
+compaction compatibility and startup costs. Torn-ledger continuation preserves
+the damaged tree and its liability; automatic ledger repair remains unavailable.
+The operator selected optional text detachment with explicitly required delivery,
+and moving untrusted context out of the system role. Both are implemented in the
+current repair batch alongside catalog snapshots, bounded approval display,
+login race checks and checkpoint wire compatibility. The local handoff passes:
+807 native-inclusive tests, both formatter floors, strict build/compile, isolated
+demo, package verification and both independently precompiled installed proofs.
+Hosted Linux/macOS verification is next.
 The review ran no code or tests; supervisor verification is tracked separately.
 The egress policy repair at `42d9f1f` passed local and hosted Linux/macOS gates.
 Task-owned OS cleanup receipts and approval/invocation/framing hardening passed
-the local full/native/demo/package/installed handoff; hosted checks are next.
-Remaining findings and policy
-choices are still open. Baseline security and P25 remain gated.
+the local full/native/demo/package/installed handoff and hosted Linux/macOS matrix
+at `451f97c`. Synthetic startup measurements still show about 20 seconds to open
+64 MiB with 200 answered questions; reducer changes did not materially reduce
+that latency. Remaining verification, accepted limits and independent coverage
+stay explicit. Baseline security and P25 remain gated.
 
 Repair candidate `b5297be` passed its local source/native/demo/package/installed
 handoff and hosted Ubuntu/macOS matrix, including both Mac enforcement steps.

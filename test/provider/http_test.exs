@@ -184,6 +184,31 @@ defmodule Ipse.Provider.HTTPTest do
     end
   end
 
+  test "required text delivery errors survive the real adapter boundary without being mislabelled" do
+    body =
+      Jason.encode!(%{
+        "message" => %{"role" => "assistant", "content" => "synthetic text"},
+        "done" => true
+      }) <> "\n"
+
+    {base, server} = fixture(body)
+
+    assert {:error, error} =
+             Provider.complete(
+               %{provider: :ollama, model: "fixture", base_url: base, timeout_ms: 5000},
+               [],
+               [],
+               fn
+                 {:text, _} -> raise Ipse.TextStream.RequiredFailure
+                 _ -> :ok
+               end
+             )
+
+    assert error =~ "Required visible-text delivery failed"
+    refute error =~ "invalid response"
+    assert {_, _} = Task.await(server)
+  end
+
   test "Ollama omitted counters stay unknown while optional cache and duration remain facts" do
     for metrics <- [
           %{},

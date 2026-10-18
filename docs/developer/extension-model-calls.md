@@ -46,6 +46,11 @@ their separate capabilities and scope checks. Workers receive neither the main
 conversation nor credentials through this operation. Retrieved text remains
 untrusted input. Model output grants no effect authority.
 
+The adapter uses a fixed core-owned system instruction and a labelled user-role
+JSON object containing the approved `instruction` and `input`. Extension-supplied
+instructions never become system rules. Approval still binds their exact values;
+this role separation does not sanitize their meaning or grant effect authority.
+
 Every call requires mutation/egress approval unless the session already has
 `--yes` authority; headless denial never dispatches. The full proposed object
 contains instance/artifact/session identity, the complete request and nonsecret

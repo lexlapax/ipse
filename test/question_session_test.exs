@@ -5,7 +5,7 @@ defmodule Ipse.QuestionSessionTest do
   defmodule Fake do
     def complete(config, messages, tools, _emit) do
       send(config.test_pid, {:question_provider, self(), messages, tools})
-      turn = Enum.count(messages, &(&1["role"] == "user"))
+      turn = Enum.count(Enum.drop(messages, 2), &(&1["role"] == "user"))
       id = config[:call_id] || "clarify-#{turn}"
       answered = Enum.any?(messages, &(&1["role"] == "tool" and &1["tool_call_id"] == id))
 
