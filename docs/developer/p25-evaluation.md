@@ -474,5 +474,12 @@ Test-only diagnostics are supervisor work, not additional self-development credi
 
 Final Security Cloud coverage and triage of the pushed candidate remain required
 before accepting P25. The completed baseline does not cover the later repair.
+The separately approved final one-time scan started on 2026-10-18 against
+`b5ddd0205a57b14afdc3038bd73c04ec7fdfb9c2`, run
+`wfr_3b03c34c933a9aebe79f0641425405058caa5dd0bac7f68555a421c31e32c8c9`.
+The operator requested GPT-6.1 Sol/high, but the workflow offered only GPT-5.6 Sol;
+the operator explicitly approved GPT-5.6 Sol/high before launch. No silent model
+substitution or continuous monitoring occurred. The run is in progress, not a
+passing security result; findings, actual coverage and usage await inspection.
 The researched P26/P27 proposal is in the [knowledge design](knowledge-extensions.md);
 no production engine is installed. The requested license transition remains open.

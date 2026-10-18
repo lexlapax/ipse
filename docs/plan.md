@@ -48,7 +48,9 @@ repair, two fresh reports meet every criterion at 14/21, matching the checked
 reference. Held-out cases pass with formatting assistance; question/resume,
 compaction and cancellation controls pass after a supervisor fixture correction.
 The repair passes independent source, installed-package and hosted platform checks.
-Final security review and trial acceptance remain open. The subject is optional
+The final one-time Security Cloud scan is running against `b5ddd02` with explicitly
+approved GPT-5.6 Sol/high; findings/coverage triage and trial acceptance remain open.
+The subject is optional
 working/long-term memory, research, graph and RAG, including the operator's
 Zero-Mem inspiration. Production engines remain deferred to P26/P27, and the
 former media milestone is deferred P28. External services remain configurable;
