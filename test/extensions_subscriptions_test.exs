@@ -104,7 +104,8 @@ defmodule Ipse.Extensions.SubscriptionsTest do
           def handle("event.notify", payload, state) do
             File.write!(state["trace"], Jason.encode!(payload) <> "\n", [:append])
             if state["mode"] == "hang" do
-              File.write!(state["pid"], System.pid())
+              File.write!(state["pid"] <> ".ready", System.pid())
+              File.rename!(state["pid"] <> ".ready", state["pid"])
               Process.sleep(:infinity)
             end
             reply = if state["mode"] == "host_call" do

@@ -104,6 +104,11 @@ descendants, remote MCP persistence, sequential close deadlines, startup/journal
 growth, linear ledger prefix hashing and deliberate service-crash unconfirmed
 cleanup remain explicit limits. The earlier Mac discovery flake and the older
 MCP normal-exit unconfirmed path retain separate unconfirmed causes.
+Inspection of the intervening `a46cc66` hosted run also found an empty-PID
+readiness race and an unconfirmed diagnostic/question close on Ubuntu. The
+fixture now publishes its completed PID atomically, retaining its assertions;
+the diagnostic cleanup cause remains unconfirmed after unchanged local repeats.
+Neither the passing Mac job nor later green runs establish that cause.
 
 After verification, prepare a package R continuation from its saved checkpoint
 and this delta. Do not restart all architecture areas or turn internal inspection

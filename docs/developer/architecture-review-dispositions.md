@@ -228,6 +228,14 @@ started, and the raw report remains private.
 | Internal HTTP ownership follow-through | Reproduced confirmed task cleanup while a live HTTP borrower, socket and pool remained | HTTP guardians now join the task scope where present, stop the borrower on cancellation, await pool exit and issue a real receipt. The socket-level regression passes. This covers the new provider client as well as direct scoped HTTP use; it does not confirm remote effects |
 | Internal OS text admission | A NUL-containing command was actually truncated and executed, rather than refused as the initial negative fixture assumed | Shell command/cwd and lock paths now reject invalid UTF-8 and NUL before launch. The no-effect regression failed before repair and passes afterward |
 
+Inspection of the intervening documentation-only `a46cc66` matrix found two
+Ubuntu failures not covered by the earlier recorded green matrix: an empty PID
+read during subscription-worker readiness and an unconfirmed diagnostic/question
+close. Both exact tests passed 21 unchanged local runs. The PID fixture now
+publishes atomically, with all liveness/cleanup assertions intact; the other
+failure's cause remains unconfirmed. Its successful Mac job and installed
+receipts do not close that cause. Exact results are in testing.
+
 ### Package R coverage checkpoint
 
 The reviewer read the complete `091b2bd..7810925` runtime/test delta and the
