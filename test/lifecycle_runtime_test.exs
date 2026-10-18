@@ -7,6 +7,8 @@ defmodule Ipse.LifecycleRuntimeTest do
     def complete(config, messages, _tools, _emit) do
       send(config.test_pid, :runtime_model)
 
+      if config[:scenario] == :blocked_model, do: Process.sleep(:infinity)
+
       if List.last(messages)["role"] == "tool" do
         {:ok, %{"role" => "assistant", "content" => "done"}, %{}}
       else
@@ -19,6 +21,9 @@ defmodule Ipse.LifecycleRuntimeTest do
                    %{"id" => "choice", "kind" => "text", "prompt" => "Synthetic private question"}
                  ]
                }}
+
+            :shell ->
+              {"shell", %{"command" => "printf started > started; sleep 30"}}
 
             _ ->
               {"write", %{"path" => "effect.txt", "content" => "Synthetic private arguments"}}
@@ -312,6 +317,41 @@ defmodule Ipse.LifecycleRuntimeTest do
     :ok = Session.close(resumed)
     assert File.read!(Path.join(c.dir, id <> ".jsonl")) == bytes
     assert facts(load(c, id)) == []
+  end
+
+  for phase <- [:model, :tool] do
+    test "unexpected #{phase} task death closes a recorded epoch conservatively", c do
+      check_interrupted_task(c, unquote(phase))
+    end
+  end
+
+  defp check_interrupted_task(c, phase) do
+    scenario = if phase == :model, do: :blocked_model, else: :shell
+    {:ok, pid} = start(c, scenario: scenario)
+    id = Session.info(pid).id
+    :ok = Session.prompt(pid, "Synthetic interrupted work")
+    assert_receive :runtime_model, 2000
+
+    if phase == :tool do
+      assert_receive {:ipse, ^pid, {:approval, approval, "shell", _}}, 2000
+      :ok = Session.approve(pid, approval, true)
+      assert :tool == Session.info(pid).phase
+    end
+
+    task = :sys.get_state(pid).task.pid
+    monitor = Process.monitor(pid)
+    Process.exit(task, :kill)
+    assert_receive {:DOWN, ^monitor, :process, ^pid, :normal}, 5000
+    events = load(c, id)
+
+    assert %{"closure" => "cleanup_failure", "cleanup_confirmed" => false} =
+             List.last(facts(events))
+
+    assert {:ok, _} = Session.restore_context(events)
+    {:ok, resumed} = resume(c, [scenario: scenario], id)
+    assert List.last(facts(load(c, id)))["previous_state"] == "closed"
+    refute_receive :runtime_model, 50
+    :ok = Session.close(resumed)
   end
 
   test "question source positions are resolved before tail repair or resumed publication", c do

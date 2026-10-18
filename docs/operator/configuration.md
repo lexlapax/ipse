@@ -53,6 +53,10 @@ This is a per-request generation cap, including summary requests, not an aggrega
 budget or invoice limit. Optional operator-only [shared budgets](budgets.md)
 configure aggregate admission separately. Existing lower adapter limits still apply: Anthropic
 defaults to 8192 and Ollama summaries to 4096. Model/account limits may be tighter.
+Independently of token settings, provider HTTP response consumption has an 8 MiB
+ceiling; internal helper requests can set smaller limits. Exceeding it stops the
+attempt without executing returned tools or retrying inference. This is a host
+transport bound, not a configurable token estimate or billing guarantee.
 See [usage and budget boundaries](usage-accounting.md#unknowns-and-recovery).
 
 Repository settings require **`--trust-project-config` on each invocation**.

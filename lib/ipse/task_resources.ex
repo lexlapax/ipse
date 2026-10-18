@@ -6,6 +6,32 @@ defmodule Ipse.TaskResources do
   def start(owner), do: GenServer.start(__MODULE__, owner)
   def bind(scope), do: Process.put(@key, scope)
   def current, do: Process.get(@key)
+
+  @doc false
+  def await_ready(scope, owner) do
+    owner_ref = Process.monitor(owner)
+    scope_ref = Process.monitor(scope)
+
+    try do
+      receive do
+        {:cleanup_scope_ready, ^scope} -> :ok
+        {:DOWN, ref, :process, _, _} when ref in [owner_ref, scope_ref] -> exit(:normal)
+      end
+    after
+      Process.demonitor(owner_ref, [:flush])
+      Process.demonitor(scope_ref, [:flush])
+    end
+  end
+
+  def async(fun) when is_function(fun, 0) do
+    scope = current()
+
+    Task.async(fn ->
+      bind(scope)
+      fun.()
+    end)
+  end
+
   def attach(scope, worker), do: GenServer.call(scope, {:attach, worker})
 
   def register(kind, scope \\ current()) do
@@ -68,7 +94,7 @@ defmodule Ipse.TaskResources do
   end
 
   def handle_call({:register, kind, pid}, {pid, _}, %{closed: false} = state)
-      when kind in [:shell, :lock, :extension] and map_size(state.resources) < 32 do
+      when kind in [:shell, :lock, :extension, :mcp] and map_size(state.resources) < 32 do
     id = make_ref()
     resource = %{pid: pid, kind: kind, monitor: Process.monitor(pid)}
     ticket = %{scope: self(), id: id}
@@ -166,6 +192,9 @@ defmodule Ipse.TaskResources do
             resource.kind == :extension ->
               Ipse.Extensions.Worker.close(resource.pid, min(remaining, 3_000))
 
+            resource.kind == :mcp ->
+              Ipse.MCP.Transport.close(resource.pid, min(remaining, 3_000))
+
             true ->
               send(resource.pid, {:ipse_cancel_resource, id})
               receipt(id, resource.pid, min(remaining, 2_500)) || {:error, :cleanup_unconfirmed}
@@ -182,7 +211,9 @@ defmodule Ipse.TaskResources do
               ) ||
                 result
 
-        if result != :ok and resource.kind == :extension, do: Process.exit(resource.pid, :kill)
+        if result != :ok and resource.kind in [:extension, :mcp],
+          do: Process.exit(resource.pid, :kill)
+
         result
 
       result ->

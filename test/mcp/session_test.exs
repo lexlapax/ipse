@@ -108,6 +108,27 @@ defmodule Ipse.MCP.SessionTest do
     assert Enum.all?(:sys.get_state(pid).mcp_resources |> Map.keys(), &(not Process.alive?(&1)))
   end
 
+  test "abrupt stdio supervisor loss cannot become confirmed Session cleanup", ctx do
+    pid = session(ctx, scenario: "hang", approval: :allow, capture: true)
+    id = Ipse.Session.info(pid).id
+    monitor = Process.monitor(pid)
+    :ok = Ipse.Session.prompt(pid, "write")
+    await_file(Path.join(ctx.root, "hang-ready"))
+    [transport] = :sys.get_state(pid).mcp_resources |> Map.keys()
+    port = :sys.get_state(transport).port
+    {:os_pid, helper} = Port.info(port, :os_pid)
+    assert {_, 0} = System.cmd("kill", ["-KILL", Integer.to_string(helper)])
+    assert_receive {:ipse, ^pid, {:done, :error}}, 5000
+    assert_receive {:DOWN, ^monitor, :process, ^pid, :normal}, 5000
+    assert {:error, :cleanup_unconfirmed} = Ipse.Session.close_confirmed(pid)
+    assert {:ok, events} = Ipse.Journal.load(ctx.dir, id)
+    assert {:ok, _} = Ipse.Session.restore_context(events)
+    assert List.last(events)["type"] == "lifecycle_epoch_closed"
+    assert List.last(events)["closure"] == "cleanup_failure"
+    refute List.last(events)["cleanup_confirmed"]
+    refute File.exists?(Path.join(ctx.root, "note.txt"))
+  end
+
   test "resume cannot silently drop the explicitly configured servers", ctx do
     pid = session(ctx)
     id = Ipse.Session.info(pid).id
@@ -206,6 +227,12 @@ defmodule Ipse.MCP.SessionTest do
       test_pid: self(),
       home: Path.join(ctx.root, "home"),
       approval: Keyword.get(opts, :approval, :ask),
+      observability:
+        Map.put(
+          Ipse.Observability.Config.defaults(),
+          "mode",
+          if(opts[:capture], do: "local", else: "off")
+        ),
       call_count: Keyword.get(opts, :call_count, 1),
       mcp_servers: servers
     }

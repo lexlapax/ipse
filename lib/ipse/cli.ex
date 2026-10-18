@@ -535,7 +535,6 @@ defmodule Ipse.CLI do
   end
 
   defp client_loop(s) do
-    s = if is_nil(s.approval), do: release_display(s), else: s
     pid = s.pid
 
     if s.approval != nil and s.approval_redraw do
@@ -552,8 +551,9 @@ defmodule Ipse.CLI do
     end
 
     s = %{s | approval_redraw: true}
+    {event, s} = next_client_event(s)
 
-    receive do
+    case event do
       {:ipse, ^pid, event}
       when s.approval != nil and is_tuple(event) and elem(event, 0) in @deferred_display ->
         bytes = :erlang.external_size(event)
@@ -912,6 +912,29 @@ defmodule Ipse.CLI do
         )
 
         1
+
+      _ ->
+        client_loop(s)
+    end
+  end
+
+  defp next_client_event(%{approval: nil, deferred_display: [_ | _]} = s) do
+    s = release_display(s)
+    {event, remaining} = List.pop_at(s.deferred_display, -1)
+
+    {{:ipse, s.pid, event},
+     %{
+       s
+       | deferred_display: remaining,
+         deferred_bytes: s.deferred_bytes - :erlang.external_size(event)
+     }}
+  end
+
+  defp next_client_event(s) do
+    s = if is_nil(s.approval), do: release_display(s), else: s
+
+    receive do
+      event -> {event, s}
     end
   end
 
@@ -923,8 +946,7 @@ defmodule Ipse.CLI do
       )
     end
 
-    Enum.each(Enum.reverse(s.deferred_display), &send(self(), {:ipse, s.pid, &1}))
-    %{s | deferred_display: [], deferred_bytes: 0, deferred_dropped: 0}
+    %{s | deferred_dropped: 0}
   end
 
   defp config(opts, interactive) do

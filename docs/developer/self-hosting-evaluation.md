@@ -3,8 +3,10 @@
 P24/P25 review and evaluation protocol, revised 2026-10-17. This guide defines
 independent architectural challenge, security gates and the supervised experiment;
 the [plan](../plan.md#current-priorities-and-status) owns scheduling and acceptance
-status. Three partial static architecture passes have returned, including a fresh
-cloud session whose coverage is still incomplete; the
+status. Partial static architecture reports have returned, including the latest
+fresh cloud review of `091b2bd`, which found two applicable failures. The
+supervisor must finish its own adversarial review and repair checks before
+preparing another external prompt; the used handoff is withdrawn meanwhile. The
 [disposition register](architecture-review-dispositions.md) owns verification and
 repair status. No comparative run or security scan has executed. Use the
 [operator runbook](../operator/self-development.md) for
@@ -111,6 +113,13 @@ unread surfaces and actual test bodies in the next brief; name coverage omission
 even when every repair disposition is accepted. Pin the
 committed evidence-document revision separately when hosted results postdate
 the source; evidence for later changed code does not certify the earlier target.
+Use bounded review packages with an explicit coverage ledger rather than asking
+each fresh session to restart a whole-repository review. Carry forward prior
+inspection only for byte-unchanged surfaces, and recheck changes and their
+interactions. A package can finish its named scope without claiming whole-design
+acceptance. Context exhaustion must leave exact unread paths/ranges and test
+bodies for the next package. The supervisor's audit is implementation-side
+evidence, never a replacement for independent coverage.
 Use these scenarios:
 
 | Area | Adversarial questions |

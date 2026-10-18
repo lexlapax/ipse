@@ -52,6 +52,24 @@ defmodule Ipse.SkillsTest do
     refute Enum.any?(Skills.discover(project, user), &(&1["name"] in ["bad", "huge"]))
   end
 
+  test "quoted Unicode metadata removes exactly the ASCII delimiters", ctx do
+    for {quote, name, description} <- [
+          {"\"", "雪", "Review café 🙂"},
+          {"'", "é🙂", "説明 é"}
+        ] do
+      path = Path.join(ctx.project, ".agents/skills/review/SKILL.md")
+
+      File.write!(
+        path,
+        "---\nname: #{quote}#{name}#{quote}\ndescription: #{quote}#{description}#{quote}\n---\nBody"
+      )
+
+      skills = Skills.discover(ctx.project, ctx.user)
+      assert %{"description" => ^description} = Enum.find(skills, &(&1["name"] == name))
+      assert {:ok, _} = Skills.load(skills, name)
+    end
+  end
+
   test "load refuses changed bytes until discovery is explicitly refreshed", %{
     project: project,
     user: user

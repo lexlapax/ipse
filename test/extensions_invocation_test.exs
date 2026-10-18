@@ -1412,6 +1412,214 @@ defmodule Ipse.Extensions.InvocationTest do
     assert length(String.split(File.read!(ctx.called), "\n", trim: true)) == 2
   end
 
+  test "diagnostic sink receipts preserve a pending question through repeated recovery", ctx do
+    source = %{
+      scope: "operator",
+      path: Path.join(ctx.root, "trace.json"),
+      data: %{
+        "extensions" => [
+          %{
+            "instance" => "trace",
+            "artifact" => "builtin:local-trace:1",
+            "enabled" => true,
+            "options" => %{"directory" => Path.join(ctx.root, "trace"), "retained_leases" => 8},
+            "order" => 0,
+            "lifetime" => "session"
+          }
+        ],
+        "extension_trust" => [
+          %{
+            "artifact" => "builtin:local-trace:1",
+            "capabilities" => ["observe.local"],
+            "allow_project" => false,
+            "allow_children" => false
+          }
+        ]
+      }
+    }
+
+    {:ok, selected} = Config.resolve([source], [])
+    {:ok, trace} = Registry.prepare(selected, ctx.home)
+
+    config =
+      ctx.config
+      |> Map.put(:extensions, trace ++ ctx.config.extensions)
+      |> Map.put(:observability, Map.put(Ipse.Observability.Config.defaults(), "mode", "local"))
+
+    ctx = %{ctx | config: config}
+    pid = start(ctx)
+    :ok = host_command(pid, question_request())
+    assert_receive {:ipse, ^pid, {:question, question, _}}, 3000
+    id = Session.info(pid).id
+    monitor = Process.monitor(pid)
+    Process.exit(pid, :kill)
+    assert_receive {:DOWN, ^monitor, :process, ^pid, :killed}, 2000
+    calls = File.read!(ctx.called)
+    resumed = start(ctx, id)
+    assert_receive {:ipse, ^resumed, {:question, ^question, _}}, 2000
+    assert File.read!(ctx.called) == calls
+    {:ok, events} = Journal.load(ctx.dir, id)
+    assert :ok = Ipse.Observability.Resources.validate(events, id)
+    assert {:ok, _} = Session.restore_context(events)
+    assert {:ok, _} = Ipse.Diagnostics.saved(ctx.dir, id)
+
+    for type <- Ipse.Observability.Resources.types() do
+      event = Enum.find(events, &(&1["type"] == type))
+
+      if event do
+        corrupted =
+          if type == "diagnostic_sink_intent",
+            do: put_in(event, ["policy", "mode"], "off"),
+            else: Map.put(event, "resource_id", Ipse.Usage.id())
+
+        damaged = Enum.map(events, &if(&1 == event, do: corrupted, else: &1))
+        assert {:error, _} = Ipse.Extensions.Actions.validate_events(damaged)
+        assert {:error, _} = Session.restore_context(damaged)
+      end
+    end
+
+    assert {:ok, _} =
+             Ipse.Handoff.export(ctx.dir, id, "Inspect the unanswered synthetic question.")
+
+    :ok = Session.answer(resumed, question, answers())
+    assert_receive {:ipse, ^resumed, {:done, :ok}}, 3000
+    :ok = Session.close(resumed)
+    again = start(ctx, id)
+    assert Session.info(again).phase == :idle
+    assert {:ok, _} = Ipse.Diagnostics.saved(ctx.dir, id)
+
+    assert {:ok, _} =
+             Ipse.Handoff.export(ctx.dir, id, "Continue only after reviewing the saved answer.")
+
+    :ok = Session.close(again)
+  end
+
+  test "native extension question and prompt subscriptions preserve their source checkpoint",
+       ctx do
+    notify = notification_entry(ctx)
+
+    config =
+      ctx.config
+      |> Map.put(:extensions, notify ++ ctx.config.extensions)
+      |> Map.put(:tool_args, %{"text" => "question", "host_request" => question_request()})
+
+    ctx = %{ctx | config: config}
+    pid = run_tool(ctx)
+    assert_receive {:ipse, ^pid, {:question, question, _}}, 3000
+    id = Session.info(pid).id
+    {:ok, events} = Journal.load(ctx.dir, id)
+    assert Enum.any?(events, &(&1["type"] == "lifecycle_question_sources"))
+    assert :ok = Ipse.Extensions.Subscriptions.validate_events(events)
+    assert {:ok, _} = Session.restore_context(events)
+
+    damaged =
+      Enum.map(events, fn event ->
+        if event["type"] == "lifecycle_question_sources",
+          do: Map.put(event, "question_id", Ipse.Usage.id()),
+          else: event
+      end)
+
+    assert {:error, _} = Ipse.Extensions.Actions.validate_events(damaged)
+    assert {:error, _} = Session.restore_context(damaged)
+    monitor = Process.monitor(pid)
+    Process.exit(pid, :kill)
+    assert_receive {:DOWN, ^monitor, :process, ^pid, :killed}, 2000
+    resumed = start(ctx, id)
+    assert_receive {:ipse, ^resumed, {:question, ^question, _}}, 2000
+    :ok = Session.answer(resumed, question, answers())
+    assert_receive {:ipse, ^resumed, {:done, :ok}}, 3000
+    :ok = Session.close(resumed)
+    assert {:ok, _} = Ipse.Diagnostics.saved(ctx.dir, id)
+  end
+
+  defp notification_entry(ctx) do
+    source = Path.join(ctx.root, "notifier")
+    File.mkdir_p!(Path.join(source, "ebin"))
+    module = "Independent.Notify#{System.unique_integer([:positive])}"
+
+    subscriptions = [
+      %{
+        "id" => "prompt",
+        "event" => "prompt.effective_committed",
+        "event_version" => 1,
+        "view" => "metadata",
+        "mode" => "notify",
+        "required" => true
+      }
+    ]
+
+    code = """
+    defmodule #{module} do
+      @behaviour Ipse.Extension
+      def describe, do: %{"sdk" => 1, "capabilities" => ["event.notify"], "subscriptions" => #{inspect(subscriptions)}}
+      def init(options), do: {:ok, options}
+      def handle("event.notify", payload, state), do:
+        {:ok, %{"api_version" => 1, "kind" => "ack", "delivery_id" => payload["delivery_id"], "event_id" => payload["event"]["event_id"]}, state}
+    end
+    """
+
+    file = Path.join(source, "fixture.ex")
+    File.write!(file, code)
+
+    {output, status} =
+      System.cmd(
+        System.find_executable("elixirc"),
+        ["-pa", Application.app_dir(:ipse, "ebin"), "-o", Path.join(source, "ebin"), file],
+        stderr_to_stdout: true
+      )
+
+    assert status == 0, output
+    File.write!(Path.join(source, "LICENSE"), "MIT synthetic fixture")
+
+    manifest =
+      ctx.manifest
+      |> Map.drop(["exports"])
+      |> Map.merge(%{
+        "id" => "fixture/notifier",
+        "entrypoint" => module,
+        "capabilities" => ["event.notify"],
+        "subscriptions" => subscriptions,
+        "files" =>
+          Enum.map(["LICENSE", "ebin/Elixir.#{module}.beam"], fn path ->
+            bytes = File.read!(Path.join(source, path))
+            %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Manifest.sha256(bytes)}
+          end)
+      })
+
+    File.write!(Path.join(source, "extension.json"), Jason.encode!(manifest))
+    {:ok, artifact} = Store.import(source, Path.join(ctx.home, "extensions/artifacts"))
+
+    data = %{
+      "extensions" => [
+        %{
+          "instance" => "notifier",
+          "artifact" => artifact.digest,
+          "enabled" => true,
+          "options" => %{},
+          "order" => 0,
+          "lifetime" => "persistent"
+        }
+      ],
+      "extension_trust" => [
+        %{
+          "artifact" => artifact.digest,
+          "capabilities" => ["event.notify"],
+          "allow_project" => false,
+          "allow_children" => false
+        }
+      ]
+    }
+
+    {:ok, selected} =
+      Config.resolve(
+        [%{scope: "operator", path: Path.join(ctx.root, "notify.json"), data: data}],
+        []
+      )
+
+    {:ok, entries} = Registry.prepare(selected, ctx.home)
+    entries
+  end
+
   test "native extension tool question keeps its real call and approval across inert resume",
        ctx do
     ctx = %{
@@ -1726,6 +1934,35 @@ defmodule Ipse.Extensions.InvocationTest do
     assert Enum.any?(events, &(&1["type"] == "extension_action_intent"))
     refute Enum.any?(events, &(&1["type"] == "extension_action_result"))
     assert :ok = Ipse.Extensions.Projection.validate_events(events)
+  end
+
+  test "workflow close cannot confirm cleanup while its nested shell supervisor is stopped",
+       ctx do
+    pid = start(%{ctx | config: Map.put(ctx.config, :approval, :allow)})
+    command = "printf '%s' $$ > nested-shell-pid; sleep 120 & wait"
+    :ok = host_command(pid, tool_request("shell", %{"command" => command}, 30_000))
+    shell = await_pid(Path.join(ctx.root, "nested-shell-pid"))
+    coordinator = :sys.get_state(pid).task.pid
+    {:links, links} = Process.info(coordinator, :links)
+
+    [port] =
+      for child <- links,
+          is_pid(child),
+          {:links, child_links} <- [Process.info(child, :links)],
+          port <- child_links,
+          is_port(port),
+          do: port
+
+    {:os_pid, helper} = Port.info(port, :os_pid)
+    assert {_, 0} = System.cmd("kill", ["-STOP", Integer.to_string(helper)])
+
+    try do
+      assert {:error, :cleanup_unconfirmed} = Session.close_confirmed(pid)
+    after
+      System.cmd("kill", ["-KILL", Integer.to_string(helper)], stderr_to_stdout: true)
+    end
+
+    await_exit(shell, ctx.root)
   end
 
   test "unsupported workflow tools, escaped paths and altered context receipts never bypass policy",

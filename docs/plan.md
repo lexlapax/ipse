@@ -23,10 +23,10 @@ quality. Subscription, API and installed Ollama checks have separate
 [provider verification](developer/testing.md#provider-verification-status).
 
 P23 is complete within its one-shot text/accounting scope. P24 is the active gate:
-the same-reviewer follow-up accepted earlier repairs and identified adjacent gaps,
-repaired and verified at `b5297be`. A fresh cloud review has now returned with
-additional findings and partial coverage; its repairs, policy decisions and
-remaining test-body inspection are the active work.
+the latest fresh review of `091b2bd` found failures missed by earlier passing
+checks. The active work is the supervisor's own adversarial boundary and
+interaction audit, repair and verification before another external handoff.
+Earlier reports remain provenance; none has granted architectural acceptance.
 The operator's 2026-10-17 direction
 puts independent architectural challenge, security review and a large supervised
 self-development trial ahead of media. P24 now owns architecture/security
@@ -39,7 +39,7 @@ new source transfer or dependency, or select a production engine.
 | Milestone or gate | Current state | Next result |
 | --- | --- | --- |
 | [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within selected scope; source/native/package/installed and hosted Linux/macOS passed | Retain accounting invariants through P24/P25 review and repairs |
-| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Fresh cloud review of `b5297be` received; no Critical/High found in inspected scope, acceptance withheld; no scan yet | Verify PA findings, resolve text/context policy, repair applicable gaps, complete omitted coverage, then baseline security audit |
+| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Latest review of `091b2bd` withheld acceptance; internal audit and repairs active, external prompt withdrawn; no scan yet | Verify reported and internally discovered counterexamples, complete internal boundary review and platform checks, then refresh independent coverage and run the baseline security audit |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Planned revised scope; unstarted | Independent Codex/Ipse research, Ipse-authored repairs, fresh acceptance runs and final architecture/security review |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Deferred; proposed scope subject to P25 decisions | Independently selectable working/long-term memory tools and optional lifecycle policies |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; proposed scope subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
@@ -141,7 +141,19 @@ and arbitrary trusted out-of-band calls cannot establish an invoice ceiling.
 
 ## P24: independent architecture validation and baseline security
 
-**In progress; remaining independent coverage and baseline security are open.**
+**In progress; supervisor adversarial review must precede another external handoff.**
+The returned fresh review of `091b2bd` identified two applicable defects: invalid
+runtime closure on task death and diagnostic receipts invalidating pending
+extension questions. Prior green tests missed these interactions. Reproduce and
+repair them, resolve the mixed-stream/display/parsing findings, then audit the
+remaining implementations and actual test bodies internally. Record counterexamples,
+interaction coverage, fixes and measured limits; repeat the relevant failure and
+recovery checks before preparing another external prompt. The previous handoff
+is withdrawn while this work proceeds. The [internal audit record](developer/architecture-self-audit.md)
+tracks actual inspection and counterexamples. Internal review is not independent acceptance;
+the baseline security scan and P25 remain gated.
+
+The earlier verified baseline follows for provenance, not current acceptance.
 Candidate `091b2bd` implements optional text detachment with explicitly required
 delivery, labelled lower-role reference/helper context, saved skill selection,
 bounded approval display, login race protection and checkpoint wire compatibility.
@@ -162,10 +174,10 @@ The [disposition register](developer/architecture-review-dispositions.md) owns
 F1–F7, S1–S3, D1–D9, A1–A7 and PA-1–PA-15; [testing](developer/testing.md#current-evidence-and-next-checks)
 owns exact revisions, counts and platform receipts.
 
-The earlier reports targeted `21e59fe` and `b570ef8`; only the cloud pass on
-`b5297be` satisfies the fresh-session provenance requirement. All were static
-reviews with unrun regression proposals. The repinned
-[review handoff](operator/architecture-review.md) prioritizes lifecycle modules/
+The earlier reports targeted `21e59fe`, `b570ef8`, `b5297be` and `091b2bd`;
+the latter two cloud passes satisfy fresh-session provenance but remain partial.
+All were static reviews with unrun regression proposals. The supervisor audit
+now prioritizes lifecycle modules/
 tests; invocation workflow/state/question and delivery/read tests; auth/MCP tests;
 handoff/compaction/workspace tests; state/child-usage/store; macOS/stdio; and
 delegation/parallel/budget tests plus usage/normalization. Preserve an independent
@@ -179,6 +191,12 @@ detached-descendant cleanup. Future memory migration/deletion proposals must
 distinguish retrieval state from retained host evidence. Then run the triaged
 baseline scan on the resulting exact revision. P25 execution remains gated;
 repaired findings do not certify omitted surfaces.
+The internal pass has additionally reproduced native extension-question source
+checkpoint refusal, an absent main-provider byte ceiling, missed nested-task
+cleanup registration, lost MCP-helper cleanup receipts and an unowned pre-attachment
+dispatch barrier. These generic repairs
+and their recovery/corruption probes are tracked in the internal audit; earlier
+green matrices do not verify them.
 Read-only Security Cloud access checks found the repository and available scan
 credits; no matching environment was found and no scan or billing change was
 started. Access readiness does not close either review gate.

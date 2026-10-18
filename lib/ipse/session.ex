@@ -2076,7 +2076,7 @@ defmodule Ipse.Session do
 
     notify(s, {:error, "Worker stopped unexpectedly; effects and OS cleanup are unconfirmed."})
     notify(s, {:done, :error})
-    {:stop, :normal, close_epoch(next, "worker_failed", false)}
+    {:stop, :normal, close_epoch(next, "cleanup_failure", false)}
   end
 
   def handle_info({:extension_text_closed, consumer, id, reason, frames, bytes, cleanup}, s) do
@@ -4261,10 +4261,7 @@ defmodule Ipse.Session do
 
     task =
       Task.Supervisor.async_nolink(Ipse.Tasks, fn ->
-        receive do
-          {:cleanup_scope_ready, ^scope} -> :ok
-        end
-
+        Ipse.TaskResources.await_ready(scope, owner)
         Ipse.TaskResources.bind(scope)
 
         result =

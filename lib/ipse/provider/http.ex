@@ -1,12 +1,15 @@
 defmodule Ipse.Provider.HTTP do
   @moduledoc false
+  @response_bytes 8_388_608
 
   def stream(url, headers, payload, config, state, consume) do
-    case config[:max_response_bytes] do
-      nil ->
-        stream_request(url, headers, payload, config, state, consume)
+    limit =
+      if is_nil(config[:max_response_bytes]),
+        do: @response_bytes,
+        else: config[:max_response_bytes]
 
-      limit when is_integer(limit) and limit in 1..1_048_576 ->
+    case limit do
+      limit when is_integer(limit) and limit in 1..@response_bytes ->
         bounded = fn {current, count}, bytes ->
           next_count = count + byte_size(bytes)
 

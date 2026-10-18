@@ -7,6 +7,7 @@ defmodule Ipse.Extensions.Actions do
   @error {:error, :invalid_extension_action}
   @limit 16
   @read_limit 10_000
+  @diagnostic_types Ipse.Observability.Resources.types()
   def types, do: @types
   def limit, do: @limit
 
@@ -177,6 +178,8 @@ defmodule Ipse.Extensions.Actions do
 
   def restore([%{"metadata" => metadata} | _] = events) do
     {:ok, _} = Ipse.Lifecycle.Runtime.restore(events)
+    :ok = Ipse.Observability.Resources.validate(events)
+    :ok = Ipse.Extensions.Subscriptions.validate_events(events)
     {:ok, catalog} = Ipse.Extensions.Catalog.from_metadata(metadata)
     :ok = Ipse.Extensions.Services.validate_metadata(Map.get(metadata, "extensions", []), catalog)
     {:ok, usage_reads} = Ipse.Extensions.UsageRead.restore(events)
@@ -242,6 +245,13 @@ defmodule Ipse.Extensions.Actions do
       "result_sha256" => Ipse.Compaction.digest([result])
     }
   end
+
+  defp validate_event(%{"type" => type}, state, _)
+       when type in @diagnostic_types,
+       do: {:ok, state}
+
+  defp validate_event(%{"type" => "lifecycle_question_sources"}, state, _),
+    do: {:ok, state}
 
   defp validate_event(%{"type" => type}, state, _)
        when type in ~w(extension_text_intent extension_text_ready extension_text_closed),

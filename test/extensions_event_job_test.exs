@@ -414,6 +414,73 @@ defmodule Ipse.Extensions.EventJobTest do
     end
   end
 
+  test "diagnostic shutdown and restart cannot poison before-request or after-answer questions",
+       c do
+    for kind <- [:recording, :answer] do
+      cfg = config(c, kind, "question", :ask)
+
+      data = %{
+        "extensions" => [
+          %{
+            "instance" => "trace",
+            "artifact" => "builtin:local-trace:1",
+            "enabled" => true,
+            "options" => %{
+              "directory" => Path.join(c.root, "diagnostics"),
+              "retained_leases" => 8
+            },
+            "order" => 1,
+            "lifetime" => "session"
+          }
+        ],
+        "extension_trust" => [
+          %{
+            "artifact" => "builtin:local-trace:1",
+            "capabilities" => ["observe.local"],
+            "allow_project" => false,
+            "allow_children" => false
+          }
+        ]
+      }
+
+      {:ok, selected} =
+        Config.resolve([%{scope: "operator", path: "/synthetic/trace.json", data: data}], [])
+
+      {:ok, trace} = Registry.prepare(selected, c.home)
+
+      cfg =
+        Map.merge(cfg, %{
+          extensions: cfg.extensions ++ trace,
+          observability: Map.put(Ipse.Observability.Config.defaults(), "mode", "local")
+        })
+
+      {:ok, pid} = start(c, cfg)
+      :ok = Session.prompt(pid, "Question with independent diagnostics")
+      assert_receive {:ipse, ^pid, {:question, question, _}}, 10_000
+      id = Session.info(pid).id
+      eventually(fn -> Enum.any?(events(c, pid), &(&1["type"] == "diagnostic_sink_ready")) end)
+      :ok = Session.stop_observability(pid)
+      eventually(fn -> Enum.any?(events(c, pid), &(&1["type"] == "diagnostic_sink_closed")) end)
+      assert {:ok, _} = Session.restore_context(events(c, pid))
+      monitor = Process.monitor(pid)
+      Process.exit(pid, :kill)
+      assert_receive {:DOWN, ^monitor, :process, ^pid, :killed}, 2_000
+      {:ok, resumed} = resume_recording(c, cfg, id)
+      assert_receive {:ipse, ^resumed, {:question, ^question, _}}, 10_000
+      assert {:ok, _} = Ipse.Diagnostics.saved(c.dir, id)
+      assert {:ok, _} = Ipse.Handoff.export(c.dir, id, "Review the pending synthetic question.")
+      :ok = Session.answer(resumed, question, %{"proceed" => "yes"})
+      assert_receive {:ipse, ^resumed, {:approval, ref, "extension:state.put", _}}, 10_000
+      :ok = Session.approve(resumed, ref, false)
+      done(resumed, if(kind == :answer, do: :ok, else: :error))
+      :ok = Session.close(resumed)
+      {:ok, again} = resume_recording(c, cfg, id)
+      assert Session.info(again).phase == :idle
+      assert {:ok, _} = Ipse.Diagnostics.saved(c.dir, id)
+      :ok = Session.close(again)
+    end
+  end
+
   test "answer jobs store only their selected answer after inference with separate approval", c do
     {:ok, pid} = start(c, config(c, :answer, "write", :ask))
     :ok = Session.prompt(pid, "This prompt must not become the saved answer")

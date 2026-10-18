@@ -9,6 +9,14 @@ exploit details remain outside Git. The [plan](../plan.md) owns scheduling and t
 
 ## Provenance and coverage
 
+**Current gate:** the fresh report for source `091b2bd` (evidence `20b377c`)
+withheld acceptance and found two applicable defects despite the prior green
+handoff. The used prompt is withdrawn pending the requested
+[supervisor adversarial audit](architecture-self-audit.md). That audit has found
+additional counterexamples in question sources, provider bounds and cleanup
+ownership. Historical closed rows below describe their exercised scope; they do
+not override these reopened interactions or certify the current candidate.
+
 The reviewer reported Claude Code with Opus 5.5 (`claude-opus-5-5`), default
 reasoning, one subscription-selected session and no subagents or operator help
 beyond the brief. Billing mode was not independently observable to the reviewer.
@@ -121,7 +129,7 @@ acceptance. This is independent source evidence, not runtime reproduction or a s
 | --- | --- | --- |
 | PA-1 / D8 | Reproduced optional pressure discarding a completed response | Operator-approved optional detachment and explicit required enrollment are implemented. Session/broker/actual-provider fixtures cover pressure, broker loss, healthy required peers, completion acknowledgment, fixed failure reporting and retained paid usage. Local native-inclusive and hosted Linux/macOS handoffs pass through `091b2bd`, including package/both installed proofs. Startup integrity and OS cleanup receipts remain separate |
 | PA-2 / D6 | Torn ledgers still refuse; the reviewer challenges that recovery cost | A real budget fixture verifies refusal preserves both ledger and partial journal, then explicit inert handoff into a fresh quota without replay, refund or transfer of old liability. This is continuation, not tree repair. Any future repair must lock/validate the complete canonical tree and preserve original evidence; blindly dropping a partial record is not adopted |
-| PA-3 | Task death alone does not acknowledge exit of task-owned shell groups or extension VMs | Private task resource scopes retain actual native-helper receipts. Local and hosted Linux/macOS source/demo/package/installed gates pass at `451f97c`, including local SIGSTOP refusal for shell/extension supervisors and one-use completion receipts. Best-effort detached-descendant limits remain separate |
+| PA-3 | Task death alone does not acknowledge exit of task-owned shell groups or extension VMs | Initial scopes passed local/hosted checks at `451f97c`, but N-A1 exposed an invalid lifecycle closure, and internal IA3/IA4 exposed omitted nested-task/MCP receipts. Reopened for these interactions; the supervisor audit records their reproductions, repairs and new gates. Detached-descendant limits remain separate |
 | PA-4 | Reproduced fresh project skill shadowing on resume | Bounded catalog/provenance checkpoints retain selection, report discovery drift and refuse changed bodies/resources until explicit refresh. Corrupt snapshots refuse before tail repair. Legacy sessions checkpoint first observed selection at the next request; idle opening stays inert |
 | PA-5 | Auth accepted an unsupported proxy by falling back to direct egress; MCP private pools had no proxy options | Shared OTP/Finch policy at `42d9f1f` passed local and hosted Linux/macOS source/package/installed gates. Real local CONNECT fixtures cover auth, inference and MCP; unsupported schemes refuse and proxy credentials do not become origin headers. No live account or remote origin was used |
 | PA-6 | CLI endpoint overrides lacked profile-equivalent validation | Shared provider URI policy now covers profiles, CLI before credential acquisition and actual adapter routing. Remote cleartext, userinfo/query/fragment and malformed routes refuse; explicit loopback fixtures remain usable. Included in the PA-5 checks |
@@ -131,7 +139,7 @@ acceptance. This is independent source evidence, not runtime reproduction or a s
 | PA-10 | Reproduced acceptance of a forged second invocation for the same parent call | Validator consumes each source request/call occurrence once; the fully bound duplicate intent/result/tool-message fixture refuses before repair or replay. Recovery checks and local/hosted handoffs pass at `451f97c` |
 | PA-11 | Reproduced acceptance of an extension's own closing delimiter | Reserved opening/closing markers refuse before committing a transform or dispatching inference. Original records remain intact; projection/recovery and local/hosted handoffs pass at `451f97c` |
 | PA-12 | Reproduced browser waiting blocking refresh/logout | Waiting releases the lock; callback reacquires it and compares the complete protected state before code exchange. Authorization epochs also invalidate callbacks after logout with no existing token. Synthetic refresh/logout races pass without real accounts |
-| PA-13 / A6 | Prefix replay and append reducers add cost; startup remains unbounded | Ordinary message/action accumulation is linearized and historical questions reuse the already validated projection. One-sample 64 MiB/200-question open remains about 20 seconds: no material latency win. Repeated canonical prefix encoding/hashing and full startup passes remain measured limits, not closed performance claims |
+| PA-13 / A6 | Prefix replay and append reducers add cost; startup remains unbounded | Ordinary message/action accumulation is linearized. Historical questions skip repeated durable validators but still reconstruct and hash each prefix; no cached projection is reused. One-sample 64 MiB/200-question open remains about 20 seconds: no material latency win. Repeated projection/JSON encoding/hashing and full startup passes remain measured limits, not closed performance claims |
 | PA-14 / D9 | Trusted shell inherits environment beyond three stripped keys | Accepted explicit trust limitation; no new confinement or secret-isolation claim |
 | PA-15 / A2 | Five-second journal acknowledgment deadline deliberately stops Session | Accepted fail-closed policy and tested callback-stall limitation, not a new reproduced defect |
 
@@ -151,6 +159,31 @@ tests; macOS cache/signing/sandbox and stdio tests; delegation/parallel/budget
 test bodies, usage and normalization. The cloud report's actual coverage replaces
 the earlier blanket-unread list; no accepted repair disposition closes those gaps.
 
+## Latest fresh review and supervisor audit
+
+The private fresh-session report for source `091b2bd`, base `b5297be`, original
+`21e59fe` and evidence `20b377c` reports Opus 5.5, medium effort, subscription
+without overage, read-only committed-object inspection and no execution or edits.
+It withholds acceptance, with context-limited coverage in every area. Those are
+reviewer-reported facts; its raw critique remains private. Prefix these new A
+identifiers with `N-` to distinguish them from the older follow-up's A rows.
+
+| ID | Disposition | Required evidence |
+| --- | --- | --- |
+| N-A1 | Reproduced invalid lifecycle closure after owned task death; use existing `cleanup_failure`, unconfirmed | Model and tool deaths with capture on, deliberate normal stop, durable closure and inert resume |
+| N-A2 | Reproduced diagnostic receipts poisoning a pending extension question; validate the independent receipt stream before allowing it through the action reducer | Real sink/question kill-resume-answer-resume, saved diagnosis/handoff, event jobs before inference and after answer, explicit sink stop and corrupt-receipt refusal |
+| N-A3 | Clarified transport completion versus durable answer admission, preserving the existing frame protocol | Healthy optional peer receives completed transport; failing required peer prevents admission, retains failed accounting and returns distinct delivery failure. Use Session outcome or `answer.committed` for admitted answers |
+| N-A4 | Reproduced deferred terminal output overtaken by newer queued output; drain saved display directly in FIFO order | Suspended real client, older held output, approval decision then newer output; proposal binding/overflow tests retained |
+| N-A5 | No demonstrated revocation defect; local reauthorization does not prove remote invalidation | Public profiles/sessions contract specifies sign-out revocation, not older-grant behavior on replacement. Document uncertainty; do not add speculative account calls or claim live validation |
+| N-A6 | Reproduced quoted multibyte skill metadata parsing error; remove matching ASCII delimiter bytes | Real discovery/load with single/double-quoted Unicode names and descriptions |
+
+The requested [supervisor audit](architecture-self-audit.md) additionally records
+IA1–IA5: subscription question checkpoints, provider response bounds, nested-task
+scope inheritance, MCP cleanup receipts and pre-attachment task ownership. These are source/runtime repairs,
+not knowledge-specific extensions. Each has a pre-fix counterexample and new
+verification. The internal report names actual inspected boundaries/test bodies
+and remaining independent coverage; no internal result grants acceptance.
+
 ## Execution order and completion
 
 The scoped F1–F7/S1–S3 and A1–A5 repairs passed their own source/native/package/
@@ -160,10 +193,11 @@ revisions and remaining verification limits. Future repairs still need a
 regression or measured counterexample, coherent operator/developer guidance and
 their own checks before commit/push; an earlier green baseline does not cover them.
 
-The fresh cloud report satisfies the fresh-session provenance condition but does
-not close coverage or acceptance. Verify PA findings and policy choices first,
-then refresh the [review brief](../operator/architecture-review.md) to the resulting
-passing source and prioritize the remaining checkpoint above. Earlier briefs are
+The fresh cloud reports satisfy fresh-session provenance but do not close
+coverage or acceptance. Finish the internal audit, applicable repairs and their
+platform checks before refreshing the [review brief](../operator/architecture-review.md).
+Use the latest omissions and bounded coverage packages from the evaluation
+protocol; do not restart an unbounded whole-repository review. Earlier briefs are
 preserved in the [archive](../archive/index.md); preserve all private critiques.
 The next session must retain its source assessment before checking this register
 and identify inspected test bodies and omissions. Baseline security and P25 remain

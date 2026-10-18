@@ -21,7 +21,8 @@ defmodule Ipse.MCP.HTTPTransport do
         %{owner: session, job_ref: ref} -> GenServer.call(session, {:mcp_register, ref, self()})
       end
 
-    if registered == :ok do
+    with :ok <- registered,
+         {:ok, cleanup_ticket} <- Ipse.TaskResources.register(:mcp, opts[:cleanup_scope]) do
       Process.send_after(self(), :expired, server.timeout_ms)
 
       {:ok,
@@ -30,6 +31,7 @@ defmodule Ipse.MCP.HTTPTransport do
          owner_ref: Process.monitor(owner),
          server: server,
          cleanup_owner: Keyword.fetch!(opts, :cleanup_owner),
+         cleanup_ticket: cleanup_ticket,
          session_id: nil,
          deadline: now() + server.timeout_ms,
          queue: [],
@@ -43,7 +45,7 @@ defmodule Ipse.MCP.HTTPTransport do
          close_from: nil
        }}
     else
-      {:stop, :cancelled}
+      _ -> {:stop, :cancelled}
     end
   end
 
@@ -116,6 +118,7 @@ defmodule Ipse.MCP.HTTPTransport do
 
   def terminate(_, s) do
     if s.task, do: Process.exit(s.task.pid, :kill)
+    Ipse.TaskResources.closed(s.cleanup_ticket, s.cleanup_result)
     send(s.cleanup_owner, {:mcp_cleanup, self(), s.cleanup_result})
   end
 

@@ -63,10 +63,18 @@ monitors its owning CLI process. Slow storage or sequential child/transport
 cleanup can still outlast the caller's deadline; an unconfirmed-cleanup notice
 requires inspection of receipts, the workspace and running processes. The
 provider `--timeout-ms` option does not change these Session call deadlines.
-Task-owned shell and extension helpers must acknowledge cleanup; task death
-alone cannot confirm their exit. A missing acknowledgment stops the Session
+Task-owned shell, lock, extension and MCP helpers must acknowledge cleanup,
+including helpers started by nested workflows; task or Port disappearance alone
+cannot confirm exit. A missing acknowledgment stops the Session
 with cleanup unconfirmed. Inspect running work before starting another attempt;
 this does not expand the documented detached-descendant containment limits.
+
+Valid diagnostic sink receipts and prompt-source checkpoints can coexist with a
+pending extension question. Saved diagnosis/handoff validate those independent
+records without answering the question or starting callbacks. Older builds could
+refuse these combinations as invalid extension actions. Inspect them with the
+updated read-only commands; an incompatible extension identity can still prevent
+activation, so use an explicit reviewed handoff rather than editing the journal.
 
 Journal retention grows independently of the context window. There is no
 automatic journal rotation or disk quota. Context compaction does not delete

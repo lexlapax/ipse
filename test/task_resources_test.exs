@@ -131,6 +131,32 @@ defmodule Ipse.TaskResourcesTest do
     assert {:error, :cleanup_unconfirmed} = Ipse.TaskResources.close_task(task.pid)
   end
 
+  test "owner or scope loss before attachment cannot orphan a dispatch-barrier worker" do
+    for lost <- [:owner, :scope] do
+      parent = self()
+      owner = spawn(fn -> receive do: (:stop -> :ok) end)
+      {:ok, scope} = Ipse.TaskResources.start(owner)
+
+      {worker, ref} =
+        spawn_monitor(fn ->
+          send(parent, :at_dispatch_barrier)
+          Ipse.TaskResources.await_ready(scope, owner)
+          send(parent, :must_not_dispatch)
+        end)
+
+      try do
+        assert_receive :at_dispatch_barrier, 1000
+        Process.exit(if(lost == :owner, do: owner, else: scope), :kill)
+        assert_receive {:DOWN, ^ref, :process, ^worker, :normal}, 1000
+        refute_receive :must_not_dispatch, 20
+      after
+        Process.exit(worker, :kill)
+        Process.exit(owner, :kill)
+        Process.exit(scope, :kill)
+      end
+    end
+  end
+
   defp assert_dead(pid, attempts \\ 100) do
     assert Regex.match?(~r/\A[0-9]+\z/, pid)
     {_, status} = System.cmd("kill", ["-0", pid], stderr_to_stdout: true)

@@ -38,6 +38,12 @@ failures never silently switch to paid API billing. This preview retains one
 selected account registration. `ipse status` shows it; `ipse logout`
 revokes the renewable session where possible and clears local tokens.
 
+Successful reauthorization replaces the locally saved credentials after identity
+validation; it does not establish that an older remote grant has been revoked.
+The public [profiles and sessions contract](https://developers.openai.com/siwc/token-sharing-open-source/profiles-and-sessions)
+specifies revocation on sign-out, without promising older-grant invalidation on
+reauthorization. To disconnect a suspected compromised grant, use ChatGPT Settings.
+
 Live browser sign-in, subscription inference, approved coding tools, resume, and
 logout passed on Arch with one account; see [verification results](../developer/testing.md).
 Live natural-expiry refresh and token rotation also passed on 2026-10-15.

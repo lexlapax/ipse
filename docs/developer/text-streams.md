@@ -182,8 +182,15 @@ provider outcome accounting commits, the producer queues the terminal frame.
 Optional consumers do not delay response admission for terminal acknowledgments;
 required consumers do, within the same five-second bound. Paid usage remains
 recorded even when required delivery prevents admission of the completed answer.
-Cancel
-releases a blocked push, marks accepted content incomplete and stops the task.
+An `end` describes this provider transport and this consumer's delivery coverage;
+it is not a durable answer-commit receipt. A healthy optional consumer can receive
+`outcome: "completed", complete: true` before another required consumer times out
+and the Session refuses the answer. There is no corrective transport frame:
+the transport did finish, while admission subsequently failed. The same distinction
+applies to a journal failure after streaming. Embedded clients must use the Session
+result for turn success. Extensions needing admitted answers subscribe to the
+durable `answer.committed` event instead of deriving admission from `text.finished`.
+Cancel releases a blocked push, marks accepted content incomplete and stops the task.
 Consumer death removes its buffer and releases flow for remaining peers. Session
 death stops the broker and dependent task. Live subscriptions/chunks are ephemeral
 and never replayed on resume. A broker with no consumers stops validating/delivering
@@ -204,5 +211,7 @@ cancellation, consumer/owner death, control overload, inert resume and summary/
 native exclusion, optional pressure/broker-loss continuation and explicitly
 required completion/failure. An independent worker's unconfirmed OS cleanup still
 causes close/cancel to report failure; successful inference is not a cleanup receipt.
+The reverse mixed-peer fixture also covers healthy optional delivery followed by
+required completion failure, retained failed accounting and no admitted assistant.
 The source/package hook fixture consumes the raw private stream
 alongside completed formatting and durable accounting. See [verification](testing.md).

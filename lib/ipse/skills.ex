@@ -289,11 +289,11 @@ defmodule Ipse.Skills do
 
   defp unquote_scalar(value) do
     if byte_size(value) >= 2 do
-      first = String.first(value)
-      last = String.last(value)
+      first = :binary.first(value)
+      last = :binary.last(value)
 
-      if first == last and first in ["'", "\""] do
-        value |> String.slice(1, byte_size(value) - 2) |> String.replace("\\n", "\n")
+      if first == last and first in [?', ?\"] do
+        value |> binary_part(1, byte_size(value) - 2) |> String.replace("\\n", "\n")
       else
         value
       end

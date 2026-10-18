@@ -130,6 +130,13 @@ Errors before dispatch do not imply the external effect started. A confirmed
 ordinary process-group shutdown does not prove effects were rolled back;
 detached processes remain an OS-specific limitation.
 
+Both transports also register with the owned turn's cleanup scope. Their final
+closure result survives transport exit until the task's receipt is consumed.
+A stdio supervisor exit outside normal cleanup statuses is unconfirmed even if
+its Port has disappeared; disappearance alone cannot turn forced helper death
+into a successful Session close. This confirms local helper/pool cleanup only,
+not remote effects or detached descendants.
+
 After initial server exit, the helper retries ordinary group cleanup during idle
 drain polls within the fixed 500 ms deadline. A pipe retained beyond that limit
 still yields an error frame without successful completion. See the

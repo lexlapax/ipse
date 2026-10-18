@@ -436,6 +436,42 @@ defmodule Ipse.CLITest do
     end)
   end
 
+  test "deferred display stays ahead of newer mailbox output after an approval decision" do
+    with_fixture_and_cli(false, fn fixture, cli ->
+      await_input(cli.stdio)
+      session = lookup_session(cli.state_dir, session_id(cli.stderr))
+      Ipse.CLITest.IOFixture.feed(cli.stdio, "propose a write")
+      {server, 1, _} = await_request(fixture)
+      Ipse.CLITest.HTTPFixture.reply(server, 1, Ipse.CLITest.HTTPFixture.write_call_body())
+      await_text(cli.stderr, "Type y to allow, anything else to deny.")
+      send(cli.task.pid, {:ipse, session, {:tool_output, "older-deferred-output"}})
+      send(cli.task.pid, {:input, "/context"})
+      await_text(cli.stdio, "\"sources\"")
+      refute Ipse.CLITest.IOFixture.output(cli.stderr) =~ "older-deferred-output"
+
+      :erlang.suspend_process(cli.task.pid)
+
+      try do
+        send(cli.task.pid, {:input, "n"})
+        send(cli.task.pid, {:ipse, session, {:tool_output, "newer-mailbox-output"}})
+      after
+        :erlang.resume_process(cli.task.pid)
+      end
+
+      await_text(cli.stderr, "older-deferred-output")
+      await_text(cli.stderr, "newer-mailbox-output")
+      output = Ipse.CLITest.IOFixture.output(cli.stderr)
+      {older, _} = :binary.match(output, "older-deferred-output")
+      {newer, _} = :binary.match(output, "newer-mailbox-output")
+      assert older < newer
+      {^server, 2, _} = await_request(fixture)
+      Ipse.CLITest.HTTPFixture.reply(server, 2, Ipse.CLITest.HTTPFixture.final_body())
+      await_text(cli.stderr, "Finished.")
+      Ipse.CLITest.IOFixture.feed(cli.stdio, :eof)
+      assert 0 == Task.await(cli.task, 3000)
+    end)
+  end
+
   test "interleaved sibling output leaves the actual pending approval last and bound" do
     with_fixture_and_cli(false, fn fixture, cli ->
       await_input(cli.stdio)

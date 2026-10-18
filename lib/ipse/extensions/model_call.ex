@@ -388,7 +388,7 @@ defmodule Ipse.Extensions.ModelCall do
     monitor = Process.monitor(context.worker)
 
     task =
-      Task.async(fn ->
+      Ipse.TaskResources.async(fn ->
         emit = fn
           {:provider_usage, raw} ->
             usage = Usage.observation(admission, raw, 1)["usage"]

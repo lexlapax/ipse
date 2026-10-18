@@ -10,8 +10,10 @@ defmodule Ipse.MCP.Transport do
   @impl true
   def send_message(pid, message), do: GenServer.call(pid, {:send, message})
   @impl true
-  def close(pid) do
-    GenServer.call(pid, :close, 3_000)
+  def close(pid), do: close(pid, 3_000)
+
+  def close(pid, timeout) do
+    GenServer.call(pid, :close, timeout)
   catch
     :exit, _ -> {:error, :cleanup_unconfirmed}
   end
@@ -35,6 +37,7 @@ defmodule Ipse.MCP.Transport do
     resource = Keyword.get(opts, :resource)
 
     with :ok <- register(resource),
+         {:ok, cleanup_ticket} <- Ipse.TaskResources.register(:mcp, opts[:cleanup_scope]),
          {:ok, port} <-
            Ipse.Runner.open_stdio(server.command, server.args, cwd, server.env, server.timeout_ms,
              sandbox: Map.get(server, :sandbox, :off)
@@ -46,6 +49,8 @@ defmodule Ipse.MCP.Transport do
          port: port,
          resource: resource,
          cleanup_owner: Keyword.fetch!(opts, :cleanup_owner),
+         cleanup_ticket: cleanup_ticket,
+         cleanup_result: {:error, :cleanup_unconfirmed},
          private_config: Map.take(server, [:env, :redactions]),
          buffer: <<>>,
          line: <<>>,
@@ -84,8 +89,7 @@ defmodule Ipse.MCP.Transport do
 
   def handle_call(:close, _from, state) do
     result = Ipse.Runner.close_stdio(state.port)
-    send(state.cleanup_owner, {:mcp_cleanup, self(), result})
-    {:stop, :normal, result, %{state | port: nil}}
+    {:stop, :normal, result, %{state | port: nil, cleanup_result: result}}
   end
 
   @impl true
@@ -98,8 +102,10 @@ defmodule Ipse.MCP.Transport do
     end
   end
 
-  def handle_info({port, {:exit_status, _}}, %{port: port} = state),
-    do: stop(%{state | port: nil}, :closed)
+  def handle_info({port, {:exit_status, status}}, %{port: port} = state) do
+    result = if status in [0, 1], do: :ok, else: {:error, :cleanup_unconfirmed}
+    stop(%{state | port: nil, cleanup_result: result}, :closed)
+  end
 
   def handle_info({:EXIT, port, _}, %{port: port} = state),
     do: stop(state, :closed)
@@ -112,7 +118,10 @@ defmodule Ipse.MCP.Transport do
 
   @impl true
   def terminate(_, state) do
-    result = if is_port(state.port), do: Ipse.Runner.close_stdio(state.port), else: :ok
+    result =
+      if is_port(state.port), do: Ipse.Runner.close_stdio(state.port), else: state.cleanup_result
+
+    Ipse.TaskResources.closed(state.cleanup_ticket, result)
     send(state.cleanup_owner, {:mcp_cleanup, self(), result})
     :ok
   end

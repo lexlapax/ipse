@@ -2,6 +2,42 @@ defmodule Ipse.Provider.HTTPTest do
   use ExUnit.Case, async: false
   alias Ipse.Provider
 
+  test "ordinary provider requests enforce a transport byte ceiling before parsing" do
+    bytes = String.duplicate("x", 8_388_609)
+    {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}])
+    {:ok, {_, port}} = :inet.sockname(listener)
+
+    server =
+      Task.async(fn ->
+        {:ok, socket} = :gen_tcp.accept(listener, 5000)
+        request(socket, "")
+
+        :ok =
+          :gen_tcp.send(
+            socket,
+            "HTTP/1.1 200 OK\r\ncontent-length: #{byte_size(bytes)}\r\nconnection: close\r\n\r\n"
+          )
+
+        result = :gen_tcp.send(socket, bytes)
+        :gen_tcp.close(socket)
+        :gen_tcp.close(listener)
+        result
+      end)
+
+    assert {:error, message} =
+             Ipse.Provider.HTTP.stream(
+               "http://127.0.0.1:#{port}",
+               [],
+               %{},
+               %{provider: :ollama, timeout_ms: 5000},
+               0,
+               fn count, chunk -> {:ok, count + byte_size(chunk)} end
+             )
+
+    assert message =~ "byte limit"
+    assert Task.await(server) in [:ok, {:error, :closed}]
+  end
+
   test "Responses API streams locally and posts canonical tools and bearer credentials" do
     output = [
       %{"type" => "message", "content" => [%{"type" => "output_text", "text" => "hello"}]}

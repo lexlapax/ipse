@@ -33,6 +33,14 @@ missing acknowledgments, resource-owner death and failed closure remain
 unconfirmed. Losing the Session stops the scope and its dependent work. These
 receipts establish ordinary helper/group cleanup, not containment of detached
 descendants or a guarantee against uninterruptible kernel IO.
+Linked nested workflow tool, helper-model and history tasks explicitly inherit
+the outer cleanup scope through `TaskResources.async/1`. A process dictionary
+does not propagate through ordinary `Task.async/1`; losing that binding would
+omit nested shell/lock helpers from the confirmation boundary.
+Before attachment, the new task monitors both Session and scope while waiting
+at its dispatch barrier. If either disappears, it exits without dispatch; after
+readiness, the attached scope owns cleanup. This covers creation as well as
+already-running work.
 
 The CLI registers itself as the root Session's owner; loss stops the Session and
 dependent work through the existing owner monitor. Request-call exits are caught
@@ -54,6 +62,8 @@ manifest. While it is pending, sibling display events wait in a bounded queue
 (64 events/64 KiB); overflow is visibly counted after the decision. Local commands
 can redraw the complete proposal. This keeps the real approval last without
 per-chunk amplification of its full arguments.
+After the decision, the client drains saved display events in arrival order
+before receiving newer mailbox output, without sending them back to its mailbox.
 Returned prose remains untrusted; the renderer does not authenticate its contents.
 
 ```text
@@ -199,12 +209,25 @@ the complete saved record before exchanging a code. Successful login and logout
 advance a protected authorization epoch, including logout before the first token
 exists. Refresh/logout during a pending login invalidate that old callback.
 
+Reauthorization replaces local protected credentials only after validation. The
+public [profiles and sessions contract](https://developers.openai.com/siwc/token-sharing-open-source/profiles-and-sessions)
+requires revocation on sign-out but does not define invalidation of older remote
+grants on replacement. Ipse does not assume that property or revoke an older token
+after activating new credentials; the effect on the new grant is unspecified.
+Remote disconnection remains an explicit operator action in ChatGPT Settings.
+
 `Provider.Error` formats bounded machine metadata and fixed recovery guidance,
 without echoing server prose. The subscription adapter uses developer messages
 and an `additional_tools` item, preserving native continuation data; the API route
 keeps its existing wire shape. Subscription endpoints are pinned below the CLI;
 only test-compiled code permits loopback fixtures. Provider errors redact the
 active credential and stop the turn; the CLI clears queued requests visibly.
+All HTTP provider adapters enforce an 8 MiB response-consumption ceiling before
+parsing. Internal callers can select a smaller positive `max_response_bytes`
+ceiling; extension helper calls retain their 64 KiB limit. Oversized responses
+stop without admitting an assistant response or tools, and are not retried.
+This bounds accumulated adapter/parser data, not the HTTP client's instantaneous
+network buffers or OS memory. It is separate from model token caps and cost budgets.
 
 ## Trust and side effects
 

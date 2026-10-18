@@ -85,6 +85,12 @@ exported. Native history/accounting stays authoritative. Acknowledgment is recei
 not presentation, business success or playback. Idle resume starts no consumer;
 explicit new work gets new live identity.
 
+`text.finished` reports provider transport completion, including its per-consumer
+coverage flag. It does not promise Session admission: another required peer can
+fail after this consumer receives its end. Use the Session result or the durable
+`answer.committed` subscription for admitted answers; no corrective text event
+changes a transport that already completed.
+
 Fixtures cover unequal consumer boundaries, request reuse, broker restart,
 Unicode ranges, cancelled pending text, idle closure, malformed bindings and
 negotiated Session/worker delivery. Independently compiled workers cover disabled

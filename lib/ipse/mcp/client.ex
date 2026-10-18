@@ -87,7 +87,12 @@ defmodule Ipse.MCP.Client do
 
     opts = [
       transport:
-        {transport_module, server: server, cwd: cwd, resource: resource, cleanup_owner: self()},
+        {transport_module,
+         server: server,
+         cwd: cwd,
+         resource: resource,
+         cleanup_owner: self(),
+         cleanup_scope: Ipse.TaskResources.current()},
       client_info: %{name: "ipse", version: to_string(Application.spec(:ipse, :vsn))},
       request_timeout: server.timeout_ms,
       request_handlers: %{"ping" => fn _ -> {:ok, %{}} end},

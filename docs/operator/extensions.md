@@ -528,6 +528,12 @@ Already paid usage remains recorded. Embedded clients use
 Omitting the setting leaves delivery optional; it does not bypass startup checks
 or turn an unconfirmed worker shutdown into confirmed cleanup.
 
+Stream completion reports delivery of provider text, not acceptance of the answer.
+A healthy optional client may finish receiving while another required client later
+fails and the turn ends in error. Use the Session result for success, or subscribe
+to `answer.committed` for durable answers. Text completion has no later correction
+frame; see the [delivery and admission contract](../developer/text-streams.md#flow-control-and-ownership).
+
 Subscriptions/frames never replay on idle resume. Fresh operator input can enroll
 a new resource; no failed frame is retried. `/diagnostics` reports active count
 and unconfirmed cleanup without text/options. Cancel/close stops workers; owner

@@ -202,6 +202,36 @@ defmodule Ipse.TextStreamSessionTest do
     assert :ok = Session.close(resumed)
   end
 
+  test "optional end reports transport coverage while required delivery can still refuse admission",
+       ctx do
+    pid = start(ctx)
+    owner = self()
+
+    {:ok, stalled} =
+      Task.start(fn ->
+        {:ok, _} = Session.subscribe_text(pid, 2, required: true)
+        send(owner, :stalled_ready)
+        Process.sleep(:infinity)
+      end)
+
+    on_exit(fn -> if Process.alive?(stalled), do: Process.exit(stalled, :kill) end)
+    assert_receive :stalled_ready, 2000
+    {:ok, optional} = Session.subscribe_text(pid)
+    id = Session.info(pid).id
+    :ok = Session.prompt(pid, "Synthetic transport versus admission")
+    frames = drain(optional)
+    assert %{"kind" => "end", "outcome" => "completed", "complete" => true} = List.last(frames)
+    refute_receive {:ipse, ^pid, {:done, _}}, 20
+    assert_receive {:ipse, ^pid, {:error, error}}, 7000
+    assert error =~ "Required visible-text delivery failed"
+    assert_receive {:ipse, ^pid, {:done, :error}}, 1000
+    assert List.last(Session.info(pid).accounting["requests"])["outcome"] == "failed"
+    {:ok, events} = Ipse.Journal.load(ctx.dir, id)
+    {:ok, messages} = Session.restore_context(events)
+    refute Enum.any?(messages, &(&1["role"] == "assistant"))
+    assert :ok = Session.close(pid)
+  end
+
   test "a healthy explicitly required client acknowledges completion before inference is admitted",
        ctx do
     pid = start(ctx)

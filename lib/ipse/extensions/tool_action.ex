@@ -31,7 +31,7 @@ defmodule Ipse.Extensions.ToolAction do
 
   def execute(request, context) do
     task =
-      Task.async(fn ->
+      Ipse.TaskResources.async(fn ->
         try do
           run(request, context)
         rescue
