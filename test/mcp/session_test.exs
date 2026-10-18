@@ -5,6 +5,11 @@ defmodule Ipse.MCP.SessionTest do
     def complete(config, messages, tools, _emit) do
       send(config.test_pid, {:model_input, messages, tools})
 
+      if config[:model_gate] do
+        send(config.model_gate, {:waiting_model, self()})
+        receive do: (:release_model -> :ok)
+      end
+
       if List.last(messages)["role"] == "tool" or List.last(messages)["content"] == "inspect" do
         {:ok, %{"role" => "assistant", "content" => "Fixture finished"}, %{}}
       else
@@ -114,7 +119,7 @@ defmodule Ipse.MCP.SessionTest do
     id = Ipse.Session.info(pid).id
     monitor = Process.monitor(pid)
     :ok = Ipse.Session.prompt(pid, "write")
-    await_file(Path.join(ctx.root, "disconnect-ready"))
+    await_dispatch(pid, Path.join(ctx.root, "disconnect-ready"))
 
     [transport] =
       :sys.get_state(pid).mcp_resources |> Map.keys() |> Enum.filter(&Process.alive?/1)
@@ -174,7 +179,7 @@ defmodule Ipse.MCP.SessionTest do
     pid = session(ctx, scenario: "hang", approval: :allow, capture: true)
     id = Ipse.Session.info(pid).id
     :ok = Ipse.Session.prompt(pid, "write")
-    await_file(Path.join(ctx.root, "hang-ready"))
+    await_dispatch(pid, Path.join(ctx.root, "hang-ready"))
     worker = :sys.get_state(pid).task.pid
     [{scope, _}] = Registry.lookup(Ipse.Registry, {Ipse.TaskResources, worker})
     monitor = Process.monitor(worker)
@@ -193,7 +198,7 @@ defmodule Ipse.MCP.SessionTest do
     id = Ipse.Session.info(pid).id
     monitor = Process.monitor(pid)
     :ok = Ipse.Session.prompt(pid, "write")
-    await_file(Path.join(ctx.root, "hang-ready"))
+    await_dispatch(pid, Path.join(ctx.root, "hang-ready"))
     [transport] = :sys.get_state(pid).mcp_resources |> Map.keys()
     port = :sys.get_state(transport).port
     {:os_pid, helper} = Port.info(port, :os_pid)
@@ -225,11 +230,32 @@ defmodule Ipse.MCP.SessionTest do
     refute File.exists?(Path.join(ctx.root, "calls.log"))
   end
 
+  test "server readiness starts at tool dispatch after a delayed model decision", ctx do
+    gate =
+      Task.async(fn ->
+        receive do
+          {:waiting_model, worker} ->
+            Process.sleep(3_200)
+            send(worker, :release_model)
+        end
+      end)
+
+    pid = session(ctx, scenario: "hang", approval: :allow, model_gate: gate.pid)
+    :ok = Ipse.Session.prompt(pid, "write")
+    assert_receive {:model_input, _, _}, 5_000
+    await_dispatch(pid, Path.join(ctx.root, "hang-ready"))
+    Task.await(gate, 5_000)
+    assert File.read!(Path.join(ctx.root, "calls.log")) == "write_note\n"
+    assert :ok = Ipse.Session.cancel(pid)
+    assert_receive {:ipse, ^pid, {:done, :cancelled}}, 5_000
+    refute File.exists?(Path.join(ctx.root, "note.txt"))
+  end
+
   test "cancellation closes an in-flight server before returning and keeps outcome unknown",
        ctx do
     pid = session(ctx, scenario: "hang", approval: :allow)
     :ok = Ipse.Session.prompt(pid, "write")
-    await_file(Path.join(ctx.root, "hang-ready"))
+    await_dispatch(pid, Path.join(ctx.root, "hang-ready"))
     resources = :sys.get_state(pid).mcp_resources |> Map.keys()
     assert length(resources) == 1
     :ok = Ipse.Session.cancel(pid)
@@ -255,7 +281,7 @@ defmodule Ipse.MCP.SessionTest do
        ctx do
     pid = session(ctx, scenario: "hang", approval: :allow)
     :ok = Ipse.Session.prompt(pid, "write")
-    await_file(Path.join(ctx.root, "hang-ready"))
+    await_dispatch(pid, Path.join(ctx.root, "hang-ready"))
     assert_receive {:model_input, _, _}, 5_000
     id = Ipse.Session.info(pid).id
     [transport] = :sys.get_state(pid).mcp_resources |> Map.keys()
@@ -314,6 +340,7 @@ defmodule Ipse.MCP.SessionTest do
           if(opts[:capture], do: "local", else: "off")
         ),
       call_count: Keyword.get(opts, :call_count, 1),
+      model_gate: Keyword.get(opts, :model_gate),
       mcp_servers: servers
     }
 
@@ -342,6 +369,11 @@ defmodule Ipse.MCP.SessionTest do
           Process.sleep(10)
           await_file(path, retries - 1)
         )
+  end
+
+  defp await_dispatch(pid, path) do
+    assert_receive {:ipse, ^pid, {:tool, "mcp__notes__write_note", _}}, 5_000
+    await_file(path)
   end
 
   defp cleanup_trace(transport, events) do

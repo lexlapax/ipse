@@ -112,6 +112,7 @@ was read; only sanitized dispositions and synthetic verification are committed.
 | Internal filesystem completion | Ordinary and raw filesystem IO can outlive a killed BEAM caller. Admitted workspace writes, active appends/tail repair and budget/state critical sections now have separately tracked completion owners; cancellation never kills those owners | A gated real FIFO write rejects resume until drained. The previous tool implementation allowed resume. A separate real budget-lock probe retains the lock after caller death. These are controlled blocking probes, not power-loss certification |
 | Internal HTTP child cleanup | The private HTTP lease waits for monitored supervised children before releasing its client slot | Suspending a named registry child and killing the top supervisor reproduced premature guardian exit. The repaired guardian retains its slot until that child exits |
 | Cancellation composition | Normal scope close collects native-helper receipts before terminating nested task processes; abrupt owner death stops workers immediately and retains uncertainty | The existing workflow-shell cancellation regression rejected the initial nested-drain ordering. Its strict confirmed cleanup assertion passes after reordering; no alternate cleanup outcome or deadline relaxation |
+| MCP readiness composition | Ready-file timing now starts at the tool-start event, after discovery/model selection. The three-second poll and configured ten-second protocol deadline are unchanged; cleanup remains strict | The first final Mac matrix failed before its kill precondition. A controlled 3.2-second model gate fails the old helper and passes the corrected helper; all 12 MCP session cases pass locally. The original occurrence's exact runtime phase remains unconfirmed |
 | Consolidated A6 | Request-free legacy endpoint provenance is unknowable. Compatibility still permits implicit-default legacy resume and cannot detect an old custom-to-default change | Guidance now states that exact gap. New-session pinning and recorded legacy request hashes remain strict; no migration or historical route reconstruction is claimed |
 
 The guardian uses ordinary OTP monitors, Registry and the existing native lock;
@@ -127,7 +128,9 @@ turned into stronger containment guarantees.
 The passing `a5912ab` matrix remains evidence for that source and its exercised
 scope. The first follow-through passed its own Linux/macOS matrix at `99bbbdf`.
 The additional filesystem-completion repair passed a new frozen local baseline,
-package and both installed-artifact proofs; its hosted Linux/macOS run is next.
+package and both installed-artifact proofs. Its first hosted Linux job passed;
+macOS stopped at an MCP readiness precondition. The fixture-stage correction has
+a controlled regression and a passing focused suite; the repeated full matrix is next.
 [Testing](testing.md#current-evidence-and-next-checks) owns exact revisions and
 receipts. Earlier passes do not certify later code. The used review brief is archived; no new external assignment
 or scan was launched. Baseline security and P25 remain gated on applicable repairs
