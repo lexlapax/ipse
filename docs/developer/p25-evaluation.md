@@ -107,7 +107,7 @@ Initial reports are retained unchanged and separately from later synthesis:
 | Codex L1 reference | Completed; 36 local-reader calls and 12 native web operations, plus the retained failed attempt's allocation. Report: 28,639 characters, SHA-256 `1345dab692c7c8119d6e15117d074e5dc3e75ef52c7c73630ebbb784497f70d6` |
 | Ipse L1 after recorded continuations | Completed; 20,537 characters, SHA-256 `56f09900daaa3e29b8cf9baeeedf5765a3454278cf7fc8c48440d3b20ef3bec1`. Original task length bound met; shorter continuation request not met |
 | Codex L2 | Completed; 28 local-reader calls/12 native web operations. Report: 29,757 characters, SHA-256 `7540c080dfe9c398a16c200f539568d264c4d9feb74ccc942fc6a0d9e093c70e` |
-| Ipse L2 | Original result incomplete; explicit bounded continuation pending |
+| Ipse L2 after recorded continuation | Completed in 173.4 seconds, cumulative 17 requests/73 tools/17 retrievals/eight searches, confirmed cleanup. Report: 31,525 characters, SHA-256 `2ae7388a75052a5cfd8465765df9732a33462eaf5c16ce3c5bd413fe366cd22e` |
 
 Both Codex package reports exceed the frozen 24,000-character bound; they are
 not passing references merely because they completed. One Ipse source excerpt
@@ -129,6 +129,24 @@ This checks a current immutable source, not what an earlier cached response said
 The common-packet stage must control that freshness difference rather than force
 Ipse to repeat the reference's version. The pin/check result is not supplied to
 the initial synthesis sessions before their outputs freeze.
+
+Fresh offline L3 syntheses have now frozen. Codex used 29 local-reader calls and
+zero retrievals: 24,841 characters, SHA-256
+`e65176acc516c30ed53b077b75e15e693e377c9d722958e61ffcae3472f95067`.
+Ipse used seven requests/five tools, zero retrievals, 136.8 seconds and confirmed
+cleanup: 24,040 characters, SHA-256
+`ed8a9b2ba0d90dd9a908f172b8af161e9f551e2c7ee1548a307ff33a6a69fe34`.
+Both still fail the hard length bound (841/40 characters over); Ipse's L2 report
+also exceeds it. The bound has not changed. Codex's synthesis corrects its earlier
+overbroad immediate-deletion proposal by explicitly limiting it to newly served
+retrieval under a backend contract, not every future model prompt. That is a
+source-aware correction, not evidence of implemented revocation.
+
+The [common-packet method](p25-packet-method.md) now freezes source selection,
+digest, clean workspaces and unchanged scoring before those fresh sessions.
+Its 40-entry compressed corpus is built from both live tracks' source union;
+full pages/private reports are not published. No initial report is an input to
+the packet sessions, and no packet result or comparative acceptance is claimed yet.
 
 ## Remaining trial gates
 

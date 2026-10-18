@@ -24,6 +24,7 @@ start. Use the guides below for operation, development, and project context.
 | [Architecture-review checkpoint](operator/architecture-review.md) | Retained critiques, completed baseline/repair verification, scoped P24 readiness and P25 preparation |
 | [P25 common brief](developer/p25-common-brief.md) | Frozen research task/rubric, source manifest, installed runner and comparison limits |
 | [P25 execution record](developer/p25-evaluation.md) | Actual sessions, failed access, interventions and remaining trial gates |
+| [P25 common packet](developer/p25-packet-method.md) | Source selection, compressed evidence, isolation and controlled comparison |
 | [Troubleshooting](operator/troubleshooting.md) | Build, callback, account, lock, and recovery problems |
 
 ## Develop Ipse

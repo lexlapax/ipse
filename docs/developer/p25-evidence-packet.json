@@ -1,0 +1,1022 @@
+{
+  "cutoff": "2026-10-18",
+  "entries": [
+    {
+      "basis": "primary abstract only; observed version v4, 2021-10-21",
+      "capture_time": "2026-10-18; primary check before packet freeze",
+      "current_repository_pin": null,
+      "excerpt_sha256": "82fe90f5f6400e8dc094edb6611814a756f888fa6a0b30ac623b4d8abdd96a54",
+      "excerpts": [
+        "BM25 is a robust baseline"
+      ],
+      "id": "P01",
+      "metadata_status": "supervisor primary read; bounded excerpt only",
+      "url": "https://arxiv.org/abs/2104.08663",
+      "versioned_primary_locator": {
+        "basis": "primary version metadata inspected; abstract only; no full-paper byte hash",
+        "url": "https://arxiv.org/abs/2104.08663v4"
+      }
+    },
+    {
+      "basis": "primary abstract only; v2, revised 2024-02-12",
+      "capture_time": "2026-10-18; primary check before packet freeze",
+      "current_repository_pin": null,
+      "excerpt_sha256": "ddf15837b5392e07cf5bc3ae75e6bbab944cc98cb31eca0e404a6cb5e77b5a8d",
+      "excerpts": [
+        "we propose virtual context management"
+      ],
+      "id": "P02",
+      "metadata_status": "supervisor primary read; bounded excerpt only",
+      "url": "https://arxiv.org/abs/2310.08560v2"
+    },
+    {
+      "basis": "bounded MCP result; literal provenance validated, publisher truth/freshness not authenticated",
+      "capture_time": "2026-10-18T14:45:00.657847Z",
+      "current_repository_pin": null,
+      "excerpt_sha256": "5852e33b80e8403cd77d760874b1b19ea65d584bf197e88f6113500f7f692c8a",
+      "excerpts": [
+        "Our approach uses an LLM to build a graph index in two stages:"
+      ],
+      "id": "P03",
+      "metadata_status": "model_reported_unverified",
+      "snapshot_variants": [
+        {
+          "excerpt_sha256": "5852e33b80e8403cd77d760874b1b19ea65d584bf197e88f6113500f7f692c8a",
+          "retrieved_at": "2026-10-18T14:45:00.657847Z",
+          "tool_result_sha256": "c64bbfa09469b94d2c870043e9b5138083b07cf3a697ddef0a3927f5005db7a0",
+          "url": "https://arxiv.org/abs/2404.16130"
+        }
+      ],
+      "url": "https://arxiv.org/abs/2404.16130",
+      "versioned_primary_locator": {
+        "basis": "primary version metadata inspected; abstract only; no full-paper byte hash",
+        "url": "https://arxiv.org/abs/2404.16130v2"
+      }
+    },
+    {
+      "basis": "bounded MCP result; literal provenance validated, publisher truth/freshness not authenticated",
+      "capture_time": "2026-10-18T14:45:00.657847Z",
+      "current_repository_pin": null,
+      "excerpt_sha256": "ca7ae56a6526ba2c088be12b5c6fed9ac9302c40e8c5d69897e79bb87531fa3b",
+      "excerpts": [
+        "an incremental update algorithm that ensures the timely integration of new data"
+      ],
+      "id": "P04",
+      "metadata_status": "model_reported_unverified",
+      "snapshot_variants": [
+        {
+          "excerpt_sha256": "ca7ae56a6526ba2c088be12b5c6fed9ac9302c40e8c5d69897e79bb87531fa3b",
+          "retrieved_at": "2026-10-18T14:45:00.657847Z",
+          "tool_result_sha256": "c64bbfa09469b94d2c870043e9b5138083b07cf3a697ddef0a3927f5005db7a0",
+          "url": "https://arxiv.org/abs/2410.05779"
+        }
+      ],
+      "url": "https://arxiv.org/abs/2410.05779",
+      "versioned_primary_locator": {
+        "basis": "primary version metadata inspected; abstract only; no full-paper byte hash",
+        "url": "https://arxiv.org/abs/2410.05779v3"
+      }
+    },
+    {
+      "basis": "bounded MCP result; literal provenance validated, publisher truth/freshness not authenticated",
+      "capture_time": "2026-10-18T14:33:28.903230Z",
+      "current_repository_pin": null,
+      "excerpt_sha256": "6272b8279c2753100d8657891f3c4ab764922cabad08acc2d424d7dd27338be1",
+      "excerpts": [
+        "no step outside final question answering invokes an LLM or consumes LLM input or output tokens; encoder computation is accounted for separately."
+      ],
+      "id": "P05",
+      "metadata_status": "model_reported_unverified",
+      "snapshot_variants": [
+        {
+          "excerpt_sha256": "6272b8279c2753100d8657891f3c4ab764922cabad08acc2d424d7dd27338be1",
+          "retrieved_at": "2026-10-18T14:33:28.903230Z",
+          "tool_result_sha256": "380a52833b3655a0097bae0bedb4c875cf6d71c76d1a48e148e835a3527aaf21",
+          "url": "https://arxiv.org/html/2607.29377v1"
+        }
+      ],
+      "url": "https://arxiv.org/html/2607.29377v1"
+    },
+    {
+      "basis": "bounded MCP result; literal provenance validated, publisher truth/freshness not authenticated",
+      "capture_time": "2026-10-18T14:44:39.820681Z",
+      "current_repository_pin": null,
+      "excerpt_sha256": "cd07821dee4c78d0a81030ac4067cf72e2e60ec619db1b58af2b0ffce9c9ccaf",
+      "excerpts": [
+        "This will return a list of results, each with the relevant chunks, similarity scores, and file of origin."
+      ],
+      "id": "P06",
+      "metadata_status": "model_reported_unverified",
+      "snapshot_variants": [
+        {
+          "excerpt_sha256": "cd07821dee4c78d0a81030ac4067cf72e2e60ec619db1b58af2b0ffce9c9ccaf",
+          "retrieved_at": "2026-10-18T14:44:39.820681Z",
+          "tool_result_sha256": "535d8fceafde7e48cf2db497530c419f47eb5f05e2e41aa70499c752b61b60d5",
+          "url": "https://developers.openai.com/api/docs/guides/retrieval"
+        }
+      ],
+      "url": "https://developers.openai.com/api/docs/guides/retrieval"
+    },
+    {
+      "basis": "bounded MCP result; literal provenance validated, publisher truth/freshness not authenticated",
+      "capture_time": "2026-10-18T14:44:18.173079Z",
+      "current_repository_pin": null,
+      "excerpt_sha256": "4359019a1b57bf9a1d78ac3fe836ab50255e8614b4c463540bb108c1cee99e6d",
+      "excerpts": [
+        "long documents will automatically be truncated to the value of `max_tokens_per_doc`."
+      ],
+      "id": "P07",
+      "metadata_status": "model_reported_unverified",
+      "snapshot_variants": [
+        {
+          "excerpt_sha256": "4359019a1b57bf9a1d78ac3fe836ab50255e8614b4c463540bb108c1cee99e6d",
+          "retrieved_at": "2026-10-18T14:44:18.173079Z",
+          "tool_result_sha256": "b17fd4b455ba5fb1f5e6e2a8e1d5dbc7d8b09124ff5fbdd3f94a60477fb012a5",
+          "url": "https://docs.cohere.com/reference/rerank"
+        }
+      ],
+      "url": "https://docs.cohere.com/reference/rerank"
+    },
+    {
+      "basis": "bounded MCP result; literal provenance validated, publisher truth/freshness not authenticated",
+      "capture_time": "2026-10-18T14:35:07.735364Z",
+      "current_repository_pin": null,
+      "excerpt_sha256": "38c9dba2d976d664260dcfbd96638127d50d18f0e3370b16fee111ec5e89bec6",
+      "excerpts": [
+        "Shared memory repositories require cloud-hosted agents. Local agents use their own MemFS and project files."
+      ],
+      "id": "P08",
+      "metadata_status": "model_reported_unverified",
+      "snapshot_variants": [
+        {
+          "excerpt_sha256": "38c9dba2d976d664260dcfbd96638127d50d18f0e3370b16fee111ec5e89bec6",
+          "retrieved_at": "2026-10-18T14:35:07.735364Z",
+          "tool_result_sha256": "375cd02f280f76557670584b1f6bd6ed98f3ab5db35bde3bc3feed91d615828a",
+          "url": "https://docs.letta.com/concepts/shared-memory/index.md"
+        }
+      ],
+      "url": "https://docs.letta.com/concepts/shared-memory/index.md"
+    },
+    {
+      "basis": "primary legacy V1 documentation read; not the current MemFS contract",
+      "current_repository_pin": null,
+      "excerpt_sha256": "ff7f582548f00d276071b8af36c1bedbcd8b313c6f2a6f38c0ee8f94855bc3a7",
+      "excerpts": [
+        "They are always visible - no retrieval needed."
+      ],
+      "id": "P09",
+      "metadata_status": "supervisor primary-page read; bounded excerpt only",
+      "url": "https://docs.letta.com/v1-sdk/memory/memory-blocks"
+    },
+    {
+      "basis": "bounded MCP result; literal provenance validated, publisher truth/freshness not authenticated",
+      "capture_time": "2026-10-18T14:35:07.735364Z",
+      "current_repository_pin": null,
+      "excerpt_sha256": "501b2bc9374a9d210f05b0288b59349e251d853c80ea347678ca3aa67de08ea0",
+      "excerpts": [
+        "We do not recommend building on memory blocks anymore."
+      ],
+      "id": "P10",
+      "metadata_status": "model_reported_unverified",
+      "snapshot_variants": [
+        {
+          "excerpt_sha256": "501b2bc9374a9d210f05b0288b59349e251d853c80ea347678ca3aa67de08ea0",
+          "retrieved_at": "2026-10-18T14:35:07.735364Z",
+          "tool_result_sha256": "375cd02f280f76557670584b1f6bd6ed98f3ab5db35bde3bc3feed91d615828a",
+          "url": "https://docs.letta.com/v1-sdk/memory/shared-memory/index.md"
+        }
+      ],
+      "url": "https://docs.letta.com/v1-sdk/memory/shared-memory/index.md"
+    },
+    {
+      "basis": "bounded MCP result; literal provenance validated, publisher truth/freshness not authenticated",
+      "capture_time": "2026-10-18T14:44:18.173079Z",
+      "current_repository_pin": null,
+      "excerpt_sha256": "aaea74297001230029063a6cf451d7ca73aaae4ba5a4d02f4b297a7e52982812",
+      "excerpts": [
+        "If true, truncate inputs that exceed the context window. If false, returns an error."
+      ],
+      "id": "P11",
+      "metadata_status": "model_reported_unverified",
+      "snapshot_variants": [
+        {
+          "excerpt_sha256": "aaea74297001230029063a6cf451d7ca73aaae4ba5a4d02f4b297a7e52982812",
+          "retrieved_at": "2026-10-18T14:44:18.173079Z",
+          "tool_result_sha256": "b17fd4b455ba5fb1f5e6e2a8e1d5dbc7d8b09124ff5fbdd3f94a60477fb012a5",
+          "url": "https://docs.ollama.com/api/embed"
+        }
+      ],
+      "url": "https://docs.ollama.com/api/embed"
+    },
+    {
+      "basis": "bounded MCP result; literal provenance validated, publisher truth/freshness not authenticated",
+      "capture_time": "2026-10-18T14:43:53.155220Z",
+      "current_repository_pin": {
+        "readme": {
+          "bytes": 52594,
+          "sha256": "b495a0fb015976fca63152962ebd4a4daf82f32fdd8c3bb146fab90a0b09e8e4",
+          "url": "https://raw.githubusercontent.com/HKUDS/LightRAG/aaebfe1bb8d55deb6a4304d357a3bf4c92fcd40a/README.md"
+        },
+        "repo": "HKUDS/LightRAG",
+        "revision": "aaebfe1bb8d55deb6a4304d357a3bf4c92fcd40a"
+      },
+      "excerpt_sha256": "c06b00d30cf8157eda6457a439d279d4d77e700dee721e4433ead8408496907a",
+      "excerpts": [
+        "Added **Document Deletion** with automatic KG regeneration to ensure optimal query performance."
+      ],
+      "id": "P12",
+      "metadata_status": "model_reported_unverified",
+      "snapshot_variants": [
+        {
+          "excerpt_sha256": "c06b00d30cf8157eda6457a439d279d4d77e700dee721e4433ead8408496907a",
+          "retrieved_at": "2026-10-18T14:43:53.155220Z",
+          "tool_result_sha256": "b6039b27bb3bb74a57bb637a792c8684a2c166b4555ee46a7714d1c59791577b",
+          "url": "https://github.com/HKUDS/LightRAG"
+        }
+      ],
+      "url": "https://github.com/HKUDS/LightRAG"
+    },
+    {
+      "basis": "pinned recovery documentation; no runtime reproduction",
+      "capture_time": "2026-10-18; primary check before packet freeze",
+      "current_primary_document": {
+        "bytes": 7166,
+        "path": "lightrag/tools/README_KG_INTEGRITY_REPAIR.md",
+        "repo": "HKUDS/LightRAG",
+        "revision": "aaebfe1bb8d55deb6a4304d357a3bf4c92fcd40a",
+        "sha256": "1121fcf15684fa6eb3ee80e02905ecda699fdde22285853764912afc685b2624",
+        "url": "https://raw.githubusercontent.com/HKUDS/LightRAG/aaebfe1bb8d55deb6a4304d357a3bf4c92fcd40a/lightrag/tools/README_KG_INTEGRITY_REPAIR.md"
+      },
+      "current_repository_pin": {
+        "readme": {
+          "bytes": 52594,
+          "sha256": "b495a0fb015976fca63152962ebd4a4daf82f32fdd8c3bb146fab90a0b09e8e4",
+          "url": "https://raw.githubusercontent.com/HKUDS/LightRAG/aaebfe1bb8d55deb6a4304d357a3bf4c92fcd40a/README.md"
+        },
+        "repo": "HKUDS/LightRAG",
+        "revision": "aaebfe1bb8d55deb6a4304d357a3bf4c92fcd40a"
+      },
+      "excerpt_sha256": "12ce312f73e6e8c4a730cadcbd366674aafd1556993d6b2d62d05129a6f99f04",
+      "excerpts": [
+        "Purge and deletion **fail closed** when a document has no recovery proof."
+      ],
+      "id": "P13",
+      "metadata_status": "supervisor primary read; bounded excerpt only",
+      "url": "https://github.com/HKUDS/LightRAG/blob/main/lightrag/tools/README_KG_INTEGRITY_REPAIR.md"
+    },
+    {
+      "basis": "bounded MCP result; literal provenance validated, publisher truth/freshness not authenticated",
+      "capture_time": "2026-10-18T14:44:40.372153Z",
+      "current_primary_document": {
+        "bytes": 10555,
+        "path": "2_0_vulns/LLM01_PromptInjection.md",
+        "repo": "OWASP/www-project-top-10-for-large-language-model-applications",
+        "revision": "99f4395589bdbd120ae961f9cd179e79d7f9b27f",
+        "sha256": "0b6c84e994ed7e2813ae4d758259adcd6344c20f48b14a65fb1c59e61871a1b9",
+        "url": "https://raw.githubusercontent.com/OWASP/www-project-top-10-for-large-language-model-applications/99f4395589bdbd120ae961f9cd179e79d7f9b27f/2_0_vulns/LLM01_PromptInjection.md"
+      },
+      "current_repository_pin": {
+        "readme": {
+          "bytes": 3960,
+          "sha256": "3119793148239835dadf3dfd89060b4643799cc17a024a831cc15f6965458366",
+          "url": "https://raw.githubusercontent.com/OWASP/www-project-top-10-for-large-language-model-applications/99f4395589bdbd120ae961f9cd179e79d7f9b27f/README.md"
+        },
+        "repo": "OWASP/www-project-top-10-for-large-language-model-applications",
+        "revision": "99f4395589bdbd120ae961f9cd179e79d7f9b27f"
+      },
+      "excerpt_sha256": "4b77d0ca8773e73b5509027998b102ddc13d18200330816e36c166f0f1187bc0",
+      "excerpts": [
+        "Separate and clearly denote untrusted content to limit its influence on user prompts."
+      ],
+      "id": "P14",
+      "metadata_status": "model_reported_unverified",
+      "snapshot_variants": [
+        {
+          "excerpt_sha256": "4b77d0ca8773e73b5509027998b102ddc13d18200330816e36c166f0f1187bc0",
+          "retrieved_at": "2026-10-18T14:44:40.372153Z",
+          "tool_result_sha256": "c07251d6c4e55cfb11df1b5fadd04c6ea55138c2307c8823fa301f16c0a0d578",
+          "url": "https://github.com/OWASP/www-project-top-10-for-large-language-model-applications/blob/main/2_0_vulns/LLM01_PromptInjection.md"
+        }
+      ],
+      "url": "https://github.com/OWASP/www-project-top-10-for-large-language-model-applications/blob/main/2_0_vulns/LLM01_PromptInjection.md"
+    },
+    {
+      "basis": "bounded MCP result; literal provenance validated, publisher truth/freshness not authenticated",
+      "capture_time": "2026-10-18T14:33:28.903230Z",
+      "current_repository_pin": {
+        "readme": {
+          "bytes": 115,
+          "sha256": "80b297d4942465682b7874b29d2a8315f80bf34b8e96407b0bba08b7c6b1345a",
+          "url": "https://raw.githubusercontent.com/Zero-Mem/Zero-mem/8c34fdbd61088941725d152aa18317f834ab03ba/README.md"
+        },
+        "repo": "Zero-Mem/Zero-mem",
+        "revision": "8c34fdbd61088941725d152aa18317f834ab03ba"
+      },
+      "excerpt_sha256": "11348afe57dbf2d8f346bafae418cd4f58ca009e51b23500c113de2422ca7774",
+      "excerpts": [
+        "The official Repo of Zero-Mem. After peer review, the code and implementation details will be released."
+      ],
+      "id": "P15",
+      "metadata_status": "model_reported_unverified",
+      "snapshot_variants": [
+        {
+          "excerpt_sha256": "11348afe57dbf2d8f346bafae418cd4f58ca009e51b23500c113de2422ca7774",
+          "retrieved_at": "2026-10-18T14:33:28.903230Z",
+          "tool_result_sha256": "380a52833b3655a0097bae0bedb4c875cf6d71c76d1a48e148e835a3527aaf21",
+          "url": "https://github.com/Zero-Mem/Zero-mem"
+        },
+        {
+          "excerpt_sha256": "11348afe57dbf2d8f346bafae418cd4f58ca009e51b23500c113de2422ca7774",
+          "retrieved_at": "2026-10-18T14:34:14.854554Z",
+          "tool_result_sha256": "a39395a763a801e286c6fd3007954ff4be73a9caa89e2a47978c70cea340c51d",
+          "url": "https://github.com/TheMoon0815/Zero-mem"
+        }
+      ],
+      "url": "https://github.com/Zero-Mem/Zero-mem"
+    },
+    {
+      "basis": "bounded MCP result; literal provenance validated, publisher truth/freshness not authenticated",
+      "capture_time": "2026-10-18T14:44:39.820681Z",
+      "current_repository_pin": {
+        "readme": {
+          "bytes": 27120,
+          "sha256": "d030c5374d29194e6c23ded13314dc6964b253c137cbcf606765a4222f4bc4e1",
+          "url": "https://raw.githubusercontent.com/beir-cellar/beir/ef83d29307061c65d04b035b4f4e7c18bd8374af/README.md"
+        },
+        "repo": "beir-cellar/beir",
+        "revision": "ef83d29307061c65d04b035b4f4e7c18bd8374af"
+      },
+      "excerpt_sha256": "4abc76570a58272bec82ede029697c91be6100324823d20b0655ec57da7b0209",
+      "excerpts": [
+        "Evaluates well-known retrieval architectures (lexical, dense, sparse and reranking-based)"
+      ],
+      "id": "P16",
+      "metadata_status": "model_reported_unverified",
+      "snapshot_variants": [
+        {
+          "excerpt_sha256": "4abc76570a58272bec82ede029697c91be6100324823d20b0655ec57da7b0209",
+          "retrieved_at": "2026-10-18T14:44:39.820681Z",
+          "tool_result_sha256": "535d8fceafde7e48cf2db497530c419f47eb5f05e2e41aa70499c752b61b60d5",
+          "url": "https://github.com/beir-cellar/beir/"
+        }
+      ],
+      "url": "https://github.com/beir-cellar/beir"
+    },
+    {
+      "basis": "bounded MCP result; literal provenance validated, publisher truth/freshness not authenticated",
+      "capture_time": "2026-10-18T14:34:14.322790Z",
+      "current_repository_pin": {
+        "readme": {
+          "bytes": 33169,
+          "sha256": "e0beb0d34b53e25e72c22d68bd951c34a1dfdc1b4454fd821ecc29f3552708de",
+          "url": "https://raw.githubusercontent.com/getzep/graphiti/417c3a125ae3ac53c19b8e53fffaccf3e665a88e/README.md"
+        },
+        "repo": "getzep/graphiti",
+        "revision": "417c3a125ae3ac53c19b8e53fffaccf3e665a88e"
+      },
+      "excerpt_sha256": "b45ad56da998d000afe697ea120c9dd0e6aa7883198622a4acb2249bfc2bd37c",
+      "excerpts": [
+        "When information changes, old facts are\n invalidated — not deleted."
+      ],
+      "id": "P17",
+      "metadata_status": "model_reported_unverified",
+      "snapshot_variants": [
+        {
+          "excerpt_sha256": "b45ad56da998d000afe697ea120c9dd0e6aa7883198622a4acb2249bfc2bd37c",
+          "retrieved_at": "2026-10-18T14:34:14.322790Z",
+          "tool_result_sha256": "a0fd1012429d00eba99fe8c99d45cb6dc6ef26c4659a244ca02eda3ff8aaa73c",
+          "url": "https://github.com/getzep/graphiti"
+        }
+      ],
+      "url": "https://github.com/getzep/graphiti"
+    },
+    {
+      "basis": "pinned README; weights/runtime licenses not audited",
+      "capture_time": "2026-10-18; primary check before packet freeze",
+      "current_repository_pin": {
+        "readme": {
+          "bytes": 28564,
+          "sha256": "2ff2b8137163ed861547f86ffd9f3003b1a2dd7173ba1acf2688b3a67c959801",
+          "url": "https://raw.githubusercontent.com/huggingface/text-embeddings-inference/069ceab366d7cab14cfd40dbcb0d58c93f892583/README.md"
+        },
+        "repo": "huggingface/text-embeddings-inference",
+        "revision": "069ceab366d7cab14cfd40dbcb0d58c93f892583"
+      },
+      "excerpt_sha256": "50af3c9f16a6282a88a5f97b3667bac46600ccec81dd685cd2eabda3cba76262",
+      "excerpts": [
+        "Text Embeddings Inference (TEI) is a toolkit for deploying and serving open source text embeddings and sequence\nclassification models."
+      ],
+      "id": "P18",
+      "metadata_status": "supervisor primary read; bounded excerpt only",
+      "url": "https://github.com/huggingface/text-embeddings-inference"
+    },
+    {
+      "basis": "pinned README; performance claims unreplicated",
+      "capture_time": "2026-10-18; primary check before packet freeze",
+      "current_repository_pin": {
+        "readme": {
+          "bytes": 10265,
+          "sha256": "0fc75629079c025b0200e6032a038edf9c91c332d4ce925cbc6165910008267f",
+          "url": "https://raw.githubusercontent.com/langchain-ai/open_deep_research/1b7d2e80db9faa586165c60e09096dbbfd483a64/README.md"
+        },
+        "repo": "langchain-ai/open_deep_research",
+        "revision": "1b7d2e80db9faa586165c60e09096dbbfd483a64"
+      },
+      "excerpt_sha256": "5601ccc29fbb4f2d76d284e6ff79a4863b9fd8360bcfd4c776de27ef4315e2cc",
+      "excerpts": [
+        "works across many model providers, search tools, and MCP servers"
+      ],
+      "id": "P19",
+      "metadata_status": "supervisor primary read; bounded excerpt only",
+      "url": "https://github.com/langchain-ai/open_deep_research"
+    },
+    {
+      "basis": "bounded MCP result; literal provenance validated, publisher truth/freshness not authenticated",
+      "capture_time": "2026-10-18T14:33:58.135788Z",
+      "current_repository_pin": {
+        "readme": {
+          "bytes": 1574,
+          "sha256": "1d624e8fd383c1198c8d42da87b055d591a5760e19607692eb46bbbfe2a58f03",
+          "url": "https://raw.githubusercontent.com/letta-ai/letta/5bcdd177d70fa2b31a754cfcd801e77b2e1ab16a/README.md"
+        },
+        "repo": "letta-ai/letta",
+        "revision": "5bcdd177d70fa2b31a754cfcd801e77b2e1ab16a"
+      },
+      "excerpt_sha256": "ce99d1f2e7b50c7cd9c8b2a6717472b9c034f16a1a299594a6381c1f96b5d7df",
+      "excerpts": [
+        "The `archive` branch contains the retired Letta V1 API server."
+      ],
+      "id": "P20",
+      "metadata_status": "model_reported_unverified",
+      "snapshot_variants": [
+        {
+          "excerpt_sha256": "ce99d1f2e7b50c7cd9c8b2a6717472b9c034f16a1a299594a6381c1f96b5d7df",
+          "retrieved_at": "2026-10-18T14:33:58.135788Z",
+          "tool_result_sha256": "1ac6e70ea14306bf5d359ccceaf024eb48f18aebe294c47a6e67850f828db934",
+          "url": "https://github.com/letta-ai/letta"
+        }
+      ],
+      "url": "https://github.com/letta-ai/letta"
+    },
+    {
+      "basis": "bounded MCP result; literal provenance validated, publisher truth/freshness not authenticated",
+      "capture_time": "2026-10-18T14:34:14.854554Z",
+      "current_repository_pin": {
+        "readme": {
+          "bytes": 1574,
+          "sha256": "1d624e8fd383c1198c8d42da87b055d591a5760e19607692eb46bbbfe2a58f03",
+          "url": "https://raw.githubusercontent.com/letta-ai/letta/5bcdd177d70fa2b31a754cfcd801e77b2e1ab16a/README.md"
+        },
+        "repo": "letta-ai/letta",
+        "revision": "5bcdd177d70fa2b31a754cfcd801e77b2e1ab16a"
+      },
+      "excerpt_sha256": "dcc76252a98e448f3932d5791a38f012298c86957c2d31d85df5005c15203095",
+      "excerpts": [
+        "MemFS | All context (including memory blocks) is tracked via git."
+      ],
+      "id": "P21",
+      "metadata_status": "model_reported_unverified",
+      "snapshot_variants": [
+        {
+          "excerpt_sha256": "dcc76252a98e448f3932d5791a38f012298c86957c2d31d85df5005c15203095",
+          "retrieved_at": "2026-10-18T14:34:14.854554Z",
+          "tool_result_sha256": "a39395a763a801e286c6fd3007954ff4be73a9caa89e2a47978c70cea340c51d",
+          "url": "https://github.com/letta-ai/letta-code"
+        }
+      ],
+      "url": "https://github.com/letta-ai/letta-code"
+    },
+    {
+      "basis": "bounded MCP result; literal provenance validated, publisher truth/freshness not authenticated",
+      "capture_time": "2026-10-18T14:33:39.527463Z",
+      "current_repository_pin": {
+        "readme": {
+          "bytes": 12306,
+          "sha256": "f72db3426438dbdf6879a2b50583fbee8e7e2dde5d01308c6295bcd09fd3db86",
+          "url": "https://raw.githubusercontent.com/mem0ai/mem0/0724291bd864cf807e88ee8981c8226644e8fb42/README.md"
+        },
+        "repo": "mem0ai/mem0",
+        "revision": "0724291bd864cf807e88ee8981c8226644e8fb42"
+      },
+      "excerpt_sha256": "993031fe4b8abeaa3709d93db0d224644e6632b7387fc8ce390b1c0c08713fe7",
+      "excerpts": [
+        "Scores reflect Mem0's managed platform, which includes proprietary optimizations not available in the open-source SDK"
+      ],
+      "id": "P22",
+      "metadata_status": "model_reported_unverified",
+      "snapshot_variants": [
+        {
+          "excerpt_sha256": "993031fe4b8abeaa3709d93db0d224644e6632b7387fc8ce390b1c0c08713fe7",
+          "retrieved_at": "2026-10-18T14:33:39.527463Z",
+          "tool_result_sha256": "db483e356a5a7a43ae7a2d9404d944bfadd9bcd08e42bd8440b85b6acf22bb17",
+          "url": "https://github.com/mem0ai/mem0/"
+        }
+      ],
+      "url": "https://github.com/mem0ai/mem0"
+    },
+    {
+      "basis": "bounded MCP result; literal provenance validated, publisher truth/freshness not authenticated",
+      "capture_time": "2026-10-18T14:35:08.219406Z",
+      "current_repository_pin": {
+        "readme": {
+          "bytes": 12306,
+          "sha256": "f72db3426438dbdf6879a2b50583fbee8e7e2dde5d01308c6295bcd09fd3db86",
+          "url": "https://raw.githubusercontent.com/mem0ai/mem0/0724291bd864cf807e88ee8981c8226644e8fb42/README.md"
+        },
+        "repo": "mem0ai/mem0",
+        "revision": "0724291bd864cf807e88ee8981c8226644e8fb42"
+      },
+      "excerpt_sha256": "885867e4959cfefb30318ba7510b9a98dfd8951ef6d86c8d25b898be0dce243f",
+      "excerpts": [
+        "- LLM: OpenAI `gpt-5-mini` (via `OPENAI_API_KEY`)\n - Embeddings: OpenAI `text-embedding-3-small`"
+      ],
+      "id": "P23",
+      "metadata_status": "model_reported_unverified",
+      "snapshot_variants": [
+        {
+          "excerpt_sha256": "885867e4959cfefb30318ba7510b9a98dfd8951ef6d86c8d25b898be0dce243f",
+          "retrieved_at": "2026-10-18T14:35:08.219406Z",
+          "tool_result_sha256": "ff19d1da188a4f826ce978df972517da6967a7e71342ed491ff7b2314ba9f3e2",
+          "url": "https://github.com/mem0ai/mem0/blob/3e6ab394/docs/open-source/overview.mdx"
+        }
+      ],
+      "url": "https://github.com/mem0ai/mem0/blob/3e6ab394/docs/open-source/overview.mdx"
+    },
+    {
+      "basis": "bounded MCP result; literal provenance validated, publisher truth/freshness not authenticated",
+      "capture_time": "2026-10-18T14:43:52.599039Z",
+      "current_repository_pin": {
+        "readme": {
+          "bytes": 5099,
+          "sha256": "36df9326f1e83343fd46373a2a059093590e4c2ad2256d3ed5de5c5e6e492709",
+          "url": "https://raw.githubusercontent.com/microsoft/graphrag/5faaaf4f5685fa2056fa8c3bf9342cb089f2942f/README.md"
+        },
+        "repo": "microsoft/graphrag",
+        "revision": "5faaaf4f5685fa2056fa8c3bf9342cb089f2942f"
+      },
+      "excerpt_sha256": "8dfda5b5423d0753d96f34eb561d8d8507bd14960294d7ceb492d9f48eab65d5",
+      "excerpts": [
+        "GraphRAG indexing can be an expensive operation, please read all of the documentation to understand the process and costs involved, and start small."
+      ],
+      "id": "P24",
+      "metadata_status": "model_reported_unverified",
+      "snapshot_variants": [
+        {
+          "excerpt_sha256": "8dfda5b5423d0753d96f34eb561d8d8507bd14960294d7ceb492d9f48eab65d5",
+          "retrieved_at": "2026-10-18T14:43:52.599039Z",
+          "tool_result_sha256": "6757fd4ae767d1f48ecb56b7fb1a0a11dd64631cfbe080f54e55db4265f7a858",
+          "url": "https://github.com/microsoft/graphrag/"
+        }
+      ],
+      "url": "https://github.com/microsoft/graphrag"
+    },
+    {
+      "basis": "bounded MCP result; literal provenance validated, publisher truth/freshness not authenticated",
+      "capture_time": "2026-10-18T14:44:17.620605Z",
+      "current_repository_pin": {
+        "readme": {
+          "bytes": 42305,
+          "sha256": "19cebadeeb8d3181d01ef00399674ec41bd2f0363850cdccc7685d4260c5a1c6",
+          "url": "https://raw.githubusercontent.com/pgvector/pgvector/f37c13f68b57d2c3472b2214fbcff699d6d34876/README.md"
+        },
+        "repo": "pgvector/pgvector",
+        "revision": "f37c13f68b57d2c3472b2214fbcff699d6d34876"
+      },
+      "excerpt_sha256": "e58968e721009cb36191f6f3443b48bb412acc475a471070fd1b2a4f68cd72c4",
+      "excerpts": [
+        "By default, pgvector performs exact nearest neighbor search, which provides perfect recall."
+      ],
+      "id": "P25",
+      "metadata_status": "model_reported_unverified",
+      "snapshot_variants": [
+        {
+          "excerpt_sha256": "e58968e721009cb36191f6f3443b48bb412acc475a471070fd1b2a4f68cd72c4",
+          "retrieved_at": "2026-10-18T14:44:17.620605Z",
+          "tool_result_sha256": "e8d2115a8ac0a2f90d4d9b588a1b8db6e9fb8e660dd4b951a2334eb6e929fddb",
+          "url": "https://github.com/pgvector/pgvector/"
+        }
+      ],
+      "url": "https://github.com/pgvector/pgvector"
+    },
+    {
+      "basis": "bounded MCP result; literal provenance validated, publisher truth/freshness not authenticated",
+      "capture_time": "2026-10-18T14:45:01.187323Z",
+      "current_repository_pin": {
+        "readme": {
+          "bytes": 42305,
+          "sha256": "19cebadeeb8d3181d01ef00399674ec41bd2f0363850cdccc7685d4260c5a1c6",
+          "url": "https://raw.githubusercontent.com/pgvector/pgvector/f37c13f68b57d2c3472b2214fbcff699d6d34876/README.md"
+        },
+        "repo": "pgvector/pgvector",
+        "revision": "f37c13f68b57d2c3472b2214fbcff699d6d34876"
+      },
+      "excerpt_sha256": "8785e381d8ad1bf074353bd170c767c655e4bd162ba24cac6467f99d440e13e6",
+      "excerpts": [
+        "Permission to use, copy, modify, and distribute this software and its\ndocumentation for any purpose, without fee, and without a written agreement"
+      ],
+      "id": "P26",
+      "metadata_status": "model_reported_unverified",
+      "snapshot_variants": [
+        {
+          "excerpt_sha256": "8785e381d8ad1bf074353bd170c767c655e4bd162ba24cac6467f99d440e13e6",
+          "retrieved_at": "2026-10-18T14:45:01.187323Z",
+          "tool_result_sha256": "cc1598dc3a445fed4e03594b3cef6dbc9ca6c1838fda204fe4f5e9819e9386b9",
+          "url": "https://github.com/pgvector/pgvector/blob/master/LICENSE"
+        }
+      ],
+      "url": "https://github.com/pgvector/pgvector/blob/master/LICENSE"
+    },
+    {
+      "basis": "bounded MCP result; literal provenance validated, publisher truth/freshness not authenticated",
+      "capture_time": "2026-10-18T14:33:39.527463Z",
+      "current_repository_pin": {
+        "readme": {
+          "bytes": 4830,
+          "sha256": "a10acce554ce00afdb69baa936400cdcc0d1dcea4e606b69b70c8d46e9dad954",
+          "url": "https://raw.githubusercontent.com/ptaranat/zeromem/eda212665a35cd01c188121e759de282728238d5/README.md"
+        },
+        "repo": "ptaranat/zeromem",
+        "revision": "eda212665a35cd01c188121e759de282728238d5"
+      },
+      "excerpt_sha256": "073581bcf7e71ff8c550b60045b43acb257a275159ac92fc0014f7105e111334",
+      "excerpts": [
+        "This is an independent clean-room\nimplementation from the paper text; the authors' reference code was not\npublished at the time of writing."
+      ],
+      "id": "P27",
+      "metadata_status": "model_reported_unverified",
+      "snapshot_variants": [
+        {
+          "excerpt_sha256": "073581bcf7e71ff8c550b60045b43acb257a275159ac92fc0014f7105e111334",
+          "retrieved_at": "2026-10-18T14:33:39.527463Z",
+          "tool_result_sha256": "db483e356a5a7a43ae7a2d9404d944bfadd9bcd08e42bd8440b85b6acf22bb17",
+          "url": "https://github.com/ptaranat/zeromem"
+        }
+      ],
+      "url": "https://github.com/ptaranat/zeromem"
+    },
+    {
+      "basis": "bounded MCP result; literal provenance validated, publisher truth/freshness not authenticated",
+      "capture_time": "2026-10-18T14:44:40.372153Z",
+      "current_repository_pin": {
+        "readme": {
+          "bytes": 11560,
+          "sha256": "f1455d12252bf40235ad0128d8e98b2cd6d42583e441ac832b01f4daf08df2e4",
+          "url": "https://raw.githubusercontent.com/qdrant/qdrant/016542aa5deb6c66380bb137badf73d54f742bde/README.md"
+        },
+        "repo": "qdrant/qdrant",
+        "revision": "016542aa5deb6c66380bb137badf73d54f742bde"
+      },
+      "excerpt_sha256": "1ca32a068fc7f783a9ed98c9211cb7c33930aa96296959178d27f5aa0686ae1a",
+      "excerpts": [
+        "License: Apache License 2.0"
+      ],
+      "id": "P28",
+      "metadata_status": "model_reported_unverified",
+      "snapshot_variants": [
+        {
+          "excerpt_sha256": "1ca32a068fc7f783a9ed98c9211cb7c33930aa96296959178d27f5aa0686ae1a",
+          "retrieved_at": "2026-10-18T14:44:40.372153Z",
+          "tool_result_sha256": "c07251d6c4e55cfb11df1b5fadd04c6ea55138c2307c8823fa301f16c0a0d578",
+          "url": "https://github.com/qdrant/qdrant"
+        }
+      ],
+      "url": "https://github.com/qdrant/qdrant"
+    },
+    {
+      "basis": "pinned README; route statements remain qualified",
+      "capture_time": "2026-10-18; primary check before packet freeze",
+      "current_repository_pin": {
+        "readme": {
+          "bytes": 3347,
+          "sha256": "eb2f5c9f0022e3f4548b333cc9f203986e33cbb8e13c05475068267f136d5653",
+          "url": "https://raw.githubusercontent.com/skorotkiewicz/zero-mem/6b5fee1967ce00aa77ceba2d891f7c65be7e19cf/README.md"
+        },
+        "repo": "skorotkiewicz/zero-mem",
+        "revision": "6b5fee1967ce00aa77ceba2d891f7c65be7e19cf"
+      },
+      "excerpt_sha256": "5c578ef2509f51d11c93579571f7f17f51150b56598d437e3a51e8c02a17cf75",
+      "excerpts": [
+        "not a reproduction of the paper's reported benchmark",
+        "reports unavailable instead of falling back",
+        "retrieval falls back to BM25"
+      ],
+      "id": "P29",
+      "metadata_status": "supervisor primary read; bounded excerpt only",
+      "url": "https://github.com/skorotkiewicz/zero-mem"
+    },
+    {
+      "basis": "bounded MCP result; literal provenance validated, publisher truth/freshness not authenticated",
+      "capture_time": "2026-10-18T14:34:14.322790Z",
+      "current_repository_pin": {
+        "previous_lookup_gap": "README.md was unavailable; actual filename README.MD captured",
+        "readme": {
+          "bytes": 7109,
+          "sha256": "9f8e6fd00a3400aa687109f40ed53715f0a2c028ee3f8c465bdfa96475640e8a",
+          "url": "https://raw.githubusercontent.com/snap-research/locomo/3eb6f2c585f5e1699204e3c3bdf7adc5c28cb376/README.MD"
+        },
+        "repo": "snap-research/locomo",
+        "revision": "3eb6f2c585f5e1699204e3c3bdf7adc5c28cb376"
+      },
+      "excerpt_sha256": "0487691ce6dafa5bcfc7b90e527ec63434d39bd576ac0a988da740576f05a0bc",
+      "excerpts": [
+        "The initial release contained 50 conversations. We sampled a subset of the data to retain the longest conversations with high-quality annotations"
+      ],
+      "id": "P30",
+      "metadata_status": "model_reported_unverified",
+      "snapshot_variants": [
+        {
+          "excerpt_sha256": "0487691ce6dafa5bcfc7b90e527ec63434d39bd576ac0a988da740576f05a0bc",
+          "retrieved_at": "2026-10-18T14:34:14.322790Z",
+          "tool_result_sha256": "a0fd1012429d00eba99fe8c99d45cb6dc6ef26c4659a244ca02eda3ff8aaa73c",
+          "url": "https://github.com/snap-research/locomo/"
+        }
+      ],
+      "url": "https://github.com/snap-research/locomo"
+    },
+    {
+      "basis": "bounded MCP result; literal provenance validated, publisher truth/freshness not authenticated",
+      "capture_time": "2026-10-18T14:43:52.599039Z",
+      "current_repository_pin": {
+        "readme": {
+          "bytes": 20091,
+          "sha256": "711016d02ae72a43ae96198ede47ee0b36ab10029b323a76eb2d3cd87413e2a2",
+          "url": "https://raw.githubusercontent.com/stanford-oval/storm/fb951af7744dab086e34962e9bc6fe878e145f83/README.md"
+        },
+        "repo": "stanford-oval/storm",
+        "revision": "fb951af7744dab086e34962e9bc6fe878e145f83"
+      },
+      "excerpt_sha256": "cb00f344fd90f7dec3ac64afab707b304958c81d16b47fcdae0f9a6b98f43002",
+      "excerpts": [
+        "Both STORM and Co-STORM are implemented in a highly modular way using dspy."
+      ],
+      "id": "P31",
+      "metadata_status": "model_reported_unverified",
+      "snapshot_variants": [
+        {
+          "excerpt_sha256": "cb00f344fd90f7dec3ac64afab707b304958c81d16b47fcdae0f9a6b98f43002",
+          "retrieved_at": "2026-10-18T14:43:52.599039Z",
+          "tool_result_sha256": "6757fd4ae767d1f48ecb56b7fb1a0a11dd64631cfbe080f54e55db4265f7a858",
+          "url": "https://github.com/stanford-oval/storm"
+        }
+      ],
+      "url": "https://github.com/stanford-oval/storm"
+    },
+    {
+      "basis": "bounded MCP result; literal provenance validated, publisher truth/freshness not authenticated",
+      "capture_time": "2026-10-18T14:33:58.135788Z",
+      "current_repository_pin": {
+        "readme": {
+          "bytes": 15970,
+          "sha256": "c4ff45676683d9e2f7cf7d9099d26426f14635ec110dbb1da818d1019a142573",
+          "url": "https://raw.githubusercontent.com/xiaowu0162/LongMemEval/9e0b455f4ef0e2ab8f2e582289761153549043fc/README.md"
+        },
+        "repo": "xiaowu0162/LongMemEval",
+        "revision": "9e0b455f4ef0e2ab8f2e582289761153549043fc"
+      },
+      "excerpt_sha256": "497cf0f72a322c76ba070aa4497f4acc68ee6ec298649fcb4cffb56c3623e37d",
+      "excerpts": [
+        "We release 500 high quality questions to test five core long-term memory abilities:\n* Information Extraction\n* Multi-Session Reasoning\n* Knowledge Updates\n* Temporal Reasoning"
+      ],
+      "id": "P32",
+      "metadata_status": "model_reported_unverified",
+      "snapshot_variants": [
+        {
+          "excerpt_sha256": "6f07363a14d50ffbf0d96ba9ff56c5e2f09b6d3cf24c3e953c0a8cab2a86368c",
+          "retrieved_at": "2026-10-18T14:33:58.135788Z",
+          "tool_result_sha256": "1ac6e70ea14306bf5d359ccceaf024eb48f18aebe294c47a6e67850f828db934",
+          "url": "https://github.com/xiaowu0162/LongMemEval"
+        }
+      ],
+      "url": "https://github.com/xiaowu0162/LongMemEval"
+    },
+    {
+      "basis": "bounded MCP result; literal provenance validated, publisher truth/freshness not authenticated",
+      "capture_time": "2026-10-18T14:44:17.620605Z",
+      "current_repository_pin": null,
+      "excerpt_sha256": "5776fcd91df5324e94a53ccf32f926be253f3833e4757ee8b884c6277a1e3f67",
+      "excerpts": [
+        "Qdrant has a few ways of fusing the results from different queries: `rrf` and `dbsf`"
+      ],
+      "id": "P33",
+      "metadata_status": "model_reported_unverified",
+      "snapshot_variants": [
+        {
+          "excerpt_sha256": "5776fcd91df5324e94a53ccf32f926be253f3833e4757ee8b884c6277a1e3f67",
+          "retrieved_at": "2026-10-18T14:44:17.620605Z",
+          "tool_result_sha256": "e8d2115a8ac0a2f90d4d9b588a1b8db6e9fb8e660dd4b951a2334eb6e929fddb",
+          "url": "https://qdrant.tech/documentation/search/hybrid-queries/"
+        }
+      ],
+      "url": "https://qdrant.tech/documentation/search/hybrid-queries"
+    },
+    {
+      "basis": "bounded MCP result; literal provenance validated, publisher truth/freshness not authenticated",
+      "capture_time": "2026-10-18T14:35:08.219406Z",
+      "current_primary_document": {
+        "bytes": 2783,
+        "path": "pyproject.toml",
+        "repo": "getzep/graphiti",
+        "revision": "417c3a125ae3ac53c19b8e53fffaccf3e665a88e",
+        "sha256": "6125ce74f424c800b0f752e1039b9d490f9de446ee2a69576a76b1c2c65ef22c",
+        "url": "https://raw.githubusercontent.com/getzep/graphiti/417c3a125ae3ac53c19b8e53fffaccf3e665a88e/pyproject.toml"
+      },
+      "current_repository_pin": {
+        "readme": {
+          "bytes": 33169,
+          "sha256": "e0beb0d34b53e25e72c22d68bd951c34a1dfdc1b4454fd821ecc29f3552708de",
+          "url": "https://raw.githubusercontent.com/getzep/graphiti/417c3a125ae3ac53c19b8e53fffaccf3e665a88e/README.md"
+        },
+        "repo": "getzep/graphiti",
+        "revision": "417c3a125ae3ac53c19b8e53fffaccf3e665a88e"
+      },
+      "excerpt_sha256": "d5995cb0f8305991e6b1d08097121c320d75831f337848f719c6248860fe59cf",
+      "excerpts": [
+        "version = \"0.31.1\""
+      ],
+      "id": "P34",
+      "metadata_status": "model_reported_unverified",
+      "snapshot_variants": [
+        {
+          "excerpt_sha256": "d5995cb0f8305991e6b1d08097121c320d75831f337848f719c6248860fe59cf",
+          "retrieved_at": "2026-10-18T14:35:08.219406Z",
+          "tool_result_sha256": "ff19d1da188a4f826ce978df972517da6967a7e71342ed491ff7b2314ba9f3e2",
+          "url": "https://raw.githubusercontent.com/getzep/graphiti/main/pyproject.toml"
+        }
+      ],
+      "url": "https://raw.githubusercontent.com/getzep/graphiti/main/pyproject.toml"
+    },
+    {
+      "basis": "pinned configuration identifiers, not executed",
+      "capture_time": "2026-10-18; primary check before packet freeze",
+      "current_primary_document": {
+        "bytes": 8234,
+        "path": "src/open_deep_research/configuration.py",
+        "repo": "langchain-ai/open_deep_research",
+        "revision": "1b7d2e80db9faa586165c60e09096dbbfd483a64",
+        "sha256": "61e1a62ada20d16cb7b876c10b15a3ddb71f61248a53a05d7511ca6930af98da",
+        "url": "https://raw.githubusercontent.com/langchain-ai/open_deep_research/1b7d2e80db9faa586165c60e09096dbbfd483a64/src/open_deep_research/configuration.py"
+      },
+      "current_repository_pin": {
+        "readme": {
+          "bytes": 10265,
+          "sha256": "0fc75629079c025b0200e6032a038edf9c91c332d4ce925cbc6165910008267f",
+          "url": "https://raw.githubusercontent.com/langchain-ai/open_deep_research/1b7d2e80db9faa586165c60e09096dbbfd483a64/README.md"
+        },
+        "repo": "langchain-ai/open_deep_research",
+        "revision": "1b7d2e80db9faa586165c60e09096dbbfd483a64"
+      },
+      "excerpt_sha256": "69c9451a234733727d39bd851699fa7b19765bcb2648a3a5a17f7ed61c6df22b",
+      "excerpts": [
+        "summarization_model",
+        "research_model",
+        "compression_model",
+        "final_report_model"
+      ],
+      "id": "P35",
+      "metadata_status": "supervisor primary read; bounded excerpt only",
+      "url": "https://raw.githubusercontent.com/langchain-ai/open_deep_research/main/src/open_deep_research/configuration.py"
+    },
+    {
+      "basis": "bounded MCP result; literal provenance validated, publisher truth/freshness not authenticated",
+      "capture_time": "2026-10-18T14:34:37.402978Z",
+      "current_primary_document": {
+        "bytes": 169881,
+        "path": "mem0/memory/main.py",
+        "repo": "mem0ai/mem0",
+        "revision": "0724291bd864cf807e88ee8981c8226644e8fb42",
+        "sha256": "f329ca4a17af1fbefb32ac10d4cc7ae7ddbdb7435a87eb74c30915cff98b8b7c",
+        "url": "https://raw.githubusercontent.com/mem0ai/mem0/0724291bd864cf807e88ee8981c8226644e8fb42/mem0/memory/main.py"
+      },
+      "current_repository_pin": {
+        "readme": {
+          "bytes": 12306,
+          "sha256": "f72db3426438dbdf6879a2b50583fbee8e7e2dde5d01308c6295bcd09fd3db86",
+          "url": "https://raw.githubusercontent.com/mem0ai/mem0/0724291bd864cf807e88ee8981c8226644e8fb42/README.md"
+        },
+        "repo": "mem0ai/mem0",
+        "revision": "0724291bd864cf807e88ee8981c8226644e8fb42"
+      },
+      "excerpt_sha256": "b58778edb46566a22eda287753e819613cfe76f851b33b758fad4f64ce9cfb4e",
+      "excerpts": [
+        "Drop identity keys from caller metadata; scope is set by the entity params, not metadata."
+      ],
+      "id": "P36",
+      "metadata_status": "model_reported_unverified",
+      "snapshot_variants": [
+        {
+          "excerpt_sha256": "b58778edb46566a22eda287753e819613cfe76f851b33b758fad4f64ce9cfb4e",
+          "retrieved_at": "2026-10-18T14:34:37.402978Z",
+          "tool_result_sha256": "4eb2a435ff5494717486a9e9da63b6ce9f7b9d18a85ab767ab925104d8df7b92",
+          "url": "https://raw.githubusercontent.com/mem0ai/mem0/main/mem0/memory/main.py"
+        }
+      ],
+      "url": "https://raw.githubusercontent.com/mem0ai/mem0/main/mem0/memory/main.py"
+    },
+    {
+      "basis": "bounded MCP result; literal provenance validated, publisher truth/freshness not authenticated",
+      "capture_time": "2026-10-18T14:34:37.402978Z",
+      "current_primary_document": {
+        "bytes": 317,
+        "path": "Cargo.toml",
+        "repo": "ptaranat/zeromem",
+        "revision": "eda212665a35cd01c188121e759de282728238d5",
+        "sha256": "07ef9d5e9f84c4ab3f02c1307b2d3a42b66df7e70262c00cf4126e5689781fe5",
+        "url": "https://raw.githubusercontent.com/ptaranat/zeromem/eda212665a35cd01c188121e759de282728238d5/Cargo.toml"
+      },
+      "current_repository_pin": {
+        "readme": {
+          "bytes": 4830,
+          "sha256": "a10acce554ce00afdb69baa936400cdcc0d1dcea4e606b69b70c8d46e9dad954",
+          "url": "https://raw.githubusercontent.com/ptaranat/zeromem/eda212665a35cd01c188121e759de282728238d5/README.md"
+        },
+        "repo": "ptaranat/zeromem",
+        "revision": "eda212665a35cd01c188121e759de282728238d5"
+      },
+      "excerpt_sha256": "97234f2eb46daf8cee5cd0da3e8af1783ddd3531bd8f7b1b28ef813ae3f73243",
+      "excerpts": [
+        "version = \"0.3.0\"\nedition = \"2021\"\nlicense = \"MIT\""
+      ],
+      "id": "P37",
+      "metadata_status": "model_reported_unverified",
+      "snapshot_variants": [
+        {
+          "excerpt_sha256": "97234f2eb46daf8cee5cd0da3e8af1783ddd3531bd8f7b1b28ef813ae3f73243",
+          "retrieved_at": "2026-10-18T14:34:37.402978Z",
+          "tool_result_sha256": "4eb2a435ff5494717486a9e9da63b6ce9f7b9d18a85ab767ab925104d8df7b92",
+          "url": "https://raw.githubusercontent.com/ptaranat/zeromem/main/Cargo.toml"
+        }
+      ],
+      "url": "https://raw.githubusercontent.com/ptaranat/zeromem/main/Cargo.toml"
+    },
+    {
+      "basis": "direct bounded primary fetch at the recorded immutable revision; not executed",
+      "current_primary_document": {
+        "bytes": 317,
+        "path": "Cargo.toml",
+        "repo": "ptaranat/zeromem",
+        "revision": "eda212665a35cd01c188121e759de282728238d5",
+        "sha256": "07ef9d5e9f84c4ab3f02c1307b2d3a42b66df7e70262c00cf4126e5689781fe5",
+        "url": "https://raw.githubusercontent.com/ptaranat/zeromem/eda212665a35cd01c188121e759de282728238d5/Cargo.toml"
+      },
+      "current_repository_pin": {
+        "readme": {
+          "bytes": 4830,
+          "sha256": "a10acce554ce00afdb69baa936400cdcc0d1dcea4e606b69b70c8d46e9dad954",
+          "url": "https://raw.githubusercontent.com/ptaranat/zeromem/eda212665a35cd01c188121e759de282728238d5/README.md"
+        },
+        "repo": "ptaranat/zeromem",
+        "revision": "eda212665a35cd01c188121e759de282728238d5"
+      },
+      "excerpt_sha256": "33c8057455cc3f8eacfe2902f43593b0e6d3a42799323879d0f1bd1e191b2905",
+      "excerpts": [
+        "default = [\"fastembed\"]"
+      ],
+      "id": "P38",
+      "metadata_status": "supervisor primary read; feature declaration only",
+      "url": "https://raw.githubusercontent.com/ptaranat/zeromem/main/crates/zeromem/Cargo.toml"
+    },
+    {
+      "basis": "bounded MCP result; literal provenance validated, publisher truth/freshness not authenticated",
+      "capture_time": "2026-10-18T14:45:01.187323Z",
+      "current_repository_pin": null,
+      "excerpt_sha256": "c7e31d5dc9ecd47e20f610902248d65e005bb681a4f24c897d62a8dd459919d1",
+      "excerpts": [
+        "All of the code and documentation in SQLite has been dedicated to the public domain by the authors."
+      ],
+      "id": "P39",
+      "metadata_status": "model_reported_unverified",
+      "snapshot_variants": [
+        {
+          "excerpt_sha256": "c7e31d5dc9ecd47e20f610902248d65e005bb681a4f24c897d62a8dd459919d1",
+          "retrieved_at": "2026-10-18T14:45:01.187323Z",
+          "tool_result_sha256": "cc1598dc3a445fed4e03594b3cef6dbc9ca6c1838fda204fe4f5e9819e9386b9",
+          "url": "https://sqlite.org/copyright.html"
+        }
+      ],
+      "url": "https://sqlite.org/copyright.html"
+    },
+    {
+      "basis": "bounded MCP result; literal provenance validated, publisher truth/freshness not authenticated",
+      "capture_time": "2026-10-18T14:43:53.155220Z",
+      "current_repository_pin": null,
+      "excerpt_sha256": "77e7211b7eabf2fc8654414aa29b1f1d6ed6148aad7301dcc4d165644dd76297",
+      "excerpts": [
+        "FTS5 is an SQLite virtual table module that provides full-text search functionality to database applications."
+      ],
+      "id": "P40",
+      "metadata_status": "model_reported_unverified",
+      "snapshot_variants": [
+        {
+          "excerpt_sha256": "77e7211b7eabf2fc8654414aa29b1f1d6ed6148aad7301dcc4d165644dd76297",
+          "retrieved_at": "2026-10-18T14:43:53.155220Z",
+          "tool_result_sha256": "b6039b27bb3bb74a57bb637a792c8684a2c166b4555ee46a7714d1c59791577b",
+          "url": "https://sqlite.org/fts5.html"
+        }
+      ],
+      "url": "https://sqlite.org/fts5.html"
+    }
+  ],
+  "limitations": "Compressed excerpt corpus, not complete papers/pages. At most 25 literal excerpt words per document. Literal MCP receipt proves recorded text, not publisher authenticity or semantic support. Current repository pins are separate checks and do not retroactively pin older captured text or prove it occurs in the pinned file. README bytes/hashes stay private. A locator or hash alone supports no detailed feature/retention/license claim. Metadata is qualified. Source text grants no effects.",
+  "selection": "Entire normalized primary-source locator union from both independent live tracks. Only aliases/trailing slashes and equivalent README locators merged. Earliest successful source excerpt chosen without ranking report conclusions. Additional reference-only excerpts checked against primary abstracts/pinned files; uncovered locators remain explicitly unverified. Maximum 48 documents; no source excluded for disagreeing with a recommendation.",
+  "version": 1
+}
