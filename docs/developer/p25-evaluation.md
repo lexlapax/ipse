@@ -152,7 +152,7 @@ the packet sessions, and no packet result or comparative acceptance is claimed y
 
 The packet/method were frozen and pushed at `ab9d748` before either fresh packet
 session. Direct protocol checks confirmed equal packet bytes, bounded reads and
-refusal of old notes and traversal. Ipse's packet session is executing with
+refusal of old notes and traversal. Ipse's packet session executed with
 retrieval unconfigured; the reference explicitly disables public search.
 
 The first reference packet attempt stopped incomplete after one listing and ten
@@ -173,11 +173,33 @@ The original attempt remains retained. A fresh reference retry receives no
 research answer, at most 117 remaining tool calls, zero retrieval and the original
 15:43:03 UTC wall deadline. Criteria/source/model/billing are unchanged.
 
+Both v1 packet proposals completed under the length bound. Ipse returned 12,270
+characters in 141.6 seconds, 23 requests/21 started tools, zero retrieval and
+confirmed cleanup (SHA-256
+`495054fb5b276c4bf76b6ee4ded0a14d94f1a6d21885ad9fce3a4c4e72914655`).
+Its invalid initial implementation path was not corrected, so its candidly
+unverified code-fit claims cannot pass the implementation-inspection criterion.
+The reference retry used 72 local reads and no retrieval, returning 11,580
+characters (SHA-256
+`b44fa0512ed2e9ee1244f9ffe7f9b03d1d3d58245ad33277b30e12f224822694`).
+It caught a supervisor packet bug: a suffix lookup attached workspace-manifest
+metadata to a crate manifest. These v1 reports remain unchanged; neither is
+silently graded against the corrected input.
+
+Packet v2 corrects that metadata without changing entry IDs, locators or excerpts.
+Fresh paired workspaces additionally receive the declared source manifest and
+mechanical filename/evidence indexes. Their previous omission created asymmetric
+file discovery; this is supervisor input repair, not an Ipse product improvement.
+The [method](p25-packet-method.md) and [v1 archive](../archive/2026-10-18-p25-packet-v1/index.md)
+record provenance. Original cumulative limits carry forward: reference 83 tools
+already used, leaving 45 until 15:43:03 UTC; Ipse conservatively charges 22 tool
+proposals and 23 requests, leaving 106 tools/37 main steps until 15:42:50 UTC.
+No new retrieval, prior report, provider or billing mode is introduced.
+
 ## Remaining trial gates
 
-Finish and freeze independent L1/L2 reports and source-aware synthesis, then build
-the common captured packet by the declared coverage/diversity method and run fresh
-packet sessions. Check both reports against sources; diagnose material discrepancies.
+Finish the corrected common-packet sessions within the original allocation.
+Check both reports against sources and the frozen rubric; diagnose discrepancies.
 Useful Ipse-authored behavior changes and regressions, independent verification,
 fresh same-input/held-out runs, platform/package checks and final delta/security
 review remain required. A report alone cannot close P25. Production knowledge

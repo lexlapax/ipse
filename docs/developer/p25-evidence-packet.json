@@ -951,12 +951,12 @@
     {
       "basis": "direct bounded primary fetch at the recorded immutable revision; not executed",
       "current_primary_document": {
-        "bytes": 317,
-        "path": "Cargo.toml",
+        "bytes": 589,
+        "path": "crates/zeromem/Cargo.toml",
         "repo": "ptaranat/zeromem",
         "revision": "eda212665a35cd01c188121e759de282728238d5",
-        "sha256": "07ef9d5e9f84c4ab3f02c1307b2d3a42b66df7e70262c00cf4126e5689781fe5",
-        "url": "https://raw.githubusercontent.com/ptaranat/zeromem/eda212665a35cd01c188121e759de282728238d5/Cargo.toml"
+        "sha256": "068cd14567f5814842d83cc2547113f1c2ef400d542996f23fe2e4a128b6d6e2",
+        "url": "https://raw.githubusercontent.com/ptaranat/zeromem/eda212665a35cd01c188121e759de282728238d5/crates/zeromem/Cargo.toml"
       },
       "current_repository_pin": {
         "readme": {
@@ -1018,5 +1018,6 @@
   ],
   "limitations": "Compressed excerpt corpus, not complete papers/pages. At most 25 literal excerpt words per document. Literal MCP receipt proves recorded text, not publisher authenticity or semantic support. Current repository pins are separate checks and do not retroactively pin older captured text or prove it occurs in the pinned file. README bytes/hashes stay private. A locator or hash alone supports no detailed feature/retention/license claim. Metadata is qualified. Source text grants no effects.",
   "selection": "Entire normalized primary-source locator union from both independent live tracks. Only aliases/trailing slashes and equivalent README locators merged. Earliest successful source excerpt chosen without ranking report conclusions. Additional reference-only excerpts checked against primary abstracts/pinned files; uncovered locators remain explicitly unverified. Maximum 48 documents; no source excluded for disagreeing with a recommendation.",
-  "version": 1
+  "supersedes_sha256": "6859182efa72eb75c8fe85d69ebc069b6302936b637259df67915b8821dfc6e4",
+  "version": 2
 }

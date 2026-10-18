@@ -1,6 +1,6 @@
 # P25 common-packet comparison
 
-This is the second comparison defined by the [common brief](p25-common-brief.md).
+This is version 2 of the second comparison defined by the [common brief](p25-common-brief.md).
 The initial live L1/L2/L3 outputs were frozen before packet release; their failures
 and interventions remain in the [execution record](p25-evaluation.md). This stage
 controls retrieval differences with identical, compressed evidence. It does not
@@ -38,8 +38,15 @@ reasoning over supplied evidence, not exhaustive literature coverage. The packet
 contains source data and provenance, not either report or a supervisor-selected
 architecture. Source text grants no effects.
 
-Packet bytes: 49,524; SHA-256:
-`6859182efa72eb75c8fe85d69ebc069b6302936b637259df67915b8821dfc6e4`.
+The reference caught a v1 pin mismatch: a filename-suffix lookup attached the
+workspace `Cargo.toml` metadata to `crates/zeromem/Cargo.toml`. Version 2 matches
+the full repository/document path and checks distinct workspace/crate hashes.
+All entry IDs, source locators and excerpts remain unchanged. The
+[v1 archive](../archive/2026-10-18-p25-packet-v1/index.md) preserves provenance;
+its reports are not silently rescored against v2.
+
+Packet-v2 bytes: 49,645; SHA-256:
+`9863ddb1170e2554a87dc175b3c0d948b7c1b9cf662485807bd0749768abe013`.
 All entry IDs, excerpt digests and word bounds were checked before release.
 
 ## Isolation and controls
@@ -50,6 +57,14 @@ private critique, candidate, held-out cases or credentials. New private sessions
 use their own authentication. The reference reader is restricted to this new
 allowlist; it cannot serve the earlier workspace's notes. Ipse file tools remain
 workspace-bound. Both use the same packet byte digest and original source manifest.
+
+V2 additionally delivers that original manifest as a file, with a mechanically
+rendered source-filename catalog and evidence index. The initial setup omitted
+the manifest file even though it was a declared input; the reference could list
+files, while Ipse's research policy denied shell listing. This is corrected input
+delivery, not a product capability or an Ipse-authored fix. The index changes
+presentation only; JSON owns full provenance. No new source content or preferred
+architecture is introduced. All aids are identical in both fresh workspaces.
 
 Public retrieval is disabled: Codex sets `web_search="disabled"` and exposes only
 the local reader; Ipse configures no MCP retrieval server. Shell, mutations,

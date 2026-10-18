@@ -191,7 +191,7 @@ the [evaluation protocol](developer/self-hosting-evaluation.md) owns trial contr
 
 ## P25: comparative research and supervised self-development
 
-**Initial live research executing; no acceptance claim.** Replace P25's production-engine delivery
+**Live research and initial syntheses frozen; corrected common-packet comparison executing, no acceptance claim.** Replace P25's production-engine delivery
 with a large supervised evaluation using those engines as a research/planning
 problem. Track A uses Codex; Track B uses stable installed Ipse. Both research
 working/long-term memory, configurable research providers, graph and RAG, including
