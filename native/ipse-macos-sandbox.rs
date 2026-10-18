@@ -1,7 +1,8 @@
 //! Fixed App Sandbox worker policy. The supervisor stays outside the sandbox.
 use std::fs::{self, DirBuilder};
-use std::io::{self, Read, Write};
-use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
+use std::io::{self, Read};
+use std::os::unix::fs::DirBuilderExt;
+use std::os::fd::FromRawFd;
 use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -179,7 +180,7 @@ fn codesign(args: &[&str], cancelled: &AtomicBool) -> Result<Vec<u8>, String> {
     result
 }
 
-pub struct Invocation { pub command: Command, temp: PathBuf }
+pub struct Invocation { pub command: Command, pub input_prefix: Vec<u8>, temp: PathBuf }
 impl Drop for Invocation { fn drop(&mut self) { let _ = fs::remove_dir_all(&self.temp); } }
 
 pub fn prepare(worker: &str, workspace: &str, data: &str, timeout: u64,
@@ -213,7 +214,7 @@ pub fn prepare(worker: &str, workspace: &str, data: &str, timeout: u64,
     command.args(["--macos-worker", workspace, temp.to_str().unwrap(), &timeout.to_string(), shell]);
     command.env_clear().env("PATH", "/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/usr/local/bin")
         .env("LANG", "C").env("HOME", &temp).env("TMPDIR", &temp);
-    Ok(Invocation { command, temp })
+    Ok(Invocation { command, input_prefix: Vec::new(), temp })
 }
 
 fn limit(resource: i32, requested: u64) -> io::Result<()> {
@@ -230,6 +231,16 @@ pub fn prepare_stdio(worker: &str, workspace: &str, data: &str, timeout: u64,
                      cancelled: &AtomicBool) -> Result<Invocation,String> {
     if argv.is_empty() {return Err("missing stdio executable".into());}
     let mut invocation=prepare(worker,workspace,data,timeout,"",cancelled)?;
+    invocation.input_prefix=environment_prefix(environment)?;
+    let mut command=Command::new(worker);
+    command.args(["--macos-worker-stdio",workspace,invocation.temp.to_str().unwrap(),&timeout.to_string()])
+        .args(argv).env_clear().env("PATH","/usr/bin:/bin").env("LANG","C")
+        .env("HOME",&invocation.temp).env("TMPDIR",&invocation.temp);
+    invocation.command=command;
+    Ok(invocation)
+}
+
+fn environment_prefix(environment: &[(String,String)]) -> Result<Vec<u8>,String> {
     let mut bytes=Vec::new();
     bytes.extend_from_slice(&(environment.len() as u32).to_be_bytes());
     for (key,value) in environment {
@@ -238,15 +249,20 @@ pub fn prepare_stdio(worker: &str, workspace: &str, data: &str, timeout: u64,
             bytes.extend_from_slice(text.as_bytes());
         }
     }
-    let path=invocation.temp.join("launch-environment");
-    fs::OpenOptions::new().write(true).create_new(true).mode(0o600).open(path)
-        .and_then(|mut file|file.write_all(&bytes)).map_err(|_|"cannot save stdio launch environment")?;
-    let mut command=Command::new(worker);
-    command.args(["--macos-worker-stdio",workspace,invocation.temp.to_str().unwrap(),&timeout.to_string()])
-        .args(argv).env_clear().env("PATH","/usr/bin:/bin").env("LANG","C")
-        .env("HOME",&invocation.temp).env("TMPDIR",&invocation.temp);
-    invocation.command=command;
-    Ok(invocation)
+    child_environment::decode_environment(&bytes)?;
+    let mut prefix=(bytes.len() as u32).to_be_bytes().to_vec();
+    prefix.extend(bytes);
+    Ok(prefix)
+}
+
+fn read_environment_frame(input: &mut impl Read) -> Result<Vec<(String,String)>,String> {
+    let mut header=[0u8;4];
+    input.read_exact(&mut header).map_err(|_|"cannot read stdio launch environment")?;
+    let size=u32::from_be_bytes(header) as usize;
+    if size>134_144 {return Err("launch environment exceeds limit".into());}
+    let mut bytes=vec![0u8;size];
+    input.read_exact(&mut bytes).map_err(|_|"cannot read stdio launch environment")?;
+    child_environment::decode_environment(&bytes)
 }
 
 pub fn worker(args: &[String]) -> Result<(), String> {
@@ -259,12 +275,10 @@ pub fn worker(args: &[String]) -> Result<(), String> {
         limit(resource, ceiling).map_err(|e| format!("cannot apply macOS resource limit: {e}"))?;
     }
     if direct {
-        let path=Path::new(&args[3]).join("launch-environment");
-        let mut bytes=Vec::new();
-        fs::File::open(&path).and_then(|file|file.take(134_145).read_to_end(&mut bytes))
-            .map_err(|_|"cannot read stdio launch environment")?;
-        let selected=child_environment::decode_environment(&bytes)?;
-        fs::remove_file(path).map_err(|_|"cannot remove stdio launch environment")?;
+        // Read exact bytes without Stdin's buffering, preserving all subsequent
+        // protocol input and keeping descriptor zero open across exec.
+        let mut input=std::mem::ManuallyDrop::new(unsafe {fs::File::from_raw_fd(0)});
+        let selected=read_environment_frame(&mut *input)?;
         let error=Command::new(&args[5]).args(&args[6..]).current_dir(&args[2])
             .env_clear().envs(selected).env("HOME",&args[3]).env("TMPDIR",&args[3]).exec();
         return Err(format!("cannot execute sandboxed stdio server: {error}"));
@@ -279,6 +293,36 @@ pub fn worker(args: &[String]) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn environment_pipe_preserves_following_protocol_input() {
+        let environment=vec![("SELECTED".to_string(),"synthetic λ".to_string()),
+            ("PADDING".to_string(),"x".repeat(120_000))];
+        let mut bytes=environment_prefix(&environment).unwrap();
+        bytes.extend_from_slice(b"first request\nsecond request\n");
+        let mut input=io::Cursor::new(bytes);
+        assert_eq!(read_environment_frame(&mut input).unwrap(),environment);
+        let mut remaining=String::new();
+        input.read_to_string(&mut remaining).unwrap();
+        assert_eq!(remaining,"first request\nsecond request\n");
+    }
+
+    #[test]
+    fn environment_pipe_refuses_oversize_before_reading_payload() {
+        let mut input=io::Cursor::new(134_145u32.to_be_bytes());
+        assert_eq!(read_environment_frame(&mut input).unwrap_err(),"launch environment exceeds limit");
+        assert_eq!(input.position(),4);
+        for bytes in [vec![],vec![0,0,0],vec![0,0,0,4,0]] {
+            assert!(read_environment_frame(&mut io::Cursor::new(bytes)).is_err());
+        }
+    }
+
+    #[test]
+    fn environment_pipe_keeps_existing_schema_validation() {
+        assert!(environment_prefix(&vec![("A".into(),"x".into()),("A".into(),"y".into())]).is_err());
+        assert!(environment_prefix(&vec![("A".into(),"nul\0value".into())]).is_err());
+        assert!(environment_prefix(&vec![("A".into(),"x".repeat(134_145))]).is_err());
+    }
     #[test]
     fn signed_policy_requires_boolean_and_exact_roots() {
         let expected = entitlements("/workspace", "/data").unwrap();

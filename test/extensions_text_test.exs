@@ -20,6 +20,15 @@ defmodule Ipse.Extensions.TextTest do
     end
   end
 
+  defmodule PressureModel do
+    def complete(_config, _messages, _tools, emit) do
+      text = String.duplicate("x", 64_000)
+      emit.({:text, text})
+      emit.({:text, text})
+      {:ok, %{"role" => "assistant", "content" => text <> text}, %{}}
+    end
+  end
+
   setup_all do
     root = Path.join(System.tmp_dir!(), "ipse-worker-text-#{Ipse.Usage.id()}")
     source = Path.join(root, "artifact")
@@ -37,6 +46,7 @@ defmodule Ipse.Extensions.TextTest do
         {:ok, options}
       end
       def handle("stream.text", payload, state) do
+        if state["mode"] == "slow" and not File.exists?(state["path"] <> ".fast"), do: Process.sleep(4000)
         File.write!(state["path"], Jason.encode!(payload) <> "\n", [:append])
         if state["mode"] == "hang" and payload["frame"]["kind"] == "text" do
           File.write!(state["path"] <> ".blocked", "blocked")
@@ -74,7 +84,7 @@ defmodule Ipse.Extensions.TextTest do
         "required" => ~w(path mode),
         "properties" => %{
           "path" => %{"type" => "string"},
-          "mode" => %{"type" => "string", "enum" => ~w(normal wrong hang)}
+          "mode" => %{"type" => "string", "enum" => ~w(normal wrong hang slow)}
         }
       },
       "runtime" => %{
@@ -240,6 +250,35 @@ defmodule Ipse.Extensions.TextTest do
                {Session,
                 config: config(ctx), cwd: ctx.root, state_dir: ctx.dir, id: id, subscriber: self()}
              )
+  end
+
+  test "optional pressure does not let a still-closing consumer veto the next operator turn",
+       ctx do
+    selected =
+      config(ctx, "slow")
+      |> Map.put(:provider_module, PressureModel)
+      |> Map.put(:context_bytes, 2_000_000)
+
+    pid = start(ctx, selected)
+    :ok = Session.prompt(pid, "first pressure turn")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 8_000
+    [resource] = Map.values(:sys.get_state(pid).extension_text)
+    assert Process.alive?(resource.pid)
+
+    refute Ipse.TextStream.enrolled?(
+             :sys.get_state(pid).text_stream,
+             resource.subscription_id,
+             resource.pid
+           )
+
+    File.write!(ctx.path <> ".fast", "ready")
+    :ok = Session.prompt(pid, "continue while optional delivery closes")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 2_000
+    await(fn -> map_size(:sys.get_state(pid).extension_text) == 0 end)
+    :ok = Session.prompt(pid, "enroll again after confirmed cleanup")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+    assert length(String.split(File.read!(ctx.path <> ".init"), "\n", trim: true)) == 2
+    assert :ok = Session.close(pid)
   end
 
   test "a required worker callback failure refuses the response with a delivery error", ctx do

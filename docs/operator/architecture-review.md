@@ -6,8 +6,8 @@ keeping architectural acceptance open, without another architecture-review round
 High reasoning was selected for Security Cloud's offered model. A private Ipse
 environment is published; Security Cloud's separate automatic environment and
 one-time scan were explicitly approved. That scan completed at `8b4f706` with
-five findings; repairs and verification are underway. Architectural acceptance
-remains open.
+five findings; four repairs passed local and hosted checks at `bfce156`. The final
+pipe/pressure/startup follow-ups are in verification. Architectural acceptance remains open.
 
 ## Focused pass and current gate
 
@@ -31,11 +31,14 @@ successful review. Retain observed read ranges as partial evidence, not inferred
 whole-file coverage. The incomplete opening supports scanning conditionally, but
 does not close acceptance or the remaining omissions.
 
-The supervisor is checking the returned policy concerns against actual contracts.
-A synthetic optional-callback recovery probe passed; it does not establish the
-separately mentioned pressure scenario. Nothing was repaired from an incomplete
-claim alone. The operator approved scan-first order after this interruption;
-P25 still requires assessed architecture and triaged baseline evidence.
+The supervisor checked the returned concerns against actual contracts. A short
+optional-callback probe passed, then a separate real-worker pressure test
+reproduced a next-turn refusal. That gap and shared-data credential staging have
+follow-up repairs; large launch-frame coverage also exposed a startup-flush gap.
+The [register](../developer/architecture-review-dispositions.md#focused-completion-at-86d4d69)
+records these source/probe results separately from the incomplete critique. Host
+file checks retain their explicit concurrent-writer limit. The operator approved
+scan-first order; P25 still requires the final scoped readiness decision.
 
 ## Security environment
 
@@ -73,8 +76,9 @@ The returned manifest claims complete static coverage of 399 committed paths,
 with no excluded paths. It ran no application, tests, live integrations or native
 enforcement. Five findings were returned: one High, one Medium and three Low.
 The [register](../developer/architecture-review-dispositions.md#baseline-security-scan-at-8b4f706)
-owns triage. Four repairs are undergoing verification; the private-journal item
-is dispositioned under the documented same-user trust limit. Raw artifacts remain
+owns triage. Four repairs passed local and hosted verification at `bfce156`; the
+private-journal item retains the documented same-user trust limit. The later
+pipe/pressure/startup follow-ups still need final platform evidence. Raw artifacts remain
 private and their SHA-256 digests match the service metadata.
 
 The service reports $41.79 usage, fully covered by the scan allowance, with no

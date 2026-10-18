@@ -31,7 +31,8 @@ subscription with API credentials removed and no extra integrations or subagents
 Security Cloud environment creation and publication were separately approved.
 The private environment is published; Security Cloud's separate automatic
 environment and one-time scan were explicitly approved. The baseline completed
-at `8b4f706` with five static findings. Repairs and verification remain in progress;
+at `8b4f706` with five static findings. Four repairs passed local and hosted checks
+at `bfce156`; final composition follow-up verification and readiness remain open.
 P25 is unstarted.
 Keep raw reports private and use the
 [security threat model](../../SECURITY.md) for safe scan context.

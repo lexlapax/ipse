@@ -129,6 +129,10 @@ death. Detached `setsid`/`setpgid` children can survive and continue workspace
 writes. Their file/network restrictions remain active, but their lifetime is
 not contained. Commands sharing the same workspace generation also share its
 data root and OS container; there is no isolation between those commands.
+Selected stdio-server credentials travel through a bounded private pipe prefix,
+not a temporary file in that shared root. The signed worker consumes only the
+prefix before direct exec, preserving the server's subsequent stdin. This changes
+new launches, not retained older-generation data or the shared-container boundary.
 After the initial child exits, output draining ends within 500 ms even if an
 escaped child retains a pipe. See [the diagnostic](testing.md#macos-process-boundary-2026-10-15)
 and [native verification](testing.md#macos-native-backend-2026-10-15).

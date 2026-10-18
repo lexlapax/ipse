@@ -1,7 +1,8 @@
 # Shell supervisor
 
 Build with `native/build.sh` (Rust standard library only; Linux/macOS). Runner
-also builds it on demand in a source checkout when `rustc` is available. Package
+can also build it on demand for trusted execution in a source checkout when
+`rustc` is available; native mode requires a prebuilt helper outside the workspace. Package
 `priv/ipse-runner` with releases/escripts, or set `IPSE_RUNNER_PATH`.
 
 Arguments are `CWD TIMEOUT_MS COMMAND`. Stdout is a binary frame stream: one type
@@ -254,8 +255,16 @@ The payload is at most 134,144 bytes and 130 unique valid environment names;
 missing/invalid input fails before launch, with a five-second read deadline.
 MCP configuration applies the stricter 16-variable bounds above this helper API.
 Selected values are installed only in the final executable environment. On Mac,
-an owner-only temporary file is read/unlinked by the sandboxed worker before exec;
-an abrupt supervisor crash can leave private temporary data until manual cleanup.
+the unsigned supervisor writes a bounded length-prefixed environment to the signed
+worker's private stdin before relaying server input. The worker reads exactly
+that prefix using an unbuffered descriptor and preserves stdin across exec. No
+environment file is staged in the shared writable sandbox data. The existing
+watchdog and owner lease cover blocked prefix writes and reads. This does not
+erase retained data from older generations or establish per-command isolation.
+`open_stdio` uses an empty nonblocking write probe to wait at most five seconds
+for the initial launch frame to flush, handling owned cancellation while waiting.
+It does not claim server readiness or sandbox activation; subsequent writes keep
+their ordinary bounded backpressure behavior.
 
 The remaining input is OS transport framing, not MCP framing: `I` followed by an
 unsigned big-endian four-byte length and that many raw server bytes forwards

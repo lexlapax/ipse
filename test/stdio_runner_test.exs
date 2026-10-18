@@ -92,6 +92,24 @@ defmodule Ipse.StdioRunnerTest do
     refute File.exists?(Path.join(cwd, "timed-out-child"))
   end
 
+  test "a large selected environment flushes before the first protocol write", %{cwd: cwd} do
+    script = ~S[test "${#PADDING}" -eq 120000 || exit 11; IFS= read -r line; printf '%s' "$line"]
+
+    {:ok, port} =
+      Runner.open_stdio(
+        "/bin/sh",
+        ["-c", script],
+        cwd,
+        %{"PADDING" => String.duplicate("x", 120_000)},
+        3_000
+      )
+
+    assert :ok = Runner.send_stdio(port, "first message\n")
+    {frames, 0} = collect(port)
+    assert stream(frames, ?O) == "first message"
+    assert completion(frames)["exit_code"] == 0
+  end
+
   test "owner death terminates descendants even when child input relay is blocked", %{cwd: cwd} do
     parent = self()
 
@@ -309,7 +327,7 @@ defmodule Ipse.StdioRunnerTest do
       File.ln_s!(secret, Path.join(workspace, "outside-link"))
 
       script =
-        ~S[set -e; test "$SELECTED_FIXTURE" = child-only; test "$HOME" != /fake-home; test "$TMPDIR" != /fake-temp; if cat "$1"; then exit 11; fi; if printf changed > "$1"; then exit 12; fi; if chmod 777 "$1"; then exit 13; fi; if cat outside-link; then exit 14; fi; printf writable > workspace-file; chmod 700 workspace-file; IFS= read -r line; printf '%s:%s' "$line" "$2"]
+        ~S[set -e; test "$SELECTED_FIXTURE" = child-only; test "${#PADDING}" -eq 120000; test "$HOME" != /fake-home; test "$TMPDIR" != /fake-temp; if cat "$1"; then exit 11; fi; if printf changed > "$1"; then exit 12; fi; if chmod 777 "$1"; then exit 13; fi; if cat outside-link; then exit 14; fi; printf writable > workspace-file; chmod 700 workspace-file; IFS= read -r line; printf '%s:%s' "$line" "$2"]
 
       argument = "literal; $(touch escaped)"
 
@@ -318,7 +336,12 @@ defmodule Ipse.StdioRunnerTest do
           "/bin/sh",
           ["-c", script, "fixture", secret, argument],
           workspace,
-          %{"SELECTED_FIXTURE" => "child-only", "HOME" => "/fake-home", "TMPDIR" => "/fake-temp"},
+          %{
+            "SELECTED_FIXTURE" => "child-only",
+            "PADDING" => String.duplicate("x", 120_000),
+            "HOME" => "/fake-home",
+            "TMPDIR" => "/fake-temp"
+          },
           5_000,
           sandbox: :native
         )

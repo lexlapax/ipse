@@ -514,6 +514,10 @@ consumers share channel capacity. Selected workers must be ready before provider
 dispatch; capacity/startup refusal stops that attempt. Once enrolled, optional
 consumers detach on failure or five-second backpressure timeout while inference
 continues. Healthy peers stay enrolled. A closed stream reports incomplete delivery.
+If that optional worker is still closing when you send the next prompt, Ipse
+continues without delivering that turn to it and reports its absence. A later
+prompt can initialize a replacement after confirmed cleanup. It does not overlap
+two workers for that instance or restart a failed consumer within a turn.
 Large provider deltas are split into bounded UTF-8 frames while preserving their
 exact text and saved response. This does not enlarge buffers or bypass the
 pressure deadline.

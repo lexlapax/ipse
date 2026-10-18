@@ -353,9 +353,9 @@ establish whole-module or whole-test coverage.
 
 | Returned concern | Supervisor assessment and remaining work |
 | --- | --- |
-| File-tool check/use races | The source uses separate path checks and later host IO. The threat model already excludes race-proof protection from hostile same-user filesystem changes and scopes native confinement to shell/server processes. Assess reachable cross-tool compositions during scan triage; the incomplete report does not establish a new breach of a stronger promised boundary |
-| macOS shared writable data | Source confirms a per-workspace shared data grant and transient stdio environment staging. Concurrent-command confidentiality needs targeted validation and disposition. Static reading on Linux is not Mac reproduction; no runtime repair or acceptance is claimed |
-| Text-delivery policy | A public progress note mentions a pressure-related concern without its full entry. A separate short optional-callback recovery probe passed (one selected synthetic test); that does not reproduce or refute a different pressure sequence. No core change follows from the incomplete claim alone |
+| File-tool check/use races | Accepted explicit scope limit. Host path checks remain non-atomic against hostile concurrent workspace changes, including changes made by another native command. Native policy confines shell/server processes, not host file tools. Supervised use must trust concurrent writers; descriptor-anchored file operations would be a separate generic core enhancement. This is not a claim that the race is impossible, and same-user assumptions do not excuse a stronger promised boundary |
+| macOS shared writable data | Source confirmed transient credential staging inside the shared grant. The follow-up removes that file: a bounded private prefix reaches the signed worker over stdin, with exact unbuffered consumption before exec. Four Rust framing/policy tests pass on Linux; large native environment/raw-input coverage passes there too. Actual Mac execution of this change remains a hosted gate; shared-container and retained older-generation limits remain |
+| Text-delivery policy | Independently reproduced: broker pressure detached a ready optional consumer, whose still-live retirement then refused the next turn. The real-worker regression failed before repair and passes after it. A later turn now continues without delivery to that retiring optional instance, with visible status; no concurrent replacement or same-turn restart is permitted. Required policy, initial readiness and unconfirmed-cleanup refusal remain unchanged |
 
 After the interruption the operator explicitly approved running the baseline
 security scan first, keeping architectural acceptance open and avoiding another
@@ -380,18 +380,22 @@ retained privately and SHA-256 checked against the service references. The
 
 | Item | Scan severity | Disposition and verification |
 | --- | --- | --- |
-| SC1 — native helper integrity | High | Applicable. A synthetic workspace helper created an outside marker before repair. Native resolution now rejects helper/application overlap before Session locking and each shell/stdio launch, refuses extra hardlinks and unsafe modes, and does not build from the target tree. The Rust Linux boundary repeats its own executable-overlap refusal. Focused boundary/runner tests pass; full source/package/platform verification is in progress |
+| SC1 — native helper integrity | High | Repaired at `bfce156`. A synthetic workspace helper created an outside marker before repair. Native resolution now rejects helper/application overlap before Session locking and each shell/stdio launch, refuses extra hardlinks and unsafe modes, and does not build from the target tree. The Rust Linux boundary repeats its own executable-overlap refusal. Full local and hosted Linux/macOS/package/installed checks pass |
 | SC2 — aggregate tool admission | Medium | Applicable. Admission now caps a response at 32 calls/2 MiB arguments and an operator turn at 128 calls/8 MiB. All admitted proposals count before execution, including malformed arguments, denials and preflights. Oversized responses start no calls. Real Session fan-out and cross-response malformed-attempt regressions pass; restoration retains the current-turn count |
 | SC3 — JWT cryptographic complexity | Low | Applicable hardening. Token/segment/key-count/component bounds precede integer conversion and signature verification. Supported RSA moduli are 2048–8192 bits and positive odd exponents fit in 32 bits. Signed normal-flow fixtures pass; pathological components are traced to prove they never reach the verifier. No compromised endpoint or runtime denial was exercised |
 | SC4 — mutable CI action selectors | Low | Applicable hardening. Existing actions are pinned to official full commit SHAs; the annotated setup-beam tag is dereferenced. An Elixir policy check rejects mutable external selectors and runs in CI. Runner images/compiler channels remain rolling; no new action, runtime package or external tool was introduced |
 | SC5 — same-user journal rewriting | Low | Accepted documented trust limit, not a demonstrated approval bypass. The report requires same-UID write access to a stopped private journal; it establishes no lower-trust import or unapproved effect. Owner-only storage and locking do not authenticate history against its owner. Adding more editable chain records cannot stop an owner from rewriting the whole chain. Preserve schema/source/identity checks and unknown interruption behavior, but do not claim cryptographic journal authenticity or rewrite the legacy protocol as a P24 repair. Reassess if a lower-trust ingestion path or stronger downstream impact is established |
 
-SC1–SC4 passed the local source/native/package/installed handoff; hosted platform
-receipts remain pending before closure. The scan's source is `8b4f706`, not the later repair candidate. Remaining
-shared-data/credential-staging and text-pressure concerns from the interrupted
-pass retain their own assessment; a static no-issue surface is not a reproduction
-or disposition of a more specific claim. No additional scan/review or continuous
-monitoring has been launched.
+SC1–SC4 passed the local handoff and exact-source
+[hosted Linux/macOS checks](https://github.com/lexlapax/ipse/actions/runs/39133201684)
+at `bfce156`, including package/native and both installed proofs. The scan's source
+remains `8b4f706`. The table above separately dispositions the interrupted pass's
+concerns; a static no-issue surface was not treated as their reproduction or
+automatic dismissal. The pipe/pressure follow-up also exposed and repaired a
+large-launch-frame readiness gap: `open_stdio` now waits for a bounded nonblocking
+flush before returning, while handling owned cancellation. Its focused stdio set
+passes all 21 enabled cases; final follow-up platform verification remains pending.
+No additional scan/review or continuous monitoring has been launched.
 
 ## Execution order and completion
 

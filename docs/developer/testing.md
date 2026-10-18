@@ -231,7 +231,8 @@ The PA-5/PA-6 egress repair at `42d9f1f` also passed its local and hosted
 Linux/macOS handoffs. The role/text/catalog/login batch and fixture follow-up
 passed local and hosted gates through `091b2bd`; the failed first matrix remains
 recorded below rather than being overwritten. No comparative P25 run has executed.
-The OpenAI security-service baseline completed with five static findings; repair
+The OpenAI security-service baseline completed with five static findings. Four
+repairs passed local and hosted checks at `bfce156`; final composition follow-up
 verification is in progress.
 Security-service access checks are not scan evidence. A private cloud environment
 was explicitly created and published, but Security Cloud requires its own setup.
@@ -308,9 +309,28 @@ helper/application separation and aggregate call quotas. Independent installed
 proofs passed all 41 extension and nine model-call assertions with unchanged
 archive/host bytes and no system development toolchain on runtime PATH. The
 deliberate service-crash cleanup remains unconfirmed/`safe_to_continue: false`.
-Hosted Linux/macOS verification of this repair candidate is pending; earlier
-platform receipts do not certify it. Documentation checks cover 112 root/docs
+Hosted Linux/macOS verification subsequently passed at `bfce156`, recorded below.
+Documentation checks cover 112 root/docs
 Markdown files and 1,577 local links/anchors with zero errors.
+
+The follow-up independently reproduced next-turn refusal after real optional
+worker pressure (pre-fix failure, post-fix selected regression pass). It removes
+macOS selected-environment staging from shared data in favor of an exact private
+stdin prefix. Four Rust policy/framing tests pass on Linux; this is not macOS
+enforcement. The strengthened 120 KiB selected-environment fixture first exposed
+immediate Port backpressure (44 passes, one failure, five exclusions in the
+focused delivery/stdio run). Bounded launch flushing fixes that path; the stdio
+set then passed 21 cases, with five Mac exclusions. Final native-inclusive source
+verification passed 877 tests, zero failures, 15 Mac exclusions in 247.0 seconds.
+Both Elixir formatter floors, build, strict compile and the isolated demo pass.
+The final archive SHA-256 is
+`0b4997bd2ea77db55d8c739431ba1ce0e458074e4c7351bfe96d349e081d4715`.
+Extracted-package verification and both previously compiled independent artifacts
+pass: 41 extension/nine model checks, unchanged archive/host, no system development
+toolchain on runtime PATH. Deliberate service-crash cleanup remains unconfirmed.
+The final source change after the full suite only clarifies the Runner API's
+environment wording; strict compile and installed proofs cover that host identity.
+Hosted verification remains pending; `bfce156` does not cover these follow-ups.
 
 The fresh report at source `091b2bd`/evidence `20b377c` found two applicable
 interaction defects despite that passing matrix. The subsequent internal audit
@@ -347,6 +367,7 @@ weakened to obtain the passing result below.
 
 | Checkpoint | Evidence | Scope and remaining limits |
 | --- | --- | --- |
+| P24 baseline-security repairs `bfce156`, hosted 2026-10-18 | [Completed Linux/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39133201684) passed every applicable step. Ordinary suites: 890 tests, zero failures, 32 exclusions per host. Enabled Mac subset: 35 tests, zero failures, six exclusions; one Rust policy test and signed App Sandbox probe pass. Build/format/strict compile/CI pin policy, demo, packaging and both installed proofs passed | Exact source/all job and step conclusions/full logs inspected. All four JSON proof receipts parsed: 41 extension and nine model assertions true per host, unchanged archive/host and no system development toolchain on runtime PATH. Signed enforcement confirms allowed workspace/private-tmp writes and denied outside fake-credential/symlink read/write/chmod and loopback. Source is the four scan repairs, before the subsequent pipe/pressure/startup follow-ups. The scan remains pinned to `8b4f706`; static coverage is not runtime evidence. Deliberate service-crash cleanup remains unconfirmed |
 | P24 final consolidated repairs `e8f7ad5`, hosted 2026-10-18 | [Completed Ubuntu/macOS run](https://github.com/lexlapax/ipse/actions/runs/39108388987) passed build/format/strict compile, ordinary suites (880 tests, zero failures, 32 exclusions per host), demo, package verification and both installed proofs. Enabled Mac subset: 35 tests, zero failures, six exclusions; one Rust policy test and signed App Sandbox enforcement pass | Exact SHA, both terminal jobs/all steps and full logs inspected. All four proof receipts parsed: 41 legacy/nine model assertions true per host, unchanged archive/host and no system development toolchain. Signed enforcement verifies code/entitlements, allowed workspace/private-tmp access and denied outside credential/symlink reads, write/chmod and loopback. Includes blocked-write and budget-lock regressions, staged MCP readiness, verified-effect disconnects and synchronous trace-owner setup; runtime code is unchanged from the locally packaged `74686f1`. Documentation links/anchors: 122 documents, 1,554 links, zero errors. Completes this repair delta's platform checks; independent SDK/sandbox source omissions, baseline scan and P25 remain open. Deliberate service-crash cleanup stays unconfirmed and historical intermittent causes are not retroactively established |
 | P24 instrumented MCP matrix `b0cedc6`, 2026-10-18 | [Run 39107695962](https://github.com/lexlapax/ipse/actions/runs/39107695962): Linux passed all stages and both installed proofs. Mac passed the MCP cases but had one failure among 880 tests (32 exclusions): the trace owner-death test received no startup PID within ExUnit's implicit 100 ms; revocation had not been exercised. Later Mac enforcement/package steps were skipped | Owner setup now uses synchronous Agent initialization around the same tracer start, replacing the unrelated scheduling assertion. The 5,000 ms capture policy and existing cleanup polling/assertions stay unchanged. Both formatter floors, strict compile and the tracing/diagnostics/lifecycle/Client/Session set pass all 49 cases locally. No runtime change or claimed failure of the actual revocation mechanism; exact Mac scheduling delay remains unmeasured |
 | P24 repeated matrix `f838327`, 2026-10-18 | [Run 39106751148](https://github.com/lexlapax/ipse/actions/runs/39106751148): Linux passed every stage and both installed proofs; Mac had one failure among 880 tests (32 exclusions), in the direct Client disconnect case. The corrected Session readiness cases passed; later Mac enforcement/package checks were skipped | The direct test returned a pre-dispatch transport error before its post-effect assertions ran, so the actual dispatch/effect phase is unconfirmed. It now gates connection loss on an atomic ready marker and already-verified call log/file, keeps the strict unknown result and one-effect assertions, and records fixture-only boot/initialize/list/call/effect stages on failed preconditions. The separate immediate-exit Session regression remains strict. All 23 Client/Session cases pass locally. Runtime code remains unchanged; a later green matrix cannot retroactively establish this failure's root cause |

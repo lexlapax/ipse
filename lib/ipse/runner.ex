@@ -159,7 +159,8 @@ defmodule Ipse.Runner do
   The returned Port emits native O/S/X/E frames; its owner must handle Port exits.
   Closing it or killing its owner stops the server's ordinary process group.
   The :sandbox option selects :off (default) or the fixed native workspace policy.
-  Selected environment values reach only the server, never the OS supervisor.
+  Selected values are installed only in the server's environment. The supervisor
+  relays the private launch data without installing it in its own environment.
   """
   def open_stdio(executable, args, cwd, selected_env \\ %{}, timeout_ms \\ 120_000, opts \\ []) do
     valid_text = &valid_text?/1
@@ -240,7 +241,7 @@ defmodule Ipse.Runner do
               args: launch
             ])
 
-          send_launch(port, payload)
+          send_launch(port, payload, Keyword.get(opts, :cleanup_ticket))
         end
     end
   rescue
@@ -251,7 +252,14 @@ defmodule Ipse.Runner do
   def open_owned_stdio(kind, scope, executable, args, cwd, env, timeout, opts \\ [])
       when kind in [:mcp, :extension] do
     with {:ok, ticket} <- Ipse.TaskResources.register(kind, scope) do
-      case open_stdio(executable, args, cwd, env, timeout, opts) do
+      case open_stdio(
+             executable,
+             args,
+             cwd,
+             env,
+             timeout,
+             Keyword.put(opts, :cleanup_ticket, ticket)
+           ) do
         {:ok, port} ->
           {:ok, port, ticket}
 
@@ -266,14 +274,32 @@ defmodule Ipse.Runner do
     end
   end
 
-  defp send_launch(port, payload) do
+  defp send_launch(port, payload, ticket) do
     if Port.command(port, <<?L, byte_size(payload)::unsigned-big-32, payload::binary>>, [
          :nosuspend
        ]),
-       do: {:ok, port},
+       do: await_launch_flush(port, System.monotonic_time(:millisecond) + 5_000, ticket),
        else: failed_launch(port)
   rescue
     _ -> failed_launch(port)
+  end
+
+  defp await_launch_flush(port, deadline, ticket) do
+    cond do
+      System.monotonic_time(:millisecond) >= deadline ->
+        failed_launch(port)
+
+      Port.command(port, <<>>, [:nosuspend]) ->
+        {:ok, port}
+
+      true ->
+        receive do
+          {:ipse_cancel_resource, id} when ticket != nil and ticket.id == id ->
+            failed_launch(port)
+        after
+          5 -> await_launch_flush(port, deadline, ticket)
+        end
+    end
   end
 
   defp failed_launch(port) do

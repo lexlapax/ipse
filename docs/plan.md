@@ -48,8 +48,11 @@ remaining concerns without another architecture-review round. A private Ipse
 cloud environment is published; Security Cloud requires a separate setup flow.
 Its automatic environment was created and the one-time high-reasoning scan
 completed against exact revision `8b4f706` with five static findings. Four repairs
-are undergoing verification; the private-journal item retains the documented
-same-user trust limit. The used
+passed local and hosted Linux/macOS checks at `bfce156`; the private-journal item
+retains the documented same-user trust limit. Further source checks and a real
+pressure regression now remove shared-data credential staging, keep retiring
+optional consumers from vetoing the next turn, and flush large launch frames
+before protocol writes. Their final platform verification is pending. The used
 consolidated brief is archived, and no R/S/C/O sequence is scheduled. The
 [register](developer/architecture-review-dispositions.md) owns dispositions and
 remaining independent omissions; the [internal audit](developer/architecture-self-audit.md)
@@ -66,7 +69,7 @@ new source transfer or dependency, or select a production engine.
 | Milestone or gate | Current state | Next result |
 | --- | --- | --- |
 | [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within selected scope; source/native/package/installed and hosted Linux/macOS passed | Retain accounting invariants through P24/P25 review and repairs |
-| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Baseline scan completed at `8b4f706`; security repairs undergoing verification; architectural acceptance open | Complete repair/platform verification and assess remaining architectural concerns |
+| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Baseline scan triaged; four scan repairs verified at `bfce156`; pipe/pressure/startup follow-ups in platform verification; architectural acceptance open | Finish exact-source follow-up verification and record scoped readiness and accepted limits |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Planned revised scope; unstarted | Independent Codex/Ipse research, Ipse-authored repairs, fresh acceptance runs and final architecture/security review |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Deferred; proposed scope subject to P25 decisions | Independently selectable working/long-term memory tools and optional lifecycle policies |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; proposed scope subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
@@ -168,7 +171,7 @@ and arbitrary trusted out-of-band calls cannot establish an invoice ceiling.
 
 ## P24: independent architecture validation and baseline security
 
-**In progress; baseline static scan completed; security repairs undergoing verification; architectural acceptance open.**
+**In progress; baseline triaged and scan repairs verified; final composition follow-ups in verification; architectural acceptance open.**
 The external assessment of source `a5912ab` and evidence `a21469e` confirms the
 previous ownership/egress/context repairs within its inspected scope. It found
 no High/Critical defect there, but B-1's required-consumer cancellation and A1's
@@ -247,7 +250,7 @@ The one-time scan started at `8b4f706` on 2026-10-18; its
 target and terminal result. The static report claims whole-tree coverage of 399
 paths and returns one High, one Medium and three Low findings. Native helper
 integrity, aggregate tool admission, JWT complexity bounds and CI action pins
-are being repaired and verified. Journal authenticity retains the explicit
+passed local and hosted verification at `bfce156`. Journal authenticity retains the explicit
 same-user tampering limit. The scan executed no tests or native enforcement and
 does not certify the subsequent runtime changes. No billing-mode change occurred.
 Setup's ordinary suite had two container cleanup failures; the two
@@ -349,7 +352,8 @@ security review on the final candidate. The hosted security route is
 preferred to adding local tooling, subject to actual account/repository access
 and revision coverage. Scan status and coverage are separate; findings need
 triage and fixes need regression evidence. Raw findings stay private. P24's baseline
-scan completed; its repairs are undergoing verification, not P25 execution. No recurring
+scan completed and its four repairs passed hosted checks. Further composition
+follow-ups are in verification, not P25 execution. No recurring
 monitoring is enabled and no new dependency is approved by this plan. See
 [architecture validation](developer/self-hosting-evaluation.md#independent-adversarial-architecture-validation)
 and [security execution constraints](developer/self-hosting-evaluation.md#security-review-before-and-after-the-trial).

@@ -111,8 +111,13 @@ VM to initialize. All selected consumers must become ready before the first main
 request of that turn. Readiness/reuse checks actual broker enrollment, not merely
 a live consumer PID. Live consumers may remain enrolled across turns; a failed
 consumer is not restarted for another model call in the same turn. Fresh explicit
-operator input may start a new optional resource with new correlation. A lost
-required enrollment must first be explicitly released; replacement alone cannot
+operator input may start a new optional resource with new correlation after
+confirmed cleanup. If an already-ready optional consumer has detached but is
+still closing, the next turn continues without delivery to it and reports that
+status. It does not start a concurrent replacement or retry enrollment later in
+that turn. Initial activation/readiness still gates newly selected consumers;
+unconfirmed OS cleanup still stops the Session. A lost required enrollment must
+first be explicitly released; replacement alone cannot
 remove that requirement. Summary requests receive no private text frames.
 
 The worker's `handle("stream.text", payload, state)` receives:

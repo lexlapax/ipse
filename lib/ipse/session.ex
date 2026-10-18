@@ -2644,10 +2644,31 @@ defmodule Ipse.Session do
     entries =
       Enum.reject(Ipse.Extensions.TextResources.entries(s.config), fn entry ->
         Enum.any?(s.extension_text, fn {_, resource} ->
-          resource.intent["identity"] == entry.identity and resource.ready and
-            not resource.closed and Process.alive?(resource.pid) and
-            Ipse.Extensions.Registry.live?(entry.identity) and
-            Ipse.TextStream.enrolled?(s.text_stream, resource.subscription_id, resource.pid)
+          if resource.intent["identity"] == entry.identity and resource.ready and
+               Process.alive?(resource.pid) and Ipse.Extensions.Registry.live?(entry.identity) do
+            enrolled =
+              not resource.closed and
+                Ipse.TextStream.enrolled?(s.text_stream, resource.subscription_id, resource.pid)
+
+            cond do
+              enrolled ->
+                true
+
+              entry.identity["text_required"] != true ->
+                notify(
+                  s,
+                  {:status,
+                   "Optional text consumer is closing; continuing this turn without delivery to it."}
+                )
+
+                true
+
+              true ->
+                false
+            end
+          else
+            false
+          end
         end)
       end)
 

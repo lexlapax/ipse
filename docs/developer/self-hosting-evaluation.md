@@ -17,9 +17,10 @@ dispositions and independent omissions. The
 snapshot and access. Previous briefs are archived; no R/S/C/O sequence is
 scheduled. A private environment is published; the scan service's separate
 automatic environment and one-time scan were explicitly approved. The baseline
-completed at `8b4f706` with five static findings; four repairs are undergoing
-verification and the private-journal item retains its documented trust-limit
-disposition. No comparative run has executed.
+completed at `8b4f706` with five static findings; four repairs passed local and
+hosted checks at `bfce156`, and the private-journal item retains its documented
+trust-limit disposition. Final pipe/pressure/startup follow-up verification and
+the scoped readiness decision remain open. No comparative run has executed.
 Use the [operator runbook](../operator/self-development.md) for runner/candidate
 separation and the [knowledge design](knowledge-extensions.md) for research
 questions. Production knowledge packages remain deferred to P26/P27.

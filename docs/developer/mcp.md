@@ -112,10 +112,16 @@ server process, independently of the shell's `--sandbox` option. Unsupported
 profiles and setup failures fail closed with no trusted-mode retry. Native
 launch uses a bounded private launch frame, keeps selected loader variables out
 of the supervisor's environment, and provides a fresh private HOME/TMPDIR.
-On macOS the already sandboxed worker reads and removes an owner-only environment
-file in its private run directory before executing the server. Normal cleanup
-removes that directory; abrupt supervisor termination can leave private temporary
-data behind. The native profile is not
+On macOS the signed worker receives a bounded environment prefix over its private
+stdin pipe, consumes exactly that prefix without buffered over-read, then executes
+the server with all subsequent protocol input preserved. Selected credentials are
+not staged in the shared writable data root. Its supervisor/worker startup
+environment remains clean. The parent relays the prefix before server input under
+the existing watchdog/owner-death guard. `open_stdio` waits at most five seconds
+for its initial launch write to flush, without suspending on a busy Port and with
+owned cancellation still handled; this is transport readiness, not server or
+sandbox activation. Normal cleanup removes the run directory; abrupt termination
+can leave other temporary data behind. The native profile is not
 a general per-server permission system: see the
 [native policy](sandbox.md) for OS-specific roots and limitations.
 

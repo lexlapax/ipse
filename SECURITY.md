@@ -97,7 +97,9 @@ Contracts for [configuration](docs/developer/configuration.md),
 Approval, process supervision and OS confinement are separate. Default shell
 execution uses the user's permissions. Workspace file-tool checks reject escaping
 paths and symlinks but are not race-proof against a hostile same-user filesystem
-writer. An already-authorized arbitrary shell command or trusted BEAM artifact
+writer. The concurrent writer may itself be another sandboxed command with workspace
+write access; native process confinement does not make host path checks atomic.
+An already-authorized arbitrary shell command or trusted BEAM artifact
 reading user-accessible files is not by itself a privilege escalation.
 That assumption must not excuse a bypass of an explicit host/API/native policy.
 

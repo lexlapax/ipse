@@ -233,6 +233,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
     } else {
         None
     };
+    #[cfg(target_os = "macos")]
+    let input_prefix = macos.as_mut()
+        .map(|policy| std::mem::take(&mut policy.input_prefix)).unwrap_or_default();
     let mut plain_command = Command::new(&args[executable]);
     plain_command
         .args(&args[executable + 1..])
@@ -309,6 +312,12 @@ pub fn run(args: &[String]) -> Result<(), String> {
     let write_failure = failure.clone();
     let input_group = slot.clone();
     thread::spawn(move || {
+        #[cfg(target_os = "macos")]
+        if child_input.write_all(&input_prefix).is_err() {
+            let _ = write_failure.compare_exchange(0, 2, Ordering::AcqRel, Ordering::Acquire);
+            signal_group(&input_group);
+            return;
+        }
         for bytes in input_rx {
             if child_input.write_all(&bytes).is_err() {
                 let _ = write_failure.compare_exchange(0, 2, Ordering::AcqRel, Ordering::Acquire);

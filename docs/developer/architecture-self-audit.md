@@ -141,6 +141,25 @@ reject hardlink aliases. The native Linux helper supplies a second overlap guard
 Default trusted execution retains its existing authority; same-user replacement
 outside native writable roots remains outside that confinement boundary.
 
+The macOS shared-data concern required a separate correction: selected server
+credentials now use an exact bounded private stdin prefix, not a shared-root
+file. An unbuffered descriptor preserves protocol bytes across exec; the existing
+watchdog/owner lease covers blocked reads/writes. Pure framing/policy tests pass
+on Linux, while actual Mac execution remains a hosted check. Large-prefix testing
+also exposed immediate Port backpressure after launch; the host now waits for a
+bounded nonblocking flush, handling the exact owned cancellation ticket. This
+proves pipe readiness only, not server startup or native enforcement.
+
+A real optional-worker pressure sequence reproduced next-turn rejection while
+the old consumer was still closing. A ready, live optional instance now retires
+without vetoing that turn; visible status explains missing delivery. Its slot is
+not reused and no replacement starts until cleanup completes. Initial readiness,
+required delivery and unconfirmed-OS-cleanup refusal keep their existing policy.
+The regression covers the failed composition, continued inference and later
+fresh enrollment. Host file-tool checks still accept the documented concurrent
+writer limit; even a native peer can change workspace paths, so this is not
+race-proof host IO or per-command shared-container isolation.
+
 Tool-call admission charges complete response batches before any dispatch and
 restores current-turn usage from effective conversation. Invalid-argument loops
 exercise the actual Session until 128 calls are consumed; an over-limit batch
@@ -149,8 +168,9 @@ control, then confirm pathological components never reach cryptographic verify.
 CI pins were resolved from official upstream references and the local policy
 check rejects mutable selectors. Package review also caught the missing root
 security-policy file; it is now bundled and checked. Exact receipts remain in
-[testing](testing.md#current-evidence-and-next-checks), with platform verification
-still pending for this candidate.
+[testing](testing.md#current-evidence-and-next-checks). SC1–SC4 passed the hosted
+Linux/macOS matrix at `bfce156`; later pipe/pressure/startup follow-ups still need
+their own exact-source platform evidence.
 
 The `a5912ab` and `99bbbdf` matrices remain evidence for their exact sources and
 exercised scopes. The additional filesystem-completion repair passed a frozen

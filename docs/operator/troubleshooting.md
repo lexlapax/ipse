@@ -27,6 +27,10 @@ children, which can retain workspace write access. See
 - Missing `mix` or `rustc`: check packages and `PATH` against the
   [prerequisites](arch-linux.md#install-the-toolchain).
 - Missing or incompatible native helper: run `./scripts/build.sh` on this machine.
+- Native startup reports helper/application overlap: run an installed bundle
+  outside the target workspace on both Linux and macOS. The prebuilt helper must
+  have one link and no group/other write permission. Do not select or rebuild an
+  enforcement helper inside the writable target to bypass this refusal.
 - Mix reports `:eperm`, or tests cannot bind sockets: check execution permissions.
   Mix needs loopback TCP for locks; HTTP fixtures also bind loopback. Use the
   tool's permission flow or a local terminal. Do not disable TLS verification
