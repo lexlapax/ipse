@@ -312,8 +312,12 @@ The reviewer independently read the whole BASE..SOURCE delta and changed test
 bodies, Session result/cleanup/restore paths, TextConsumer, observability close,
 Runner frames, MCP transports/client change, auth HTTP/login/rotation and provider
 HTTP/OpenAI. Fixture helpers outside the hunks remain partial. Prior unchanged
-reads carry forward only at their reported scope. The current repairs change
-ownership and resource interactions and require their own verification.
+reads carry forward only at their reported scope. The ownership and resource
+repairs passed their own frozen local and installed-artifact checks. The final
+source/test revision `e8f7ad5` also passed hosted Linux/macOS verification;
+[testing](testing.md#current-evidence-and-next-checks) retains exact receipts,
+failed intermediate matrices and their unconfirmed causes. This execution
+evidence does not close independent source-reading omissions.
 
 Material independent omissions remain: SDK registry/manifest/catalog/grants,
 CAS/tombstones, projection/contributions/services, UsageRead/TextResources and

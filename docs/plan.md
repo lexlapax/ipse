@@ -29,14 +29,18 @@ required-extension cancellation leaving delivery blocked and abnormal Session
 death freeing the lock before dependent work stops. It also requests a decision
 on HTTP-pool loss and retains material independent SDK/sandbox coverage gaps.
 
-The active repair distinguishes explicit host cancellation from unexpected
-consumer loss, retains the session lock through an independent quiescence guard,
-and keeps pool loss fail closed with explicit idle resume. A further controlled
-probe found premature HTTP-slot release after top-supervisor death; the guardian
-now awaits its supervised children. These repairs need their own frozen
-source/native/package/installed and hosted gates. Earlier passing `a5912ab`
-evidence does not certify this delta. The used consolidated brief is archived;
-no additional R/S/C/O review sequence is scheduled. The
+The implemented repairs distinguish explicit host cancellation from unexpected
+consumer loss and retain the session lock through an independent quiescence
+guard. Separate completion owners fence admitted filesystem operations because
+BEAM caller death alone does not prove IO completion. Pool loss remains fail
+closed with explicit idle resume, and the HTTP guardian waits for supervised
+children before releasing its slot.
+
+The repaired runtime passed frozen source/native/package/installed checks; the
+final source and tests passed hosted Linux/macOS verification at `e8f7ad5`.
+Failed intermediate runs and their unconfirmed causes remain in the evidence
+record. The used consolidated brief is archived; no additional R/S/C/O review
+sequence is scheduled. The
 [register](developer/architecture-review-dispositions.md) owns dispositions and
 remaining independent omissions; the [internal audit](developer/architecture-self-audit.md)
 records implementation-side counterexamples and limits.
@@ -52,7 +56,7 @@ new source transfer or dependency, or select a production engine.
 | Milestone or gate | Current state | Next result |
 | --- | --- | --- |
 | [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within selected scope; source/native/package/installed and hosted Linux/macOS passed | Retain accounting invariants through P24/P25 review and repairs |
-| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Consolidated review returned; acceptance withheld; cancellation/lock repairs and pool-loss disposition active | Verify cancellation, lock/IO completion and HTTP teardown repairs, resolve material independent coverage, then triage the baseline security scan |
+| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Consolidated repairs verified; independent coverage, architectural acceptance and baseline scan open | Resolve material independent coverage and acceptance, then triage the baseline security scan on the repaired source |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Planned revised scope; unstarted | Independent Codex/Ipse research, Ipse-authored repairs, fresh acceptance runs and final architecture/security review |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Deferred; proposed scope subject to P25 decisions | Independently selectable working/long-term memory tools and optional lifecycle policies |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; proposed scope subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
@@ -67,13 +71,12 @@ P25's runner. Historical repair revisions, platform results and investigations b
 
 Execution order:
 
-1. Finish the consolidated assessment's applicable repairs and disposition checks
-   in the [internal audit](developer/architecture-self-audit.md) and
-   [register](developer/architecture-review-dispositions.md), then verify frozen
-   source/native/package/installed and hosted Linux/macOS behavior. Resolve the
-   recorded material independent coverage before accepting architecture or
-   starting the baseline security scan. No new external assignment is launched
-   by recording these gates.
+1. Retain the verified consolidated repairs and disposition checks in the
+   [internal audit](developer/architecture-self-audit.md) and
+   [register](developer/architecture-review-dispositions.md). Resolve the recorded
+   material independent coverage before accepting architecture or starting the
+   baseline security scan on the repaired source. No new external assignment is
+   launched by recording these gates.
 2. Execute P25's independent research, discrepancy comparison, Ipse-authored
    repairs and fresh same-input/held-out reruns. Finish with an external
    architecture delta review and security review/rescan of the final candidate.
@@ -154,11 +157,12 @@ and arbitrary trusted out-of-band calls cannot establish an invoice ceiling.
 
 ## P24: independent architecture validation and baseline security
 
-**In progress; consolidated review returned without acceptance; repair verification active.**
+**In progress; consolidated repairs verified; architectural acceptance and baseline scan open.**
 The external assessment of source `a5912ab` and evidence `a21469e` confirms the
 previous ownership/egress/context repairs within its inspected scope. It found
 no High/Critical defect there, but B-1's required-consumer cancellation and A1's
-abnormal-death lock race are applicable gaps. Internal tests reproduce both.
+abnormal-death lock race were confirmed gaps. Before/after tests reproduce the old
+behavior and verify the repairs.
 Explicit host cancellation now releases confirmed extension-owned enrollments
 while fresh input must reinitialize the same required selection. A separate
 lock guardian survives Session death and fences replacement work until tracked
@@ -173,9 +177,11 @@ Pool loss remains an explicit conservative Session stop with inert manual resume
 A rejected cooperative alternative left Finch's caller blocked. A controlled
 probe also found the old HTTP guardian releasing its name while a supervised
 child remained alive; it now waits for those children. Normal cancellation must
-retain native-helper receipts before terminating nested task processes. These
-compositions are tested together; final exact-source/platform results belong in
-[testing](developer/testing.md#current-evidence-and-next-checks).
+retain native-helper receipts before terminating nested task processes. The
+repaired runtime passed the frozen local baseline and installed-artifact proofs.
+The final source/test matrix at `e8f7ad5` passed on hosted Linux/macOS.
+[Testing](developer/testing.md#current-evidence-and-next-checks) records exact
+source, receipts and platform scope; none supplies independent acceptance.
 
 Independent SDK authority and sandbox coverage remains materially incomplete.
 Internal inspection and passing fixtures cannot close those external omissions.
@@ -188,7 +194,7 @@ and P25 remain gated.
 Torn-ledger continuation preserves the damaged tree and its liability; automatic
 ledger repair remains unavailable. Synthetic startup still takes about 20 seconds
 for 64 MiB with 200 answered questions; reducer changes did not materially reduce
-that latency. These measured/accepted limits stay explicit for the next critique.
+that latency. These measured/accepted limits remain explicit in readiness decisions.
 The [disposition register](developer/architecture-review-dispositions.md) owns
 F1–F7, S1–S3, D1–D9, A1–A7 and PA-1–PA-15; [testing](developer/testing.md#current-evidence-and-next-checks)
 owns exact revisions, counts and platform receipts.

@@ -22,9 +22,11 @@ omissions. Internal reads and green tests cannot supply that independent coverag
 A real blocked-write probe additionally showed that caller death does not fence
 filesystem IO, including raw dirty IO. Separate completion owners now retain
 admitted filesystem critical sections through their synchronous completion.
-The updated delta passed frozen local source/native/package/installed checks; its
-exact-source hosted Linux/macOS verification is next; [testing](../developer/testing.md#current-evidence-and-next-checks)
-owns exact revisions and receipts.
+The repaired runtime passed frozen local source/native/package/installed checks.
+The final source and tests at `e8f7ad5` also passed
+[hosted Linux/macOS verification](https://github.com/lexlapax/ipse/actions/runs/39108388987).
+[Testing](../developer/testing.md#current-evidence-and-next-checks) owns exact
+revisions and receipts.
 
 No replacement prompt, additional R/S/C/O assignment sequence or new external
 analysis is launched here. The

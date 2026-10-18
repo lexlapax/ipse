@@ -127,19 +127,22 @@ turned into stronger containment guarantees.
 
 ## Verification and remaining limits
 
-The passing `a5912ab` matrix remains evidence for that source and its exercised
-scope. The first follow-through passed its own Linux/macOS matrix at `99bbbdf`.
-The additional filesystem-completion repair passed a new frozen local baseline,
-package and both installed-artifact proofs. Its first hosted Linux job passed;
-macOS stopped at an MCP readiness precondition. The fixture-stage correction has
-a controlled regression and a passing focused suite. The repeated Mac matrix then
-failed a separate direct-Client precondition; that case now verifies its dispatch
-and effect before triggering loss, with phase diagnostics. The next full matrix
-will verify this fixture-only follow-up; the earlier causes remain unconfirmed.
+The `a5912ab` and `99bbbdf` matrices remain evidence for their exact sources and
+exercised scopes. The additional filesystem-completion repair passed a frozen
+local baseline, package and both installed-artifact proofs at `74686f1`.
+Three later Mac matrices failed cases whose startup or effect conditions had not
+been established. Their negative evidence and unconfirmed actual causes remain
+recorded. Phase-staged readiness has a controlled regression, and direct loss now
+follows verified dispatch/effect with strict unknown and one-effect assertions.
+Trace-owner setup is synchronous, with
+unchanged capture/revocation deadlines. The complete source/test matrix passed
+on Linux/macOS at `e8f7ad5`, including native Mac enforcement and both installed
+proofs per host. Runtime source remains unchanged from `74686f1`.
+
 [Testing](testing.md#current-evidence-and-next-checks) owns exact revisions and
-receipts. Earlier passes do not certify later code. The used review brief is archived; no new external assignment
-or scan was launched. Baseline security and P25 remain gated on applicable repairs
-and adequate independent coverage.
+receipts. Earlier passes do not certify later code. The used review brief is
+archived; no new external assignment or scan was launched. Baseline security and
+P25 remain gated on adequate independent coverage and architectural acceptance.
 
 Residuals are explicit: full journal startup/memory and per-question prefix
 projection cost, no journal size cap or same-size rewrite authentication at every
