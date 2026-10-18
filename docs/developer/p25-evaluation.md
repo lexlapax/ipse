@@ -76,8 +76,19 @@ model, reasoning, timeout, source and scoring criteria stay unchanged. Prior
 counts carry forward; a conservative ten-minute continuation deadline stays
 inside the original thirty-minute wall allowance. Both attempts, receipts and
 the original partial checkpoint remain retained. This is a recorded intervention,
-not an uninterrupted first-pass success. No completion claim is made while the
-continuation is pending.
+not an uninterrupted first-pass success. The continuation also timed out at
+120 seconds, with confirmed cleanup and no new tools/retrievals. Cumulative
+canonical requests reached 19; no final report was completed.
+
+Configuration repair round 1 increases the per-request timeout to 300 seconds
+for another explicit continuation from existing evidence. It retains the original
+overall thirty-minute deadline and cumulative request/tool/retrieval allocations;
+no further retrieval is allowed. Provider/model/reasoning, evidence and rubric
+remain fixed. The initial 120-second configuration has failed this task; a later
+successful continuation cannot be counted as an unassisted first-pass success.
+This is a supervisor configuration intervention, not an Ipse-authored behavior
+change. L2's already-started session retains its initial 120-second setting and
+its own separately recorded limits.
 
 ## Remaining trial gates
 
