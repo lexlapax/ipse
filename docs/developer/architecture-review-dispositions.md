@@ -9,14 +9,15 @@ exploit details remain outside Git. The [plan](../plan.md) owns scheduling and t
 
 ## Provenance and coverage
 
-**Current gate:** consolidated repairs passed their frozen local and hosted
-Linux/macOS checks through `e8f7ad5`. The focused `86d4d69` subscription pass then
-returned an incomplete report after its safeguard interrupted the write-up.
-Architectural acceptance and material independent coverage remain open. The
-operator explicitly approved baseline scanning first while retaining that gate,
-without another architecture-review round. The
-[current checkpoint](../operator/architecture-review.md) owns scan setup; exact
-failed and passing runs remain in [testing](testing.md#current-evidence-and-next-checks).
+**Current decision:** P24's scoped supervisor readiness gate is accepted for the
+supervised P25 trial at `375e607`; see the [decision](#p24-scoped-readiness-decision).
+The focused `86d4d69` pass remains incomplete and earlier independent verdicts are
+unchanged. Following the operator's scan-first instruction, the static baseline
+completed at `8b4f706`; its checked repairs and composition follow-ups passed
+source/native/package/installed and hosted gates. This is not a new independent
+post-fix verdict or second scan. The
+[current checkpoint](../operator/architecture-review.md) links actual execution;
+dated failures/passes remain in [testing](testing.md#current-evidence-and-next-checks).
 
 The reviewer reported Claude Code with Opus 5.5 (`claude-opus-5-5`), default
 reasoning, one subscription-selected session and no subagents or operator help
@@ -354,7 +355,7 @@ establish whole-module or whole-test coverage.
 | Returned concern | Supervisor assessment and remaining work |
 | --- | --- |
 | File-tool check/use races | Accepted explicit scope limit. Host path checks remain non-atomic against hostile concurrent workspace changes, including changes made by another native command. Native policy confines shell/server processes, not host file tools. Supervised use must trust concurrent writers; descriptor-anchored file operations would be a separate generic core enhancement. This is not a claim that the race is impossible, and same-user assumptions do not excuse a stronger promised boundary |
-| macOS shared writable data | Source confirmed transient credential staging inside the shared grant. The follow-up removes that file: a bounded private prefix reaches the signed worker over stdin, with exact unbuffered consumption before exec. Four Rust framing/policy tests pass on Linux; large native environment/raw-input coverage passes there too. Actual Mac execution of this change remains a hosted gate; shared-container and retained older-generation limits remain |
+| macOS shared writable data | Source confirmed transient credential staging inside the shared grant. The follow-up removes that file: a bounded private prefix reaches the signed worker over stdin, with exact unbuffered consumption before exec. Four Rust framing/policy tests and large native environment/raw-input coverage pass on Linux and in actual hosted Mac execution at `375e607`. Shared-container and retained older-generation limits remain |
 | Text-delivery policy | Independently reproduced: broker pressure detached a ready optional consumer, whose still-live retirement then refused the next turn. The real-worker regression failed before repair and passes after it. A later turn now continues without delivery to that retiring optional instance, with visible status; no concurrent replacement or same-turn restart is permitted. Required policy, initial readiness and unconfirmed-cleanup refusal remain unchanged |
 
 After the interruption the operator explicitly approved running the baseline
@@ -394,8 +395,45 @@ concerns; a static no-issue surface was not treated as their reproduction or
 automatic dismissal. The pipe/pressure follow-up also exposed and repaired a
 large-launch-frame readiness gap: `open_stdio` now waits for a bounded nonblocking
 flush before returning, while handling owned cancellation. Its focused stdio set
-passes all 21 enabled cases; final follow-up platform verification remains pending.
+passes all 21 enabled cases. The complete follow-up matrix passed at `375e607`,
+including real Mac environment/stdin handling, signed enforcement and installed
+proofs. [Testing](testing.md#current-evidence-and-next-checks) owns exact receipts.
 No additional scan/review or continuous monitoring has been launched.
+
+## P24 scoped readiness decision
+
+On 2026-10-18 the supervisor accepts source
+`375e607d0d3fbedf9ea0454dc74bb69fd73f20f1` for the planned supervised P25 trial.
+This decision combines the independent architecture critiques, Security Cloud's
+reported whole-tree static baseline at `8b4f706`, the checked repair chain and
+exact-source local/hosted execution. The independent reports keep their actual
+source identities, partial coverage and withheld verdicts; this is not a new
+independent post-fix acceptance, a second scan or a security certification.
+
+SC1–SC4 are repaired and verified. The shared-data/pressure concerns have separate
+source checks and meaningful regressions; the launch-flush issue was found and
+fixed during that work. No applicable Critical/High finding in this review set
+remains unresolved. The service's complete-coverage claim supplies independent
+static coverage of previously omitted SDK/OS surfaces, but its receipts do not
+prove every older test body was read, nor do static reads establish enforcement.
+Actual source/native/package/installed checks support those narrower behaviors.
+
+Acceptance assumes an operator-controlled, cooperative workspace and supervised
+effects. Host file checks remain vulnerable to hostile concurrent path changes;
+same-user state rewriting and trusted user-permission code are not isolated.
+Mac shared-container/detached descendants, unknown remote effects, unconfirmed
+cleanup, journal growth/startup, fixed reservations/tree overdraw, torn-ledger
+continuation and retained raw evidence remain explicit limits. The deliberate
+service-crash proof remains unconfirmed with `safe_to_continue: false`. Earlier
+intermittent Mac failures keep their unconfirmed root causes.
+
+P25 must freeze a separate installed runner/candidate and common inputs/limits,
+preserve approvals and original evidence, and revalidate changes before promotion.
+Its final delta/security review is a separate gate. No production knowledge
+engine, new dependency, autonomous deployment or recurring monitoring is approved
+by this readiness decision. The operator's existing source-analysis/edit authority
+and trial instruction govern execution; this record does not invent broader
+data-transfer or billing permission.
 
 ## Execution order and completion
 
@@ -406,11 +444,10 @@ revisions and remaining verification limits. Future repairs still need a
 regression or measured counterexample, coherent operator/developer guidance and
 their own checks before commit/push; an earlier green baseline does not cover them.
 
-The reports retain their actual provenance and partial coverage. The consolidated
-assessment has returned and its used brief is archived. Complete applicable
-repairs, exact-source verification and material independent coverage before
-acceptance. The [current review page](../operator/architecture-review.md) records
-that checkpoint and the interrupted focused completion. The operator approved the
-baseline scan first; its findings and the remaining material architectural concerns
-must be assessed before P25 proceeds. The baseline scan completed; its applicable
-repairs are undergoing verification. P24 and architectural acceptance remain open.
+The reports retain their provenance and actual coverage. The used consolidated
+brief is archived, the baseline is complete/triaged, and the checked repair chain
+passed its local and hosted gates. The scoped supervisor decision above permits
+P25 preparation/execution under the recorded controls; it does not rewrite old
+independent verdicts. The [current review page](../operator/architecture-review.md)
+links the scan and current source. New changes still require affected review and
+verification, and P25's final acceptance remains separate.

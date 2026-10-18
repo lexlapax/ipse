@@ -233,7 +233,7 @@ passed local and hosted gates through `091b2bd`; the failed first matrix remains
 recorded below rather than being overwritten. No comparative P25 run has executed.
 The OpenAI security-service baseline completed with five static findings. Four
 repairs passed local and hosted checks at `bfce156`; final composition follow-up
-verification is in progress.
+verification passed at `375e607`, as recorded below.
 Security-service access checks are not scan evidence. A private cloud environment
 was explicitly created and published, but Security Cloud requires its own setup.
 The 2026-10-18 focused subscription report was interrupted by its safeguard;
@@ -330,7 +330,8 @@ pass: 41 extension/nine model checks, unchanged archive/host, no system developm
 toolchain on runtime PATH. Deliberate service-crash cleanup remains unconfirmed.
 The final source change after the full suite only clarifies the Runner API's
 environment wording; strict compile and installed proofs cover that host identity.
-Hosted verification remains pending; `bfce156` does not cover these follow-ups.
+Hosted verification passed at `375e607`; `bfce156` alone does not cover these
+follow-ups. The exact final matrix and receipts are recorded below.
 
 The fresh report at source `091b2bd`/evidence `20b377c` found two applicable
 interaction defects despite that passing matrix. The subsequent internal audit
@@ -356,9 +357,12 @@ repair passed a new frozen baseline and hosted matrix at `e8f7ad5`; that evidenc
 is separate from the first repair's green run.
 The completed baseline adds claimed whole-tree independent static security
 coverage; it does not retroactively expand earlier reviewer reads or establish
-runtime enforcement. Security-repair platform verification, remaining architecture
-concerns and P25 readiness remain open; no further architecture-review sequence
-has been scheduled.
+runtime enforcement. Security-repair/follow-up platform verification has passed
+at `375e607`. The supervisor's
+[scoped P24 readiness decision](architecture-review-dispositions.md#p24-scoped-readiness-decision)
+assesses that evidence and accepted limits for supervised P25. It supplies no
+new independent post-fix verdict. P25 preparation is underway; scored execution
+has not started and no further P24 architecture-review sequence is scheduled.
 
 During P23E2 iteration, a full run overlapped a focused recompile and produced
 eight artifact-admission failures; that run was discarded. Final verification
@@ -367,6 +371,8 @@ weakened to obtain the passing result below.
 
 | Checkpoint | Evidence | Scope and remaining limits |
 | --- | --- | --- |
+| P24 final security/composition source `375e607`, hosted 2026-10-18 | [Completed Linux/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39134788296) passed every applicable step: build, format, strict compile, CI pin policy, ordinary suites (892 tests, zero failures, 32 exclusions per host), demo, package verification and both installed proofs. Enabled Mac subset: 36 tests, zero failures, six exclusions; four Rust policy/framing tests and signed App Sandbox enforcement pass | Exact source, both terminal jobs/all steps and full logs inspected. All four JSON receipts parsed: 41 extension/nine model assertions true per host, unchanged archive/host and no runtime system development toolchain. Includes actual Mac 120 KiB environment/raw-stdin delivery and optional pressure/next-turn regression. Signed enforcement checks code/entitlements, allowed workspace/private-tmp writes, denied outside fake-credential/symlink reads/write/chmod and loopback. Hosted archives: Linux `92499599751c03e8d3825f41f9df11788340d6b386e1dc3b120e8e32be5410b8`, Mac `79beacc3c790c1fdbb94f8b71830a942963714f76169410862e7ad72c76db7b6`. The local frozen runtime passed 877 native-inclusive tests (15 Mac exclusions), both formatter floors, build/strict compile/demo and installed proofs; archive `0b4997bd2ea77db55d8c739431ba1ce0e458074e4c7351bfe96d349e081d4715`. Deliberate service-crash cleanup remains unconfirmed/unsafe to continue; earlier intermittent causes remain unconfirmed. Supports the scoped supervisor readiness decision, not independent post-fix acceptance or a second scan |
+| P25 unscored access preparation, 2026-10-18 | Ipse's own ChatGPT subscription returned the exact readiness response using requested/reported `gpt-6.1-sol`, high reasoning, no tools, and confirmed cleanup. A separate fresh Codex CLI 0.163.0 subscription session returned the exact response with tools unused and requested `gpt-6.1-sol`/high; no served-model identity was exposed. Keyless configured Exa MCP discovery returned exactly the allowed search/fetch tool schemas and closed cleanly | Separate auth stores; no borrowed credentials, API fallback, source research or scored run. Ipse used the development runtime, not yet the frozen installed trial runner. Codex apps/plugins/memories/hooks/subagents were disabled. Only metadata discovery went to Exa; no search queries, repository content or credentials were sent. Private preflight artifacts stay outside Git. These checks establish access only, not research quality or matching backend identities |
 | P24 baseline-security repairs `bfce156`, hosted 2026-10-18 | [Completed Linux/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39133201684) passed every applicable step. Ordinary suites: 890 tests, zero failures, 32 exclusions per host. Enabled Mac subset: 35 tests, zero failures, six exclusions; one Rust policy test and signed App Sandbox probe pass. Build/format/strict compile/CI pin policy, demo, packaging and both installed proofs passed | Exact source/all job and step conclusions/full logs inspected. All four JSON proof receipts parsed: 41 extension and nine model assertions true per host, unchanged archive/host and no system development toolchain on runtime PATH. Signed enforcement confirms allowed workspace/private-tmp writes and denied outside fake-credential/symlink read/write/chmod and loopback. Source is the four scan repairs, before the subsequent pipe/pressure/startup follow-ups. The scan remains pinned to `8b4f706`; static coverage is not runtime evidence. Deliberate service-crash cleanup remains unconfirmed |
 | P24 final consolidated repairs `e8f7ad5`, hosted 2026-10-18 | [Completed Ubuntu/macOS run](https://github.com/lexlapax/ipse/actions/runs/39108388987) passed build/format/strict compile, ordinary suites (880 tests, zero failures, 32 exclusions per host), demo, package verification and both installed proofs. Enabled Mac subset: 35 tests, zero failures, six exclusions; one Rust policy test and signed App Sandbox enforcement pass | Exact SHA, both terminal jobs/all steps and full logs inspected. All four proof receipts parsed: 41 legacy/nine model assertions true per host, unchanged archive/host and no system development toolchain. Signed enforcement verifies code/entitlements, allowed workspace/private-tmp access and denied outside credential/symlink reads, write/chmod and loopback. Includes blocked-write and budget-lock regressions, staged MCP readiness, verified-effect disconnects and synchronous trace-owner setup; runtime code is unchanged from the locally packaged `74686f1`. Documentation links/anchors: 122 documents, 1,554 links, zero errors. Completes this repair delta's platform checks; independent SDK/sandbox source omissions, baseline scan and P25 remain open. Deliberate service-crash cleanup stays unconfirmed and historical intermittent causes are not retroactively established |
 | P24 instrumented MCP matrix `b0cedc6`, 2026-10-18 | [Run 39107695962](https://github.com/lexlapax/ipse/actions/runs/39107695962): Linux passed all stages and both installed proofs. Mac passed the MCP cases but had one failure among 880 tests (32 exclusions): the trace owner-death test received no startup PID within ExUnit's implicit 100 ms; revocation had not been exercised. Later Mac enforcement/package steps were skipped | Owner setup now uses synchronous Agent initialization around the same tracer start, replacing the unrelated scheduling assertion. The 5,000 ms capture policy and existing cleanup polling/assertions stay unchanged. Both formatter floors, strict compile and the tracing/diagnostics/lifecycle/Client/Session set pass all 49 cases locally. No runtime change or claimed failure of the actual revocation mechanism; exact Mac scheduling delay remains unmeasured |

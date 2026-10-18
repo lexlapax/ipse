@@ -3,13 +3,10 @@
 P24/P25 review and evaluation protocol, revised 2026-10-18. This guide defines
 independent architectural challenge, security gates and the supervised experiment;
 the [plan](../plan.md#current-priorities-and-status) owns scheduling and acceptance
-status. The consolidated `a5912ab` assessment has returned without acceptance.
-Required-delivery cancellation and abnormal-death lock ownership repairs passed
-source/package and hosted Linux/macOS checks; pool loss has an explicit fail-closed
-recovery policy. The focused subscription pass of 2026-10-18 returned an incomplete
-report after its safeguard stopped the write-up. The operator approved scanning
-first while architectural acceptance stays open, without another architecture
-round. Partial source reads do not close material coverage. The
+status. P24 has a scoped supervisor readiness decision at `375e607` for this
+supervised trial. Earlier independent reports retain their withheld verdicts and
+partial coverage. After the focused subscription report was interrupted, the
+operator approved baseline scanning first without another architecture round. The
 [internal audit](architecture-self-audit.md) records actual counterexamples and
 limits; the [register](architecture-review-dispositions.md) owns current
 dispositions and independent omissions. The
@@ -17,10 +14,13 @@ dispositions and independent omissions. The
 snapshot and access. Previous briefs are archived; no R/S/C/O sequence is
 scheduled. A private environment is published; the scan service's separate
 automatic environment and one-time scan were explicitly approved. The baseline
-completed at `8b4f706` with five static findings; four repairs passed local and
-hosted checks at `bfce156`, and the private-journal item retains its documented
-trust-limit disposition. Final pipe/pressure/startup follow-up verification and
-the scoped readiness decision remain open. No comparative run has executed.
+completed at `8b4f706`, reporting complete static coverage of 399 paths and five
+findings. Four repairs passed at `bfce156`; the private-journal item retains its
+documented trust limit. Pipe/pressure/startup follow-ups passed the complete local
+and hosted Linux/macOS matrix at `375e607`. The
+[readiness decision](architecture-review-dispositions.md#p24-scoped-readiness-decision)
+records the evidence and accepted limits. It is not independent post-fix acceptance
+or a second scan. P25 preparation is underway; no scored comparative run has executed.
 Use the [operator runbook](../operator/self-development.md) for runner/candidate
 separation and the [knowledge design](knowledge-extensions.md) for research
 questions. Production knowledge packages remain deferred to P26/P27.
@@ -52,7 +52,8 @@ graph augmentation and RAG. Each track must inspect current Ipse contracts,
 research primary sources and alternatives, then produce a recommended architecture,
 tool/skill/MCP/extension/core allocation, dependency/license decisions, evaluation
 design, failure/security analysis and staged P26/P27 proposal. Include Zero-Mem
-as inspiration and distinguish the paper, authors' code and independent projects.
+as inspiration, disambiguate its primary provenance and distinguish identifiable
+papers, authors' code and independent projects without assuming they are related.
 An explicit decision to reject a candidate is a valid result when supported.
 
 Organize the work into reviewable packages: current-harness/API assessment;
@@ -150,9 +151,10 @@ A reviewer can follow public exact locked dependency source read-only where
 necessary, recording provenance; no installation, credentials or project execution
 is implied. Context exhaustion must identify exact unread functions/test bodies,
 not grant acceptance. Carry forward only byte-unchanged prior reads with checked
-interactions. The baseline security scan and P25 remain gated on applicable
-repairs and adequate architecture coverage; a promised review count cannot
-substitute for those criteria.
+interactions. This describes the review method, not a requirement to schedule more
+P24 rounds. The scoped readiness decision above assesses the retained coverage,
+completed baseline and verified repairs. A promised review count cannot substitute
+for evidence; P25's final candidate still requires its own delta/security gate.
 
 Use these scenarios:
 
@@ -183,9 +185,9 @@ Default order is architecture challenge → triage/repair/refreeze → baseline
 security scan → P25 trial. This lets the critique sharpen the scan's threat model.
 A recorded reason may put scanning first. On 2026-10-18 the operator explicitly
 selected that exception after the focused reviewer failed to deliver its complete
-report. Acceptance remains open while the scan and remaining concerns are
-assessed; this does not turn a security scan into architectural certification.
-Repairs then require affected security
+report. Acceptance stayed open during scan triage and follow-up verification;
+the scoped decision now records that assessment. It does not turn a security scan
+into architectural certification. Repairs require affected security
 coverage to be refreshed. Before P25 acceptance, commission an external delta
 review of material architectural changes and disposition its findings. A no-change
 review still records the compared revisions and rationale. Any later relevant

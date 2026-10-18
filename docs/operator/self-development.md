@@ -10,45 +10,32 @@ repeating its already integrated feature. Other hosts use their repository/platf
 checks and matching runtime. Use the local
 [context recovery tools](recovery.md) for diagnosis or explicit handoff.
 
-P24's architecture/security gate precedes P25's larger independent Codex/Ipse
-research and self-development comparison. Consolidated repairs passed local and
-hosted Linux/macOS checks through `e8f7ad5`; independent coverage and baseline
-security remain open. The 2026-10-18 bounded subscription pass used a Git-exported
-`86d4d69` snapshot, whose runtime/tests match `e8f7ad5`, excluding credentials,
-ignored files, private journals, execution tools and implementation-side verdicts.
-Its safeguard interrupted the report, leaving finding detail and coverage
-incomplete. The operator then approved baseline scanning first while acceptance
-stays open, without another architecture-review round.
+P24's scoped supervisor readiness decision at `375e607` permits the planned
+supervised P25 comparison. The completed Security Cloud baseline at `8b4f706`
+reported complete static coverage and five findings; four repairs passed at
+`bfce156`, and the private-journal item retains its documented trust limit.
+Final pipe/pressure/startup repairs passed local and hosted Linux/macOS checks at
+`375e607`, including native enforcement, packages and installed artifacts.
+Earlier independent critiques keep their withheld verdicts and partial coverage;
+this is not a new independent post-fix verdict or a second scan.
 
-Use the [review checkpoint](architecture-review.md) for current execution state
-and the [disposition register](../developer/architecture-review-dispositions.md)
-for findings and coverage. Earlier prompts are archived historical inputs. A new
-review must declare its exact source, access method, exclusions and assistance;
-it cannot silently substitute a snapshot for a promised Git-history review.
-Establish the selected provider, source-sharing authority, authentication and
-billing before sending material. The current Claude run uses the signed-in
-subscription with API credentials removed and no extra integrations or subagents.
-Security Cloud environment creation and publication were separately approved.
-The private environment is published; Security Cloud's separate automatic
-environment and one-time scan were explicitly approved. The baseline completed
-at `8b4f706` with five static findings. Four repairs passed local and hosted checks
-at `bfce156`; final composition follow-up verification and readiness remain open.
-P25 is unstarted.
-Keep raw reports private and use the
-[security threat model](../../SECURITY.md) for safe scan context.
+Use the [review checkpoint](architecture-review.md) for provenance and the
+[readiness decision](../developer/architecture-review-dispositions.md#p24-scoped-readiness-decision)
+for scope and accepted limits. The operator approved scan-first order after the
+focused report was interrupted, without another architecture-review round. No
+further P24 review or scan is scheduled. P25 preparation is underway; scored
+execution has not started. Keep raw reports private and use the
+[security threat model](../../SECURITY.md) for safe evidence handling.
 
 The [evaluation protocol](../developer/self-hosting-evaluation.md) defines the
 comparison, Ipse-authored repairs, held-out reruns and final reviews. The
 [plan](../plan.md#current-priorities-and-status) owns scope and order; deferred
 P28 voice/media does not block this text/research work.
 
-Triage counterexamples and scan findings against actual code, repair applicable
-blockers and refresh affected reviews on the changed revision. Obtain the
-independent delta/omitted-surface evidence and disposition applicable findings
-before P25 execution. The approved scan-first exception keeps acceptance open
-until that evidence and scan triage are assessed. Freeze P25's runner
-only after its checks and P24 gates pass. Brief preparation/access checks can
-proceed earlier; earlier passing releases do not verify later runtime changes.
+Freeze P25's common brief/rubric, inputs, resources and installed runner before
+scored execution. Establish provider, source-sharing authority, authentication and
+billing explicitly; never borrow Codex credentials or silently switch to API
+billing. Earlier passing releases do not verify later runtime changes.
 Keep the external critique separate from the initial A/B research inputs, record
 operator decisions and assistance, and review architecture deltas plus security
 again on the final candidate before accepting the trial.

@@ -1,13 +1,13 @@
 # Architecture-review checkpoint
 
-P24's focused completion returned an incomplete report on 2026-10-18. The
-operator explicitly approved proceeding to the baseline security scan while
-keeping architectural acceptance open, without another architecture-review round.
-High reasoning was selected for Security Cloud's offered model. A private Ipse
-environment is published; Security Cloud's separate automatic environment and
-one-time scan were explicitly approved. That scan completed at `8b4f706` with
-five findings; four repairs passed local and hosted checks at `bfce156`. The final
-pipe/pressure/startup follow-ups are in verification. Architectural acceptance remains open.
+P24 is complete as a scoped supervisor readiness gate for supervised P25 at
+`375e607`. The [decision and limits](../developer/architecture-review-dispositions.md#p24-scoped-readiness-decision)
+combine retained independent critiques, the completed static baseline scan and
+checked repairs. The final [Linux/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39134788296)
+passed source, native enforcement, packaging and installed-artifact checks.
+This is not a new independent post-fix verdict or a security certification.
+P25 preparation is underway; scored execution has not started. No additional
+P24 review sequence, scan or continuous monitoring is scheduled.
 
 ## Focused pass and current gate
 
@@ -28,8 +28,8 @@ write-up during its first finding; the final response explicitly declined to
 regenerate the missing report. The requested complete finding entries and coverage
 matrix were not delivered. A successful process exit does not establish a
 successful review. Retain observed read ranges as partial evidence, not inferred
-whole-file coverage. The incomplete opening supports scanning conditionally, but
-does not close acceptance or the remaining omissions.
+whole-file coverage. The incomplete opening supported scanning conditionally;
+it did not itself close acceptance or the remaining omissions.
 
 The supervisor checked the returned concerns against actual contracts. A short
 optional-callback probe passed, then a separate real-worker pressure test
@@ -38,7 +38,8 @@ follow-up repairs; large launch-frame coverage also exposed a startup-flush gap.
 The [register](../developer/architecture-review-dispositions.md#focused-completion-at-86d4d69)
 records these source/probe results separately from the incomplete critique. Host
 file checks retain their explicit concurrent-writer limit. The operator approved
-scan-first order; P25 still requires the final scoped readiness decision.
+scan-first order. The scoped readiness decision now records the subsequent
+baseline, verification and accepted limits; it does not expand this partial read.
 
 ## Security environment
 
@@ -59,8 +60,8 @@ full suite under that launcher remains unrun. Native enforcement is unavailable
 on this cloud host. Setup is distinct from a scan or fresh-restoration proof.
 Use the [security context](../../SECURITY.md) for the threat model and safe
 evidence rules; the [evaluation protocol](../developer/self-hosting-evaluation.md#security-review-before-and-after-the-trial)
-owns scan execution and triage. Confirm the scan's actual revision and terminal
-results before recording baseline coverage.
+owns scan execution and triage. This environment setup is historical evidence,
+separate from the completed scan and exact-source hosted checks below.
 
 ## Baseline scan
 
@@ -78,13 +79,14 @@ enforcement. Five findings were returned: one High, one Medium and three Low.
 The [register](../developer/architecture-review-dispositions.md#baseline-security-scan-at-8b4f706)
 owns triage. Four repairs passed local and hosted verification at `bfce156`; the
 private-journal item retains the documented same-user trust limit. The later
-pipe/pressure/startup follow-ups still need final platform evidence. Raw artifacts remain
+pipe/pressure/startup follow-ups passed at `375e607`, including actual Mac
+120 KiB environment/raw-stdin handling. Raw artifacts remain
 private and their SHA-256 digests match the service metadata.
 
 The service reports $41.79 usage, fully covered by the scan allowance, with no
 pending billing or billing error. Continuous monitoring remains off. Completion
-does not certify the changed runtime, native enforcement or architectural
-acceptance; verify the repairs and assess remaining concerns before P25.
+does not certify the changed runtime or native enforcement. Those behaviors have
+their separate execution evidence; the readiness decision assesses the combination.
 
 ## Retained assessment and verification
 
@@ -108,5 +110,6 @@ counterexamples, rejected alternatives and limits. The
 owns dispositions and independent coverage; [testing](../developer/testing.md#current-evidence-and-next-checks)
 owns exact receipts. Internal reads and green tests do not supply independent
 acceptance. The [plan](../plan.md#p24-independent-architecture-validation-and-baseline-security)
-records the approved scan-first exception. Architectural acceptance and P25 remain
-gated on applicable repairs, adequate coverage and triaged baseline results.
+records the approved scan-first exception and the subsequent scoped P24 decision.
+P25 must freeze its brief, inputs, runner and limits before scored execution,
+then pass its final candidate's review/security gates before trial acceptance.

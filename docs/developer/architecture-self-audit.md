@@ -169,8 +169,9 @@ CI pins were resolved from official upstream references and the local policy
 check rejects mutable selectors. Package review also caught the missing root
 security-policy file; it is now bundled and checked. Exact receipts remain in
 [testing](testing.md#current-evidence-and-next-checks). SC1–SC4 passed the hosted
-Linux/macOS matrix at `bfce156`; later pipe/pressure/startup follow-ups still need
-their own exact-source platform evidence.
+Linux/macOS matrix at `bfce156`. Pipe/pressure/startup follow-ups subsequently
+passed their own exact-source matrix at `375e607`, including actual Mac private
+environment/raw-stdin handling, signed enforcement and both installed proofs.
 
 The `a5912ab` and `99bbbdf` matrices remain evidence for their exact sources and
 exercised scopes. The additional filesystem-completion repair passed a frozen
@@ -192,8 +193,12 @@ baseline scanning first while keeping architectural acceptance open. The
 [current checkpoint](../operator/architecture-review.md) owns execution status;
 the [register](architecture-review-dispositions.md#focused-completion-at-86d4d69)
 separates partial reads and unverified concerns from actual findings. This does
-not change this internal audit's provenance. P25 remains gated on assessed
-architecture and triaged baseline security evidence.
+not change this internal audit's provenance. The supervisor's
+[scoped readiness decision](architecture-review-dispositions.md#p24-scoped-readiness-decision)
+now assesses the completed baseline, verified repairs and accepted limits for
+supervised P25. It is not a new independent verdict. P25 preparation may proceed;
+scored runs need frozen inputs/limits, and final trial acceptance retains its
+separate delta/security gate.
 
 Residuals are explicit: full journal startup/memory and per-question prefix
 projection cost, no journal size cap or same-size rewrite authentication at every
