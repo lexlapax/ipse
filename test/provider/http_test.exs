@@ -709,7 +709,109 @@ defmodule Ipse.Provider.HTTPTest do
     Task.await(server)
   end
 
-  defp fixture(body, status \\ 200, response_headers \\ "") do
+  test "Ollama refuses excessive tool batches and preserves the order of admitted batches" do
+    call = fn n ->
+      %{"id" => "c#{n}", "function" => %{"name" => "read", "arguments" => %{"path" => "#{n}"}}}
+    end
+
+    for batches <- [[Enum.map(1..33, call)], Enum.map(1..33, &[call.(&1)])] do
+      body =
+        Enum.map_join(batches, fn calls ->
+          Jason.encode!(%{"message" => %{"tool_calls" => calls}, "done" => false}) <> "\n"
+        end) <> Jason.encode!(%{"message" => %{}, "done" => true}) <> "\n"
+
+      {base, server} = fixture(body, 200, "", :whole)
+
+      assert {:error, message} =
+               Provider.complete(
+                 %{provider: :ollama, model: "fixture", base_url: base, timeout_ms: 5000},
+                 [],
+                 [],
+                 fn _ -> :ok end
+               )
+
+      assert message =~ "stream limit"
+      Task.await(server)
+    end
+
+    body =
+      Jason.encode!(%{
+        "message" => %{
+          "content" => "hé",
+          "thinking" => "private",
+          "tool_calls" => [call.(1), call.(2)]
+        }
+      }) <>
+        "\n" <>
+        Jason.encode!(%{
+          "message" => %{"content" => "🙂", "thinking" => "-tail", "tool_calls" => [call.(3)]},
+          "done" => true
+        })
+
+    {base, server} = fixture(body)
+    owner = self()
+
+    assert {:ok, message, _} =
+             Provider.complete(
+               %{provider: :ollama, model: "fixture", base_url: base, timeout_ms: 5000},
+               [],
+               [],
+               &send(owner, &1)
+             )
+
+    assert message["content"] == "hé🙂"
+    assert message["provider_data"]["message"]["thinking"] == "private-tail"
+    assert Enum.map(message["tool_calls"], & &1["id"]) == ["c1", "c2", "c3"]
+
+    assert Enum.map(message["provider_data"]["message"]["tool_calls"], & &1["id"]) == [
+             "c1",
+             "c2",
+             "c3"
+           ]
+
+    assert_received {:text, "hé"}
+    assert_received {:text, "🙂"}
+    refute_received {:text, "private"}
+    Task.await(server)
+  end
+
+  for status <- [200, 500] do
+    test "HTTP #{status} refuses excessive data chunks below the byte ceiling before EOF" do
+      {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}])
+      {:ok, {_, port}} = :inet.sockname(listener)
+
+      server =
+        Task.async(fn ->
+          {:ok, socket} = :gen_tcp.accept(listener, 5000)
+          request(socket, "")
+
+          :gen_tcp.send(socket, [
+            "HTTP/1.1 #{unquote(status)} Fixture\r\ntransfer-encoding: chunked\r\n\r\n",
+            :binary.copy("1\r\nx\r\n", 131_073)
+          ])
+
+          result = :gen_tcp.recv(socket, 0, 5000)
+          :gen_tcp.close(socket)
+          :gen_tcp.close(listener)
+          result
+        end)
+
+      assert {:error, message} =
+               Provider.HTTP.stream(
+                 "http://127.0.0.1:#{port}",
+                 [],
+                 %{},
+                 %{provider: :ollama, timeout_ms: 4000},
+                 0,
+                 fn count, _ -> {:ok, count + 1} end
+               )
+
+      assert message =~ "stream limit"
+      assert {:error, :closed} = Task.await(server, 6000)
+    end
+  end
+
+  defp fixture(body, status \\ 200, response_headers \\ "", send_mode \\ :fragmented) do
     {:ok, listener} =
       :gen_tcp.listen(0, [:binary, active: false, reuseaddr: true, ip: {127, 0, 0, 1}])
 
@@ -724,7 +826,13 @@ defmodule Ipse.Provider.HTTPTest do
           "HTTP/1.1 #{status} Fixture\r\ncontent-type: text/event-stream\r\n#{response_headers}content-length: #{byte_size(body)}\r\nconnection: close\r\n\r\n"
 
         :ok = :gen_tcp.send(socket, response)
-        for <<byte <- body>>, do: :ok = :gen_tcp.send(socket, <<byte>>)
+
+        if send_mode == :whole do
+          :ok = :gen_tcp.send(socket, body)
+        else
+          for <<byte <- body>>, do: :ok = :gen_tcp.send(socket, <<byte>>)
+        end
+
         :gen_tcp.close(socket)
         :gen_tcp.close(listener)
         {headers, Jason.decode!(payload)}

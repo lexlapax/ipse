@@ -203,82 +203,81 @@ below; they do not retroactively validate this earlier audit.
 
 ## P25 final-scan repair review
 
-The `b5ddd02` scan exposed two boundaries missed by the earlier internal review:
-stdin read-ahead could become a later approval, and journals had no finite durable
-growth limit. Both findings remain open for final validation; the scan predates
-the current changes and its coverage is explicitly partial.
+The P25 scans and independent delta review found gaps missed by this internal
+audit. Implementation-side inspection is one evidence layer, not independent
+architectural acceptance. The [register](architecture-review-dispositions.md#p25-final-security-triage)
+owns current dispositions; [testing](testing.md#current-evidence-and-next-checks)
+owns exact revisions, commands, failures and exclusions.
 
-The changed-path review follows actual CLI input through pending approvals and
-each question in a bundle, then follows journal admission through writer failure,
-Session termination, recovery reducers, diagnosis and handoff. It checks operator
-configuration and child routing, source offsets and host identity pins. This is
-implementation-side review, not independent architectural acceptance.
+### Operator input and journal admission
 
-Real buffered-input regressions cover both stale approval and stale structured
-answers. Fresh host-generated confirmation codes bind each display to its input;
-old codes cannot authorize another proposal or answer the next question. Full
-arguments, denial, EOF and programmatic approval/answer semantics remain intact.
+The review follows CLI read-ahead through each displayed approval/question, then
+journal admission through writer failure, Session termination, recovery reducers,
+diagnosis and handoff. It checks operator policy/child routing, physical source
+offsets, identity pins and refusal without replay. Real buffered-input regressions
+cover stale approvals and answers; fresh per-proposal/per-question codes bind
+operator input while preserving full arguments, denial, EOF and embedded APIs.
 
-Journal admission reserves a terminal receipt before accepting each normal
-record. Incremental readers enforce finite bytes, events and encoded record
-length before whole-history allocation. Recovery accepts the independently
-validated terminal record beside pending questions, and never reopens a sealed
-journal. Actual pending native/extension questions and a shell effect whose result
-crosses the bound exercise inert diagnosis/handoff and unknown outcomes.
+Finite per-file byte/event/record admission reserves a terminal receipt before
+accepting a normal append. Incremental readers refuse oversized history before
+whole-history allocation; sealed history never reopens. Pending native/extension
+questions and missing started-effect results exercise diagnosis, handoff and
+unknown outcomes. Internal probes caught tight-header read-ahead and inactive
+permission compatibility gaps. Those corrections and their failed attempts remain
+in the execution record, rather than being presented as initial success.
 
-Internal review also caught a tight header read-ahead boundary and an inactive
-append compatibility failure in the first full suite. The bounded-header check
-now succeeds without loading a sparse oversized tail. Inactive append restores
-the previous owner-only permission normalization after validation, while refusing
-hardlinks before changing permissions or contents. The failed suite is retained;
-focused corrections pass. The frozen full rerun passes 893 native-inclusive
-tests with 15 platform exclusions. Package verification and all 41 legacy/nine
-model-call assertions also pass using existing compiled artifacts. Six retained
-live-trial journals restore unchanged under the new reader, and five multibyte/
-escaped-JSON chunk-boundary probes preserve values and source offsets. These are
-local checks; hosted platforms and refreshed affected security review remain open.
-The first hosted matrix passes Linux but Mac observes the expected backpressure
-closure after the test's six-second receive deadline. The real-timer fixture now
-runs serially; neither the production five-second timer nor assertion deadline
-changes. The actual scheduling cause remains unconfirmed, and the failed matrix
-is retained rather than being treated as a successful Mac check.
+### Completion ownership and resume policy
 
-The subsequent `81b67f5` matrix passes on both hosts, but a fresh installed-Ipse
-delta review exposes two further composition failures missed by this internal
-review: inactive append's temporary writer could outlive two call timeouts, and
-CLI resume decoded full history before resolving smaller operator bounds. The
-complete private report was read; its actual source/test scope, two controller
-interruptions and missing contract reads are recorded in the
-[register](architecture-review-dispositions.md#independent-repair-delta-review).
-It is not independent whole-design acceptance.
+The fresh installed-Ipse delta review found two more failures: temporary inactive
+writers could outlive both call timeouts, and CLI resume decoded full history
+before smaller operator limits were resolved. A real-lock probe reproduced a
+late append under the next acquired lock; both regressions failed before repair.
+Synchronous tracked filesystem completion now retains ownership through fsync,
+including caller death. CLI discovery reads only a bounded header before policy
+resolution and complete-history admission. The internal follow-up checks all
+active/inactive call sites, completion tracking, close order and lowered policies.
 
-A controlled real-lock probe reproduces the first finding, including a late
-append under a subsequently acquired lock. Both new regressions fail before
-repair. Inactive operations now reuse the admission/fsync primitives synchronously
-inside a tracked filesystem completion owner; there is no temporary GenServer or
-hidden timed-out append. CLI preflight discovers a bounded header, resolves
-operator policy, then admits full history. All three inactive modes and actual
-caller-death lock retention pass; the three lowered-bound CLI cases pass with
-unchanged history. The frozen follow-up passes 896 native-inclusive tests with
-15 exclusions, both formatter floors, strict build/compile/demo and package
-verification. Existing compiled artifacts pass all 41 legacy/nine model checks.
-The exact `f467de9` hosted Linux/macOS matrix also passes its source/native/package
-and installed-artifact gates. The approved verification security scan now targets
-that unchanged candidate; refreshed coverage and triage remain open.
-The follow-up internal review checks both active and inactive call sites,
-completion-owner tracking and close order, plus header discovery versus actual
-resume validation. No new permission, billing or extension capability is added.
+These corrections passed the complete local and exact `f467de9` hosted source,
+native, package and installed matrix. Six retained trial journals restore
+unchanged; UTF-8/escaped-JSON range probes retain exact values/source offsets.
+The verification scan at `f467de9` reports no further approval/journal finding.
+Its coverage is partial; earlier independent omissions and verdicts are unchanged.
+The Mac real-timer fixture's late delivery and earlier uncertain CI causes remain
+retained. Serialization changed neither production nor assertion deadlines.
 
-Residuals are explicit: journal startup/decoded-memory and per-question prefix
-projection cost within the new per-file bounds, no whole-directory storage quota
-or same-size rewrite authentication at every append, linear bounded-ledger prefix
-hashing, fixed token reservations and unknown
-liability, whole-tree overdraw and unquarantined paid-response loss, torn-ledger
-refusal with fresh-session continuation rather than repair, exact artifact/runtime
-resume pins and no state migration/erasure contract, trusted extension/user-shell
-permissions, sequential cleanup deadlines, and remote MCP effects/session
-persistence. macOS detached descendants remain best effort. Deliberate
-service-crash cleanup remains unconfirmed and unsafe to continue; tests/proofs
-must retain that result. The older discovery flake, original normal-exit MCP
-failure and diagnostic/question close failure retain unconfirmed root causes;
-controlled repairs and later green runs do not retrospectively prove them.
+### Provider receive-side work
+
+The verification scan found a separate Medium stream-assembly resource issue.
+All four original artifact digests and the complete report were checked. A bounded
+Linux partial-line probe reproduced disproportionate work; three new admission
+regressions failed on the scanned source. This audit traces new-byte line scanning,
+reverse fragments, terminal native materialization, every field/index/call bound,
+transport counters, per-event deadline checks and error/accounting propagation.
+It checks that private thinking/signatures and call order survive completion,
+with no tool dispatch, retry or billing change after an incomplete response.
+
+Existing OTP lists/iodata/binary search and Finch/Jason suffice. The locked SDK's
+SSE parser still accumulates combined input without the required limits. OTP may
+optimize binary appends; the observed retained-line rescan, not a blanket claim
+about concatenation, supports the measured repair. All 62 provider checks pass.
+The same 4 MiB probe improves from approximately 13 seconds to 5 milliseconds
+while retaining exact bytes. This is local evidence, not a portable promise.
+The new early-abort fixture initially wrote after client closure; corrected
+send-before-abort staging preserves all existing byte-split assertions. The frozen
+full suite passes 909 native-inclusive cases with 15 platform exclusions; both
+formatter floors, strict build/compile, demo/recovery/package and old compiled
+41+9 proofs pass. Hosted verification and affected independent review remain open
+for this last correction.
+
+### Residual limits
+
+Journal startup/decoded memory and per-question projection remain bounded but
+potentially costly. There is no whole-directory storage quota, live same-size
+rewrite authentication, generic state migration/erasure or invoice ceiling.
+Ledger prefix hashing remains linear; fixed reservations, unknown liability,
+whole-tree overdraw/content loss and torn-ledger fresh-session continuation retain
+their stated policies. Trusted extensions/shell retain user permissions; cleanup
+has sequential deadlines and remote effects remain uncertain. macOS detached
+descendants are best effort. Deliberate service-crash cleanup remains unconfirmed
+and unsafe to continue. Older discovery, normal-exit MCP and diagnostic/question
+close failures retain unconfirmed root causes; later green checks do not prove them.

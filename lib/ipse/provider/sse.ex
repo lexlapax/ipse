@@ -1,47 +1,46 @@
 defmodule Ipse.Provider.SSE do
   @moduledoc "Incremental SSE parser; chunk boundaries may split lines or UTF-8 bytes."
-  defstruct buffer: "", data: [], event: nil, skip_lf: false
+  alias Ipse.Provider.{Fragments, Lines}
+  defstruct lines: %Lines{}, data: [], event: nil, data_bytes: 0, data_count: 0, events: 0
 
   def new, do: %__MODULE__{}
 
   def feed(state, chunk) do
-    parse(%{state | buffer: state.buffer <> IO.iodata_to_binary(chunk)}, [])
+    with {:ok, lines, parser} <- Lines.feed(state.lines, IO.iodata_to_binary(chunk)) do
+      Enum.reduce_while(lines, {[], %{state | lines: parser}}, fn line, {events, state} ->
+        case line(state, line, events) do
+          {:ok, state, events} -> {:cont, {events, state}}
+          error -> {:halt, error}
+        end
+      end)
+      |> case do
+        {events, state} when is_list(events) -> {Enum.reverse(events), state}
+        error -> error
+      end
+    end
   end
 
   # An unterminated event is intentionally not dispatched at EOF.
   def finish(state), do: {[], state}
 
-  defp parse(%{skip_lf: true, buffer: ""} = state, events), do: {Enum.reverse(events), state}
+  defp line(state, "", events) do
+    cond do
+      state.data == [] ->
+        {:ok, %{state | event: nil}, events}
 
-  defp parse(%{skip_lf: true, buffer: <<"\n", rest::binary>>} = state, events),
-    do: parse(%{state | skip_lf: false, buffer: rest}, events)
+      state.events >= 65_536 ->
+        Fragments.error()
 
-  defp parse(%{skip_lf: true} = state, events), do: parse(%{state | skip_lf: false}, events)
+      true ->
+        event = %{event: state.event, data: state.data |> Enum.reverse() |> Enum.join("\n")}
 
-  defp parse(state, events) do
-    case :binary.match(state.buffer, ["\n", "\r"]) do
-      :nomatch ->
-        {Enum.reverse(events), state}
-
-      {index, 1} ->
-        <<line::binary-size(^index), separator, rest::binary>> = state.buffer
-        {state, events} = line(%{state | buffer: rest, skip_lf: separator == ?\r}, line, events)
-        parse(state, events)
+        {:ok,
+         %{state | data: [], event: nil, data_bytes: 0, data_count: 0, events: state.events + 1},
+         [event | events]}
     end
   end
 
-  defp line(state, "", events) do
-    events =
-      if state.data == [],
-        do: events,
-        else: [
-          %{event: state.event, data: state.data |> Enum.reverse() |> Enum.join("\n")} | events
-        ]
-
-    {%{state | data: [], event: nil}, events}
-  end
-
-  defp line(state, <<":", _::binary>>, events), do: {state, events}
+  defp line(state, <<":", _::binary>>, events), do: {:ok, state, events}
 
   defp line(state, line, events) do
     [field | values] = :binary.split(line, ":")
@@ -53,13 +52,26 @@ defmodule Ipse.Provider.SSE do
         [] -> ""
       end
 
-    state =
-      case field do
-        "data" -> %{state | data: [value | state.data]}
-        "event" -> %{state | event: value}
-        _ -> state
-      end
+    bytes = state.data_bytes + byte_size(value) + if(state.data_count > 0, do: 1, else: 0)
 
-    {state, events}
+    case field do
+      "data" when bytes <= 8_388_608 and state.data_count < 32_768 ->
+        {:ok,
+         %{
+           state
+           | data: [value | state.data],
+             data_bytes: bytes,
+             data_count: state.data_count + 1
+         }, events}
+
+      "data" ->
+        Fragments.error()
+
+      "event" ->
+        {:ok, %{state | event: value}, events}
+
+      _ ->
+        {:ok, state, events}
+    end
   end
 end

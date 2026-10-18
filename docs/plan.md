@@ -48,15 +48,19 @@ repair, two fresh reports meet every criterion at 14/21, matching the checked
 reference. Held-out cases pass with formatting assistance; question/resume,
 compaction and cancellation controls pass after a supervisor fixture correction.
 The repair passes independent source, installed-package and hosted platform checks.
-The final one-time Security Cloud scan at `b5ddd02` reports two Medium findings
+The P25 candidate Security Cloud scan at `b5ddd02` reports two Medium findings
 and partial coverage. Its confirmation/journal repairs passed local and hosted
 checks through `81b67f5`. The required fresh architecture-delta review then found
 two integration gaps in inactive-writer ownership and resume admission; both are
 reproduced and their corrections pass local source/native/package/installed
 checks and the complete hosted Linux/macOS matrix at `f467de9`. The operator
-approved one verification security scan of that final candidate; it is now
-running with GPT-5.6 Sol/high. Refreshed affected security coverage, triage and
-trial acceptance remain open.
+approved one verification security scan of that candidate. It completed with
+GPT-5.6 Sol/high, reporting one new Medium provider-stream resource finding and
+partial static coverage; no approval/journal finding was repeated. A bounded
+assembly repair passes 62 provider checks and a before/after resource probe.
+Its frozen full native-inclusive suite passes 909 checks with 15 platform
+exclusions; local build/demo/recovery/package and old compiled proofs pass. Hosted
+verification, affected independent review and trial acceptance remain open.
 [Testing](developer/testing.md#current-evidence-and-next-checks) owns
 the exact source, failed attempts, checks and exclusions.
 The research subject is optional working/long-term memory, research, graph and

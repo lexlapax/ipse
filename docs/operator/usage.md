@@ -27,6 +27,12 @@ and denied/preflight calls still count. An excess response starts none of its
 calls and ends the turn with a budget error. Review prior outcomes before a new
 prompt; continuation of a saved question retains that turn's count.
 
+Provider responses also have finite byte, fragment, event and item limits. A
+`Provider stream limit exceeded` error refuses the incomplete answer and executes
+none of its tools. Review any text already shown and prior effects before sending
+a fresh prompt. This does not trigger a retry or provider/billing change; see the
+[response limits](../developer/provider-limits.md#host-response-admission).
+
 Open the printed **Continue with ChatGPT** URL in a browser on the same machine.
 Authorize Ipse and ChatGPT plan usage. The app listens on a temporary
 `127.0.0.1` callback port. On a remote machine, use a browser/port-forward arrangement

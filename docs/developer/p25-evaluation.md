@@ -599,12 +599,31 @@ The supervisor inspected full logs and exact source/job/step conclusions. Earlie
 receipts retain their original scope and failed attempts.
 
 After that matrix passed, the operator-approved one-time verification scan
-launched at 18:16:25 UTC against the unchanged final candidate
+ran from 18:16:25 to 18:32:42 UTC against the unchanged candidate
 `f467de9d9424d1f77d59bcff036a2e7cfec9e1e4`, run
 `wfr_abc3fbbecf49982d820b6c798513b78ed65eadd153d8b10a785c8ef15d242d20`.
-It uses explicit GPT-5.6 Sol/high and the existing private environment, with no
-secrets added or continuous monitoring enabled. The service confirms the target;
-the scan is running. Refreshed coverage, finding triage and acceptance remain
-open until the complete output is read and checked.
+It used explicit GPT-5.6 Sol/high and the existing private environment, with no
+secrets added or continuous monitoring enabled. The complete report and all four
+original artifact digests were checked. It reports one new Medium provider-stream
+resource finding, no High/Critical findings and partial coverage of 417 tracked
+paths. Major implementation/automation boundaries were reviewed; historical docs
+and remaining test bodies were not individually audited. It executed no code or
+tests. Reported usage is $30.07, fully covered by allowance, leaving $405.2560288.
+The approval/journal repairs receive refreshed static coverage without a repeated
+finding; no whole-design acceptance is inferred.
+
+The new resource issue is reproduced by retained-line input and three failing
+admission regressions on the scanned source. Bounded fragments, new-byte scanning,
+intermediate cardinality limits and in-parser deadline checks pass all 62 provider
+cases. The same 4 MiB probe improves from approximately 13 seconds to 5 milliseconds
+with exact retained bytes; this is local evidence, not a platform promise. One new
+fixture initially kept writing after the intended client abort; its corrected
+send-before-abort staging and the failed 59/60 run are retained. Original byte-split
+fixtures remain intact. This repair is supervisor work and is not additional
+Ipse-authorship credit. The frozen full suite passes 909 native-inclusive checks with 15 exclusions,
+strict build/compile, both actual formatter floors, demo and unchanged recovery of
+six trial journals. Package verification and old compiled 41+9 proofs pass with
+archive SHA-256 `8b4790b923d33ce08389fe88d2d99e5b55861e7c250a74b395df238905cb79f2`. Hosted verification, affected
+independent review and trial acceptance remain open; no further Cloud run is launched.
 The researched P26/P27 proposal is in the [knowledge design](knowledge-extensions.md);
 no production engine is installed. The requested license transition remains open.

@@ -25,14 +25,18 @@ defmodule Ipse.Provider.HTTP do
 
         Ipse.HTTPProfile.with_finch(
           fn finch ->
+            deadline = System.monotonic_time(:millisecond) + timeout
+            state = if is_map(state), do: Map.put(state, :stream_deadline, deadline), else: state
+
             acc = %{
               state: state,
               status: nil,
               headers: [],
               bytes: 0,
+              chunks: 0,
               body: "",
               error: nil,
-              deadline: System.monotonic_time(:millisecond) + timeout
+              deadline: deadline
             }
 
             request =
@@ -107,20 +111,25 @@ defmodule Ipse.Provider.HTTP do
   end
 
   defp consume_event({:data, bytes}, acc, limit, consume) do
-    if acc.bytes + byte_size(bytes) > limit do
-      byte_limit(acc)
-    else
-      acc = %{acc | bytes: acc.bytes + byte_size(bytes)}
+    cond do
+      acc.chunks >= 131_072 ->
+        {:halt, %{acc | error: Ipse.Provider.Fragments.error()}}
 
-      if acc.status in 200..299 do
-        case consume.(acc.state, bytes) do
-          {:ok, next} -> {:cont, %{acc | state: next}}
-          {:error, _} = error -> {:halt, %{acc | error: error}}
+      acc.bytes + byte_size(bytes) > limit ->
+        byte_limit(acc)
+
+      true ->
+        acc = %{acc | bytes: acc.bytes + byte_size(bytes), chunks: acc.chunks + 1}
+
+        if acc.status in 200..299 do
+          case consume.(acc.state, bytes) do
+            {:ok, next} -> {:cont, %{acc | state: next}}
+            {:error, _} = error -> {:halt, %{acc | error: error}}
+          end
+        else
+          retained = min(byte_size(bytes), max(@error_bytes - byte_size(acc.body), 0))
+          {:cont, %{acc | body: acc.body <> binary_part(bytes, 0, retained)}}
         end
-      else
-        retained = min(byte_size(bytes), max(@error_bytes - byte_size(acc.body), 0))
-        {:cont, %{acc | body: acc.body <> binary_part(bytes, 0, retained)}}
-      end
     end
   end
 

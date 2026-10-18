@@ -1,9 +1,12 @@
-# Provider output ceilings
+# Provider generation and response limits
 
 `Ipse.Provider.Limits` validates an optional `max_output_tokens` before Session
 creation and before the normal provider dispatcher opens a request. Configuration
 and profile validation use the same contract. This is P23's per-request output
 control, not a shared request/token/money budget or a reservation ledger.
+Separately, host response admission bounds incoming bytes, intermediate parser
+state and processing cardinality for every provider, including subscription
+requests. A generation ceiling does not replace these receive-side controls.
 
 ## Public interface and wire mapping
 
@@ -77,12 +80,55 @@ request/input-reservation/estimated-money quotas remain independently selectable
 [Accounted extension text requests](extension-model-calls.md) narrow these ceilings
 through their selected profile and owner policy as well.
 
+## Host response admission
+
+The HTTP adapter uses the existing Finch/Mint stream callbacks for every status.
+It receives at most 8 MiB, or a smaller explicit `max_response_bytes` bound, and
+131,072 data chunks. Error bodies retain only their bounded diagnostic prefix.
+These are host ceilings, not provider generation parameters or invoice limits.
+
+SSE and Ollama JSON-lines parsing share a bounded line accumulator. It searches
+only newly received bytes, retains reverse-order fragments and joins a line once
+at its delimiter. OpenAI arguments, Anthropic text/tool JSON/thinking/signatures
+and Ollama text/thinking similarly materialize once into the completed native
+response. Ollama retains call batches in reverse order until completion.
+
+| Resource | Hard ceiling |
+| --- | --- |
+| Partial line, joined SSE data or one accumulated field | 8 MiB |
+| Nonempty fragments per partial line or accumulated field | 32,768 |
+| Data lines in one SSE event | 32,768 |
+| Parsed lines per response | 131,072 |
+| SSE events / decoded provider events per response | 65,536 each |
+| Output items or Anthropic blocks | 256; indexes 0–255 |
+| Tool calls in a provider response | 32, including incremental Ollama batches |
+
+The first applicable ceiling wins. The existing request deadline is also checked
+before each decoded provider event, rather than only between HTTP callbacks.
+Exceeded limits refuse the incomplete response; they do not truncate it into a
+successful assistant message or dispatch its tools. Already displayed text cannot
+be retracted. Usage already reported stays accounted; unavailable final usage
+retains the normal unknown-liability policy. No automatic retry, provider switch
+or wider generation setting follows a refusal.
+
+CR, LF, split CRLF/UTF-8 and SSE multiline data retain their wire semantics. SSE
+EOF never invents an event; Ollama can finish its final JSON line without LF.
+Original native reasoning/signatures and call order survive successful assembly;
+private thinking is not emitted as visible text. The implementation uses existing
+OTP binary/list facilities, not a new transport or dependency. OTP can optimize
+some [binary appends](https://www.erlang.org/doc/system/binaryhandling.html);
+the repair does not assume that every concatenation copies. A retained-line
+rescan probe reproduced disproportionate work, which scanning new bytes avoids.
+
 ## Verification scope
 
 Credential-free fixtures check configuration precedence/refusal, profile and child
 ceilings, normal/summary request bodies over real local HTTP, omitted-field parity,
 explicit Ollama truncation with usage and no tool admission, and embedded idle
-resume plus pre-repair policy mismatch. They establish Ipse's protocol behavior,
+resume plus pre-repair policy mismatch. Adversarial stream fixtures cover partial
+lines, ignored/multiline work, field fragments/bytes, item/block/call cardinality,
+deadline refusal and success/error-status chunk exhaustion before EOF. Native
+continuation and split-byte cases remain checked. They establish Ipse's protocol behavior,
 not live model/account enforcement. No paid inference, new package or rate service
 is required. See [actual verification](testing.md#current-evidence-and-next-checks)
 and [operator configuration](../operator/configuration.md).

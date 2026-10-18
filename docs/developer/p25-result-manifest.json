@@ -358,15 +358,37 @@
       "usage_usd": "22.8826316"
     },
     "verification": {
+      "allowance_coverage": "full",
+      "completed_at": "2026-10-18T18:32:42.081352Z",
       "continuous_monitoring": false,
-      "coverage": "not_yet_available",
+      "coverage": "partial",
       "created_at": "2026-10-18T18:16:25.031384Z",
-      "findings_triage": "pending",
+      "finding_counts": {
+        "critical": 0,
+        "high": 0,
+        "medium": 1
+      },
+      "finding_ids": [
+        "csf_3bd48e9866059c02fcc3e7b7"
+      ],
+      "findings_triage": "provider_stream_repair_in_validation",
+      "historical_docs_and_remaining_test_bodies_deferred": true,
       "model": "gpt-5.6-sol",
       "one_time_explicitly_approved": true,
+      "private_receipt": "final-security/verification/checked-receipt.json",
       "reasoning_effort": "high",
+      "receipt_sha256": "6079b3188d6e1e229c5aaa96deae03852309870e6f5060906851b4753c91bfdb",
+      "remaining_allowance_usd": "405.2560288",
+      "reported_usage_usd": "30.07",
       "run_id": "wfr_abc3fbbecf49982d820b6c798513b78ed65eadd153d8b10a785c8ef15d242d20",
-      "status": "running",
+      "runtime_execution_by_scan": false,
+      "service_artifact_sha256": {
+        "coverage.json": "e041a83afa8f5e87d8404beff26df6598ed132b1d482110990bef2619ef68e51",
+        "findings.json": "4eace478527c41f2ce6375f474033c3b17a1798427f174ae3156869f902612ce",
+        "report.md": "0e16de834437409606b986a25c8f2b0917f4e53d38289038901951aa33d9ab00",
+        "scan-manifest.json": "c4961dbca097df65d805b262132e1b19ac350f50c25805e928b4932fa56d510e"
+      },
+      "status": "completed_with_finding",
       "target_commit_sha": "f467de9d9424d1f77d59bcff036a2e7cfec9e1e4"
     }
   },
@@ -384,9 +406,35 @@
     "parent_revision": "81b67f5264455043758e2d05828d2fa314be0705",
     "private_receipt": "final-security/validation/delta-final-checked-receipt.json",
     "receipt_sha256": "a6b4cac98b543ab1ab0693b4e529b4c8cccad363d243f9a31a786c878834aee8",
-    "refreshed_security_review": "running",
+    "refreshed_security_review": "completed_at_f467de9_with_separate_provider_finding",
     "runtime_diff_sha256": "11092e9ea8e872e084750a2ca9d58a63cdea4a479c7a55a148f9427ef8276197",
     "runtime_revision": "f467de9d9424d1f77d59bcff036a2e7cfec9e1e4"
+  },
+  "security_provider_validation": {
+    "affected_independent_review": "pending",
+    "archive_sha256": "8b4790b923d33ce08389fe88d2d99e5b55861e7c250a74b395df238905cb79f2",
+    "full_native_platform_package_checks": "local_passed_hosted_pending",
+    "initial_new_regressions_failed_before_repair": 3,
+    "local_native_passed": 909,
+    "local_package_and_old_compiled_proofs": "passed",
+    "local_platform_exclusions": 15,
+    "local_provider_checks_passed": 62,
+    "new_cloud_run": false,
+    "private_receipt": "final-security/verification/validation/checked-receipt.json",
+    "receipt_sha256": "53764dcde2d9059e8fdb9db50d2aa1c15f4c22cb1bfb11faf81f3c3ff3d26b22",
+    "runtime_and_test_files_sha256": {
+      "lib/ipse/provider/anthropic.ex": "12487ea871b0e550ec394022e509344253af0ebe72b65f15bbe4f55feaceae16",
+      "lib/ipse/provider/fragments.ex": "3323e934743ce8e4e5ce60ff7196971802765899d9468b46d94b123c4392f9db",
+      "lib/ipse/provider/http.ex": "fe9009fa0932e9245c7f7866f7fcce15353b92013ea3d87d4288e85cb4b36951",
+      "lib/ipse/provider/lines.ex": "01b9e692c675eef388c85ab96e5379a4e656db9a5139b43529c2e4d52ea1f60a",
+      "lib/ipse/provider/ollama.ex": "d6c73b271df18e7eccbfa99b5d4a90814963e598f67d67a8cad943007d665237",
+      "lib/ipse/provider/openai.ex": "c237ab3f35a4b80a1108b1151b0fd71627447939ffc0bed4b91d9ded32850a11",
+      "lib/ipse/provider/sse.ex": "9e50ea0d337a89b4aab9764fab603b32e5c8139cae23c6271a8e4dd85961ab60",
+      "test/provider/http_test.exs": "d70a2260eb155c7700a964eeadd5c43c1ca741cb0656d44b380832d422655537",
+      "test/provider/stream_bounds_test.exs": "9664be62b7ad3776ec3e03d9168a07229f5b847c5cb755d5cfc5f620e8f8774c"
+    },
+    "scanned_parent": "f467de9d9424d1f77d59bcff036a2e7cfec9e1e4",
+    "supervisor_authored": true
   },
   "security_repair_validation": {
     "archive_sha256": "d5d6636355bbc498ac058b72a0c42c1c1f738fdeae73cdc21aa8feb0795f7bd7",
@@ -400,7 +448,7 @@
     "parent_revision": "641dcaefd5c1e7cfd58204e1997ee9211adc2721",
     "private_receipt": "final-security/validation/checked-receipt.json",
     "receipt_sha256": "58882c14b292f0f49e5cbfdf4eef36f49d672509ab9d5a81979cf8f03461e4c6",
-    "refreshed_security_review": "running_on_final_followup_source",
+    "refreshed_security_review": "verified_at_f467de9",
     "retained_trial_journals_restore_unchanged": 6,
     "runtime_revision": "e021a8fa267e260d5c88e9ef69652f18b6fc789c",
     "utf8_escape_boundary_probes": 5
@@ -423,5 +471,5 @@
       "scope": "material_claim_checks_and_discrepancy_dispositions"
     }
   ],
-  "status": "final_verification_security_scan_running"
+  "status": "provider_stream_security_repair_pending"
 }

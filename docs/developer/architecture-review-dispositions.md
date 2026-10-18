@@ -22,8 +22,9 @@ Raw artifacts and reproduction details remain private.
 
 | ID | Surface | Current disposition | Required gate |
 | --- | --- | --- | --- |
-| FSC-1 (`csf_d8fb991afccccf6790b8e749`) | Proposal-bound terminal confirmations | Reproduced with a real CLI/loopback fixture. Fresh per-proposal codes prevent buffered/replayed input. Internal review also reproduced buffered structured answers; per-question codes fix that adjacent case. All 30 CLI tests and the full local handoff pass | Hosted final-candidate checks pass; refreshed affected security review and triage remain open |
-| FSC-2 (`csf_07c9aa59e131a3393e3639f5`) | Durable journal growth and bounded recovery/listing | The bounded fixture fails on the prior implementation and passes with finite operator-narrowable limits, a reserved terminal receipt, incremental decoding and header-only listing. Seven quota/checkpoint fixtures pass, including pending native/extension questions, missing started-effect results, sparse legacy files and a tight header boundary. Full local handoff and existing compiled extension proofs pass | Hosted final-candidate checks pass; refreshed affected security review and triage remain open |
+| FSC-1 (`csf_d8fb991afccccf6790b8e749`) | Proposal-bound terminal confirmations | Reproduced with a real CLI/loopback fixture. Fresh per-proposal codes prevent buffered/replayed input. Internal review also reproduced buffered structured answers; per-question codes fix that adjacent case. All 30 CLI tests, full local handoff and hosted `f467de9` checks pass | Closed within the tested scope and refreshed static approval review at `f467de9`; no whole-design certification |
+| FSC-2 (`csf_07c9aa59e131a3393e3639f5`) | Durable journal growth and bounded recovery/listing | Finite operator-narrowable limits, a reserved terminal receipt, incremental decoding and header-only listing pass quota/question/unknown-effect fixtures, full local handoff, old compiled proofs and hosted `f467de9` checks. Independent delta findings below are also reproduced and repaired | Closed within bounded per-file policy and refreshed static persistence review at `f467de9`; total-directory storage and other stated limits remain |
+| FSC-3 (`csf_3bd48e9866059c02fcc3e7b7`), Medium | Provider stream assembly and intermediate work | A retained-line probe reproduces disproportionate work. Three new admission regressions fail on the scanned source. The candidate uses reverse fragments, new-byte line scanning, finite event/item/call limits and in-parser deadline checks; all 62 provider cases pass | Local full native/package checks pass; hosted verification and affected independent review remain open |
 
 The scan prioritizes major runtime boundaries but defers full file-level review
 of parts of Session, budget/accounting, compaction, lifecycle, text delivery,
@@ -33,12 +34,28 @@ hosted source/native/installed receipts. The earlier baseline's coverage and
 independent architecture omissions retain their own identities; they are not
 silently expanded by this report. P25 remains open through repair and affected
 coverage refresh. After both hosted jobs passed, the operator-approved one-time
-verification scan launched at 18:16:25 UTC against
+verification scan ran from 18:16:25 to 18:32:42 UTC against
 `f467de9d9424d1f77d59bcff036a2e7cfec9e1e4`, run
 `wfr_abc3fbbecf49982d820b6c798513b78ed65eadd153d8b10a785c8ef15d242d20`.
-It explicitly selects GPT-5.6 Sol/high and the existing private environment;
-continuous monitoring remains off. Launch and the pinned revision are verified;
-no result, coverage or acceptance is inferred before its artifacts are checked.
+It explicitly selected GPT-5.6 Sol/high and the existing private environment;
+continuous monitoring remains off. All four original artifact digests, the exact
+revision and the single unfiltered canonical finding match. The complete report
+was read. It records one new Medium finding, no High/Critical findings, and partial
+coverage of 417 tracked paths: implementation/automation surfaces were reviewed,
+while historical docs and remaining test bodies were not individually audited.
+No code, tests or OS enforcement ran in the scan. Reported usage is $30.07,
+fully covered by allowance; $405.2560288 remains. No further Cloud run is launched.
+
+The resource probe uses identical fragmented partial-line input on Linux: 1/2/4 MiB
+took approximately 0.63/3.33/12.97 seconds before repair and 2.75/2.59/4.86
+milliseconds afterward, retaining exact bytes. This is a local controlled probe,
+not a portable latency guarantee. OTP can optimize some binary appends; the
+observed rescan and list/field accumulation justify the repair without asserting
+that every concatenation copies. A first expanded provider run passed 59/60: its
+new rejection fixture continued byte writes after the intended client abort.
+Sending that fixture's bounded body before awaiting closure corrects staging;
+existing split-byte fixtures and assertions remain. Corrected provider runs pass
+60, then 62 cases after adding success/error chunk-exhaustion coverage.
 
 ### Independent repair-delta review
 
@@ -60,8 +77,8 @@ reads; both explicit continuations and cumulative limits are retained. The
 
 | ID | Finding and evidence | Candidate correction and gate |
 | --- | --- | --- |
-| P25-DA1, Medium | Inactive append could return after two writer-call timeouts while its temporary writer retained a queued mutation. A controlled real-lock probe reproduced a late append under the next owner's acquired lock; the regression fails before repair | Reuse admission/fsync synchronously inside a tracked filesystem completion owner, with no temporary GenServer or hidden cleanup timeout. All three append modes retain the real lock across a delayed mutation; a caller-death fixture verifies guardian retention. Full local native/package and exact `f467de9` hosted checks pass; affected security coverage and triage remain required |
-| P25-DA2, Medium | CLI resume called whole-history load before resolving lowered operator journal limits. Tracing the real CLI reproduces the default-policy full load; the regression fails before repair | Discover only a bounded header, then resolve operator policy before full Session loading. Byte, event and record-bound cases pass with unchanged history. Full local native/package and exact `f467de9` hosted checks pass; affected security coverage and triage remain required |
+| P25-DA1, Medium | Inactive append could return after two writer-call timeouts while its temporary writer retained a queued mutation. A controlled real-lock probe reproduced a late append under the next owner's acquired lock; the regression fails before repair | Reuse admission/fsync synchronously inside a tracked filesystem completion owner, with no temporary GenServer or hidden cleanup timeout. All three append modes retain the real lock across a delayed mutation; a caller-death fixture verifies guardian retention. Closed within the tested scope: full local native/package, exact `f467de9` hosted checks and refreshed static persistence review pass |
+| P25-DA2, Medium | CLI resume called whole-history load before resolving lowered operator journal limits. Tracing the real CLI reproduces the default-policy full load; the regression fails before repair | Discover only a bounded header, then resolve operator policy before full Session loading. Byte, event and record-bound cases pass with unchanged history. Closed within the tested scope: full local native/package, exact `f467de9` hosted checks and refreshed static persistence review pass |
 
 The returned interruption/combination test ideas remain coverage limitations,
 not additional reproduced defects. No findings are promoted to closed on source
@@ -69,7 +86,9 @@ inspection alone. The successful `81b67f5` hosted matrix covers the reviewed cod
 The subsequent corrections now pass the complete `f467de9` Linux/macOS matrix,
 including native enforcement and 50 installed assertions per host; the
 [verification record](testing.md#current-evidence-and-next-checks) retains exact
-counts and exclusions. Refreshed affected security review remains open.
+counts and exclusions. The `f467de9` scan's persistence review reports no further
+finding; these two dispositions are closed within that scope. The provider-stream
+finding is separate and its repair is not covered by the earlier scanned bytes.
 
 ## Provenance and coverage
 

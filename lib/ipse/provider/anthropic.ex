@@ -1,6 +1,6 @@
 defmodule Ipse.Provider.Anthropic do
   @moduledoc "Anthropic Messages streaming adapter with native content replay."
-  alias Ipse.Provider.{HTTP, SSE}
+  alias Ipse.Provider.{Fragments, HTTP, SSE}
 
   def endpoint(config),
     do: Ipse.Provider.endpoint(config, "https://api.anthropic.com", "/v1/messages")
@@ -104,20 +104,18 @@ defmodule Ipse.Provider.Anthropic do
   defp native(message), do: Map.take(message, ["role", "content"])
 
   def consume(state, chunk, emit) do
-    {events, parser} = SSE.feed(state.sse, chunk)
-
-    Enum.reduce_while(events, {:ok, %{state | sse: parser}}, fn event, {:ok, state} ->
-      case Jason.decode(event.data) do
-        {:ok, data} ->
-          case event(state, data, emit) do
-            {:ok, state} -> {:cont, {:ok, state}}
-            error -> {:halt, error}
-          end
-
-        _ ->
-          {:halt, {:error, "Invalid JSON in Anthropic stream."}}
-      end
-    end)
+    with {events, parser} when is_list(events) <- SSE.feed(state.sse, chunk) do
+      Enum.reduce_while(events, {:ok, %{state | sse: parser}}, fn event, {:ok, state} ->
+        with {:ok, state} <- Fragments.tick(state),
+             {:ok, data} when is_map(data) <- Jason.decode(event.data),
+             {:ok, state} <- event(state, data, emit) do
+          {:cont, {:ok, state}}
+        else
+          {:error, message} when is_binary(message) -> {:halt, {:error, message}}
+          _ -> {:halt, {:error, "Invalid JSON in Anthropic stream."}}
+        end
+      end)
+    end
   end
 
   defp event(_, %{"type" => "error"}, _),
@@ -141,13 +139,12 @@ defmodule Ipse.Provider.Anthropic do
          %{"type" => "content_block_start", "index" => index, "content_block" => block},
          _
        ),
-       do: {:ok, %{state | blocks: Map.put(state.blocks, index, block)}}
+       do: put_block(state, index, block)
 
   defp event(state, %{"type" => "content_block_delta", "index" => index, "delta" => delta}, emit) do
     {field, value} =
       case delta["type"] do
         "text_delta" ->
-          emit.({:text, delta["text"]})
           {"text", delta["text"]}
 
         "input_json_delta" ->
@@ -164,8 +161,14 @@ defmodule Ipse.Provider.Anthropic do
       end
 
     if field do
-      block = Map.get(state.blocks, index, %{}) |> Map.update(field, value, &(&1 <> value))
-      {:ok, %{state | blocks: Map.put(state.blocks, index, block)}}
+      with true <- Fragments.index?(index),
+           {:ok, block} <- Fragments.update(Map.get(state.blocks, index, %{}), field, value),
+           {:ok, state} <- put_block(state, index, block) do
+        if field == "text", do: emit.({:text, value})
+        {:ok, state}
+      else
+        _ -> Fragments.error()
+      end
     else
       {:ok, state}
     end
@@ -192,7 +195,7 @@ defmodule Ipse.Provider.Anthropic do
       state.blocks
       |> Enum.sort_by(&elem(&1, 0))
       |> Enum.map(fn {_, block} ->
-        case Map.pop(block, "__json") do
+        case Map.pop(Fragments.materialize(block), "__json") do
           {nil, block} -> block
           {json, block} -> Map.put(block, "input", Jason.decode!(json))
         end
@@ -227,4 +230,16 @@ defmodule Ipse.Provider.Anthropic do
   end
 
   def finish(_), do: {:error, "Anthropic response was incomplete; no tools were executed."}
+
+  defp put_block(state, index, block) do
+    if Fragments.index?(index) and is_map(block) do
+      blocks = Map.put(state.blocks, index, block)
+
+      if Fragments.items?(Map.values(blocks), "tool_use"),
+        do: {:ok, %{state | blocks: blocks}},
+        else: Fragments.error()
+    else
+      Fragments.error()
+    end
+  end
 end

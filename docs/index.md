@@ -68,7 +68,7 @@ start. Use the guides below for operation, development, and project context.
 | [Model-call artifact example](../examples/model-calls/README.md) | Independent SDK artifact with the same credential-free source/unchanged-package proof and no system development toolchain at runtime |
 | [Runtime capability boundaries](developer/runtime-capabilities.md) | Framework comparison, usage/cost facts, text/voice streams and core versus extension ownership |
 | [Usage accounting](developer/usage-accounting.md) | Canonical facts, granted own-session/registered-child pages and cached/source recovery validation |
-| [Provider output ceilings](developer/provider-limits.md) | Explicit supported request caps, subscription refusal, child narrowing, truncation and pinned resume |
+| [Provider generation and response limits](developer/provider-limits.md) | Explicit request caps, subscription refusal, child narrowing, pinned resume and bounded incoming stream assembly |
 | [Configured cost estimates](developer/costs.md) | Versioned rate cards, page/session/tree extensions, cumulative aggregation and separation from host admission |
 | [Shared budget contract](developer/budgets.md) | Atomic main/summary/child reservations, protected ledger, live ownership, source validation and conservative settlement |
 | [Private text streams](developer/text-streams.md) | Optional/required embedded/worker delivery, acknowledgment, pressure, ownership and ephemeral recovery |

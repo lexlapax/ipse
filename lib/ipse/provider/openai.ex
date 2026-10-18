@@ -1,6 +1,6 @@
 defmodule Ipse.Provider.OpenAI do
   @moduledoc "Stateless Responses API adapter; retains native reasoning and function call items."
-  alias Ipse.Provider.{HTTP, SSE}
+  alias Ipse.Provider.{Fragments, HTTP, SSE}
 
   def endpoint(config),
     do: Ipse.Provider.endpoint(config, "https://api.openai.com/v1", "/responses")
@@ -122,20 +122,18 @@ defmodule Ipse.Provider.OpenAI do
     do: %{sse: SSE.new(), response: nil, items: %{}, terminal: false, provider: provider}
 
   def consume(state, chunk, emit) do
-    {events, parser} = SSE.feed(state.sse, chunk)
-
-    Enum.reduce_while(events, {:ok, %{state | sse: parser}}, fn event, {:ok, state} ->
-      case Jason.decode(event.data) do
-        {:ok, data} ->
-          case event(state, data, emit) do
-            {:ok, next} -> {:cont, {:ok, next}}
-            error -> {:halt, error}
-          end
-
-        _ ->
-          {:halt, {:error, "Invalid JSON in provider stream."}}
-      end
-    end)
+    with {events, parser} when is_list(events) <- SSE.feed(state.sse, chunk) do
+      Enum.reduce_while(events, {:ok, %{state | sse: parser}}, fn event, {:ok, state} ->
+        with {:ok, state} <- Fragments.tick(state),
+             {:ok, data} when is_map(data) <- Jason.decode(event.data),
+             {:ok, next} <- event(state, data, emit) do
+          {:cont, {:ok, next}}
+        else
+          {:error, message} when is_binary(message) -> {:halt, {:error, message}}
+          _ -> {:halt, {:error, "Invalid JSON in provider stream."}}
+        end
+      end)
+    end
   end
 
   defp event(state, %{"type" => "response.output_text.delta", "delta" => delta}, emit) do
@@ -148,7 +146,7 @@ defmodule Ipse.Provider.OpenAI do
          %{"type" => "response.output_item.added", "output_index" => index, "item" => item},
          _
        ) do
-    {:ok, %{state | items: Map.put(state.items, index, item)}}
+    put_item(state, index, item)
   end
 
   defp event(
@@ -160,9 +158,12 @@ defmodule Ipse.Provider.OpenAI do
          },
          _
        ) do
-    item = Map.get(state.items, index, %{})
-    item = Map.update(item, "arguments", delta, &(&1 <> delta))
-    {:ok, %{state | items: Map.put(state.items, index, item)}}
+    with true <- Fragments.index?(index),
+         {:ok, item} <- Fragments.update(Map.get(state.items, index, %{}), "arguments", delta) do
+      put_item(state, index, item)
+    else
+      _ -> Fragments.error()
+    end
   end
 
   defp event(
@@ -170,16 +171,19 @@ defmodule Ipse.Provider.OpenAI do
          %{"type" => "response.output_item.done", "output_index" => index, "item" => item},
          _
        ) do
-    {:ok, %{state | items: Map.put(state.items, index, item)}}
+    put_item(state, index, item)
   end
 
   defp event(state, %{"type" => "response.completed", "response" => response}, emit) do
     emit.({:provider_usage, response["usage"]})
 
-    if response["status"] in [nil, "completed"] do
+    if response["status"] in [nil, "completed"] and
+         (is_nil(response["output"]) or Fragments.items?(response["output"], "function_call")) do
       {:ok, %{state | terminal: true, response: response}}
     else
-      {:error, "OpenAI response did not complete."}
+      if response["status"] in [nil, "completed"],
+        do: Fragments.error(),
+        else: {:error, "OpenAI response did not complete."}
     end
   end
 
@@ -202,7 +206,7 @@ defmodule Ipse.Provider.OpenAI do
     output =
       case response["output"] do
         value when value in [nil, []] ->
-          items |> Enum.sort_by(&elem(&1, 0)) |> Enum.map(&elem(&1, 1))
+          items |> Enum.sort_by(&elem(&1, 0)) |> Enum.map(&Fragments.materialize(elem(&1, 1)))
 
         value ->
           value
@@ -240,6 +244,18 @@ defmodule Ipse.Provider.OpenAI do
 
   def finish(_),
     do: {:error, "OpenAI stream ended before response.completed; no tools were executed."}
+
+  defp put_item(state, index, item) do
+    if Fragments.index?(index) and is_map(item) do
+      items = Map.put(state.items, index, item)
+
+      if Fragments.items?(Map.values(items), "function_call"),
+        do: {:ok, %{state | items: items}},
+        else: Fragments.error()
+    else
+      Fragments.error()
+    end
+  end
 
   defp put_reported_model(message, model) do
     case Ipse.RuntimeInfo.model_name(model) do

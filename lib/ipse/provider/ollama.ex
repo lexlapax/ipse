@@ -1,6 +1,6 @@
 defmodule Ipse.Provider.Ollama do
   @moduledoc "Ollama native streaming chat adapter."
-  alias Ipse.Provider.HTTP
+  alias Ipse.Provider.{Fragments, HTTP, Lines}
 
   def endpoint(config), do: Ipse.Provider.endpoint(config, "http://127.0.0.1:11434", "/api/chat")
 
@@ -52,10 +52,11 @@ defmodule Ipse.Provider.Ollama do
       end
 
     state = %{
-      buffer: "",
-      content: "",
-      thinking: "",
+      lines: Lines.new(:lf),
+      content: Fragments.new(),
+      thinking: Fragments.new(),
       calls: [],
+      call_count: 0,
       done: false,
       usage: %{},
       reported_model: nil
@@ -73,9 +74,12 @@ defmodule Ipse.Provider.Ollama do
          {:ok, state} <- last_line(state, emit) do
       if state.done do
         response_id = :crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower)
+        content = Fragments.value(state.content)
+        thinking = Fragments.value(state.thinking)
+        native_calls = Enum.reverse(state.calls)
 
         calls =
-          Enum.with_index(state.calls)
+          Enum.with_index(native_calls)
           |> Enum.map(fn {call, index} ->
             %{
               "id" => call["id"] || "ollama_#{response_id}_#{index}",
@@ -89,14 +93,14 @@ defmodule Ipse.Provider.Ollama do
 
         native = %{
           "role" => "assistant",
-          "content" => state.content,
-          "thinking" => state.thinking,
-          "tool_calls" => state.calls
+          "content" => content,
+          "thinking" => thinking,
+          "tool_calls" => native_calls
         }
 
         message = %{
           "role" => "assistant",
-          "content" => state.content,
+          "content" => content,
           "provider_data" => %{"provider" => "ollama", "message" => native}
         }
 
@@ -136,22 +140,24 @@ defmodule Ipse.Provider.Ollama do
   end
 
   defp consume(state, chunk, emit) do
-    parts = :binary.split(state.buffer <> chunk, "\n", [:global])
-    {lines, [buffer]} = Enum.split(parts, -1)
-
-    Enum.reduce_while(lines, {:ok, %{state | buffer: buffer}}, fn line, {:ok, state} ->
-      case line(state, line, emit) do
-        {:ok, state} -> {:cont, {:ok, state}}
-        error -> {:halt, error}
-      end
-    end)
+    with {:ok, lines, parser} <- Lines.feed(state.lines, chunk) do
+      Enum.reduce_while(lines, {:ok, %{state | lines: parser}}, fn line, {:ok, state} ->
+        case line(state, line, emit) do
+          {:ok, state} -> {:cont, {:ok, state}}
+          error -> {:halt, error}
+        end
+      end)
+    end
   end
 
-  defp last_line(%{buffer: ""} = state, _), do: {:ok, state}
-  defp last_line(state, emit), do: line(state, state.buffer, emit)
+  defp last_line(state, emit), do: line(state, Lines.tail(state.lines), emit)
   defp line(state, "", _), do: {:ok, state}
 
   defp line(state, line, emit) do
+    with {:ok, state} <- Fragments.tick(state), do: decode_line(state, line, emit)
+  end
+
+  defp decode_line(state, line, emit) do
     case Jason.decode(line) do
       {:ok, %{"error" => _}} ->
         {:error, "Ollama rejected the request. Check the model is installed and supports tools."}
@@ -159,7 +165,7 @@ defmodule Ipse.Provider.Ollama do
       {:ok, data} when is_map(data) ->
         message = data["message"] || %{}
         delta = message["content"] || ""
-        if delta != "", do: emit.({:text, delta})
+        calls = message["tool_calls"] || []
 
         usage =
           if data["done"],
@@ -177,16 +183,26 @@ defmodule Ipse.Provider.Ollama do
           {:error,
            "Ollama reached a generation limit; the response is incomplete and no tools were executed."}
         else
-          {:ok,
-           %{
-             state
-             | content: state.content <> delta,
-               thinking: state.thinking <> (message["thinking"] || ""),
-               calls: state.calls ++ (message["tool_calls"] || []),
-               done: state.done or data["done"] == true,
-               usage: usage,
-               reported_model: Ipse.RuntimeInfo.model_name(data["model"]) || state.reported_model
-           }}
+          with true <- is_list(calls) and length(Enum.take(calls, 33)) + state.call_count <= 32,
+               {:ok, content} <- Fragments.append(state.content, delta),
+               {:ok, thinking} <- Fragments.append(state.thinking, message["thinking"] || "") do
+            if delta != "", do: emit.({:text, delta})
+
+            {:ok,
+             %{
+               state
+               | content: content,
+                 thinking: thinking,
+                 calls: Enum.reverse(calls, state.calls),
+                 call_count: state.call_count + length(calls),
+                 done: state.done or data["done"] == true,
+                 usage: usage,
+                 reported_model:
+                   Ipse.RuntimeInfo.model_name(data["model"]) || state.reported_model
+             }}
+          else
+            _ -> Fragments.error()
+          end
         end
 
       _ ->
