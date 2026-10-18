@@ -1,5 +1,7 @@
 defmodule Ipse.TextStreamTest do
-  use ExUnit.Case, async: true
+  # These cases exercise real broker deadlines; keep competing fixture load out
+  # of the timer assertions without changing the production or test deadlines.
+  use ExUnit.Case, async: false
   alias Ipse.{TextStream, Usage}
 
   setup do

@@ -237,6 +237,11 @@ model-call assertions also pass using existing compiled artifacts. Six retained
 live-trial journals restore unchanged under the new reader, and five multibyte/
 escaped-JSON chunk-boundary probes preserve values and source offsets. These are
 local checks; hosted platforms and refreshed affected security review remain open.
+The first hosted matrix passes Linux but Mac observes the expected backpressure
+closure after the test's six-second receive deadline. The real-timer fixture now
+runs serially; neither the production five-second timer nor assertion deadline
+changes. The actual scheduling cause remains unconfirmed, and the failed matrix
+is retained rather than being treated as a successful Mac check.
 
 Residuals are explicit: journal startup/decoded-memory and per-question prefix
 projection cost within the new per-file bounds, no whole-directory storage quota
