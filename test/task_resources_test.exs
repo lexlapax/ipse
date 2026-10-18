@@ -165,6 +165,39 @@ defmodule Ipse.TaskResourcesTest do
     end
   end
 
+  test "completed stdio helpers are awaited without writing into their closing input", c do
+    path = Path.join(c.root, "closing-input-helper")
+
+    File.write!(
+      path,
+      "#!/bin/sh\nsleep 0.1\nexec 0<&-\nprintf '\\130\\000\\000\\000\\002{}'\nsleep 0.2\n"
+    )
+
+    File.chmod!(path, 0o700)
+    previous = System.get_env("IPSE_RUNNER_PATH")
+    System.put_env("IPSE_RUNNER_PATH", path)
+
+    try do
+      scoped(fn ->
+        {:ok, transport} =
+          Ipse.MCP.Transport.start_link(
+            owner: self(),
+            cleanup_owner: self(),
+            cleanup_scope: Ipse.TaskResources.current(),
+            cwd: c.root,
+            server: %{command: "/bin/sh", args: [], env: %{}, timeout_ms: 1000}
+          )
+
+        assert_receive {:mcp_transport_closed, :closed}, 2000
+        assert :ok = Ipse.MCP.Transport.close(transport)
+      end)
+    after
+      if previous,
+        do: System.put_env("IPSE_RUNNER_PATH", previous),
+        else: System.delete_env("IPSE_RUNNER_PATH")
+    end
+  end
+
   test "OS arguments cannot silently truncate an approved command or lock path", c do
     assert {:error, _} = Ipse.Runner.run("printf unsafe > nul-effect\0ignored", c.root)
     path = Path.join(c.root, "nul-lock")

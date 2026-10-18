@@ -132,7 +132,7 @@ defmodule Ipse.Handoff do
          {:ok, messages} <- Session.restore_context(events),
          :ok <- Ipse.Extensions.Subscriptions.validate_sources(dir, id, events),
          {:ok, _} <- Ipse.Research.restore(events) do
-      unknown = Enum.filter(messages, &(get_in(&1, ["ipse_tool_outcome", "status"]) == "unknown"))
+      unknown = Ipse.Compaction.unknown_call_ids(messages)
 
       artifact = %{
         "version" => 1,
@@ -141,8 +141,7 @@ defmodule Ipse.Handoff do
         "note" => note,
         "requires_effect_review" => true,
         "unknown_tool_count" => length(unknown),
-        "unknown_call_ids" =>
-          Enum.take(Enum.map(unknown, &safe_id(&1["tool_call_id"])), @max_unknown),
+        "unknown_call_ids" => Enum.take(Enum.map(unknown, &safe_id/1), @max_unknown),
         "unknown_ids_omitted" => max(length(unknown) - @max_unknown, 0)
       }
 

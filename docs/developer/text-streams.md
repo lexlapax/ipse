@@ -32,7 +32,8 @@ Required consumers must acknowledge the completed stream, including its `end`,
 before the response is admitted. Closure, broker loss or the five-second pressure/
 completion deadline then fails the request with a distinct required-delivery
 diagnosis. This policy is private enrollment state, not a new frame version.
-Unexpected consumer loss between turns retains the requirement: subsequent main
+Unexpected worker callback failure is consumer loss, never an automatic explicit
+unsubscribe. Unexpected consumer loss between turns retains the requirement: subsequent main
 inference is refused until the lost enrollment is explicitly released. Required
 broker loss likewise prevents silent replacement with optional delivery. Summary
 requests receive no visible frames and cannot clear the main delivery policy.

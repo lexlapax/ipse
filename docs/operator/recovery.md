@@ -19,7 +19,8 @@ Inspect a saved session locally without starting/resuming it:
 ```
 
 Saved diagnostics restore validated compaction projections and count unknown
-calls without repairing a truncated tail or writing state. They exclude the
+calls, including unknown actions retained inside validated summary checkpoints,
+without repairing a truncated tail or writing state. They exclude the
 derived system/reference headers; these are reconstructed for a live request,
 while saved instruction and skill snapshots remain separate recovery inputs;
 the scope field says `effective_transcript_without_system`. A recorded configuration
@@ -30,6 +31,12 @@ completed, failed or cancelled requests. They measure owned request work, not
 tool execution or operator approval wait; they are not full distributed tracing.
 Saved diagnostics also include [normalized request accounting](usage-accounting.md),
 with partial usage and unknown outcomes, separately from context bytes.
+
+Resume also requires the saved provider destination. Repeat the original
+`--base-url` or restore its operator profile; dropping or changing that route is
+refused before inference. Older sessions use recorded request endpoint hashes
+where available. An idle legacy session cannot prove its unrecorded direct route;
+use a fresh session for unverifiable custom routing.
 
 ## Handle uncertain effects and journal state
 
@@ -71,7 +78,10 @@ including helpers started by nested workflows; task or Port disappearance alone
 cannot confirm exit. A missing acknowledgment stops the Session
 with cleanup unconfirmed. Inspect running work before starting another attempt;
 this does not expand the documented detached-descendant containment limits.
-Task-owned HTTP guardians similarly wait for their borrower and private pool;
+After a stdio terminal result, cleanup waits passively for the actual helper exit
+within the existing deadline; it does not write cancellation into already closed
+stdin. A terminal frame alone, a forced exit or a missing exit receipt still cannot
+confirm cleanup. Task-owned HTTP guardians similarly wait for their borrower and private pool;
 local socket cleanup cannot establish whether remote work stopped.
 
 Valid diagnostic sink receipts and prompt-source checkpoints can coexist with a
@@ -104,7 +114,8 @@ use a private directory and `umask 077` when creating the artifact. The UTF-8 no
 is required and bounded to 8192 bytes; the entire encoded artifact is limited to
 16 KiB, so heavily escaped notes can require shortening. The artifact records source ID,
 a digest of complete decoded source events, unknown-call count and up to 16
-bounded call identifiers, with an omitted count. This is not a raw-file checksum
+bounded call identifiers, with an omitted count. This includes unknown actions
+retained inside validated compaction checkpoints, preserving call occurrences. This is not a raw-file checksum
 or a signature. It deliberately excludes tool arguments, results, provider data,
 auth and saved permission settings. The note itself can be private: this is not
 an automatic secret scanner or automatic model-generated summary.

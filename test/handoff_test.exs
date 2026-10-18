@@ -239,6 +239,64 @@ defmodule Ipse.HandoffTest do
     refute File.exists?(Path.join(c.root, "never-replay"))
   end
 
+  test "export preserves unknown effects retained in a compacted checkpoint", c do
+    call = %{
+      "id" => "compacted-unknown",
+      "type" => "function",
+      "function" => %{"name" => "shell", "arguments" => "{}"}
+    }
+
+    messages = [
+      %{"role" => "user", "content" => "original task"},
+      %{
+        "role" => "assistant",
+        "content" => String.duplicate("old text ", 2_000),
+        "tool_calls" => [call]
+      },
+      %{
+        "role" => "tool",
+        "tool_call_id" => call["id"],
+        "content" => "effect unknown",
+        "ipse_tool_outcome" => %{"status" => "unknown", "approval" => "approved"}
+      },
+      %{"role" => "user", "content" => "second task"},
+      %{"role" => "assistant", "content" => "second result"},
+      %{"role" => "user", "content" => "third task"},
+      %{"role" => "assistant", "content" => "third result"},
+      %{"role" => "user", "content" => "fourth task"}
+    ]
+
+    config = %{context_bytes: 30_000, compact_threshold_bytes: 10_000}
+    {:ok, plan} = Ipse.Compaction.prepare(messages, config, [])
+
+    summary = %{
+      "role" => "assistant",
+      "content" => ~s({"decisions":[],"facts":[],"open_questions":[]})
+    }
+
+    {:ok, _, checkpoint, _} = Ipse.Compaction.finish(plan, summary, [], config)
+    {:ok, id} = Journal.create(c.dir, %{provider: "ollama", model: "fixture", cwd: c.root})
+
+    for message <- messages,
+        do: :ok = Journal.append(c.dir, id, %{"type" => "message", "message" => message})
+
+    :ok =
+      Journal.append(c.dir, id, %{
+        "type" => "context_compacted",
+        "version" => 1,
+        "covered_messages" => length(plan.prefix),
+        "prefix_sha256" => Ipse.Compaction.digest(plan.prefix),
+        "checkpoint" => checkpoint
+      })
+
+    {:ok, exported} = Handoff.export(c.dir, id, "Inspect the old shell effect.")
+    assert exported["unknown_tool_count"] == 1
+    assert exported["unknown_call_ids"] == ["compacted-unknown"]
+    assert {:ok, diagnosis} = Ipse.Diagnostics.saved(c.dir, id)
+    assert diagnosis["unknown_tool_count"] == 1
+    assert {:ok, _} = exported |> Jason.encode!() |> Handoff.prepare()
+  end
+
   test "embedding cannot import into existing ID or bypass validation before creating state", c do
     {:ok, id} = Journal.create(c.dir, %{provider: "ollama", model: c.config.model, cwd: c.root})
     path = Path.join(c.dir, id <> ".jsonl")

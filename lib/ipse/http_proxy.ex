@@ -79,11 +79,14 @@ defmodule Ipse.HTTPProxy do
       (System.get_env("NO_PROXY") || System.get_env("no_proxy") || "")
       |> String.split(",", trim: true)
 
-    host in ["localhost", "::1", "[::1]"] or String.starts_with?(host, "127.") or
+    host in ["localhost", "::1", "[::1]"] or loopback_ipv4?(host) or
       Enum.any?(patterns, fn pattern ->
         pattern = pattern |> String.trim() |> String.downcase() |> String.replace(~r/:\d+$/, "")
         domain = String.trim_leading(pattern, ".")
         pattern == "*" or host == domain or String.ends_with?(host, "." <> domain)
       end)
   end
+
+  defp loopback_ipv4?(host),
+    do: match?({:ok, {127, _, _, _}}, :inet.parse_address(String.to_charlist(host)))
 end

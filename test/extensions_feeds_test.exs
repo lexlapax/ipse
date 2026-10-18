@@ -233,7 +233,7 @@ defmodule Ipse.Extensions.FeedsTest do
           def handle("event.feed", payload, state) do
             log(state, payload)
             if state["mode"] == "hang" do
-              File.write!(state["pid"], System.pid())
+              File.write!((state["pid"]) <> ".ready-" <> System.pid(), System.pid()); File.rename!((state["pid"]) <> ".ready-" <> System.pid(), state["pid"])
               Process.sleep(:infinity)
             end
             reply = if state["mode"] == "host_call" do
@@ -732,6 +732,37 @@ defmodule Ipse.Extensions.FeedsTest do
     assert {:ok, saved} = Ipse.Diagnostics.saved(c.dir, id)
     assert saved["event_feeds"]["unconfirmed_cleanup"] == 1
     assert saved["event_feeds"]["unacknowledged"] == 1
+  end
+
+  test "unexpected owned-task death closes active feeds with a valid cleanup-failure reason", c do
+    cfg = config(c, :normal, gate: true)
+    {:ok, pid} = start(c, cfg)
+    id = Session.info(pid).id
+    :ok = Session.prompt(pid, "task death with live feeds")
+    assert_receive {:feed_model, model, _}, 3_000
+    eventually(fn -> settled(pid) end)
+    monitor = Process.monitor(pid)
+    Process.exit(model, :kill)
+    assert_receive {:DOWN, ^monitor, :process, ^pid, :normal}, 8_000
+    all = rows(c, id)
+
+    assert Enum.any?(
+             all,
+             &(&1["type"] == "extension_feed_closed" and &1["reason"] == "cleanup_failure")
+           )
+
+    assert Enum.any?(
+             all,
+             &(&1["type"] == "lifecycle_epoch_closed" and &1["closure"] == "cleanup_failure" and
+                 &1["cleanup_confirmed"] == false)
+           )
+
+    assert {:ok, _} = Session.restore_context(all)
+    assert :ok = Subscriptions.validate_sources(c.dir, id, all)
+    {:ok, resumed} = resume(c, cfg, id)
+    assert Session.info(resumed).phase == :idle
+    assert status(resumed)["feeds"] == []
+    :ok = Session.close(resumed)
   end
 
   test "notifications and feeds coexist without changing the barrier contract", c do

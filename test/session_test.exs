@@ -104,6 +104,54 @@ defmodule Ipse.SessionTest do
            end)
   end
 
+  test "invalid and oversized prompts refuse before changing the conversation", ctx do
+    pid = session(ctx, %{})
+    id = Ipse.Session.info(pid).id
+    path = Path.join(ctx.dir, id <> ".jsonl")
+    before = File.read!(path)
+
+    for {prompt, expected} <- [
+          {<<255>>, :invalid_prompt},
+          {String.duplicate("a", 1_048_577), :prompt_too_large}
+        ] do
+      result =
+        try do
+          Ipse.Session.prompt(pid, prompt)
+        catch
+          :exit, _ -> :session_exited
+        end
+
+      assert result == {:error, expected}
+      assert Ipse.Session.info(pid).phase == :idle
+      assert File.read!(path) == before
+      refute_received {:model_input, _}
+    end
+
+    assert :ok = Ipse.Session.prompt(pid, "valid later input")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 2000
+  end
+
+  test "skill expansion cannot bypass prompt admission bounds", ctx do
+    for n <- 1..17 do
+      path = Path.join([ctx.root, ".agents", "skills", "large#{n}"])
+      File.mkdir_p!(path)
+
+      File.write!(
+        Path.join(path, "SKILL.md"),
+        "---\nname: large#{n}\ndescription: Fixture\n---\n" <> String.duplicate("a", 64_000)
+      )
+    end
+
+    pid = session(ctx, %{})
+    path = Path.join(ctx.dir, Ipse.Session.info(pid).id <> ".jsonl")
+    before = File.read!(path)
+    prompt = Enum.map_join(1..17, " ", &"$large#{&1}")
+    assert {:error, :prompt_too_large} = Ipse.Session.prompt(pid, prompt)
+    assert Ipse.Session.info(pid).phase == :idle
+    assert File.read!(path) == before
+    refute_received {:model_input, _}
+  end
+
   test "approved writes execute, survive resume, and do not rerun on startup", ctx do
     pid = session(ctx, %{scenario: :write, approval: :allow})
     Ipse.Session.prompt(pid, "write")

@@ -52,7 +52,16 @@ configuration. See [shared budget ownership and recovery](budgets.md).
 before acquiring work or requesting inference. Legacy metadata without a manifest
 accepts only a config with no loaded files, retaining existing provider/model/
 sandbox/MCP/delegation checks. Embedded Session callers may omit configuration;
-the CLI always resolves it. Instruction refresh deliberately does not reload
+the CLI always resolves it. The actual main provider destination is separately pinned at Session creation as
+its origin and target digest, including direct CLI/embedded base URLs; this stores
+no endpoint credentials. Invalid routes refuse before journal creation. Resume
+requires the same destination even when no request has run. Explicit and implicit
+forms of the same default wire route are equivalent. Legacy metadata checks all
+recorded main/compaction request endpoint hashes; with no such requests, only an
+implicit default or exactly pinned execution profile is accepted. An idle legacy
+session did not record its original direct route, so its historical destination
+cannot be reconstructed. Unverifiable custom routing requires a fresh session.
+Instruction refresh deliberately does not reload
 execution configuration. An operator starts a new session after policy changes.
 
 See [operator configuration](../operator/configuration.md) for supported fields,

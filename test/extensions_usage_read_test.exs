@@ -57,7 +57,7 @@ defmodule Ipse.Extensions.UsageReadTest do
       end
       def handle("host.actions", payload, state) do
         if state["hold"] do
-          File.write!(state["pid"], System.pid()); Process.sleep(:infinity)
+          File.write!((state["pid"]) <> ".ready-" <> System.pid(), System.pid()); File.rename!((state["pid"]) <> ".ready-" <> System.pid(), state["pid"]); Process.sleep(:infinity)
         end
         {:ok, %{"api_version" => 1, "kind" => "result", "value" => payload["outcome"]}, state}
       end

@@ -26,7 +26,7 @@ defmodule Ipse.ObservabilityTest do
     defmodule #{module} do
       @behaviour Ipse.Extension
       def describe, do: %{"sdk" => 1, "capabilities" => ["observe.export"]}
-      def init(options), do: (File.write!(options["pid"], System.pid()); {:ok, options})
+      def init(options), do: (File.write!((options["pid"]) <> ".ready-" <> System.pid(), System.pid()); File.rename!((options["pid"]) <> ".ready-" <> System.pid(), options["pid"]); {:ok, options})
       def handle("observe.export", payload, state) do
         if state["mode"] == "hang" do
           File.write!(state["gate"], "entered")

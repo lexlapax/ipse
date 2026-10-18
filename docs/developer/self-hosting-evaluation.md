@@ -3,16 +3,17 @@
 P24/P25 review and evaluation protocol, revised 2026-10-17. This guide defines
 independent architectural challenge, security gates and the supervised experiment;
 the [plan](../plan.md#current-priorities-and-status) owns scheduling and acceptance
-status. Package R returned at `7810925` with applicable cleanup and HTTP-bound
-findings and partial coverage. Internal reproductions, repairs and interaction
-review pass locally; hosted verification is required before another handoff.
-The used brief is archived. Continue
-the exact independent checkpoint instead of restarting the package. The
-[disposition register](architecture-review-dispositions.md) owns verification and
-repair status. No comparative run or security scan has executed. Use the
-[operator runbook](../operator/self-development.md) for
-runner/candidate separation and the [knowledge design](knowledge-extensions.md)
-for the research questions. Production knowledge packages are deferred to P26/P27.
+status. The historical package R critique at `7810925` remains partial and
+unaccepted. The operator's current direction requires a full internal audit and
+repairs before one consolidated external handoff, with no further separate
+R/S/C/O assignments. [The internal audit](architecture-self-audit.md) owns its
+actual inspected scope and limitations; the
+[disposition register](architecture-review-dispositions.md) retains external
+findings and independent omissions. Verification of the final frozen candidate
+precedes that handoff. No comparative run or security scan has executed. Use the
+[operator runbook](../operator/self-development.md) for runner/candidate separation
+and the [knowledge design](knowledge-extensions.md) for research questions.
+Production knowledge packages remain deferred to P26/P27.
 
 The experiment asks two separate questions: can Ipse produce a reliable,
 implementable research proposal, and can it develop and verify improvements to
@@ -93,7 +94,13 @@ cloud checkout or the existing local checkout, with read-only Git object access
 to the pinned commit. Setup must supply the required history before review; no
 project execution is needed. A missing Git object is an access limitation, not
 permission to review a different revision. Source exclusions still apply, and current
-worktree/untracked files are not review inputs. Record
+worktree/untracked files are not review inputs. A brief may separately allow
+read-only public documentation and source for exact locked dependencies when a
+link/transport boundary depends on vendor behavior. Verify its package version
+and provenance against the pinned lockfile; record any unverified mapping as a
+limitation. This permits reading, not installation or execution, and does not
+admit other critiques into phase A. A missing dependency read stays an explicit
+coverage gap rather than being inferred from the Ipse adapter. Record
 the external model/provider/version as reported, settings, public interface,
 tool/file/network access, limits and supervisor interventions. Do not infer
 external-agent access from installed API keys or a prior ChatGPT approval. Before
@@ -114,39 +121,28 @@ unread surfaces and actual test bodies in the next brief; name coverage omission
 even when every repair disposition is accepted. Pin the
 committed evidence-document revision separately when hosted results postdate
 the source; evidence for later changed code does not certify the earlier target.
-Use bounded review packages with an explicit coverage ledger rather than asking
-each fresh session to restart a whole-repository review. Carry forward prior
-inspection only for byte-unchanged surfaces, and recheck changes and their
-interactions. A package can finish its named scope without claiming whole-design
-acceptance. Context exhaustion must leave exact unread paths/ranges and test
-bodies for the next package. The supervisor's audit is implementation-side
-evidence, never a replacement for independent coverage.
+The operator's latest direction replaces separate external R/S/C/O assignments
+with a full internal adversarial audit and one consolidated final handoff. The
+supervisor first inspects all architectural boundaries and meaningful test bodies,
+reproduces applicable findings, repairs interactions and verifies frozen source,
+native enforcement, package and independent installed artifacts on Linux/macOS.
+It records actual implementation/test-body coverage and residual limits in the
+[internal audit](architecture-self-audit.md). This is implementation-side evidence,
+never independent acceptance.
 
-For the post-audit candidate, use the following coverage queue. Each row is a
-bounded assignment, not a demand to re-review the entire repository. The first
-assignment challenges the new delta and its interactions; later assignments
-finish the latest external checkpoint. Source assessment still precedes exposure
-to supervisor findings. A reviewer may follow a dependency outside the package,
-but must record that extra read and any consequent omission rather than silently
-claiming the entire dependent subsystem.
-
-| Package | Required source and actual test-body coverage |
-| --- | --- |
-| R — repair interactions | Continue the saved independent `7810925` checkpoint: Session task-result handling at lines 1790–2030, then EventJob question restoration, TextConsumer, observability channel close, Runner frames, fixture helpers and remaining lifecycle/diagnostic/conformance test bodies. Inspect the entire subsequent repair delta, SDK link/exit behavior and affected Session paths. Carry forward the reviewed `091b2bd..7810925` delta only where unchanged |
-| S — SDK and delivery checkpoint | Remaining invocation/question, state/store/child-usage/model-job, manifest/conformance/config/identity bodies; event-job/subscriptions/history/usage-read/feed/text tests. Challenge grants, source binding, async peers, fixed snapshots, replay and generic API seams |
-| C — context and egress checkpoint | Remaining auth/JWT and provider Ollama/error/SSE bodies and tests; MCP client/config/schema/HTTP/catalog; workspace/skills/resources, handoff and tool-result compaction. Challenge locking, continuation, endpoint/proxy/TLS policy, context roles and saved recovery |
-| O — OS and persistence checkpoint | Remaining native and sandbox/cache/stdio bodies/tests; delegation/parallel, journal writer, budget/ledger/store, usage/normalizer and corresponding tests. Challenge helper exit receipts, owner loss, aliases, concurrent liability and no replay; distinguish source inspection from platform execution |
-
-Keep a cumulative ledger with revision, exact path/function/test body, full or
-partial coverage, counterexample and next unread checkpoint. Prior private
-reports supply provenance to the supervisor; they are not copied into a fresh
-phase A. Do not infer coverage from a green test, a file name, or the supervisor's
-internal audit. Carry a read forward only when its bytes are unchanged and its
-relevant dependencies/interactions remain covered. Changes reopen affected rows.
-If context capacity ends a package, its next conversation resumes the exact
-unread checkpoint instead of restarting package R. The package verdict is scoped;
-whole-architecture acceptance still requires reconciliation of all applicable
-coverage and findings, followed by the separate baseline scan.
+The consolidated external brief pins the verified source and evidence revisions.
+Its first phase still excludes internal verdicts, dispositions and earlier
+critiques. Prioritize the whole repair delta, its interactions and the exact
+remaining independent omissions, using the retained checkpoint after the initial
+independent source assessment. R/S/C/O remain useful area labels for ownership,
+SDK/delivery, context/egress and OS/persistence, not four further external rounds.
+A reviewer can follow public exact locked dependency source read-only where
+necessary, recording provenance; no installation, credentials or project execution
+is implied. Context exhaustion must identify exact unread functions/test bodies,
+not grant acceptance. Carry forward only byte-unchanged prior reads with checked
+interactions. The baseline security scan and P25 remain gated on applicable
+repairs and adequate architecture coverage; a promised review count cannot
+substitute for those criteria.
 
 Use these scenarios:
 

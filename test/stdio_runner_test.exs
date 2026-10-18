@@ -190,6 +190,24 @@ defmodule Ipse.StdioRunnerTest do
     assert {:error, _} = Runner.open_stdio("/bin/sh", [], cwd, %{}, 1_000, sandbox: :unknown)
   end
 
+  test "passive completion still requires the actual helper exit status", %{cwd: cwd} do
+    for {status, expected} <- [{0, :ok}, {2, {:error, "stdio cleanup unconfirmed"}}] do
+      port =
+        Port.open({:spawn_executable, ~c"/bin/sh"}, [
+          :binary,
+          :exit_status,
+          args: ["-c", "exec 0<&-; printf finished; sleep 0.1; exit #{status}"]
+        ])
+
+      assert_receive {^port, {:data, "finished"}}, 2000
+      assert Runner.close_stdio(port, :completed) == expected
+    end
+
+    {:ok, port} = Runner.open_stdio("/bin/sh", ["-c", "printf ready; sleep 5"], cwd, %{}, 5000)
+    assert_receive {^port, {:data, _}}, 2000
+    assert {:error, "stdio cleanup unconfirmed"} = Runner.close_stdio(port, :completed)
+  end
+
   test "concurrent initial exits finish after cleaning up descendants", %{cwd: cwd} do
     effects =
       1..200

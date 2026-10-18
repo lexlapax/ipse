@@ -349,6 +349,9 @@ defmodule Ipse.MCP.SessionTest do
       {:trace, ^transport, :receive, {port, {:exit_status, status}}} when is_port(port) ->
         cleanup_trace(transport, [{:helper_exit, status} | events])
 
+      {:trace, ^transport, :receive, {:EXIT, port, reason}} when is_port(port) ->
+        cleanup_trace(transport, [{:helper_exit_signal, reason} | events])
+
       {:trace, ^transport, :send, {:mcp_cleanup, ^transport, result}, _} ->
         [{:cleanup, result} | events]
 

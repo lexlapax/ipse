@@ -33,7 +33,7 @@ defmodule Ipse.Extensions.TextTest do
       def describe, do: %{"sdk" => 1, "capabilities" => ["stream.text"]}
       def init(options) do
         File.write!(options["path"] <> ".init", "initialized\n", [:append])
-        File.write!(options["path"] <> ".pid", System.pid())
+        File.write!((options["path"] <> ".pid") <> ".ready-" <> System.pid(), System.pid()); File.rename!((options["path"] <> ".pid") <> ".ready-" <> System.pid(), options["path"] <> ".pid")
         {:ok, options}
       end
       def handle("stream.text", payload, state) do
@@ -261,6 +261,25 @@ defmodule Ipse.Extensions.TextTest do
            )
 
     assert {:error, :cleanup_unconfirmed} = Session.close(pid)
+  end
+
+  test "a failed required callback cannot release its enrollment for the next turn", ctx do
+    pid = start(ctx, Map.put(config(ctx, "wrong", true, true), :hold_provider, true))
+    :ok = Session.prompt(pid, "first required failure")
+    assert_receive {:text_provider, provider, _}, 5_000
+
+    await(fn ->
+      Enum.all?(:sys.get_state(pid).extension_text, fn {_, resource} -> resource.closed end)
+    end)
+
+    send(provider, :release)
+    assert_receive {:ipse, ^pid, {:done, :error}}, 5_000
+    :ok = Session.prompt(pid, "required coverage must remain lost")
+    assert_receive {:ipse, ^pid, {:error, error}}, 5_000
+    assert error =~ "Required visible-text delivery failed"
+    assert_receive {:ipse, ^pid, {:done, :error}}, 1_000
+    refute_receive {:text_provider, _, _}, 100
+    assert :ok = Session.close(pid)
   end
 
   test "selected worker gets private bounded ordered JSON frames after durable intent", ctx do

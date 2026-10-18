@@ -142,8 +142,6 @@ defmodule Ipse.Extensions.TextConsumer do
   def terminate(_, s) do
     cleanup = if is_pid(s.worker), do: Worker.close(s.worker), else: :ok
 
-    if s.handle, do: unsubscribe(s.handle)
-
     send(
       s.owner,
       {:extension_text_closed, self(), s.intent["resource_id"], s.close_reason, s.frames, s.bytes,
@@ -163,10 +161,4 @@ defmodule Ipse.Extensions.TextConsumer do
 
   defp acknowledge(_, %{"kind" => "closed"}), do: :ok
   defp acknowledge(handle, frame), do: Ipse.TextStream.ack(handle, frame["sequence"])
-
-  defp unsubscribe(handle) do
-    Ipse.TextStream.unsubscribe(handle)
-  catch
-    :exit, _ -> :ok
-  end
 end

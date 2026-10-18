@@ -242,12 +242,17 @@ incomplete all-status response bound. It also challenged idle required-delivery
 loss and the widened MCP cleanup test. Those findings reopen the affected claims;
 the earlier matrix certifies its exercised fixtures, not these missing cases.
 
-The [internal continuation](architecture-self-audit.md) records the current
-repairs, controlled before/after failures and additional HTTP ownership, SDK
-scope-loss, NUL-admission and compaction/delivery interactions. Final local source,
-package and installed-artifact checks pass; hosted verification remains pending.
-The used review brief is withdrawn until that gate finishes. Independent R acceptance,
-remaining S/C/O coverage, the security scan and P25 execution stay gated.
+The [full internal audit](architecture-self-audit.md) now inspects ownership,
+SDK/delivery, context/egress and OS/persistence/accounting, including the complete
+Session state machine and meaningful actual test bodies. Its additional
+composition repairs cover terminal stdio receipt races, required callback loss,
+feed task-death cleanup, prompt admission/queue bounds, auth reception/proxy
+bypass, compacted uncertainty, research preview identity and endpoint resume
+binding. Earlier green runs certify only their recorded fixtures. The final
+candidate must pass serialized source/native/package/installed and hosted gates
+before one consolidated external handoff; separate R/S/C/O external rounds are
+replaced by the operator's full-internal-audit direction. Independent acceptance,
+the security scan and P25 remain open.
 
 During P23E2 iteration, a full run overlapped a focused recompile and produced
 eight artifact-admission failures; that run was discarded. Final verification
@@ -256,6 +261,10 @@ weakened to obtain the passing result below.
 
 | Checkpoint | Evidence | Scope and remaining limits |
 | --- | --- | --- |
+| P24 full internal audit, frozen Linux source, 2026-10-17 | Build, actual Elixir 1.18.4/1.20.4 formatter checks, warnings-as-errors compile, isolated credential-free demo and full native-inclusive suite pass: 856 passed, 15 Mac-only exclusions, 226.6 seconds. Documentation links/anchors: 120 documents, 1,535 links, zero errors | Full internal boundary inspection and all new regression bodies, including actual pre-fix failures, are in the audit. Auth/egress/CLI focused 67, SDK 122, delivery/research 90, lifecycle/recovery 51 and endpoint/config/profile/CLI/budget 80 checks passed during iteration. No compile/build overlapped final tests. Hosted candidate verification is next; local Linux does not establish Mac enforcement or independent acceptance |
+| P24 full-audit extracted runtime and frozen artifact compatibility | Package verifier and both previously compiled independent artifact proofs pass. All 41 legacy/nine model assertions parsed true, archive and host unchanged, no system development toolchain on runtime PATH. Archive SHA-256 `b1eb2c9721e7a5511a6838b3b5b20b27c0e07f08eb39ab2200ce1441a33aaec0` | Deliberate service-crash cleanup remains unconfirmed and `safe_to_continue: false`. The artifacts were not rebuilt with the candidate SDK. No live provider/account, stronger containment, security scan, independent acceptance or P25 claim |
+| P24 R repair hosted `f64fa0a` | [Run 39097766348](https://github.com/lexlapax/ipse/actions/runs/39097766348) passed Ubuntu source/demo/package and both proofs; macOS failed the strict controlled MCP disconnect assertion for actual helper exit zero, so its later gates were skipped | Trace showed unconfirmed stdio cleanup, not a proven forced helper exit. This is a failed matrix, not an accepted alternate outcome. The later controlled closed-stdin regression reproduces one loss mechanism; it does not prove the historical cause |
+| P24 fixture-only follow-up `596b166` | [Run 39097986313](https://github.com/lexlapax/ipse/actions/runs/39097986313) passed both hosts: ordinary suites 858 tests, zero failures, 32 exclusions each; Mac enabled subset 34 tests, zero failures, six exclusions, one Rust policy test and signed App Sandbox enforcement | Full jobs/logs inspected. All four installed receipts parsed with 41 legacy/nine model assertions true, unchanged archive/host and no runtime system toolchain. Same runtime as f64fa0a; a green rerun does not establish the earlier failure's cause. Does not certify the subsequent full-audit delta |
 | P24 earlier documentation-only `a46cc66` matrix, inspected during R repair | [Run 39092277048](https://github.com/lexlapax/ipse/actions/runs/39092277048) failed Ubuntu: 834 tests, two failures, 32 exclusions. Subscription cancellation read an empty PID readiness file; diagnostic/question recovery got `cleanup_unconfirmed` on final close. Mac passed its ordinary 834-test suite, enabled 34-test subset (six exclusions), Rust policy, package/proofs and signed enforcement | Full logs and exact jobs inspected; Mac receipts parsed with all 41/nine assertions true and unchanged archive/host/no runtime toolchain. Ubuntu later gates were skipped. Both exact fixtures passed 21 unchanged local runs; that does not establish the cleanup failure's cause. The empty-file race is addressed by atomic PID publication, with every liveness/cleanup assertion retained; both affected modules pass 66 tests and both formatter checks. Runtime/package bytes are unchanged by that fixture follow-up |
 | P24 package R final source, Linux Serenity, 2026-10-17 | Build, actual Elixir 1.18.4/1.20.4 formatter checks, warnings-as-errors compile and isolated credential-free demo pass. The native-inclusive suite passed before final whitespace normalization (843 passed, 15 Mac exclusions, 222.7 seconds) and again on frozen formatted source (843 passed, 15 Mac exclusions, 223.3 seconds) | No build/compile overlapped either suite. Documentation links/anchors pass (120 documents, 1,532 links). Hosted verification remains pending. No Mac-device, live-account, architecture-acceptance, security-scan or P25 claim |
 | P24 package R extracted package and precompiled artifacts | Ordinary verifier and both independently precompiled installed proofs pass. All 41 legacy/nine model assertions parsed true, unchanged archive/host bytes and no system development toolchain on runtime PATH. Archive SHA-256 `06cb4e184dc7bbf66bd1f29647b2acc232b28605416b068cd939e71ddc2ad280` | Uses existing artifacts rather than rebuilding them with the candidate SDK. Deliberate service-crash cleanup remains unconfirmed/`safe_to_continue: false`. This verifies compatibility and the extracted runtime, not independent R acceptance or macOS enforcement; hosted checks are pending |

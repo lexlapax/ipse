@@ -247,6 +247,81 @@ defmodule Ipse.ConfigSessionTest do
     assert :ok = Ipse.Session.close(resumed)
   end
 
+  test "resume cannot silently change a direct provider endpoint even before the first request",
+       c do
+    config = %{
+      provider: :ollama,
+      model: "fixture",
+      home: c.home,
+      approval: :deny,
+      base_url: "http://127.0.0.1:11435/custom"
+    }
+
+    opts = [
+      config: config,
+      cwd: c.cwd,
+      state_dir: Path.join(c.root, "route-sessions"),
+      subscriber: self()
+    ]
+
+    {:ok, pid} = DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, opts})
+    id = Ipse.Session.info(pid).id
+    :ok = Ipse.Session.close(pid)
+    path = Path.join(opts[:state_dir], id <> ".jsonl")
+    before = File.read!(path)
+
+    for changed <- [
+          Map.delete(config, :base_url),
+          %{config | base_url: "http://127.0.0.1:11435/other"}
+        ] do
+      result =
+        DynamicSupervisor.start_child(
+          Ipse.Sessions,
+          {Ipse.Session, opts |> Keyword.put(:id, id) |> Keyword.put(:config, changed)}
+        )
+
+      if match?({:ok, _}, result), do: Ipse.Session.close(elem(result, 1))
+      assert result == {:error, :resume_configuration_mismatch}
+      assert File.read!(path) == before
+    end
+
+    {:ok, resumed} =
+      DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, Keyword.put(opts, :id, id)})
+
+    :ok = Ipse.Session.close(resumed)
+
+    {:ok, events} = Ipse.Journal.load(opts[:state_dir], id)
+
+    legacy =
+      List.update_at(
+        events,
+        0,
+        &Map.update!(&1, "metadata", fn meta -> Map.delete(meta, "provider_destination") end)
+      )
+
+    admission = Ipse.Usage.admission(id, config, "model", Ipse.Usage.id())
+    completion = Ipse.Usage.completion(admission, {:ok, %{}, %{}}, 1, nil)
+
+    File.write!(
+      path,
+      Enum.map_join(legacy ++ [admission, completion], &(Jason.encode!(&1) <> "\n"))
+    )
+
+    assert {:error, :resume_configuration_mismatch} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Ipse.Session,
+                opts
+                |> Keyword.put(:id, id)
+                |> Keyword.put(:config, Map.delete(config, :base_url))}
+             )
+
+    {:ok, legacy_resumed} =
+      DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, Keyword.put(opts, :id, id)})
+
+    :ok = Ipse.Session.close(legacy_resumed)
+  end
+
   test "CLI inspects a configured output cap locally and refuses a subscription cap", c do
     output =
       capture_io(fn ->

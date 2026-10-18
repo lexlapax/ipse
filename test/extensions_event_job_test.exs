@@ -123,7 +123,7 @@ defmodule Ipse.Extensions.EventJobTest do
           end
           def handle("host.actions", payload, %{"phase" => "read"} = state) do
             if state["mode"] == "hold_before_write" do
-              File.write!(state["pid"], System.pid())
+              File.write!((state["pid"]) <> ".ready-" <> System.pid(), System.pid()); File.rename!((state["pid"]) <> ".ready-" <> System.pid(), state["pid"])
               wait(state["gate"])
             end
             revision = payload["outcome"]["value"]["record"]["revision"]
@@ -132,7 +132,7 @@ defmodule Ipse.Extensions.EventJobTest do
           end
           def handle("host.actions", payload, %{"phase" => "done"} = state) do
             if state["mode"] == "hang_after_write" do
-              File.write!(state["pid"], System.pid())
+              File.write!((state["pid"]) <> ".ready-" <> System.pid(), System.pid()); File.rename!((state["pid"]) <> ".ready-" <> System.pid(), state["pid"])
               Process.sleep(:infinity)
             end
           status = if state["mode"] == "misreport", do: "ok", else: payload["outcome"]["status"]

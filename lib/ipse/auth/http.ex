@@ -49,50 +49,28 @@ defmodule Ipse.Auth.HTTP do
   end
 
   defp real_request(method, url, fields) do
-    Application.ensure_all_started(:inets)
-    Application.ensure_all_started(:ssl)
     uri = URI.parse(url)
 
-    if uri.scheme == "https" and uri.host == "auth.openai.com" and is_nil(uri.userinfo) do
-      Ipse.HTTPProfile.with_profile(fn profile ->
-        proxy_options = configure_proxy(profile)
+    if uri.scheme == "https" and uri.host == "auth.openai.com" and uri.port == 443 and
+         is_nil(uri.userinfo) and is_nil(uri.fragment) and method in [:get, :post] do
+      headers = [
+        {"accept-encoding", "identity"},
+        {"content-type", "application/x-www-form-urlencoded"}
+      ]
 
-        options = [
-          timeout: 15_000,
-          connect_timeout: 10_000,
-          autoredirect: false,
-          ssl: [
-            verify: :verify_peer,
-            cacerts: :public_key.cacerts_get(),
-            server_name_indication: ~c"auth.openai.com",
-            customize_hostname_check: [
-              match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
-            ]
-          ]
-        ]
+      body = if method == :get, do: nil, else: URI.encode_query(fields)
+      request = Finch.build(method, url, headers, body)
 
-        request =
-          if method == :get do
-            {String.to_charlist(url), []}
-          else
-            {String.to_charlist(url), [], ~c"application/x-www-form-urlencoded",
-             URI.encode_query(fields)}
-          end
+      case Ipse.HTTPProfile.bounded_request(request, 1_048_576) do
+        {:ok, status, body} ->
+          decode_response(status, body)
 
-        case :httpc.request(
-               method,
-               request,
-               options ++ proxy_options,
-               [body_format: :binary],
-               profile
-             ) do
-          {:ok, {{_, status, _}, _, body}} ->
-            decode_response(status, body)
+        {:error, :response_too_large} ->
+          {:error, "ChatGPT authorization response exceeded the size limit."}
 
-          _ ->
-            {:error, "Could not reach ChatGPT authorization. Check your network and retry."}
-        end
-      end)
+        _ ->
+          {:error, "Could not reach ChatGPT authorization. Check your network and retry."}
+      end
     else
       {:error, "ChatGPT authorization endpoint is not trusted."}
     end
@@ -108,7 +86,4 @@ defmodule Ipse.Auth.HTTP do
   end
 
   defp decode(_), do: {:error, "ChatGPT authorization response exceeded the size limit."}
-
-  defp configure_proxy(profile),
-    do: Ipse.HTTPProxy.httpc_options(profile, URI.parse("https://auth.openai.com"))
 end

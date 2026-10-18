@@ -240,6 +240,20 @@ defmodule Ipse.Compaction do
     |> Base.encode16(case: :lower)
   end
 
+  @doc "Unknown effect occurrences retained in both ordinary messages and compacted action ledgers."
+  def unknown_call_ids(messages) do
+    Enum.flat_map(messages, fn
+      %{"ipse_checkpoint" => %{"actions" => actions}} ->
+        for %{"status" => "unknown", "call_id" => call_id} <- actions, do: call_id
+
+      %{"ipse_tool_outcome" => %{"status" => "unknown"}, "tool_call_id" => call_id} ->
+        [call_id]
+
+      _ ->
+        []
+    end)
+  end
+
   defp split_index(messages) do
     user_indexes =
       messages

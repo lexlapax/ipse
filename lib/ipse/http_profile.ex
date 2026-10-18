@@ -13,6 +13,77 @@ defmodule Ipse.HTTPProfile do
     do: with_client(fun, {:finch, conn_opts})
 
   @doc false
+  def bounded_request(request, limit, timeout \\ 15_000)
+      when is_integer(limit) and limit in 1..8_388_608 and is_integer(timeout) and timeout > 0 do
+    uri = %URI{scheme: to_string(request.scheme), host: request.host, port: request.port}
+
+    options =
+      [transport_opts: [timeout: min(timeout, 10_000)]] ++ Ipse.HTTPProxy.finch_options(uri)
+
+    deadline = System.monotonic_time(:millisecond) + timeout
+
+    with_finch(
+      fn finch ->
+        initial = %{status: nil, body: [], bytes: 0, error: nil}
+
+        result =
+          Finch.stream_while(
+            request,
+            finch,
+            initial,
+            fn event, acc ->
+              cond do
+                System.monotonic_time(:millisecond) >= deadline ->
+                  {:halt, %{acc | error: :timeout}}
+
+                true ->
+                  bounded_event(event, acc, limit)
+              end
+            end,
+            receive_timeout: timeout,
+            request_timeout: timeout,
+            pool_timeout: min(timeout, 2000)
+          )
+
+        case result do
+          {:ok, %{error: nil} = acc} ->
+            {:ok, acc.status, acc.body |> Enum.reverse() |> IO.iodata_to_binary()}
+
+          {:ok, %{error: error}} ->
+            {:error, error}
+
+          _ ->
+            {:error, :connection_failed}
+        end
+      end,
+      options
+    )
+  end
+
+  defp bounded_event({:status, status}, acc, _), do: {:cont, %{acc | status: status}}
+
+  defp bounded_event({:headers, headers}, acc, limit) do
+    oversized =
+      Enum.any?(headers, fn {key, value} ->
+        String.downcase(key) == "content-length" and
+          case Integer.parse(value) do
+            {size, ""} -> size > limit
+            _ -> false
+          end
+      end)
+
+    if oversized, do: {:halt, %{acc | error: :response_too_large}}, else: {:cont, acc}
+  end
+
+  defp bounded_event({:data, bytes}, acc, limit) do
+    if acc.bytes + byte_size(bytes) > limit,
+      do: {:halt, %{acc | error: :response_too_large}},
+      else: {:cont, %{acc | bytes: acc.bytes + byte_size(bytes), body: [bytes | acc.body]}}
+  end
+
+  defp bounded_event(_, acc, _), do: {:cont, acc}
+
+  @doc false
   def prepare_finch(owner) do
     reference = make_ref()
 

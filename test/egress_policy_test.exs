@@ -50,6 +50,14 @@ defmodule Ipse.EgressPolicyTest do
     assert {:error, _} = Ipse.MCP.Client.discover(server, c.root)
   end
 
+  test "a remote hostname beginning with 127 does not silently bypass the proxy" do
+    System.put_env("HTTPS_PROXY", "http://127.0.0.1:4321")
+    refute Ipse.HTTPProxy.bypass?("127.0.0.1.attacker.invalid")
+
+    assert [{:proxy, {:http, "127.0.0.1", 4321, []}}, {:proxy_headers, []}] =
+             Ipse.HTTPProxy.finch_options(URI.parse("https://127.0.0.1.attacker.invalid"))
+  end
+
   test "MCP routes through its configured authenticated proxy without leaking bearer headers",
        c do
     {proxy, task} = proxy_fixture()

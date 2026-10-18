@@ -185,7 +185,13 @@ defmodule Ipse.Research do
     intents =
       events
       |> Enum.filter(&(&1["type"] == "tool_started" and Ipse.MCP.external?(&1["name"])))
-      |> Map.new(&{&1["call_id"], &1})
+      |> Enum.group_by(& &1["call_id"])
+      |> Map.new(fn {id, rows} -> {id, if(length(rows) == 1, do: hd(rows))} end)
+
+    result_counts =
+      events
+      |> Enum.filter(&(get_in(&1, ["message", "role"]) == "tool"))
+      |> Enum.frequencies_by(&get_in(&1, ["message", "tool_call_id"]))
 
     events
     |> Enum.reverse()
@@ -193,6 +199,7 @@ defmodule Ipse.Research do
       m = e["message"] || %{}
 
       m["role"] == "tool" and not is_nil(intents[m["tool_call_id"]]) and
+        result_counts[m["tool_call_id"]] == 1 and
         get_in(m, ["ipse_tool_outcome", "status"]) == "result_recorded" and
         is_binary(m["content"])
     end)

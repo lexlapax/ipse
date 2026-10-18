@@ -128,7 +128,7 @@ defmodule Ipse.Extensions.InvocationTest do
       end
       def handle(stage, payload, state) do
         File.write!(#{inspect(called)}, Jason.encode!(payload) <> "\\n", [:append])
-        File.write!(#{inspect(pid_file)}, System.pid())
+        File.write!((#{inspect(pid_file)}) <> ".ready-" <> System.pid(), System.pid()); File.rename!((#{inspect(pid_file)}) <> ".ready-" <> System.pid(), #{inspect(pid_file)})
         if payload["arguments"]["wait"], do: Process.sleep(:infinity)
         value = if payload["arguments"]["wrong"], do: %{"wrong" => true},
           else: %{"text" => stage <> ": " <> payload["arguments"]["text"], "input_id" => payload["invocation_id"]}

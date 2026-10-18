@@ -233,17 +233,24 @@ Chat commands:
 | `/exit` | Cancel active work and leave |
 
 The CLI reports running, waiting for approval, finished, failed, and cancelled
-states. New messages entered during a turn are queued for the next turn.
+states. New messages entered during a turn are queued for the next turn, up to
+16 tasks and 1 MiB total queued UTF-8 input; overflow is visibly refused. Each
+prompt must be valid UTF-8 and at most 1 MiB both before and after explicit skill
+expansion. Admission refusal leaves Session history unchanged. These are accepted
+input bounds, not a process-memory quota: trusted operator stdin can allocate a
+line or read-ahead messages before admission.
 Terminal rendering shows control and invisible format characters as literal
 escapes, including in model/tool output and full approval arguments. Ordinary
 Unicode, newlines and tabs remain readable; ANSI styling and cursor/clipboard
 commands from returned content do not execute. This is a display transformation:
 saved messages, tool arguments and provider-native content retain their originals.
 JSON commands remain valid JSON and decode to the original field values.
-While an action is waiting for approval, the CLI repeats its full proposal after
-interleaved output, including sibling results, and after local commands. Review
-that final approval block and its full arguments before entering `y`; returned
-text can contain imitations of prompts. MCP target details repeat with the proposal.
+While an action is waiting for approval, the CLI defers model/tool/sibling display
+output in a bounded queue (64 events/64 KiB), preserving the actual proposal as
+the last approval block. Local commands can reprint that proposal. Deferred events
+drain in order before newer display messages after the decision; overflow is
+reported. Review the full arguments before entering `y`; returned text can contain
+imitations of prompts. MCP target details remain part of the proposal.
 An error clears queued input with a visible message, preventing further queued
 requests after an account or usage-limit failure. Review the error and send a
 fresh task when ready.

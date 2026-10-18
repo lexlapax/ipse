@@ -57,6 +57,7 @@ defmodule Ipse.Extensions.Worker do
          pending: nil,
          sequence: 0,
          ready: false,
+         finished: false,
          buffer: <<>>,
          content: <<>>,
          traffic: 0
@@ -103,7 +104,7 @@ defmodule Ipse.Extensions.Worker do
 
   def handle_call(:close, _from, state) do
     state = fail_pending(state, :extension_closed)
-    result = Ipse.Runner.close_stdio(state.port)
+    result = close_helper(state)
     Ipse.TaskResources.closed(state.cleanup_ticket, result)
     {:stop, :normal, result, %{state | port: nil}}
   end
@@ -114,6 +115,7 @@ defmodule Ipse.Extensions.Worker do
 
     case frames(state) do
       {:ok, next} -> {:noreply, next}
+      {:error, next} -> stop(next, :invalid_extension_output)
       :error -> stop(state, :invalid_extension_output)
     end
   end
@@ -142,7 +144,7 @@ defmodule Ipse.Extensions.Worker do
     fail_pending(state, :extension_closed)
 
     if is_port(state.port),
-      do: Ipse.TaskResources.closed(state.cleanup_ticket, Ipse.Runner.close_stdio(state.port))
+      do: Ipse.TaskResources.closed(state.cleanup_ticket, close_helper(state))
 
     :ok
   end
@@ -159,6 +161,9 @@ defmodule Ipse.Extensions.Worker do
   end
 
   defp stop(state, reason), do: {:stop, :normal, fail_pending(state, reason)}
+
+  defp close_helper(state),
+    do: Ipse.Runner.close_stdio(state.port, if(state.finished, do: :completed, else: :cancel))
 
   defp fail_pending(%{pending: nil} = state, _reason), do: state
 
@@ -191,6 +196,9 @@ defmodule Ipse.Extensions.Worker do
 
           ?S ->
             frames(state)
+
+          kind when kind in [?X, ?E] ->
+            {:error, %{state | finished: true}}
 
           _ ->
             :error

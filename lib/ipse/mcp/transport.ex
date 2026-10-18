@@ -57,6 +57,7 @@ defmodule Ipse.MCP.Transport do
          cleanup_owner: Keyword.fetch!(opts, :cleanup_owner),
          cleanup_ticket: cleanup_ticket,
          cleanup_result: {:error, :cleanup_unconfirmed},
+         finished: false,
          private_config: Map.take(server, [:env, :redactions]),
          buffer: <<>>,
          line: <<>>,
@@ -94,7 +95,7 @@ defmodule Ipse.MCP.Transport do
   end
 
   def handle_call(:close, _from, state) do
-    result = Ipse.Runner.close_stdio(state.port)
+    result = close_helper(state)
     {:stop, :normal, result, %{state | port: nil, cleanup_result: result}}
   end
 
@@ -104,6 +105,7 @@ defmodule Ipse.MCP.Transport do
 
     case parse_frames(next) do
       {:ok, next} -> {:noreply, next}
+      {:error, next} -> stop(next, :invalid_transport)
       :error -> stop(state, :invalid_transport)
     end
   end
@@ -125,7 +127,7 @@ defmodule Ipse.MCP.Transport do
   @impl true
   def terminate(_, state) do
     result =
-      if is_port(state.port), do: Ipse.Runner.close_stdio(state.port), else: state.cleanup_result
+      if is_port(state.port), do: close_helper(state), else: state.cleanup_result
 
     Ipse.TaskResources.closed(state.cleanup_ticket, result)
     send(state.cleanup_owner, {:mcp_cleanup, self(), result})
@@ -140,6 +142,9 @@ defmodule Ipse.MCP.Transport do
 
   defp register(%{owner: owner, job_ref: ref}),
     do: GenServer.call(owner, {:mcp_register, ref, self()})
+
+  defp close_helper(state),
+    do: Ipse.Runner.close_stdio(state.port, if(state.finished, do: :completed, else: :cancel))
 
   defp stop(state, reason) do
     send(state.owner, {:mcp_transport_closed, reason})
@@ -172,7 +177,10 @@ defmodule Ipse.MCP.Transport do
 
           ?X ->
             send(state.owner, {:mcp_transport_closed, :closed})
-            {:ok, state}
+            {:ok, %{state | finished: true}}
+
+          ?E ->
+            {:error, %{state | finished: true}}
 
           _ ->
             :error

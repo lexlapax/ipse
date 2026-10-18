@@ -2,6 +2,53 @@ defmodule Ipse.HTTPProfileTest do
   use ExUnit.Case, async: false
   alias Ipse.HTTPProfile
 
+  test "bounded buffered requests stop every status before a chunked body completes" do
+    for status <- [200, 201, 302, 429, 500], framing <- [:length, :chunked] do
+      {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}])
+      {:ok, {_, port}} = :inet.sockname(listener)
+
+      fixture =
+        Task.async(fn ->
+          {:ok, socket} = :gen_tcp.accept(listener, 2_000)
+
+          try do
+            {:ok, _} = :gen_tcp.recv(socket, 0, 2_000)
+
+            header =
+              if framing == :length,
+                do: "content-length: 1048577",
+                else: "transfer-encoding: chunked"
+
+            :ok = :gen_tcp.send(socket, "HTTP/1.1 #{status} Fixture\r\n#{header}\r\n\r\n")
+
+            if framing == :chunked do
+              chunk = String.duplicate("x", 16_384)
+
+              Enum.reduce_while(1..65, :ok, fn _, _ ->
+                case :gen_tcp.send(socket, ["4000\r\n", chunk, "\r\n"]) do
+                  :ok -> {:cont, :ok}
+                  _ -> {:halt, :closed}
+                end
+              end)
+            end
+
+            assert {:error, :closed} = :gen_tcp.recv(socket, 0, 2_000)
+          after
+            :gen_tcp.close(socket)
+            :gen_tcp.close(listener)
+          end
+        end)
+
+      assert {:error, :response_too_large} =
+               HTTPProfile.bounded_request(
+                 Finch.build(:get, "http://127.0.0.1:#{port}"),
+                 1_048_576
+               )
+
+      Task.await(fixture, 3_000)
+    end
+  end
+
   test "closing an owned task confirms its active HTTP socket and pool have exited" do
     {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}])
     {:ok, {_, port}} = :inet.sockname(listener)

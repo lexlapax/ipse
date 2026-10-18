@@ -59,6 +59,8 @@ requests can set smaller limits. Exceeding it stops the
 attempt without executing returned tools or retrying inference. This is a host
 transport accumulation bound, not an OS memory cap, token estimate or billing
 guarantee. Automatic redirects and retries remain disabled.
+Authentication separately caps every response status at 1 MiB before accumulation.
+Both clients use verified TLS and the shared operator proxy policy.
 See [usage and budget boundaries](usage-accounting.md#unknowns-and-recovery).
 
 Repository settings require **`--trust-project-config` on each invocation**.

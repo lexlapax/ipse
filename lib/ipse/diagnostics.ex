@@ -69,8 +69,7 @@ defmodule Ipse.Diagnostics do
          "limit_source" =>
            if(saved_limit, do: "saved_configuration", else: "default_not_recorded"),
          "recorded_failures" => Enum.count(events, &(&1["type"] == "compaction_failed")),
-         "unknown_tool_count" =>
-           Enum.count(messages, &(get_in(&1, ["ipse_tool_outcome", "status"]) == "unknown")),
+         "unknown_tool_count" => length(Ipse.Compaction.unknown_call_ids(messages)),
          "request_measurements" =>
            events
            |> Enum.filter(&valid_measurement?/1)

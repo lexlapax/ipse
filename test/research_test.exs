@@ -105,6 +105,13 @@ defmodule Ipse.ResearchTest do
     assert {:error, _} = Research.call(c.dir, c.id, "research_source", oversized)
     evidence(c)
     assert {:error, _} = Research.call(c.dir, c.id, "research_source", args)
+    assert {:ok, encoded} = Research.call(c.dir, c.id, "research_ledger", %{})
+
+    refute Enum.any?(
+             Jason.decode!(encoded)["available_results"],
+             &(&1["tool_call_id"] == "fetch")
+           )
+
     assert {:ok, %{"sources" => []}} = Research.load(c.dir, c.id)
   end
 

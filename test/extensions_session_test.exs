@@ -87,7 +87,7 @@ defmodule Ipse.Extensions.SessionTest do
       def init(options), do: {:ok, options}
       def handle("transform.prompt", _payload, options) do
         if options["mode"] == "hang" do
-          File.write!(options["pid_file"], System.pid())
+          File.write!((options["pid_file"]) <> ".ready-" <> System.pid(), System.pid()); File.rename!((options["pid_file"]) <> ".ready-" <> System.pid(), options["pid_file"])
           Process.sleep(:infinity)
         end
         {:ok, %{"append" => options["note"]}, options}

@@ -331,23 +331,27 @@ defmodule Ipse.Runner do
 
   def send_stdio(_, _), do: {:error, "invalid or oversized stdio input"}
 
-  @doc "Cancel and await supervisor exit for at most two seconds before closing its Port."
-  def close_stdio(port) when is_port(port), do: close_process(port, false)
-  def close_stdio(_), do: {:error, "stdio cleanup unconfirmed"}
+  @doc "Await supervisor exit within two seconds; cancel only if no terminal frame was observed."
+  def close_stdio(port, mode \\ :cancel)
 
-  defp close_process(port, lock?) do
+  def close_stdio(port, mode) when is_port(port) and mode in [:cancel, :completed],
+    do: close_process(port, false, mode)
+
+  def close_stdio(_, _), do: {:error, "stdio cleanup unconfirmed"}
+
+  defp close_process(port, lock?, mode \\ :cancel) do
     if Process.info(self(), :trap_exit) == {:trap_exit, true} do
       try do
-        cancel_stdio(port, System.monotonic_time(:millisecond) + 2_000, lock?)
+        finish_stdio(port, System.monotonic_time(:millisecond) + 2_000, lock?, mode)
       after
         close_stdio_port(port)
       end
     else
-      close_guarded(port, lock?)
+      close_guarded(port, lock?, mode)
     end
   end
 
-  defp close_guarded(port, lock?) do
+  defp close_guarded(port, lock?, mode) do
     owner = self()
     reference = make_ref()
     deadline = System.monotonic_time(:millisecond) + 2_000
@@ -374,7 +378,7 @@ defmodule Ipse.Runner do
 
             receive do
               {^reference, :close} ->
-                cancel_stdio(port, System.monotonic_time(:millisecond) + 2_000, lock?)
+                finish_stdio(port, System.monotonic_time(:millisecond) + 2_000, lock?, mode)
             after
               2_500 -> {:error, "stdio cleanup unconfirmed"}
             end
@@ -424,6 +428,11 @@ defmodule Ipse.Runner do
       await_stdio_exit(port, deadline, lock?)
     end
   end
+
+  defp finish_stdio(port, deadline, lock?, :completed),
+    do: await_stdio_exit(port, deadline, lock?)
+
+  defp finish_stdio(port, deadline, lock?, :cancel), do: cancel_stdio(port, deadline, lock?)
 
   defp cancel_stdio(port, deadline, lock?) do
     remaining = deadline - System.monotonic_time(:millisecond)

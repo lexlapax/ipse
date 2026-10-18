@@ -70,7 +70,8 @@ Fetching one page per call makes source/excerpt correspondence easier to audit.
 
 `research_ledger` reads durable evidence independently of compacted context and
 lists up to 16 recent successful external results with call IDs, reviewed request arguments and explicitly
-untrusted previews. It retrieves nothing. A ledger holds at most 16 sources,
+untrusted previews. Ambiguous legacy call IDs or repeated results are omitted
+rather than pairing a result with another invocation's arguments. It retrieves nothing. A ledger holds at most 16 sources,
 32 claims and 64 KiB JSON; excerpts are at most 4000 UTF-8 bytes, statements 1000
 bytes and claim references eight unique IDs. The native display, including bounded
 recovery references, is at most 64 KiB + 512 bytes. Capture repeats are idempotent.

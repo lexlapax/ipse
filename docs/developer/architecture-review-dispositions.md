@@ -9,14 +9,17 @@ exploit details remain outside Git. The [plan](../plan.md) owns scheduling and t
 
 ## Provenance and coverage
 
-**Current gate:** package R at source `7810925`, evidence `a46cc66`, is unaccepted.
-The static review confirms most prior repairs but challenges pre-spawn cleanup,
-all-status HTTP bounds and the broadened MCP outcome test. Current work reproduces
-and repairs those interactions and completes the internal continuation before
-another [handoff](../operator/architecture-review.md). The latest package R section
-below owns its findings and checkpoint. Earlier green runs and closed rows retain
-their exercised scope; none grants architectural acceptance. The scan and P25
-remain gated, with S/C/O unstarted.
+**Current gate:** full internal adversarial audit and repairs precede one
+consolidated external handoff. The operator replaced separate external R/S/C/O
+assignments with this full internal pass. Its
+[report](architecture-self-audit.md) covers ownership, SDK/delivery, context/egress
+and OS/persistence/accounting, including new composition regressions. Final frozen
+source/native/package/installed and hosted verification must finish before the
+[brief](../operator/architecture-review.md) is released. The historical package R
+review at `7810925`/evidence `a46cc66` remains partial and unaccepted; internal
+inspection does not retroactively supply independent coverage. Baseline security
+and P25 remain gated. Exact failed and passing runs are retained in
+[testing](testing.md#current-evidence-and-next-checks).
 
 The reviewer reported Claude Code with Opus 5.5 (`claude-opus-5-5`), default
 reasoning, one subscription-selected session and no subagents or operator help
@@ -262,6 +265,28 @@ unread. Packages S/C/O retain the previous checkpoint; package R completion and
 whole-design acceptance remain separate. Resume this point rather than restarting
 all reviewed source.
 
+## Full internal audit and consolidated handoff
+
+The implementation-side pass inspected all architectural boundaries and the
+complete Session state machine, with actual meaningful test bodies rather than
+file names alone. The [audit](architecture-self-audit.md) owns the inspected
+surfaces, before/after counterexamples and residual limits. It does not claim
+every older test or script was read. The historical independent checkpoint above
+remains provenance for the single consolidated external handoff, not an instruction
+to schedule four more external rounds.
+
+| Internal finding | Disposition and exercised contract |
+| --- | --- |
+| FA-1 terminal stdio closure | Passive wait after terminal output retains real helper exit confirmation; closed-stdin fixture reproduced the old loss. Forced/missing receipts still refuse |
+| FA-2 prompt admission | Invalid UTF-8 and raw/expanded input over 1 MiB refuse before history/inference. CLI admission handling and 16-task/1 MiB accepted queue have real interactive/headless/overflow fixtures |
+| FA-3 required worker failure | Callback failure no longer automatically unsubscribes; current and following main requests refuse until explicit release |
+| FA-4 auth/proxy | All-status auth reception bounded at 1 MiB using existing Finch; parsed 127/8 bypass excludes maliciously prefixed hostnames. Held-open length/chunked status fixtures abort before EOF |
+| FA-5 compacted uncertainty | Handoff and saved diagnosis include unknown checkpoint actions, preserving occurrences alongside ordinary unknown results |
+| FA-6 research identity | Ambiguous duplicate historical calls/results are excluded from available previews, consistent with capture refusal |
+| FA-7 cleanup enum composition | Real task death with feeds and lifecycle active now closes with typed cleanup_failure, normal Session stop and inert resume; the earlier code raised in cleanup |
+| FA-8 endpoint resume | Actual main destination is pinned before first request. Current/legacy routing mismatch refuses unchanged history; idle legacy direct routing cannot be reconstructed |
+| Fixture readiness | All independently written worker PIDs publish atomically using per-worker stages; strict liveness/cleanup assertions retained |
+
 ## Execution order and completion
 
 The scoped F1–F7/S1–S3 and A1–A5 repairs passed their own source/native/package/
@@ -271,13 +296,11 @@ revisions and remaining verification limits. Future repairs still need a
 regression or measured counterexample, coherent operator/developer guidance and
 their own checks before commit/push; an earlier green baseline does not cover them.
 
-The reports satisfy their recorded provenance but do not close coverage or
-acceptance. Package R reopens the affected repair claims despite the passing
-`7810925` matrix. Finish the current repairs, internal continuation and platform
-checks before replacing the [review brief](../operator/architecture-review.md).
-Use the latest omissions and bounded coverage packages from the evaluation
-protocol; do not restart an unbounded whole-repository review. Earlier briefs are
-preserved in the [archive](../archive/index.md); preserve all private critiques.
-The next session must retain its source assessment before checking this register
-and identify inspected test bodies and omissions. Baseline security and P25 remain
-gated by adequate coverage and applicable repairs. No scan has run; P24 is open.
+The reports retain their actual provenance and partial coverage. Complete the
+full internal pass, repairs and final platform gates before publishing one
+consolidated external brief. Its independent first phase precedes disclosure of
+this register and the internal report; later disposition checks challenge the
+whole delta and exact historical omissions. Preserve all private critiques and
+[archived briefs](../archive/index.md). No review count guarantees acceptance.
+Baseline security and P25 remain gated by applicable repairs and adequate
+independent coverage. No scan has run; P24 is open.

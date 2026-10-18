@@ -460,6 +460,7 @@ defmodule Ipse.CLI do
         do: Terminal.puts(:stderr, Ipse.Handoff.notice(handoff_opts[:handoff]))
 
       client = self()
+
       reader = if interactive, do: spawn(fn -> read_input(client) end), else: nil
 
       if interactive,
@@ -467,7 +468,7 @@ defmodule Ipse.CLI do
 
       result =
         try do
-          if prompt, do: Ipse.Session.prompt(pid, prompt)
+          if prompt, do: dispatch_prompt(pid, prompt)
 
           client_loop(%{
             pid: pid,
@@ -529,7 +530,8 @@ defmodule Ipse.CLI do
         send(client, {:input, :eof})
 
       text ->
-        send(client, {:input, String.trim(text)})
+        text = if String.valid?(text), do: String.trim(text), else: text
+        send(client, {:input, text})
         read_input(client)
     end
   end
@@ -739,11 +741,21 @@ defmodule Ipse.CLI do
         client_loop(%{s | approval: nil})
 
       {:input, text} when s.busy ->
-        Terminal.puts(:stderr, "Queued for the next turn. /cancel interrupts current work.")
-        client_loop(%{s | queued: s.queued ++ [text]})
+        if String.valid?(text) and length(s.queued) < 16 and
+             byte_size(text) + Enum.sum(Enum.map(s.queued, &byte_size/1)) <= 1_048_576 do
+          Terminal.puts(:stderr, "Queued for the next turn. /cancel interrupts current work.")
+          client_loop(%{s | queued: s.queued ++ [text]})
+        else
+          Terminal.puts(
+            :stderr,
+            "Input refused: queued tasks are limited to 16 entries and 1 MiB of UTF-8 text. Send it again after work finishes."
+          )
+
+          client_loop(s)
+        end
 
       {:input, text} ->
-        Ipse.Session.prompt(s.pid, text)
+        dispatch_prompt(s.pid, text)
         client_loop(%{s | busy: true})
 
       {:ipse, ^pid, {:status, :compacting}} ->
@@ -884,7 +896,7 @@ defmodule Ipse.CLI do
 
           s.queued != [] ->
             [next | rest] = s.queued
-            Ipse.Session.prompt(s.pid, next)
+            dispatch_prompt(s.pid, next)
             client_loop(%{s | busy: true, cancelling: false, approval: nil, queued: rest})
 
           s.exit ->
@@ -918,6 +930,33 @@ defmodule Ipse.CLI do
     end
   end
 
+  defp dispatch_prompt(pid, text) do
+    case Ipse.Session.prompt(pid, text) do
+      :ok ->
+        :ok
+
+      {:error, :skill_catalog_changed} ->
+        :ok
+
+      {:error, reason} ->
+        message =
+          case reason do
+            :invalid_prompt ->
+              "Prompt must be valid UTF-8 text."
+
+            :prompt_too_large ->
+              "Prompt exceeds 1 MiB after skill expansion. Use a smaller task and load resources explicitly."
+
+            _ ->
+              "Task was not accepted. Inspect session status and configuration."
+          end
+
+        send(self(), {:ipse, pid, {:error, message}})
+        send(self(), {:ipse, pid, {:done, :error}})
+        :error
+    end
+  end
+
   defp next_client_event(%{approval: nil, deferred_display: [_ | _]} = s) do
     s = release_display(s)
     {event, remaining} = List.pop_at(s.deferred_display, -1)
@@ -934,7 +973,8 @@ defmodule Ipse.CLI do
     s = if is_nil(s.approval), do: release_display(s), else: s
 
     receive do
-      event -> {event, s}
+      event ->
+        {event, s}
     end
   end
 
@@ -1127,6 +1167,10 @@ defmodule Ipse.CLI do
   defp format_error(:invalid_handoff_record),
     do:
       "Invalid committed handoff record; refusing recovery. Preserve the original journal for inspection."
+
+  defp format_error(:resume_configuration_mismatch),
+    do:
+      "Saved session configuration differs. Restore its provider, model, endpoint (--base-url), profiles and extensions, or start a fresh session."
 
   defp format_error(reason) when is_binary(reason), do: reason
   defp format_error(reason), do: inspect(reason)

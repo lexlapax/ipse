@@ -126,8 +126,11 @@ stream byte ranges independently of consumer-local delivery sequence. V1 remains
 unchanged; neither channel supplies history replay or playback confirmation.
 
 `Ipse.HTTPProfile` owns per-request HTTP lifetimes for authentication, providers,
-and network MCP. Authentication uses a standalone OTP HTTP profile; inference
-uses Finch streaming for every HTTP status, and MCP uses Req with Finch.
+and network MCP. Authentication and inference use existing Finch streaming callbacks for every
+HTTP status; MCP uses Req with Finch. Authentication caps responses at 1 MiB
+before accumulation, inference at 8 MiB, with verified TLS and one shared proxy
+selection policy. Literal 127/8 addresses bypass the proxy; similarly prefixed
+hostnames do not. Explicit operator NO_PROXY rules still apply.
 A monitored guardian retains the private client lease through borrower and pool
 shutdown. Guardians in an owned task also join its cleanup scope, so cancellation
 waits for the borrower and pool before confirming local cleanup. MCP allocates
@@ -149,7 +152,10 @@ documented reasoning capabilities and credential/native-history isolation for
 mixed-provider children. Configuration and skills grant no effect permissions.
 Project trust cannot set profile endpoints or replace operator-declared profile
 IDs; endpoint authority remains with the operator. Helper egress approvals derive
-their visible origin/target digest from the actual adapter route.
+their visible origin/target digest from the actual adapter route. Main Session
+metadata also pins that non-secret destination before the first request, including
+a CLI `--base-url`; changing or dropping the endpoint refuses resume. Legacy
+compatibility and recovery are specified in [configuration](configuration.md).
 Shared operator skills use explicit isolation inputs; see
 [skill discovery](#skill-discovery).
 

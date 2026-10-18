@@ -237,6 +237,53 @@ defmodule Ipse.CLITest do
     end)
   end
 
+  test "headless prompt refusal exits rather than waiting for an unstarted turn" do
+    root = Path.join(System.fetch_env!("IPSE_HOME"), "prompt-admission")
+    File.mkdir_p!(root)
+
+    task =
+      Task.async(fn ->
+        ExUnit.CaptureIO.capture_io(:stderr, fn ->
+          assert 1 ==
+                   Ipse.CLI.run([
+                     "run",
+                     "--provider",
+                     "demo",
+                     "--cwd",
+                     root,
+                     String.duplicate("a", 1_048_577)
+                   ])
+        end)
+      end)
+
+    assert {:ok, output} = Task.yield(task, 3000) || Task.shutdown(task, :brutal_kill)
+    assert output =~ "Prompt exceeds 1 MiB"
+  end
+
+  test "interactive prompt refusal leaves the client ready for fresh input" do
+    with_fixture_and_cli(fn fixture, cli ->
+      await_input(cli.stdio)
+      Ipse.CLITest.IOFixture.feed(cli.stdio, String.duplicate("a", 1_048_577))
+      await_text(cli.stderr, "Prompt exceeds 1 MiB")
+      refute_receive {:ollama_request, _, _, _}, 50
+      Ipse.CLITest.IOFixture.feed(cli.stdio, "small later task")
+      {server, 1, _} = await_request(fixture)
+
+      Ipse.CLITest.HTTPFixture.reply(
+        server,
+        1,
+        Jason.encode!(%{
+          "message" => %{"role" => "assistant", "content" => "accepted"},
+          "done" => true
+        }) <> "\n"
+      )
+
+      await_text(cli.stdio, "accepted")
+      Ipse.CLITest.IOFixture.feed(cli.stdio, :eof)
+      assert 0 == Task.await(cli.task, 3000)
+    end)
+  end
+
   test "extension inspection and invalid commands stay local without model requests" do
     with_fixture_and_cli(fn _fixture, cli ->
       await_input(cli.stdio)
@@ -361,6 +408,32 @@ defmodule Ipse.CLITest do
       assert 0 == Task.await(cli.task, 5_000)
       assert Ipse.CLITest.IOFixture.output(cli.stderr) =~ "Finished."
       assert String.contains?(Ipse.CLITest.IOFixture.output(cli.stdio), "queued done")
+    end)
+  end
+
+  test "busy input has a bounded queue and overflow never reaches inference" do
+    with_fixture_and_cli(fn fixture, cli ->
+      await_input(cli.stdio)
+      Ipse.CLITest.IOFixture.feed(cli.stdio, "held task")
+      {server, 1, _} = await_request(fixture)
+      for n <- 1..16, do: Ipse.CLITest.IOFixture.feed(cli.stdio, "queued #{n}")
+      Ipse.CLITest.IOFixture.feed(cli.stdio, "overflow task")
+      await_text(cli.stderr, "queued tasks are limited to 16 entries")
+
+      assert length(
+               Regex.scan(~r/Queued for the next turn/, Ipse.CLITest.IOFixture.output(cli.stderr))
+             ) == 16
+
+      Ipse.CLITest.HTTPFixture.reply(server, 1, Ipse.CLITest.HTTPFixture.error_body())
+      await_text(cli.stderr, "Queued input was discarded after the error")
+      Ipse.CLITest.IOFixture.feed(cli.stdio, "fresh task")
+      {^server, 2, request} = await_request(fixture)
+      refute Jason.encode!(request) =~ "overflow task"
+      refute Jason.encode!(request) =~ "queued 16"
+      Ipse.CLITest.HTTPFixture.reply(server, 2, Ipse.CLITest.HTTPFixture.final_body())
+      await_text(cli.stderr, "Finished.")
+      Ipse.CLITest.IOFixture.feed(cli.stdio, :eof)
+      assert 0 == Task.await(cli.task, 3_000)
     end)
   end
 

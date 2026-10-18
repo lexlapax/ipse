@@ -3,6 +3,7 @@ defmodule Ipse.Session do
   use GenServer
   alias Ipse.{Journal, Skills, Tools, WorkspaceContext, Questions, ToolCall}
   alias Ipse.Journal.Writer
+  @prompt_bytes 1_048_576
 
   alias Ipse.Extensions.{
     Host,
@@ -134,6 +135,7 @@ defmodule Ipse.Session do
          :ok <- Ipse.Usage.configuration(config),
          :ok <- ModelCall.configuration(config),
          :ok <- Ipse.Provider.Limits.validate(config),
+         :ok <- provider_configuration(config),
          :ok <- Ipse.Budget.Policy.runtime(config),
          {:ok, cwd} <- WorkspaceContext.canonical_path(requested_cwd),
          true <- File.dir?(cwd),
@@ -336,6 +338,22 @@ defmodule Ipse.Session do
         do: :ok,
         else: {:error, :invalid_extension_configuration}
       )
+
+  defp prepare_prompt(text, skills) do
+    with :ok <- prompt_text(text),
+         {:ok, expanded, names} <- Skills.expand(text, skills),
+         :ok <- prompt_text(expanded) do
+      {:ok, expanded, names}
+    end
+  end
+
+  defp prompt_text(text) do
+    cond do
+      byte_size(text) > @prompt_bytes -> {:error, :prompt_too_large}
+      not String.valid?(text) -> {:error, :invalid_prompt}
+      true -> :ok
+    end
+  end
 
   # Explicit application homes are commonly isolation fixtures. Shared discovery
   # requires a separate opt-in in that case; the CLI supplies the operator home.
@@ -1335,7 +1353,10 @@ defmodule Ipse.Session do
     original = text
     turn = Ipse.Usage.id()
 
-    case Skills.expand(text, s.skills) do
+    case prepare_prompt(text, s.skills) do
+      {:error, error} when error in [:invalid_prompt, :prompt_too_large] ->
+        {:reply, {:error, error}, s}
+
       {:error, :skill_catalog_changed} = error ->
         {:reply, error,
          fail(
@@ -3665,6 +3686,7 @@ defmodule Ipse.Session do
              "budget" => config[:budget],
              "budget_root" => config[:budget_root],
              "provider" => to_string(config.provider),
+             "provider_destination" => provider_destination(config),
              "model" => config.model,
              "sandbox" => to_string(Map.get(config, :sandbox, :off)),
              "mcp_servers" => Ipse.MCP.fingerprints(config),
@@ -3685,6 +3707,7 @@ defmodule Ipse.Session do
          {:ok, old_cwd} <- WorkspaceContext.canonical_path(meta["cwd"]),
          true <-
            old_cwd == cwd and meta["provider"] == to_string(config.provider) and
+             matching_destination?(meta, config, events) and
              meta["model"] == config.model and
              meta["max_output_tokens"] === config[:max_output_tokens] and
              meta["model_profiles"] === ModelCall.snapshot(config) and
@@ -3717,6 +3740,44 @@ defmodule Ipse.Session do
   defp extension_catalog(config) do
     {:ok, catalog} = Catalog.snapshot(config)
     catalog
+  end
+
+  defp provider_configuration(%{provider: :demo}), do: :ok
+
+  defp provider_configuration(config) do
+    case Ipse.Provider.destination(config) do
+      {:ok, _} -> :ok
+      _ -> {:error, :invalid_provider_endpoint}
+    end
+  end
+
+  defp provider_destination(%{provider: :demo}), do: nil
+
+  defp provider_destination(config) do
+    {:ok, destination} = Ipse.Provider.destination(config)
+    destination
+  end
+
+  defp matching_destination?(metadata, config, events) do
+    if Map.has_key?(metadata, "provider_destination") do
+      metadata["provider_destination"] === provider_destination(config)
+    else
+      expected =
+        if is_binary(config[:base_url]), do: Ipse.Extensions.Manifest.sha256(config.base_url)
+
+      requests =
+        Enum.filter(
+          events,
+          &(&1["type"] == "request_admitted" and &1["kind"] in ~w(model compaction))
+        )
+
+      if requests == [],
+        do:
+          is_nil(expected) or
+            (metadata["execution"] == json_execution(config[:execution]) and
+               config[:execution] != nil),
+        else: Enum.all?(requests, &(&1["endpoint_sha256"] === expected))
+    end
   end
 
   defp compatible_configuration?(nil, nil), do: true

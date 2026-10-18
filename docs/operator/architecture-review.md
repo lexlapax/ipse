@@ -1,16 +1,25 @@
 # Architecture-review handoff
 
-The package R brief targeting `7810925` is withdrawn after its review returned
-without acceptance. Its [used prompt](../archive/2026-10-17-package-r-review-brief/index.md)
-is preserved with provenance. No replacement prompt is ready yet.
+The used package R brief for `7810925` is
+[archived](../archive/2026-10-17-package-r-review-brief/index.md). It returned
+without acceptance. The operator requested a full internal adversarial audit and
+repairs before one consolidated final handoff, replacing separate external
+R/S/C/O rounds.
 
-Current work reproduces and repairs pre-spawn cleanup and all-status HTTP bounds,
-preserves required delivery across idle peer loss, pins MCP cleanup outcomes and
-audits HTTP guardian ownership. The [internal audit](../developer/architecture-self-audit.md)
-and [dispositions](../developer/architecture-review-dispositions.md) record actual
-counterexamples, verification and remaining coverage. The
-[plan](../plan.md#p24-independent-architecture-validation-and-baseline-security)
-owns scheduling. The internal interaction review and final local source/package/
-installed-artifact checks pass; hosted verification must finish before the next
-handoff. Independent package R acceptance,
-the baseline security scan and P25 remain gated; packages S/C/O are unstarted.
+That internal pass covers ownership, SDK/delivery, context/egress and
+OS/persistence/accounting, including the complete Session state machine and
+meaningful test bodies. The [internal report](../developer/architecture-self-audit.md)
+records concrete counterexamples, repairs and limits; the
+[register](../developer/architecture-review-dispositions.md) retains the historical
+independent omissions. Neither is independent acceptance.
+
+The replacement prompt is withheld until the final frozen source/native/package,
+installed-artifact and hosted Linux/macOS gates pass. It will pin source and
+evidence separately and request one consolidated assessment of the full delta,
+its interactions and retained independent omissions. The first independent phase
+will still exclude internal verdicts and prior critiques. No new external review,
+security scan or source transfer is started by preparing this document.
+
+The [plan](../plan.md#p24-independent-architecture-validation-and-baseline-security)
+owns scheduling. Baseline security and P25 remain gated on applicable repairs and
+adequate independent architecture coverage.

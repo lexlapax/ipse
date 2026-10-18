@@ -74,7 +74,7 @@ defmodule Ipse.Extensions.ServicesTest do
       def init(options), do: {:ok, options}
       def handle("invoke.service", payload, state) do
         File.write!(#{inspect(called)}, Jason.encode!(payload))
-        File.write!(#{inspect(target_pid)}, System.pid())
+        File.write!((#{inspect(target_pid)}) <> ".ready-" <> System.pid(), System.pid()); File.rename!((#{inspect(target_pid)}) <> ".ready-" <> System.pid(), #{inspect(target_pid)})
         if payload["arguments"]["wait"], do: Process.sleep(:infinity)
         result = if payload["arguments"]["host_call"],
           do: %{"api_version" => 1, "kind" => "host_call", "request" => %{"op" => "tool.call", "name" => "write", "arguments" => %{"path" => "unapproved", "content" => "bad"}, "timeout_ms" => 1000}},

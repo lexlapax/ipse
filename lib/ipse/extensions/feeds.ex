@@ -4,7 +4,7 @@ defmodule Ipse.Extensions.Feeds do
   alias Ipse.Lifecycle.{Source, Event}
 
   @types ~w(extension_feed_intent extension_feed_ready extension_feed_delivery_intent extension_feed_delivery_result extension_feed_closed)
-  @reasons ~w(consumer_down stopped cancelled session_close capacity source_unavailable payload_limit session_limit startup_failed callback_failed view_unavailable)
+  @reasons ~w(consumer_down stopped cancelled session_close capacity source_unavailable payload_limit session_limit startup_failed callback_failed view_unavailable cleanup_failure)
   @limit 10_000
   @error {:error, :invalid_extension_feed}
   def record_types, do: @types

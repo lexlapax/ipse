@@ -77,7 +77,7 @@ defmodule Ipse.Extensions.HistoryTest do
         end) |> Map.put("snapshot", page["snapshot"])
         cond do
           state["mode"] == "hold" ->
-            File.write!(state["pid"], System.pid()); Process.sleep(:infinity)
+            File.write!((state["pid"]) <> ".ready-" <> System.pid(), System.pid()); File.rename!((state["pid"]) <> ".ready-" <> System.pid(), state["pid"]); Process.sleep(:infinity)
           state["mode"] == "question" ->
             checkpoint = state |> Map.take(~w(view scanned matched gaps text source snapshot)) |> Map.put("mode", "read")
               |> Map.put("cursor", page["next"] || page["snapshot"]["byte_offset"])

@@ -131,7 +131,8 @@ inside each lease; there is no global cross-session order.
 
 `/events off`, cancellation and session close revoke admission and interrupt
 in-flight worker calls through a bounded shared cleanup result. They record
-`extension_feed_closed` with the first closing cause, admitted/acknowledged counts,
+`extension_feed_closed` with the first closing cause (including typed
+`cleanup_failure` when owned work dies), admitted/acknowledged counts,
 an available rejection reference and actual cleanup confirmation. A callback that
 finished without a committed host acknowledgment remains unacknowledged. Close
 does not promise to drain callbacks or deliver later cancellation/final close facts.
