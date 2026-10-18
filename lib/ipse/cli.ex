@@ -477,6 +477,7 @@ defmodule Ipse.CLI do
             busy: prompt != nil,
             cancelling: false,
             approval: nil,
+            approval_token: nil,
             approval_display: nil,
             approval_context: nil,
             approval_redraw: true,
@@ -484,6 +485,7 @@ defmodule Ipse.CLI do
             deferred_bytes: 0,
             deferred_dropped: 0,
             question: nil,
+            question_token: nil,
             question_answers: %{},
             queued: [],
             exit: false,
@@ -548,7 +550,7 @@ defmodule Ipse.CLI do
 
       Terminal.puts(
         :stderr,
-        "\nWaiting for approval: #{name}\nAllow #{name}?\n#{Jason.encode!(args, pretty: true)}\nType y to allow, anything else to deny."
+        "\nWaiting for approval: #{name}\nAllow #{name}?\n#{Jason.encode!(args, pretty: true)}\nType allow #{s.approval_token} to allow, n to deny."
       )
     end
 
@@ -713,32 +715,75 @@ defmodule Ipse.CLI do
         {id, arguments, remaining} = s.question
         [question | rest] = remaining
 
-        case Ipse.Questions.parse_line(question, text) do
+        case question_answer(question, s.question_token, text) do
           {:ok, answer} ->
             answers = Map.put(s.question_answers, question["id"], answer)
 
             if rest == [] do
               case Ipse.Session.answer(s.pid, id, answers) do
                 :ok ->
-                  client_loop(%{s | question: nil, question_answers: %{}, busy: true})
+                  client_loop(%{
+                    s
+                    | question: nil,
+                      question_token: nil,
+                      question_answers: %{},
+                      busy: true
+                  })
 
                 {:error, reason} ->
                   Terminal.puts(:stderr, "Answer rejected: #{inspect(reason)}")
                   client_loop(s)
               end
             else
-              Terminal.puts(:stderr, Ipse.Questions.render(hd(rest)))
-              client_loop(%{s | question: {id, arguments, rest}, question_answers: answers})
+              token = Base.encode16(:crypto.strong_rand_bytes(8), case: :lower)
+              Terminal.puts(:stderr, question_prompt(hd(rest), token))
+
+              client_loop(%{
+                s
+                | question: {id, arguments, rest},
+                  question_token: token,
+                  question_answers: answers
+              })
             end
 
+          {:error, :question_confirmation} ->
+            Terminal.puts(
+              :stderr,
+              "Question confirmation does not match. " <>
+                question_prompt(question, s.question_token)
+            )
+
+            client_loop(s)
+
           _ ->
-            Terminal.puts(:stderr, "Invalid answer. " <> Ipse.Questions.render(question))
+            Terminal.puts(
+              :stderr,
+              "Invalid answer. " <> question_prompt(question, s.question_token)
+            )
+
             client_loop(s)
         end
 
       {:input, text} when s.approval != nil ->
-        Ipse.Session.approve(s.pid, s.approval, String.downcase(text) in ["y", "yes"])
-        client_loop(%{s | approval: nil})
+        confirmation = if String.valid?(text), do: String.downcase(text), else: ""
+
+        cond do
+          confirmation == "allow #{s.approval_token}" ->
+            Ipse.Session.approve(s.pid, s.approval, true)
+            client_loop(%{s | approval: nil, approval_token: nil})
+
+          confirmation in ["n", "no", "deny"] ->
+            Ipse.Session.approve(s.pid, s.approval, false)
+            client_loop(%{s | approval: nil, approval_token: nil})
+
+          true ->
+            Terminal.puts(
+              :stderr,
+              "Confirmation does not match the pending proposal. Review its arguments and use its displayed allow code, or n to deny."
+            )
+
+            client_loop(s)
+        end
 
       {:input, text} when s.busy ->
         if String.valid?(text) and length(s.queued) < 16 and
@@ -822,12 +867,14 @@ defmodule Ipse.CLI do
           client_loop(%{s | question: nil, question_answers: %{}})
         else
           Terminal.puts(:stderr, "Waiting for operator clarification (not action approval):")
-          Terminal.puts(:stderr, Ipse.Questions.render(hd(arguments["questions"])))
+          token = Base.encode16(:crypto.strong_rand_bytes(8), case: :lower)
+          Terminal.puts(:stderr, question_prompt(hd(arguments["questions"]), token))
 
           client_loop(%{
             s
             | busy: true,
               question: {id, arguments, arguments["questions"]},
+              question_token: token,
               question_answers: %{}
           })
         end
@@ -840,6 +887,7 @@ defmodule Ipse.CLI do
           client_loop(%{
             s
             | approval: ref,
+              approval_token: Base.encode16(:crypto.strong_rand_bytes(8), case: :lower),
               approval_display: {name, args, s.approval_context},
               approval_context: nil
           })
@@ -917,16 +965,36 @@ defmodule Ipse.CLI do
       {:ipse, _, _} ->
         client_loop(s)
 
-      {:DOWN, ref, _, _, _reason} when ref == s.ref ->
+      {:DOWN, ref, _, _, reason} when ref == s.ref ->
         Terminal.puts(
           :stderr,
-          "Session stopped unexpectedly. Resume the saved session to inspect its history."
+          if(reason == :journal_limit_reached,
+            do:
+              "Session stopped at its journal resource limit. Inspect preserved history with ipse diagnose or handoff; this sealed journal cannot resume.",
+            else: "Session stopped unexpectedly. Resume the saved session to inspect its history."
+          )
         )
 
         1
 
       _ ->
         client_loop(s)
+    end
+  end
+
+  defp question_prompt(question, token),
+    do: Ipse.Questions.render(question) <> "\nReply with answer #{token} VALUE."
+
+  defp question_answer(question, token, text) do
+    prefix = "answer #{token} "
+
+    if String.valid?(text) and String.starts_with?(text, prefix) do
+      Ipse.Questions.parse_line(
+        question,
+        binary_part(text, byte_size(prefix), byte_size(text) - byte_size(prefix))
+      )
+    else
+      {:error, :question_confirmation}
     end
   end
 
@@ -1065,6 +1133,7 @@ defmodule Ipse.CLI do
                timeout_ms: opts[:timeout_ms],
                max_output_tokens: opts[:max_output_tokens],
                budget: effective.budget,
+               journal: effective.journal,
                sandbox: sandbox,
                base_url: opts[:base_url],
                max_steps: opts[:max_steps] || 30,
@@ -1171,6 +1240,10 @@ defmodule Ipse.CLI do
   defp format_error(:resume_configuration_mismatch),
     do:
       "Saved session configuration differs. Restore its provider, model, endpoint (--base-url), profiles and extensions, or start a fresh session."
+
+  defp format_error(:journal_limit_reached),
+    do:
+      "Journal resource limit reached. History was preserved; inspect it and use an explicit fresh-session handoff. Oversized legacy files require bounded source-page inspection."
 
   defp format_error(reason) when is_binary(reason), do: reason
   defp format_error(reason), do: inspect(reason)

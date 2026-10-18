@@ -2,7 +2,9 @@
 
 Session owns conversation and effects. `Ipse.Journal` supplies JSONL creation,
 validated reads, inactive-file appends and locked tail repair;
-`Ipse.Journal.Writer` owns the active append descriptor. The Rust advisory lock
+`Ipse.Journal.Writer` owns the active append descriptor. `Ipse.Journal.Reader` decodes bounded
+chunks, lines and record counts; operator-only `Journal.Limits` narrows finite
+host ceilings without disabling mandatory persistence. The Rust advisory lock
 continues to exclude a second session owner. `Ipse.Session.Lock` owns that Port
 independently of Session, so a Session kill or supervisor shutdown does not itself
 release it. Lock files retain their inode.
@@ -37,8 +39,10 @@ record contents and private paths.
 
 Writer calls have an explicit five-second acknowledgment deadline. A call exit
 returns `journal_write_unconfirmed` without including private call arguments;
-every mandatory Session append path exits deliberately as `journal_unavailable`
-on refusal. A timeout proves neither absence nor completion of a write. Session
+mandatory Session append paths exit deliberately as `journal_unavailable` on
+unconfirmed IO or invalid records. Confirmed quota exhaustion instead stops as
+`journal_limit_reached`, after its terminal receipt. A timeout proves neither
+absence nor completion of a write. Session
 termination shuts down owned work and kills its writer. The independent lock
 guardian waits for tracked writer, root/nested worker, scope, registered resource
 and delegated child-guard exits, plus admitted filesystem completion owners,
@@ -67,8 +71,9 @@ resume/source validation remains mandatory. In particular, this journal strategy
 does not replace the budget ledger's stronger live prefix-hash check.
 
 Use the stateless `Journal.append*` functions only for inactive journals under
-the appropriate lock. They retain complete-file validation and its historical
-cost. All active Session append paths, including feed receipts and operator-wait
+the appropriate lock. They validate history and use the same owned writer for
+admission and fsync; repeatedly opening them still has linear validation cost.
+All active Session append paths, including feed receipts and operator-wait
 sources, use the owned writer. Its BEAM participates in extension host identity;
 the persisted JSONL and source-offset formats do not change.
 
@@ -80,13 +85,52 @@ delay replies. No universal approval-latency guarantee follows from moving IO
 and repeated decoding out of Session. Caller deadlines and unknown-effect rules
 still apply.
 
-Opening, restoring and inspecting a journal still require history validation;
-the journal has no cumulative disk quota or automatic rotation. Context
-compaction changes effective model input, not retained journal bytes. A reviewed
-[fresh-session handoff](../operator/recovery.md) is the existing way to continue
-with bounded context while preserving the original evidence. Segmentation,
-retention, redaction and secure erasure require explicit future contracts; an
-extension must not promise them by deleting only its own retrieval state.
+Each journal has finite host ceilings: 128 MiB total bytes, 100,000 events and
+16 MiB per encoded JSON record, excluding its newline. Operator configuration may
+lower each ceiling through top-level `journal`; project files cannot select it.
+These are per-file admission/work bounds, not a process-RAM, whole-directory disk
+or billing quota. Main and routed/inherited child Sessions use the operator policy.
+Policy resolution reuses the existing closed schema adapter. No runtime service
+or dependency is added.
+
+The writer reserves 512 bytes and one event for `journal_limit_reached`. Normal
+admission requires space for both the proposed record and that terminal receipt.
+On exhaustion it writes/fsyncs the receipt once, refuses the proposed record and
+stops Session before further dispatch. The receipt binds its enforced limits,
+reason, previous byte offset and event count, without retaining rejected content.
+No later record is valid in that sealed journal. A quota write with unconfirmed
+IO keeps ordinary journal-unavailable/unknown rules; a timeout does not certify
+that the terminal receipt committed. Already admitted effects can therefore
+remain unknown, as with any lost result append.
+
+Restore, repair and writer initialization decode incrementally with bounded
+record and event counts, checking file size before reading and bytes during reads.
+They do not allocate a whole encoded file or split it into every line first.
+Decoded history is still retained for recovery, within those configured bounds.
+Each reader scan is linear; complete Session startup repeats higher-level
+validation/projection and can have additional costs with historical questions.
+Sessions listing reads only a bounded header and does not certify the later tail.
+A legacy file over the host ceiling is refused unchanged rather than truncated.
+`Journal.source_page` permits bounded inspection only for records within its
+separate 1 MiB record bound; it is not a universal legacy export. Larger records
+need developer-assisted bounded inspection and reviewed notes for a fresh session.
+An overlong torn tail is also refused, and repair never adds a missing newline
+beyond the byte limit.
+
+Read-only saved diagnosis and handoff remain available for valid sealed journals,
+including pending questions and missing started-effect results. A typed terminal
+receipt is accepted independently by strict question/action reducers, while a
+forged count or a subsequent record refuses restoration. An attempted answer
+that cannot be journaled does not become an answered checkpoint. Sealed journals
+cannot reopen for work, even with a larger policy: use an explicit reviewed
+[fresh-session handoff](../operator/recovery.md), inspecting unknown effects and
+asking unanswered questions again. Existing extension/runtime identity pins still
+apply, including the reader and limits modules in the host digest.
+
+Context compaction does not shrink retained evidence. There is no automatic
+rotation, retention deletion, segmentation, redaction or secure erasure; these
+require separate contracts. An extension must not promise them by deleting only
+its own retrieval state.
 
 Regression checks cover source offsets, optional versus mandatory records,
 owner-only calls, initial corruption, file changes, normal/abrupt owner exit,

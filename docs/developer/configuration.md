@@ -48,6 +48,16 @@ the manifest/fingerprint; absence preserves old identity. Root/child budget
 descriptors and live ETS authority are host runtime state, not accepted JSON
 configuration. See [shared budget ownership and recovery](budgets.md).
 
+Operator-only `journal` narrows mandatory finite byte, record-size and event-count
+ceilings through `Journal.Limits`. Project declarations refuse even with generic
+project trust. The resolved runtime policy is inherited across child profile
+routing; profiles cannot replace it. The manifest shows effective limits, while
+unchanged source/config fingerprints retain their prior identity. A changed
+operator file follows the normal source-drift rule. Embedded callers may provide
+the same string-keyed `config[:journal]` object. Sealing and bounded legacy reads
+are [persistence policy](persistence.md#recovery-and-growth), independent of context
+compaction, optional diagnostics and budget ledgers.
+
 `Session.info/1` exposes the non-secret manifest. Resume compares fingerprints
 before acquiring work or requesting inference. Legacy metadata without a manifest
 accepts only a config with no loaded files, retaining existing provider/model/

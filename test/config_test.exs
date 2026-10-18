@@ -42,6 +42,54 @@ defmodule Ipse.ConfigTest do
     refute Jason.encode!(Config.manifest(config)) =~ "must not be read"
   end
 
+  test "journal bounds are operator-only, finite and inherited by routed children", c do
+    policy = %{"max_bytes" => 32_768, "max_events" => 64, "max_record_bytes" => 8_192}
+
+    File.write!(
+      Path.join(c.home, "config.json"),
+      Jason.encode!(%{"version" => 1, "journal" => policy})
+    )
+
+    assert {:ok, config} = Config.resolve(c.cwd, c.home, [], %{})
+    assert config.journal == policy
+    assert Config.manifest(config)[:journal] == policy
+
+    runtime = %{
+      journal: policy,
+      profiles: %{"routine" => %{"provider" => "demo", "model" => "fixture"}},
+      roles: %{"routine" => "routine"},
+      subagents: true,
+      provider: :demo,
+      model: "fixture"
+    }
+
+    assert {:ok, routed} =
+             Ipse.Profiles.child_config(runtime, %{}, %{
+               "task" => "fixture",
+               "context" => "fixture"
+             })
+
+    assert routed.journal == policy
+    assert Ipse.Delegation.child_config(runtime, %{}).journal == policy
+
+    for invalid <- [
+          %{"max_bytes" => 0},
+          %{"max_bytes" => 134_217_729},
+          %{"max_events" => 2.0},
+          %{"max_record_bytes" => 511},
+          %{"unknown" => 1},
+          false
+        ] do
+      assert {:error, _} = Ipse.Journal.Limits.normalize(invalid)
+    end
+
+    project = Path.join(c.project, ".ipse/config.json")
+    File.mkdir_p!(Path.dirname(project))
+    File.write!(project, Jason.encode!(%{"version" => 1, "journal" => policy}))
+    assert {:error, error} = Config.resolve(c.cwd, c.home, [trust_project_config: true], %{})
+    assert error =~ "Journal policy is operator-only"
+  end
+
   test "extension data is scoped, inspected without options and cannot self-authorize", c do
     artifact = String.duplicate("a", 64)
 

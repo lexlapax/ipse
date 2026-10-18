@@ -62,6 +62,7 @@ defmodule Ipse.Diagnostics do
        %{
          "version" => 1,
          "accounting" => Ipse.Usage.snapshot(accounting),
+         "journal_limit" => Ipse.Journal.Limits.summary(events),
          "event_deliveries" => Ipse.Extensions.Subscriptions.summary(events),
          "event_feeds" => Ipse.Extensions.Feeds.summary(events),
          "tool_events" => Ipse.Lifecycle.Tool.summary(events),

@@ -7,6 +7,33 @@ finding register and supervisor verification record; the full report and any
 exploit details remain outside Git. The [plan](../plan.md) owns scheduling and the
 [evaluation protocol](self-hosting-evaluation.md) owns review/scan acceptance.
 
+## P25 final security triage
+
+The separately approved GPT-5.6 Sol/high scan completed on 2026-10-18 against
+`b5ddd0205a57b14afdc3038bd73c04ec7fdfb9c2`, run
+`wfr_3b03c34c933a9aebe79f0641425405058caa5dd0bac7f68555a421c31e32c8c9`.
+The supervisor read every report page plus the findings, manifest and coverage,
+verified all four service digests and checked the pinned revision. It reports two
+Medium findings, no High/Critical findings, and **partial** static coverage.
+The initial repository-filtered findings query returned no entries; the unfiltered
+query returned both canonical findings. This is not evidence of zero findings or
+an ingestion failure.
+Raw artifacts and reproduction details remain private.
+
+| ID | Surface | Current disposition | Required gate |
+| --- | --- | --- | --- |
+| FSC-1 (`csf_d8fb991afccccf6790b8e749`) | Proposal-bound terminal confirmations | Reproduced with a real CLI/loopback fixture. Fresh per-proposal codes prevent buffered/replayed input. Internal review also reproduced buffered structured answers; per-question codes fix that adjacent case. All 30 CLI tests and the full local handoff pass | Hosted platform checks and refreshed affected security review; not closed yet |
+| FSC-2 (`csf_07c9aa59e131a3393e3639f5`) | Durable journal growth and bounded recovery/listing | The bounded fixture fails on the prior implementation and passes with finite operator-narrowable limits, a reserved terminal receipt, incremental decoding and header-only listing. Seven quota/checkpoint fixtures pass, including pending native/extension questions, missing started-effect results, sparse legacy files and a tight header boundary. Full local handoff and existing compiled extension proofs pass | Hosted platform checks and affected security review; not closed yet |
+
+The scan prioritizes major runtime boundaries but defers full file-level review
+of parts of Session, budget/accounting, compaction, lifecycle, text delivery,
+subscription/job helpers and supporting tests/docs/examples/scripts. Its lack of
+runtime provider, sandbox or package execution is distinct from the inspected
+hosted source/native/installed receipts. The earlier baseline's coverage and
+independent architecture omissions retain their own identities; they are not
+silently expanded by this report. P25 remains open through repair and affected
+coverage refresh. No additional scan or whole-design review has been launched.
+
 ## Provenance and coverage
 
 **Current decision:** P24's scoped supervisor readiness gate is accepted for the

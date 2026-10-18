@@ -506,7 +506,41 @@ The separately approved final one-time scan started on 2026-10-18 against
 `wfr_3b03c34c933a9aebe79f0641425405058caa5dd0bac7f68555a421c31e32c8c9`.
 The operator requested GPT-6.1 Sol/high, but the workflow offered only GPT-5.6 Sol;
 the operator explicitly approved GPT-5.6 Sol/high before launch. No silent model
-substitution or continuous monitoring occurred. The run is in progress, not a
-passing security result; findings, actual coverage and usage await inspection.
+substitution or continuous monitoring occurred. The run completed at 16:43:43 UTC.
+The supervisor read the complete report, findings, manifest and coverage, checking
+all four service digests and the exact revision. Usage is $22.8826316, fully
+covered by the allowance; $435.3235372 remained afterward.
+
+The artifacts report two Medium findings and explicitly **partial** coverage;
+this is not a clean or exhaustive result. The initial findings-list query with
+the optional repository filter returned no entries; the unfiltered query returned
+both findings, matching the checked canonical `findings.json`. No ingestion
+failure is established by the filtered response.
+The [disposition register](architecture-review-dispositions.md#p25-final-security-triage)
+owns repairs and remaining coverage. Approval-input confusion is reproduced by a
+real CLI fixture. The fresh-code candidate also fixes reproduced buffered
+question answers and passes all 30 CLI tests. The journal candidate enforces
+finite operator-narrowable bounds, seals with a reserved typed receipt and uses
+incremental restore/header-only listing. Seven quota/checkpoint checks pass.
+Internal review found and fixed a tight-header read-ahead issue before external
+handoff. One intermediate combined run passed 111/112; its new checkpoint-count
+assertion used the wrong event name. Correcting the fixture exercised both actual
+checkpoints without weakening recovery. The earlier synthetic test's attempt to
+claim confirmed close after deliberately sealing its writer was also corrected:
+an unrecordable answer stops with uncertainty; no success acknowledgment is inferred.
+The first full native-inclusive suite passed 891 tests with 15 exclusions but
+failed its existing CLI listing fixture: the inactive append adapter omitted the
+previous owner-only permission normalization for a freshly written fixture.
+After restoring that compatibility and checking hardlink refusal before permission
+changes, the frozen rerun passes 893 tests with 15 exclusions. Build, both actual
+Elixir formatter floors, strict compile, isolated demo and the documented
+configuration example pass. Package verification and 41 legacy/nine model-call
+assertions pass with previously compiled artifacts, archive SHA-256
+`d5d6636355bbc498ac058b72a0c42c1c1f738fdeae73cdc21aa8feb0795f7bd7`.
+Six retained live-trial journals restore unchanged under the bounded reader;
+five UTF-8/escaped-JSON boundary probes preserve values/source offsets.
+These security repairs are supervisor work, not additional Ipse-authorship credit.
+Hosted platform verification and refreshed affected security review remain open;
+no additional scan has been launched.
 The researched P26/P27 proposal is in the [knowledge design](knowledge-extensions.md);
 no production engine is installed. The requested license transition remains open.

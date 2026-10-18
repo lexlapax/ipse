@@ -177,6 +177,7 @@ defmodule Ipse.Extensions.Actions do
   end
 
   def restore([%{"metadata" => metadata} | _] = events) do
+    :ok = Ipse.Journal.Limits.validate_events(events)
     {:ok, _} = Ipse.Lifecycle.Runtime.restore(events)
     :ok = Ipse.Observability.Resources.validate(events)
     :ok = Ipse.Extensions.Subscriptions.validate_events(events)
@@ -252,6 +253,9 @@ defmodule Ipse.Extensions.Actions do
 
   defp validate_event(%{"type" => "lifecycle_question_sources"}, state, _),
     do: {:ok, state}
+
+  defp validate_event(%{"type" => "journal_limit_reached"} = event, state, _),
+    do: if(Ipse.Journal.Limits.valid_receipt?(event), do: {:ok, state}, else: @error)
 
   defp validate_event(%{"type" => type}, state, _)
        when type in ~w(extension_text_intent extension_text_ready extension_text_closed),

@@ -137,21 +137,22 @@ defmodule Ipse.Session do
          :ok <- Ipse.Provider.Limits.validate(config),
          :ok <- provider_configuration(config),
          :ok <- Ipse.Budget.Policy.runtime(config),
+         {:ok, _journal_limits} <- Ipse.Journal.Limits.normalize(config[:journal]),
          {:ok, cwd} <- WorkspaceContext.canonical_path(requested_cwd),
          true <- File.dir?(cwd),
          {:ok, _sandbox} <- Ipse.Sandbox.resolve(Map.get(config, :sandbox, :off), cwd),
          {:ok, id, _events} <- open(dir, id, cwd, config),
          {:ok, _} <- Registry.register(Ipse.Registry, {dir, id}, nil),
          {:ok, lock} <- acquire_lock(Path.join(dir, id <> ".lock"), 10),
-         {:ok, locked_events} <- Journal.load(dir, id),
+         {:ok, locked_events} <- Journal.load(dir, id, config[:journal]),
          {:ok, config} <- Ipse.Budget.Store.attach(config, dir, id, opts[:id] == nil),
          {:ok, _} <- restore_context(locked_events),
          :ok <- Ipse.Observability.Resources.validate(locked_events, id),
          :ok <- Ipse.Extensions.TextResources.validate_events(locked_events, id),
          :ok <- Subscriptions.validate_sources(dir, id, locked_events),
          :ok <- Ipse.Budget.validate_sources(config, id, locked_events),
-         :ok <- Journal.repair_tail(dir, id),
-         {:ok, events} <- Journal.load(dir, id),
+         :ok <- Journal.repair_tail(dir, id, config[:journal]),
+         {:ok, events} <- Journal.load(dir, id, config[:journal]),
          {:ok, accounting} <- Ipse.Usage.restore(events, id),
          {:ok, extension_state} <- Actions.restore(events),
          {:ok, messages} <- restore(events),
@@ -171,7 +172,7 @@ defmodule Ipse.Session do
              skill_discovery_options(config)
            ),
          {:ok, skills, skills_saved} <- Skills.restore(events, discovered),
-         {:ok, writer} <- Writer.start(dir, id, self()) do
+         {:ok, writer} <- Writer.start(dir, id, self(), config[:journal]) do
       :ok = Ipse.Session.Lock.track(writer, :writer)
 
       state = %{
@@ -3561,8 +3562,8 @@ defmodule Ipse.Session do
         offer_record(s, source, event)
         source
 
-      {:error, _} ->
-        exit(:journal_unavailable)
+      {:error, reason} ->
+        journal_failed(s, reason)
     end
   end
 
@@ -3596,7 +3597,7 @@ defmodule Ipse.Session do
     case result do
       :ok -> :ok
       {:ok, source} -> offer_record(s, source, event)
-      {:error, _} -> exit(:journal_unavailable)
+      {:error, reason} -> journal_failed(s, reason)
     end
   end
 
@@ -3606,10 +3607,22 @@ defmodule Ipse.Session do
         offer_record(s, source, event)
         source
 
-      {:error, _} ->
-        exit(:journal_unavailable)
+      {:error, reason} ->
+        journal_failed(s, reason)
     end
   end
+
+  defp journal_failed(s, :journal_limit_reached) do
+    notify(
+      s,
+      {:error,
+       "Journal resource limit reached. History was preserved; inspect it and use an explicit fresh-session handoff before continuing."}
+    )
+
+    exit(:journal_limit_reached)
+  end
+
+  defp journal_failed(_s, _reason), do: exit(:journal_unavailable)
 
   defp notify(s, event), do: send(s.subscriber, {:ipse, self(), event})
 
@@ -3619,7 +3632,7 @@ defmodule Ipse.Session do
     Feeds.offer(s.feeds, source, event, fn intent ->
       case Writer.append(s.journal_writer, intent) do
         :ok -> :ok
-        {:error, _} -> exit(:journal_unavailable)
+        {:error, reason} -> journal_failed(s, reason)
       end
     end)
   end
@@ -3746,32 +3759,37 @@ defmodule Ipse.Session do
 
   defp open(dir, nil, cwd, config) do
     with {:ok, id} <-
-           Journal.create(dir, %{
-             "cwd" => cwd,
-             "usage_version" => 1,
-             "max_output_tokens" => config[:max_output_tokens],
-             "model_profiles" => ModelCall.snapshot(config),
-             "budget" => config[:budget],
-             "budget_root" => config[:budget_root],
-             "provider" => to_string(config.provider),
-             "provider_destination" => provider_destination(config),
-             "model" => config.model,
-             "sandbox" => to_string(Map.get(config, :sandbox, :off)),
-             "mcp_servers" => Ipse.MCP.fingerprints(config),
-             "subagents" => Ipse.Delegation.enabled?(config),
-             "subagent_concurrency" => Map.get(config, :subagent_concurrency, 1),
-             "delegation_origin" => config[:delegation_origin],
-             "configuration" => Map.get(config, :configuration),
-             "execution" => Map.get(config, :execution),
-             "extensions" => Ipse.Extensions.Registry.manifests(config),
-             "extension_catalog" => extension_catalog(config),
-             "extension_subscriptions" => Subscriptions.snapshot(config)
-           }),
+           Journal.create(
+             dir,
+             %{
+               "cwd" => cwd,
+               "usage_version" => 1,
+               "max_output_tokens" => config[:max_output_tokens],
+               "model_profiles" => ModelCall.snapshot(config),
+               "budget" => config[:budget],
+               "budget_root" => config[:budget_root],
+               "provider" => to_string(config.provider),
+               "provider_destination" => provider_destination(config),
+               "model" => config.model,
+               "sandbox" => to_string(Map.get(config, :sandbox, :off)),
+               "mcp_servers" => Ipse.MCP.fingerprints(config),
+               "subagents" => Ipse.Delegation.enabled?(config),
+               "subagent_concurrency" => Map.get(config, :subagent_concurrency, 1),
+               "delegation_origin" => config[:delegation_origin],
+               "configuration" => Map.get(config, :configuration),
+               "execution" => Map.get(config, :execution),
+               "extensions" => Ipse.Extensions.Registry.manifests(config),
+               "extension_catalog" => extension_catalog(config),
+               "extension_subscriptions" => Subscriptions.snapshot(config)
+             },
+             config[:journal]
+           ),
          do: {:ok, id, []}
   end
 
   defp open(dir, id, cwd, config) do
-    with {:ok, [%{"metadata" => meta} | _] = events} <- Journal.load(dir, id),
+    with {:ok, [%{"metadata" => meta} | _] = events} <- Journal.load(dir, id, config[:journal]),
+         :ok <- Ipse.Journal.Limits.writable_events(events),
          {:ok, old_cwd} <- WorkspaceContext.canonical_path(meta["cwd"]),
          true <-
            old_cwd == cwd and meta["provider"] == to_string(config.provider) and
@@ -3891,7 +3909,8 @@ defmodule Ipse.Session do
 
   @doc "Validate saved effective context without starting inference, tools or a session."
   def restore_context(events) do
-    with :ok <- Ipse.Handoff.validate_events(events),
+    with :ok <- Ipse.Journal.Limits.validate_events(events),
+         :ok <- Ipse.Handoff.validate_events(events),
          :ok <- Skills.validate_events(events),
          {:ok, _} <- Ipse.Lifecycle.Runtime.restore(events),
          {:ok, _} <- Ipse.Lifecycle.Tool.restore(events),
@@ -4013,7 +4032,7 @@ defmodule Ipse.Session do
     if match?(%{active: true}, s.lifecycle) or Feeds.active?(s.feeds) do
       case Writer.append_with_source(s.journal_writer, event) do
         {:ok, source} -> source
-        {:error, _} -> exit(:journal_unavailable)
+        {:error, reason} -> journal_failed(s, reason)
       end
     else
       record(s, event)

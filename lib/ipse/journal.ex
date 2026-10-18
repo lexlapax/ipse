@@ -1,81 +1,56 @@
 defmodule Ipse.Journal do
-  @moduledoc "Durable JSONL event journals for Ipse sessions."
-
+  @moduledoc "Durable bounded JSONL event journals for Ipse sessions."
+  alias Ipse.Journal.{Limits, Reader, Writer}
   @id_re ~r/\A[0-9a-f]{32}\z/
 
-  def create(state_dir, metadata) when is_map(metadata) do
-    with :ok <- ensure_state_dir(state_dir),
-         {:ok, encoded_metadata} <- Jason.encode(metadata) do
+  def create(state_dir, metadata, policy \\ nil)
+
+  def create(state_dir, metadata, policy) when is_map(metadata) do
+    with {:ok, limits} <- Limits.normalize(policy),
+         :ok <- ensure_state_dir(state_dir),
+         {:ok, encoded_metadata} <- Jason.encode(metadata),
+         event = %{
+           "type" => "session",
+           "metadata" => Jason.decode!(encoded_metadata),
+           "created_at" => now()
+         },
+         {:ok, encoded} <- Limits.encode(event, limits),
+         :ok <- initial_capacity(encoded, limits) do
       id = :crypto.strong_rand_bytes(16) |> Base.encode16(case: :lower)
 
-      event = %{
-        "type" => "session",
-        "metadata" => Jason.decode!(encoded_metadata),
-        "created_at" => now()
-      }
-
-      case write_new(journal_path(state_dir, id), event) do
+      case write_new(journal_path(state_dir, id), encoded <> "\n") do
         :ok -> {:ok, id}
         error -> error
       end
-    else
-      {:error, reason} -> {:error, reason}
     end
   end
 
-  def create(_state_dir, _metadata), do: {:error, :metadata_must_be_a_map}
+  def create(_, _, _), do: {:error, :metadata_must_be_a_map}
 
-  def append(state_dir, id, event) when is_map(event) do
+  def append(state_dir, id, event), do: inactive_append(state_dir, id, event, :plain)
+  def append_observed(state_dir, id, event), do: inactive_append(state_dir, id, event, :observed)
+  def append_with_source(state_dir, id, event), do: inactive_append(state_dir, id, event, :source)
+
+  defp inactive_append(state_dir, id, event, mode) when is_map(event) do
     with :ok <- validate_id(id),
-         {:ok, encoded} <- Jason.encode(event),
-         path = journal_path(state_dir, id),
-         {:ok, contents} <- File.read(path),
-         :ok <- validate_complete_journal(contents),
+         {:ok, stats} <- Reader.path(journal_path(state_dir, id), nil, :validate),
+         :ok <- complete(stats),
          :ok <- ensure_state_dir(state_dir),
-         :ok <- append_sync(path, encoded <> "\n") do
-      :ok
-    else
-      {:error, reason} -> {:error, reason}
+         :ok <- normalize_inactive(journal_path(state_dir, id)),
+         {:ok, writer} <- Writer.start(state_dir, id, self()) do
+      try do
+        case mode do
+          :plain -> Writer.append(writer, event)
+          :observed -> Writer.append_observed(writer, event)
+          :source -> Writer.append_with_source(writer, event)
+        end
+      after
+        if Process.alive?(writer), do: Writer.close(writer)
+      end
     end
   end
 
-  def append(_state_dir, _id, _event), do: {:error, :event_must_be_a_map}
-
-  @doc "Sync exactly one record; a refused optional source never prevents the recovery append. Caller holds the lock."
-  def append_observed(state_dir, id, event) when is_map(event) do
-    with :ok <- validate_id(id),
-         {:ok, encoded} <- Jason.encode(event),
-         path = journal_path(state_dir, id),
-         {:ok, contents} <- File.read(path),
-         :ok <- validate_complete_journal(contents),
-         source =
-           (case Ipse.Lifecycle.Source.build(id, byte_size(contents), event) do
-              {:ok, reference} -> reference
-              _ -> nil
-            end),
-         :ok <- ensure_state_dir(state_dir),
-         :ok <- append_sync(path, encoded <> "\n") do
-      {:ok, source}
-    end
-  end
-
-  @doc "Append and sync a record before returning its private, stable lifecycle source. Caller holds the session lock."
-  def append_with_source(state_dir, id, event) when is_map(event) do
-    with :ok <- validate_id(id),
-         {:ok, encoded} <- Jason.encode(event),
-         {:ok, decoded} <-
-           Ipse.Extensions.Manifest.decode_json(encoded, Ipse.Lifecycle.Source.record_bytes()),
-         path = journal_path(state_dir, id),
-         {:ok, contents} <- File.read(path),
-         :ok <- validate_complete_journal(contents),
-         {:ok, source} <- Ipse.Lifecycle.Source.build(id, byte_size(contents), decoded),
-         :ok <- ensure_state_dir(state_dir),
-         :ok <- append_sync(path, encoded <> "\n") do
-      {:ok, source}
-    end
-  end
-
-  def append_with_source(_, _, _), do: {:error, :event_must_be_a_map}
+  defp inactive_append(_, _, _, _), do: {:error, :event_must_be_a_map}
 
   @doc "Read a bounded page of complete source records without replay or tail repair. Cursor is a record's byte offset."
   def source_page(state_dir, id, cursor \\ 0, limit \\ 32),
@@ -103,61 +78,57 @@ defmodule Ipse.Journal do
 
   def source_page(_, _, _, _, _), do: {:error, :invalid_source_page}
 
-  def load(state_dir, id) do
+  def load(state_dir, id, policy \\ nil) do
     with :ok <- validate_id(id),
-         {:ok, contents} <- File.read(journal_path(state_dir, id)),
-         {:ok, events} <- decode_journal(contents) do
-      {:ok, events}
+         {:ok, stats} <- Reader.path(journal_path(state_dir, id), policy) do
+      {:ok, stats.events}
     end
   end
 
-  @doc "Repair only the final unterminated record. Caller must hold the session lock."
-  def repair_tail(state_dir, id) do
-    Ipse.FileEffect.run(fn -> repair(state_dir, id) end)
+  @doc "Repair only a bounded final unterminated record. Caller holds the session lock."
+  def repair_tail(state_dir, id, policy \\ nil) do
+    Ipse.FileEffect.run(fn -> repair(state_dir, id, policy) end)
   end
 
-  defp repair(state_dir, id) do
+  defp repair(state_dir, id, policy) do
     with :ok <- validate_id(id),
+         {:ok, limits} <- Limits.normalize(policy),
          path = journal_path(state_dir, id),
          {:ok, %{type: :regular}} <- File.lstat(path),
-         {:ok, contents} <- File.read(path) do
-      if String.ends_with?(contents, "\n") do
-        validate_complete_journal(contents)
-      else
-        offset =
-          case List.last(:binary.matches(contents, "\n")) do
-            {index, 1} -> index + 1
-            nil -> 0
-          end
+         {:ok, stats} <- Reader.path(path, limits, :validate) do
+      max_bytes = limits["max_bytes"]
 
-        prefix = binary_part(contents, 0, offset)
-        tail = binary_part(contents, offset, byte_size(contents) - offset)
+      case stats.tail do
+        :none ->
+          complete(stats)
 
-        with {:ok, _} <- decode_complete_lines(String.split(prefix, "\n") |> Enum.drop(-1)),
-             {:ok, file} <- :file.open(String.to_charlist(path), [:read, :write, :binary]) do
-          try do
-            case Jason.decode(tail) do
-              {:ok, _} ->
+        :valid when stats.bytes + 1 > max_bytes ->
+          {:error, :journal_limit_reached}
+
+        tail ->
+          with {:ok, file} <- :file.open(String.to_charlist(path), [:read, :write, :binary, :raw]) do
+            try do
+              if tail == :valid do
                 with {:ok, _} <- :file.position(file, :eof),
                      :ok <- :file.write(file, "\n"),
                      do: :file.sync(file)
-
-              {:error, _} ->
-                with {:ok, _} <- :file.position(file, offset),
+              else
+                with {:ok, _} <- :file.position(file, stats.complete_offset),
                      :ok <- :file.truncate(file),
                      do: :file.sync(file)
+              end
+            after
+              :file.close(file)
             end
-          after
-            :file.close(file)
           end
-        end
       end
     else
-      {:error, reason} -> {:error, reason}
+      {:error, _} = error -> error
       _ -> {:error, :invalid_journal}
     end
   end
 
+  @doc "Discover bounded session headers; this does not validate later history."
   def list(state_dir) do
     case File.ls(state_dir) do
       {:ok, names} ->
@@ -166,8 +137,9 @@ defmodule Ipse.Journal do
           id = String.replace_suffix(filename, ".jsonl", "")
 
           if filename == id <> ".jsonl" and Regex.match?(@id_re, id) do
-            case load(state_dir, id) do
-              {:ok, [%{"type" => "session", "metadata" => metadata} | _]} ->
+            case Reader.path(journal_path(state_dir, id), nil, :header) do
+              {:ok, %{header: %{"type" => "session", "metadata" => metadata}}}
+              when is_map(metadata) ->
                 [%{"id" => id, "metadata" => metadata}]
 
               _ ->
@@ -185,39 +157,33 @@ defmodule Ipse.Journal do
   end
 
   defp ensure_state_dir(path) do
-    with :ok <- File.mkdir_p(path),
-         :ok <- File.chmod(path, 0o700) do
+    with :ok <- File.mkdir_p(path), :ok <- File.chmod(path, 0o700), do: :ok
+  end
+
+  defp normalize_inactive(path) do
+    with {:ok, %{type: :regular, links: 1}} <- File.lstat(path),
+         :ok <- File.chmod(path, 0o600) do
       :ok
+    else
+      {:error, _} = error -> error
+      _ -> {:error, :journal_unavailable}
     end
   end
 
-  defp write_new(path, event) do
-    with {:ok, encoded} <- Jason.encode(event),
-         {:ok, file} <- File.open(path, [:write, :binary, :exclusive]) do
+  defp write_new(path, bytes) do
+    with {:ok, file} <- File.open(path, [:write, :binary, :exclusive]) do
       try do
-        with :ok <- File.chmod(path, 0o600),
-             :ok <- IO.binwrite(file, encoded <> "\n"),
-             :ok <- :file.sync(file) do
-          :ok
-        end
+        with :ok <- File.chmod(path, 0o600), :ok <- IO.binwrite(file, bytes), do: :file.sync(file)
       after
         File.close(file)
       end
     end
   end
 
-  defp append_sync(path, data) do
-    with {:ok, file} <- File.open(path, [:append, :binary]) do
-      try do
-        with :ok <- File.chmod(path, 0o600),
-             :ok <- IO.binwrite(file, data),
-             :ok <- :file.sync(file) do
-          :ok
-        end
-      after
-        File.close(file)
-      end
-    end
+  defp initial_capacity(encoded, limits) do
+    if byte_size(encoded) + 1 + Limits.reserve_bytes() <= limits["max_bytes"],
+      do: :ok,
+      else: {:error, :journal_limit_reached}
   end
 
   defp validate_id(id) when is_binary(id) do
@@ -225,65 +191,15 @@ defmodule Ipse.Journal do
   end
 
   defp validate_id(_), do: {:error, :invalid_id}
-
   defp journal_path(state_dir, id), do: Path.join(state_dir, id <> ".jsonl")
 
   @doc false
-  def validate_complete(contents), do: validate_complete_journal(contents)
-
-  defp validate_complete_journal(contents) do
-    if contents == "" or not String.ends_with?(contents, "\n") do
-      {:error, :incomplete_journal}
-    else
-      contents
-      |> String.split("\n")
-      |> Enum.drop(-1)
-      |> Enum.reduce_while(:ok, fn line, :ok ->
-        case Jason.decode(line) do
-          {:ok, _} -> {:cont, :ok}
-          {:error, reason} -> {:halt, {:error, {:corrupt_journal, reason}}}
-        end
-      end)
-    end
+  def validate_complete(contents) do
+    with {:ok, stats} <- Reader.binary(contents), do: complete(stats)
   end
 
-  defp decode_journal(contents) do
-    lines = String.split(contents, "\n")
-
-    {complete_lines, tail} =
-      if String.ends_with?(contents, "\n"),
-        do: {Enum.drop(lines, -1), nil},
-        else: {Enum.drop(lines, -1), List.last(lines)}
-
-    with {:ok, events} <- decode_complete_lines(complete_lines),
-         {:ok, events} <- decode_optional_tail(tail, events) do
-      {:ok, events}
-    end
-  end
-
-  defp decode_complete_lines(lines) do
-    Enum.reduce_while(lines, {:ok, []}, fn line, {:ok, events} ->
-      case Jason.decode(line) do
-        {:ok, event} -> {:cont, {:ok, [event | events]}}
-        {:error, reason} -> {:halt, {:error, {:corrupt_journal, reason}}}
-      end
-    end)
-    |> case do
-      {:ok, events} -> {:ok, Enum.reverse(events)}
-      error -> error
-    end
-  end
-
-  defp decode_optional_tail(nil, events), do: {:ok, events}
-  defp decode_optional_tail("", events), do: {:ok, events}
-
-  defp decode_optional_tail(tail, events) do
-    case Jason.decode(tail) do
-      {:ok, event} -> {:ok, events ++ [event]}
-      {:error, _reason} -> {:ok, events}
-    end
-  end
-
+  defp complete(%{count: count, tail: :none}) when count > 0, do: :ok
+  defp complete(_), do: {:error, :incomplete_journal}
   defp now, do: DateTime.utc_now() |> DateTime.to_iso8601()
 
   defp source_boundary(_, 0), do: :ok

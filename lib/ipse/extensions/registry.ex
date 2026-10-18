@@ -353,6 +353,8 @@ defmodule Ipse.Extensions.Registry do
       Ipse.Extensions.TextConsumer,
       Ipse.Journal,
       Ipse.Journal.Writer,
+      Ipse.Journal.Reader,
+      Ipse.Journal.Limits,
       Ipse.ToolCall,
       Ipse.HTTPProxy,
       Ipse.TaskResources,

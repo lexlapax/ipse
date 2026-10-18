@@ -48,8 +48,14 @@ repair, two fresh reports meet every criterion at 14/21, matching the checked
 reference. Held-out cases pass with formatting assistance; question/resume,
 compaction and cancellation controls pass after a supervisor fixture correction.
 The repair passes independent source, installed-package and hosted platform checks.
-The final one-time Security Cloud scan is running against `b5ddd02` with explicitly
-approved GPT-5.6 Sol/high; findings/coverage triage and trial acceptance remain open.
+The final one-time Security Cloud scan completed at `b5ddd02` with explicitly
+approved GPT-5.6 Sol/high. It reports two Medium findings and partial static
+coverage. The reproduced approval/input candidate passes 30 CLI tests; finite
+journal bounds and pending-question/effect recovery pass their focused checks.
+The frozen combined source passes 893 local native-inclusive tests, both formatter
+floors, strict compile/demo, package verification and both installed extension
+proofs. Hosted platform checks, refreshed affected security coverage and trial
+acceptance remain open.
 The subject is optional
 working/long-term memory, research, graph and RAG, including the operator's
 Zero-Mem inspiration. Production engines remain deferred to P26/P27, and the
@@ -177,7 +183,8 @@ unconfirmed intermittent causes remain in [testing](developer/testing.md#current
 Accepted limits remain explicit: trusted user-permission code; non-atomic host
 file checks under hostile concurrent workspace changes; same-user journal/storage
 rewriting; Mac shared-container and detached-descendant boundaries; unknown remote
-effects and unconfirmed cleanup; unbounded journal growth/startup cost; fixed
+effects and unconfirmed cleanup; journal growth/startup cost at that revision
+(reopened by P25's final scan and addressed in its pending repair); fixed
 reservations, fail-closed tree overdraw and torn-ledger continuation. Immutable
 host evidence is not a memory-erasure interface. These limits constrain the
 supervised trial and future contracts; they are not claims that attacks or defects

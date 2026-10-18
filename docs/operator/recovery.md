@@ -103,9 +103,22 @@ refuse these combinations as invalid extension actions. Inspect them with the
 updated read-only commands; an incompatible extension identity can still prevent
 activation, so use an explicit reviewed handoff rather than editing the journal.
 
-Journal retention grows independently of the context window. There is no
-automatic journal rotation or disk quota. Context compaction does not delete
-that evidence or implement forgetting. Startup validates complete history and can
+Journal retention grows independently of the context window. Mandatory per-file
+byte, event and record-size bounds now stop and seal a journal before further
+work; operator configuration can lower the finite host ceilings. Saved diagnosis
+shows `journal_limit` with the sealed reason and enforced limits, or null when no
+limit receipt was recorded. A sealed journal cannot resume or accept an answer;
+use the explicit handoff below after inspecting uncertainty and ask unanswered
+questions again. No answer/effect is retried automatically. Legacy files over
+the host ceiling are preserved and refused; whole-history diagnosis/export is
+unavailable. Source-page inspection has a separate 1 MiB record bound, so larger
+records need developer-assisted bounded inspection and reviewed notes for a fresh
+session rather than a validated automatic handoff. Listing reads a bounded
+header even when the later file cannot be restored, so listing is discovery,
+not validation of that history. See [journal limits](configuration.md).
+
+There is no automatic rotation or whole-directory disk quota. Context compaction
+does not delete evidence or implement forgetting. Startup validates history and can
 be slow: a synthetic 64 MiB journal with 200 answered questions took about 20
 seconds on Serenity. This is a measured case, not a latency guarantee. For long work or a context refusal that
 safe compaction cannot resolve, continue through a reviewed fresh-session handoff.

@@ -65,6 +65,7 @@ defmodule Ipse.Config do
 
       with {:ok, extensions} <- Ipse.Extensions.Config.resolve(loaded, opts),
            {:ok, budget} <- Ipse.Budget.Policy.resolve(loaded),
+           {:ok, journal} <- Ipse.Journal.Limits.resolve(loaded),
            {:ok, observation} <- Ipse.Observability.Config.resolve(loaded, opts, environment),
            :ok <- Ipse.Profiles.validate(effective.profiles, effective.roles),
            {:ok, profile_id, profile} <-
@@ -135,6 +136,7 @@ defmodule Ipse.Config do
            |> Map.put(:fingerprint, fingerprint)
            |> Map.put(:extensions, extensions)
            |> Map.put(:budget, budget)
+           |> Map.put(:journal, journal)
            |> Map.put(:observability, observation)
            |> Map.put(:execution, execution)}
         else
@@ -169,6 +171,7 @@ defmodule Ipse.Config do
       |> Map.put(:extensions, Ipse.Extensions.Config.inspect_config(effective.extensions))
       |> Map.put(:observability, effective.observability)
       |> Map.put(:budget, effective.budget)
+      |> Map.put(:journal, effective.journal)
 
   def legacy_compatible?(effective), do: effective.sources == []
 
@@ -202,7 +205,8 @@ defmodule Ipse.Config do
             "profiles" => %{"type" => "object"},
             "roles" => %{"type" => "object"},
             "observability" => Ipse.Observability.Config.schema(),
-            "budget" => Ipse.Budget.Policy.schema()
+            "budget" => Ipse.Budget.Policy.schema(),
+            "journal" => Ipse.Journal.Limits.schema()
           },
           Ipse.Extensions.Config.schema()
         ),

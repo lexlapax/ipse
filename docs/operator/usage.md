@@ -259,8 +259,14 @@ While an action is waiting for approval, the CLI defers model/tool/sibling displ
 output in a bounded queue (64 events/64 KiB), preserving the actual proposal as
 the last approval block. Local commands can reprint that proposal. Deferred events
 drain in order before newer display messages after the decision; overflow is
-reported. Review the full arguments before entering `y`; returned text can contain
-imitations of prompts. MCP target details remain part of the proposal.
+reported. Review the full arguments, then enter the exact `allow CODE` line printed
+at the end of that proposal, or `n` to deny. Every proposal gets a fresh random
+code; bare `y`/`yes`, incorrect codes and codes from earlier proposals leave it
+pending. This keeps input buffered before the real proposal from authorizing it.
+Returned text can imitate prompts but cannot select the host's fresh code.
+MCP target details remain part of the proposal. EOF still denies pending effects,
+and `--yes` retains its explicit session-wide meaning. Programmatic approvals
+continue to use their exact Session reference.
 An error clears queued input with a visible message, preventing further queued
 requests after an account or usage-limit failure. Review the error and send a
 fresh task when ready.
@@ -519,7 +525,13 @@ sessions can run concurrently; tools within a turn execute sequentially.
 
 Credentials are stored separately from journals in owner-only files. Default
 application data is under `~/.ipse`; override with `IPSE_HOME`.
-Use `--state-dir` to override only journal storage. Session events contain no
+Use `--state-dir` to override journal storage and its associated budget-ledger
+location; it does not relocate credentials or extension artifacts/state.
+Mandatory finite journal limits are separate from the active context window;
+operator configuration can lower them. Exhaustion seals the file, preserving
+read-only diagnosis/handoff without allowing ordinary resume or automatic retry.
+See [journal configuration](configuration.md) and [recovery](recovery.md).
+Session events contain no
 injected provider credentials, but user prompts and tool output may contain secrets
 and are retained locally. Native continuation/reasoning data is preserved when
 required by the provider; raw hidden reasoning is not exposed in the UI.
@@ -558,10 +570,13 @@ see [model profiles](model-profiles.md).
 
 Interactive chat supports the native `ask_operator` tool with up to three
 questions per call. The terminal shows stable option IDs, descriptions and optional
-recommendations. Enter one number/ID for a single choice, comma-separated numbers/
-IDs for multiple choices, or text for a free-text question. Invalid answers remain
-at the question; recommendations are never automatically selected or submitted.
-For literal slash-command text, prefix `=` (for example `=/exit`). `/info` and
+recommendations. Reply using the displayed `answer CODE VALUE` prefix: the value
+is one number/ID for a single choice, comma-separated numbers/IDs for multiple
+choices, or free text. Each question gets a fresh code; buffered input or an older
+code cannot answer the current question. Invalid values keep the current code;
+recommendations are never selected or submitted automatically.
+For literal slash-command text, the value may keep the `=` escape (for example
+`answer CODE =/exit`). `/info` and
 `/context` remain local; `/cancel` stops the turn and `/exit` exits.
 
 A complete answer bundle is synced to the private journal before the next model

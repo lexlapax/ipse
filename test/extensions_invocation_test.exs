@@ -1412,6 +1412,76 @@ defmodule Ipse.Extensions.InvocationTest do
     assert length(String.split(File.read!(ctx.called), "\n", trim: true)) == 2
   end
 
+  test "journal exhaustion preserves a pending extension question for diagnosis and handoff",
+       ctx do
+    ctx = %{ctx | config: Map.put(ctx.config, :journal, %{"max_record_bytes" => 32_768})}
+    pid = start(ctx)
+    :ok = host_command(pid, question_request())
+    assert_receive {:ipse, ^pid, {:question, question, _}}, 5_000
+    id = Session.info(pid).id
+    calls = File.read!(ctx.called)
+
+    :sys.replace_state(pid, fn state ->
+      assert {:error, :journal_limit_reached} =
+               Ipse.Journal.Writer.append(
+                 state.journal_writer,
+                 %{"type" => "padding", "value" => String.duplicate("x", 32_769)}
+               )
+
+      state
+    end)
+
+    monitor = Process.monitor(pid)
+    assert catch_exit(Session.answer(pid, question, answers()))
+    assert_receive {:DOWN, ^monitor, :process, ^pid, :journal_limit_reached}, 5_000
+    assert File.read!(ctx.called) == calls
+    path = Path.join(ctx.dir, id <> ".jsonl")
+    bytes = File.read!(path)
+    assert {:ok, events} = Journal.load(ctx.dir, id)
+    assert List.last(events)["type"] == "journal_limit_reached"
+    assert {:ok, _} = Session.restore_context(events)
+    assert {:ok, _} = Ipse.Diagnostics.saved(ctx.dir, id)
+
+    assert {:ok, _} =
+             Ipse.Handoff.export(ctx.dir, id, "Ask the unanswered extension question again.")
+
+    assert {:error, :journal_limit_reached} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Session,
+                config: ctx.config, cwd: ctx.root, state_dir: ctx.dir, subscriber: self(), id: id}
+             )
+
+    assert File.read!(path) == bytes
+    assert File.read!(ctx.called) == calls
+    unsealed = Enum.drop(events, -1)
+
+    assert Enum.count(
+             unsealed,
+             &(&1["type"] in ~w(extension_action_intent extension_question))
+           ) >= 2
+
+    for {event, index} <- Enum.with_index(unsealed),
+        event["type"] in ~w(extension_action_intent extension_question lifecycle_question_sources) do
+      prefix = Enum.take(unsealed, index + 1)
+      offset = prefix |> Enum.map(&(Jason.encode!(&1) <> "\n")) |> IO.iodata_length()
+
+      receipt =
+        Ipse.Journal.Limits.receipt(
+          Ipse.Journal.Limits.defaults(),
+          offset,
+          length(prefix),
+          "events"
+        )
+
+      assert {:ok, _} = Session.restore_context(prefix ++ [receipt])
+    end
+
+    damaged = List.replace_at(events, -1, Map.put(List.last(events), "event_count", 0))
+    assert {:error, _} = Ipse.Extensions.Actions.validate_events(damaged)
+    assert {:error, _} = Session.restore_context(damaged)
+  end
+
   test "diagnostic sink receipts preserve a pending question through repeated recovery", ctx do
     source = %{
       scope: "operator",

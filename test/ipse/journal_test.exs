@@ -23,6 +23,20 @@ defmodule Ipse.JournalTest do
     assert Bitwise.band(file_mode, 0o777) == 0o600
   end
 
+  test "inactive append rejects hardlinks before changing protection or contents", %{dir: dir} do
+    {:ok, id} = Journal.create(dir, %{})
+    path = Path.join(dir, id <> ".jsonl")
+    other = path <> ".linked"
+    File.chmod!(path, 0o644)
+    File.ln!(path, other)
+    before = File.read!(path)
+    mode = File.stat!(path).mode
+    assert {:error, :journal_unavailable} = Journal.append(dir, id, %{"type" => "no"})
+    assert File.read!(path) == before
+    assert File.read!(other) == before
+    assert File.stat!(path).mode == mode
+  end
+
   test "load tolerates a truncated last line, while append refuses to extend it", %{dir: dir} do
     assert {:ok, id} = Journal.create(dir, %{})
     path = Path.join(dir, id <> ".jsonl")

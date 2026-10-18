@@ -198,11 +198,50 @@ not change this internal audit's provenance. The supervisor's
 now assesses the completed baseline, verified repairs and accepted limits for
 supervised P25. It is not a new independent verdict. P25 preparation may proceed;
 scored runs need frozen inputs/limits, and final trial acceptance retains its
-separate delta/security gate.
+separate delta/security gate. The later P25 scan and current repairs are covered
+below; they do not retroactively validate this earlier audit.
 
-Residuals are explicit: full journal startup/memory and per-question prefix
-projection cost, no journal size cap or same-size rewrite authentication at every
-append, linear bounded-ledger prefix hashing, fixed token reservations and unknown
+## P25 final-scan repair review
+
+The `b5ddd02` scan exposed two boundaries missed by the earlier internal review:
+stdin read-ahead could become a later approval, and journals had no finite durable
+growth limit. Both findings remain open for final validation; the scan predates
+the current changes and its coverage is explicitly partial.
+
+The changed-path review follows actual CLI input through pending approvals and
+each question in a bundle, then follows journal admission through writer failure,
+Session termination, recovery reducers, diagnosis and handoff. It checks operator
+configuration and child routing, source offsets and host identity pins. This is
+implementation-side review, not independent architectural acceptance.
+
+Real buffered-input regressions cover both stale approval and stale structured
+answers. Fresh host-generated confirmation codes bind each display to its input;
+old codes cannot authorize another proposal or answer the next question. Full
+arguments, denial, EOF and programmatic approval/answer semantics remain intact.
+
+Journal admission reserves a terminal receipt before accepting each normal
+record. Incremental readers enforce finite bytes, events and encoded record
+length before whole-history allocation. Recovery accepts the independently
+validated terminal record beside pending questions, and never reopens a sealed
+journal. Actual pending native/extension questions and a shell effect whose result
+crosses the bound exercise inert diagnosis/handoff and unknown outcomes.
+
+Internal review also caught a tight header read-ahead boundary and an inactive
+append compatibility failure in the first full suite. The bounded-header check
+now succeeds without loading a sparse oversized tail. Inactive append restores
+the previous owner-only permission normalization after validation, while refusing
+hardlinks before changing permissions or contents. The failed suite is retained;
+focused corrections pass. The frozen full rerun passes 893 native-inclusive
+tests with 15 platform exclusions. Package verification and all 41 legacy/nine
+model-call assertions also pass using existing compiled artifacts. Six retained
+live-trial journals restore unchanged under the new reader, and five multibyte/
+escaped-JSON chunk-boundary probes preserve values and source offsets. These are
+local checks; hosted platforms and refreshed affected security review remain open.
+
+Residuals are explicit: journal startup/decoded-memory and per-question prefix
+projection cost within the new per-file bounds, no whole-directory storage quota
+or same-size rewrite authentication at every append, linear bounded-ledger prefix
+hashing, fixed token reservations and unknown
 liability, whole-tree overdraw and unquarantined paid-response loss, torn-ledger
 refusal with fresh-session continuation rather than repair, exact artifact/runtime
 resume pins and no state migration/erasure contract, trusted extension/user-shell

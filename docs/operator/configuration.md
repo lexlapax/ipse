@@ -105,6 +105,37 @@ Operator-only top-level `budget` pins a per-session-tree policy with explicit
 reservations; project files cannot set or replace it. Omission leaves it disabled.
 It shares the ordinary 16 KiB file limit and source/fingerprint resume checks.
 
+Operator-only top-level `journal` may lower the mandatory per-journal limits:
+
+```json
+{
+  "version": 1,
+  "journal": {"max_bytes": 67108864, "max_events": 50000}
+}
+```
+
+| Field | Default/host ceiling | Minimum |
+| --- | --- | --- |
+| `max_bytes` | 134217728 bytes (128 MiB) | 1024 |
+| `max_events` | 100000 records | 2 |
+| `max_record_bytes` | 16777216 encoded JSON bytes, excluding newline | 512 |
+
+Omitted fields keep their ceilings. Values must be integers; unlimited values and
+project declarations are refused, including trusted projects. A small policy can
+refuse startup if it cannot fit metadata and the reserved terminal receipt.
+Routed/inherited children keep the policy for their separate journals. These are
+not whole-directory disk, process-memory or invoice guarantees. No CLI/environment
+override disables the guard. Config inspection displays the effective limits;
+file/source fingerprint rules remain unchanged.
+
+Exhaustion preserves history and seals the journal; ordinary resume cannot reopen
+it. Saved diagnosis reports the reason/limits. Review uncertain effects, then use
+an explicit [fresh-session handoff](recovery.md); increasing limits does not unseal
+the old file. Oversized legacy files are refused unchanged; automatic diagnosis
+and export can also refuse. Developer-assisted bounded inspection and reviewed
+notes for a fresh session may be needed. Source-page inspection has its own
+1 MiB record bound and cannot export every legacy record.
+
 Extension import/inspection and data-only selections are also available through
 `extensions` and operator-only `extension_trust`; see
 [extensions](extensions.md#configure-selections) for schemas, scope, temporary

@@ -176,6 +176,7 @@ defmodule Ipse.Profiles do
             :parallel_child,
             :max_output_tokens,
             :budget,
+            :journal,
             :budget_root,
             :budget_checkpoint,
             :model_profiles,

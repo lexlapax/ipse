@@ -38,9 +38,15 @@ batch are journaled as not started; after an explicit answer the model reconside
 work with all original assistant/native fields retained. Future mutations still
 use ordinary approvals. Headless and child sessions cannot wait for input; they
 record an error and finish without an implicit answer. Child-to-parent question
-routing remains unsupported. The terminal supports numbers/IDs, comma-separated
-multi-select and text, with `=` escaping literal slash commands. Partial terminal
-answers remain local until the whole bundle is submitted.
+routing remains unsupported. The terminal prints a fresh `answer CODE VALUE`
+prefix after each displayed question. The value supports numbers/IDs,
+comma-separated multi-select and text, with the existing `=` literal escape.
+Only the code for that exact question is accepted; buffered task text and codes
+from earlier questions cannot become answers after a UI-state transition. Invalid
+values keep the current code; a valid partial answer creates a fresh code for
+the next question. Partial terminal answers remain local until the whole bundle
+is submitted. These client-only codes grant no action permission and do not
+change the persisted arguments or `Session.answer/3` API.
 
 ## Durable events and interruption
 
