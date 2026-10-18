@@ -41,7 +41,10 @@ for a trusted, cooperative workspace under supervision, not a new independent
 post-fix verdict, a second scan, or a security certification. Raw findings remain
 private. No R/S/C/O review sequence or continuous monitoring is scheduled.
 
-P25 is now in preparation; scored execution has not started. It compares fresh,
+P25's brief/runner/inputs are frozen and the first live research package is running.
+The [execution record](developer/p25-evaluation.md) retains a failed reference
+access attempt and bounded recovery; no comparative score or acceptance is claimed.
+It compares fresh,
 independent Codex and installed-Ipse research, then requires meaningful
 Ipse-authored behavior changes, review and fresh reruns. The subject is optional
 working/long-term memory, research, graph and RAG, including the operator's
@@ -53,7 +56,7 @@ no production engine, database or mandatory backend is selected.
 | --- | --- | --- |
 | [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within selected scope | Preserve accounting through the trial |
 | [P24: architecture/security readiness](#p24-independent-architecture-validation-and-baseline-security) | Complete for supervised P25 at `375e607`; accepted limits recorded | Refresh affected validation after trial changes |
-| [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Preparation; access checks pass; scored runs unstarted | Freeze common brief, source packet, runner and resource limits, then execute independent tracks |
+| [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | First live package running; frozen inputs/limits and reference access intervention recorded | Freeze independent reports, check sources and compare before authoring |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Deferred; subject to P25 decisions | Independently selectable working/long-term memory tools and optional policies |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
 | [P28: voice and media](#p28-voice-and-realtime-media) | Deferred; unimplemented | Explicit media contracts and later device/service validation |
@@ -188,7 +191,7 @@ the [evaluation protocol](developer/self-hosting-evaluation.md) owns trial contr
 
 ## P25: comparative research and supervised self-development
 
-**In preparation; scored execution unstarted.** Replace P25's production-engine delivery
+**Initial live research executing; no acceptance claim.** Replace P25's production-engine delivery
 with a large supervised evaluation using those engines as a research/planning
 problem. Track A uses Codex; Track B uses stable installed Ipse. Both research
 working/long-term memory, configurable research providers, graph and RAG, including
