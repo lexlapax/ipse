@@ -96,14 +96,54 @@ defmodule Ipse.MCP.ClientTest do
   end
 
   test "connection loss after dispatch produces unknown and records the effect only once", ctx do
-    descriptor = discover!(server(ctx.cwd, "disconnect_after_dispatch"), ctx.cwd)
+    descriptor = discover!(server(ctx.cwd, "controlled_disconnect"), ctx.cwd)
 
-    assert {:unknown, message} =
-             Client.call(descriptor, %{"path" => "note.txt", "content" => "hello"}, ctx.cwd)
+    task =
+      Task.async(fn ->
+        Client.call(descriptor, %{"path" => "note.txt", "content" => "hello"}, ctx.cwd)
+      end)
 
-    assert message =~ "outcome unknown"
+    try do
+      await_effect(task, ctx.cwd, System.monotonic_time(:millisecond) + 5_000)
+      assert File.read!(Path.join(ctx.cwd, "calls.log")) == "write_note\n"
+      assert File.read!(Path.join(ctx.cwd, "note.txt")) == "hello"
+      File.write!(Path.join(ctx.cwd, "disconnect-now"), "exit normally")
+      assert {:unknown, message} = Task.await(task, 5_000)
+      assert message =~ "outcome unknown"
+    after
+      File.write!(Path.join(ctx.cwd, "disconnect-now"), "exit normally")
+      Task.shutdown(task, :brutal_kill)
+    end
+
     assert File.read!(Path.join(ctx.cwd, "calls.log")) == "write_note\n"
     assert File.read!(Path.join(ctx.cwd, "note.txt")) == "hello"
+  end
+
+  defp await_effect(task, cwd, deadline) do
+    ready = Path.join(cwd, "disconnect-ready")
+
+    if File.exists?(ready) do
+      assert Regex.match?(~r/\A[0-9]+\z/, File.read!(ready))
+    else
+      stages =
+        File.ls!(cwd)
+        |> Enum.filter(&String.starts_with?(&1, "mcp-stage-"))
+        |> Enum.map(&File.read!(Path.join(cwd, &1)))
+
+      case Task.yield(task, 0) do
+        nil ->
+          assert System.monotonic_time(:millisecond) < deadline,
+                 "MCP fixture never dispatched; stages: #{inspect(stages)}"
+
+          Process.sleep(10)
+          await_effect(task, cwd, deadline)
+
+        result ->
+          flunk(
+            "MCP call ended before its dispatch precondition: #{inspect(result)}; stages: #{inspect(stages)}"
+          )
+      end
+    end
   end
 
   test "malformed or wrong-version servers fail closed without dispatch", ctx do

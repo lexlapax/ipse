@@ -3,6 +3,20 @@
 scenario = List.first(System.argv()) || "normal"
 secret = System.get_env("FIXTURE_SECRET")
 
+phase = fn name ->
+  if scenario in ["disconnect_after_dispatch", "controlled_disconnect"] do
+    File.write!("mcp-stage-" <> System.pid(), name <> "\n", [:append])
+  end
+end
+
+publish = fn path ->
+  temporary = path <> "." <> System.pid() <> ".pending"
+  File.write!(temporary, System.pid())
+  File.rename!(temporary, path)
+end
+
+phase.("boot")
+
 write = fn message ->
   IO.binwrite(:stdio, Jason.encode!(message) <> "\n")
 end
@@ -44,6 +58,8 @@ loop = fn loop, changed ->
     line ->
       case Jason.decode(line) do
         {:ok, %{"id" => id, "method" => "initialize"}} ->
+          phase.("initialize")
+
           if scenario == "mixed_envelope" do
             write.(%{
               "jsonrpc" => "2.0",
@@ -72,6 +88,8 @@ loop = fn loop, changed ->
           loop.(loop, changed)
 
         {:ok, %{"id" => id, "method" => "tools/list", "params" => params}} ->
+          phase.("list_tools")
+
           if scenario == "sampling" do
             write.(%{
               "jsonrpc" => "2.0",
@@ -113,10 +131,11 @@ loop = fn loop, changed ->
            "id" => id,
            "params" => %{"name" => name, "arguments" => args}
          }} ->
+          phase.("call_tool")
           File.write!("calls.log", name <> "\n", [:append])
 
           if scenario == "hang" do
-            File.write!("hang-ready", System.pid())
+            publish.("hang-ready")
             Process.sleep(:infinity)
           else
             relative = args["path"]
@@ -126,12 +145,14 @@ loop = fn loop, changed ->
               File.write!(Path.join(File.cwd!(), relative), args["content"])
             end
 
+            phase.("effect_written")
+
             cond do
               scenario == "disconnect_after_dispatch" ->
                 System.halt(0)
 
               scenario == "controlled_disconnect" ->
-                File.write!("disconnect-ready", System.pid())
+                publish.("disconnect-ready")
 
                 wait = fn wait ->
                   if not File.exists?("disconnect-now") do

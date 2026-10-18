@@ -113,6 +113,7 @@ was read; only sanitized dispositions and synthetic verification are committed.
 | Internal HTTP child cleanup | The private HTTP lease waits for monitored supervised children before releasing its client slot | Suspending a named registry child and killing the top supervisor reproduced premature guardian exit. The repaired guardian retains its slot until that child exits |
 | Cancellation composition | Normal scope close collects native-helper receipts before terminating nested task processes; abrupt owner death stops workers immediately and retains uncertainty | The existing workflow-shell cancellation regression rejected the initial nested-drain ordering. Its strict confirmed cleanup assertion passes after reordering; no alternate cleanup outcome or deadline relaxation |
 | MCP readiness composition | Ready-file timing now starts at the tool-start event, after discovery/model selection. The three-second poll and configured ten-second protocol deadline are unchanged; cleanup remains strict | The first final Mac matrix failed before its kill precondition. A controlled 3.2-second model gate fails the old helper and passes the corrected helper; all 12 MCP session cases pass locally. The original occurrence's exact runtime phase remains unconfirmed |
+| MCP loss precondition | Direct Client disconnect now occurs only after observed dispatch and verified file effect. Atomic PID-marker publication prevents empty-ready-file observations; failure diagnostics report fixture phases only | A second Mac matrix returned a pre-dispatch error from the old immediate-disconnect Client case; its actual effect phase is unconfirmed. The strict immediate-exit Session case remains, and the controlled direct Client case still requires unknown and exactly one effect. All 23 Client/Session cases pass locally; no runtime or protocol deadline change |
 | Consolidated A6 | Request-free legacy endpoint provenance is unknowable. Compatibility still permits implicit-default legacy resume and cannot detect an old custom-to-default change | Guidance now states that exact gap. New-session pinning and recorded legacy request hashes remain strict; no migration or historical route reconstruction is claimed |
 
 The guardian uses ordinary OTP monitors, Registry and the existing native lock;
@@ -130,7 +131,10 @@ scope. The first follow-through passed its own Linux/macOS matrix at `99bbbdf`.
 The additional filesystem-completion repair passed a new frozen local baseline,
 package and both installed-artifact proofs. Its first hosted Linux job passed;
 macOS stopped at an MCP readiness precondition. The fixture-stage correction has
-a controlled regression and a passing focused suite; the repeated full matrix is next.
+a controlled regression and a passing focused suite. The repeated Mac matrix then
+failed a separate direct-Client precondition; that case now verifies its dispatch
+and effect before triggering loss, with phase diagnostics. The next full matrix
+will verify this fixture-only follow-up; the earlier causes remain unconfirmed.
 [Testing](testing.md#current-evidence-and-next-checks) owns exact revisions and
 receipts. Earlier passes do not certify later code. The used review brief is archived; no new external assignment
 or scan was launched. Baseline security and P25 remain gated on applicable repairs
