@@ -185,13 +185,21 @@ defmodule Ipse.TextStreamTest do
           :go ->
             chunk = String.duplicate("a", 65_536)
             :ok = TextStream.push(server, request, chunk)
+
+            receive do
+              :tail -> :ok
+            end
+
             :ok = TextStream.push(server, request, "tail")
             send(owner, {:sealed, TextStream.finish(server, request, "completed")})
         end
       end)
 
+    on_exit(fn -> if Process.alive?(producer), do: Process.exit(producer, :kill) end)
     assert {:ok, true} = TextStream.begin_with_policy(server, request, producer)
     send(producer, :go)
+    assert_receive :required_buffer_drained, 5000
+    send(producer, :tail)
 
     assert_receive {:ipse_text, ^server,
                     %{
@@ -199,7 +207,7 @@ defmodule Ipse.TextStreamTest do
                       "reason" => "backpressure_timeout",
                       "subscription_id" => id
                     }},
-                   6500
+                   10_000
 
     assert id == optional.subscription_id
     assert_receive {:required_text, text}, 1000
@@ -213,6 +221,9 @@ defmodule Ipse.TextStreamTest do
       {:ipse_text, server, frame} when server == handle.server ->
         :ok = TextStream.ack(handle, frame["sequence"])
         chunks = [frame["text"] || "" | chunks]
+
+        if frame["kind"] == "text" and IO.iodata_length(chunks) == 65_536,
+          do: send(owner, :required_buffer_drained)
 
         if frame["kind"] == "end",
           do: send(owner, {:required_text, chunks |> Enum.reverse() |> Enum.join()}),

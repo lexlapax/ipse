@@ -156,7 +156,9 @@ current repair batch alongside catalog snapshots, bounded approval display,
 login race checks and checkpoint wire compatibility. The local handoff passes:
 807 native-inclusive tests, both formatter floors, strict build/compile, isolated
 demo, package verification and both independently precompiled installed proofs.
-Hosted Linux/macOS verification is next.
+The first hosted run passed Ubuntu but failed two macOS fixtures; readiness and
+native-test scheduling corrections are under verification. No Mac pass is claimed
+for this increment yet.
 The review ran no code or tests; supervisor verification is tracked separately.
 The egress policy repair at `42d9f1f` passed local and hosted Linux/macOS gates.
 Task-owned OS cleanup receipts and approval/invocation/framing hardening passed
