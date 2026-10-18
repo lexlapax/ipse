@@ -20,6 +20,7 @@ start. Use the guides below for operation, development, and project context.
 | [Usage and cost reports](operator/usage-accounting.md) | Durable counters, default-off own-session/child reports, explicit read grants, unknown coverage and recovery |
 | [Shared admission budgets](operator/budgets.md) | Operator-only session-tree reservations, supported bounds, inspection, refusal and unknown-liability recovery |
 | [Extensions](operator/extensions.md) | Review/import, operator trust and selection, capability procedures, limits and recovery |
+| [Choosing how to add a feature](operator/feature-requests.md) | Operator criteria for skills, MCP, extensions and justified generic core enhancements, with feature-request examples and acceptance requirements |
 | [Independent extension lab](operator/extension-lab.md) | Build, review and select synthetic artifacts against an existing checkout or unchanged release |
 | [Architecture-review checkpoint](operator/architecture-review.md) | Retained critiques, completed baseline/repair verification, scoped P24 readiness and P25 final-candidate review gates |
 | [P25 common brief](developer/p25-common-brief.md) | Frozen research task/rubric, source manifest, installed runner and comparison limits |

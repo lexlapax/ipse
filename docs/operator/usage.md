@@ -624,9 +624,11 @@ model assessments, not automatic truth or freshness guarantees.
 
 ## Extension and debugging roadmap
 
-Use the [extension guide](extensions.md) to import/inspect a reviewed local
-artifact, grant its operator capability ceiling and select an instance for a
-new session. Two bundled hooks are disabled by default. Independent artifacts
+Use the [feature-request guide](feature-requests.md) to decide whether a requested
+capability needs a skill, configured tool, extension or generic core enhancement.
+Use the [extension guide](extensions.md) to import/inspect reviewed code, grant its
+operator capability ceiling and select an instance for a new session. Bundled
+extensions are disabled by default. Independent artifacts
 use owned Elixir workers without rebuilding Ipse; project configuration can
 select only an operator-approved subset. Import, skills and generated code
 grant no trust or action permission.
@@ -667,8 +669,9 @@ Current delivery and remaining work follow this sequence:
 | --- | --- | --- |
 | P23 | Complete within selected scope | Own-session/child reports, optional [shared reservations](budgets.md) and explicit [extension text calls](extensions.md#accounted-model-calls); source/package/platform gates passed. Context bytes are not tokens or an invoice |
 | P24 | Independent architecture validation and baseline security | See the [review checkpoint](architecture-review.md) and [dispositions](../developer/architecture-review-dispositions.md) for current evidence and remaining gates |
-| P25 | Larger supervised comparative research/self-development trial | Supervised trial and repair work in progress; patches require independent supervisor review before acceptance |
-| P26/P27 | Optional working/long-term memory, research engine, graph and RAG | Production packages deferred pending P25 selection; independently configurable and default-off |
+| P25 | Larger supervised comparative research/self-development trial | Complete within the [recorded supervised scope](../developer/p25-evaluation.md); this is not blanket architecture or security certification |
+| P26 | Optional working/long-term memory | P26A/P26B implementation active; acceptance remains pending verification |
+| P27 | Research engine, graph and RAG | Deferred; independently configurable and default-off when delivered |
 | P28 | STT/text-agent/TTS and realtime media | Deferred former-P24 scope, with explicit device/provider/billing selection; text authentication does not imply audio access |
 
 The [plan](../plan.md) owns milestone acceptance. The

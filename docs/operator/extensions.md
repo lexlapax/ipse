@@ -12,7 +12,9 @@ feature cannot authorize itself. Start with the procedures below; use the
 capability sections to understand what a selected artifact may request.
 For interruption or code/configuration changes, use the shared
 [recovery procedure](#recovery-and-execution-boundaries).
-
+For a new feature request, first use the [extension-versus-core decision guide](feature-requests.md).
+It distinguishes skills, configured tools and extensions from missing generic
+host guarantees; the capability procedures here describe what each grant permits.
 
 ## Import and inspect
 
