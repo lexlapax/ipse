@@ -25,8 +25,8 @@ Rust helper for appropriate OS work. Document dependencies in the
 [inventory](docs/developer/dependencies.md); new dependencies outside Elixir or
 Rust packages require explicit developer approval with recorded reasons.
 
-Contributions are provided under the repository's MIT license. This early prototype
-has no stability or support guarantee; changes should document any compatibility
+Contributions are provided under the repository's Apache-2.0 license. This early
+prototype has no stability or support guarantee; changes should document any compatibility
 impact. Never claim live-provider validation when only fixtures were used.
 
 Before completing a sub-goal or milestone, review and update developer and

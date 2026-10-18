@@ -1,7 +1,8 @@
 # Third-party notices
 
-Ipse's own source is MIT licensed. No Loopex or rs-llmspell source was copied
-into this prototype. Those projects informed the design.
+Ipse's own source is Apache-2.0 licensed, Copyright (c) 2026 Sandeep Puri.
+No Loopex or rs-llmspell source was copied into this prototype. Those projects
+informed the design.
 
 The source build fetches [Jason](https://github.com/michalmuskala/jason), Copyright
 (c) 2017-present Michał Muskała, under Apache-2.0. Its notice is in

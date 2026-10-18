@@ -572,7 +572,12 @@ Use the same selection flags/configuration when resuming a temporary instance.
 session. Restore the original code/configuration, use a frozen runner for that
 session, or export a reviewed handoff and start fresh. Exact host API pinning can
 require a fresh session after a harness upgrade; no projection migration is
-implemented yet.
+implemented yet. The MIT → Apache-2.0 transition also changes the bundled
+license bytes bound into built-in artifact identities. Sessions that selected a
+built-in under the earlier license need their preserved runner or an explicit
+reviewed handoff into a fresh session. Imported artifacts keep their own declared
+license/identity until explicitly rebuilt and imported; the transition does not
+rewrite them.
 
 An expired instance also refuses activation/resume; disabling it cannot rewrite
 the saved active set. The read-only `diagnose` and operator-written `handoff`

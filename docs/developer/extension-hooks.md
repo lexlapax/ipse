@@ -16,7 +16,7 @@ See [operator procedures](../operator/extensions.md) and
 `Registry.builtins/0` returns static data without invoking extension functions.
 Only known compiled IDs can select the built-in backend; imported descriptors
 cannot shadow them. The built-ins are `builtin:prompt-annotation:1` and
-`builtin:answer-format:1`. Each descriptor binds its actual BEAM and bundled MIT
+`builtin:answer-format:1`. Each descriptor binds its actual BEAM and bundled Apache-2.0
 license bytes; there is no `on_load`, extension OTP application or startup
 initializer. Embedded release code preloading does not activate callbacks.
 

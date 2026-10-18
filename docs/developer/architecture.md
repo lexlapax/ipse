@@ -1,6 +1,6 @@
 # Architecture
 
-Ipse is an MIT-licensed, general-purpose local AI harness built around Elixir
+Ipse is an Apache-2.0-licensed, general-purpose local AI harness built around Elixir
 and OTP. Session owns conversation, permissions, active work and durable
 recovery. Providers, skills, tools and extensions supply capabilities through
 that boundary. A small Rust standard-library helper owns OS process groups,

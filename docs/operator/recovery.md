@@ -125,6 +125,12 @@ safe compaction cannot resolve, continue through a reviewed fresh-session handof
 
 ## Continue in a fresh session
 
+A built-in extension identity binds its bundled license as well as code. The
+MIT → Apache-2.0 transition therefore requires a preserved earlier runner or an
+explicit handoff for sessions pinned to the previous built-in artifact. Existing
+imported artifacts retain their declared licenses and identities; no history or
+installed artifact is rewritten by the transition.
+
 Write a short operator-reviewed note with the remaining goal, decisions, relevant
 files and unresolved effects:
 

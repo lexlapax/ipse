@@ -1,6 +1,6 @@
 # Development plan
 
-Ipse is an MIT-licensed general-purpose local AI harness. Its core stays in
+Ipse is an Apache-2.0-licensed general-purpose local AI harness. Its core stays in
 Elixir/OTP, with Rust for small OS helpers; target projects may use any suitable
 stack. Prefer extensions, tools and inert skills for domain features, ordinary
 OTP for ownership, and reviewed generic core changes for missing host invariants.
@@ -74,9 +74,10 @@ no production engine, database or mandatory backend is selected.
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Deferred; subject to P25 decisions | Independently selectable working/long-term memory tools and optional policies |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
 | [P28: voice and media](#p28-voice-and-realtime-media) | Deferred; unimplemented | Explicit media contracts and later device/service validation |
-| [Apache-2.0 transition](#license-transition) | Authorized after the completed P22–P25 campaign; next | Separate verified license/package/documentation change |
+| [Apache-2.0 transition](#license-transition) | Implemented after P25; local source/native/package checks pass | Exact-source hosted verification, with identity/recovery boundary documented |
 
-Next work is the requested separate license transition. Preserve P25's frozen
+Next work is final hosted verification of the separate license transition, whose
+local source/native/package/installed checks pass. Preserve P25's frozen
 inputs, runners, source/review/scan identities, scores and failed attempts; newer
 documentation does not rescan code or expand an earlier verdict. Select any P26/P27
 production increment separately from its evidence-backed proposal. Keep P28
@@ -328,15 +329,18 @@ See [media boundaries](developer/runtime-capabilities.md#text-and-media-are-dist
 
 ## License transition
 
-The operator requested MIT → Apache-2.0 after this work. The current P22–P25
-campaign is complete; the authorized transition follows it as a separate change,
-before any separately selected deferred P26–P28 feature work. This planning status
-does not itself change the license.
+The operator-requested MIT → Apache-2.0 transition follows the completed P22–P25
+campaign, before separately deferred P26–P28 features. Root and bundled extension
+licenses now carry Apache-2.0 with the original copyright. Current contributor,
+dependency, operator and developer guidance uses that license; upstream dependency
+licenses, prior artifacts and historical evidence retain their own provenance.
 
-The eventual separate change must replace Ipse's license and bundled copies,
-reconcile current README/contribution/operator/developer guidance and packaging
-notices, verify artifact identity/package checks and preserve third-party licenses
-and historical provenance. Commit and push the verified transition separately.
+The bundled license is part of built-in artifact identity. Older selected sessions
+need their preserved runner or reviewed explicit handoff; the transition does not
+rewrite saved journals or imported artifacts. Verify this boundary, source checks,
+release contents and installed compatibility before declaring this separate
+transition complete. The [verification record](developer/testing.md#current-evidence-and-next-checks)
+owns actual receipts. No new runtime capability, dependency or service is added.
 
 ## Completed milestones P0–P22
 

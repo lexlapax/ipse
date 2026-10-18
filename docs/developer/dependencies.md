@@ -62,7 +62,7 @@ cross-process coordination and refusal instead of automatic repair, so a small
 atomic store is used; it is not a production memory database. See
 [storage policy](extension-host-calls.md#scope-storage-and-recovery).
 
-Built-in extension licenses are the project's MIT license. Independent source
+Built-in extension licenses are the project's Apache-2.0 license. Independent source
 fixtures compile in a separate VM using the existing Elixir toolchain;
 cancellation probes use the existing host `kill` utility and `/bin/sh` `kill -0`
 builtin; Linux fixtures may read their own process's `/proc` state to distinguish
@@ -96,7 +96,7 @@ Consult [agent rules](../../AGENTS.md), [setup](../operator/arch-linux.md) and
 | PlugCrypto | Hex 2.2.0, locked | Plug cryptographic helpers | Apache-2.0 |
 | Telemetry | Hex 1.4.2, locked; developer approved on 2026-10-15 | Erlang/BEAM events used by Finch/Plug; adds no outside runtime service | Apache-2.0 with upstream NOTICE |
 | Rust toolchain and standard library | Rust 1.85+; `native/build.sh` invokes `rustc --edition=2021` | Build the OS helper; no third-party Cargo packages | MIT OR Apache-2.0 |
-| Ipse native helper | `native/ipse-runner.rs`, `native/ipse-process-group.rs`, `native/ipse-stdio.rs`, `native/ipse-linux-sandbox.rs`, `native/ipse-macos-sandbox.rs`, compiled as `priv/ipse-runner` | Runtime anchored process groups, advisory locks, bidirectional OS pipes, optional Linux user/mount/network/PID namespaces, private descriptor procfs, Landlock/seccomp and macOS signed App Sandbox worker policies; used by tests | MIT (project source) |
+| Ipse native helper | `native/ipse-runner.rs`, `native/ipse-process-group.rs`, `native/ipse-stdio.rs`, `native/ipse-linux-sandbox.rs`, `native/ipse-macos-sandbox.rs`, compiled as `priv/ipse-runner` | Runtime anchored process groups, advisory locks, bidirectional OS pipes, optional Linux user/mount/network/PID namespaces, private descriptor procfs, Landlock/seccomp and macOS signed App Sandbox worker policies; used by tests | Apache-2.0 (project source) |
 
 OTP libraries are distributed with OTP rather than fetched as separate packages.
 Mix lists `logger`, `inets`, and `ssl` applications; authentication also uses OTP

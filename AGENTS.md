@@ -6,7 +6,7 @@ instructions apply throughout this repository.
 
 ## Product and scope
 
-Ipse is an MIT-licensed, general-purpose local AI harness. The current prototype
+Ipse is an Apache-2.0-licensed, general-purpose local AI harness. The current prototype
 has coding-oriented tools and workflows. Keep the agent loop, provider
 adapters, skills, approvals, persistence, and orchestration in Elixir/OTP. Rust
 is for small OS helpers. Do not add JavaScript or Python runtime dependencies.

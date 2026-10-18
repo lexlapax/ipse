@@ -1,7 +1,8 @@
 # Ipse
 
 A general-purpose local AI harness built with Elixir/OTP, with local skills,
-resumable conversations, and a small Rust process supervisor. MIT licensed. No JavaScript or Python runtime.
+resumable conversations, and a small Rust process supervisor. Apache-2.0 licensed.
+No JavaScript or Python runtime.
 
 **Prototype 0.1:** a terminal application and an embeddable OTP session API,
 currently focused on coding and project workflows. The implementation language
@@ -167,5 +168,6 @@ and short design notes when a consequential tradeoff needs explanation. See
 
 ## License
 
-[MIT](LICENSE). Dependencies and bundled Erlang/Elixir runtimes retain their own
-licenses; packaged releases include third-party notices.
+[Apache-2.0](LICENSE), Copyright (c) 2026 Sandeep Puri. Dependencies and bundled
+Erlang/Elixir runtimes retain their own licenses; packaged releases include
+third-party notices.

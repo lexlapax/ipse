@@ -115,6 +115,21 @@
     "runtime": "1fc50b560870fb22969251838e11437e9c2e93ee",
     "test_diagnostics_matrix": "https://github.com/lexlapax/ipse/actions/runs/39143843693"
   },
+  "post_trial_license_transition": {
+    "archive_sha256": "a94d421d0c2bf70d129c0e5bc24cf3ba9f4088fd81cb7cf12a20e96e65e8a334",
+    "both_packaged_license_copies_verified": true,
+    "builtin_identities_changed": 6,
+    "copyright_preserved": true,
+    "hosted_platforms": "pending",
+    "license": "Apache-2.0",
+    "license_sha256": "a4b4034ccfb966fafe103ca64dd85157e35edb90742a070cf5575184c673bb98",
+    "local_native_passed": 914,
+    "old_compiled_installed_assertions": 50,
+    "old_pinned_session_refuses_without_journal_change": true,
+    "platform_exclusions": 15,
+    "runtime_source_unchanged_from_P25": "3307563a840f309489d426a0047a72a5b03e9430",
+    "third_party_licenses_unchanged": true
+  },
   "private_artifact_policy": "Relative aliases identify retained private evidence, not published transcripts or absolute operator paths. Hashes prove identity, not truth or review coverage.",
   "private_receipts": [
     {
@@ -212,8 +227,7 @@
     "trusted_extensions_and_shell_have_user_permissions",
     "macOS_detached_descendants_best_effort",
     "no_unattended_self_development_or_statistical_parity_claim",
-    "no_production_memory_research_graph_RAG_engine_installed",
-    "license_transition_next_separate_authorized_change"
+    "no_production_memory_research_graph_RAG_engine_installed"
   ],
   "reports": [
     {
