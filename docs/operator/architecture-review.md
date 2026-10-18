@@ -42,8 +42,9 @@ Read-only Security Cloud checks confirmed repository access and available credit
 The operator approved environment creation after automatic approval review
 required action-time confirmation, then separately approved publication. The
 environment is published with Only me visibility, package-manager network access
-and no added secrets/environment variables. Security Cloud's list/search still
-returns no matching environment; publication alone is not proof of scan usability.
+and no added secrets/environment variables. Security Cloud's initial list/search
+did not find that general environment; publication alone was not proof of scan
+usability.
 The scan UI instead offers automatic environment creation. The operator explicitly
 approved that separate environment and the one-time GPT-5.6 Sol/high repository
 scan with no secrets or continuous monitoring.

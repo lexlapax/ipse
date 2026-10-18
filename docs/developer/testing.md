@@ -230,10 +230,10 @@ approval interleaving, writer acknowledgment and oversized question-ID admission
 The PA-5/PA-6 egress repair at `42d9f1f` also passed its local and hosted
 Linux/macOS handoffs. The role/text/catalog/login batch and fixture follow-up
 passed local and hosted gates through `091b2bd`; the failed first matrix remains
-recorded below rather than being overwritten. No comparative
-P25 run or OpenAI security-service scan has executed. Security-service access
-checks are not scan evidence. A later private cloud environment was explicitly
-created and published, but Security Cloud requires its own environment setup.
+recorded below rather than being overwritten. No comparative P25 run has executed.
+The OpenAI security-service baseline is running, with no terminal result yet.
+Security-service access checks are not scan evidence. A private cloud environment
+was explicitly created and published, but Security Cloud requires its own setup.
 The 2026-10-18 focused subscription report was interrupted by its safeguard;
 successful CLI exit does not establish review completion. The operator approved
 scanning first while architectural acceptance stays open, without another

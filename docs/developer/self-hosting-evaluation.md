@@ -301,8 +301,11 @@ scans connected GitHub repositories in a cloud environment. Workspace entitlemen
 the caller's GitHub connection and repository access must be verified at execution.
 Read-only checks on 2026-10-18 confirmed access and available credits; the operator
 then approved creating and publishing the missing private Ipse environment. It is
-published, but service list/search does not yet discover it. Current-machine
-setup checks and a process-reaping workaround are recorded in
+published, but Security Cloud did not discover that general environment. Its
+separate automatic environment and the one-time scan were then explicitly
+approved; the [operator record](../operator/architecture-review.md#baseline-scan)
+owns the exact scan revision and current result. General environment setup checks
+and a process-reaping workaround are recorded in
 [testing](testing.md#current-evidence-and-next-checks); publication is not a fresh
 restoration check or scan result. Confirm the actual scanned revision,
 terminal status, validation evidence and coverage before accepting results.
