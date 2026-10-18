@@ -142,10 +142,13 @@ proofs per host. Runtime source remains unchanged from `74686f1`.
 [Testing](testing.md#current-evidence-and-next-checks) owns exact revisions and
 receipts. Earlier passes do not certify later code. The used review brief is
 archived. The operator subsequently authorized a focused independent completion
-on 2026-10-18; the [current checkpoint](../operator/architecture-review.md) owns its
-execution status. It does not change this internal audit's provenance or supply a
-result before the private report is assessed. Baseline security and P25 remain
-gated on adequate independent coverage and architectural acceptance.
+on 2026-10-18. Its safeguard interrupted the report, so the operator approved
+baseline scanning first while keeping architectural acceptance open. The
+[current checkpoint](../operator/architecture-review.md) owns execution status;
+the [register](architecture-review-dispositions.md#focused-completion-at-86d4d69)
+separates partial reads and unverified concerns from actual findings. This does
+not change this internal audit's provenance. P25 remains gated on assessed
+architecture and triaged baseline security evidence.
 
 Residuals are explicit: full journal startup/memory and per-question prefix
 projection cost, no journal size cap or same-size rewrite authentication at every

@@ -70,6 +70,10 @@ must retain their promised behavior under those failures.
   documented cancellation and cleanup contracts. Test owner/worker loss during
   approval, dispatch, streaming, lock acquisition and shutdown. PID death alone
   cannot manufacture acknowledged cleanup or a known remote outcome.
+- **Policy composition:** distinguish native shell/server confinement from
+  host-side file-tool checks. Review check/use races, shared scratch grants and
+  transient credential staging across concurrent commands and server launches;
+  owner-only modes are not isolation between processes with the same UID.
 - **Concurrency and accounting:** preserve cross-process locks and lock inode
   identity, atomic publication, registered child origin and shared tree admission.
   Main, summary, child and accounted helper calls cannot evade configured quota,

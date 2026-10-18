@@ -6,16 +6,18 @@ the [plan](../plan.md#current-priorities-and-status) owns scheduling and accepta
 status. The consolidated `a5912ab` assessment has returned without acceptance.
 Required-delivery cancellation and abnormal-death lock ownership repairs passed
 source/package and hosted Linux/macOS checks; pool loss has an explicit fail-closed
-recovery policy. A focused subscription review of the recorded independent
-SDK/sandbox and related omissions is running on the operator's 2026-10-18
-authorization. Material coverage remains open until its actual report is checked. The
+recovery policy. The focused subscription pass of 2026-10-18 returned an incomplete
+report after its safeguard stopped the write-up. The operator approved scanning
+first while architectural acceptance stays open, without another architecture
+round. Partial source reads do not close material coverage. The
 [internal audit](architecture-self-audit.md) records actual counterexamples and
 limits; the [register](architecture-review-dispositions.md) owns current
 dispositions and independent omissions. The
 [review checkpoint](../operator/architecture-review.md) identifies the current
 snapshot and access. Previous briefs are archived; no R/S/C/O sequence is
-scheduled. Security environment setup is approved, while no comparative run or
-security scan has executed.
+scheduled. A private environment is published; the scan service's separate
+automatic environment and one-time scan are explicitly approved. No comparative
+run or security scan has executed.
 Use the [operator runbook](../operator/self-development.md) for runner/candidate
 separation and the [knowledge design](knowledge-extensions.md) for research
 questions. Production knowledge packages remain deferred to P26/P27.
@@ -176,7 +178,11 @@ Store raw findings privately and publish only sanitized summaries.
 
 Default order is architecture challenge → triage/repair/refreeze → baseline
 security scan → P25 trial. This lets the critique sharpen the scan's threat model.
-A recorded reason may put scanning first; repairs then require affected security
+A recorded reason may put scanning first. On 2026-10-18 the operator explicitly
+selected that exception after the focused reviewer failed to deliver its complete
+report. Acceptance remains open while the scan and remaining concerns are
+assessed; this does not turn a security scan into architectural certification.
+Repairs then require affected security
 coverage to be refreshed. Before P25 acceptance, commission an external delta
 review of material architectural changes and disposition its findings. A no-change
 review still records the compared revisions and rationale. Any later relevant
@@ -293,8 +299,11 @@ Prefer [Codex Security Cloud](https://learn.chatgpt.com/docs/security/setup): it
 scans connected GitHub repositories in a cloud environment. Workspace entitlement,
 the caller's GitHub connection and repository access must be verified at execution.
 Read-only checks on 2026-10-18 confirmed access and available credits; the operator
-then approved creating the missing Ipse environment. Setup is in progress, not a
-scan result. Confirm the actual scanned revision,
+then approved creating and publishing the missing private Ipse environment. It is
+published, but service list/search does not yet discover it. Current-machine
+setup checks and a process-reaping workaround are recorded in
+[testing](testing.md#current-evidence-and-next-checks); publication is not a fresh
+restoration check or scan result. Confirm the actual scanned revision,
 terminal status, validation evidence and coverage before accepting results.
 
 The local [Security scan guidance](https://learn.chatgpt.com/docs/security/plugin/scans)

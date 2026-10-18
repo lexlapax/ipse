@@ -13,11 +13,12 @@ checks and matching runtime. Use the local
 P24's architecture/security gate precedes P25's larger independent Codex/Ipse
 research and self-development comparison. Consolidated repairs passed local and
 hosted Linux/macOS checks through `e8f7ad5`; independent coverage and baseline
-security remain open. On 2026-10-18 the operator authorized a bounded completion
-of the recorded SDK/sandbox and related omissions, followed by the scan. That
-read-only subscription review is running against a Git-exported snapshot of
-`86d4d69`, whose runtime/tests match `e8f7ad5`. It has no credentials, ignored
-files, private journals, execution tools or implementation-side verdicts.
+security remain open. The 2026-10-18 bounded subscription pass used a Git-exported
+`86d4d69` snapshot, whose runtime/tests match `e8f7ad5`, excluding credentials,
+ignored files, private journals, execution tools and implementation-side verdicts.
+Its safeguard interrupted the report, leaving finding detail and coverage
+incomplete. The operator then approved baseline scanning first while acceptance
+stays open, without another architecture-review round.
 
 Use the [review checkpoint](architecture-review.md) for current execution state
 and the [disposition register](../developer/architecture-review-dispositions.md)
@@ -27,7 +28,9 @@ it cannot silently substitute a snapshot for a promised Git-history review.
 Establish the selected provider, source-sharing authority, authentication and
 billing before sending material. The current Claude run uses the signed-in
 subscription with API credentials removed and no extra integrations or subagents.
-Security Cloud environment setup was separately approved; no scan or larger trial
+Security Cloud environment creation and publication were separately approved.
+The private environment is published; Security Cloud's separate automatic
+environment and one-time scan are explicitly approved. No scan or larger trial
 has run. Keep raw reports private and use the
 [security threat model](../../SECURITY.md) for safe scan context.
 
@@ -38,8 +41,9 @@ P28 voice/media does not block this text/research work.
 
 Triage counterexamples and scan findings against actual code, repair applicable
 blockers and refresh affected reviews on the changed revision. Obtain the
-independent delta/omitted-surface critique and disposition its findings before
-the baseline scan or P25 execution. Freeze P25's runner
+independent delta/omitted-surface evidence and disposition applicable findings
+before P25 execution. The approved scan-first exception keeps acceptance open
+until that evidence and scan triage are assessed. Freeze P25's runner
 only after its checks and P24 gates pass. Brief preparation/access checks can
 proceed earlier; earlier passing releases do not verify later runtime changes.
 Keep the external critique separate from the initial A/B research inputs, record

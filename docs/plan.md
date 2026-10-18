@@ -39,11 +39,15 @@ children before releasing its slot.
 The repaired runtime passed frozen source/native/package/installed checks; the
 final source and tests passed hosted Linux/macOS verification at `e8f7ad5`.
 Failed intermediate runs and their unconfirmed causes remain in the evidence
-record. On 2026-10-18 the operator authorized a focused independent completion of
-the recorded omissions, then the baseline scan. A read-only Claude subscription
-pass is running against the Git-exported `86d4d69` snapshot and repair delta;
-runtime/tests match `e8f7ad5`. Security Cloud environment creation was separately
-approved and is in progress; high reasoning was selected for the scan. The used
+record. The 2026-10-18 focused subscription pass inspected the Git-exported
+`86d4d69` snapshot and repair delta, but its safeguard interrupted the write-up.
+The incomplete return supplies neither the requested finding detail nor a final
+coverage matrix and does not close architectural acceptance. The operator then
+explicitly approved running the baseline scan before closing that gate, targeting
+remaining concerns without another architecture-review round. A private Ipse
+cloud environment is published; Security Cloud requires a separate setup flow.
+Its automatic scan environment and one-time high-reasoning scan are explicitly
+approved and ready to launch. The scan has not started. The used
 consolidated brief is archived, and no R/S/C/O sequence is scheduled. The
 [register](developer/architecture-review-dispositions.md) owns dispositions and
 remaining independent omissions; the [internal audit](developer/architecture-self-audit.md)
@@ -60,7 +64,7 @@ new source transfer or dependency, or select a production engine.
 | Milestone or gate | Current state | Next result |
 | --- | --- | --- |
 | [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within selected scope; source/native/package/installed and hosted Linux/macOS passed | Retain accounting invariants through P24/P25 review and repairs |
-| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Repairs verified; focused independent completion running; scan environment setup in progress | Resolve material coverage and acceptance, then triage the baseline security scan on the repaired source |
+| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Repairs verified; focused report incomplete; scan-first order and automatic scan environment approved | Run and triage the baseline scan, assess remaining architectural coverage and resolve applicable findings |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Planned revised scope; unstarted | Independent Codex/Ipse research, Ipse-authored repairs, fresh acceptance runs and final architecture/security review |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Deferred; proposed scope subject to P25 decisions | Independently selectable working/long-term memory tools and optional lifecycle policies |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; proposed scope subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
@@ -78,9 +82,10 @@ Execution order:
 1. Retain the verified consolidated repairs and disposition checks in the
    [internal audit](developer/architecture-self-audit.md) and
    [register](developer/architecture-review-dispositions.md). Resolve the recorded
-   material independent coverage before accepting architecture or starting the
-   baseline security scan on the repaired source. The operator has authorized the
-   focused completion now running; recording later gates alone starts no new task.
+   material independent coverage before accepting architecture. Following the
+   interrupted focused report, the operator explicitly authorized the baseline
+   scan first, retaining architectural acceptance as an open gate. Triage the
+   remaining concerns and actual scan coverage before P25 execution.
 2. Execute P25's independent research, discrepancy comparison, Ipse-authored
    repairs and fresh same-input/held-out reruns. Finish with an external
    architecture delta review and security review/rescan of the final candidate.
@@ -161,7 +166,7 @@ and arbitrary trusted out-of-band calls cannot establish an invoice ceiling.
 
 ## P24: independent architecture validation and baseline security
 
-**In progress; focused independent completion running; architectural acceptance and baseline scan open.**
+**In progress; focused report incomplete; scan-first order approved; architectural acceptance and baseline scan open.**
 The external assessment of source `a5912ab` and evidence `a21469e` confirms the
 previous ownership/egress/context repairs within its inspected scope. It found
 no High/Critical defect there, but B-1's required-consumer cancellation and A1's
@@ -191,12 +196,16 @@ Independent SDK authority and sandbox coverage remains materially incomplete.
 Internal inspection and passing fixtures cannot close those external omissions.
 The operator authorized a bounded completion on 2026-10-18, using a fresh
 read-only Claude subscription session and a Git-exported `86d4d69` snapshot,
-without prior critiques or implementation-side verdicts. Its actual findings and
-coverage must be checked before accepting the foundation. The
+without prior critiques or implementation-side verdicts. Its safeguard stopped
+the report during the first finding; the returned detail and coverage matrix are
+incomplete despite the CLI's successful exit. Retained source reads and the
+conditional opening judgment do not establish acceptance. The operator explicitly
+authorized proceeding to the baseline scan, with architectural acceptance still
+open and no further architecture-review round. The
 [disposition register](developer/architecture-review-dispositions.md) retains the
 cumulative checkpoint and current policy decisions; the
 [operator review page](operator/architecture-review.md) owns execution details.
-Baseline security and P25 remain gated pending that result.
+P25 remains gated on assessed architecture and triaged baseline results.
 
 Torn-ledger continuation preserves the damaged tree and its liability; automatic
 ledger repair remains unavailable. Synthetic startup still takes about 20 seconds
@@ -226,10 +235,17 @@ baseline scan on the resulting exact revision. P25 execution remains gated;
 repaired findings do not certify omitted surfaces.
 Read-only Security Cloud checks on 2026-10-18 confirmed repository access and
 available credits, with no matching environment. The operator then separately
-approved creating the missing environment and selected high reasoning for the
-offered scan model. Onboarding is in progress; no scan or billing-mode change has
-started. The root [security context](../SECURITY.md) supplies the non-secret threat
-model and private reporting policy. Setup does not close either review gate.
+approved creating and publishing a private environment and selected high reasoning
+for the offered scan model. The environment is published, but Security Cloud's
+environment discovery still returns no Ipse target. The scan UI instead provides
+automatic environment creation, which the operator explicitly approved for the
+one-time GPT-5.6 Sol/high repository scan, with monitoring off and no secrets.
+No scan or billing-mode change has started. Setup's ordinary suite had two container cleanup failures; the two
+affected modules passed all 63 tests under a retained Rust subreaper, with no
+source/assertion changes. A full suite under that launcher remains unrun and the
+cloud host lacks required native enforcement. The root
+[security context](../SECURITY.md) supplies the non-secret threat model and private
+reporting policy. Setup does not close either review gate.
 
 Challenge the foundation before the large self-development
 trial. An external agent, such as Claude, reviews a pinned repository/design

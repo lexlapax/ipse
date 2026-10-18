@@ -197,6 +197,17 @@ A browser is needed for subscription sign-in. Codex CLI is optional development
 tooling, with its own account and terms; it is not an Ipse dependency. Optional
 tools must not silently become prerequisites for builds, tests, or operation.
 
+The operator approved a private cloud environment for security preparation on
+2026-10-18. Its retained Elixir 1.18.3/OTP 27/Rust 1.85.1 toolchains have the
+licenses listed above; bootstrap helpers use Elixir and shell, verified HTTPS,
+locked package hashes and Hex verification. A short environment-only Rust
+subreaper uses the existing Linux C library (`prctl`/`waitpid`) to compensate for
+its container's non-reaping PID 1 during process tests. It adds no crate or
+third-party source and is not part of Ipse runtime, packaging or ordinary host
+test requirements. Its retained source is outside the repository. The Cloud
+service and images remain optional operator-selected services, not new local
+dependencies; actual limitations/results are in [testing](testing.md#focused-review-and-cloud-setup-2026-10-18).
+
 ### Isolated independent MCP investigation
 
 For an optional one-off P7 compatibility investigation, inspected and built

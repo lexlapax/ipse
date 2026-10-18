@@ -232,7 +232,46 @@ Linux/macOS handoffs. The role/text/catalog/login batch and fixture follow-up
 passed local and hosted gates through `091b2bd`; the failed first matrix remains
 recorded below rather than being overwritten. No comparative
 P25 run or OpenAI security-service scan has executed. Security-service access
-checks below are read-only, not scan evidence.
+checks are not scan evidence. A later private cloud environment was explicitly
+created and published, but Security Cloud requires its own environment setup.
+The 2026-10-18 focused subscription report was interrupted by its safeguard;
+successful CLI exit does not establish review completion. The operator approved
+scanning first while architectural acceptance stays open, without another
+architecture-review round. No scan has started.
+
+### Focused review and cloud setup, 2026-10-18
+
+The focused pass used the committed `86d4d69` export and repair delta; runtime/tests
+match `e8f7ad5`. Observed metadata reports Opus 5.5, high effort, no API key source
+and only Read/Glob/Grep. It ran about 15 minutes and made 54 Read calls plus
+searches. The safeguard cut off the report and its final response acknowledges
+missing findings and coverage. Raw output and observed read ranges remain private.
+The [register](architecture-review-dispositions.md#focused-completion-at-86d4d69)
+retains sanitized concerns without inventing a complete verdict. A supervisor
+optional-callback recovery probe passed one selected synthetic test (12 excluded);
+it does not establish the separately mentioned pressure failure.
+
+General cloud onboarding installed Elixir 1.18.3/OTP 27/Rust 1.85.1, retaining
+toolchains outside the unchanged checkout. Setup reported passing build, strict
+compile, format, credential-free demo and repeated dependency refresh. The plain
+suite completed with 880 tests, two cleanup failures and 32 exclusions. It
+attributes them to orphan zombies under the container's PID 1. Both complete
+affected modules passed 63 tests using an external Rust subreaper; the full suite
+under that launcher remains unrun. The launcher adopts/reaps orphans and preserves
+the command's exit status; source, assertions and deadlines were unchanged.
+These are observed onboarding results, separate from the prior inspected hosted
+CI receipts. Landlock ABI 6 is unavailable, so this host supplies no native
+enforcement evidence. Environment publication is not a fresh-restoration proof.
+
+The published general environment has Only me visibility, package-manager network
+access and no added variables/secrets. Security Cloud list/search does not discover
+it. Its UI loaded after one retry and offers a separate automatic scan environment.
+The one-time repository scan is prepared for `lexlapax/ipse`, GPT-5.6 Sol/high,
+continuous monitoring off. The operator explicitly approved its automatic
+environment creation and launch; the scan is prepared but has not started.
+No local security CLI, new runtime package, billing-mode change, scan result or
+P25 execution is claimed. The [security context](../../SECURITY.md) supplies the
+review threat model, including check/use and shared-grant/temporary-secret seams.
 
 The fresh report at source `091b2bd`/evidence `20b377c` found two applicable
 interaction defects despite that passing matrix. The subsequent internal audit

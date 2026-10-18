@@ -9,15 +9,14 @@ exploit details remain outside Git. The [plan](../plan.md) owns scheduling and t
 
 ## Provenance and coverage
 
-**Current gate:** the consolidated assessment at `a5912ab`/evidence `a21469e`
-returned without acceptance. The reviewer confirms the preceding repairs in
-inspected scope, while B-1 and A1 reopen required-delivery and abnormal-death
-ownership claims. The current repair and pool-loss decision are recorded below;
-they require their own final platform evidence. Material independent SDK/sandbox
-omissions remain. Internal reads do not close them. Baseline security and P25
-remain gated; no further external assignment is automatically scheduled. The
-[used prompt](../operator/architecture-review.md) is archived. Exact failed and
-passing runs remain in [testing](testing.md#current-evidence-and-next-checks).
+**Current gate:** consolidated repairs passed their frozen local and hosted
+Linux/macOS checks through `e8f7ad5`. The focused `86d4d69` subscription pass then
+returned an incomplete report after its safeguard interrupted the write-up.
+Architectural acceptance and material independent coverage remain open. The
+operator explicitly approved baseline scanning first while retaining that gate,
+without another architecture-review round. The
+[current checkpoint](../operator/architecture-review.md) owns scan setup; exact
+failed and passing runs remain in [testing](testing.md#current-evidence-and-next-checks).
 
 The reviewer reported Claude Code with Opus 5.5 (`claude-opus-5-5`), default
 reasoning, one subscription-selected session and no subagents or operator help
@@ -327,12 +326,44 @@ skills and compaction core; Linux/macOS sandbox/process-group/cache sources;
 budget ledger/policy, normalization and delegation/parallel arbitration, plus
 older test bodies. Internal inspection does not close those omissions. Hosted
 receipts support execution scope, not independent source reading or acceptance.
-The used consolidated brief is archived. On 2026-10-18 the operator authorized a
-focused independent completion against the Git-exported `86d4d69` snapshot, whose
-runtime/tests match `e8f7ad5`, followed by the baseline scan. The pass is running
-with read-only tools through the local Claude subscription; its report and
-coverage have not yet been assessed. Security environment creation was separately
-approved. No R/S/C/O sequence is scheduled and no scan or P25 run has executed.
+The used consolidated brief is archived. The focused follow-through below does
+not retroactively certify those omissions. No R/S/C/O sequence is scheduled and
+no P25 run has executed.
+
+## Focused completion at 86d4d69
+
+On 2026-10-18 a fresh, nonpersistent Claude subscription process inspected a
+credential-free Git export of `86d4d69`, whose runtime/tests match `e8f7ad5`, and
+the `a5912ab..86d4d69` repair delta. Prior critiques and implementation-side
+verdicts were excluded. Observed CLI metadata reports Opus 5.5, high effort,
+Read/Glob/Grep only, no API key source, extra integrations or subagents. The run
+lasted about 15 minutes. Raw output, prompt and exact read ranges remain private.
+
+Its safeguard stopped the report during its first finding. The process exited
+successfully but the final response explicitly states that the deliverable is
+incomplete. Its conditional opening judgment is not acceptance. The requested
+detailed counterexamples, complete dispositions and final coverage matrix were
+not delivered; they must not be reconstructed as reviewer claims.
+
+The observed 54 Read calls provide partial source evidence for Session/ownership,
+selected SDK identity/registry/config/state/store/actions, Linux/macOS native
+helpers, ledger/delegation, auth JWT/store, workspace, HTTP/writer/SSE, and three
+extension test files. Search-only inspection elsewhere and partial ranges do not
+establish whole-module or whole-test coverage.
+
+| Returned concern | Supervisor assessment and remaining work |
+| --- | --- |
+| File-tool check/use races | The source uses separate path checks and later host IO. The threat model already excludes race-proof protection from hostile same-user filesystem changes and scopes native confinement to shell/server processes. Assess reachable cross-tool compositions during scan triage; the incomplete report does not establish a new breach of a stronger promised boundary |
+| macOS shared writable data | Source confirms a per-workspace shared data grant and transient stdio environment staging. Concurrent-command confidentiality needs targeted validation and disposition. Static reading on Linux is not Mac reproduction; no runtime repair or acceptance is claimed |
+| Text-delivery policy | A public progress note mentions a pressure-related concern without its full entry. A separate short optional-callback recovery probe passed (one selected synthetic test); that does not reproduce or refute a different pressure sequence. No core change follows from the incomplete claim alone |
+
+After the interruption the operator explicitly approved running the baseline
+security scan first, keeping architectural acceptance open and avoiding another
+architecture-review round. This is an execution-order exception, not a waiver of
+P25 readiness or a finding disposition. A private general cloud environment is
+published; Security Cloud uses a separate setup flow. The operator explicitly
+approved its automatic environment and the one-time GPT-5.6 Sol/high scan, with no
+secrets or continuous monitoring. The configured scan is ready to launch.
 
 ## Execution order and completion
 
@@ -347,6 +378,6 @@ The reports retain their actual provenance and partial coverage. The consolidate
 assessment has returned and its used brief is archived. Complete applicable
 repairs, exact-source verification and material independent coverage before
 acceptance. The [current review page](../operator/architecture-review.md) records
-that checkpoint and the now-authorized focused completion. Its applicable findings
-and material coverage must be assessed before baseline security and P25 proceed.
-No scan has run; P24 is open.
+that checkpoint and the interrupted focused completion. The operator approved the
+baseline scan first; its findings and the remaining material architectural concerns
+must be assessed before P25 proceeds. No scan has run; P24 is open.
