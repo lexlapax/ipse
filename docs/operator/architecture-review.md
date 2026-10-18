@@ -6,12 +6,17 @@ combine retained independent critiques, the completed static baseline scan and
 checked repairs. The final [Linux/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39134788296)
 passed source, native enforcement, packaging and installed-artifact checks.
 This is not a new independent post-fix verdict or a security certification.
-P25's corrected packet comparison is scored; the
-[execution record](../developer/p25-evaluation.md) retains the failed source-fit
-criterion and supervised repair. No trial acceptance is claimed. No additional
-P24 review sequence, scan or continuous monitoring is scheduled.
+P25's research, authored repair and assisted reruns pass their recorded gates.
+The [execution record](../developer/p25-evaluation.md) retains the failed
+source-fit criterion, actual interventions and review limitations. The final
+`f467de9` [Linux/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39152616173)
+passes; its separately approved GPT-5.6 Sol/high verification security scan is
+running against that exact candidate. The
+[current dispositions](../developer/architecture-review-dispositions.md#p25-final-security-triage)
+own remaining coverage and triage. No trial acceptance is claimed. No additional
+P24 architecture-review sequence or continuous monitoring is scheduled.
 
-## Focused pass and current gate
+## Retained focused pass
 
 The focused review used the local, signed-in Claude subscription in a fresh
 nonpersistent session. Its source is a credential-free Git export of
@@ -113,5 +118,6 @@ owns dispositions and independent coverage; [testing](../developer/testing.md#cu
 owns exact receipts. Internal reads and green tests do not supply independent
 acceptance. The [plan](../plan.md#p24-independent-architecture-validation-and-baseline-security)
 records the approved scan-first exception and the subsequent scoped P24 decision.
-P25 must freeze its brief, inputs, runner and limits before scored execution,
-then pass its final candidate's review/security gates before trial acceptance.
+P25's brief, inputs, runners and limits were frozen before scored execution.
+Its final candidate must pass the remaining security/triage gate before trial
+acceptance; the earlier P24 readiness decision cannot certify later changes.
