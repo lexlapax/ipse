@@ -196,6 +196,31 @@ already used, leaving 45 until 15:43:03 UTC; Ipse conservatively charges 22 tool
 proposals and 23 requests, leaving 106 tools/37 main steps until 15:42:50 UTC.
 No new retrieval, prior report, provider or billing mode is introduced.
 
+## Selected self-development task
+
+A credential-free probe against the frozen installed runner reproduced the live
+packet diagnostic: a missing-path read and a queued valid read both become
+`not_started`/`not_decided`, with zero `tool_started` records, but the specific
+preflight reason is replaced by generic "work stopped" text. Cleanup and saved
+context restoration pass. Source inspection identifies the lost message between
+the context-preflight handler and call settlement; it does not establish that
+better wording alone makes a model recover.
+
+Repair round 1 assigns installed Ipse a separate candidate based on `375e607`.
+It must preserve the affected call's reason, distinguish unrelated queued calls,
+retain guidance-before-replanning and fresh approval, and prove restoration/no
+replay without weakening unknown outcomes. Scope is Session, workspace Session
+tests and the relevant developer/operator explanations. This generic diagnostic
+correction adds no domain feature or extension contract. The supervisor supplied
+the task and reproduction; Ipse must author the actual patch and regressions.
+
+The author receives 30 minutes/60 main requests/128 tools, 1,200,000 context bytes,
+compaction and a 300-second request timeout. Provider/model/billing remain the
+installed own-subscription profile. Retrieval, delegation, dependencies, Git
+writes and publication are denied. Mutations and focused local checks require
+individual supervisor decisions bound to their complete arguments; held-out cases
+remain private. No authored repair or passing verification is claimed yet.
+
 ## Remaining trial gates
 
 Finish the corrected common-packet sessions within the original allocation.
