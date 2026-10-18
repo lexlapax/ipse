@@ -107,8 +107,9 @@ was read; only sanitized dispositions and synthetic verification are committed.
 | Item | Result and contract | Probe |
 | --- | --- | --- |
 | Consolidated B-1 / A2 | Confirmed host cancellation now releases only extension-owned enrollments after cleanup. The next task must initialize the same required selection. Unexpected loss alone stays sticky; embedding handles are separate | Five successive required-worker cancellations followed by successful required delivery; the old code refused subsequent inference. Existing unexpected-callback and unconfirmed-worker refusal checks remain |
-| Consolidated A1 / A7 | A separate lock guardian retains the native Port across Session death. Writer, root/nested tasks, scopes, resource actors and delegated guards are tracked before dispatch; actual exits precede unlock | A suspended cleanup scope reproduced successful unsafe resume before repair. Root/nested and delegated-child stalls now retain the real lock. Guardian loss stops without appending; queued-writer safety follows the actual writer-exit fence, not a claimed reproduction of every dirty-IO race |
+| Consolidated A1 / A7 | A separate lock guardian retains the native Port across Session death. Writer, root/nested tasks, scopes, resource actors and delegated guards are tracked before dispatch; actual exits precede unlock | A suspended cleanup scope reproduced successful unsafe resume before repair. Root/nested and delegated-child stalls now retain the real lock. Guardian loss stops without appending; a subsequent real FIFO probe exposed that worker/writer exit alone does not fence dirty IO. FileEffect completion owners now survive caller death through synchronous IO completion; budget/state locks belong to those owners |
 | Consolidated A3 | Pool-supervisor loss remains a conservative Session stop and requires explicit idle resume, without automatic retry | Actual Finch-supervisor kill pins normal Session stop, borrower/socket termination and unchanged idle resume. The fixture initially selected the registry child incorrectly; only the corrected supervisor probe establishes this behavior. A cooperative alternative left the caller blocked and was rejected |
+| Internal filesystem completion | Ordinary and raw filesystem IO can outlive a killed BEAM caller. Admitted workspace writes, active appends/tail repair and budget/state critical sections now have separately tracked completion owners; cancellation never kills those owners | A gated real FIFO write rejects resume until drained. The previous tool implementation allowed resume. A separate real budget-lock probe retains the lock after caller death. These are controlled blocking probes, not power-loss certification |
 | Internal HTTP child cleanup | The private HTTP lease waits for monitored supervised children before releasing its client slot | Suspending a named registry child and killing the top supervisor reproduced premature guardian exit. The repaired guardian retains its slot until that child exits |
 | Cancellation composition | Normal scope close collects native-helper receipts before terminating nested task processes; abrupt owner death stops workers immediately and retains uncertainty | The existing workflow-shell cancellation regression rejected the initial nested-drain ordering. Its strict confirmed cleanup assertion passes after reordering; no alternate cleanup outcome or deadline relaxation |
 | Consolidated A6 | Request-free legacy endpoint provenance is unknowable. Compatibility still permits implicit-default legacy resume and cannot detect an old custom-to-default change | Guidance now states that exact gap. New-session pinning and recorded legacy request hashes remain strict; no migration or historical route reconstruction is claimed |
@@ -124,10 +125,11 @@ turned into stronger containment guarantees.
 ## Verification and remaining limits
 
 The passing `a5912ab` matrix remains evidence for that source and its exercised
-scope. The consolidated follow-through needs its own final frozen source/native,
-package, installed-artifact and hosted Linux/macOS checks, recorded in
-[testing](testing.md#current-evidence-and-next-checks). Earlier passes do not
-certify later code. The used review brief is archived; no new external assignment
+scope. The first follow-through passed its own Linux/macOS matrix at `99bbbdf`.
+The additional filesystem-completion repair passed a new frozen local baseline,
+package and both installed-artifact proofs; its hosted Linux/macOS run is next.
+[Testing](testing.md#current-evidence-and-next-checks) owns exact revisions and
+receipts. Earlier passes do not certify later code. The used review brief is archived; no new external assignment
 or scan was launched. Baseline security and P25 remain gated on applicable repairs
 and adequate independent coverage.
 

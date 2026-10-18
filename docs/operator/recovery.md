@@ -63,6 +63,8 @@ history before accepting work. A journal acknowledgment that fails or exceeds
 five seconds stops the session as `journal_unavailable`; it never retries the
 record. The record may already have reached disk. A separate lock guardian survives abrupt Session death, stops tracked workers
 and waits for writer/scopes/resource and child-guard exits before unlocking.
+Already admitted core filesystem operations have separate completion owners that
+retain the lock until the operation returns, even if the original worker is dead.
 Resume can therefore remain locked after the Session PID disappears. It must not
 start a second writer or overlapping owned task. Then resume inspects durable history.
 An unrecorded result remains unknown. Storage can still delay writer termination

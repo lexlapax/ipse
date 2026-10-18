@@ -80,6 +80,13 @@ without business writes. Read/list need the read capability. Approval displays
 instance, artifact digest, derived namespace and complete request. Expiry is
 checked before intent and result admission; it does not undo an existing write.
 
+An admitted state critical section has a private filesystem completion owner. It
+keeps the native CAS lock through read, validation, temporary-file sync and rename,
+including if its caller is cancelled. Cancellation does not roll back an admitted
+write; a missing result remains unknown. Cleanup can time out while that owner
+finishes, and the Session lock remains retained. This changes no grants or state
+request fields.
+
 ## Closed state requests
 
 Every request has `op` and `scope` (`operator`, `project`, `session`), plus exactly:

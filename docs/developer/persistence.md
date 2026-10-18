@@ -18,8 +18,11 @@ returns an error before linking; a successful writer links to its caller and
 monitors normal owner exit. Session also monitors writer loss, stops and shuts
 down dependent work. There is no writer restart or automatic append retry.
 
-Only the owner may append or close. Each call encodes the new record, checks the
-open file against its path and expected length, writes and fsyncs, then replies.
+Only the owner may append or close. Each call encodes the new record and checks
+the open descriptor against its path and expected length. A private completion
+owner opens a separate append descriptor, checks the same identity/protection/length,
+writes and fsyncs, then closes it before replying. This adds constant work per
+record; it does not reread history.
 Session waits for that acknowledgment before admitting an effect or offering a
 lifecycle source. Input encoding and IO failures never become successful
 receipts. Optional source bounds can refuse a reference while still committing
@@ -38,12 +41,18 @@ every mandatory Session append path exits deliberately as `journal_unavailable`
 on refusal. A timeout proves neither absence nor completion of a write. Session
 termination shuts down owned work and kills its writer. The independent lock
 guardian waits for tracked writer, root/nested worker, scope, registered resource
-and delegated child-guard exits before unlocking, including when Session death
-skips its termination callback. Dispatch barriers register workers before they
+and delegated child-guard exits, plus admitted filesystem completion owners,
+before unlocking, including when Session death skips its termination callback.
+Dispatch barriers register workers before they
 can act; the writer is registered before its first append. A queued append cannot
-overlap a replacement writer while that functioning lock is retained. It never retries a timed-out record. If kernel
-IO delays process termination, cleanup can outlast client deadlines; this contract
-does not promise bounded disk latency. A stuck tracked process can retain the
+overlap a replacement writer while that functioning lock is retained. It never
+retries a timed-out record. A BEAM caller's `DOWN` does not prove its filesystem
+IO finished: both ordinary file servers and raw dirty IO can continue after it.
+`FileEffect` therefore owns admitted workspace writes, active appends, tail repair,
+state critical sections and budget transactions until their synchronous calls
+return. It is tracked before dispatch and is never killed by core cancellation.
+Scope cleanup may time out, but the lock guardian still waits for that owner.
+This does not promise bounded disk latency. A stuck tracked process can retain the
 lock indefinitely; do not remove its lock file or claim cleanup from a timeout.
 Unexpected loss of the lock helper or guardian stops Session without appending.
 The guard is an ownership mechanism, not protection from same-user interference
@@ -81,7 +90,8 @@ extension must not promise them by deleting only its own retrieval state.
 
 Regression checks cover source offsets, optional versus mandatory records,
 owner-only calls, initial corruption, file changes, normal/abrupt owner exit,
-writer loss during inference, controlled callback stalls beyond the acknowledgment
+writer loss during inference, a real blocked FIFO write with Session death and
+lock refusal until the reader drains, budget-lock retention, controlled callback stalls beyond the acknowledgment
 deadline, owned-worker cleanup, unknown-effect resume without replay, retained
 memory and append CPU across 2/64 MiB
 histories. Timing probes separately measure the actual filesystem and Session

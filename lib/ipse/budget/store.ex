@@ -30,6 +30,10 @@ defmodule Ipse.Budget.Store do
   end
 
   def transaction(root, policy, fun, create \\ false, checkpoint \\ nil) do
+    Ipse.FileEffect.run(fn -> transact(root, policy, fun, create, checkpoint) end)
+  end
+
+  defp transact(root, policy, fun, create, checkpoint) do
     with :ok <- Policy.validate(policy),
          true <- root?(root),
          :ok <- ensure_directory(root, false),

@@ -42,7 +42,11 @@ descendants or a guarantee against uninterruptible kernel IO.
 Nested workflow tool, helper-model and history tasks inherit the outer cleanup
 scope through `TaskResources.async/1` and wait at a tracking barrier before their
 function runs. The lock guardian monitors the writer, root/nested workers, scopes,
-registered resource actors and delegated child guards. On Session death it kills
+registered resource actors, admitted filesystem completion owners and delegated
+child guards. `FileEffect` lets core filesystem critical sections finish without
+killing their IO owner; BEAM `DOWN` alone does not fence dirty IO. Budget and state
+locks remain owned by that completion process through their critical section.
+On Session death the guardian kills
 workers promptly, asks scopes to drain and waits for actual process exits before
 unlocking. Normal cancellation first obtains OS-helper receipts, then terminates
 nested task processes; reversing that order loses the receipt. Ordinary

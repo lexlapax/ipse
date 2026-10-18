@@ -9,7 +9,7 @@ private; this repository contains sanitized dispositions and synthetic evidence.
 
 The reviewer confirms the preceding repairs in inspected scope, finds no
 High/Critical defect there, and identifies required-extension cancellation and
-abnormal-death lock ownership gaps. Those are reproduced and being repaired.
+abnormal-death lock ownership gaps. Those are reproduced and repaired, with regression checks.
 Pool-supervisor loss remains an explicit conservative Session stop with manual
 idle resume. A further controlled test found premature HTTP-slot release while a
 named child remained alive; the guardian now waits for supervised children.
@@ -19,8 +19,11 @@ counterexamples, rejected alternatives and limits. The
 [register](../developer/architecture-review-dispositions.md#consolidated-assessment-of-a5912ab)
 owns current dispositions and remaining material independent SDK/sandbox
 omissions. Internal reads and green tests cannot supply that independent coverage.
-The new delta requires its own frozen source/native/package/installed and hosted
-Linux/macOS checks; [testing](../developer/testing.md#current-evidence-and-next-checks)
+A real blocked-write probe additionally showed that caller death does not fence
+filesystem IO, including raw dirty IO. Separate completion owners now retain
+admitted filesystem critical sections through their synchronous completion.
+The updated delta passed frozen local source/native/package/installed checks; its
+exact-source hosted Linux/macOS verification is next; [testing](../developer/testing.md#current-evidence-and-next-checks)
 owns exact revisions and receipts.
 
 No replacement prompt, additional R/S/C/O assignment sequence or new external

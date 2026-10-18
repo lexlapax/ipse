@@ -81,7 +81,11 @@ ceiling and appears as null/overflow plus overdraw in inspection.
 ## Ledger and recovery
 
 `Budget.Store` uses owner-only JSONL and the existing Rust advisory lock. The
-stable lock inode is retained. Every mutation locks, verifies the protected file
+stable lock inode is retained. Each transaction runs in a private filesystem
+completion owner that owns the ledger lock until the transaction returns. Killing
+the caller does not kill that owner or release the lock during pending IO. A
+Session cleanup deadline may expire while this admitted critical section finishes;
+its result remains unknown to the interrupted caller and is never replayed. Every mutation locks, verifies the protected file
 and live prefix, applies the pure transition, appends and fsyncs before releasing.
 The root-owned ETS checkpoint also caches validated reducer state at that exact
 prefix. Subsequent live transactions decode/fold only a new suffix; valid external

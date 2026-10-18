@@ -101,6 +101,7 @@ defmodule Ipse.TaskResources do
        worker: nil,
        worker_ref: nil,
        tasks: %{},
+       effects: %{},
        lock_guard: Ipse.Session.Lock.for_owner(owner),
        resources: %{},
        failed: false,
@@ -128,6 +129,16 @@ defmodule Ipse.TaskResources do
     if caller in [state.owner, state.worker] or Map.has_key?(state.tasks, caller) do
       :ok = Ipse.Session.Lock.track_in(state.lock_guard, pid, :worker)
       {:reply, :ok, %{state | tasks: Map.put(state.tasks, pid, Process.monitor(pid))}}
+    else
+      {:reply, {:error, :cleanup_scope_closed}, state}
+    end
+  end
+
+  def handle_call({:track_effect, pid}, {caller, _}, %{closed: false} = state)
+      when is_pid(pid) and map_size(state.effects) < 32 do
+    if caller in [state.owner, state.worker] or Map.has_key?(state.tasks, caller) do
+      :ok = Ipse.Session.Lock.track_in(state.lock_guard, pid, :peer)
+      {:reply, :ok, %{state | effects: Map.put(state.effects, pid, Process.monitor(pid))}}
     else
       {:reply, {:error, :cleanup_scope_closed}, state}
     end
@@ -185,7 +196,8 @@ defmodule Ipse.TaskResources do
 
       nil ->
         tasks = Map.reject(state.tasks, fn {_, monitor} -> monitor == ref end)
-        {:noreply, %{state | tasks: tasks}}
+        effects = Map.reject(state.effects, fn {_, monitor} -> monitor == ref end)
+        {:noreply, %{state | tasks: tasks, effects: effects}}
     end
   end
 
@@ -228,7 +240,16 @@ defmodule Ipse.TaskResources do
         end
       end)
 
-    %{state | tasks: %{}, failed: failed}
+    failed =
+      Enum.reduce(state.effects, failed, fn {pid, ref}, failed ->
+        receive do
+          {:DOWN, ^ref, :process, ^pid, _} -> failed
+        after
+          max(deadline - System.monotonic_time(:millisecond), 0) -> true
+        end
+      end)
+
+    %{state | tasks: %{}, effects: %{}, failed: failed}
   end
 
   defp close_resource(id, resource, deadline) do

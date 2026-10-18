@@ -32,7 +32,7 @@ dependency. The main choices are:
 | Artifacts, configuration and catalogs | Jason, JSONSchex through the bounded schema adapter, OTP Version/filesystem/crypto | Closed descriptors, duplicate-key rejection, identity and capability policy are harness-specific; import never builds or loads code |
 | Worker execution and examples | Current ERTS/Elixir, Jason, pure JSONSchex/ex_json_pointer code paths and native stdio/process ownership | The bounded serializable SDK differs from MCP; it reuses OS transport and the existing schema adapter in clean workers without starting the host application or a new service |
 | Native group lifetime | Rust stable `Child`/pipes/`Command`, existing POSIX process-group calls and private helper role | A retained inert anchor prevents numeric group reuse through cleanup; mutex-guarded signals and child-status reset preserve its waitable identity. Stable Rust waits reap exited children; unstable/Linux-only handles do not cover both supported hosts. A narrow shared OS adapter avoids a Cargo/platform-layout dependency or daemon, at the cost of one owned process per invocation; see [the native contract](../../native/README.md#process-group-identity-and-lifetime) |
-| Journals, invocations and questions | Existing JSON validation, Questions module, OTP GenServer/Registry/task monitors and native locks | Source/approval binding, finite checkpoints and no-replay recovery belong to Session policy. The small Session.Lock guardian retains the native Port across Session death, with tracked dispatch barriers and actual process-exit fencing; standard supervision alone releases a Session-owned Port too early. No lock service/framework or new dependency is added |
+| Journals, invocations and questions | Existing JSON validation, Questions module, OTP GenServer/Registry/task monitors and native locks | Source/approval binding, finite checkpoints and no-replay recovery belong to Session policy. The small Session.Lock guardian retains the native Port across Session death, with tracked dispatch barriers and actual process-exit fencing; standard supervision alone releases a Session-owned Port too early. A private FileEffect completion owner fences admitted filesystem critical sections because caller death, including raw dirty IO, does not imply write completion. No lock service/framework or new dependency is added |
 | Lifecycle sources, prompt/answer views and jobs | OTP bounded reads/crypto/clocks/monitors, existing strict JSON decoder, canonical digest and owned Worker/action runner | Stable source bindings, child result/cleanup receipts, bounded native/presented answer projections, allowlisted metadata, ordered notifications and finite approved jobs reuse journal/worker/continuation machinery without a broker or new event framework |
 | Scoped state | OTP filesystem/crypto, Jason and native advisory locks | Exact bounded snapshots and cross-VM CAS/tombstones are required; DETS would still need coordination and named tables |
 | Workflow tools | Existing read/write/edit, Runner/sandbox and workspace instruction loader | Approval/preflight gates and complete-versus-unknown receipts reuse normal tool semantics |
@@ -316,6 +316,10 @@ Reasoning effort is a small documented Responses mapping with a conservative
 model allowlist; unsupported provider settings fail explicitly.
 
 Bundled shell environment cleanup reuses existing OTP Port environment overrides.
+The blocked-write regression compiles a small Rust standard-library/POSIX FIFO
+probe with the existing compiler. It gates a real write and exits on harness stdin
+EOF; no `mkfifo` utility, package or runtime dependency is added.
+
 Test HOME isolation preserves the existing Rustup toolchain location explicitly;
 no compiler download, new toolchain package or runtime dependency is introduced.
 

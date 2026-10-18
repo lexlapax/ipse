@@ -113,6 +113,10 @@ defmodule Ipse.Journal do
 
   @doc "Repair only the final unterminated record. Caller must hold the session lock."
   def repair_tail(state_dir, id) do
+    Ipse.FileEffect.run(fn -> repair(state_dir, id) end)
+  end
+
+  defp repair(state_dir, id) do
     with :ok <- validate_id(id),
          path = journal_path(state_dir, id),
          {:ok, %{type: :regular}} <- File.lstat(path),

@@ -148,6 +148,10 @@ defmodule Ipse.Tools do
     do: {:error, "unknown tool: #{inspect(name, limit: 20, printable_limit: 100)}"}
 
   defp write_effect(path, content) do
+    Ipse.FileEffect.run(fn -> write_file(path, content) end)
+  end
+
+  defp write_file(path, content) do
     with {:ok, %File.Stat{type: :directory}} <- File.stat(Path.dirname(path)) do
       case File.write(path, content) do
         :ok -> :ok

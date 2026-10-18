@@ -40,6 +40,7 @@ defmodule Ipse.Journal.Writer do
         path: path,
         id: id,
         owner: owner,
+        lock_guard: Ipse.Session.Lock.for_owner(owner),
         offset: stat.size,
         identity: identity(stat)
       }
@@ -63,8 +64,7 @@ defmodule Ipse.Journal.Writer do
     case encode(state, mode, event) do
       {:ok, line, result} ->
         with :ok <- unchanged(state),
-             :ok <- :file.write(state.file, line),
-             :ok <- :file.sync(state.file) do
+             :ok <- append_line(state, line) do
           {:reply, result, %{state | offset: state.offset + byte_size(line)}}
         else
           _ -> {:stop, :normal, {:error, :journal_write_unconfirmed}, state}
@@ -109,9 +109,26 @@ defmodule Ipse.Journal.Writer do
     end
   end
 
-  defp unchanged(state) do
+  defp append_line(state, line) do
+    Ipse.FileEffect.run(
+      fn ->
+        with {:ok, file} <- :file.open(String.to_charlist(state.path), [:append, :binary, :raw]) do
+          try do
+            with :ok <- unchanged(state, file),
+                 :ok <- :file.write(file, line),
+                 do: :file.sync(file)
+          after
+            :file.close(file)
+          end
+        end
+      end,
+      state.lock_guard
+    )
+  end
+
+  defp unchanged(state, file \\ nil) do
     with {:ok, path_stat} <- File.lstat(state.path),
-         {:ok, info} <- :file.read_file_info(state.file),
+         {:ok, info} <- :file.read_file_info(file || state.file),
          file_stat = File.Stat.from_record(info),
          true <- protected?(path_stat) and protected?(file_stat),
          true <- identity(path_stat) == state.identity and identity(file_stat) == state.identity,

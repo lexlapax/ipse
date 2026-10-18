@@ -51,6 +51,10 @@ defmodule Ipse.Extensions.State do
 
   @doc "Caller supplies an admitted host namespace and operation ID; this function grants no permission."
   def execute(root, namespace, request, operation_id) do
+    Ipse.FileEffect.run(fn -> execute_locked(root, namespace, request, operation_id) end)
+  end
+
+  defp execute_locked(root, namespace, request, operation_id) do
     with true <- is_binary(root) and hash?(namespace) and id?(operation_id),
          :ok <- validate(request),
          :ok <- directory(root),

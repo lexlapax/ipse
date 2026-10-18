@@ -67,7 +67,10 @@ defmodule Ipse.Session.Lock do
       kind in [:worker, :peer] and
         Enum.any?(s.dependents, fn {_, pair} -> pair == {caller, :scope} end)
 
-    if caller == s.owner or scoped do
+    writer =
+      kind == :peer and Enum.any?(s.dependents, fn {_, pair} -> pair == {caller, :writer} end)
+
+    if caller == s.owner or scoped or writer do
       ref = Process.monitor(pid)
       {:reply, :ok, %{s | dependents: Map.put(s.dependents, ref, {pid, kind})}}
     else

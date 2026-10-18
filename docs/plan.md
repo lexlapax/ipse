@@ -52,7 +52,7 @@ new source transfer or dependency, or select a production engine.
 | Milestone or gate | Current state | Next result |
 | --- | --- | --- |
 | [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within selected scope; source/native/package/installed and hosted Linux/macOS passed | Retain accounting invariants through P24/P25 review and repairs |
-| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Consolidated review returned; acceptance withheld; cancellation/lock repairs and pool-loss disposition active | Verify the repaired delta, resolve material independent coverage, then triage the baseline security scan |
+| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Consolidated review returned; acceptance withheld; cancellation/lock repairs and pool-loss disposition active | Verify cancellation, lock/IO completion and HTTP teardown repairs, resolve material independent coverage, then triage the baseline security scan |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Planned revised scope; unstarted | Independent Codex/Ipse research, Ipse-authored repairs, fresh acceptance runs and final architecture/security review |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Deferred; proposed scope subject to P25 decisions | Independently selectable working/long-term memory tools and optional lifecycle policies |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; proposed scope subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
@@ -162,8 +162,12 @@ abnormal-death lock race are applicable gaps. Internal tests reproduce both.
 Explicit host cancellation now releases confirmed extension-owned enrollments
 while fresh input must reinitialize the same required selection. A separate
 lock guardian survives Session death and fences replacement work until tracked
-writer/tasks/scopes/resource and child guards exit. Dispatch tracking covers
-nested helpers and delegated children.
+writer/tasks/scopes/resource and child guards exit. A real blocked-write probe
+then showed that caller death does not prove filesystem IO completion, even in
+raw mode. Admitted core writes, journal appends/repair and state/budget critical
+sections now have separately tracked completion owners that core cancellation
+does not kill. Their actual completion precedes unlock. Dispatch tracking covers
+nested helpers and delegated children; uncertainty never authorizes replay.
 
 Pool loss remains an explicit conservative Session stop with inert manual resume.
 A rejected cooperative alternative left Finch's caller blocked. A controlled
