@@ -356,19 +356,37 @@
       "status": "completed_with_findings",
       "triage": "docs/developer/architecture-review-dispositions.md#p25-final-security-triage",
       "usage_usd": "22.8826316"
+    },
+    "verification": {
+      "continuous_monitoring": false,
+      "coverage": "not_yet_available",
+      "created_at": "2026-10-18T18:16:25.031384Z",
+      "findings_triage": "pending",
+      "model": "gpt-5.6-sol",
+      "one_time_explicitly_approved": true,
+      "reasoning_effort": "high",
+      "run_id": "wfr_abc3fbbecf49982d820b6c798513b78ed65eadd153d8b10a785c8ef15d242d20",
+      "status": "running",
+      "target_commit_sha": "f467de9d9424d1f77d59bcff036a2e7cfec9e1e4"
     }
   },
   "security_followup_validation": {
     "archive_sha256": "c74a494de94196fa25809d12880d22736aca6f71ac9ed87c59b42ae081474187",
-    "hosted_platforms": "pending",
+    "hosted_matrix": "https://github.com/lexlapax/ipse/actions/runs/39152616173",
+    "hosted_platforms": "passed",
+    "hosted_private_receipt": "final-security/validation/hosted-f467de9-receipt.json",
+    "hosted_receipt_sha256": "0f42a56fc74ce9737fd800385339c1daa50b2ad3f76039a5ad6ac080a19450f9",
     "local_native_passed": 896,
     "local_platform_exclusions": 15,
     "old_compiled_installed_assertions": 50,
+    "ordinary_exclusions_per_host": 32,
+    "ordinary_tests_per_host": 911,
     "parent_revision": "81b67f5264455043758e2d05828d2fa314be0705",
     "private_receipt": "final-security/validation/delta-final-checked-receipt.json",
     "receipt_sha256": "a6b4cac98b543ab1ab0693b4e529b4c8cccad363d243f9a31a786c878834aee8",
-    "refreshed_security_review": "not_started",
-    "runtime_diff_sha256": "11092e9ea8e872e084750a2ca9d58a63cdea4a479c7a55a148f9427ef8276197"
+    "refreshed_security_review": "running",
+    "runtime_diff_sha256": "11092e9ea8e872e084750a2ca9d58a63cdea4a479c7a55a148f9427ef8276197",
+    "runtime_revision": "f467de9d9424d1f77d59bcff036a2e7cfec9e1e4"
   },
   "security_repair_validation": {
     "archive_sha256": "d5d6636355bbc498ac058b72a0c42c1c1f738fdeae73cdc21aa8feb0795f7bd7",
@@ -382,7 +400,7 @@
     "parent_revision": "641dcaefd5c1e7cfd58204e1997ee9211adc2721",
     "private_receipt": "final-security/validation/checked-receipt.json",
     "receipt_sha256": "58882c14b292f0f49e5cbfdf4eef36f49d672509ab9d5a81979cf8f03461e4c6",
-    "refreshed_security_review": "not_started",
+    "refreshed_security_review": "running_on_final_followup_source",
     "retained_trial_journals_restore_unchanged": 6,
     "runtime_revision": "e021a8fa267e260d5c88e9ef69652f18b6fc789c",
     "utf8_escape_boundary_probes": 5
@@ -405,5 +423,5 @@
       "scope": "material_claim_checks_and_discrepancy_dispositions"
     }
   ],
-  "status": "security_repairs_and_coverage_pending"
+  "status": "final_verification_security_scan_running"
 }

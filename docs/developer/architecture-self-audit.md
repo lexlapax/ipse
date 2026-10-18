@@ -262,7 +262,9 @@ caller-death lock retention pass; the three lowered-bound CLI cases pass with
 unchanged history. The frozen follow-up passes 896 native-inclusive tests with
 15 exclusions, both formatter floors, strict build/compile/demo and package
 verification. Existing compiled artifacts pass all 41 legacy/nine model checks.
-Hosted platforms and refreshed affected security coverage remain open.
+The exact `f467de9` hosted Linux/macOS matrix also passes its source/native/package
+and installed-artifact gates. The approved verification security scan now targets
+that unchanged candidate; refreshed coverage and triage remain open.
 The follow-up internal review checks both active and inactive call sites,
 completion-owner tracking and close order, plus header discovery versus actual
 resume validation. No new permission, billing or extension capability is added.

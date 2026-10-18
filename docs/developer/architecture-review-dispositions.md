@@ -22,8 +22,8 @@ Raw artifacts and reproduction details remain private.
 
 | ID | Surface | Current disposition | Required gate |
 | --- | --- | --- | --- |
-| FSC-1 (`csf_d8fb991afccccf6790b8e749`) | Proposal-bound terminal confirmations | Reproduced with a real CLI/loopback fixture. Fresh per-proposal codes prevent buffered/replayed input. Internal review also reproduced buffered structured answers; per-question codes fix that adjacent case. All 30 CLI tests and the full local handoff pass | Hosted platform checks and refreshed affected security review; not closed yet |
-| FSC-2 (`csf_07c9aa59e131a3393e3639f5`) | Durable journal growth and bounded recovery/listing | The bounded fixture fails on the prior implementation and passes with finite operator-narrowable limits, a reserved terminal receipt, incremental decoding and header-only listing. Seven quota/checkpoint fixtures pass, including pending native/extension questions, missing started-effect results, sparse legacy files and a tight header boundary. Full local handoff and existing compiled extension proofs pass | Hosted platform checks and affected security review; not closed yet |
+| FSC-1 (`csf_d8fb991afccccf6790b8e749`) | Proposal-bound terminal confirmations | Reproduced with a real CLI/loopback fixture. Fresh per-proposal codes prevent buffered/replayed input. Internal review also reproduced buffered structured answers; per-question codes fix that adjacent case. All 30 CLI tests and the full local handoff pass | Hosted final-candidate checks pass; refreshed affected security review and triage remain open |
+| FSC-2 (`csf_07c9aa59e131a3393e3639f5`) | Durable journal growth and bounded recovery/listing | The bounded fixture fails on the prior implementation and passes with finite operator-narrowable limits, a reserved terminal receipt, incremental decoding and header-only listing. Seven quota/checkpoint fixtures pass, including pending native/extension questions, missing started-effect results, sparse legacy files and a tight header boundary. Full local handoff and existing compiled extension proofs pass | Hosted final-candidate checks pass; refreshed affected security review and triage remain open |
 
 The scan prioritizes major runtime boundaries but defers full file-level review
 of parts of Session, budget/accounting, compaction, lifecycle, text delivery,
@@ -32,7 +32,13 @@ runtime provider, sandbox or package execution is distinct from the inspected
 hosted source/native/installed receipts. The earlier baseline's coverage and
 independent architecture omissions retain their own identities; they are not
 silently expanded by this report. P25 remains open through repair and affected
-coverage refresh. No additional scan or whole-design review has been launched.
+coverage refresh. After both hosted jobs passed, the operator-approved one-time
+verification scan launched at 18:16:25 UTC against
+`f467de9d9424d1f77d59bcff036a2e7cfec9e1e4`, run
+`wfr_abc3fbbecf49982d820b6c798513b78ed65eadd153d8b10a785c8ef15d242d20`.
+It explicitly selects GPT-5.6 Sol/high and the existing private environment;
+continuous monitoring remains off. Launch and the pinned revision are verified;
+no result, coverage or acceptance is inferred before its artifacts are checked.
 
 ### Independent repair-delta review
 
@@ -54,13 +60,16 @@ reads; both explicit continuations and cumulative limits are retained. The
 
 | ID | Finding and evidence | Candidate correction and gate |
 | --- | --- | --- |
-| P25-DA1, Medium | Inactive append could return after two writer-call timeouts while its temporary writer retained a queued mutation. A controlled real-lock probe reproduced a late append under the next owner's acquired lock; the regression fails before repair | Reuse admission/fsync synchronously inside a tracked filesystem completion owner, with no temporary GenServer or hidden cleanup timeout. All three append modes retain the real lock across a delayed mutation; a caller-death fixture verifies guardian retention. Full local native/package checks pass; hosted platform and affected security checks remain required |
-| P25-DA2, Medium | CLI resume called whole-history load before resolving lowered operator journal limits. Tracing the real CLI reproduces the default-policy full load; the regression fails before repair | Discover only a bounded header, then resolve operator policy before full Session loading. Byte, event and record-bound cases pass with unchanged history. Full local native/package checks pass; hosted platform and affected security checks remain required |
+| P25-DA1, Medium | Inactive append could return after two writer-call timeouts while its temporary writer retained a queued mutation. A controlled real-lock probe reproduced a late append under the next owner's acquired lock; the regression fails before repair | Reuse admission/fsync synchronously inside a tracked filesystem completion owner, with no temporary GenServer or hidden cleanup timeout. All three append modes retain the real lock across a delayed mutation; a caller-death fixture verifies guardian retention. Full local native/package and exact `f467de9` hosted checks pass; affected security coverage and triage remain required |
+| P25-DA2, Medium | CLI resume called whole-history load before resolving lowered operator journal limits. Tracing the real CLI reproduces the default-policy full load; the regression fails before repair | Discover only a bounded header, then resolve operator policy before full Session loading. Byte, event and record-bound cases pass with unchanged history. Full local native/package and exact `f467de9` hosted checks pass; affected security coverage and triage remain required |
 
 The returned interruption/combination test ideas remain coverage limitations,
 not additional reproduced defects. No findings are promoted to closed on source
-inspection alone. The successful `81b67f5` hosted matrix covers the reviewed code,
-not these subsequent corrections; refreshed affected security review remains open.
+inspection alone. The successful `81b67f5` hosted matrix covers the reviewed code.
+The subsequent corrections now pass the complete `f467de9` Linux/macOS matrix,
+including native enforcement and 50 installed assertions per host; the
+[verification record](testing.md#current-evidence-and-next-checks) retains exact
+counts and exclusions. Refreshed affected security review remains open.
 
 ## Provenance and coverage
 

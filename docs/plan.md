@@ -53,8 +53,10 @@ and partial coverage. Its confirmation/journal repairs passed local and hosted
 checks through `81b67f5`. The required fresh architecture-delta review then found
 two integration gaps in inactive-writer ownership and resume admission; both are
 reproduced and their corrections pass local source/native/package/installed
-checks. Hosted verification of those corrections, refreshed affected security
-coverage and trial acceptance remain open.
+checks and the complete hosted Linux/macOS matrix at `f467de9`. The operator
+approved one verification security scan of that final candidate; it is now
+running with GPT-5.6 Sol/high. Refreshed affected security coverage, triage and
+trial acceptance remain open.
 [Testing](developer/testing.md#current-evidence-and-next-checks) owns
 the exact source, failed attempts, checks and exclusions.
 The research subject is optional working/long-term memory, research, graph and

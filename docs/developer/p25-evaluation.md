@@ -591,8 +591,20 @@ and the real configuration example. Six retained live-trial journals restore
 unchanged. Package verification and the old compiled artifacts pass all 41
 legacy/nine model assertions; archive SHA-256
 `c74a494de94196fa25809d12880d22736aca6f71ac9ed87c59b42ae081474187`.
-Hosted platform verification and refreshed affected security review remain open;
-no additional scan has been launched. Earlier platform receipts do not certify
-these subsequent changes.
+The exact `f467de9` [hosted matrix](https://github.com/lexlapax/ipse/actions/runs/39152616173)
+passes every applicable Linux/macOS step: 911 tests/zero failures/32 exclusions
+per host, enabled Mac 36/0/6, four Rust checks, signed enforcement, packages and
+all four parsed installed receipts (41 legacy/nine model assertions per host).
+The supervisor inspected full logs and exact source/job/step conclusions. Earlier
+receipts retain their original scope and failed attempts.
+
+After that matrix passed, the operator-approved one-time verification scan
+launched at 18:16:25 UTC against the unchanged final candidate
+`f467de9d9424d1f77d59bcff036a2e7cfec9e1e4`, run
+`wfr_abc3fbbecf49982d820b6c798513b78ed65eadd153d8b10a785c8ef15d242d20`.
+It uses explicit GPT-5.6 Sol/high and the existing private environment, with no
+secrets added or continuous monitoring enabled. The service confirms the target;
+the scan is running. Refreshed coverage, finding triage and acceptance remain
+open until the complete output is read and checked.
 The researched P26/P27 proposal is in the [knowledge design](knowledge-extensions.md);
 no production engine is installed. The requested license transition remains open.
