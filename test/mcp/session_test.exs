@@ -76,11 +76,17 @@ defmodule Ipse.MCP.SessionTest do
 
   test "post-dispatch loss stops the batch, preserves unknown, and resume does not retry", ctx do
     pid = session(ctx, scenario: "disconnect_after_dispatch", approval: :allow, call_count: 2)
+    id = Ipse.Session.info(pid).id
+    monitor = Process.monitor(pid)
     :ok = Ipse.Session.prompt(pid, "write")
     assert_receive {:ipse, ^pid, {:done, :error}}, 5_000
     assert File.read!(Path.join(ctx.root, "calls.log")) == "write_note\n"
-    id = Ipse.Session.info(pid).id
+    # Unconfirmed helper cleanup may already have stopped the Session. Quiesce
+    # either path before reading history; process liveness is not a cleanup receipt.
+    assert Ipse.Session.close_confirmed(pid) in [:ok, {:error, :cleanup_unconfirmed}]
+    assert_receive {:DOWN, ^monitor, :process, ^pid, :normal}, 5_000
     {:ok, events} = Ipse.Journal.load(ctx.dir, id)
+    assert {:ok, _} = Ipse.Session.restore_context(events)
 
     outcomes =
       for e <- events,
@@ -88,7 +94,6 @@ defmodule Ipse.MCP.SessionTest do
           do: get_in(e, ["message", "ipse_tool_outcome", "status"])
 
     assert outcomes == ["unknown", "not_started"]
-    DynamicSupervisor.terminate_child(Ipse.Sessions, pid)
 
     resumed =
       session(ctx, [scenario: "disconnect_after_dispatch", approval: :allow, call_count: 2], id)
