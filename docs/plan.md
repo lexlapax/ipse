@@ -46,8 +46,8 @@ coverage matrix and does not close architectural acceptance. The operator then
 explicitly approved running the baseline scan before closing that gate, targeting
 remaining concerns without another architecture-review round. A private Ipse
 cloud environment is published; Security Cloud requires a separate setup flow.
-Its automatic scan environment and one-time high-reasoning scan are explicitly
-approved and ready to launch. The scan has not started. The used
+Its automatic environment was created and the one-time high-reasoning scan is
+running against exact revision `8b4f706`; terminal results and triage are pending. The used
 consolidated brief is archived, and no R/S/C/O sequence is scheduled. The
 [register](developer/architecture-review-dispositions.md) owns dispositions and
 remaining independent omissions; the [internal audit](developer/architecture-self-audit.md)
@@ -64,7 +64,7 @@ new source transfer or dependency, or select a production engine.
 | Milestone or gate | Current state | Next result |
 | --- | --- | --- |
 | [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within selected scope; source/native/package/installed and hosted Linux/macOS passed | Retain accounting invariants through P24/P25 review and repairs |
-| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Repairs verified; focused report incomplete; scan-first order and automatic scan environment approved | Run and triage the baseline scan, assess remaining architectural coverage and resolve applicable findings |
+| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Repairs verified; focused report incomplete; baseline scan running at `8b4f706` under approved scan-first order | Read terminal results and triage, assess remaining architectural coverage and resolve applicable findings |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Planned revised scope; unstarted | Independent Codex/Ipse research, Ipse-authored repairs, fresh acceptance runs and final architecture/security review |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Deferred; proposed scope subject to P25 decisions | Independently selectable working/long-term memory tools and optional lifecycle policies |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; proposed scope subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
@@ -240,7 +240,10 @@ for the offered scan model. The environment is published, but Security Cloud's
 environment discovery still returns no Ipse target. The scan UI instead provides
 automatic environment creation, which the operator explicitly approved for the
 one-time GPT-5.6 Sol/high repository scan, with monitoring off and no secrets.
-No scan or billing-mode change has started. Setup's ordinary suite had two container cleanup failures; the two
+The one-time scan started at `8b4f706` on 2026-10-18; its
+[run record](operator/architecture-review.md#baseline-scan) identifies the exact
+target and status. No terminal result, triage or billing-mode change is claimed.
+Setup's ordinary suite had two container cleanup failures; the two
 affected modules passed all 63 tests under a retained Rust subreaper, with no
 source/assertion changes. A full suite under that launcher remains unrun and the
 cloud host lacks required native enforcement. The root
@@ -283,7 +286,8 @@ architecture-review procedure and security execution constraints. Prefer externa
 architecture review before scanning, then repair/refreeze as needed. P25 closes
 the loop with a final architecture delta review and security review/rescan; P24's
 baseline cannot certify later changes. The first external static review has run;
-no security scan or completed architectural acceptance is claimed.
+the baseline scan is running, with no completed scan or architectural acceptance
+claimed.
 
 ## P25: comparative research and supervised self-development
 
@@ -338,9 +342,10 @@ separate inputs; repeat architecture review for material design changes and
 security review on the final candidate. The hosted security route is
 preferred to adding local tooling, subject to actual account/repository access
 and revision coverage. Scan status and coverage are separate; findings need
-triage and fixes need regression evidence. Raw findings stay private. No scan has
-run, no recurring monitoring is enabled and no new dependency is approved by this
-plan. See [architecture validation](developer/self-hosting-evaluation.md#independent-adversarial-architecture-validation)
+triage and fixes need regression evidence. Raw findings stay private. P24's baseline
+scan is running; it is not P25 execution or completed security review. No recurring
+monitoring is enabled and no new dependency is approved by this plan. See
+[architecture validation](developer/self-hosting-evaluation.md#independent-adversarial-architecture-validation)
 and [security execution constraints](developer/self-hosting-evaluation.md#security-review-before-and-after-the-trial).
 
 ## P26: optional working and long-term memory

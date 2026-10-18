@@ -5,7 +5,8 @@ operator explicitly approved proceeding to the baseline security scan while
 keeping architectural acceptance open, without another architecture-review round.
 High reasoning was selected for Security Cloud's offered model. A private Ipse
 environment is published; Security Cloud's separate automatic environment and
-one-time scan are explicitly approved and ready to launch. No scan has run.
+one-time scan were explicitly approved. That scan is now running at `8b4f706`;
+no terminal result or architectural acceptance is claimed.
 
 ## Focused pass and current gate
 
@@ -55,6 +56,22 @@ Use the [security context](../../SECURITY.md) for the threat model and safe
 evidence rules; the [evaluation protocol](../developer/self-hosting-evaluation.md#security-review-before-and-after-the-trial)
 owns scan execution and triage. Confirm the scan's actual revision and terminal
 results before recording baseline coverage.
+
+## Baseline scan
+
+The [one-time run](https://chatgpt.com/mcp-app/connector_openai_defense_factory/open_defense_factory#/runs/wfr_a67044bec66103c57f7c55f9a2555183d2426db134312b7d2afa5f30990823ea)
+started on 2026-10-18 at 13:06 UTC with requested GPT-5.6 Sol/high reasoning,
+repository scope and continuous monitoring off. Security Cloud created its own
+environment, `6ad4c44338748191a3da3afa4d2ac91b`, for `lexlapax/ipse`. The service
+confirms target `8b4f706953bd491c08c1926bbf6c111e898a1eb3` on `main`; its status
+advanced from queued to running. This target includes reviewed security context
+and documentation, with runtime/tests unchanged from the verified source.
+
+Await terminal status, actual outputs/findings, validation and coverage limits.
+Retain raw artifacts privately, disposition applicable findings and verify any
+repairs before advancing P24/P25. Pending or failed work with zero findings is
+not a clean scan. Later documentation-only status commits do not change the
+scan's pinned target or certify a later runtime change.
 
 ## Retained assessment and verification
 

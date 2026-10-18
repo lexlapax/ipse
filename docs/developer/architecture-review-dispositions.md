@@ -363,7 +363,9 @@ architecture-review round. This is an execution-order exception, not a waiver of
 P25 readiness or a finding disposition. A private general cloud environment is
 published; Security Cloud uses a separate setup flow. The operator explicitly
 approved its automatic environment and the one-time GPT-5.6 Sol/high scan, with no
-secrets or continuous monitoring. The configured scan is ready to launch.
+added secrets or continuous monitoring. The run is active against `8b4f706`; see
+the [run record](../operator/architecture-review.md#baseline-scan). Terminal results
+and triage are pending.
 
 ## Execution order and completion
 
@@ -380,4 +382,5 @@ repairs, exact-source verification and material independent coverage before
 acceptance. The [current review page](../operator/architecture-review.md) records
 that checkpoint and the interrupted focused completion. The operator approved the
 baseline scan first; its findings and the remaining material architectural concerns
-must be assessed before P25 proceeds. No scan has run; P24 is open.
+must be assessed before P25 proceeds. The baseline scan is running; P24 and
+architectural acceptance remain open.

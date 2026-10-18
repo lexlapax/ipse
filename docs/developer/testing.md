@@ -237,7 +237,8 @@ created and published, but Security Cloud requires its own environment setup.
 The 2026-10-18 focused subscription report was interrupted by its safeguard;
 successful CLI exit does not establish review completion. The operator approved
 scanning first while architectural acceptance stays open, without another
-architecture-review round. No scan has started.
+architecture-review round. The one-time scan is now running at `8b4f706`; pending
+execution is not a completed review or triage.
 
 ### Focused review and cloud setup, 2026-10-18
 
@@ -268,9 +269,13 @@ access and no added variables/secrets. Security Cloud list/search does not disco
 it. Its UI loaded after one retry and offers a separate automatic scan environment.
 The one-time repository scan is prepared for `lexlapax/ipse`, GPT-5.6 Sol/high,
 continuous monitoring off. The operator explicitly approved its automatic
-environment creation and launch; the scan is prepared but has not started.
-No local security CLI, new runtime package, billing-mode change, scan result or
-P25 execution is claimed. The [security context](../../SECURITY.md) supplies the
+environment creation and launch. The service confirms active run
+`wfr_a67044bec66103c57f7c55f9a2555183d2426db134312b7d2afa5f30990823ea`, target
+`8b4f706953bd491c08c1926bbf6c111e898a1eb3`, environment
+`6ad4c44338748191a3da3afa4d2ac91b`, created at 13:06:15 UTC and running at 13:06:32.
+The [operator record](../operator/architecture-review.md#baseline-scan) links the run.
+No local security CLI, new runtime package, billing-mode change, terminal scan
+result or P25 execution is claimed. The [security context](../../SECURITY.md) supplies the
 review threat model, including check/use and shared-grant/temporary-secret seams.
 
 The fresh report at source `091b2bd`/evidence `20b377c` found two applicable

@@ -16,8 +16,9 @@ dispositions and independent omissions. The
 [review checkpoint](../operator/architecture-review.md) identifies the current
 snapshot and access. Previous briefs are archived; no R/S/C/O sequence is
 scheduled. A private environment is published; the scan service's separate
-automatic environment and one-time scan are explicitly approved. No comparative
-run or security scan has executed.
+automatic environment and one-time scan were explicitly approved. The baseline is
+running at `8b4f706`, with no terminal result or triage yet. No comparative run has
+executed.
 Use the [operator runbook](../operator/self-development.md) for runner/candidate
 separation and the [knowledge design](knowledge-extensions.md) for research
 questions. Production knowledge packages remain deferred to P26/P27.
