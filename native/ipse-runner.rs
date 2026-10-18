@@ -128,6 +128,7 @@ fn run() -> Result<(), String> {
         loop {
             match input.read(&mut buffer) {
                 Ok(0) => break,
+                Ok(size) if buffer[..size].contains(&b'C') => break,
                 Ok(_) => (),
                 Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
                 Err(_) => break,

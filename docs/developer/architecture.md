@@ -24,6 +24,16 @@ and can also start the deterministic, credential-free demo. A session is one
 cross-process lock. Provider and tool work runs in monitored tasks, with events
 sent back to the owning session and its CLI subscriber.
 
+Each owned task also has a private `TaskResources` process. Shell helpers,
+task-owned advisory locks and independent extension workers register before
+dispatch and report their actual native-helper exit. Task completion retains a
+single cleanup receipt until Session consumes it. Cancellation closes registered
+resources before killing the task, within a shared four-second resource deadline;
+missing acknowledgments, resource-owner death and failed closure remain
+unconfirmed. Losing the Session stops the scope and its dependent work. These
+receipts establish ordinary helper/group cleanup, not containment of detached
+descendants or a guarantee against uninterruptible kernel IO.
+
 The CLI registers itself as the root Session's owner; loss stops the Session and
 dependent work through the existing owner monitor. Request-call exits are caught
 without displaying private reasons. The client stops its reader, reports an
@@ -68,7 +78,7 @@ through the parent session. The child uses a configured profile/role or inherite
 provider/model and shares the workspace; it does not inherit MCP servers or parent conversation history. See
 the [delegation contract](delegation.md). Parent-side result receipts bind actual
 start sources and distinguish bounded results, unknown work and acknowledged
-logical cleanup. Child PID death alone cannot manufacture completion; idle resume
+cleanup, including registered task-owned OS resources. Child PID death alone cannot manufacture completion; idle resume
 starts no child and replays no effect.
 
 `Ipse.Provider` selects a provider adapter. Adapters stream text and

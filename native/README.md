@@ -21,6 +21,12 @@ errors. Keep helper and Elixir Runner from the same installed build; an uncertai
 effect must be inspected rather than replayed.
 
 The caller keeps the helper's stdin pipe open. EOF kills the owned process group.
+An explicit cancellation byte `C` also requests cleanup while retaining the Port
+to observe helper exit. A private Port owner traps close-time exit races without
+changing the caller's exit handling. Shell cleanup is confirmed only after a
+normal helper exit after stack cleanup (status 0 or a returned error at status 1).
+Forced stdio watchdog termination uses status 2; that, a timeout or abrupt helper
+loss remains unconfirmed.
 The helper starts `/bin/sh -c COMMAND` as a member of that fresh group and kills
 it on timeout, parent-pipe EOF, failed output delivery, and shell exit.
 The timeout includes the shell and its ordinary descendants. A deliberately

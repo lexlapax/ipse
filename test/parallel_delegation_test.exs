@@ -229,6 +229,27 @@ defmodule Ipse.ParallelDelegationTest do
     assert {:ok, _} = Session.restore_context(events)
   end
 
+  test "nonboolean child decisions deny effects and record the same denial", ctx do
+    {pid, _} = start(ctx, :shell)
+    :ok = Session.prompt(pid, "Synthetic child decision")
+    approve_group(pid)
+    assert_receive {:child_started, 0, _, _, _}, 3000
+    assert_receive {:child_started, 1, _, _, _}, 3000
+    assert_receive {:ipse, ^pid, {:approval, ref, name, _}}, 3000
+    assert String.ends_with?(name, "/shell")
+    assert :ok = Session.approve(pid, ref, "no")
+    refute File.exists?(Path.join(ctx.root, "shell-owner.txt"))
+    {:ok, events} = Journal.load(ctx.state, Session.info(pid).id)
+
+    assert Enum.any?(
+             events,
+             &(&1["type"] == "delegation_approval" and &1["name"] == "shell" and
+                 &1["decision"] == "denied")
+           )
+
+    assert :ok = Session.cancel(pid)
+  end
+
   test "child loss interrupts its pending approval wait without accepting a stale decision",
        ctx do
     {pid, _} =

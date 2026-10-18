@@ -314,7 +314,7 @@ defmodule Ipse.Extensions.InvocationTest do
     pid = start(ctx)
     :ok = Session.prompt(pid, "tool fixture")
     assert_receive {:ipse, ^pid, {:approval, ref, _, _}}, 2000
-    :ok = Session.approve(pid, ref, false)
+    :ok = Session.approve(pid, ref, "no")
     assert_receive {:ipse, ^pid, {:done, :ok}}, 2000
     refute File.exists?(ctx.marker)
     {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
@@ -394,7 +394,42 @@ defmodule Ipse.Extensions.InvocationTest do
     intent = Enum.find(events, &(&1["type"] == "extension_invocation_intent"))
     result = Enum.find(events, &(&1["type"] == "extension_invocation_result"))
 
+    duplicate =
+      Invocation.intent(
+        intent["identity"],
+        intent["descriptor"],
+        intent["payload"]["arguments"],
+        intent["payload"]["session_id"],
+        intent["payload"]["turn_id"],
+        intent["parent_call_id"],
+        intent["parent_request_id"],
+        intent["approval"]
+      )
+
+    {:ok, duplicate_result} =
+      Invocation.build_result(duplicate, %{
+        "api_version" => 1,
+        "kind" => "result",
+        "value" => result["value"]
+      })
+
+    position =
+      Enum.find_index(
+        events,
+        &(get_in(&1, ["message", "ipse_extension_result", "invocation_id"]) ==
+            intent["invocation_id"])
+      ) + 1
+
+    duplicate_pair =
+      Enum.take(events, position) ++
+        [
+          duplicate,
+          duplicate_result,
+          %{"type" => "message", "message" => Invocation.tool_message(duplicate_result)}
+        ] ++ Enum.drop(events, position)
+
     variants = [
+      duplicate_pair,
       Enum.reject(events, &(&1 == intent)),
       Enum.reject(events, &(&1 == result)),
       Enum.map(events, fn e -> if e == result, do: Map.put(e, "text", "{}"), else: e end),
@@ -1042,6 +1077,28 @@ defmodule Ipse.Extensions.InvocationTest do
   defp model_http_body(socket, body, size) do
     {:ok, bytes} = :gen_tcp.recv(socket, 0, 5000)
     model_http_body(socket, body <> bytes, size)
+  end
+
+  test "nonboolean extension host approvals deny and leave matching receipts", ctx do
+    pid = start(ctx)
+
+    put = %{
+      "op" => "state.put",
+      "scope" => "project",
+      "key" => "denied",
+      "expected_revision" => 0,
+      "value" => %{"text" => "no"}
+    }
+
+    assert :ok = host_command(pid, put)
+    assert_receive {:ipse, ^pid, {:approval, ref, "extension:state.put", _}}, 3000
+    assert :ok = Session.approve(pid, ref, "no")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+    assert host_outcome(pid)["status"] == "denied"
+    {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+    intent = Enum.find(events, &(&1["type"] == "extension_action_intent"))
+    assert intent["approval"] == "denied"
+    assert :ok = Ipse.Extensions.Actions.validate_events(events)
   end
 
   test "host writes need their own full approval and reads recover without executing callbacks",

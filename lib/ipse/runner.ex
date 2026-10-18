@@ -15,7 +15,8 @@ defmodule Ipse.Runner do
 
   @doc "Acquire a persistent advisory lock. Its Port must remain owned by the session."
   def lock(path) when is_binary(path) do
-    with {:ok, helper} <- helper_path() do
+    with {:ok, ticket} <- Ipse.TaskResources.register(:lock),
+         {:ok, helper} <- helper_path() do
       port =
         Port.open({:spawn_executable, String.to_charlist(helper)}, [
           :binary,
@@ -25,7 +26,8 @@ defmodule Ipse.Runner do
           args: ["--lock", Path.expand(path)]
         ])
 
-      result = receive_lock(port, <<>>, System.monotonic_time(:millisecond) + 5_000)
+      Process.put({__MODULE__, port}, ticket)
+      result = receive_lock(port, <<>>, System.monotonic_time(:millisecond) + 5_000, ticket)
       if match?({:error, _}, result), do: unlock(port)
       result
     end
@@ -37,16 +39,28 @@ defmodule Ipse.Runner do
 
   @doc "Release an owned lock Port. The lock file remains to preserve inode identity."
   def unlock(port) when is_port(port) do
-    if Port.info(port), do: Port.close(port)
+    ticket = Process.delete({__MODULE__, port})
 
-    :ok
+    result =
+      if Port.info(port) do
+        close_process(port, true)
+      else
+        receive do
+          {^port, {:exit_status, _}} -> :ok
+        after
+          0 -> if is_nil(ticket), do: :ok, else: {:error, :cleanup_unconfirmed}
+        end
+      end
+
+    Ipse.TaskResources.closed(ticket, result)
+    result
   rescue
     ArgumentError -> :ok
   end
 
   def unlock(_), do: :ok
 
-  defp receive_lock(port, buffer, deadline) do
+  defp receive_lock(port, buffer, deadline, ticket) do
     case buffer do
       <<_kind, size::unsigned-big-32, _::binary>> when size > 1_048_576 ->
         {:error, "invalid session lock response"}
@@ -55,12 +69,25 @@ defmodule Ipse.Runner do
         {:ok, port}
 
       <<?E, size::unsigned-big-32, error::binary-size(size), _::binary>> ->
+        Ipse.TaskResources.closed(
+          ticket,
+          await_stdio_exit(port, System.monotonic_time(:millisecond) + 2_000, true)
+        )
+
         {:error, sanitize(error)}
 
       _ ->
         receive do
-          {^port, {:data, bytes}} -> receive_lock(port, buffer <> bytes, deadline)
-          {^port, {:exit_status, _}} -> {:error, "session lock helper exited unexpectedly"}
+          {^port, {:data, bytes}} ->
+            receive_lock(port, buffer <> bytes, deadline, ticket)
+
+          {^port, {:exit_status, _}} ->
+            Ipse.TaskResources.closed(ticket, :ok)
+            {:error, "session lock helper exited unexpectedly"}
+
+          {:ipse_cancel_resource, id} when ticket != nil and ticket.id == id ->
+            Ipse.TaskResources.closed(ticket, close_process(port, true))
+            {:error, "session lock acquisition cancelled"}
         after
           max(deadline - System.monotonic_time(:millisecond), 0) ->
             {:error, "session lock helper stopped responding"}
@@ -246,21 +273,100 @@ defmodule Ipse.Runner do
   def send_stdio(_, _), do: {:error, "invalid or oversized stdio input"}
 
   @doc "Cancel and await supervisor exit for at most two seconds before closing its Port."
-  def close_stdio(port) when is_port(port) do
-    result =
-      try do
-        cancel_stdio(port, System.monotonic_time(:millisecond) + 2_000)
-      rescue
-        _ -> {:error, "stdio cleanup unconfirmed"}
-      end
-
-    close_stdio_port(port)
-    result
-  end
-
+  def close_stdio(port) when is_port(port), do: close_process(port, false)
   def close_stdio(_), do: {:error, "stdio cleanup unconfirmed"}
 
-  defp cancel_stdio(port, deadline) do
+  defp close_process(port, lock?) do
+    if Process.info(self(), :trap_exit) == {:trap_exit, true} do
+      try do
+        cancel_stdio(port, System.monotonic_time(:millisecond) + 2_000, lock?)
+      after
+        close_stdio_port(port)
+      end
+    else
+      close_guarded(port, lock?)
+    end
+  end
+
+  defp close_guarded(port, lock?) do
+    owner = self()
+    reference = make_ref()
+    deadline = System.monotonic_time(:millisecond) + 2_000
+
+    {guard, monitor} =
+      spawn_monitor(fn ->
+        Process.flag(:trap_exit, true)
+        guard = self()
+
+        spawn(fn ->
+          owner_ref = Process.monitor(owner)
+          guard_ref = Process.monitor(guard)
+
+          receive do
+            {:DOWN, ^owner_ref, :process, _, _} -> Process.exit(guard, :kill)
+            {:DOWN, ^guard_ref, :process, _, _} -> :ok
+          end
+        end)
+
+        result =
+          try do
+            Process.link(port)
+            send(owner, {reference, :close_ready})
+
+            receive do
+              {^reference, :close} ->
+                cancel_stdio(port, System.monotonic_time(:millisecond) + 2_000, lock?)
+            after
+              2_500 -> {:error, "stdio cleanup unconfirmed"}
+            end
+          rescue
+            _ -> {:error, "stdio cleanup unconfirmed"}
+          after
+            close_stdio_port(port)
+          end
+
+        send(owner, {reference, result})
+      end)
+
+    result =
+      receive do
+        {^reference, :close_ready} ->
+          try do
+            Port.connect(port, guard)
+            Process.unlink(port)
+            send(guard, {reference, :close})
+
+            receive do
+              {^reference, result} -> result
+              {:DOWN, ^monitor, :process, ^guard, _} -> {:error, "stdio cleanup unconfirmed"}
+            after
+              2_500 -> {:error, "stdio cleanup unconfirmed"}
+            end
+          rescue
+            _ -> {:error, "stdio cleanup unconfirmed"}
+          end
+
+        {^reference, result} ->
+          result
+
+        {:DOWN, ^monitor, :process, ^guard, _} ->
+          {:error, "stdio cleanup unconfirmed"}
+      after
+        3_000 -> {:error, "stdio cleanup unconfirmed"}
+      end
+
+    Process.demonitor(monitor, [:flush])
+    if Process.alive?(guard), do: Process.exit(guard, :kill)
+    close_stdio_port(port)
+
+    if result == :ok do
+      :ok
+    else
+      await_stdio_exit(port, deadline, lock?)
+    end
+  end
+
+  defp cancel_stdio(port, deadline, lock?) do
     remaining = deadline - System.monotonic_time(:millisecond)
 
     if remaining <= 0 do
@@ -275,39 +381,43 @@ defmodule Ipse.Runner do
 
       case sent do
         true ->
-          await_stdio_exit(port, deadline)
+          await_stdio_exit(port, deadline, lock?)
 
         :gone ->
-          await_stdio_exit(port, deadline)
+          await_stdio_exit(port, deadline, lock?)
 
         false ->
           # A rejected nosuspend command was not queued. Retry only cancel,
           # never server bytes, and retain the original cleanup deadline.
           receive do
-            {^port, {:data, _bytes}} -> cancel_stdio(port, deadline)
-            {^port, {:exit_status, _status}} -> :ok
-            {:EXIT, ^port, _reason} -> await_stdio_exit(port, deadline)
+            {^port, {:data, _bytes}} -> cancel_stdio(port, deadline, lock?)
+            {^port, {:exit_status, status}} -> cleanup_status(status, lock?)
+            {:EXIT, ^port, _reason} -> await_stdio_exit(port, deadline, lock?)
           after
-            min(remaining, 5) -> cancel_stdio(port, deadline)
+            min(remaining, 5) -> cancel_stdio(port, deadline, lock?)
           end
       end
     end
   end
 
-  defp await_stdio_exit(port, deadline) do
+  defp await_stdio_exit(port, deadline, lock?) do
     remaining = deadline - System.monotonic_time(:millisecond)
 
     if remaining <= 0 do
       {:error, "stdio cleanup unconfirmed"}
     else
       receive do
-        {^port, {:data, _bytes}} -> await_stdio_exit(port, deadline)
-        {^port, {:exit_status, _status}} -> :ok
-        {:EXIT, ^port, _reason} -> await_stdio_exit(port, deadline)
+        {^port, {:data, _bytes}} -> await_stdio_exit(port, deadline, lock?)
+        {^port, {:exit_status, status}} -> cleanup_status(status, lock?)
+        {:EXIT, ^port, _reason} -> await_stdio_exit(port, deadline, lock?)
       after
         remaining -> {:error, "stdio cleanup unconfirmed"}
       end
     end
+  end
+
+  defp cleanup_status(status, lock?) do
+    if lock? or status in [0, 1], do: :ok, else: {:error, "stdio cleanup unconfirmed"}
   end
 
   defp close_stdio_port(port) do
@@ -318,7 +428,8 @@ defmodule Ipse.Runner do
   end
 
   defp run_supervised(command, cwd, timeout, limit, emit, profile) do
-    with {:ok, helper} <- helper_path(profile != "macos-workspace-v1"),
+    with {:ok, ticket} <- Ipse.TaskResources.register(:shell),
+         {:ok, helper} <- helper_path(profile != "macos-workspace-v1"),
          {:ok, args} <- launch_args(helper, profile, cwd, timeout, command) do
       port =
         Port.open({:spawn_executable, String.to_charlist(helper)}, [
@@ -339,7 +450,8 @@ defmodule Ipse.Runner do
         output_bytes: 0,
         emit: emit,
         result: nil,
-        error: nil
+        error: nil,
+        cleanup_ticket: ticket
       }
 
       setup_allowance = if profile == "macos-workspace-v1", do: 25_000, else: 5_000
@@ -355,7 +467,8 @@ defmodule Ipse.Runner do
           {:unknown,
            "Shell supervision was interrupted after possible dispatch. Inspect before retrying."}
       after
-        if Port.info(port), do: Port.close(port)
+        cleanup = if Port.info(port), do: close_stdio(port), else: {:error, :cleanup_unconfirmed}
+        Ipse.TaskResources.closed(ticket, cleanup)
       end
     end
   end
@@ -423,7 +536,14 @@ defmodule Ipse.Runner do
           {:error, reason} -> {:unknown, reason}
         end
 
-      {^port, {:exit_status, _code}} ->
+      {^port, {:exit_status, code}} ->
+        cleanup =
+          if code == 0 or (code == 1 and match?({:error, _}, state.error)),
+            do: :ok,
+            else: {:error, :cleanup_unconfirmed}
+
+        Ipse.TaskResources.closed(state.cleanup_ticket, cleanup)
+
         cond do
           state.error ->
             state.error
@@ -442,6 +562,11 @@ defmodule Ipse.Runner do
                output_truncated: state.output_bytes > state.output_limit or state.pending != <<>>
              })}
         end
+
+      {:ipse_cancel_resource, id}
+      when state.cleanup_ticket != nil and state.cleanup_ticket.id == id ->
+        Ipse.TaskResources.closed(state.cleanup_ticket, close_stdio(port))
+        {:unknown, "Shell cancelled; started effects may have occurred. Inspect before retrying."}
     after
       remaining -> {:unknown, "shell supervisor stopped responding"}
     end

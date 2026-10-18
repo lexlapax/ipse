@@ -62,6 +62,10 @@ monitors its owning CLI process. Slow storage or sequential child/transport
 cleanup can still outlast the caller's deadline; an unconfirmed-cleanup notice
 requires inspection of receipts, the workspace and running processes. The
 provider `--timeout-ms` option does not change these Session call deadlines.
+Task-owned shell and extension helpers must acknowledge cleanup; task death
+alone cannot confirm their exit. A missing acknowledgment stops the Session
+with cleanup unconfirmed. Inspect running work before starting another attempt;
+this does not expand the documented detached-descendant containment limits.
 
 Journal retention grows independently of the context window. There is no
 automatic journal rotation or disk quota. Context compaction does not delete

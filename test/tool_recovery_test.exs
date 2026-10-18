@@ -59,10 +59,12 @@ defmodule Ipse.ToolRecoveryTest do
       call("effect", "shell", %{"command" => ~s(printf effected > effect; kill -KILL "$PPID")})
 
     pid = start(c, [shell])
+    id = Session.info(pid).id
+    monitor = Process.monitor(pid)
     :ok = Session.prompt(pid, "Synthetic interrupted shell")
     assert_receive {:ipse, ^pid, {:done, :error}}, 5_000
     assert File.read!(Path.join(c.root, "effect")) == "effected"
-    id = Session.info(pid).id
+    assert_receive {:DOWN, ^monitor, :process, ^pid, :normal}, 5_000
     assert {:ok, events} = Journal.load(c.dir, id)
 
     assert Enum.any?(events, fn e ->
@@ -89,6 +91,34 @@ defmodule Ipse.ToolRecoveryTest do
     assert File.read!(Path.join(c.root, "effect")) == "effected"
     assert {:error, _} = Runner.run("true", Path.join(c.root, "missing"))
     assert {:error, _} = Tools.execute("shell", %{"command" => nil}, %{cwd: c.root})
+  end
+
+  test "only literal true approves a native mutation and its journaled decision", c do
+    for allowed <- ["no", 1, [], nil, false] do
+      pid =
+        start(
+          c,
+          [call("literal", "write", %{"path" => "must-not-write", "content" => "no"})],
+          :ask
+        )
+
+      :ok = Session.prompt(pid, "Synthetic nonboolean approval")
+      assert_receive {:ipse, ^pid, {:approval, ref, "write", _}}, 2000
+      assert :ok = Session.approve(pid, ref, allowed)
+      assert_receive {:ipse, ^pid, {:done, :ok}}, 2000
+      refute File.exists?(Path.join(c.root, "must-not-write"))
+      assert {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
+
+      assert Enum.any?(
+               events,
+               &(get_in(&1, ["message", "ipse_tool_outcome"]) == %{
+                   "status" => "denied",
+                   "approval" => "denied"
+                 })
+             )
+
+      assert :ok = Session.close(pid)
+    end
   end
 
   test "duplicate call IDs refuse the entire response before approval or any built-in effect",

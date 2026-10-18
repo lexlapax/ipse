@@ -23,6 +23,7 @@ defmodule Ipse.Extensions.Projection do
          :ok <- Ipse.Extension.validate(%{"text" => input}),
          true <- Manifest.sha256(input) == intent["input_sha256"],
          :ok <- Ipse.MCP.Schema.validate_arguments(result_schema(intent["stage"]), result),
+         true <- safe_frame?(intent["stage"], result),
          output = render(intent, input, result),
          true <- byte_size(output) <= 16_384 do
       event =
@@ -292,6 +293,15 @@ defmodule Ipse.Extensions.Projection do
       "properties" =>
         Map.new(~w(prefix suffix), &{&1, %{"type" => "string", "maxLength" => 4096}})
     }
+
+  defp safe_frame?("transform.prompt", result),
+    do:
+      not String.contains?(result["append"], [
+        "[/Extension context]",
+        "[Untrusted extension context:"
+      ])
+
+  defp safe_frame?(_, _), do: true
 
   defp render(%{"stage" => "transform.prompt", "identity" => identity}, input, result),
     do:

@@ -72,6 +72,8 @@ Every model tool invocation needs full argument approval unless the operator
 explicitly selected session-wide execution. Headless denial, child policy and
 lease checks remain core-owned. Invalid schemas, duplicate provider call IDs and
 duplicate JSON keys refuse execution before approval/code initialization.
+Only literal boolean `true` grants approval; other values deny and are recorded
+as denied, consistently with native and delegated effects.
 Provider call IDs use the shared `Ipse.ToolCall` contract: opaque valid UTF-8,
 1–256 bytes, unique within a proposed response. Live admission, saved question
 restoration and extension source/parent validation agree on that bound. These
@@ -136,6 +138,7 @@ bounded context before that final value; ordinary result fields remain inert.
 The pure `Invocation` validator checks closed records, versions, pinned metadata
 catalog/identities, descriptor/argument/output digests, unique invocation IDs,
 native parent request/call provenance, matching reviewed arguments/approval,
+one invocation per source request/call occurrence,
 reply schemas, action count/chain digest and tool receipts. Orphaned, replayed or inconsistent records refuse
 recovery. Historical expiry is not reinterpreted as a successful callback; current
 activation leases must still be valid. These are integrity checks, not signatures.

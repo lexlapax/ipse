@@ -151,8 +151,12 @@ extension-call receipts, contribution framing, browser-login locking, Anthropic
 compaction compatibility and startup costs. Reconsider torn-ledger recovery only
 with a conservative, evidence-preserving contract. Decisions on optional versus
 required text consumers and untrusted context placement are with the operator.
-The review ran no code or tests; its proposed regressions are unrun until verified
-here. Baseline security and P25 remain gated.
+The review ran no code or tests; supervisor verification is tracked separately.
+The egress policy repair at `42d9f1f` passed local and hosted Linux/macOS gates.
+Task-owned OS cleanup receipts and approval/invocation/framing hardening passed
+the local full/native/demo/package/installed handoff; hosted checks are next.
+Remaining findings and policy
+choices are still open. Baseline security and P25 remain gated.
 
 Repair candidate `b5297be` passed its local source/native/demo/package/installed
 handoff and hosted Ubuntu/macOS matrix, including both Mac enforcement steps.

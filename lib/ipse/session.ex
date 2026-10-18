@@ -33,7 +33,10 @@ defmodule Ipse.Session do
       true ->
         task = owned_task(fn -> Ipse.Extensions.Registry.revalidate(config) end)
 
-        case Task.yield(task, 5_000) || Task.shutdown(task, :brutal_kill) do
+        result = Task.yield(task, 5_000) || Task.shutdown(task, :brutal_kill)
+        Ipse.TaskResources.close_task(task.pid)
+
+        case result do
           {:ok, :ok} -> GenServer.start_link(__MODULE__, opts)
           _ -> {:error, :extension_admission_refused}
         end
@@ -178,6 +181,7 @@ defmodule Ipse.Session do
             else: "not_decided"
           ),
         task: nil,
+        task_cleanup_failed: false,
         job_ref: nil,
         phase: if(question, do: :question, else: :idle),
         calls: if(question && question.call, do: [question.call], else: []),
@@ -1349,7 +1353,7 @@ defmodule Ipse.Session do
           "child_id" => id,
           "name" => name,
           "arguments" => args,
-          "decision" => if(allowed, do: "approved", else: "denied")
+          "decision" => if(allowed == true, do: "approved", else: "denied")
         })
 
         send(worker, {:delegated_decision, child, child_ref, allowed == true})
@@ -1399,9 +1403,9 @@ defmodule Ipse.Session do
   end
 
   def handle_call({:approve, ref, allowed}, _from, %{approval: {ref, call, args}} = s) do
-    s = finish_wait(%{s | approval: nil}, if(allowed, do: "approved", else: "denied"))
+    s = finish_wait(%{s | approval: nil}, if(allowed == true, do: "approved", else: "denied"))
 
-    if allowed,
+    if allowed == true,
       do: {:reply, :ok, launch_tool(s, call, args, "approved")},
       else:
         {:reply, :ok,
@@ -1548,6 +1552,9 @@ defmodule Ipse.Session do
       |> Enum.filter(&Process.alive?/1)
       |> Enum.map(&Ipse.MCP.Transport.close/1)
 
+    task_cleanup =
+      if s.task, do: [Ipse.TaskResources.close_task(s.task.pid)], else: []
+
     if s.task, do: Task.shutdown(s.task, :brutal_kill)
 
     text_cleanup =
@@ -1624,12 +1631,14 @@ defmodule Ipse.Session do
       }
 
     text_cleanup =
-      if s.extension_text_cleanup_failed or s.event_cleanup_failed,
+      if s.extension_text_cleanup_failed or s.event_cleanup_failed or s.task_cleanup_failed,
         do: [{:error, :cleanup_unconfirmed} | text_cleanup],
         else: text_cleanup
 
     {feed_cleanup, feeds} = Feeds.close(s.feeds, feed_reason, &record(s, &1))
-    {child_cleanup ++ cleanup ++ text_cleanup ++ feed_cleanup, %{next | feeds: feeds}}
+
+    {child_cleanup ++ cleanup ++ task_cleanup ++ text_cleanup ++ feed_cleanup,
+     %{next | feeds: feeds}}
   end
 
   @impl true
@@ -1696,12 +1705,26 @@ defmodule Ipse.Session do
   end
 
   def handle_info({ref, result}, %{task: %{ref: ref}} = s) do
+    cleanup = Ipse.TaskResources.close_task(s.task.pid)
+    result = if cleanup == :ok, do: result, else: :task_cleanup_unconfirmed
     s = measure_request(s, result)
     Process.demonitor(ref, [:flush])
     phase = if s.phase == :delegated_approval, do: :tool, else: s.phase
     s = %{s | task: nil}
 
     case {phase, result} do
+      {_, :task_cleanup_unconfirmed} ->
+        {_, next} =
+          stop_work(%{s | task_cleanup_failed: true}, true, "interrupted", "cleanup_failure")
+
+        notify(
+          s,
+          {:error, "Task-owned OS cleanup could not be confirmed. Inspect before retrying."}
+        )
+
+        notify(s, {:done, :error})
+        {:stop, :normal, close_epoch(next, "cleanup_failure", false)}
+
       {invocation_phase, {:extension_question, action}}
       when invocation_phase in [:tool, :extension_command, :extension_service, :extension_events] ->
         with %{intent: ^action} <- s.extension_action,
@@ -1993,14 +2016,29 @@ defmodule Ipse.Session do
   def handle_info({:DOWN, ref, :process, _pid, _reason}, %{journal_writer_ref: ref} = s),
     do: {:stop, :journal_unavailable, s}
 
+  def handle_info({:owned_task_cleanup_failed, worker}, %{task: %{pid: worker}} = s) do
+    {_, next} =
+      stop_work(%{s | task_cleanup_failed: true}, true, "interrupted", "cleanup_failure")
+
+    notify(
+      s,
+      {:error,
+       "Task-owned OS cleanup could not be confirmed. Inspect running processes before retrying."}
+    )
+
+    notify(s, {:done, :error})
+    {:stop, :normal, close_epoch(next, "cleanup_failure", false)}
+  end
+
   def handle_info({:DOWN, ref, :process, _pid, _reason}, %{task: %{ref: ref}} = s) do
     s = measure_request(s, :worker_down)
 
-    {:noreply,
-     fail(
-       %{s | task: nil},
-       "Worker stopped unexpectedly; any started tool may have taken effect."
-     )}
+    {_, next} =
+      stop_work(%{s | task_cleanup_failed: true}, true, "interrupted", "cleanup_failure")
+
+    notify(s, {:error, "Worker stopped unexpectedly; effects and OS cleanup are unconfirmed."})
+    notify(s, {:done, :error})
+    {:stop, :normal, close_epoch(next, "worker_failed", false)}
   end
 
   def handle_info({:extension_text_closed, consumer, id, reason, frames, bytes, cleanup}, s) do
@@ -2227,6 +2265,7 @@ defmodule Ipse.Session do
 
   @impl true
   def terminate(_reason, s) do
+    if s.task, do: Ipse.TaskResources.close_task(s.task.pid)
     if s.task, do: Task.shutdown(s.task, :brutal_kill)
 
     Enum.each(s.extension_text, fn {_, resource} ->
@@ -4144,30 +4183,37 @@ defmodule Ipse.Session do
 
   defp owned_task(fun, failure_status \\ :error) do
     owner = self()
+    {:ok, scope} = Ipse.TaskResources.start(owner)
 
-    Task.Supervisor.async_nolink(Ipse.Tasks, fn ->
-      worker = self()
-
-      spawn(fn ->
-        owner_ref = Process.monitor(owner)
-        worker_ref = Process.monitor(worker)
-
+    task =
+      Task.Supervisor.async_nolink(Ipse.Tasks, fn ->
         receive do
-          {:DOWN, ^owner_ref, :process, _, _} -> Process.exit(worker, :kill)
-          {:DOWN, ^worker_ref, :process, _, _} -> :ok
+          {:cleanup_scope_ready, ^scope} -> :ok
         end
+
+        Ipse.TaskResources.bind(scope)
+
+        result =
+          try do
+            fun.()
+          rescue
+            _ ->
+              {failure_status, "Worker failed. Inspect the workspace before retrying any action."}
+          catch
+            _, _ ->
+              {failure_status,
+               "Worker interrupted. Inspect the workspace before retrying any action."}
+          end
+
+        if Ipse.TaskResources.finish(scope) != :ok,
+          do: send(owner, {:owned_task_cleanup_failed, self()})
+
+        result
       end)
 
-      try do
-        fun.()
-      rescue
-        _ -> {failure_status, "Worker failed. Inspect the workspace before retrying any action."}
-      catch
-        _, _ ->
-          {failure_status,
-           "Worker interrupted. Inspect the workspace before retrying any action."}
-      end
-    end)
+    :ok = Ipse.TaskResources.attach(scope, task.pid)
+    send(task.pid, {:cleanup_scope_ready, scope})
+    task
   end
 
   defp acquire_lock(path, retries) do

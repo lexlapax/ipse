@@ -46,6 +46,7 @@ dependency. The main choices are:
 | Shared request admission | Existing JSONSchex/Jason, Usage and configured estimator, OTP ETS/crypto/files/tasks, native advisory locks and protected child reader | The closed durable reducer binds canonical request/attempts, conservative unknown liability and pre-dispatch decisions across local children. A generic accounting/database package would not supply these host invariants; no new package, tokenizer, pricing service or framework is added. See [the budget contract](budgets.md) |
 | Diagnostic capture and local sink | OTP atomics/monitors/tasks/filesystem, existing Worker/Runner/native advisory locks/Journal/Source and schema adapters | Atomic queue admission and a bounded backend ring protect active writers and disk limits; shared metadata/policy/receipts remain harness-specific. No broker, collector, logging package or direct Telemetry API is added |
 | Terminal display | OTP Unicode decoding, Elixir Regex and existing Jason JSON encoding | A small output adapter applies Ipse's plain-terminal policy to CLI-owned writes, visibly escapes malformed/control/format bytes and preserves JSON values. It needs neither a terminal-emulator/parser package nor a dependency or change to stored model content |
+| Task-owned OS cleanup | Existing OTP GenServer/Registry/monitors/Ports and native shell/stdio/lock helpers | A private bounded resource scope retains actual helper acknowledgments across task completion. Generic supervision cannot establish OS exit; no new runtime, process library or protocol package is added |
 | Synthetic SDK conformance | Existing Config/Registry/Session/Questions/Diagnostics and bounded JSON Schema adapter | Real host callbacks/approvals/recovery validators are exercised with a synthetic provider and scratch state; no duplicate worker protocol, effect replay framework or test service is added |
 | Explicit history/catch-up reads | Existing Journal range reader, Source/Event projections, shared metadata validator, OTP linked tasks and JSON/SDK bounds | Own-session anchor/view admission and cached receipts are harness policy; no query engine, database, broker, replay framework or new runtime is needed |
 | Independent extension lab | Existing Elixir compiler, OTP 27+ JSON/crypto, public worker SDK and already inventoried release utilities/tar | Explicit artifact compilation stays outside import/activation; unchanged-runtime verification adds no dependency, database or model service |
@@ -59,7 +60,9 @@ atomic store is used; it is not a production memory database. See
 
 Built-in extension licenses are the project's MIT license. Independent source
 fixtures compile in a separate VM using the existing Elixir toolchain;
-cancellation probes use the already inventoried `/bin/sh` `kill -0` builtin.
+cancellation probes use the existing host `kill` utility and `/bin/sh` `kill -0`
+builtin; Linux fixtures may read their own process's `/proc` state to distinguish
+an exited zombie from live work. These facilities add no installed dependency.
 The bundled example fixture needs no compiler or model service at runtime.
 Formatter compatibility uses an isolated official Elixir archive, extracted
 with OTP `:zip`; it does not replace the system toolchain. See the

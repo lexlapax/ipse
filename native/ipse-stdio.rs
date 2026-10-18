@@ -300,7 +300,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
         }
         if !watchdog_finished.load(Ordering::Acquire) {
             signal_group(&watchdog_group);
-            std::process::exit(1);
+            // Distinguish forced watchdog termination from a returned error,
+            // whose stack-owned group guard has completed cleanup.
+            std::process::exit(2);
         }
     });
     let mut child_input = child.stdin.take().ok_or("stdio server input unavailable")?;

@@ -68,7 +68,9 @@ provenance. They cannot be resumed as standalone root CLI sessions. The parent
 history retains the selected task, approvals, relationship, bounded untrusted
 result and a parent-side completion receipt. The receipt distinguishes an observed
 bounded result from an unknown outcome and records whether the child acknowledged
-cleanup. A process exit alone is insufficient; an abruptly killed parent may
+cleanup, including acknowledgments from task-owned shell and extension helpers.
+A stopped or unresponsive helper leaves cleanup unconfirmed, even if its BEAM
+task exits. A process exit alone is insufficient; an abruptly killed parent may
 leave an incomplete start. None of these statuses certifies a child's claims.
 Selected lifecycle consumers can observe metadata through
 [event feeds](extensions.md#live-event-feeds); task/result text is not included.

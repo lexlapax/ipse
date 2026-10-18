@@ -128,6 +128,7 @@ defmodule Ipse.Extensions.Invocation do
         parent_request: nil,
         started: %{},
         bound: MapSet.new(),
+        claimed_calls: MapSet.new(),
         session_id: nil,
         delivery: nil,
         requests: %{}
@@ -197,7 +198,16 @@ defmodule Ipse.Extensions.Invocation do
          state
          | active: event["invocation_id"],
            session_id: event["payload"]["session_id"],
-           intents: Map.put(state.intents, event["invocation_id"], event)
+           intents: Map.put(state.intents, event["invocation_id"], event),
+           claimed_calls:
+             if(event["descriptor"]["stage"] == "invoke.tool",
+               do:
+                 MapSet.put(
+                   state.claimed_calls,
+                   {event["parent_request_id"], event["parent_call_id"]}
+                 ),
+               else: state.claimed_calls
+             )
        }}
     else
       _ -> @error
@@ -267,7 +277,12 @@ defmodule Ipse.Extensions.Invocation do
     started = state.started[event["parent_call_id"]]
     request = state.requests[event["parent_request_id"]]
 
-    with true <- is_map(call) and is_map(started) and is_map(request),
+    with false <-
+           MapSet.member?(
+             state.claimed_calls,
+             {event["parent_request_id"], event["parent_call_id"]}
+           ),
+         true <- is_map(call) and is_map(started) and is_map(request),
          true <- state.parent_request == event["parent_request_id"],
          true <- request["turn_id"] == event["payload"]["turn_id"],
          true <- get_in(call, ["function", "name"]) == event["descriptor"]["name"],

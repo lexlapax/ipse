@@ -6,7 +6,9 @@ defmodule Ipse.Extensions.Worker do
   @traffic_limit 67_108_864
 
   @doc "Explicit executable admission. :trusted must equal the pinned digest."
-  def start(opts), do: GenServer.start(__MODULE__, opts)
+  def start(opts),
+    do:
+      GenServer.start(__MODULE__, Keyword.put(opts, :cleanup_scope, Ipse.TaskResources.current()))
 
   def call(pid, stage, payload, timeout_ms \\ 5_000) do
     GenServer.call(pid, {:invoke, stage, payload, timeout_ms}, :infinity)
@@ -14,8 +16,8 @@ defmodule Ipse.Extensions.Worker do
     :exit, _ -> {:error, :extension_unavailable}
   end
 
-  def close(pid) do
-    GenServer.call(pid, :close, 3_000)
+  def close(pid, timeout \\ 3_000) do
+    GenServer.call(pid, :close, timeout)
   catch
     :exit, _ -> {:error, :cleanup_unconfirmed}
   end
@@ -34,6 +36,7 @@ defmodule Ipse.Extensions.Worker do
          true <- Manifest.compatible?(artifact.manifest),
          :ok <- Ipse.MCP.Schema.validate_arguments(artifact.manifest["options_schema"], options),
          {:ok, executable, args, environment} <- launch(artifact),
+         {:ok, cleanup_ticket} <- Ipse.TaskResources.register(:extension, opts[:cleanup_scope]),
          {:ok, port} <-
            Ipse.Runner.open_stdio(executable, args, artifact.path, environment, 86_400_000) do
       {:ok,
@@ -41,6 +44,7 @@ defmodule Ipse.Extensions.Worker do
          owner: owner,
          owner_ref: Process.monitor(owner),
          port: port,
+         cleanup_ticket: cleanup_ticket,
          options: options,
          manifest: artifact.manifest,
          pending: nil,
@@ -93,6 +97,7 @@ defmodule Ipse.Extensions.Worker do
   def handle_call(:close, _from, state) do
     state = fail_pending(state, :extension_closed)
     result = Ipse.Runner.close_stdio(state.port)
+    Ipse.TaskResources.closed(state.cleanup_ticket, result)
     {:stop, :normal, result, %{state | port: nil}}
   end
 
@@ -109,8 +114,14 @@ defmodule Ipse.Extensions.Worker do
   def handle_info({:timeout, id}, %{pending: %{id: id}} = state),
     do: stop(state, :extension_timeout)
 
-  def handle_info({port, {:exit_status, _}}, %{port: port} = state),
-    do: stop(state, :extension_exited)
+  def handle_info({port, {:exit_status, status}}, %{port: port} = state) do
+    Ipse.TaskResources.closed(
+      state.cleanup_ticket,
+      if(status in [0, 1], do: :ok, else: {:error, :cleanup_unconfirmed})
+    )
+
+    stop(%{state | port: nil}, :extension_exited)
+  end
 
   def handle_info({:EXIT, port, _}, %{port: port} = state), do: stop(state, :extension_exited)
 
@@ -122,7 +133,10 @@ defmodule Ipse.Extensions.Worker do
   @impl true
   def terminate(_, state) do
     fail_pending(state, :extension_closed)
-    if is_port(state.port), do: Ipse.Runner.close_stdio(state.port)
+
+    if is_port(state.port),
+      do: Ipse.TaskResources.closed(state.cleanup_ticket, Ipse.Runner.close_stdio(state.port))
+
     :ok
   end
 

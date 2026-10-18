@@ -69,9 +69,10 @@ PIDs and custom encoders cannot silently change SDK types. Session/worker status
 uses the supported [GenServer status callback](https://elixir.hexdocs.pm/GenServer.html#c:format_status/1)
 to redact private state, callback messages, reasons and debug logs. Each initialization
 and callback has a five-second deadline. Crash, invalid output, expiry or cleanup
-failure stops the job without restarting/replaying it. Killing Session kills its
-host job through the existing owner guardian; the Worker monitors that job and
-closes the native ordinary process group. macOS descendant cleanup retains the
+failure stops the job without restarting/replaying it. The task resource scope
+closes registered Workers and requires native-helper acknowledgments before
+confirming cleanup; the Worker also monitors its host job. Missing receipts stop
+the Session with cleanup unconfirmed. macOS descendant cleanup retains the
 existing documented best-effort boundary.
 
 The launcher selects current ERTS and a profile-free boot (`no_dot_erlang.boot`
@@ -97,6 +98,9 @@ fragment has a 4,096-character limit plus SDK byte bounds; derived text is at mo
 receive the prior projection and can exceed their input budget; failure is
 explicit rather than truncation. The prompt example's option is `text`; the
 format example requires `prefix` and `suffix`. Other option/result fields fail.
+Prompt fragments containing the reserved opening or closing extension-context
+markers also fail before committing a projection, so an extension cannot close
+its own attributed frame.
 
 Prompt admission saves raw operator input in `extension_prompt_received`, then
 the ordinary expanded user message. A committed prompt projection replaces only

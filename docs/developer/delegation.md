@@ -37,6 +37,7 @@ that binding without running the child or exposing its conversation.
 A stale registration fails before inference or tools. Required child approvals
 return through the parent UI with the child ID, tool name, and full arguments.
 Each decision binds to the exact child/reference/arguments and is journaled;
+only the literal boolean `true` authorizes a native, delegated or extension effect.
 an earlier delegation approval does not approve a later child effect.
 
 Interactive approval remains individual. Headless delegation is denied without
@@ -78,7 +79,10 @@ identity does not keep the exited child's approvals active: new proposals,
 queued approvals and stale decisions refuse once it is down or settled.
 
 `result_recorded` means a bounded child result was observed and the child's owned
-session acknowledged logical cleanup before exiting. It does not certify the
+session acknowledged cleanup before exiting, including actual native-helper
+acknowledgments for registered task-owned shell groups and extension VMs. Task
+death, a missing receipt or a closure timeout cannot establish that acknowledgment.
+It does not certify the
 result's assertions or strengthen OS containment. `Session.close_confirmed/1`
 requires that acknowledgment; ordinary `close/1` retains its existing idempotent
 dead-process behavior. Timeout, failure, cancellation and lost workers yield an
