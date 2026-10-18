@@ -22,6 +22,8 @@ alongside their `invoke.*` or `event.job` exports:
 | Capability | Operation family | Contract |
 | --- | --- | --- |
 | `host.state.read`, `host.state.write` | Scoped get/list and put/delete | State requests below |
+| `host.state.scan` | Bounded value pages and extended finite state-read allowance; requires `host.state.read` | State requests below |
+| `host.state.bound` | Require an operator-approved logical storage binding at activation; requires `host.state.read`, grants no operation itself | Scope and recovery below |
 | `host.question` | Explicit structured clarification | [Questions](extension-questions.md) |
 | `host.tools` | Existing bounded file/shell tools | [Workflow tools](extension-tool-actions.md) |
 | `host.model` | Approved one-shot profile-bound inference and canonical usage | [Accounted model calls](extension-model-calls.md) |
@@ -73,6 +75,13 @@ Explicit `host.usage.scan` selection permits only accounting reads beyond step
 neither other operation bounds nor their approvals. The accounting guide owns
 that allowance; existing workers retain the original finite contract.
 
+Explicit `host.state.scan` permits state.get/list/scan through step 512, with
+the same two-minute boundary-admission deadline. It exposes values only in the
+already admitted namespace and requires the ordinary read grant. Effects,
+questions and unrelated operations still refuse beyond step 16; a long scan
+cannot be followed by a late write. Combining scan grants does not extend either
+family beyond its own limit. Worker callback deadlines and JSON limits remain.
+
 Put/delete need separate full approval even if the command was explicitly
 requested or the enclosing model tool approved. `--yes` supplies session-wide
 execution policy; headless/interactive denial creates a known `denied` receipt
@@ -95,6 +104,7 @@ Every request has `op` and `scope` (`operator`, `project`, `session`), plus exac
 | --- | --- | --- |
 | `state.get` | `key` | Generation and record including value |
 | `state.list` | `after` (key/null), `generation` (integer/null), `limit` (1–16) | Sorted metadata, generation, next key/null; no values |
+| `state.scan` | Same closed pagination fields as list | Sorted full records including values; at most 16 records and 12,000 encoded array bytes per page |
 | `state.put` | `key`, `expected_revision`, `value` (object) | New generation and record |
 | `state.delete` | `key`, `expected_revision` | New generation and retained tombstone |
 
@@ -109,19 +119,42 @@ operation ID identifies its last write.
 Writes require the exact observed revision; conflicts return metadata rather
 than a private value. Delete retains its incremented revision, even for a missing
 key, preventing stale writers from resurrecting it. An explicit write using the
-current deletion revision is permitted. List pages can pin generation; concurrent
-writes make later pages conflict. Extensions can implement explicit paginated
-inspection/export through these reads. No whole-store export, TTL, compaction or
-automatic migration is implemented.
+current deletion revision is permitted. List/scan pages can pin generation;
+concurrent writes make later pages conflict. A scan page may contain fewer than
+its requested limit because of the byte ceiling; `next` is the last returned key
+when more records remain. Every admissible value fits a page, so a nonterminal
+page advances. A final null cursor means that this page exhausted the remaining
+keys, not that the namespace cannot change later. Extensions implement domain
+inspection/export, TTL and schema migration; core does not interpret stored notes
+or automatically migrate/collect them.
 
 ## Scope, storage and recovery
 
-The host derives namespace SHA-256 from protocol version, instance, artifact
-digest, configuration-source path hash, scope and applicable canonical project
-path/session ID. Operator scope spans projects/sessions for that exact identity;
-project scope spans sessions of that working directory; session scope also binds
-the durable session ID. Project-configured code cannot select operator scope.
-Workers cannot supply a path/namespace or select another instance through this API.
+Without an explicit binding, namespace SHA-256 retains the original version-1
+descriptor: instance, artifact digest, configuration-source path hash, scope and
+applicable canonical project path/session ID. Existing descriptors are unchanged.
+Artifact or configuration-source changes therefore isolate legacy state.
+
+An operator trust entry may bind an instance to a logical store using
+`state_bindings: [{version: 1, instance: "notes", id: "reviewed-notes", scopes:
+["project"]}]` (JSON keys are strings). Entries are closed, at most eight per
+trust record, unique by instance; IDs are 1–64 characters using the state-key
+alphabet. Nonempty distinct scopes form a ceiling, not additional capabilities.
+The selected identity includes `state_binding` without `instance`. Its namespace
+uses descriptor version 2, binding ID, scope and applicable project/session.
+Thus reviewed artifacts, instance names and moved configurations can share the
+same data only when the operator explicitly grants the same binding ID. Different
+artifacts with that grant intentionally share authority over the store. A
+`host.state.bound` artifact refuses activation without a valid binding.
+
+Operator scope spans projects/sessions; project scope binds the working directory;
+session scope also binds the durable session ID. A binding cannot cross those
+dimensions or grant read/write operations. Project-configured instances cannot
+receive bindings or override a bound operator instance, even with project trust.
+Workers cannot supply a path, binding or namespace. Binding IDs belong to the
+operator, not untrusted project text. The execution identity still pins exact
+code/options/configuration/host version; sharing storage does not permit hot
+upgrades or changed-session resume.
 
 State uses `IPSE_HOME/extension-state-v1/NAMESPACE/state.json`, private directories/
 files, persistent-inode advisory locks, synced staging writes and same-directory
@@ -153,7 +186,8 @@ validated under the linked history contract. Their successful pages are cached
 receipts, not an instruction to re-read on resume.
 
 State is private data, not automatic model context. Delete removes the current
-value, not historical journals or delivered text. Artifact/config-source changes
-select different namespaces; offline export/migration must be explicit. See
+value, not historical journals or delivered text. Export/migration and collection
+must be explicit: changing a binding does not move old data, and a stable binding
+does not make arbitrary code/schema upgrades compatible. See
 [operator procedures](../operator/extensions.md#scoped-state-host-calls) and
 [verification](testing.md).

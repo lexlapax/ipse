@@ -5,6 +5,24 @@ defmodule Ipse.Extensions.Registry do
   @host_capabilities Ipse.Extensions.Catalog.capabilities()
   @text %{"type" => "string", "maxLength" => 4096}
   @builtins %{
+    "builtin:working-memory:1" => %{
+      module: Ipse.Extensions.WorkingMemory,
+      modules: [
+        Ipse.Extensions.WorkingMemory,
+        Ipse.Extensions.Memory,
+        Ipse.Extensions.Memory.Records
+      ],
+      capabilities: Ipse.Extensions.Memory.capabilities(),
+      exports: Ipse.Extensions.Memory.exports(),
+      schema: Ipse.Extensions.Memory.options_schema(["session"])
+    },
+    "builtin:persistent-memory:1" => %{
+      module: Ipse.Extensions.Memory,
+      modules: [Ipse.Extensions.Memory, Ipse.Extensions.Memory.Records],
+      capabilities: ["host.state.bound" | Ipse.Extensions.Memory.capabilities()],
+      exports: Ipse.Extensions.Memory.exports(),
+      schema: Ipse.Extensions.Memory.options_schema(~w(project operator))
+    },
     "builtin:cost-tree:1" => %{
       module: Ipse.Extensions.Examples.CostTree,
       modules: [
@@ -162,6 +180,17 @@ defmodule Ipse.Extensions.Registry do
         identity =
           if ceiling["text_required"] == true,
             do: Map.put(identity, "text_required", true),
+            else: identity
+
+        binding =
+          Enum.find(
+            Map.get(ceiling, "state_bindings", []),
+            &(&1["instance"] == instance["instance"])
+          )
+
+        identity =
+          if binding,
+            do: Map.put(identity, "state_binding", Map.delete(binding, "instance")),
             else: identity
 
         {:cont,

@@ -235,10 +235,23 @@ and [runtime identity](#p1-runtime-identity-2026-10-15).
 ## Current evidence and next checks
 
 The [plan](../plan.md#current-priorities-and-status) owns current milestone scopes.
+P26's explicit working/persistent memory baseline is implemented and under final
+handoff verification. The corrected source passes 933 Linux/native tests with
+15 macOS-only exclusions, both actual formatter versions and strict compilation.
+Package verification, the installed memory corpus and unchanged independently
+compiled extension/model proofs pass; exact-source hosted verification is pending.
+The [memory contract](memory.md#verification-and-measurements) separates protocol
+regressions from the frozen synthetic lexical corpus and its measurement limits.
+This new work does not expand earlier security scans or constitute architectural
+certification. P25 has [scoped supervised acceptance](p25-evaluation.md#scoped-acceptance-decision);
+P27/P28 remain deferred.
+
+### Earlier architecture and security provenance
+
 Older dated records retain their contemporary numbering: P24 media is now deferred
 P28, and old P25 production-knowledge references predate the P25 comparison and
-P26/P27 deferral. P24 now owns external adversarial architecture validation and
-baseline security; P25 requires final architecture/security review after repairs.
+P26/P27 deferral. P24 owned external adversarial architecture validation and
+baseline security; P25 included final affected-boundary/security review after repairs.
 The operator returned partial static reviews of `21e59fe` and `b570ef8`, then a
 fresh cloud review of `b5297be` using documentation at `b08cd76`;
 the [disposition register](architecture-review-dispositions.md) separates its
@@ -385,8 +398,9 @@ assesses that evidence and accepted limits for supervised P25. It supplies no
 new independent post-fix verdict. P25's
 [record](p25-evaluation.md) retains the initial failure and assistance; its authored
 repair, two fresh reports and assisted held-out/live controls now pass their scoped
-checks. Final security review and trial acceptance remain open; no further P24
-architecture-review sequence is scheduled.
+checks. Final security triage, affected reviews and exact-source platform evidence
+now support the recorded scoped P25 acceptance; no whole-design certification or
+further P24 architecture-review sequence is claimed.
 
 During P23E2 iteration, a full run overlapped a focused recompile and produced
 eight artifact-admission failures; that run was discarded. Final verification
@@ -395,6 +409,8 @@ weakened to obtain the passing result below.
 
 | Checkpoint | Evidence | Scope and remaining limits |
 | --- | --- | --- |
+| P26 explicit-memory candidate, Linux Serenity, 2026-10-18 | Final build, actual Elixir 1.18.4/1.20.4 formatters, strict compile, CI pin policy, isolated demo and full native-inclusive suite pass: 933 passed/15 Mac exclusions, 289.9 seconds. All 23 focused binding/scan/memory/registry cases pass. The exact documented disabled-by-default configuration and real CLI validate both packages/24 exports within 15,909 catalog bytes. Package verification and unchanged precompiled artifacts pass all 41 legacy/nine model assertions; archive `e7ba8623582b072ae163e3be70b6024eeda356004bbf1644c07c0525d869b16b` | Internal authority/bounds/cancellation/recovery review adds no Session/native change or dependency. Legacy suppression import is reproduced as refused in the preserved pre-correction package, then explicitly upgrades by digest without content in the corrected test. No timers/assertions or accepted cleanup outcomes are widened. Deliberate legacy service-crash cleanup remains unconfirmed/`safe_to_continue: false`. Exact-source hosted Linux/macOS verification is pending; earlier scans do not certify this code |
+| P26 installed lexical fixture, 2026-10-18 | Frozen corpus `3f11a10a4364b2ba4ae652a82ba14111e3dc88bec2387291df445334b8cca77c`: 100 records/100 queries, two projects/six real sessions; updates, expired/forgotten and absent answers, exact sources/spans and saved-journal restore pass. Retrieval/abstention, recall@5 and exact-span precision are 1.0 with zero model/encoder calls. Installed p50/p95: 216,498/274,705 µs, current state 71,704 bytes, observed VM sample 64,486,384 bytes (Elixir 1.20.4/OTP 29, Linux x86_64, 20 schedulers). Utility-only runtime PATH; no system development toolchain | Synthetic exact-token retrieval, not semantic answer/citation quality, a peak-memory bound, nDCG@10, or Zero-Mem reproduction. A controlled 256-record reverse-dependency callback suppresses the whole chain in 52,755 µs locally; this is a callback probe, not an end-to-end latency promise. Earlier source corpus run also passes during implementation; final installed numbers identify the actual packaged candidate |
 | License matrix `27bc9d4` and model-proof readiness correction, 2026-10-18 | [Run 39159684772](https://github.com/lexlapax/ipse/actions/runs/39159684772) passes Linux completely. Mac passes 929 tests/zero failures/32 exclusions, enabled 36/0/6, four Rust checks, package verification and all 41 extension assertions; its model-proof fixture times out in `gen_tcp.accept` and the later signed probe is skipped | Failed matrix retained. The fixture started its five-second accept timer before import, Session startup and approval. A controlled 5.5-second preparation delay reproduces the old failure; starting the accept task only at approval readiness passes all nine assertions with the same delay, both formatter floors and the same installed archive/artifact. Accept/read/model/assertion deadlines remain five seconds; no production code, assertion or accepted outcome changes. Actual prior Mac preparation time is unmeasured. Corrected-source hosted verification subsequently passes at `7bb642b`, recorded above |
 | Apache-2.0 and proof-fixture source `7bb642b`, hosted 2026-10-18 | [Complete Linux/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39160752791) passes every applicable step: 929 tests/zero failures/32 exclusions per host, enabled Mac 36/0/6, four Rust checks, signed App Sandbox, package verification and all four parsed installed receipts (41 legacy/nine model assertions per host) | Full logs, exact revision/job/step conclusions and both committed license copies checked against locally verified bytes. License/data/docs and proof-readiness changes; runtime, ExUnit and build source remain the P25 candidate. Earlier failed model fixture and unmeasured preparation timing are retained. Third-party and historical licenses keep provenance; P25 acceptance and earlier scan/review limits are unchanged |
 | Apache-2.0 transition, Linux Serenity, 2026-10-18 | Root and bundled extension licenses preserve the original copyright and canonical Apache text. Build, actual Elixir 1.18.4/1.20.4 formatters, strict compile, 914 native-inclusive tests/15 exclusions, isolated demo and package verification pass. Archive `a94d421d0c2bf70d129c0e5bc24cf3ba9f4088fd81cb7cf12a20e96e65e8a334` passes all 41 legacy/nine model assertions with the unchanged precompiled artifacts | Both packaged license copies checked byte-for-byte; upstream MIT notice unchanged. All six built-in identities change; old entries refuse preflight and refreshed entries refuse the old pinned synthetic session, with unchanged/restorable journal and zero model requests. Runtime/test/build source is unchanged from P25. Exact-source hosted verification subsequently passes at `7bb642b`, recorded above; deliberate service-crash cleanup retains its unconfirmed/unsafe-to-continue outcome |

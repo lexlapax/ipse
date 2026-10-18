@@ -17,6 +17,7 @@ Current contracts are organized by responsibility:
 | Ordered prompt/completed-answer projections | [Session hooks](extension-hooks.md) |
 | Tools, commands, services and finite host operations | [Invocations](extension-invocations.md), [host calls](extension-host-calls.md) |
 | Explicit continuation and approved effects | [Questions](extension-questions.md), [workflow tools](extension-tool-actions.md) |
+| Explicit working/project/operator notes | [Memory extensions](memory.md), with generic logical state bindings/scans; no automatic capture or history erasure |
 | Typed dependency composition and contextual evidence | [Services](extension-services.md), [context](extension-context.md) |
 | Durable request facts and embedded/worker private delivery | [Usage accounting](usage-accounting.md), [text channel](text-streams.md) |
 | Granted accounting reads and optional cost pages/summaries | [Usage read SDK](usage-accounting.md#extension-accounting-reads), [separate child grant](usage-accounting.md#registered-child-accounting), [configured reports](costs.md#reports-cumulative-aggregation-and-evidence); no content, mutation or budget authority |
@@ -269,10 +270,11 @@ and validated contracts; the examples are not a fixed mandatory workflow.
 ## Long-term memory and customized workflows
 
 The [independent lab](extension-proof.md) exercises synthetic memory/workflow
-adapters through the generic SDK. The planned P25 comparison researches their
-design; production knowledge adapters are deferred to P26/P27 selection gates.
-The two hook examples do not implement those systems. Session journals, research
-ledgers and compaction checkpoints are not cross-session long-term memory.
+adapters through the generic SDK. P25's completed scoped comparison informed
+P26's [explicit memory baseline](memory.md), now under implementation/verification.
+Advanced research, graph and RAG engines remain P27 work. The two hook examples
+do not implement those systems. Session journals, research ledgers and compaction
+checkpoints are not cross-session long-term memory.
 
 A memory adapter needs scoped operator/project/namespace ownership, explicit
 recall and remember/forget/export operations, retrieval budgets and attributable

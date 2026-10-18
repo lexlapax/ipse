@@ -681,5 +681,5 @@ no exporter starts automatically. The [knowledge design](../developer/knowledge-
 treats Zero-Mem as inspiration, not an installed backend. P22's SDK/proof gates
 are complete within their [documented coverage](../developer/lifecycle-events.md#supported-lifecycle-coverage).
 Existing skills, configured MCP tools and the research ledger remain available.
-Optional memory will not replace ordinary history or make RAG persist personal
-records silently.
+The [explicit memory baseline](memory.md) provides separately selected note tools;
+it does not replace ordinary history or silently persist personal records through RAG.

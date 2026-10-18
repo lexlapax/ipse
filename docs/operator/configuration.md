@@ -145,6 +145,11 @@ selection, `--no-extensions` and current activation limits. Config inspection
 shows option digests rather than contents. Duplicate JSON keys, including nested
 ones, are rejected. Existing configurations without extension data keep their
 previous resume fingerprint.
+Optional `state_bindings` within an operator trust entry explicitly grant an
+instance a logical store and scope ceiling across reviewed code/configuration
+versions. They cannot be supplied or overridden by projects and do not grant
+state operations themselves. See [memory configuration](memory.md#configure-explicit-memory)
+for a complete disabled-by-default example and the data-sharing/recovery boundary.
 
 Operator-only top-level `observability` controls optional metadata capture.
 `IPSE_OBSERVABILITY` and `--observability off|local|export` override its mode;

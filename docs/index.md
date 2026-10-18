@@ -21,6 +21,7 @@ start. Use the guides below for operation, development, and project context.
 | [Shared admission budgets](operator/budgets.md) | Operator-only session-tree reservations, supported bounds, inspection, refusal and unknown-liability recovery |
 | [Extensions](operator/extensions.md) | Review/import, operator trust and selection, capability procedures, limits and recovery |
 | [Choosing how to add a feature](operator/feature-requests.md) | Operator criteria for skills, MCP, extensions and justified generic core enhancements, with feature-request examples and acceptance requirements |
+| [Explicit memory](operator/memory.md) | Default-off session/project/operator notes, approval, lexical recall, suppression, retention, export/migration and affected-session recovery |
 | [Independent extension lab](operator/extension-lab.md) | Build, review and select synthetic artifacts against an existing checkout or unchanged release |
 | [Architecture-review checkpoint](operator/architecture-review.md) | Retained critiques, completed baseline/repair verification, scoped P24 readiness and P25 final-candidate review gates |
 | [P25 common brief](developer/p25-common-brief.md) | Frozen research task/rubric, source manifest, installed runner and comparison limits |
@@ -76,6 +77,7 @@ start. Use the guides below for operation, development, and project context.
 | [Ephemeral text events](developer/stream-events.md) | Negotiated v2 frame sources, shared stream/range identity, distinct delivery sequence and metadata/private projections |
 | [Architecture review and self-development evaluation](developer/self-hosting-evaluation.md) | P24 external adversarial architecture validation/baseline security; P25 independent Codex/Ipse research, repairs, held-out reruns and final reviews |
 | [Knowledge extension family](developer/knowledge-extensions.md) | Source-screened P26/P27 proposals, minimal baselines/alternatives, existing SDK versus generic gaps, lifecycle and default-off acceptance |
+| [Memory extension contract](developer/memory.md) | Note/source versions, logical storage bindings, bounded scans, suppression/derivative integrity, recovery limits and synthetic measurements |
 | [Observability contract](developer/observability.md) | Shared metadata capture, bounded owned sinks, ring quotas, lease recovery, synthetic dispatcher tracing and source-debugging boundaries |
 | [MCP client contract](developer/mcp.md) | Reused packages, transport ownership, descriptor binding, schema policy, and recovery |
 | [Local delegation contract](developer/delegation.md) | Parent/child ownership, explicit context, approvals, budgets, and unknown outcomes |

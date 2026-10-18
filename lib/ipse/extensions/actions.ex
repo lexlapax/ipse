@@ -12,11 +12,25 @@ defmodule Ipse.Extensions.Actions do
   def limit, do: @limit
 
   def limit(identity) do
-    if "host.usage.scan" in identity["capabilities"], do: @read_limit, else: @limit
+    cond do
+      "host.usage.scan" in identity["capabilities"] -> @read_limit
+      "host.state.scan" in identity["capabilities"] -> 512
+      true -> @limit
+    end
   end
 
   def limit(identity, request) do
-    if Operation.usage?(request), do: limit(identity), else: @limit
+    cond do
+      Operation.usage?(request) and "host.usage.scan" in identity["capabilities"] ->
+        @read_limit
+
+      request["op"] in ~w(state.get state.list state.scan) and
+          "host.state.scan" in identity["capabilities"] ->
+        512
+
+      true ->
+        @limit
+    end
   end
 
   def proposal(response, identity) do

@@ -71,13 +71,14 @@ no production engine, database or mandatory backend is selected.
 | [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within selected scope | Preserve accounting through the trial |
 | [P24: architecture/security readiness](#p24-independent-architecture-validation-and-baseline-security) | Complete for supervised P25 at `375e607`; accepted limits recorded | Refresh affected validation after trial changes |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Complete within declared supervision/assistance at `3307563`; security findings triaged and corrected scopes verified | Preserve frozen evidence; select a later production increment separately |
-| [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Deferred; subject to P25 decisions | Independently selectable working/long-term memory tools and optional policies |
+| [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Active: P26A and P26B authorized | Default-off explicit memory extensions, lifecycle integrity and verified upgrade/recovery |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
 | [P28: voice and media](#p28-voice-and-realtime-media) | Deferred; unimplemented | Explicit media contracts and later device/service validation |
 | [Apache-2.0 transition](#license-transition) | Complete; local and hosted `7bb642b` checks pass | Preserve bundled identity/recovery and third-party license boundaries |
 
 The requested P22–P25 campaign and separate Apache-2.0 transition are complete
-within their documented scopes. Preserve P25's frozen
+within their documented scopes. P26A/P26B are now authorized and active; P27/P28
+remain deferred. Preserve P25's frozen
 inputs, runners, source/review/scan identities, scores and failed attempts; newer
 documentation does not rescan code or expand an earlier verdict. Select any P26/P27
 production increment separately from its evidence-backed proposal. Keep P28
@@ -260,7 +261,7 @@ and [security execution constraints](developer/self-hosting-evaluation.md#securi
 
 ## P26: optional working and long-term memory
 
-**Deferred; proposed scope after P25 selection.** Deliver useful independently
+**Active: complete P26A and P26B.** Deliver useful independently
 selectable session/task working-memory and cross-session memory capabilities,
 initially explicit recall/remember/forget/export tools or existing MCP where that
 meets the need. Add optional lifecycle recall/capture adapters only when justified.
@@ -280,8 +281,25 @@ model, remote service or silent promotion. Keep core conversation/recovery intac
 when optional memory is off. Measure quality and resources separately from
 protocol correctness; document actual dependency, configuration and recovery.
 
-Final P25 evaluation may change this split. No production backend is selected or started
-by this proposal. See the authoritative [knowledge design](developer/knowledge-extensions.md).
+The implementation follows the researched explicit-notes baseline, with no external
+service, embedding model or database dependency. Domain behavior belongs in
+independently selectable bundled extensions. Necessary generic host changes must
+preserve legacy identities and grants; they are reviewed and tested separately.
+
+| Increment | Deliverable | Status |
+| --- | --- | --- |
+| P26H1 | Operator-only, versioned logical state bindings across reviewed artifact/configuration versions; legacy namespace compatibility and scope ceilings | Implemented; focused and full Linux/native regressions pass; platform gate pending |
+| P26H2 | Bounded value scans and explicit read-work allowance for useful lexical recall, with strict receipt/recovery validation | Implemented; byte pages, forged/ungranted/over-limit actions and extended real-worker receipt chain pass; platform gate pending |
+| P26A | Separate default-off working and persistent memory, explicit remember/recall/forget/export, provenance, bounded lexical ranking and approvals | Implemented; real-session scope, sharing, approval, denial/cancel and inert-resume cases pass |
+| P26B | Durable source suppression, TTL/conflicts, derivative inventory/collection, schema migration/import, stale-work and cached-context recovery policy | Implemented explicit baseline; domain regressions pass; affected sessions require manual reviewed fresh-session recovery, not automatic history redaction |
+| P26 verification | Deterministic authority/concurrency/restart/import cases, measured retrieval/resources, source/native/installed/platform checks and coherent operator/developer guidance | Corrected source passes 933 native-inclusive tests/15 Mac exclusions, 23 focused cases, package verification and unchanged precompiled 41+9 assertions. Installed 100-record/100-query fixture passes with zero model calls; exact-source hosted gate pending |
+
+Stable logical storage is an explicit operator grant, never a namespace chosen by
+project text or extension code. Existing journals and provider-visible history are
+retained; memory deletion must state its separate recall/suppression and cached
+context limits. See the authoritative [knowledge design](developer/knowledge-extensions.md).
+The [operator guide](operator/memory.md) owns configuration/retention/recovery;
+the [extension contract](developer/memory.md) owns suppression and measurement limits.
 
 ## P27: optional research, graph and RAG
 

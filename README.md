@@ -93,7 +93,7 @@ with `chat --handoff PATH` into a fresh idle session. See
 ### Extensions and external capabilities
 
 [Extensions](docs/operator/extensions.md) use inert local import, separate
-operator trust and explicit session selection. The two shipped hooks are
+operator trust and explicit session selection. Bundled extensions are
 default-off. Reviewed artifacts can expose typed tools/commands/services and
 negotiate state, questions, workflow tools, [accounted one-shot model calls](docs/operator/extensions.md#accounted-model-calls), service composition, contextual
 evidence and private visible-text consumption. Prompt delivery has separate
@@ -113,6 +113,10 @@ host tool IDs, actual source links and normal approvals.
 `/ext` inspects the active catalog
 and invokes operator commands, including optional
 [configured cost pages and own-session/child summaries](docs/operator/usage-accounting.md#enable-the-optional-report).
+Separately selected [explicit memory](docs/operator/memory.md) adds session/task
+or project/operator notes, local lexical recall and approved retention/suppression;
+it performs no automatic capture or model call. Logical storage bindings remain
+operator grants, and forgetting does not erase earlier transcripts or provider transfers.
 Effects retain normal approval; cached receipts/projections restore without
 replay. Default-off [diagnostic capture](docs/operator/observability.md) supports
 bounded local sink workers and separate export authority. Synthetic extension

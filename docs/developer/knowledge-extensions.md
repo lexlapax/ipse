@@ -1,12 +1,14 @@
 # Optional memory, research, graph and RAG extensions
 
-This guide proposes P26/P27 delivery from the P25 research; it does not select or
-install a production engine. All optional capabilities remain independently
-**disabled by default**. P14 already supplies a research skill,
+This guide owns the P25 research rationale, P26 baseline selection and deferred
+P27 research/graph/RAG proposals. All optional capabilities remain independently
+**disabled by default**. P26's [explicit note extensions](memory.md) are under
+implementation/verification; no third-party memory engine is selected or installed.
+P14 already supplies a research skill,
 configured MCP retrieval and a durable evidence ledger. P22's
 [synthetic installed memory/workflow lab](extension-proof.md) proves exercised SDK
 seams, including prompt-driven graph capture and explicit catch-up. Those are
-foundations, not production memory, graph, RAG or a pluggable research engine.
+foundations, not a production graph, RAG or pluggable research engine.
 
 P24's scoped architecture/security readiness gate passed at `375e607`. P25's
 live and corrected-packet reports are frozen; its
@@ -17,7 +19,7 @@ affected reviews and exact-source platform checks support
 [scoped P25 acceptance](p25-evaluation.md#scoped-acceptance-decision). This guide owns proposed domain decisions;
 the [plan](../plan.md#p25-comparative-research-and-supervised-self-development)
 owns scheduling and the [protocol](self-hosting-evaluation.md) owns acceptance.
-Production memory, research, graph and RAG remain deferred to P26/P27. P23 reports
+P26A/P26B are authorized; advanced engines remain deferred to P27. P23 reports
 and shared main/summary/child budgets are available, within their covered operations.
 [Accounted one-shot text calls](extension-model-calls.md) now supply the optional
 model seam verified in P23F; embeddings and production engines remain separate.
@@ -100,8 +102,9 @@ framework or mandatory daemon. Final packaging decisions follow the research gat
 
 ## Package and hook map
 
-IDs below are illustrative; rows are candidate capabilities, not fixed choices
-to implement each one as a host extension. Hooks run only for enabled instances and
+The rows map the capability family; P26's selected explicit notes are documented
+in the [memory contract](memory.md). Other IDs/backends/hooks remain proposals,
+not fixed choices to implement every capability. Hooks run only for enabled instances and
 within their declared capability/scope/budget; a hook notification never grants
 permission to write memory, fetch a URL or call a model.
 
@@ -158,7 +161,7 @@ seams before choosing a production memory, graph or retrieval engine:
 | Composition | Operator-bound typed value services, pinned dependencies, acyclic routing and installed synthetic lookup proof | Production retrievers and an approved MCP bridge if workflows need it; nested effectful services remain a negotiated enhancement |
 | Evidence/context | Bounded attributed publications, receipt-backed awaited recall and frozen snapshots, exercised by the installed lab | Domain records mapped to P14 source/claim identity and production retrieval quality |
 | Research ledger | Literal capture tied to successful recorded MCP results, at most 16 sources/32 claims/64 KiB per session; semantic support remains a model assessment | Explicit bounded study partitioning or reviewed pagination/cross-session evidence authority; not an unlimited corpus store |
-| State/deletion | Scoped CAS records, locks/tombstones and installed rejection of delayed prompt writes after concurrent forget | TTL, persistent source-generation suppression, derivative deletion/export and production concurrency coverage |
+| State/deletion | Scoped CAS records, operator logical bindings, bounded scans and P26 explicit source suppression/TTL/derivative policy | Core recovery receipts and memory domain tests have separate scope; larger backends, automatic capture and global deletion synchronization remain future work |
 | Owned work | Explicit invocations, prompt/answer jobs, fixed-range history, cancellation, receipts/questions and installed domain deduplication/catch-up | Production ingestion/reindex policy; fully concurrent effectful jobs remain a negotiated enhancement |
 | Event source/views | Stable journal references, scoped history, prompt/answer delivery and selected live metadata/private-tool feeds, with separate ephemeral text sources | Unsupported view families and causal links listed in the lifecycle audit; cross-session history authorization |
 | Optional model work | Explicit profile-bound `host.model` one-shot text calls, canonical usage/shared budget and private input grants; P23F source/package/platform checks passed | Embeddings need a separate public provider/accounting contract; callbacks cannot silently call a model |
@@ -190,12 +193,12 @@ source/version/digest, timestamps, excerpt/reference and provenance. Optional
 scores indicate ranking, not truth. Keep entities/index IDs linked to original
 evidence, and extension content below the instruction/permission boundary.
 Record source event and extractor version; reject stale writes after forget so
-queued extraction/reindex cannot resurrect deleted facts. Current SDK state is
-namespaced by artifact and configuration-source identity. P25 must distinguish
-that execution identity from stable logical memory identity and propose explicit
-export, migration and collection across upgraded artifacts and moved configs.
-Never silently reassign old state to new code. Forget/no-resurrection and retention
-must cover retained namespace versions and derivative graph/RAG indexes.
+queued extraction/reindex cannot resurrect deleted facts. Legacy SDK state remains
+namespaced by artifact/configuration-source identity. P26 adds explicit operator
+logical bindings, keeping storage identity separate from pinned execution identity,
+with domain export, migration and collection. Nothing silently reassigns legacy
+state to new code. Future graph/RAG adapters must preserve suppression through
+their retained namespace/index versions too.
 CAS alone is not a forgetting policy: an explicit write using the current
 tombstone revision can recreate a key. Capture a logical source generation before
 extraction and persist suppression across reingestion, migrations and late work;
@@ -211,8 +214,11 @@ Saved recall publications also restore without querying a backend: a backend
 tombstone alone cannot exclude that text from a future resumed prompt. Broad
 revocation needs a reviewed projection/invalidation contract or an explicit
 affected-session handoff policy, distinct from erasing past provider transfers.
-P25 should propose the boundary and assess its cost without implementing speculative
-erasure or weakening mandatory recovery records.
+P26 selects the latter: close affected sessions and review fresh-session handoffs
+to omit forgotten material. Its explicit note tools do not publish context or
+read/redact history. This is an operator procedure, not live cross-session
+invalidation or secure erasure; the [memory guide](../operator/memory.md#what-deletion-does-not-erase)
+states the boundary.
 
 Typed options select store/search/fetch/embedding/rerank/graph instances and
 profiles; no backend or endpoint is mandatory. Project selections may narrow
@@ -222,8 +228,8 @@ independent [installed-package evidence](extension-proof.md) to assess the exerc
 contracts alongside the [lifecycle audit](lifecycle-events.md#supported-lifecycle-coverage)
 and supervised trial; its P22 hosted checks passed. Production graph queries,
 embeddings, database installation and research-engine implementation/measurements
-are deferred to P26/P27. P25 evaluates the research and improves the harness used
-to do it; it need not implement these engines.
+remain deferred to P27. P25 evaluated the research and improved the harness used
+to do it; P26 implements the selected local explicit-note baseline.
 
 ## Research handoff and deferred production acceptance
 
@@ -247,16 +253,18 @@ Evaluate maintained Elixir/OTP facilities and packages before writing or selecti
 storage/index machinery; a SQLite binding or native service is not approved by
 its appearance in this table.
 
-For future quality evaluation, propose a seeded 100-record/100-question corpus
-across two projects and three sessions per project, with exact evidence spans,
-unanswerable questions, updates, temporal conflicts and deletion races. Freeze
-it and reference hardware/model/resource allocations before measurement. Initial
-proposed quality gates are at least 90% supported answers/abstentions and 95%
-semantic citation precision; every citation must resolve to its exact source/span.
-Report recall@5, nDCG@10, p50/p95 latency, peak memory/storage, encoder work,
-model calls and separately known/unknown costs. These are proposed criteria,
-not measured scores or portable latency promises. Deterministic authority,
-cross-project isolation, no-replay and no-resurrection cases require zero failures.
+The selected P26 lexical baseline has a frozen synthetic 100-record/100-query
+corpus across two projects and three sessions per project, with exact spans,
+unanswerable/updated/expired/forgotten cases and separate deletion-race tests.
+[Measurement](memory.md#verification-and-measurements) reports actual local
+retrieval/resources with no model dispatch. Exact-token fixture success is not
+semantic answer quality or a Zero-Mem comparison. For future semantic-engine
+evaluation, retain the proposed gates of at least 90% supported answers/abstentions
+and 95% semantic citation precision, matched hardware/model budgets, recall@5,
+nDCG@10, p50/p95 latency, peak memory/storage, encoder work and known/unknown costs.
+Those semantic/peak-memory criteria are not measured P26 claims or portable latency
+promises. Deterministic authority, isolation, no-replay and no-resurrection cases
+require zero failures.
 
 Sharing scope, retention periods, remote disclosure, hardware/resource ceilings,
 profiles/billing and backup-erasure obligations remain material operator choices.

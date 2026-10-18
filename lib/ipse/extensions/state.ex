@@ -7,24 +7,47 @@ defmodule Ipse.Extensions.State do
   @records 256
   @max_revision 9_007_199_254_740_991
 
+  @doc "Operator-selected logical identity; workers cannot select a storage binding."
+  def valid_binding?(binding) when is_map(binding) do
+    keys?(binding, ~w(version id scopes)) and binding["version"] === 1 and
+      key?(binding["id"]) and is_list(binding["scopes"]) and
+      binding["scopes"] != [] and length(binding["scopes"]) <= 3 and
+      Enum.all?(binding["scopes"], &(&1 in ~w(operator project session))) and
+      length(binding["scopes"]) == length(Enum.uniq(binding["scopes"]))
+  end
+
+  def valid_binding?(_), do: false
+
   def namespace(identity, scope, cwd, session_id) do
     with true <- Identity.valid?(identity),
          true <- scope in ~w(operator project session),
          true <- scope != "operator" or identity["scope"] == "operator",
+         true <-
+           not Map.has_key?(identity, "state_binding") or
+             scope in identity["state_binding"]["scopes"],
          true <- is_binary(cwd) and Path.type(cwd) == :absolute,
          true <- id?(session_id) do
-      {:ok,
-       Ipse.Compaction.digest([
-         %{
-           "version" => 1,
-           "instance" => identity["instance"],
-           "artifact_sha256" => identity["artifact_sha256"],
-           "source_sha256" => identity["source_sha256"],
-           "scope" => scope,
-           "project" => if(scope == "operator", do: nil, else: Manifest.sha256(cwd)),
-           "session" => if(scope == "session", do: session_id)
-         }
-       ])}
+      base = %{
+        "scope" => scope,
+        "project" => if(scope == "operator", do: nil, else: Manifest.sha256(cwd)),
+        "session" => if(scope == "session", do: session_id)
+      }
+
+      descriptor =
+        case identity["state_binding"] do
+          nil ->
+            Map.merge(base, %{
+              "version" => 1,
+              "instance" => identity["instance"],
+              "artifact_sha256" => identity["artifact_sha256"],
+              "source_sha256" => identity["source_sha256"]
+            })
+
+          binding ->
+            Map.merge(base, %{"version" => 2, "binding" => binding["id"]})
+        end
+
+      {:ok, Ipse.Compaction.digest([descriptor])}
     else
       _ -> @error
     end
@@ -45,6 +68,7 @@ defmodule Ipse.Extensions.State do
   end
 
   def capability(%{"op" => op}) when op in ~w(state.get state.list), do: "host.state.read"
+  def capability(%{"op" => "state.scan"}), do: "host.state.scan"
   def capability(%{"op" => op}) when op in ~w(state.put state.delete), do: "host.state.write"
   def capability(_), do: nil
   def mutating?(request), do: capability(request) == "host.state.write"
@@ -80,7 +104,7 @@ defmodule Ipse.Extensions.State do
   defp valid_operation?(%{"op" => "state.get"} = request),
     do: keys?(request, ~w(op scope key)) and key?(request["key"])
 
-  defp valid_operation?(%{"op" => "state.list"} = request) do
+  defp valid_operation?(%{"op" => op} = request) when op in ~w(state.list state.scan) do
     keys?(request, ~w(op scope after generation limit)) and
       (is_nil(request["after"]) or key?(request["after"])) and
       (is_nil(request["generation"]) or revision?(request["generation"])) and
@@ -104,7 +128,8 @@ defmodule Ipse.Extensions.State do
     {:ok, %{"generation" => state["generation"], "record" => record(state, key)}}
   end
 
-  defp apply_operation(_path, state, %{"op" => "state.list"} = request, _) do
+  defp apply_operation(_path, state, %{"op" => op} = request, _)
+       when op in ~w(state.list state.scan) do
     if is_nil(request["generation"]) or request["generation"] == state["generation"] do
       keys =
         state["records"]
@@ -112,12 +137,27 @@ defmodule Ipse.Extensions.State do
         |> Enum.sort()
         |> Enum.filter(&(is_nil(request["after"]) or &1 > request["after"]))
 
-      selected = Enum.take(keys, request["limit"])
+      selected =
+        keys
+        |> Enum.take(request["limit"])
+        |> Enum.reduce_while([], fn key, selected ->
+          candidate = selected ++ [key]
+
+          if op == "state.list" or
+               byte_size(Jason.encode!(Enum.map(candidate, &record(state, &1)))) <= 12_000,
+             do: {:cont, candidate},
+             else: {:halt, selected}
+        end)
 
       {:ok,
        %{
          "generation" => state["generation"],
-         "records" => Enum.map(selected, &Map.drop(record(state, &1), ["value"])),
+         "records" =>
+           Enum.map(selected, fn key ->
+             if op == "state.scan",
+               do: record(state, key),
+               else: Map.drop(record(state, key), ["value"])
+           end),
          "next" => if(length(keys) > length(selected), do: List.last(selected))
        }}
     else
@@ -290,20 +330,30 @@ defmodule Ipse.Extensions.State do
 
   defp outcome?(_, status, value, _) when status in ~w(denied unknown), do: value == %{}
 
-  defp outcome?(%{"op" => "state.list"} = request, "ok", value, _) do
+  defp outcome?(%{"op" => op} = request, "ok", value, _)
+       when op in ~w(state.list state.scan) do
     records = value["records"]
 
     keys?(value, ~w(generation records next)) and revision?(value["generation"]) and
       (is_nil(request["generation"]) or request["generation"] == value["generation"]) and
       is_list(records) and length(records) <= request["limit"] and
       Enum.all?(records, fn record ->
-        summary?(record, value["generation"]) and record["revision"] > 0 and
+        summary?(
+          if(op == "state.scan", do: Map.drop(record, ["value"]), else: record),
+          value["generation"]
+        ) and
+          (op != "state.scan" or
+             (Map.has_key?(record, "value") and
+                if(record["deleted"], do: is_nil(record["value"]), else: value?(record["value"])))) and
+          record["revision"] > 0 and
           (is_nil(request["after"]) or record["key"] > request["after"])
       end) and
       Enum.map(records, & &1["key"]) ==
         Enum.map(records, & &1["key"]) |> Enum.uniq() |> Enum.sort() and
+      (op != "state.scan" or byte_size(Jason.encode!(records)) <= 12_000) and
       (is_nil(value["next"]) or
-         (length(records) == request["limit"] and value["next"] == List.last(records)["key"]))
+         (records != [] and (op == "state.scan" or length(records) == request["limit"]) and
+            value["next"] == List.last(records)["key"]))
   end
 
   defp outcome?(request, "ok", value, operation_id) do
@@ -324,7 +374,8 @@ defmodule Ipse.Extensions.State do
       end
   end
 
-  defp outcome?(%{"op" => "state.list"} = request, "conflict", value, _) do
+  defp outcome?(%{"op" => op} = request, "conflict", value, _)
+       when op in ~w(state.list state.scan) do
     keys?(value, ["generation"]) and revision?(value["generation"]) and
       not is_nil(request["generation"]) and request["generation"] != value["generation"]
   end

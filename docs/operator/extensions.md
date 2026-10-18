@@ -93,6 +93,8 @@ trust ceiling must cover every declared capability:
 | `transform.prompt`, `transform.presentation` | Attributed prompt annotations or completed-answer formatting | [Hooks](#hook-behavior-and-limits) |
 | `invoke.tool`, `invoke.command`, `invoke.service` | Manifest-declared typed invocations | [Catalog and commands](#tools-commands-and-services) |
 | `host.state.read`, `host.state.write` | Scoped get/list or separately approved put/delete | [State](#scoped-state-host-calls) |
+| `host.state.scan` | Bounded value pages and extended finite state reads; requires `host.state.read` | [State](#scoped-state-host-calls) |
+| `host.state.bound` | Refuse activation without an operator-granted logical storage binding; requires `host.state.read` | [State](#scoped-state-host-calls) |
 | `host.question` | Explicit structured clarification | [Questions](#structured-questions) |
 | `host.tools` | Existing bounded read/write/edit/shell calls | [Workflow tools](#workflow-tools) |
 | `host.model` | Separately approved one-shot inference through a named profile, with canonical usage and shared admission | [Model calls](#accounted-model-calls) |
@@ -175,8 +177,9 @@ services with `Session.invoke_export/4`. Worker composition uses the explicit
 operator bindings below. Commands/standalone services are admitted only while idle.
 
 Callbacks return schema-checked values. Explicitly trusted host capabilities
-permit finite proposals for state, questions, tools, services or context. All
-share a 16-operation invocation budget; ordinary returned JSON remains inert.
+permit finite proposals for state, questions, tools, services or context. The
+ordinary invocation budget is 16 operations; separately granted accounting/state
+scans extend only their own read families. Ordinary returned JSON remains inert.
 Intent is synced before executable startup; result is synced after validation
 and confirmed worker cleanup. Invalid output/crash/interruption has an unknown
 outcome and is never retried automatically. Up to 10,000 invocations fit one
@@ -320,16 +323,20 @@ separate plan requirement.
 
 Reviewed artifacts may declare `host.actions` plus `host.state.read` and/or
 `host.state.write`. These capabilities are default-off and require operator trust.
-There is no shipped automatic memory adapter in this increment. Workers can
-request get/list/put/delete in host-derived operator/project/session namespaces.
+Workers can request get/list/put/delete in host-derived operator/project/session namespaces.
 Project-configured code cannot select operator scope. State is not automatically
-sent to a model or another extension.
+sent to a model or another extension. The independently selected
+[explicit memory extensions](memory.md) build note policy on these generic calls;
+they do not enable automatic capture.
 
 Every put/delete asks for separate full approval unless execution was explicitly
 enabled for the session. Invoking a command or approving its enclosing model tool
 does not authorize a later write. Headless/interactive denial creates no business
-record. Reads need the read capability. Up to 16 host calls fit one invocation;
-invalid/unknown outcomes stop it.
+record. Reads need the read capability. Up to 16 ordinary host calls fit one
+invocation. Separately selecting `host.state.scan` adds value pages and permits
+only state reads through step 512 within a two-minute admission deadline. Pages
+hold at most 16 records/12,000 encoded record-array bytes. Invalid/unknown outcomes
+stop the invocation; a long read does not widen write or external-operation grants.
 
 Data lives in `IPSE_HOME/extension-state-v1` with private files/native locks. Each
 identity/scope has a 1 MiB/256-record quota including tombstones; values are at
@@ -339,9 +346,17 @@ delivered text remain.
 
 After an interrupted write, inspect its namespace/key revision and operation ID
 before explicitly deciding what to do next; it may have committed. Tampered receipts or
-corrupt state refuse recovery/access without repair. Artifact/config-source
-changes isolate new namespaces; no automatic migration or collector is available.
-Do not remove lock files. See [protocol, paging and recovery](../developer/extension-host-calls.md).
+corrupt state refuse recovery/access without repair. Legacy namespaces change with
+artifact/configuration-source identity. For reviewed durable stores, the operator
+may explicitly set `state_bindings` on a trust record, selecting an instance,
+version-1 logical ID and allowed scopes. That ID shares data across reviewed code
+or configuration versions; reusing it grants the selected code access to existing
+data. Projects and workers cannot grant or override it. `host.state.bound` requires
+this binding; it grants no read/write operation itself. Binding changes do not
+copy/migrate state, and exact execution identities still govern resume. No generic
+automatic migration or collector is available. Do not remove lock files. See
+[binding configuration](memory.md#configure-explicit-memory) and
+[protocol, paging and recovery](../developer/extension-host-calls.md).
 
 ## Structured questions
 

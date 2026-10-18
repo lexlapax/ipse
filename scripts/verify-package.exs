@@ -24,6 +24,37 @@ defmodule Ipse.PackageVerifier do
     raise "usage: elixir scripts/verify-package.exs /path/to/ipse-*.tar.gz"
   end
 
+  defp verify_memory!(launcher, release, env, root) do
+    probe = Path.join(root, "verify-memory.exs")
+    corpus = Path.join(root, "memory-corpus.json")
+    File.cp!(Path.join(__DIR__, "measure-memory.exs"), probe)
+    File.cp!(Path.expand("../examples/memory/corpus.json", __DIR__), corpus)
+
+    expression =
+      "System.argv([\"--corpus\", #{inspect(corpus)}]); Code.require_file(#{inspect(probe)})"
+
+    output = run!(launcher, ["eval", expression], release, env, "explicit memory corpus")
+
+    report =
+      output
+      |> String.split("\n", trim: true)
+      |> Enum.find(&String.starts_with?(&1, "{"))
+      |> :json.decode()
+
+    unless report["passed"] == true and report["records"] == 100 and
+             report["questions"] == 100 and report["projects"] == 2 and report["sessions"] == 6 and
+             report["model_calls"] == 0 and report["recall_at_5"] == 1.0 and
+             report["exact_span_precision"] == 1.0 do
+      raise "installed memory proof failed its explicit corpus assertions"
+    end
+
+    IO.puts(
+      "PASS: bundled explicit memory, 100 records/100 queries, six sessions/two projects, exact spans and no inference."
+    )
+
+    IO.puts(:json.encode(report))
+  end
+
   defp verify_terminal!(wrapper, release, env, root) do
     state = Path.join(root, "terminal-listing")
     File.mkdir_p!(state)
@@ -217,6 +248,7 @@ defmodule Ipse.PackageVerifier do
     verify_terminal!(wrapper, release, env, root)
     verify_recovery!(otp_launcher, release, env, root)
     verify_text!(otp_launcher, release, env)
+    verify_memory!(otp_launcher, release, env, root)
 
     [app] = Path.wildcard(Path.join([release, "lib", "ipse-*"]))
 

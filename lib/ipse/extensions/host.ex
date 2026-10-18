@@ -171,7 +171,7 @@ defmodule Ipse.Extensions.Host do
 
   defp execute_export(entry, intent, stage, payload, owner, job_ref, prior_actions) do
     entry =
-      if "host.usage.scan" in entry.identity["capabilities"] do
+      if Enum.any?(~w(host.usage.scan host.state.scan), &(&1 in entry.identity["capabilities"])) do
         Map.put(entry, :read_deadline, System.monotonic_time(:millisecond) + 120_000)
       else
         entry

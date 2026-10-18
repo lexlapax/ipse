@@ -1,16 +1,17 @@
 # Typed extension catalogs and invocations
 
-P22A7 adds inert manifest-declared tools, operator commands and standalone typed
-services. They share the independent worker SDK and owner chain used by the
-[prompt/presentation hooks](extension-hooks.md). This increment does not complete
-P22: broader nested job contracts, observability
-controls remain separate work. No provider or store is selected implicitly.
-P22A8 adds [finite host state calls](extension-host-calls.md) with explicit
-capability negotiation and separate mutation approval.
-P22A9 adds [structured questions and explicit continuations](extension-questions.md).
-P22A10 adds [approved file/shell workflow actions](extension-tool-actions.md).
-P22A11 adds [typed operator-bound value-service composition](extension-services.md).
-P22A12 adds [explicit session context/evidence publications](extension-context.md).
+Manifest-declared tools, operator commands and standalone typed services share
+the independent worker SDK and owner chain used by
+[prompt/presentation hooks](extension-hooks.md). Discovery is inert; executable
+invocation, host operations and their effects have distinct admission records.
+No provider or store is selected implicitly.
+
+Finite [host calls](extension-host-calls.md) negotiate capabilities and separate
+mutation approval. Operation-specific contracts cover
+[structured questions and continuations](extension-questions.md),
+[file/shell workflows](extension-tool-actions.md),
+[operator-bound value services](extension-services.md) and
+[context/evidence publications](extension-context.md).
 Private [text consumers](text-streams.md) use their own read-only resource lifetime,
 separate from invocation host actions.
 
@@ -59,7 +60,9 @@ enter the model's function catalog. These names cannot shadow builtin/MCP names.
 
 Activation identities now pin operator/project scope, SHA-256 of the config
 source path and the normalized export digest, in addition to artifact/options/
-runtime/host identity. Options remain private. `Registry.prepare` performs the
+runtime/host identity. An explicit operator `state_binding`, when selected, is
+also pinned; it shares storage across reviewed versions without relaxing exact
+execution identity or granting operations. Options remain private. `Registry.prepare` performs the
 whole catalog check using one admission clock; Session rechecks real current
 time. `describe/0` must report SDK/capabilities and the exact declared exports;
 for old transform-only artifacts, omitted exports normalize to the empty catalog.
