@@ -12,6 +12,10 @@ Held-out cases pass with declared formatting assistance; live controls pass afte
 a supervisor fixture correction. These are scoped results, not unattended-development
 evidence or P25 acceptance.
 Raw reports, journals and operational logs remain private outside Git.
+The [versioned result manifest](p25-result-manifest.json) ties input/report hashes,
+reviewed scores, declared assistance, authored commit, installed runners, control
+receipts, platform evidence and security identities together. Its pending states
+are explicit; hashes establish identity, not semantic correctness or acceptance.
 
 ## Frozen baseline and preparation
 
@@ -471,6 +475,29 @@ credentials, provider routing or extension authority. No material architecture
 change requiring another whole-design review was identified; that scoped judgment
 does not expand earlier independent coverage or grant architectural certification.
 Test-only diagnostics are supervisor work, not additional self-development credit.
+
+A separate fresh installed-Ipse review now covers the authored four-file patch,
+relevant Session callers/recovery and actual workspace, context, Session and
+compaction test bodies. Its packet contains the exact base/current source and
+diff, with no author report, expected finding, prior scores or test results.
+The frozen 224-file packet manifest is SHA-256
+`275124f3217e58b64330120053f6391dad19962b05ed3b25df611b5b3e760aa2`.
+Declared limits were twenty minutes, 60 requests, 96 proposals, 1,200,000 context
+bytes, 300-second requests and zero effects/retrieval, using the same explicit
+own-subscription GPT-6.1 Sol/high. The reviewer asked a single synthetic
+`review_mode` question and continued after the supervisor's explicit `read_only` answer;
+that answer grants no effect or actual product/privacy choice.
+
+It completed in 124.3 seconds, twelve requests/39 proposals (33 started calls),
+with 4,818 characters, SHA-256
+`027645a50cff3ad208f67d57de285f9d284e20316c27dcbe465d35be62276916`.
+The supervisor read the full report and checked unchanged packet bytes, journal
+restoration, the single explicit answer, actual limits and confirmed cleanup.
+No actionable finding was identified. Three suggested extra combinations—completed
+plus refused plus queued calls, intermediate settlement-prefix recovery and
+lifecycle-enabled preflight—remain coverage ideas, not reproduced defects.
+No tests or project code ran in the review. This is a separate context on the same
+model/provider, not a different-vendor adversarial architecture certification.
 
 Final Security Cloud coverage and triage of the pushed candidate remain required
 before accepting P25. The completed baseline does not cover the later repair.

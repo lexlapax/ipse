@@ -1,0 +1,343 @@
+{
+  "status": "final_security_pending",
+  "protocol": "docs/developer/self-hosting-evaluation.md",
+  "profiles": {
+    "reference": {
+      "provider": "codex_cli_subscription",
+      "model_requested": "gpt-6.1-sol",
+      "reasoning_effort": "high",
+      "served_model_independently_verified": false
+    },
+    "ipse": {
+      "provider": "chatgpt",
+      "billing": "own_subscription",
+      "model_requested": "gpt-6.1-sol",
+      "model_reported": "gpt-6.1-sol",
+      "reasoning_effort": "high"
+    },
+    "parity_limit": "Native request/tool budgets and backend identity are not proven identical; original failures and cumulative limits remain in the execution record"
+  },
+  "reports": [
+    {
+      "bytes": 28825,
+      "phase": "live_research",
+      "sha256": "1345dab692c7c8119d6e15117d074e5dc3e75ef52c7c73630ebbb784497f70d6",
+      "private_artifact": "codex-L1-reference-report.md",
+      "characters": 28639,
+      "outcome": "over_length"
+    },
+    {
+      "bytes": 29955,
+      "phase": "live_research",
+      "sha256": "7540c080dfe9c398a16c200f539568d264c4d9feb74ccc942fc6a0d9e093c70e",
+      "private_artifact": "codex-L2-report.md",
+      "characters": 29757,
+      "outcome": "over_length"
+    },
+    {
+      "bytes": 24933,
+      "phase": "live_synthesis",
+      "sha256": "e65176acc516c30ed53b077b75e15e693e377c9d722958e61ffcae3472f95067",
+      "private_artifact": "codex-L3-report.md",
+      "characters": 24841,
+      "outcome": "over_length"
+    },
+    {
+      "bytes": 20643,
+      "phase": "live_research",
+      "sha256": "56f09900daaa3e29b8cf9baeeedf5765a3454278cf7fc8c48440d3b20ef3bec1",
+      "private_artifact": "ipse-L1-round1/report.md",
+      "characters": 20537,
+      "outcome": "assisted_length_met_quote_limit_miss"
+    },
+    {
+      "bytes": 31612,
+      "phase": "live_research",
+      "sha256": "2ae7388a75052a5cfd8465765df9732a33462eaf5c16ce3c5bd413fe366cd22e",
+      "private_artifact": "ipse-L2-round1/report.md",
+      "characters": 31525,
+      "outcome": "assisted_over_length"
+    },
+    {
+      "bytes": 24152,
+      "phase": "live_synthesis",
+      "sha256": "ed8a9b2ba0d90dd9a908f172b8af161e9f551e2c7ee1548a307ff33a6a69fe34",
+      "private_artifact": "ipse-L3/report.md",
+      "characters": 24040,
+      "outcome": "over_length"
+    },
+    {
+      "bytes": 11337,
+      "phase": "packet_v2",
+      "sha256": "320b25a560d58a76730d9cec4e5bfafb6da11d389047cd3aee2461ce2a4b14a6",
+      "private_artifact": "codex-packet-v2-report.md",
+      "characters": 11289,
+      "outcome": "passing_checked_reference"
+    },
+    {
+      "bytes": 13327,
+      "phase": "packet_v2",
+      "sha256": "05dfaf76312610d82ae8ccc7c9d72a14e5ccd6f2737cf545a29e0f16d0e21252",
+      "private_artifact": "ipse-packet-v2/report.md",
+      "characters": 13255,
+      "outcome": "source_fit_failed"
+    },
+    {
+      "bytes": 14595,
+      "phase": "repaired_fresh_cohort",
+      "sha256": "60bac6a1f62e7aef989147fb607ec4b316d53956fe9e63d395d44dce6f13bd6d",
+      "private_artifact": "ipse-final-1/report.md",
+      "characters": 14539,
+      "outcome": "passing"
+    },
+    {
+      "bytes": 13160,
+      "phase": "repaired_fresh_cohort",
+      "sha256": "1e835b81aa00d9b5a67c8615a841eb7c4fae71c139cb8a5edf6b8bc7f552a624",
+      "private_artifact": "ipse-final-2/report.md",
+      "characters": 13132,
+      "outcome": "passing"
+    },
+    {
+      "bytes": 19163,
+      "phase": "heldout",
+      "sha256": "a9151f7884e14ae1288407bfdfa477684794b66970e3905ebe454be36c23c81b",
+      "private_artifact": "ipse-heldout/attempt1-report.md",
+      "characters": 19109,
+      "outcome": "over_length"
+    },
+    {
+      "bytes": 9030,
+      "phase": "heldout",
+      "sha256": "9e5261ae4a361ad9155e2730e1a9043a47672af2c91ab9fe1b33814be0b18186",
+      "private_artifact": "ipse-heldout/report.md",
+      "characters": 8982,
+      "outcome": "passing_with_formatting_assistance"
+    }
+  ],
+  "scores": [
+    {
+      "total": 14,
+      "private_artifact": "codex-packet-v2-report.md",
+      "criteria": {
+        "coverage_decisions": 2,
+        "delivery_usefulness": 2,
+        "ipse_fit": 2,
+        "privacy_security": 2,
+        "reproducibility_dependencies": 2,
+        "resources_failures": 2,
+        "source_fidelity": 2
+      },
+      "minimum_each": 2,
+      "passing": true,
+      "assessment": "supervisor_source_checked_not_automated_grading"
+    },
+    {
+      "total": 13,
+      "private_artifact": "ipse-packet-v2/report.md",
+      "criteria": {
+        "coverage_decisions": 2,
+        "delivery_usefulness": 2,
+        "ipse_fit": 1,
+        "privacy_security": 2,
+        "reproducibility_dependencies": 2,
+        "resources_failures": 2,
+        "source_fidelity": 2
+      },
+      "minimum_each": 2,
+      "passing": false,
+      "assessment": "supervisor_source_checked_not_automated_grading"
+    },
+    {
+      "total": 14,
+      "private_artifact": "ipse-final-1/report.md",
+      "criteria": {
+        "coverage_decisions": 2,
+        "delivery_usefulness": 2,
+        "ipse_fit": 2,
+        "privacy_security": 2,
+        "reproducibility_dependencies": 2,
+        "resources_failures": 2,
+        "source_fidelity": 2
+      },
+      "minimum_each": 2,
+      "passing": true,
+      "assessment": "supervisor_source_checked_not_automated_grading"
+    },
+    {
+      "total": 14,
+      "private_artifact": "ipse-final-2/report.md",
+      "criteria": {
+        "coverage_decisions": 2,
+        "delivery_usefulness": 2,
+        "ipse_fit": 2,
+        "privacy_security": 2,
+        "reproducibility_dependencies": 2,
+        "resources_failures": 2,
+        "source_fidelity": 2
+      },
+      "minimum_each": 2,
+      "passing": true,
+      "assessment": "supervisor_source_checked_not_automated_grading"
+    }
+  ],
+  "inputs": [
+    {
+      "path": "docs/developer/p25-common-brief.md",
+      "sha256": "353ca8d252d944c169ab34cda1504ac159211fbcaa20869119cc1f6ac9c18e39"
+    },
+    {
+      "path": "docs/developer/p25-input-manifest.json",
+      "sha256": "02007667663173d322f71e719e68ee170f3bcc902a8016044833acd524887005"
+    },
+    {
+      "path": "docs/developer/p25-packet-method.md",
+      "sha256": "c94107723034bfa8f5a4f8e4b743640fa142d3b2cfeb42aed657dd4d03201eb9"
+    },
+    {
+      "path": "docs/developer/p25-evidence-packet.json",
+      "sha256": "9863ddb1170e2554a87dc175b3c0d948b7c1b9cf662485807bd0749768abe013"
+    }
+  ],
+  "schema_version": 1,
+  "experiment": "P25 supervised comparative research and self-development",
+  "authoritative_record": "docs/developer/p25-evaluation.md",
+  "proposal": "docs/developer/knowledge-extensions.md",
+  "private_artifact_policy": "Relative aliases identify retained private evidence, not published transcripts or absolute operator paths. Hashes prove identity, not truth or review coverage.",
+  "baseline_source": "375e607d0d3fbedf9ea0454dc74bb69fd73f20f1",
+  "authored_repair": {
+    "scope": "Preflight refusal diagnosis; no authority, egress, extension API or interruption-policy change",
+    "commit": "1fc50b560870fb22969251838e11437e9c2e93ee",
+    "patch_sha256": "0876dc251288eea1596ec8d4b534bb331fba5a1cc4b86e3341c643a99d9849ef",
+    "files": [
+      "lib/ipse/session.ex",
+      "test/workspace_session_test.exs",
+      "docs/developer/workspace-context.md",
+      "docs/operator/usage.md"
+    ]
+  },
+  "runners": [
+    {
+      "source": "375e607d0d3fbedf9ea0454dc74bb69fd73f20f1",
+      "archive_sha256": "0b4997bd2ea77db55d8c739431ba1ce0e458074e4c7351bfe96d349e081d4715"
+    },
+    {
+      "source": "1fc50b560870fb22969251838e11437e9c2e93ee",
+      "archive_sha256": "cdd37e0dab3f2f4d2258b764061ada2e19c8de8e012cd201efe37e80cc8d066b"
+    }
+  ],
+  "source_claim_records": [
+    {
+      "scope": "literal_capture_not_semantic_truth",
+      "private_artifact": "ipse-L1-round1/research-ledger.json"
+    },
+    {
+      "scope": "literal_capture_not_semantic_truth",
+      "private_artifact": "ipse-L2-round1/research-ledger.json"
+    },
+    {
+      "scope": "primary_source_packet_with_pins_and_limits",
+      "public_artifact": "docs/developer/p25-evidence-packet.json"
+    },
+    {
+      "scope": "material_claim_checks_and_discrepancy_dispositions",
+      "public_artifact": "docs/developer/p25-evaluation.md"
+    }
+  ],
+  "assistance": [
+    "reference_read_only_MCP_adapter_after_shell_failure",
+    "explicit_300_second_timeout_continuations_with_original_wall_and_cumulative_limits",
+    "packet_metadata_and_access_corrections_then_separately_frozen_v2",
+    "supervisor_reproduction_and_individual_author_effect_decisions",
+    "denied_quoting_wrapper_and_explained_same_session_continuation",
+    "supervisor_test_only_stdio_diagnostics",
+    "heldout_same_session_shorter_output_request",
+    "live_control_corrected_from_pinned_user_history_to_assistant_history"
+  ],
+  "controls": {
+    "heldout_cases": 6,
+    "heldout_original_sha256": "0d3d1d995cc4fb75e53e9ef84286b112b1796c5febf83d4e547c267f84ebd028",
+    "heldout_assessment": "six_cases_pass_with_declared_formatting_assistance",
+    "live_requests_cumulative": 10,
+    "live_request_limit": 14,
+    "live_compactions": 2,
+    "question_pending_resume_and_explicit_answer": true,
+    "unapproved_write_cancelled_without_effect": true,
+    "idle_resume_unchanged": true,
+    "original_control_outcome": "safe_refusal_fixture_expectation_failed",
+    "independent_patch_review": {
+      "bytes": 4834,
+      "sha256": "027645a50cff3ad208f67d57de285f9d284e20316c27dcbe465d35be62276916",
+      "private_artifact": "ipse-patch-review/report.md",
+      "characters": 4818
+    }
+  },
+  "private_receipts": [
+    {
+      "sha256": "21235871a5ffca45ee239f323dc9d48a208436d19d62ceb756ea966ed24393a8",
+      "private_artifact": "final-cohort-inputs.json"
+    },
+    {
+      "sha256": "9e6a08c0f97655ca4247f2ab1f2c8ca877fe4fbc11a150ba6d04fd7e8ba2fabc",
+      "private_artifact": "installed-repair-receipt.json"
+    },
+    {
+      "sha256": "2f1aafadd77154b778eedf47fb91d23176cd21a669eb8c95898dc3509b15db0e",
+      "private_artifact": "repaired-hosted-receipt.json"
+    },
+    {
+      "sha256": "f444da8db398cd647465b45c4121d5d4a64a7ffb9bcf20bc5b3df63ab06dc624",
+      "private_artifact": "diagnostic-hosted-receipt.json"
+    },
+    {
+      "sha256": "929a1b53016610ce4798852be7f9a3002b2eb30583a3df078771dc6cf9ff2576",
+      "private_artifact": "live-controls/partial-receipt.json"
+    },
+    {
+      "sha256": "47df6863e4682b865d0b35d5be01cd5c54bb9945f87ac54ed226cac80badb7b0",
+      "private_artifact": "live-controls-recovery/receipt.json"
+    },
+    {
+      "sha256": "e4fe370395fbf0d280c5bae3e4695a1f23680ecea02cf8b8aee6bbe9ffbd848f",
+      "private_artifact": "ipse-patch-review/checked-receipt.json"
+    }
+  ],
+  "platform": {
+    "runtime": "1fc50b560870fb22969251838e11437e9c2e93ee",
+    "matching_runtime_matrix": "https://github.com/lexlapax/ipse/actions/runs/39142415316",
+    "test_diagnostics_matrix": "https://github.com/lexlapax/ipse/actions/runs/39143843693",
+    "ordinary_tests_per_host_after_diagnostics": 896,
+    "ordinary_exclusions_per_host": 32,
+    "mac_enabled_tests": 36,
+    "mac_enabled_exclusions": 6,
+    "mac_rust_checks": 4,
+    "installed_assertions_per_host": 50
+  },
+  "security": {
+    "final": {
+      "status": "running",
+      "source": "b5ddd0205a57b14afdc3038bd73c04ec7fdfb9c2",
+      "reasoning_effort": "high",
+      "run_id": "wfr_3b03c34c933a9aebe79f0641425405058caa5dd0bac7f68555a421c31e32c8c9",
+      "model": "gpt-5.6-sol",
+      "model_substitution_explicitly_approved": true
+    },
+    "baseline": {
+      "source": "8b4f706",
+      "run_id": "wfr_a67044bec66103c57f7c55f9a2555183d2426db134312b7d2afa5f30990823ea",
+      "dispositions": "docs/developer/architecture-review-dispositions.md"
+    },
+    "continuous_monitoring": false
+  },
+  "remaining_limits": [
+    "final_security_coverage_and_triage_pending",
+    "historical_independent_architecture_omissions_and_withheld_verdicts_retained",
+    "intermittent_CI_causes_unconfirmed",
+    "deliberate_service_crash_cleanup_unconfirmed_safe_to_continue_false",
+    "trusted_extensions_and_shell_have_user_permissions",
+    "macOS_detached_descendants_best_effort",
+    "no_unattended_self_development_or_statistical_parity_claim",
+    "no_production_memory_research_graph_RAG_engine_installed",
+    "license_transition_timing_pending"
+  ]
+}
