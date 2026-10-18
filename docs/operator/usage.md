@@ -433,7 +433,7 @@ and diagnostics. `/skills` lists the session's saved catalog; standalone `ipse s
 discovers the current filesystem. Resume keeps saved instruction contents and
 skill selection and reports detected drift. Changed skill bodies refuse loading
 until refresh. To adopt changed files or newly shadowing skills, finish or cancel
-active work and use `/context refresh`, which reloads both catalogs. Refresh neither
+active work and use `/context refresh`, which reloads instructions and skills. Refresh neither
 executes tools nor changes approval settings. Journals retain instruction text;
 treat them as private session data.
 

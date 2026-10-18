@@ -141,46 +141,31 @@ and arbitrary trusted out-of-band calls cannot establish an invoice ceiling.
 
 ## P24: independent architecture validation and baseline security
 
-**In progress; fresh independent coverage and baseline security remain open.**
-The fresh cloud review of `b5297be` used evidence at `b08cd76`. It inspected more
-implementation and test bodies, found no Critical/High issue in that scope, and
-withheld acceptance because findings and coverage remain incomplete. Prioritize
-task-owned OS cleanup confirmation, text-consumer failure policy, proxy/endpoint
-consistency and skill-catalog drift. Also verify approval normalization, duplicate
-extension-call receipts, contribution framing, browser-login locking, Anthropic
-compaction compatibility and startup costs. Torn-ledger continuation preserves
-the damaged tree and its liability; automatic ledger repair remains unavailable.
-The operator selected optional text detachment with explicitly required delivery,
-and moving untrusted context out of the system role. Both are implemented in the
-current repair batch alongside catalog snapshots, bounded approval display,
-login race checks and checkpoint wire compatibility. The local handoff passes:
-807 native-inclusive tests, both formatter floors, strict build/compile, isolated
-demo, package verification and both independently precompiled installed proofs.
-The first hosted run passed Ubuntu but failed two macOS fixtures; readiness and
-native-test scheduling corrections are under verification. No Mac pass is claimed
-for this increment yet.
-The review ran no code or tests; supervisor verification is tracked separately.
-The egress policy repair at `42d9f1f` passed local and hosted Linux/macOS gates.
-Task-owned OS cleanup receipts and approval/invocation/framing hardening passed
-the local full/native/demo/package/installed handoff and hosted Linux/macOS matrix
-at `451f97c`. Synthetic startup measurements still show about 20 seconds to open
-64 MiB with 200 answered questions; reducer changes did not materially reduce
-that latency. Remaining verification, accepted limits and independent coverage
-stay explicit. Baseline security and P25 remain gated.
+**In progress; remaining independent coverage and baseline security are open.**
+Candidate `091b2bd` implements optional text detachment with explicitly required
+delivery, labelled lower-role reference/helper context, saved skill selection,
+bounded approval display, login race protection and checkpoint wire compatibility.
+The local handoff passes 807 native-inclusive tests, both formatter floors,
+strict build/compile, isolated demo, package verification and both independently
+precompiled installed proofs. After the initial hosted matrix exposed two fixture
+failures, readiness and native-test scheduling were corrected without changing
+runtime bytes or protocol deadlines. The corrected hosted Linux/macOS matrix
+passes, including both Mac enforcement steps and both installed proofs per host.
+Earlier egress, cleanup, approval and receipt repairs passed their own local and
+hosted gates. No fixture or build result grants architectural acceptance.
 
-Repair candidate `b5297be` passed its local source/native/demo/package/installed
-handoff and hosted Ubuntu/macOS matrix, including both Mac enforcement steps.
-It repairs the follow-up
-approval-interleaving, journal-acknowledgment and call-ID gaps, makes missing-parent
-write refusal definite before the write, and corrects native cleanup guidance.
+Torn-ledger continuation preserves the damaged tree and its liability; automatic
+ledger repair remains unavailable. Synthetic startup still takes about 20 seconds
+for 64 MiB with 200 answered questions; reducer changes did not materially reduce
+that latency. These measured/accepted limits stay explicit for the next critique.
 The [disposition register](developer/architecture-review-dispositions.md) owns
 F1–F7, S1–S3, D1–D9, A1–A7 and PA-1–PA-15; [testing](developer/testing.md#current-evidence-and-next-checks)
 owns exact revisions, counts and platform receipts.
 
 The earlier reports targeted `21e59fe` and `b570ef8`; only the cloud pass on
 `b5297be` satisfies the fresh-session provenance requirement. All were static
-reviews with unrun regression proposals. After current repairs, repin the
-[review handoff](operator/architecture-review.md) and prioritize lifecycle modules/
+reviews with unrun regression proposals. The repinned
+[review handoff](operator/architecture-review.md) prioritizes lifecycle modules/
 tests; invocation workflow/state/question and delivery/read tests; auth/MCP tests;
 handoff/compaction/workspace tests; state/child-usage/store; macOS/stdio; and
 delegation/parallel/budget tests plus usage/normalization. Preserve an independent

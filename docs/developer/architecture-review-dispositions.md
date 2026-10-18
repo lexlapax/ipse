@@ -119,7 +119,7 @@ acceptance. This is independent source evidence, not runtime reproduction or a s
 
 | ID | Supervisor assessment | Current action and evidence |
 | --- | --- | --- |
-| PA-1 / D8 | Reproduced optional pressure discarding a completed response | Operator-approved optional detachment and explicit required enrollment are implemented. Session/broker/actual-provider fixtures cover pressure, broker loss, healthy required peers, completion acknowledgment, fixed failure reporting and retained paid usage. The 807-test local native-inclusive handoff and package/both installed proofs pass; hosted verification is next. Startup integrity and OS cleanup receipts remain separate |
+| PA-1 / D8 | Reproduced optional pressure discarding a completed response | Operator-approved optional detachment and explicit required enrollment are implemented. Session/broker/actual-provider fixtures cover pressure, broker loss, healthy required peers, completion acknowledgment, fixed failure reporting and retained paid usage. Local native-inclusive and hosted Linux/macOS handoffs pass through `091b2bd`, including package/both installed proofs. Startup integrity and OS cleanup receipts remain separate |
 | PA-2 / D6 | Torn ledgers still refuse; the reviewer challenges that recovery cost | A real budget fixture verifies refusal preserves both ledger and partial journal, then explicit inert handoff into a fresh quota without replay, refund or transfer of old liability. This is continuation, not tree repair. Any future repair must lock/validate the complete canonical tree and preserve original evidence; blindly dropping a partial record is not adopted |
 | PA-3 | Task death alone does not acknowledge exit of task-owned shell groups or extension VMs | Private task resource scopes retain actual native-helper receipts. Local and hosted Linux/macOS source/demo/package/installed gates pass at `451f97c`, including local SIGSTOP refusal for shell/extension supervisors and one-use completion receipts. Best-effort detached-descendant limits remain separate |
 | PA-4 | Reproduced fresh project skill shadowing on resume | Bounded catalog/provenance checkpoints retain selection, report discovery drift and refuse changed bodies/resources until explicit refresh. Corrupt snapshots refuse before tail repair. Legacy sessions checkpoint first observed selection at the next request; idle opening stays inert |
@@ -140,8 +140,8 @@ workspace/skill/contribution data occupy a labelled user-role reference message.
 Extension helper calls likewise use fixed core rules and user-role JSON task data.
 Compaction and diagnostics count both header messages; canonical conversation and
 native continuation remain intact. Provider/recovery fixtures and both precompiled
-installed proofs pass with the local full handoff. Hosted platform checks remain
-separate; a passing fixture does not certify prompt-injection resistance.
+installed proofs pass with the local full handoff and hosted Linux/macOS matrix
+through `091b2bd`. A passing fixture does not certify prompt-injection resistance.
 
 Remaining coverage now prioritizes lifecycle runtime/child/event/ephemeral and
 their tests; invocation workflow/state/question tests and event/job/history/

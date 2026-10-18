@@ -16,10 +16,10 @@ self-development comparison. The first critique, same-session follow-up and fres
 cloud review have returned;
 [repair verification and remaining review coverage](../developer/architecture-review-dispositions.md)
 are recorded separately. The cloud pass satisfies fresh-session provenance but
-withholds acceptance for findings and remaining coverage. Egress and task-owned
-cleanup repairs passed local and hosted Linux/macOS gates; the following batch
-implements the operator's text-delivery/context choices and adjacent catalog,
-approval, login and recovery hardening. A new independent pass must cover the
+withholds acceptance for findings and remaining coverage. The resulting egress,
+task-owned cleanup, text-delivery/context, catalog, approval, login and recovery
+repairs passed local and hosted Linux/macOS gates through `091b2bd`. A new
+independent pass must cover the
 omissions and resulting repair delta. No security scan or larger trial has run. The
 [review and evaluation protocol](../developer/self-hosting-evaluation.md) defines
 the critique, dispositions, source-based comparison, Ipse-authored repairs,

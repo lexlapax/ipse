@@ -523,7 +523,7 @@ To require delivery, add `"text_required": true` to that artifact's operator
 and project options cannot enable this policy themselves. Required consumers
 must acknowledge every frame including completion before answer admission;
 loss or a five-second deadline stops the request with a required-delivery error.
-Already paid usage remains recorded. Embeddings use
+Already paid usage remains recorded. Embedded clients use
 `Session.subscribe_text(session, 2, required: true)` for the same policy.
 Omitting the setting leaves delivery optional; it does not bypass startup checks
 or turn an unconfirmed worker shutdown into confirmed cleanup.

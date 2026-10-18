@@ -21,7 +21,7 @@ start. Use the guides below for operation, development, and project context.
 | [Shared admission budgets](operator/budgets.md) | Operator-only session-tree reservations, supported bounds, inspection, refusal and unknown-liability recovery |
 | [Extensions](operator/extensions.md) | Review/import, operator trust and selection, capability procedures, limits and recovery |
 | [Independent extension lab](operator/extension-lab.md) | Build, review and select synthetic artifacts against an existing checkout or unchanged release |
-| [Independent architecture-review handoff](operator/architecture-review.md) | Pinned P24 repair source and a fresh-session Claude cloud/local prompt prioritizing unread implementations and test bodies, then checking both earlier disposition registers |
+| [Independent architecture-review handoff](operator/architecture-review.md) | Pinned P24 source and fresh-session Claude cloud/local coverage prompt, followed by challenges to prior dispositions and verification receipts |
 | [Troubleshooting](operator/troubleshooting.md) | Build, callback, account, lock, and recovery problems |
 
 ## Develop Ipse
