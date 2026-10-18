@@ -10,6 +10,12 @@ the historical external findings and independent coverage checkpoint.
 
 ## Scope and method
 
+The consolidated independent report at `a5912ab`/evidence `a21469e` has returned
+without acceptance. It confirms the earlier repairs in its inspected scope, but
+exposes cancellation and abnormal-death gaps missed by this implementation-side
+pass. The current repairs and their limits are described below. Internal coverage
+does not fill the reviewer's remaining material SDK/sandbox omissions.
+
 The review followed ownership, permission, source identity, durability, egress and
 resource bounds across complete execution/recovery paths, rather than treating
 passing modules as sufficient. It inspected the complete current Session state
@@ -90,15 +96,40 @@ remote revocation semantics; logout revokes the newest known grant and reports
 unconfirmed revocation. Blindly revoking a related old token family is not assumed
 safe for the new grant.
 
+## Consolidated assessment follow-through
+
+The earlier required-delivery tests covered unexpected callback loss, but missed
+host-directed cancellation. The lock guarantee also relied on `terminate/2`,
+which untrappable Session death skips. Those omissions made the earlier broad
+ownership claim too strong. The full private report, including frozen phase A,
+was read; only sanitized dispositions and synthetic verification are committed.
+
+| Item | Result and contract | Probe |
+| --- | --- | --- |
+| Consolidated B-1 / A2 | Confirmed host cancellation now releases only extension-owned enrollments after cleanup. The next task must initialize the same required selection. Unexpected loss alone stays sticky; embedding handles are separate | Five successive required-worker cancellations followed by successful required delivery; the old code refused subsequent inference. Existing unexpected-callback and unconfirmed-worker refusal checks remain |
+| Consolidated A1 / A7 | A separate lock guardian retains the native Port across Session death. Writer, root/nested tasks, scopes, resource actors and delegated guards are tracked before dispatch; actual exits precede unlock | A suspended cleanup scope reproduced successful unsafe resume before repair. Root/nested and delegated-child stalls now retain the real lock. Guardian loss stops without appending; queued-writer safety follows the actual writer-exit fence, not a claimed reproduction of every dirty-IO race |
+| Consolidated A3 | Pool-supervisor loss remains a conservative Session stop and requires explicit idle resume, without automatic retry | Actual Finch-supervisor kill pins normal Session stop, borrower/socket termination and unchanged idle resume. The fixture initially selected the registry child incorrectly; only the corrected supervisor probe establishes this behavior. A cooperative alternative left the caller blocked and was rejected |
+| Internal HTTP child cleanup | The private HTTP lease waits for monitored supervised children before releasing its client slot | Suspending a named registry child and killing the top supervisor reproduced premature guardian exit. The repaired guardian retains its slot until that child exits |
+| Cancellation composition | Normal scope close collects native-helper receipts before terminating nested task processes; abrupt owner death stops workers immediately and retains uncertainty | The existing workflow-shell cancellation regression rejected the initial nested-drain ordering. Its strict confirmed cleanup assertion passes after reordering; no alternate cleanup outcome or deadline relaxation |
+| Consolidated A6 | Request-free legacy endpoint provenance is unknowable. Compatibility still permits implicit-default legacy resume and cannot detect an old custom-to-default change | Guidance now states that exact gap. New-session pinning and recorded legacy request hashes remain strict; no migration or historical route reconstruction is claimed |
+
+The guardian uses ordinary OTP monitors, Registry and the existing native lock;
+it is a host ownership fix, not a domain feature or new workflow/dependency.
+Tracking barriers cover tasks created during teardown. Normal cancellation keeps
+OS receipts distinct from process death. A stalled tracked actor can retain the
+lock past caller deadlines. Same-user interference, lock-helper/guardian failure,
+unknown OS effects, remote refresh rotation and detached descendants are not
+turned into stronger containment guarantees.
+
 ## Verification and remaining limits
 
-The full internal audit and applicable repairs are complete at `a5912ab`. Final
-frozen source/native/package/installed and hosted Linux/macOS checks pass as
-recorded in [testing](testing.md#current-evidence-and-next-checks), with exact revisions and
-failed runs retained. This document does not promote earlier passes to evidence
-for later code. The single consolidated external brief is ready after that
-platform gate; the baseline security scan and P25 remain gated on applicable repairs and adequate
-independent coverage. No scan or new external analysis was launched here.
+The passing `a5912ab` matrix remains evidence for that source and its exercised
+scope. The consolidated follow-through needs its own final frozen source/native,
+package, installed-artifact and hosted Linux/macOS checks, recorded in
+[testing](testing.md#current-evidence-and-next-checks). Earlier passes do not
+certify later code. The used review brief is archived; no new external assignment
+or scan was launched. Baseline security and P25 remain gated on applicable repairs
+and adequate independent coverage.
 
 Residuals are explicit: full journal startup/memory and per-question prefix
 projection cost, no journal size cap or same-size rewrite authentication at every

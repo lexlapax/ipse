@@ -282,6 +282,24 @@ defmodule Ipse.Extensions.TextTest do
     assert :ok = Session.close(pid)
   end
 
+  test "host cancellation renews required extension delivery without losing enrollment capacity",
+       ctx do
+    pid = start(ctx, Map.put(config(ctx, "normal", true, true), :hold_provider, true))
+
+    for turn <- 1..5 do
+      :ok = Session.prompt(pid, "cancel required delivery #{turn}")
+      assert_receive {:text_provider, _, _}, 5_000
+      assert :ok = Session.cancel(pid)
+      assert_receive {:ipse, ^pid, {:done, :cancelled}}, 2_000
+    end
+
+    :ok = Session.prompt(pid, "new required delivery after cancellation")
+    assert_receive {:text_provider, provider, _}, 5_000
+    send(provider, :release)
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5_000
+    assert :ok = Session.close(pid)
+  end
+
   test "selected worker gets private bounded ordered JSON frames after durable intent", ctx do
     pid = start(ctx, config(ctx))
     refute File.exists?(ctx.path <> ".init")

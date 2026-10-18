@@ -3,19 +3,18 @@
 P24/P25 review and evaluation protocol, revised 2026-10-17. This guide defines
 independent architectural challenge, security gates and the supervised experiment;
 the [plan](../plan.md#current-priorities-and-status) owns scheduling and acceptance
-status. The historical package R critique at `7810925` remains partial and
-unaccepted. The operator's current direction requires a full internal audit and
-repairs before one consolidated external handoff, with no further separate
-R/S/C/O assignments. [The internal audit](architecture-self-audit.md) owns its
-actual inspected scope and limitations; the
-[disposition register](architecture-review-dispositions.md) retains external
-findings and independent omissions. The full internal audit and frozen
-source/native/package/installed and hosted Linux/macOS checks pass at `a5912ab`;
-the single consolidated handoff is ready. No comparative run or security scan has
-executed. Use the
-[operator runbook](../operator/self-development.md) for runner/candidate separation
-and the [knowledge design](knowledge-extensions.md) for research questions.
-Production knowledge packages remain deferred to P26/P27.
+status. The consolidated `a5912ab` assessment has returned without acceptance.
+Required-delivery cancellation and abnormal-death lock ownership are being
+repaired, and pool loss has an explicit fail-closed recovery policy. Material
+independent SDK/sandbox coverage remains open. The
+[internal audit](architecture-self-audit.md) records actual counterexamples and
+limits; the [register](architecture-review-dispositions.md) owns current
+dispositions and independent omissions. The
+[used brief](../operator/architecture-review.md) is archived, with no additional
+R/S/C/O sequence scheduled. No comparative run or security scan has executed.
+Use the [operator runbook](../operator/self-development.md) for runner/candidate
+separation and the [knowledge design](knowledge-extensions.md) for research
+questions. Production knowledge packages remain deferred to P26/P27.
 
 The experiment asks two separate questions: can Ipse produce a reliable,
 implementable research proposal, and can it develop and verify improvements to

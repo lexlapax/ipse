@@ -205,6 +205,7 @@ defmodule Ipse.HTTPProfile do
           case start_client(backend, name) do
             {:ok, profile} ->
               profile_monitor = Process.monitor(profile)
+              children = monitor_children(profile, backend)
 
               send(
                 owner,
@@ -237,6 +238,7 @@ defmodule Ipse.HTTPProfile do
 
               Process.demonitor(profile_monitor, [:flush])
               stop_profile(profile, backend)
+              Enum.each(children, fn {pid, ref} -> await_exit(pid, ref) end)
               if borrower_stopped, do: :ok, else: {:error, :cleanup_unconfirmed}
 
             _ ->
@@ -312,6 +314,14 @@ defmodule Ipse.HTTPProfile do
         await_exit(profile, monitor)
     end
   end
+
+  defp monitor_children(profile, {:finch, _}) do
+    for {_, pid, _, _} <- Supervisor.which_children(profile),
+        is_pid(pid),
+        do: {pid, Process.monitor(pid)}
+  end
+
+  defp monitor_children(_, _), do: []
 
   defp await_exit(pid, monitor) do
     receive do

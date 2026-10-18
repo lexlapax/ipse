@@ -342,6 +342,37 @@ defmodule Ipse.DelegationSessionTest do
     refute_receive {:delegation_provider, %{parent_session_id: _}, _, _, _, _}, 100
   end
 
+  test "parent lock remains held until a delegated child's stalled scope exits", ctx do
+    parent = start(ctx, %{subagents: true, approval: :allow, delegation_behavior: :wait})
+    id = Session.info(parent).id
+    :ok = Session.prompt(parent, "hold delegated cleanup")
+    assert_receive {:delegation_child_waiting, _, worker}, 3_000
+    [{scope, _}] = Registry.lookup(Ipse.Registry, {Ipse.TaskResources, worker})
+    guard = :sys.get_state(parent).lock_guard
+    monitor = Process.monitor(guard)
+    :erlang.suspend_process(scope)
+
+    try do
+      Process.exit(parent, :kill)
+
+      assert eventually(
+               fn -> not Process.alive?(parent) and not Process.alive?(worker) end,
+               2_000
+             )
+
+      result = Ipse.Runner.lock(Path.join(ctx.dir, id <> ".lock"))
+      if match?({:ok, _}, result), do: Ipse.Runner.unlock(elem(result, 1))
+      assert match?({:error, _}, result)
+      assert Process.alive?(guard)
+    after
+      :erlang.resume_process(scope)
+    end
+
+    assert_receive {:DOWN, ^monitor, :process, ^guard, :normal}, 5_000
+    assert {:ok, lock} = Ipse.Runner.lock(Path.join(ctx.dir, id <> ".lock"))
+    assert :ok = Ipse.Runner.unlock(lock)
+  end
+
   test "denying a child's proposed write keeps the workspace unchanged", ctx do
     parent = start(ctx, %{subagents: true, delegation_behavior: :write})
     :ok = Session.prompt(parent, "delegate a change")

@@ -23,19 +23,23 @@ quality. Subscription, API and installed Ollama checks have separate
 [provider verification](developer/testing.md#provider-verification-status).
 
 P23 is complete within its one-shot text/accounting scope. P24 is the active gate.
-The package R review at `7810925` challenged pre-spawn cleanup, the incomplete
-provider HTTP bound and the broadened MCP test outcome. It also identified idle
-required-peer loss and an HTTP guardian race. Those findings and the additional
-composition defects from the full internal adversarial audit are repaired at
-`a5912ab`. Ownership, SDK/delivery, context/egress
-and OS/persistence have been inspected, with the complete Session state machine,
-actual test bodies and explicit residual limits. Frozen source/native/package/
-installed and hosted Linux/macOS verification pass; the consolidated handoff is
-ready. The operator explicitly requested one consolidated final handoff
-rather than further separate external R/S/C/O rounds. The previous brief is archived;
-the historical independent coverage remains partial and unaccepted. R/S/C/O
-now name internal inspection areas, not additional external assignments. Earlier
-internal and hosted passes remain scoped evidence, not architectural acceptance.
+The consolidated independent assessment of `a5912ab`/evidence `a21469e` has
+returned without acceptance. It confirms the earlier repairs but identifies
+required-extension cancellation leaving delivery blocked and abnormal Session
+death freeing the lock before dependent work stops. It also requests a decision
+on HTTP-pool loss and retains material independent SDK/sandbox coverage gaps.
+
+The active repair distinguishes explicit host cancellation from unexpected
+consumer loss, retains the session lock through an independent quiescence guard,
+and keeps pool loss fail closed with explicit idle resume. A further controlled
+probe found premature HTTP-slot release after top-supervisor death; the guardian
+now awaits its supervised children. These repairs need their own frozen
+source/native/package/installed and hosted gates. Earlier passing `a5912ab`
+evidence does not certify this delta. The used consolidated brief is archived;
+no additional R/S/C/O review sequence is scheduled. The
+[register](developer/architecture-review-dispositions.md) owns dispositions and
+remaining independent omissions; the [internal audit](developer/architecture-self-audit.md)
+records implementation-side counterexamples and limits.
 The operator's 2026-10-17 direction
 puts independent architectural challenge, security review and a large supervised
 self-development trial ahead of media. P24 now owns architecture/security
@@ -48,7 +52,7 @@ new source transfer or dependency, or select a production engine.
 | Milestone or gate | Current state | Next result |
 | --- | --- | --- |
 | [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within selected scope; source/native/package/installed and hosted Linux/macOS passed | Retain accounting invariants through P24/P25 review and repairs |
-| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Full internal audit/repairs and final platform checks complete at a5912ab; consolidated handoff ready; independent acceptance open | One consolidated external assessment, then triage the baseline security scan |
+| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Consolidated review returned; acceptance withheld; cancellation/lock repairs and pool-loss disposition active | Verify the repaired delta, resolve material independent coverage, then triage the baseline security scan |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Planned revised scope; unstarted | Independent Codex/Ipse research, Ipse-authored repairs, fresh acceptance runs and final architecture/security review |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Deferred; proposed scope subject to P25 decisions | Independently selectable working/long-term memory tools and optional lifecycle policies |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; proposed scope subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
@@ -63,12 +67,13 @@ P25's runner. Historical repair revisions, platform results and investigations b
 
 Execution order:
 
-1. Use the completed [internal audit](developer/architecture-self-audit.md),
-   [repair register](developer/architecture-review-dispositions.md) and verified
-   `a5912ab` baseline for the single consolidated
-   [external handoff](operator/architecture-review.md). Disposition applicable
-   findings, then run and triage the baseline OpenAI security audit. The internal
-   audit and green platform checks do not grant independent acceptance.
+1. Finish the consolidated assessment's applicable repairs and disposition checks
+   in the [internal audit](developer/architecture-self-audit.md) and
+   [register](developer/architecture-review-dispositions.md), then verify frozen
+   source/native/package/installed and hosted Linux/macOS behavior. Resolve the
+   recorded material independent coverage before accepting architecture or
+   starting the baseline security scan. No new external assignment is launched
+   by recording these gates.
 2. Execute P25's independent research, discrepancy comparison, Ipse-authored
    repairs and fresh same-input/held-out reruns. Finish with an external
    architecture delta review and security review/rescan of the final candidate.
@@ -149,30 +154,32 @@ and arbitrary trusted out-of-band calls cannot establish an invoice ceiling.
 
 ## P24: independent architecture validation and baseline security
 
-**In progress; full internal audit/repairs and platform gates complete; one consolidated external handoff ready.**
-The returned package R review of `7810925` confirms most prior repairs but finds
-a false cleanup failure before MCP launch and an HTTP bound covering only streamed
-success responses. It also challenges idle required-peer loss, unexplained clean
-MCP exit outcomes, shell/lock ticket ordering and an HTTP guardian lookup race.
-The [internal audit](developer/architecture-self-audit.md) and
-[register](developer/architecture-review-dispositions.md) track concrete reproductions,
-repairs, source inspection and tests, including real Session startup failure and
-the additional active HTTP borrower/pool cleanup gap found internally.
+**In progress; consolidated review returned without acceptance; repair verification active.**
+The external assessment of source `a5912ab` and evidence `a21469e` confirms the
+previous ownership/egress/context repairs within its inspected scope. It found
+no High/Critical defect there, but B-1's required-consumer cancellation and A1's
+abnormal-death lock race are applicable gaps. Internal tests reproduce both.
+Explicit host cancellation now releases confirmed extension-owned enrollments
+while fresh input must reinitialize the same required selection. A separate
+lock guardian survives Session death and fences replacement work until tracked
+writer/tasks/scopes/resource and child guards exit. Dispatch tracking covers
+nested helpers and delegated children.
 
-The repair distinguishes pre-spawn refusal from uncertain dispatched work, bounds
-all inference/auth response statuses using existing Finch clients, and keeps
-required text delivery until explicit release. The full internal pass additionally
-repairs passive terminal-helper closure, callback failure clearing required delivery,
-feed cleanup during task death, invalid/oversized prompt admission, ambiguous
-research previews, compacted unknown recovery and main endpoint drift on resume.
-It inspects the complete Session state machine and SDK/delivery, auth/egress,
-context/recovery and OS/persistence/accounting boundaries with actual regression
-bodies. Frozen source/native/package/installed and hosted Linux/macOS checks pass
-at `a5912ab`; the single consolidated [handoff](operator/architecture-review.md)
-is ready. The historical external checkpoint remains partial; internal work is
-not independent acceptance.
-Exact failed and passing runs belong in
+Pool loss remains an explicit conservative Session stop with inert manual resume.
+A rejected cooperative alternative left Finch's caller blocked. A controlled
+probe also found the old HTTP guardian releasing its name while a supervised
+child remained alive; it now waits for those children. Normal cancellation must
+retain native-helper receipts before terminating nested task processes. These
+compositions are tested together; final exact-source/platform results belong in
 [testing](developer/testing.md#current-evidence-and-next-checks).
+
+Independent SDK authority and sandbox coverage remains materially incomplete.
+Internal inspection and passing fixtures cannot close those external omissions.
+The [disposition register](developer/architecture-review-dispositions.md) retains
+the cumulative independent checkpoint and current policy decisions; the
+[operator review page](operator/architecture-review.md) records the returned
+assessment and archived prompt rather than another assignment. Baseline security
+and P25 remain gated.
 
 Torn-ledger continuation preserves the damaged tree and its liability; automatic
 ledger repair remains unavailable. Synthetic startup still takes about 20 seconds
@@ -182,11 +189,12 @@ The [disposition register](developer/architecture-review-dispositions.md) owns
 F1–F7, S1–S3, D1–D9, A1–A7 and PA-1–PA-15; [testing](developer/testing.md#current-evidence-and-next-checks)
 owns exact revisions, counts and platform receipts.
 
-The reports through `7810925` are static reviews with unrun proposals and
-explicit omissions. Preserve that exact independent checkpoint and challenge the
-final repair delta and cross-boundary interactions in one consolidated handoff.
-The operator requested a full internal audit before that handoff and no further
-separate external R/S/C/O rounds. The
+The reports through `7810925` and the returned consolidated assessment of
+`a5912ab` are static reviews with unrun proposals and explicit omissions. Preserve
+their cumulative independent checkpoint and identify which later evidence closes
+each material gap. The operator requested a full internal audit and one
+consolidated handoff, which has now returned; no further separate external
+R/S/C/O rounds are scheduled. The
 [evaluation protocol](developer/self-hosting-evaluation.md#independent-adversarial-architecture-validation)
 keeps independent source assessment before dispositions and distinguishes
 implementation-side coverage from external acceptance. No fixed number of reviews

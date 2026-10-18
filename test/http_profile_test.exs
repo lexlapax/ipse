@@ -2,6 +2,123 @@ defmodule Ipse.HTTPProfileTest do
   use ExUnit.Case, async: false
   alias Ipse.HTTPProfile
 
+  test "private provider pool loss stops Session and requires explicit inert resume" do
+    root = Path.join(System.tmp_dir!(), "ipse-pool-loss-#{Ipse.Usage.id()}")
+    File.mkdir_p!(root)
+    {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}])
+    {:ok, {_, port}} = :inet.sockname(listener)
+
+    config = %{
+      provider: :ollama,
+      model: "fixture",
+      base_url: "http://127.0.0.1:#{port}",
+      home: Path.join(root, "home"),
+      approval: :deny
+    }
+
+    {:ok, session} =
+      DynamicSupervisor.start_child(
+        Ipse.Sessions,
+        {Ipse.Session,
+         config: config, cwd: root, state_dir: Path.join(root, "sessions"), subscriber: self()}
+      )
+
+    id = Ipse.Session.info(session).id
+    monitor = Process.monitor(session)
+
+    try do
+      :ok = Ipse.Session.prompt(session, "held provider connection")
+      {:ok, socket} = :gen_tcp.accept(listener, 5_000)
+
+      try do
+        assert {:ok, _} = :gen_tcp.recv(socket, 0, 5_000)
+        worker = :sys.get_state(session).task.pid
+        worker_monitor = Process.monitor(worker)
+        guardian = HTTPProfile.finch_guardian(worker)
+
+        pool =
+          Registry.keys(Ipse.Registry, guardian)
+          |> Enum.find_value(fn
+            {HTTPProfile, name} when is_atom(name) ->
+              {:dictionary, dictionary} = Process.info(Process.whereis(name), :dictionary)
+              [supervisor | _] = Keyword.fetch!(dictionary, :"$ancestors")
+              if is_atom(supervisor), do: Process.whereis(supervisor), else: supervisor
+
+            _ ->
+              nil
+          end)
+
+        assert is_pid(pool)
+        Process.exit(pool, :kill)
+        assert_receive {:ipse, ^session, {:done, :error}}, 5_000
+        assert_receive {:DOWN, ^monitor, :process, ^session, :normal}, 5_000
+        assert_receive {:DOWN, ^worker_monitor, :process, ^worker, _}, 5_000
+        assert :ok = await_socket_close(socket, System.monotonic_time(:millisecond) + 2_000)
+        dir = Path.join(root, "sessions")
+        {:ok, events} = Ipse.Journal.load(dir, id)
+        assert {:ok, _} = Ipse.Session.restore_context(events)
+
+        {:ok, resumed} =
+          DynamicSupervisor.start_child(
+            Ipse.Sessions,
+            {Ipse.Session, config: config, cwd: root, state_dir: dir, id: id, subscriber: self()}
+          )
+
+        assert Ipse.Session.info(resumed).phase == :idle
+        assert {:ok, ^events} = Ipse.Journal.load(dir, id)
+        assert {:error, :timeout} = :gen_tcp.accept(listener, 100)
+        assert :ok = Ipse.Session.close(resumed)
+      after
+        :gen_tcp.close(socket)
+      end
+    after
+      if Process.alive?(session), do: Ipse.Session.close(session)
+      :gen_tcp.close(listener)
+      File.rm_rf!(root)
+    end
+  end
+
+  defp await_socket_close(socket, deadline) do
+    case :gen_tcp.recv(socket, 0, max(deadline - System.monotonic_time(:millisecond), 0)) do
+      {:ok, _already_sent_request_bytes} -> await_socket_close(socket, deadline)
+      {:error, :closed} -> :ok
+      other -> other
+    end
+  end
+
+  test "pool loss retains its HTTP slot until a stalled named child exits" do
+    parent = self()
+
+    borrower =
+      spawn(fn ->
+        HTTPProfile.with_finch(fn name ->
+          send(parent, {:client_tree, name, HTTPProfile.finch_guardian(self())})
+          Process.sleep(:infinity)
+        end)
+      end)
+
+    on_exit(fn -> Process.exit(borrower, :kill) end)
+    assert_receive {:client_tree, name, guardian}, 2_000
+    registry = Process.whereis(name)
+    {:dictionary, dictionary} = Process.info(registry, :dictionary)
+    [supervisor | _] = Keyword.fetch!(dictionary, :"$ancestors")
+    supervisor = if is_atom(supervisor), do: Process.whereis(supervisor), else: supervisor
+    monitor = Process.monitor(guardian)
+    :erlang.suspend_process(registry)
+
+    try do
+      Process.exit(supervisor, :kill)
+      refute_receive {:DOWN, ^monitor, :process, ^guardian, _}, 100
+      assert Process.alive?(registry)
+    after
+      :erlang.resume_process(registry)
+    end
+
+    assert_receive {:DOWN, ^monitor, :process, ^guardian, :normal}, 5_000
+    refute Process.alive?(registry)
+    assert HTTPProfile.with_finch(fn _ -> true end)
+  end
+
   test "bounded buffered requests stop every status before a chunked body completes" do
     for status <- [200, 201, 302, 429, 500], framing <- [:length, :chunked] do
       {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}])

@@ -171,6 +171,8 @@ defmodule Ipse.Session do
            ),
          {:ok, skills, skills_saved} <- Skills.restore(events, discovered),
          {:ok, writer} <- Writer.start(dir, id, self()) do
+      :ok = Ipse.Session.Lock.track(writer, :writer)
+
       state = %{
         id: id,
         dir: dir,
@@ -208,6 +210,8 @@ defmodule Ipse.Session do
         approval: nil,
         steps: if(question, do: question.steps, else: 0),
         lock: lock,
+        lock_guard: Ipse.Session.Lock.current(),
+        lock_guard_ref: Process.monitor(Ipse.Session.Lock.current()),
         usage: %{},
         accounting: accounting,
         usage_reads: extension_state.usage_reads,
@@ -547,6 +551,8 @@ defmodule Ipse.Session do
 
     if (worker == coordinator or MapSet.member?(s.delegation_workers, worker)) and
          origin_call in expected do
+      :ok = Ipse.Session.Lock.track_session(child)
+
       event = %{
         "type" => "delegation_started",
         "child_id" => id,
@@ -1658,6 +1664,17 @@ defmodule Ipse.Session do
               :ok
           end
 
+        if result == :ok and is_binary(resource.subscription_id) do
+          try do
+            Ipse.TextStream.unsubscribe(%{
+              server: s.text_stream,
+              subscription_id: resource.subscription_id
+            })
+          catch
+            :exit, _ -> :ok
+          end
+        end
+
         if not resource.closed,
           do:
             record(
@@ -2101,6 +2118,12 @@ defmodule Ipse.Session do
   def handle_info({:DOWN, ref, :process, _pid, _reason}, %{journal_writer_ref: ref} = s),
     do: {:stop, :journal_unavailable, s}
 
+  def handle_info({:DOWN, ref, :process, _pid, _reason}, %{lock_guard_ref: ref} = s) do
+    notify(s, {:error, "Session lock owner stopped. Inspect before resuming."})
+    notify(s, {:done, :error})
+    {:stop, :normal, s}
+  end
+
   def handle_info({:owned_task_cleanup_failed, worker}, %{task: %{pid: worker}} = s) do
     {_, next} =
       stop_work(%{s | task_cleanup_failed: true}, true, "interrupted", "cleanup_failure")
@@ -2389,7 +2412,7 @@ defmodule Ipse.Session do
       {:DOWN, ^writer_ref, :process, _, _} -> :ok
     end
 
-    Ipse.Runner.unlock(s.lock)
+    if Process.alive?(s.lock_guard), do: Ipse.Session.Lock.release(s.lock_guard)
 
     :ok
   end
@@ -4369,6 +4392,7 @@ defmodule Ipse.Session do
   defp owned_task(fun, failure_status \\ :error) do
     owner = self()
     {:ok, scope} = Ipse.TaskResources.start(owner)
+    :ok = Ipse.Session.Lock.track(scope, :scope)
 
     task =
       Task.Supervisor.async_nolink(Ipse.Tasks, fn ->
@@ -4393,13 +4417,14 @@ defmodule Ipse.Session do
         result
       end)
 
+    :ok = Ipse.Session.Lock.track(task.pid, :worker)
     :ok = Ipse.TaskResources.attach(scope, task.pid)
     send(task.pid, {:cleanup_scope_ready, scope})
     task
   end
 
   defp acquire_lock(path, retries) do
-    case Ipse.Runner.lock(path) do
+    case Ipse.Session.Lock.acquire(path) do
       {:ok, port} ->
         {:ok, port}
 

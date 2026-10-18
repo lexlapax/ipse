@@ -356,6 +356,7 @@ defmodule Ipse.Extensions.Registry do
       Ipse.ToolCall,
       Ipse.HTTPProxy,
       Ipse.TaskResources,
+      Ipse.Session.Lock,
       Ipse.Lifecycle.Source,
       Ipse.Lifecycle.Event,
       Ipse.Lifecycle.Metadata,

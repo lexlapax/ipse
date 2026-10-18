@@ -36,7 +36,10 @@ Resume also requires the saved provider destination. Repeat the original
 `--base-url` or restore its operator profile; dropping or changing that route is
 refused before inference. Older sessions use recorded request endpoint hashes
 where available. An idle legacy session cannot prove its unrecorded direct route;
-use a fresh session for unverifiable custom routing.
+implicit-default legacy resume is retained for compatibility and cannot detect
+an earlier custom-to-default change in that request-free history. Use a fresh
+reviewed session if its original route is unknown; unverifiable custom routing
+is refused.
 
 ## Handle uncertain effects and journal state
 
@@ -58,8 +61,10 @@ identity, protection and expected length and stops on detected changes; it does
 not revalidate a same-size rewrite on every write. Resume still validates saved
 history before accepting work. A journal acknowledgment that fails or exceeds
 five seconds stops the session as `journal_unavailable`; it never retries the
-record. The record may already have reached disk. Shutdown stops the writer
-before releasing the session lock, then resume inspects the durable history.
+record. The record may already have reached disk. A separate lock guardian survives abrupt Session death, stops tracked workers
+and waits for writer/scopes/resource and child-guard exits before unlocking.
+Resume can therefore remain locked after the Session PID disappears. It must not
+start a second writer or overlapping owned task. Then resume inspects durable history.
 An unrecorded result remains unknown. Storage can still delay writer termination
 and cleanup confirmation; an error is not permission to repeat an uncertain effect.
 
@@ -81,8 +86,13 @@ this does not expand the documented detached-descendant containment limits.
 After a stdio terminal result, cleanup waits passively for the actual helper exit
 within the existing deadline; it does not write cancellation into already closed
 stdin. A terminal frame alone, a forced exit or a missing exit receipt still cannot
-confirm cleanup. Task-owned HTTP guardians similarly wait for their borrower and private pool;
-local socket cleanup cannot establish whether remote work stopped.
+confirm cleanup. Task-owned HTTP guardians similarly wait for their borrower, private pool and
+its monitored child processes before releasing the client slot. If the pool
+supervisor disappears, the provider Session stops conservatively; explicitly
+resume it idle, inspect the recorded outcome, then send fresh input. Nothing is
+retried automatically. Local socket cleanup cannot establish whether remote work
+stopped. A stuck local process can keep the Session lock held beyond a caller
+timeout; inspect running work and do not delete lock files to bypass ownership.
 
 Valid diagnostic sink receipts and prompt-source checkpoints can coexist with a
 pending extension question. Saved diagnosis/handoff validate those independent

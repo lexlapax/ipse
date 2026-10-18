@@ -526,10 +526,15 @@ loss or a five-second deadline stops the request with a required-delivery error.
 Already paid usage remains recorded. Embedded clients use
 `Session.subscribe_text(session, 2, required: true)` for the same policy.
 Unexpected required-consumer loss between turns still blocks the next main
-request; broker loss cannot silently downgrade delivery. Embedded operators can
-explicitly release the lost enrollment while idle with
-`Session.unsubscribe_text(session, handle)`, then enroll a replacement. Without
-that handle, use a reviewed fresh Session. These live enrollments do not survive
+request; broker loss cannot silently downgrade delivery. For an extension-owned
+consumer, `/cancel` closes it and releases its enrollment after confirmed cleanup.
+The next task initializes a new consumer under the same required trust policy.
+This reset works while idle too; an unexpected callback failure alone never
+releases the requirement. Unconfirmed worker cleanup stops the Session instead.
+Embedded operators can release their separate live/lost handles while idle with
+`Session.unsubscribe_text(session, handle)`. Extension cancellation does not
+release those embedding handles. Dead-broker recovery without a usable handle
+requires a reviewed fresh Session. These live enrollments do not survive
 resume. A summary request cannot clear an existing main-delivery requirement.
 Omitting the setting leaves delivery optional; it does not bypass startup checks
 or turn an unconfirmed worker shutdown into confirmed cleanup.

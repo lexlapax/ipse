@@ -9,18 +9,15 @@ exploit details remain outside Git. The [plan](../plan.md) owns scheduling and t
 
 ## Provenance and coverage
 
-**Current gate:** the full internal adversarial audit and applicable repairs are
-complete at `a5912ab`; its frozen source/native/package/installed and hosted
-Linux/macOS gates pass. One consolidated external handoff is ready. The operator
-replaced separate external R/S/C/O assignments with this full internal pass. Its
-[report](architecture-self-audit.md) covers ownership, SDK/delivery, context/egress
-and OS/persistence/accounting, including new composition regressions. The
-[brief](../operator/architecture-review.md) pins this verified source and
-requires independent assessment before dispositions. The historical package R
-review at `7810925`/evidence `a46cc66` remains partial and unaccepted; internal
-inspection does not retroactively supply independent coverage. Baseline security
-and P25 remain gated. Exact failed and passing runs are retained in
-[testing](testing.md#current-evidence-and-next-checks).
+**Current gate:** the consolidated assessment at `a5912ab`/evidence `a21469e`
+returned without acceptance. The reviewer confirms the preceding repairs in
+inspected scope, while B-1 and A1 reopen required-delivery and abnormal-death
+ownership claims. The current repair and pool-loss decision are recorded below;
+they require their own final platform evidence. Material independent SDK/sandbox
+omissions remain. Internal reads do not close them. Baseline security and P25
+remain gated; no further external assignment is automatically scheduled. The
+[used prompt](../operator/architecture-review.md) is archived. Exact failed and
+passing runs remain in [testing](testing.md#current-evidence-and-next-checks).
 
 The reviewer reported Claude Code with Opus 5.5 (`claude-opus-5-5`), default
 reasoning, one subscription-selected session and no subagents or operator help
@@ -289,6 +286,46 @@ to schedule four more external rounds.
 | FA-8 endpoint resume | Actual main destination is pinned before first request. Current/legacy routing mismatch refuses unchanged history; idle legacy direct routing cannot be reconstructed |
 | Fixture readiness | All independently written worker PIDs publish atomically using per-worker stages; strict liveness/cleanup assertions retained |
 
+## Consolidated assessment of a5912ab
+
+The operator returned the complete private report for source `a5912ab`, base
+`7810925`, original `21e59fe` and evidence `a21469e`. The reviewer reports a fresh
+Opus 5.5 1M-context subscription session, default settings, no subagents or extra
+operator help, committed-object/public dependency reads and no execution or
+repository writes. Served model and dependency-tag/tarball equality were not
+independently verified. Reading took about 15 minutes plus report writing. Phase A
+was preserved before phase B. These are reviewer-reported facts, not supervisor
+runtime evidence. Acceptance was withheld; no High/Critical defect was found in
+the inspected scope.
+
+| Item | Disposition | Verification and limit |
+| --- | --- | --- |
+| B-1 / A2 required extension cancellation/release | Reproduced and repaired: confirmed host cancellation releases its owned enrollment, while the next task must reenroll under unchanged required trust | Repeated cancellation/capacity and subsequent successful delivery; unexpected failure alone and uncertain cleanup still refuse. Embedding handles are separate; broker loss is not silently reset |
+| A1 abnormal-death ownership / A7 queued writer | Reproduced unsafe resume with a suspended scope. Session.Lock now retains the native lock through actual tracked writer, worker, scope, resource and child-guard exits | Root/nested/delegated tests exercise teardown stalls and actual lock refusal/reacquisition; guardian loss stops without new appends. This does not authenticate same-user interference, confirm remote effects or strengthen detached cleanup |
+| A3 private pool-supervisor death | Accepted conservative policy, now explicit: kill the borrower, stop Session normally, resume idle only by operator action | Corrected actual-supervisor fixture pins stop/local closure/inert resume. A cooperative alternative stalled the request; it was rejected. A newly reproduced child-exit race is separately repaired: the guardian waits for its supervised children before releasing the HTTP slot |
+| A4 remote refresh rotation window | Accepted residual | Server rotation before local persistence cannot be atomically proven; no silent retry or account switch |
+| A5 sequential cleanup deadlines | Accepted residual | Close/cancel can outlast the client while multiple resources stop. The lock can remain held until actual local quiescence; timeout is not permission to delete lock files |
+| A6 request-free legacy destination | Accepted compatibility gap, wording corrected | Implicit-default resume cannot detect an unrecorded earlier custom route. Use a fresh reviewed Session when that route is unknown. Current metadata and recorded request hashes remain pinned |
+| Native E-frame invariant | Retained current contract | No-output E is known pre-spawn failure only because the native runner does not return Err after dispatch. No new protocol or stronger guarantee is claimed |
+
+The reviewer independently read the whole BASE..SOURCE delta and changed test
+bodies, Session result/cleanup/restore paths, TextConsumer, observability close,
+Runner frames, MCP transports/client change, auth HTTP/login/rotation and provider
+HTTP/OpenAI. Fixture helpers outside the hunks remain partial. Prior unchanged
+reads carry forward only at their reported scope. The current repairs change
+ownership and resource interactions and require their own verification.
+
+Material independent omissions remain: SDK registry/manifest/catalog/grants,
+CAS/tombstones, projection/contributions/services, UsageRead/TextResources and
+conformance; lifecycle/diagnostics/parity test bodies and event-job restoration;
+Anthropic/Ollama/SSE/error, JWT/store, MCP schema/config test bodies; workspace,
+skills and compaction core; Linux/macOS sandbox/process-group/cache sources;
+budget ledger/policy, normalization and delegation/parallel arbitration, plus
+older test bodies. Internal inspection does not close those omissions. Hosted
+receipts support execution scope, not independent source reading or acceptance.
+The used consolidated brief is archived. No further R/S/C/O assignment sequence,
+security scan or P25 run is scheduled by this record.
+
 ## Execution order and completion
 
 The scoped F1–F7/S1–S3 and A1–A5 repairs passed their own source/native/package/
@@ -298,11 +335,9 @@ revisions and remaining verification limits. Future repairs still need a
 regression or measured counterexample, coherent operator/developer guidance and
 their own checks before commit/push; an earlier green baseline does not cover them.
 
-The reports retain their actual provenance and partial coverage. The completed
-full internal pass, repairs and final platform checks support the single
-consolidated external brief at `a5912ab`. Its independent first phase precedes
-disclosure of this register and the internal report; later disposition checks challenge the
-whole delta and exact historical omissions. Preserve all private critiques and
-[archived briefs](../archive/index.md). No review count guarantees acceptance.
-Baseline security and P25 remain gated by applicable repairs and adequate
-independent coverage. No scan has run; P24 is open.
+The reports retain their actual provenance and partial coverage. The consolidated
+assessment has returned and its used brief is archived. Complete applicable
+repairs, exact-source verification and material independent coverage before
+acceptance. The [current review page](../operator/architecture-review.md) records
+that checkpoint; it does not launch another review sequence. Baseline security
+and P25 remain gated. No scan has run; P24 is open.

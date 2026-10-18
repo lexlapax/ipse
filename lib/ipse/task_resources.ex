@@ -25,11 +25,21 @@ defmodule Ipse.TaskResources do
 
   def async(fun) when is_function(fun, 0) do
     scope = current()
+    owner = self()
 
-    Task.async(fn ->
-      bind(scope)
-      fun.()
-    end)
+    task =
+      Task.async(fn ->
+        if is_pid(scope), do: await_ready(scope, owner)
+        bind(scope)
+        fun.()
+      end)
+
+    if is_pid(scope) do
+      :ok = GenServer.call(scope, {:track_task, task.pid})
+      send(task.pid, {:cleanup_scope_ready, scope})
+    end
+
+    task
   end
 
   def attach(scope, worker), do: GenServer.call(scope, {:attach, worker})
@@ -70,6 +80,16 @@ defmodule Ipse.TaskResources do
     :exit, _ -> {:error, :cleanup_unconfirmed}
   end
 
+  @doc false
+  def stop_async(scope), do: GenServer.cast(scope, :stop)
+
+  @impl true
+  def handle_cast(:stop, state) do
+    state = close_resources(state)
+    if is_pid(state.worker), do: Process.exit(state.worker, :kill)
+    {:stop, :normal, state}
+  end
+
   @impl true
   def init(owner) do
     Process.flag(:trap_exit, true)
@@ -80,6 +100,8 @@ defmodule Ipse.TaskResources do
        owner_ref: Process.monitor(owner),
        worker: nil,
        worker_ref: nil,
+       tasks: %{},
+       lock_guard: Ipse.Session.Lock.for_owner(owner),
        resources: %{},
        failed: false,
        closed: false
@@ -95,10 +117,20 @@ defmodule Ipse.TaskResources do
 
   def handle_call({:register, kind, pid}, {pid, _}, %{closed: false} = state)
       when kind in [:shell, :lock, :extension, :mcp, :http] and map_size(state.resources) < 32 do
+    :ok = Ipse.Session.Lock.track_in(state.lock_guard, pid, :peer)
     id = make_ref()
     resource = %{pid: pid, kind: kind, monitor: Process.monitor(pid)}
     ticket = %{scope: self(), id: id}
     {:reply, {:ok, ticket}, %{state | resources: Map.put(state.resources, id, resource)}}
+  end
+
+  def handle_call({:track_task, pid}, {caller, _}, %{closed: false} = state) when is_pid(pid) do
+    if caller in [state.owner, state.worker] or Map.has_key?(state.tasks, caller) do
+      :ok = Ipse.Session.Lock.track_in(state.lock_guard, pid, :worker)
+      {:reply, :ok, %{state | tasks: Map.put(state.tasks, pid, Process.monitor(pid))}}
+    else
+      {:reply, {:error, :cleanup_scope_closed}, state}
+    end
   end
 
   def handle_call(action, _, state) when action in [:close, :finish] do
@@ -131,8 +163,8 @@ defmodule Ipse.TaskResources do
   end
 
   def handle_info({:DOWN, ref, :process, _, _}, %{owner_ref: ref} = state) do
-    state = close_resources(state)
     if is_pid(state.worker), do: Process.exit(state.worker, :kill)
+    state = close_resources(state)
     {:stop, :normal, state}
   end
 
@@ -152,7 +184,8 @@ defmodule Ipse.TaskResources do
         {:noreply, %{state | resources: Map.delete(state.resources, id), failed: true}}
 
       nil ->
-        {:noreply, state}
+        tasks = Map.reject(state.tasks, fn {_, monitor} -> monitor == ref end)
+        {:noreply, %{state | tasks: tasks}}
     end
   end
 
@@ -172,11 +205,30 @@ defmodule Ipse.TaskResources do
   defp close_resources(state) do
     deadline = System.monotonic_time(:millisecond) + 4_000
 
-    Enum.reduce(state.resources, state, fn {id, resource}, state ->
-      result = close_resource(id, resource, deadline)
-      Process.demonitor(resource.monitor, [:flush])
-      %{state | resources: Map.delete(state.resources, id), failed: state.failed or result != :ok}
-    end)
+    state =
+      Enum.reduce(state.resources, state, fn {id, resource}, state ->
+        result = close_resource(id, resource, deadline)
+        Process.demonitor(resource.monitor, [:flush])
+
+        %{
+          state
+          | resources: Map.delete(state.resources, id),
+            failed: state.failed or result != :ok
+        }
+      end)
+
+    Enum.each(state.tasks, fn {pid, _} -> Process.exit(pid, :kill) end)
+
+    failed =
+      Enum.reduce(state.tasks, state.failed, fn {pid, ref}, failed ->
+        receive do
+          {:DOWN, ^ref, :process, ^pid, _} -> failed
+        after
+          max(deadline - System.monotonic_time(:millisecond), 0) -> true
+        end
+      end)
+
+    %{state | tasks: %{}, failed: failed}
   end
 
   defp close_resource(id, resource, deadline) do

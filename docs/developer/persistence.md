@@ -3,7 +3,9 @@
 Session owns conversation and effects. `Ipse.Journal` supplies JSONL creation,
 validated reads, inactive-file appends and locked tail repair;
 `Ipse.Journal.Writer` owns the active append descriptor. The Rust advisory lock
-continues to exclude a second session owner. Lock files retain their inode.
+continues to exclude a second session owner. `Ipse.Session.Lock` owns that Port
+independently of Session, so a Session kill or supervisor shutdown does not itself
+release it. Lock files retain their inode.
 The [architecture](architecture.md#persistence-and-recovery) owns the wider
 recovery model; [shared budgets](budgets.md) have a separate ledger contract.
 
@@ -34,10 +36,18 @@ Writer calls have an explicit five-second acknowledgment deadline. A call exit
 returns `journal_write_unconfirmed` without including private call arguments;
 every mandatory Session append path exits deliberately as `journal_unavailable`
 on refusal. A timeout proves neither absence nor completion of a write. Session
-termination shuts down owned work, kills its writer and waits for writer exit
-before releasing the advisory lock. It never retries a timed-out record. If kernel
+termination shuts down owned work and kills its writer. The independent lock
+guardian waits for tracked writer, root/nested worker, scope, registered resource
+and delegated child-guard exits before unlocking, including when Session death
+skips its termination callback. Dispatch barriers register workers before they
+can act; the writer is registered before its first append. A queued append cannot
+overlap a replacement writer while that functioning lock is retained. It never retries a timed-out record. If kernel
 IO delays process termination, cleanup can outlast client deadlines; this contract
-does not promise bounded disk latency. Resume trusts only validated durable records
+does not promise bounded disk latency. A stuck tracked process can retain the
+lock indefinitely; do not remove its lock file or claim cleanup from a timeout.
+Unexpected loss of the lock helper or guardian stops Session without appending.
+The guard is an ownership mechanism, not protection from same-user interference
+or proof that an unknown OS/remote effect stopped. Resume trusts only validated durable records
 and keeps started effects without recorded results unknown.
 
 These checks are not a live cryptographic prefix proof: a same-size in-place

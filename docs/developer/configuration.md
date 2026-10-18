@@ -60,7 +60,10 @@ forms of the same default wire route are equivalent. Legacy metadata checks all
 recorded main/compaction request endpoint hashes; with no such requests, only an
 implicit default or exactly pinned execution profile is accepted. An idle legacy
 session did not record its original direct route, so its historical destination
-cannot be reconstructed. Unverifiable custom routing requires a fresh session.
+cannot be reconstructed. Implicit-default legacy resume is retained for
+compatibility and cannot detect a previous custom-to-default change in that
+request-free history. Use a fresh reviewed session when the original route is
+unknown; unverifiable custom routing is refused.
 Instruction refresh deliberately does not reload
 execution configuration. An operator starts a new session after policy changes.
 

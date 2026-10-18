@@ -254,6 +254,9 @@ imitations of prompts. MCP target details remain part of the proposal.
 An error clears queued input with a visible message, preventing further queued
 requests after an account or usage-limit failure. Review the error and send a
 fresh task when ready.
+`/cancel` also releases cleanly stopped extension-owned text enrollments; a new
+task must enroll the selected required consumers again. It does not release
+separate embedding handles or confirm uncertain worker cleanup.
 `/cancel` clears that queue; input received while cancellation is pending is
 explicitly discarded. Send a fresh task after cancellation finishes. Repeated
 cancellation requests do not start more work. Inspect the workspace before

@@ -5,6 +5,13 @@ defmodule Ipse.JournalWriterTest do
 
   defmodule WaitingModel do
     def complete(config, _, _, emit) do
+      if config[:nested] do
+        Ipse.TaskResources.async(fn ->
+          send(config.test_pid, {:nested_model_worker, self()})
+          Process.sleep(:infinity)
+        end)
+      end
+
       send(config.test_pid, {:model_worker, self()})
 
       receive do
@@ -186,6 +193,74 @@ defmodule Ipse.JournalWriterTest do
     :ok = GenServer.stop(writer, :normal)
     assert_receive {:DOWN, ^owner_monitor, :process, ^session, :journal_unavailable}, 5_000
     assert_receive {:DOWN, ^worker_monitor, :process, ^worker, _}, 5_000
+  end
+
+  test "abrupt Session death cannot release its lock ahead of a stalled cleanup scope", c do
+    config = %{
+      provider: :demo,
+      model: "fixture",
+      provider_module: WaitingModel,
+      test_pid: self(),
+      nested: true,
+      home: Path.join(c.dir, "home"),
+      approval: :deny
+    }
+
+    opts = [config: config, cwd: c.dir, state_dir: c.dir, subscriber: self()]
+    {:ok, session} = DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, opts})
+    :ok = Ipse.Session.prompt(session, "held cleanup scope")
+    assert_receive {:model_worker, worker}, 5_000
+    assert_receive {:nested_model_worker, nested}, 5_000
+    nested_monitor = Process.monitor(nested)
+    id = Ipse.Session.info(session).id
+    [{scope, _}] = Registry.lookup(Ipse.Registry, {Ipse.TaskResources, worker})
+    :erlang.suspend_process(scope)
+    monitor = Process.monitor(session)
+
+    result =
+      try do
+        Process.exit(session, :kill)
+        assert_receive {:DOWN, ^monitor, :process, ^session, :killed}, 2_000
+        assert_receive {:DOWN, ^nested_monitor, :process, ^nested, _}, 2_000
+
+        result =
+          DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, Keyword.put(opts, :id, id)})
+
+        if match?({:ok, _}, result), do: Ipse.Session.close(elem(result, 1))
+        assert match?({:error, _}, result)
+        result
+      after
+        :erlang.resume_process(scope)
+        Process.exit(worker, :kill)
+      end
+
+    assert match?({:error, _}, result)
+    worker_monitor = Process.monitor(worker)
+    assert_receive {:DOWN, ^worker_monitor, :process, ^worker, _}, 5_000
+  end
+
+  test "lock guardian loss stops without appending under a released lock", c do
+    config = %{
+      provider: :demo,
+      model: "fixture",
+      provider_module: WaitingModel,
+      test_pid: self(),
+      home: Path.join(c.dir, "home"),
+      approval: :deny
+    }
+
+    opts = [config: config, cwd: c.dir, state_dir: c.dir, subscriber: self()]
+    {:ok, session} = DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, opts})
+    :ok = Ipse.Session.prompt(session, "held provider")
+    assert_receive {:model_worker, worker}, 5_000
+    state = :sys.get_state(session)
+    before = File.read!(Path.join(c.dir, state.id <> ".jsonl"))
+    monitor = Process.monitor(session)
+    worker_monitor = Process.monitor(worker)
+    Process.exit(state.lock_guard, :kill)
+    assert_receive {:DOWN, ^monitor, :process, ^session, :normal}, 5_000
+    assert_receive {:DOWN, ^worker_monitor, :process, ^worker, _}, 5_000
+    assert File.read!(Path.join(c.dir, state.id <> ".jsonl")) == before
   end
 
   @tag timeout: 20_000

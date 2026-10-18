@@ -148,7 +148,13 @@ Expiry is checked before initialization and every frame/reply acknowledgment.
 Callback/protocol failure or broker loss closes the subscription incomplete and
 reports a fixed status; it does not rewrite provider history or retry a frame.
 An optional consumer detaches without failing inference; loss of a required
-consumer fails delivery. Cancellation explicitly closes registered workers.
+consumer fails delivery. Host cancellation explicitly closes registered workers
+and, after confirmed cleanup, releases its own extension enrollments. The next
+operator prompt must initialize and enroll the selected required extension again;
+cancellation cannot change its trust policy. This also gives the CLI a reachable
+reset after a cleanly closed failed extension consumer. Unexpected loss alone
+never releases coverage. Embedding enrollments are not released by this extension
+cleanup, and dead-broker or unconfirmed-worker cleanup remains fail closed.
 An independent owner guardian also stops a blocked consumer after untrappable
 Session death; Worker/native ownership then closes its VM/process group. This
 does not strengthen the documented detached-descendant OS limits.

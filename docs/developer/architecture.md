@@ -21,7 +21,9 @@ The OTP application starts a unique `Registry`, a `Task.Supervisor`, and a
 `DynamicSupervisor` for independent sessions. The CLI is a thin terminal client
 and can also start the deterministic, credential-free demo. A session is one
 `GenServer`; it owns the conversation, active job, approval state, usage, and
-cross-process lock. Provider and tool work runs in monitored tasks, with events
+cross-process lock policy. A separate `Session.Lock` guardian owns the native
+lock Port so untrappable Session death cannot release it before tracked work
+stops. Provider and tool work runs in monitored tasks, with events
 sent back to the owning session and its CLI subscriber.
 
 Each owned task also has a private `TaskResources` process. Shell helpers,
@@ -37,10 +39,14 @@ missing acknowledgments, resource-owner death and failed closure remain
 unconfirmed. Losing the Session stops the scope and its dependent work. These
 receipts establish ordinary helper/group cleanup, not containment of detached
 descendants or a guarantee against uninterruptible kernel IO.
-Linked nested workflow tool, helper-model and history tasks explicitly inherit
-the outer cleanup scope through `TaskResources.async/1`. A process dictionary
-does not propagate through ordinary `Task.async/1`; losing that binding would
-omit nested shell/lock helpers from the confirmation boundary.
+Nested workflow tool, helper-model and history tasks inherit the outer cleanup
+scope through `TaskResources.async/1` and wait at a tracking barrier before their
+function runs. The lock guardian monitors the writer, root/nested workers, scopes,
+registered resource actors and delegated child guards. On Session death it kills
+workers promptly, asks scopes to drain and waits for actual process exits before
+unlocking. Normal cancellation first obtains OS-helper receipts, then terminates
+nested task processes; reversing that order loses the receipt. Ordinary
+`Task.async/1` does not carry this binding or tracking contract.
 Before attachment, the new task monitors both Session and scope while waiting
 at its dispatch barrier. If either disappears, it exits without dispatch; after
 readiness, the attached scope owns cleanup. This covers creation as well as
@@ -132,7 +138,12 @@ before accumulation, inference at 8 MiB, with verified TLS and one shared proxy
 selection policy. Literal 127/8 addresses bypass the proxy; similarly prefixed
 hostnames do not. Explicit operator NO_PROXY rules still apply.
 A monitored guardian retains the private client lease through borrower and pool
-shutdown. Guardians in an owned task also join its cleanup scope, so cancellation
+shutdown. Before a Finch client is disclosed, its guardian also monitors the
+direct supervised children. Abrupt top-supervisor death does not establish that
+its named registries/pools have exited; those children must stop before the slot
+is released. Pool-supervisor loss still kills the borrower and stops a provider
+Session conservatively. Explicit idle resume is the recovery path, without replay.
+Guardians in an owned task also join its cleanup scope, so cancellation
 waits for the borrower and pool before confirming local cleanup. MCP allocates
 the guardian lease before starting its request task; close never depends on a
 later registry lookup succeeding. Another request cannot reuse the name during
@@ -489,7 +500,12 @@ include user secrets. A state directory can be overridden with `--state-dir`.
 
 Each JSONL journal has one Session owner and an owned append process. The Rust
 helper's persistent advisory lock excludes other sessions; its inode remains in
-place. The writer validates history when opening, then encodes and fsyncs new
+place. The lock guardian outlives an abruptly killed Session and retains the Port
+until its tracked writer/workers, cleanup scopes and resource/child guards exit.
+This is local process quiescence, not confirmation of remote effects or detached
+descendant containment. Uninterruptible IO can keep the lock held past caller
+deadlines. Loss of the lock helper or guardian stops Session without further
+journal appends. The writer validates history when opening, then encodes and fsyncs new
 records without decoding all prior events. Session waits for durable acknowledgment
 before effects or source publication. File changes and writer loss fail closed;
 normal or abrupt owner loss closes the writer. The
