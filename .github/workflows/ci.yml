@@ -11,16 +11,17 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: erlef/setup-beam@v1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1
         with:
           otp-version: '27'
           elixir-version: '1.18'
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable action
       - run: mix local.rebar --force
       - run: ./scripts/build.sh
       - run: mix format --check-formatted
       - run: mix compile --warnings-as-errors
+      - run: elixir scripts/check-ci-policy.exs
       - run: mix test
       - name: macOS native enforcement
         if: runner.os == 'macOS'

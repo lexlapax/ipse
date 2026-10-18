@@ -363,9 +363,35 @@ architecture-review round. This is an execution-order exception, not a waiver of
 P25 readiness or a finding disposition. A private general cloud environment is
 published; Security Cloud uses a separate setup flow. The operator explicitly
 approved its automatic environment and the one-time GPT-5.6 Sol/high scan, with no
-added secrets or continuous monitoring. The run is active against `8b4f706`; see
-the [run record](../operator/architecture-review.md#baseline-scan). Terminal results
-and triage are pending.
+added secrets or continuous monitoring. The run completed against `8b4f706`; see
+the [run record](../operator/architecture-review.md#baseline-scan) and dispositions
+below. This does not retroactively complete the interrupted report.
+
+## Baseline security scan at 8b4f706
+
+The authorized GPT-5.6 Sol/high one-time repository scan completed on 2026-10-18
+at 13:33:24 UTC. It reports five findings and complete static coverage of all 399
+committed paths, without exclusions. It ran no application, tests, exploitation,
+live account/network integration or native enforcement. Its scope is independent
+security evidence, not blanket architectural acceptance or execution coverage.
+The report, manifest, findings and coverage artifacts were read completely,
+retained privately and SHA-256 checked against the service references. The
+[operator record](../operator/architecture-review.md#baseline-scan) links the run.
+
+| Item | Scan severity | Disposition and verification |
+| --- | --- | --- |
+| SC1 — native helper integrity | High | Applicable. A synthetic workspace helper created an outside marker before repair. Native resolution now rejects helper/application overlap before Session locking and each shell/stdio launch, refuses extra hardlinks and unsafe modes, and does not build from the target tree. The Rust Linux boundary repeats its own executable-overlap refusal. Focused boundary/runner tests pass; full source/package/platform verification is in progress |
+| SC2 — aggregate tool admission | Medium | Applicable. Admission now caps a response at 32 calls/2 MiB arguments and an operator turn at 128 calls/8 MiB. All admitted proposals count before execution, including malformed arguments, denials and preflights. Oversized responses start no calls. Real Session fan-out and cross-response malformed-attempt regressions pass; restoration retains the current-turn count |
+| SC3 — JWT cryptographic complexity | Low | Applicable hardening. Token/segment/key-count/component bounds precede integer conversion and signature verification. Supported RSA moduli are 2048–8192 bits and positive odd exponents fit in 32 bits. Signed normal-flow fixtures pass; pathological components are traced to prove they never reach the verifier. No compromised endpoint or runtime denial was exercised |
+| SC4 — mutable CI action selectors | Low | Applicable hardening. Existing actions are pinned to official full commit SHAs; the annotated setup-beam tag is dereferenced. An Elixir policy check rejects mutable external selectors and runs in CI. Runner images/compiler channels remain rolling; no new action, runtime package or external tool was introduced |
+| SC5 — same-user journal rewriting | Low | Accepted documented trust limit, not a demonstrated approval bypass. The report requires same-UID write access to a stopped private journal; it establishes no lower-trust import or unapproved effect. Owner-only storage and locking do not authenticate history against its owner. Adding more editable chain records cannot stop an owner from rewriting the whole chain. Preserve schema/source/identity checks and unknown interruption behavior, but do not claim cryptographic journal authenticity or rewrite the legacy protocol as a P24 repair. Reassess if a lower-trust ingestion path or stronger downstream impact is established |
+
+SC1–SC4 passed the local source/native/package/installed handoff; hosted platform
+receipts remain pending before closure. The scan's source is `8b4f706`, not the later repair candidate. Remaining
+shared-data/credential-staging and text-pressure concerns from the interrupted
+pass retain their own assessment; a static no-issue surface is not a reproduction
+or disposition of a more specific claim. No additional scan/review or continuous
+monitoring has been launched.
 
 ## Execution order and completion
 
@@ -382,5 +408,5 @@ repairs, exact-source verification and material independent coverage before
 acceptance. The [current review page](../operator/architecture-review.md) records
 that checkpoint and the interrupted focused completion. The operator approved the
 baseline scan first; its findings and the remaining material architectural concerns
-must be assessed before P25 proceeds. The baseline scan is running; P24 and
-architectural acceptance remain open.
+must be assessed before P25 proceeds. The baseline scan completed; its applicable
+repairs are undergoing verification. P24 and architectural acceptance remain open.

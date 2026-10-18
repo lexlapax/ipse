@@ -231,14 +231,16 @@ The PA-5/PA-6 egress repair at `42d9f1f` also passed its local and hosted
 Linux/macOS handoffs. The role/text/catalog/login batch and fixture follow-up
 passed local and hosted gates through `091b2bd`; the failed first matrix remains
 recorded below rather than being overwritten. No comparative P25 run has executed.
-The OpenAI security-service baseline is running, with no terminal result yet.
+The OpenAI security-service baseline completed with five static findings; repair
+verification is in progress.
 Security-service access checks are not scan evidence. A private cloud environment
 was explicitly created and published, but Security Cloud requires its own setup.
 The 2026-10-18 focused subscription report was interrupted by its safeguard;
 successful CLI exit does not establish review completion. The operator approved
 scanning first while architectural acceptance stays open, without another
-architecture-review round. The one-time scan is now running at `8b4f706`; pending
-execution is not a completed review or triage.
+architecture-review round. The one-time scan completed at `8b4f706`; the
+[register](architecture-review-dispositions.md#baseline-security-scan-at-8b4f706)
+distinguishes applicable repairs from the accepted private-journal trust limit.
 
 ### Focused review and cloud setup, 2026-10-18
 
@@ -274,9 +276,41 @@ environment creation and launch. The service confirms active run
 `8b4f706953bd491c08c1926bbf6c111e898a1eb3`, environment
 `6ad4c44338748191a3da3afa4d2ac91b`, created at 13:06:15 UTC and running at 13:06:32.
 The [operator record](../operator/architecture-review.md#baseline-scan) links the run.
-No local security CLI, new runtime package, billing-mode change, terminal scan
-result or P25 execution is claimed. The [security context](../../SECURITY.md) supplies the
+The run completed at 13:33:24 UTC, with no output-validation warning. The report
+claims complete static coverage of 399 paths, no exclusions, five findings (one
+High, one Medium, three Low) and no runtime/test/native-enforcement execution.
+All four UTF-8 artifacts were read to their final page and their exact digests
+matched: report `dd0e788e…`, manifest `e18a4f59…`, findings `3b490d69…` and coverage
+`0b0c4382…`. Raw artifacts remain private outside Git. Service usage is $41.79,
+fully allowance-covered, with no pending billing or error.
+No local security CLI, new runtime package, billing-mode change or P25 execution
+is claimed. The [security context](../../SECURITY.md) supplies the
 review threat model, including check/use and shared-grant/temporary-secret seams.
+
+The repair candidate's synthetic native-helper test failed before the fix by
+creating an outside-workspace marker; no credential or real exploit target was
+used. Post-repair runner/native tests passed 44 cases (22 exclusions). Tool/auth
+checks passed 35 cases, then 31 including real multi-response attempt exhaustion
+and traced pre-crypto rejection. The native-initialization/CI/Session set exposed
+a linked failed-start test-fixture issue, corrected to the supervised start path;
+both boundary cases then passed. The final native-inclusive suite passed 875 tests
+with zero failures and 15 Mac exclusions in 237.8 seconds. Build, actual Elixir
+1.18.4/1.20.4 formatter checks, strict compilation, CI pin policy and the isolated
+demo passed. The strengthened JWT trace includes a passing-signature positive
+control, and its selected test also passed. An intermediate compile caught the
+new guard before its `cwd` binding;
+it now follows canonicalization and precedes journal/lock setup.
+
+The rebuilt archive SHA-256 is
+`9b1c78692e1507cb7942f0347acb5c104f52910b0aae3d88def5453de725f496`.
+Extracted-package verification passed, including the root `SECURITY.md`, native
+helper/application separation and aggregate call quotas. Independent installed
+proofs passed all 41 extension and nine model-call assertions with unchanged
+archive/host bytes and no system development toolchain on runtime PATH. The
+deliberate service-crash cleanup remains unconfirmed/`safe_to_continue: false`.
+Hosted Linux/macOS verification of this repair candidate is pending; earlier
+platform receipts do not certify it. Documentation checks cover 112 root/docs
+Markdown files and 1,577 local links/anchors with zero errors.
 
 The fresh report at source `091b2bd`/evidence `20b377c` found two applicable
 interaction defects despite that passing matrix. The subsequent internal audit
@@ -300,8 +334,11 @@ passed their own frozen checks at `99bbbdf`. A later real blocked-write probe
 exposed that process exit does not fence filesystem IO. The additional completion-owner
 repair passed a new frozen baseline and hosted matrix at `e8f7ad5`; that evidence
 is separate from the first repair's green run.
-Material independent SDK/sandbox coverage remains open. Baseline security and P25
-remain gated; no additional external review sequence has been scheduled.
+The completed baseline adds claimed whole-tree independent static security
+coverage; it does not retroactively expand earlier reviewer reads or establish
+runtime enforcement. Security-repair platform verification, remaining architecture
+concerns and P25 readiness remain open; no further architecture-review sequence
+has been scheduled.
 
 During P23E2 iteration, a full run overlapped a focused recompile and produced
 eight artifact-admission failures; that run was discarded. Final verification

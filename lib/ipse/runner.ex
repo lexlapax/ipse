@@ -13,6 +13,27 @@ defmodule Ipse.Runner do
   @root Path.expand("../..", __DIR__)
   @default_limit 65_536
 
+  @doc false
+  def native_helper(cwd) do
+    with {:ok, helper} <- helper_path(false),
+         {:ok, %{type: :regular, links: 1, mode: mode, size: size}} <- File.lstat(helper),
+         true <- Bitwise.band(mode, 0o022) == 0 and Bitwise.band(mode, 0o111) != 0,
+         true <- size <= 32 * 1024 * 1024,
+         {:ok, canonical} <- Ipse.WorkspaceContext.canonical_path(helper),
+         :ok <- Ipse.Sandbox.helper_boundary(cwd, canonical) do
+      {:ok, canonical}
+    else
+      {:error, reason} when is_binary(reason) ->
+        {:error, reason}
+
+      _ ->
+        {:error, "native helper must be a bounded, single-link, non-writable regular executable"}
+    end
+  end
+
+  defp selected_helper(nil, _cwd), do: helper_path()
+  defp selected_helper(_profile, cwd), do: native_helper(cwd)
+
   @doc "Acquire a persistent advisory lock. Its Port must remain owned by the session."
   def lock(path) when is_binary(path) do
     with :ok <- launch_text(path),
@@ -175,7 +196,7 @@ defmodule Ipse.Runner do
 
       true ->
         with {:ok, policy} <- Ipse.Sandbox.resolve(Keyword.get(opts, :sandbox, :off), cwd),
-             {:ok, helper} <- helper_path(policy.profile != "macos-workspace-v1"),
+             {:ok, helper} <- selected_helper(policy.profile, policy.cwd),
              {:ok, launch} <- stdio_launch_args(helper, policy, timeout_ms, executable, args) do
           selected = Map.merge(%{"PATH" => "/usr/bin:/bin", "LANG" => "C.UTF-8"}, selected_env)
           supervisor = %{"PATH" => "/usr/bin:/bin", "LANG" => "C.UTF-8"}
@@ -496,7 +517,7 @@ defmodule Ipse.Runner do
   end
 
   defp run_supervised(command, cwd, timeout, limit, emit, profile) do
-    with {:ok, helper} <- helper_path(profile != "macos-workspace-v1"),
+    with {:ok, helper} <- selected_helper(profile, cwd),
          {:ok, args} <- launch_args(helper, profile, cwd, timeout, command),
          {:ok, port, ticket} <-
            owned_port(:shell, helper, [
@@ -724,7 +745,7 @@ defmodule Ipse.Runner do
 
     case Enum.find(paths, &(is_binary(&1) and File.regular?(&1))) do
       nil when allow_build -> build_helper()
-      nil -> {:error, "native macOS helper missing; run scripts/build.sh before starting Ipse"}
+      nil -> {:error, "native helper missing; run scripts/build.sh before starting Ipse"}
       path -> {:ok, Path.expand(path)}
     end
   end

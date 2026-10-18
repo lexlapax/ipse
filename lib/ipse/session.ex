@@ -139,6 +139,7 @@ defmodule Ipse.Session do
          :ok <- Ipse.Budget.Policy.runtime(config),
          {:ok, cwd} <- WorkspaceContext.canonical_path(requested_cwd),
          true <- File.dir?(cwd),
+         {:ok, _sandbox} <- Ipse.Sandbox.resolve(Map.get(config, :sandbox, :off), cwd),
          {:ok, id, _events} <- open(dir, id, cwd, config),
          {:ok, _} <- Registry.register(Ipse.Registry, {dir, id}, nil),
          {:ok, lock} <- acquire_lock(Path.join(dir, id <> ".lock"), 10),
@@ -209,6 +210,7 @@ defmodule Ipse.Session do
         question: question,
         approval: nil,
         steps: if(question, do: question.steps, else: 0),
+        tool_budget: ToolCall.restore_budget(messages),
         lock: lock,
         lock_guard: Ipse.Session.Lock.current(),
         lock_guard_ref: Process.monitor(Ipse.Session.Lock.current()),
@@ -1412,7 +1414,15 @@ defmodule Ipse.Session do
             end
 
           s = append_message(s, %{"role" => "user", "content" => text})
-          s = %{s | steps: 0, final: "", mcp_ready: false, delegations: 0}
+
+          s = %{
+            s
+            | steps: 0,
+              final: "",
+              mcp_ready: false,
+              delegations: 0,
+              tool_budget: ToolCall.empty_budget()
+          }
 
           next =
             if Host.enabled?(s.config, "transform.prompt"),
@@ -2030,7 +2040,8 @@ defmodule Ipse.Session do
 
       {:model, {:ok, assistant, usage}} ->
         calls = if is_nil(assistant["tool_calls"]), do: [], else: assistant["tool_calls"]
-        valid_calls = valid_tool_ids?(calls)
+        admission = ToolCall.admit(calls, s.tool_budget)
+        valid_calls = match?({:ok, _}, admission)
 
         s =
           if valid_calls do
@@ -2040,7 +2051,7 @@ defmodule Ipse.Session do
               "type" => "provider_response_refused",
               "version" => 1,
               "request_id" => s.last_request_id,
-              "reason" => "tool_call_identity",
+              "reason" => admission |> elem(1) |> Atom.to_string(),
               "message" => assistant
             })
 
@@ -2055,6 +2066,8 @@ defmodule Ipse.Session do
             reported_model: reported_model(assistant)
         }
 
+        s = if valid_calls, do: %{s | tool_budget: elem(admission, 1)}, else: s
+
         notify(s, {:usage, usage})
 
         cond do
@@ -2062,7 +2075,11 @@ defmodule Ipse.Session do
             {:noreply,
              fail(
                %{s | calls: []},
-               "Invalid or duplicate tool-call identities; no call was started."
+               if(admission == {:error, :tool_call_limit},
+                 do:
+                   "Tool-call count or argument budget exceeded; no call from this response was started.",
+                 else: "Invalid or duplicate tool-call identities; no call was started."
+               )
              )}
 
           calls != [] ->
@@ -2823,15 +2840,6 @@ defmodule Ipse.Session do
         "otherwise choose a suitable context ceiling or start a new session with necessary context. No tools were replayed."
     )
   end
-
-  defp valid_tool_ids?(calls) when is_list(calls) do
-    Enum.all?(calls, fn
-      %{"id" => id} -> ToolCall.valid_id?(id)
-      _ -> false
-    end) and length(Enum.uniq_by(calls, & &1["id"])) == length(calls)
-  end
-
-  defp valid_tool_ids?(_), do: false
 
   defp next_tool(%{calls: []} = s), do: model(s)
 

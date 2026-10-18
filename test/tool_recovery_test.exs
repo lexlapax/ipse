@@ -18,6 +18,21 @@ defmodule Ipse.ToolRecoveryTest do
     end
   end
 
+  defmodule FanoutModel do
+    def complete(_, messages, _, _) do
+      count = Enum.count(messages, &(&1["role"] == "tool"))
+
+      calls =
+        for n <- 1..32,
+            do: %{
+              "id" => "attempt-#{count + n}",
+              "function" => %{"name" => "read", "arguments" => "invalid"}
+            }
+
+      {:ok, %{"role" => "assistant", "content" => "", "tool_calls" => calls}, %{}}
+    end
+  end
+
   setup do
     root = Path.join(System.tmp_dir!(), "ipse-tool-recovery-#{Ipse.Usage.id()}")
     File.mkdir_p!(root)
@@ -152,6 +167,56 @@ defmodule Ipse.ToolRecoveryTest do
       assert Session.info(resumed).phase == :idle
       assert :ok = Session.close(resumed)
     end
+  end
+
+  test "oversized call batches are refused before any approval or effect", c do
+    calls =
+      for n <- 1..33,
+          do: call("call-#{n}", "write", %{"path" => "must-not-write", "content" => "no"})
+
+    pid = start(c, calls)
+    :ok = Session.prompt(pid, "Synthetic call fan-out")
+    assert_receive {:ipse, ^pid, {:done, :error}}, 2_000
+    refute File.exists?(Path.join(c.root, "must-not-write"))
+    {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
+    refute Enum.any?(events, &(&1["type"] == "tool_started"))
+
+    assert Enum.any?(
+             events,
+             &(&1["type"] == "provider_response_refused" and &1["reason"] == "tool_call_limit")
+           )
+
+    assert :ok = Session.close(pid)
+  end
+
+  test "malformed tool attempts exhaust the aggregate turn quota before the step limit", c do
+    config = %{
+      provider: :demo,
+      model: "fixture",
+      provider_module: FanoutModel,
+      home: Path.join(c.root, "home"),
+      approval: :allow,
+      max_steps: 30
+    }
+
+    {:ok, pid} =
+      DynamicSupervisor.start_child(
+        Ipse.Sessions,
+        {Session, config: config, cwd: c.root, state_dir: c.dir, subscriber: self()}
+      )
+
+    on_exit(fn -> if Process.alive?(pid), do: Session.close(pid) end)
+    :ok = Session.prompt(pid, "Synthetic multi-response fan-out")
+    assert_receive {:ipse, ^pid, {:done, :error}}, 10_000
+    {:ok, events} = Journal.load(c.dir, Session.info(pid).id)
+    assert Enum.count(events, &(get_in(&1, ["message", "role"]) == "tool")) == 128
+
+    assert Enum.any?(
+             events,
+             &(&1["type"] == "provider_response_refused" and &1["reason"] == "tool_call_limit")
+           )
+
+    assert :ok = Session.close(pid)
   end
 
   test "incomplete and contradictory helper frames stay unknown while explicit setup refusal is known",

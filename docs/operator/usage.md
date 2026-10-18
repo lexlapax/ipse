@@ -21,6 +21,12 @@ IPSE_TRY_DIR=$(mktemp -d)
 Ask Ipse to create `hello.exs` that prints `hello`, run it, and summarize the
 result. Review each proposed file and shell call before approving it.
 
+One provider response may propose at most 32 tool calls and 2 MiB of arguments;
+one operator turn may admit 128 calls and 8 MiB of arguments. Invalid arguments
+and denied/preflight calls still count. An excess response starts none of its
+calls and ends the turn with a budget error. Review prior outcomes before a new
+prompt; continuation of a saved question retains that turn's count.
+
 Open the printed **Continue with ChatGPT** URL in a browser on the same machine.
 Authorize Ipse and ChatGPT plan usage. The app listens on a temporary
 `127.0.0.1` callback port. On a remote machine, use a browser/port-forward arrangement
@@ -177,7 +183,11 @@ lookup means a path is not visible or accessible to that tool; it does not prove
 host absence. USER and host environment values are not supplied to native shells.
 
 Root, home directories, protected credential directories, and broad system
-workspaces are refused. Secrets already inside the selected workspace remain
+workspaces are refused. On both platforms, the workspace must also be separate
+from the active application and native helper. For self-development, run an
+installed bundle outside the candidate checkout. Native mode requires a prebuilt
+helper and refuses hardlinked or group/other-writable helper files.
+Secrets already inside the selected workspace remain
 accessible. User toolchains/home caches, `/proc`, and network package fetching
 may be unavailable. Resource ceilings are per process or real UID, not aggregate
 memory/disk quotas. See [native policy and limits](../developer/sandbox.md).

@@ -16,6 +16,12 @@ exposes cancellation and abnormal-death gaps missed by this implementation-side
 pass. The current repairs and their limits are described below. Internal coverage
 does not fill the reviewer's remaining material SDK/sandbox omissions.
 
+The later baseline security scan found helper integrity and aggregate call
+admission gaps missed by this internal pass, plus JWT/CI hardening. Its
+[dispositions](architecture-review-dispositions.md#baseline-security-scan-at-8b4f706)
+separate source claims, reproduced behavior, repairs and accepted limits. Internal
+coverage is not a claim that those earlier designs were correct.
+
 The review followed ownership, permission, source identity, durability, egress and
 resource bounds across complete execution/recovery paths, rather than treating
 passing modules as sufficient. It inspected the complete current Session state
@@ -127,6 +133,25 @@ turned into stronger containment guarantees.
 
 ## Verification and remaining limits
 
+The security-repair composition was checked across Session initialization,
+ancillary locks and shell/stdio launches: native helper/application overlap must
+be refused before any workspace mutation or lock helper can run, not only inside
+the command supervisor. Repeated checks use the selected canonical helper and
+reject hardlink aliases. The native Linux helper supplies a second overlap guard.
+Default trusted execution retains its existing authority; same-user replacement
+outside native writable roots remains outside that confinement boundary.
+
+Tool-call admission charges complete response batches before any dispatch and
+restores current-turn usage from effective conversation. Invalid-argument loops
+exercise the actual Session until 128 calls are consumed; an over-limit batch
+starts no effect. JWT tests include a valid traced signature as a positive
+control, then confirm pathological components never reach cryptographic verify.
+CI pins were resolved from official upstream references and the local policy
+check rejects mutable selectors. Package review also caught the missing root
+security-policy file; it is now bundled and checked. Exact receipts remain in
+[testing](testing.md#current-evidence-and-next-checks), with platform verification
+still pending for this candidate.
+
 The `a5912ab` and `99bbbdf` matrices remain evidence for their exact sources and
 exercised scopes. The additional filesystem-completion repair passed a frozen
 local baseline, package and both installed-artifact proofs at `74686f1`.
@@ -137,7 +162,7 @@ follows verified dispatch/effect with strict unknown and one-effect assertions.
 Trace-owner setup is synchronous, with
 unchanged capture/revocation deadlines. The complete source/test matrix passed
 on Linux/macOS at `e8f7ad5`, including native Mac enforcement and both installed
-proofs per host. Runtime source remains unchanged from `74686f1`.
+proofs per host. That historical runtime source was unchanged from `74686f1`.
 
 [Testing](testing.md#current-evidence-and-next-checks) owns exact revisions and
 receipts. Earlier passes do not certify later code. The used review brief is

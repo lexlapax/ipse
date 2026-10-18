@@ -144,14 +144,20 @@ See [the fixed profile](sandbox.md).
 ## Existing CI dependencies
 
 The [checks workflow](../../.github/workflows/ci.yml) uses GitHub Actions on
-`ubuntu-latest` and `macos-14`, [actions/checkout@v4](https://github.com/actions/checkout),
-[erlef/setup-beam@v1](https://github.com/erlef/setup-beam) (Elixir 1.18 / OTP 27),
-and [dtolnay/rust-toolchain@stable](https://github.com/dtolnay/rust-toolchain).
+`ubuntu-latest` and `macos-14`,
+[actions/checkout v4](https://github.com/actions/checkout/tree/11d5960a326750d5838078e36cf38b85af677262),
+[erlef/setup-beam v1](https://github.com/erlef/setup-beam/tree/54075bcc5e249e4758d363f27d099f55d843f124)
+(Elixir 1.18 / OTP 27), and
+[dtolnay/rust-toolchain stable action](https://github.com/dtolnay/rust-toolchain/tree/b725eda525362e7cf34af9a7243cac1e3f01a7ec).
 These are CI-only hosted services/actions,
 not Ipse runtime packages. Their sources are the named GitHub repositories;
 checkout, setup-beam, and the rust-toolchain action use MIT. The Rust compiler
 and standard library have separate MIT OR Apache-2.0 licensing.
-The runner image and action tags are rolling inputs; record changes and obtain
+All three action implementations are pinned to full commit SHAs, resolved from
+their official upstream selectors on 2026-10-18; the setup-beam annotated tag was
+dereferenced to its commit. `elixir scripts/check-ci-policy.exs` rejects mutable
+external action selectors and runs in CI. Runner images and compiler channels
+remain rolling inputs; record their actual versions. Review pin updates and obtain
 developer approval before introducing additional actions or external CI tools.
 The macOS runner extends the existing workflow/actions to the native platform
 selected by the developer on 2026-10-15. The separately approved built-in

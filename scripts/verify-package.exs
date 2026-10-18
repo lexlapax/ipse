@@ -86,6 +86,17 @@ defmodule Ipse.PackageVerifier do
     opaque = String.duplicate(<<0xE9, 0x9B, 0xAA>>, 85) <> "x"
     true = Ipse.ToolCall.valid_id?(opaque)
     false = Ipse.ToolCall.valid_id?(opaque <> "x")
+    {:ok, _} = Ipse.Sandbox.resolve(:native, workspace)
+    {:error, boundary} = Ipse.Sandbox.resolve(:native, Application.app_dir(:ipse))
+    true = String.contains?(boundary, "overlaps the active helper or application")
+    calls = for i <- 1..33, do: %{"id" => "bounded-" <> Integer.to_string(i),
+      "function" => %{"name" => "read", "arguments" => "{}"}}
+    {:error, :tool_call_limit} = Ipse.ToolCall.admit(calls, Ipse.ToolCall.empty_budget())
+    used = Enum.reduce(1..4, Ipse.ToolCall.empty_budget(), fn _, used ->
+      {:ok, next} = Ipse.ToolCall.admit(Enum.take(calls, 32), used)
+      next
+    end)
+    {:error, :tool_call_limit} = Ipse.ToolCall.admit(Enum.take(calls, 1), used)
     source = %{"tool_calls" => [%{"id" => opaque, "function" => %{"name" => "fixture", "arguments" => "{}"}}]}
     true = Ipse.Extensions.Invocation.source_call_valid?(source, opaque, "fixture", %{})
     call = %{"id" => "duplicate", "function" => %{"name" => "write", "arguments" => "{}"}}

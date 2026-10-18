@@ -23,7 +23,8 @@ defmodule Ipse.Sandbox do
     with :ok <- ensure_available(),
          {:ok, canonical_cwd} <- Ipse.WorkspaceContext.canonical_path(cwd),
          true <- File.dir?(canonical_cwd) || {:error, "sandbox workspace does not exist"},
-         :ok <- validate_workspace(canonical_cwd) do
+         :ok <- validate_workspace(canonical_cwd),
+         {:ok, _helper} <- Ipse.Runner.native_helper(canonical_cwd) do
       {:ok, %{requested: :native, cwd: canonical_cwd, profile: profile()}}
     else
       {:error, _} = error -> error
@@ -32,6 +33,18 @@ defmodule Ipse.Sandbox do
   end
 
   def resolve(_, _), do: {:error, "sandbox must be :off or :native"}
+
+  @doc false
+  def helper_boundary(cwd, helper) do
+    with {:ok, workspace} <- Ipse.WorkspaceContext.canonical_path(cwd),
+         {:ok, app} <- Ipse.WorkspaceContext.canonical_path(Application.app_dir(:ipse)) do
+      if Enum.any?([helper, app], &overlap?(workspace, &1)),
+        do: {:error, "native sandbox workspace overlaps the active helper or application"},
+        else: :ok
+    else
+      _ -> {:error, "cannot resolve native helper or application boundary"}
+    end
+  end
 
   @doc "Describe the requested policy and platform capability; this is not an activation claim."
   def info(mode \\ :off) do

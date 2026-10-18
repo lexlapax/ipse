@@ -21,7 +21,7 @@ start. Use the guides below for operation, development, and project context.
 | [Shared admission budgets](operator/budgets.md) | Operator-only session-tree reservations, supported bounds, inspection, refusal and unknown-liability recovery |
 | [Extensions](operator/extensions.md) | Review/import, operator trust and selection, capability procedures, limits and recovery |
 | [Independent extension lab](operator/extension-lab.md) | Build, review and select synthetic artifacts against an existing checkout or unchanged release |
-| [Architecture-review checkpoint](operator/architecture-review.md) | Interrupted focused pass, active pinned baseline scan, retained assessment and readiness gates |
+| [Architecture-review checkpoint](operator/architecture-review.md) | Interrupted focused pass, completed static baseline scan, repair verification and readiness gates |
 | [Troubleshooting](operator/troubleshooting.md) | Build, callback, account, lock, and recovery problems |
 
 ## Develop Ipse

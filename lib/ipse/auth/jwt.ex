@@ -5,22 +5,33 @@ defmodule Ipse.Auth.JWT do
   # Algorithm and key type are pinned; untrusted token URLs are never followed.
   def validate(token, jwks, client_id, nonce, subject \\ nil)
 
-  def validate(token, %{"keys" => keys}, client_id, nonce, subject) do
-    with [header, payload, signature] <- String.split(token, "."),
+  def validate(token, %{"keys" => keys}, client_id, nonce, subject)
+      when is_binary(token) and byte_size(token) <= 32_768 and is_list(keys) do
+    with true <- length(Enum.take(keys, 65)) in 1..64,
+         [header, payload, signature] <- String.split(token, ".", parts: 4),
+         true <-
+           byte_size(header) <= 4_096 and byte_size(payload) <= 24_576 and
+             byte_size(signature) <= 1_368,
          {:ok, header_bytes} <- decode(header),
          {:ok, %{"alg" => "RS256", "kid" => kid} = metadata} <- Jason.decode(header_bytes),
-         true <- is_binary(kid) and not Map.has_key?(metadata, "crit"),
+         true <-
+           is_binary(kid) and byte_size(kid) in 1..256 and not Map.has_key?(metadata, "crit"),
          [key] <- Enum.filter(keys, &usable_key?(&1, kid)),
-         {:ok, n} <- decode(key["n"]),
-         {:ok, e} <- decode(key["e"]),
-         true <- byte_size(n) >= 256,
+         {:ok, n} <- component(key["n"], 1_368),
+         true <- byte_size(n) in 256..1_024 and :binary.first(n) > 0,
+         true <- byte_size(n) > 256 or :binary.first(n) >= 128,
+         {:ok, e} <- component(key["e"], 6),
+         true <- byte_size(e) in 1..4 and :binary.first(e) > 0,
+         exponent = :binary.decode_unsigned(e),
+         true <- exponent >= 3 and rem(exponent, 2) == 1,
          {:ok, sig} <- decode(signature),
+         true <- byte_size(sig) == byte_size(n),
          true <-
            :public_key.verify(
              header <> "." <> payload,
              :sha256,
              sig,
-             {:RSAPublicKey, :binary.decode_unsigned(n), :binary.decode_unsigned(e)}
+             {:RSAPublicKey, :binary.decode_unsigned(n), exponent}
            ),
          {:ok, payload_bytes} <- decode(payload),
          {:ok, claims} <- Jason.decode(payload_bytes),
@@ -47,6 +58,11 @@ defmodule Ipse.Auth.JWT do
 
   defp decode(value) when is_binary(value), do: Base.url_decode64(value, padding: false)
   defp decode(_), do: :error
+
+  defp component(value, limit) when is_binary(value) and byte_size(value) <= limit,
+    do: decode(value)
+
+  defp component(_, _), do: :error
 
   defp usable_key?(key, kid) when is_map(key) do
     key["kid"] == kid and key["kty"] == "RSA" and

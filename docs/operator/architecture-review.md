@@ -5,8 +5,9 @@ operator explicitly approved proceeding to the baseline security scan while
 keeping architectural acceptance open, without another architecture-review round.
 High reasoning was selected for Security Cloud's offered model. A private Ipse
 environment is published; Security Cloud's separate automatic environment and
-one-time scan were explicitly approved. That scan is now running at `8b4f706`;
-no terminal result or architectural acceptance is claimed.
+one-time scan were explicitly approved. That scan completed at `8b4f706` with
+five findings; repairs and verification are underway. Architectural acceptance
+remains open.
 
 ## Focused pass and current gate
 
@@ -65,14 +66,21 @@ started on 2026-10-18 at 13:06 UTC with requested GPT-5.6 Sol/high reasoning,
 repository scope and continuous monitoring off. Security Cloud created its own
 environment, `6ad4c44338748191a3da3afa4d2ac91b`, for `lexlapax/ipse`. The service
 confirms target `8b4f706953bd491c08c1926bbf6c111e898a1eb3` on `main`; its status
-advanced from queued to running. This target includes reviewed security context
+advanced through running to completed at 13:33:24 UTC. This target includes reviewed security context
 and documentation, with runtime/tests unchanged from the verified source.
 
-Await terminal status, actual outputs/findings, validation and coverage limits.
-Retain raw artifacts privately, disposition applicable findings and verify any
-repairs before advancing P24/P25. Pending or failed work with zero findings is
-not a clean scan. Later documentation-only status commits do not change the
-scan's pinned target or certify a later runtime change.
+The returned manifest claims complete static coverage of 399 committed paths,
+with no excluded paths. It ran no application, tests, live integrations or native
+enforcement. Five findings were returned: one High, one Medium and three Low.
+The [register](../developer/architecture-review-dispositions.md#baseline-security-scan-at-8b4f706)
+owns triage. Four repairs are undergoing verification; the private-journal item
+is dispositioned under the documented same-user trust limit. Raw artifacts remain
+private and their SHA-256 digests match the service metadata.
+
+The service reports $41.79 usage, fully covered by the scan allowance, with no
+pending billing or billing error. Continuous monitoring remains off. Completion
+does not certify the changed runtime, native enforcement or architectural
+acceptance; verify the repairs and assess remaining concerns before P25.
 
 ## Retained assessment and verification
 

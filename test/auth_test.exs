@@ -64,6 +64,70 @@ defmodule Ipse.AuthTest do
     refute JWT.secure_equal?(nil, "state")
   end
 
+  test "identity parsing bounds key sets and signed payloads before cryptographic work", ctx do
+    token = sign(ctx.private, claims("nonce"))
+    [key] = ctx.jwks["keys"]
+    others = for n <- 1..64, do: Map.put(key, "kid", "other-#{n}")
+    assert {:error, _} = JWT.validate(token, %{"keys" => others ++ [key]}, "oaiapp_test", "nonce")
+    large = sign(ctx.private, Map.put(claims("nonce"), "padding", String.duplicate("x", 25_000)))
+    assert {:error, _} = JWT.validate(large, ctx.jwks, "oaiapp_test", "nonce")
+  end
+
+  test "pathological RSA components never reach the cryptographic verifier", ctx do
+    :code.ensure_loaded(:public_key)
+    :erlang.trace_pattern({:public_key, :verify, 4}, true, [])
+    on_exit(fn -> :erlang.trace_pattern({:public_key, :verify, 4}, false, []) end)
+    token = sign(ctx.private, claims("nonce"))
+    [key] = ctx.jwks["keys"]
+
+    for changed <- [
+          key,
+          Map.put(key, "n", Base.url_encode64(String.duplicate("x", 1_025), padding: false)),
+          Map.put(
+            key,
+            "n",
+            Base.url_encode64(<<0>> <> String.duplicate("x", 255), padding: false)
+          ),
+          Map.put(key, "e", Base.url_encode64(<<1, 0, 0, 0, 1>>, padding: false)),
+          Map.put(key, "e", Base.url_encode64(<<2>>, padding: false)),
+          Map.put(key, "e", Base.url_encode64(<<0>>, padding: false))
+        ] do
+      parent = self()
+
+      worker =
+        spawn(fn ->
+          receive do
+            :run ->
+              send(
+                parent,
+                {:jwt_result, self(),
+                 JWT.validate(token, %{"keys" => [changed]}, "oaiapp_test", "nonce")}
+              )
+
+              receive do: (:stop -> :ok)
+          end
+        end)
+
+      on_exit(fn -> if Process.alive?(worker), do: Process.exit(worker, :kill) end)
+
+      :erlang.trace(worker, true, [:call, {:tracer, self()}])
+      send(worker, :run)
+      assert_receive {:jwt_result, ^worker, result}, 1_000
+      delivered = :erlang.trace_delivered(worker)
+      assert_receive {:trace_delivered, ^worker, ^delivered}, 1_000
+
+      if changed == key do
+        assert {:ok, _} = result
+        assert_receive {:trace, ^worker, :call, {:public_key, :verify, _}}, 0
+      else
+        assert {:error, _} = result
+        refute_receive {:trace, ^worker, :call, {:public_key, :verify, _}}, 0
+      end
+
+      send(worker, :stop)
+    end
+  end
+
   test "new login uses PKCE loopback and issued client; ignores forged state and saves protected identity",
        ctx do
     output = fn message ->

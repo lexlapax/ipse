@@ -208,6 +208,11 @@ credential/environment dumps and do not grant extra roots. See
 
 ## Authentication and provider errors
 
+Identity-token parsing bounds token/segment sizes and JWKS cardinality before
+verification. RSA public moduli are limited to 2048–8192 bits, with minimally
+encoded positive components, an odd exponent ≥3 that fits in 32 bits, and a signature matching
+the modulus length. These are local resource limits, not live account coverage.
+
 ChatGPT subscription sign-in follows the documented open-source app flow.
 Browser sign-in, inference, coding tools, resume, and logout passed with one
 account on Arch; natural-expiry refresh and rotation also passed on 2026-10-15.
@@ -525,6 +530,15 @@ before approval or dispatch. A private `provider_response_refused` record retain
 the original response/native evidence without placing invalid calls in effective
 context or pretending to settle them. Historical duplicate IDs consume recorded
 results once, in order; an unresolved duplicate cannot inherit another call's result.
+
+Tool admission also caps each provider response at 32 calls and 2 MiB of argument
+bytes, and each operator turn at 128 calls and 8 MiB of argument bytes. Admission
+charges all proposed calls before any dispatch, including malformed arguments,
+denials and context preflights. An excess response is refused whole; earlier
+effects retain their recorded outcomes. The current turn's budget is reconstructed
+from restored conversation, including question continuation. A new operator
+prompt resets it. These bounds supplement model steps, individual tool/result
+limits and cancellation; result amplification is bounded by the admitted count.
 
 Lost shell supervision, malformed/incomplete helper frames and unexpected tool
 worker exceptions have an unknown machine-readable outcome. Explicit validation

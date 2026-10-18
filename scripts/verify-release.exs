@@ -39,6 +39,7 @@ app_root = Application.app_dir(:ipse) |> Path.expand()
 true = runtime_root == release_root
 true = String.starts_with?(app_root, release_root <> "/lib/")
 true = File.regular?(Path.join(app_root, "priv/ipse-runner"))
+true = File.regular?(Path.join(release_root, "SECURITY.md"))
 System.delete_env("IPSE_RUNNER_PATH")
 
 scratch =

@@ -30,8 +30,9 @@ billing before sending material. The current Claude run uses the signed-in
 subscription with API credentials removed and no extra integrations or subagents.
 Security Cloud environment creation and publication were separately approved.
 The private environment is published; Security Cloud's separate automatic
-environment and one-time scan were explicitly approved. The baseline is running
-at `8b4f706`; terminal results and triage remain pending and P25 is unstarted.
+environment and one-time scan were explicitly approved. The baseline completed
+at `8b4f706` with five static findings. Repairs and verification remain in progress;
+P25 is unstarted.
 Keep raw reports private and use the
 [security threat model](../../SECURITY.md) for safe scan context.
 

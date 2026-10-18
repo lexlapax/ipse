@@ -7,6 +7,16 @@ create the requested sandbox stops that shell call; it never retries unsandboxed
 Sessions retain the requested mode in metadata and reject a different mode on
 resume. Provider inference runs in Elixir outside the shell sandbox.
 
+Native policy resolution refuses a workspace overlapping the active application
+or selected helper before Session locking and before each shell/server launch.
+The helper must be a bounded executable regular file, without extra hardlinks or
+group/other write permission. Native launches do not build a missing helper from
+the target source tree. Build first and run an installation outside the target
+workspace; this also applies to Linux self-development. The Linux helper repeats
+its own executable-overlap check before granting workspace writes. These checks
+protect against target-workspace mutation, not hostile same-user replacement of
+files outside the sandbox.
+
 Local MCP servers can separately request these same fixed profiles using their
 explicit per-server `"sandbox": "native"` configuration. The shell CLI flag does
 not set MCP policy. Unlike the shell's minimal environment, the MCP direct-exec

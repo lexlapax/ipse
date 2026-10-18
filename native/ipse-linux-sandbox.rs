@@ -290,6 +290,11 @@ fn validate_workspace(workspace: &Path) -> Result<(), String> {
     if workspace == Path::new("/") || workspace == Path::new("/tmp") {
         return Err("sandbox workspace is too broad".into());
     }
+    let helper = fs::canonicalize(std::env::current_exe().map_err(|e| e.to_string())?)
+        .map_err(|e| format!("cannot resolve active sandbox helper: {e}"))?;
+    if helper.starts_with(workspace) {
+        return Err("sandbox workspace includes the active helper".into());
+    }
     for root in [
         "/usr", "/bin", "/lib", "/lib64", "/etc", "/dev", "/proc", "/sys", "/run",
     ] {
