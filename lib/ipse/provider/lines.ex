@@ -5,24 +5,39 @@ defmodule Ipse.Provider.Lines do
 
   def new(mode \\ :sse), do: %__MODULE__{mode: mode}
 
-  def feed(state, bytes) when is_binary(bytes), do: split(state, bytes, [])
+  def feed(state, bytes) when is_binary(bytes) do
+    with {:ok, state, lines} <-
+           reduce(state, bytes, [], fn line, lines -> {:ok, [line | lines]} end),
+         do: {:ok, Enum.reverse(lines), state}
+  end
+
+  def reduce(state, bytes, acc, fun) when is_binary(bytes) and is_function(fun, 2),
+    do: split(state, bytes, acc, fun)
+
   def tail(state), do: Fragments.value(state.pending)
 
-  defp split(state, "", lines), do: {:ok, Enum.reverse(lines), state}
+  def finish(%{pending: %Fragments{bytes: 0}} = state), do: {:ok, nil, state}
 
-  defp split(%{skip_lf: true} = state, <<"\n", rest::binary>>, lines),
-    do: split(%{state | skip_lf: false}, rest, lines)
+  def finish(%{lines: count} = state) when count < 131_072,
+    do: {:ok, tail(state), %{state | lines: count + 1, pending: Fragments.new()}}
 
-  defp split(%{skip_lf: true} = state, bytes, lines),
-    do: split(%{state | skip_lf: false}, bytes, lines)
+  def finish(_), do: Fragments.error()
 
-  defp split(state, bytes, lines) do
+  defp split(state, "", acc, _), do: {:ok, state, acc}
+
+  defp split(%{skip_lf: true} = state, <<"\n", rest::binary>>, acc, fun),
+    do: split(%{state | skip_lf: false}, rest, acc, fun)
+
+  defp split(%{skip_lf: true} = state, bytes, acc, fun),
+    do: split(%{state | skip_lf: false}, bytes, acc, fun)
+
+  defp split(state, bytes, acc, fun) do
     separators = if state.mode == :sse, do: ["\n", "\r"], else: "\n"
 
     case :binary.match(bytes, separators) do
       :nomatch ->
         with {:ok, pending} <- Fragments.append(state.pending, bytes),
-             do: {:ok, Enum.reverse(lines), %{state | pending: pending}}
+             do: {:ok, %{state | pending: pending}, acc}
 
       {index, 1} when state.lines < 131_072 ->
         <<line::binary-size(^index), separator, rest::binary>> = bytes
@@ -35,7 +50,8 @@ defmodule Ipse.Provider.Lines do
               skip_lf: state.mode == :sse and separator == ?\r
           }
 
-          split(next, rest, [Fragments.value(pending) | lines])
+          with {:ok, acc} <- fun.(Fragments.value(pending), acc),
+               do: split(next, rest, acc, fun)
         end
 
       _ ->

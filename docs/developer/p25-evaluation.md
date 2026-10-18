@@ -620,10 +620,41 @@ with exact retained bytes; this is local evidence, not a platform promise. One n
 fixture initially kept writing after the intended client abort; its corrected
 send-before-abort staging and the failed 59/60 run are retained. Original byte-split
 fixtures remain intact. This repair is supervisor work and is not additional
-Ipse-authorship credit. The frozen full suite passes 909 native-inclusive checks with 15 exclusions,
+Ipse-authorship credit. That first candidate passes 909 native-inclusive checks with 15 exclusions,
 strict build/compile, both actual formatter floors, demo and unchanged recovery of
 six trial journals. Package verification and old compiled 41+9 proofs pass with
-archive SHA-256 `8b4790b923d33ce08389fe88d2d99e5b55861e7c250a74b395df238905cb79f2`. Hosted verification, affected
-independent review and trial acceptance remain open; no further Cloud run is launched.
+archive SHA-256 `8b4790b923d33ce08389fe88d2d99e5b55861e7c250a74b395df238905cb79f2`.
+Its [`0196689` hosted matrix](https://github.com/lexlapax/ipse/actions/runs/39155854298)
+passes every Mac gate but fails Linux's unchanged strict diagnostic-question
+cleanup assertion; later Linux package steps are skipped. The cause remains
+unconfirmed. This is a failed matrix, with no relaxed assertion or cleanup deadline.
+
+A fresh affected-boundary review of a frozen 41-file packet reads all seven
+changed provider modules and meaningful test bodies. Its 39-request report finds
+three composition gaps: earlier usage/error prefixes lost behind a later parser
+failure, late final callback success and an uncharged Ollama EOF line. Four
+regressions reproduce them. Incremental folding, final deadline checks and EOF
+counting correct them. A real Session/budget regression preserves input 60 through
+failed completion and inert resume. Its first integration run passes 66/67: the
+new fixture lacks cache partitions needed for a known total. Explicit zero
+partitions correct staging without changing normalization or assertions; all 67
+provider cases pass.
+
+The same reviewer checks the exact corrective patch in its one remaining request
+under the original budget: 40 cumulative requests/940.2 seconds, no new tools,
+unchanged original packet/journal prefix and confirmed cleanup. It finds the
+three addressed at source level and no new actionable defect. The
+[register](architecture-review-dispositions.md#provider-composition-review-and-corrections)
+and result manifest retain report/patch identities and coverage limits. This is
+a bounded source follow-up, not runtime or whole-design certification.
+
+The corrected frozen source passes build, both actual formatter floors, strict
+compile, 914 native-inclusive tests/15 exclusions, isolated demo and six unchanged
+trial-journal restores. Package verification and old precompiled 41+9 proofs pass
+against archive
+`42ba975adf5de9a2fd9ca511c78d11daade56f97fddbc2bddc5a5af3f4f28fc5`.
+Exact corrected-source hosted verification and trial acceptance remain open;
+no further Cloud run is launched. These security corrections are supervisor work,
+separate from the frozen Ipse-authored change and comparative scores.
 The researched P26/P27 proposal is in the [knowledge design](knowledge-extensions.md);
 no production engine is installed. The requested license transition remains open.

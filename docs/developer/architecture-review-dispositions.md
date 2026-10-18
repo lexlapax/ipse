@@ -24,7 +24,7 @@ Raw artifacts and reproduction details remain private.
 | --- | --- | --- | --- |
 | FSC-1 (`csf_d8fb991afccccf6790b8e749`) | Proposal-bound terminal confirmations | Reproduced with a real CLI/loopback fixture. Fresh per-proposal codes prevent buffered/replayed input. Internal review also reproduced buffered structured answers; per-question codes fix that adjacent case. All 30 CLI tests, full local handoff and hosted `f467de9` checks pass | Closed within the tested scope and refreshed static approval review at `f467de9`; no whole-design certification |
 | FSC-2 (`csf_07c9aa59e131a3393e3639f5`) | Durable journal growth and bounded recovery/listing | Finite operator-narrowable limits, a reserved terminal receipt, incremental decoding and header-only listing pass quota/question/unknown-effect fixtures, full local handoff, old compiled proofs and hosted `f467de9` checks. Independent delta findings below are also reproduced and repaired | Closed within bounded per-file policy and refreshed static persistence review at `f467de9`; total-directory storage and other stated limits remain |
-| FSC-3 (`csf_3bd48e9866059c02fcc3e7b7`), Medium | Provider stream assembly and intermediate work | A retained-line probe reproduces disproportionate work. Three new admission regressions fail on the scanned source. The candidate uses reverse fragments, new-byte line scanning, finite event/item/call limits and in-parser deadline checks; all 62 provider cases pass | Local full native/package checks pass; hosted verification and affected independent review remain open |
+| FSC-3 (`csf_3bd48e9866059c02fcc3e7b7`), Medium | Provider stream assembly and intermediate work | Retained-line amplification and three admission failures reproduced on scanned source. Bounded assembly passes the resource probe. Focused review found three composition gaps below; their corrected reducers preserve earlier observations, reject late success and charge EOF tails. All 67 provider cases and the full local handoff pass | Affected source review and same-reviewer corrective-patch check complete; exact corrected-source hosted verification remains open |
 
 The scan prioritizes major runtime boundaries but defers full file-level review
 of parts of Session, budget/accounting, compaction, lifecycle, text delivery,
@@ -56,6 +56,52 @@ new rejection fixture continued byte writes after the intended client abort.
 Sending that fixture's bounded body before awaiting closure corrects staging;
 existing split-byte fixtures and assertions remain. Corrected provider runs pass
 60, then 62 cases after adding success/error chunk-exhaustion coverage.
+
+### Provider composition review and corrections
+
+A fresh read-only installed-Ipse session reviewed the provider delta at
+`01966894ffe62c5fb0348bb900e331f5cea50db3` against `f467de9`, using the approved
+own ChatGPT subscription with explicit GPT-6.1 Sol/high. Its frozen packet contains
+41 files, with an explicit index and SHA-256
+`7e1b75d5cd174237a9b6e82b853d64c17a5af97d8bf1aab69256ef729a6ae4dd`.
+It read all seven changed provider modules, meaningful changed tests and relevant
+callers. The initial report used 39 requests/38 started calls; report SHA-256
+`d377098847f118d438d782a9301cd83c62b0286877f3f819f04b6df31ba042a4`.
+This is affected-boundary source review, with no executed tests or whole-design
+acceptance. Other historical omissions retain their own scopes.
+
+| ID | Reproduced composition gap | Correction and evidence |
+| --- | --- | --- |
+| P25-PV1, Medium | A later framing-limit error discarded an earlier complete usage event or displaced an earlier provider error in the same received chunk | Production consumers fold each complete line/event immediately. Earlier durable usage/error precedence survives coalesced and split chunks; a real Session/budget fixture retains observed input 60 on failed completion and unchanged resume |
+| P25-PV2, Medium | A final callback could finish after the request deadline and still admit success | Check deadlines after callbacks, before final materialization and before success. Late final usage/output refuses admission. Timing remains cooperative; blocked callbacks are not preempted |
+| P25-PV3, Low | Ollama's nonempty unterminated EOF tail bypassed the line count | Charge the final nonempty line through the same bound; empty EOF adds no line. Boundary and late-final-callback cases pass |
+
+Four regressions failed before correction. The complete corrected provider set
+passes 67 cases. Its first integration run passed 66/67 because the new fixture
+omitted cache partitions while expecting a known total; explicit zero partitions
+correct the fixture, with normalization and assertions unchanged.
+
+The reviewer checked the corrective patch in the one remaining request under the
+original limits: 40 cumulative requests and 940.2 seconds, no new tools, unchanged
+original packet/journal prefix and confirmed cleanup. Patch SHA-256 is
+`a3caf8dfdd7ea082e737546d71acdf54cb98002b5fb26c193b2c86380610c170`;
+follow-up report SHA-256
+`641fd5c93384010f3850c190dcdafe446342fed07834e92f66e54c96a12b8498`.
+It finds all three addressed at source level and no new actionable defect in
+that patch. This is a bounded same-reviewer follow-up, not another independent
+round or runtime certification.
+
+The frozen correction passes build, both actual formatter floors, strict compile,
+914 native-inclusive tests/15 Mac exclusions, demo and six unchanged trial-journal
+restores. Package verification and the unchanged precompiled artifacts pass all
+41 legacy/nine model assertions against archive
+`42ba975adf5de9a2fd9ca511c78d11daade56f97fddbc2bddc5a5af3f4f28fc5`.
+Exact-source hosted checks remain required. The preceding
+[`0196689` matrix](https://github.com/lexlapax/ipse/actions/runs/39155854298)
+passed every Mac gate, but Linux failed the unchanged strict diagnostic-question
+cleanup assertion and skipped later package stages. Its root cause is unconfirmed;
+the current full local pass neither explains nor erases it. No assertion, cleanup
+deadline or accepted outcome was widened. No further Cloud scan is launched.
 
 ### Independent repair-delta review
 

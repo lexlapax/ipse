@@ -104,18 +104,18 @@ defmodule Ipse.Provider.Anthropic do
   defp native(message), do: Map.take(message, ["role", "content"])
 
   def consume(state, chunk, emit) do
-    with {events, parser} when is_list(events) <- SSE.feed(state.sse, chunk) do
-      Enum.reduce_while(events, {:ok, %{state | sse: parser}}, fn event, {:ok, state} ->
-        with {:ok, state} <- Fragments.tick(state),
-             {:ok, data} when is_map(data) <- Jason.decode(event.data),
-             {:ok, state} <- event(state, data, emit) do
-          {:cont, {:ok, state}}
-        else
-          {:error, message} when is_binary(message) -> {:halt, {:error, message}}
-          _ -> {:halt, {:error, "Invalid JSON in Anthropic stream."}}
-        end
-      end)
+    handler = fn event, state ->
+      with {:ok, state} <- Fragments.tick(state),
+           {:ok, data} when is_map(data) <- Jason.decode(event.data) do
+        event(state, data, emit)
+      else
+        {:error, message} when is_binary(message) -> {:error, message}
+        _ -> {:error, "Invalid JSON in Anthropic stream."}
+      end
     end
+
+    with {:ok, state, parser} <- SSE.reduce(state.sse, chunk, state, handler),
+         do: {:ok, %{state | sse: parser}}
   end
 
   defp event(_, %{"type" => "error"}, _),
@@ -191,42 +191,44 @@ defmodule Ipse.Provider.Anthropic do
 
   def finish(%{done: true, stop_reason: reason} = state)
       when reason in ["end_turn", "tool_use", "stop_sequence"] do
-    content =
-      state.blocks
-      |> Enum.sort_by(&elem(&1, 0))
-      |> Enum.map(fn {_, block} ->
-        case Map.pop(Fragments.materialize(block), "__json") do
-          {nil, block} -> block
-          {json, block} -> Map.put(block, "input", Jason.decode!(json))
-        end
-      end)
+    with :ok <- Fragments.check_deadline(state) do
+      content =
+        state.blocks
+        |> Enum.sort_by(&elem(&1, 0))
+        |> Enum.map(fn {_, block} ->
+          case Map.pop(Fragments.materialize(block), "__json") do
+            {nil, block} -> block
+            {json, block} -> Map.put(block, "input", Jason.decode!(json))
+          end
+        end)
 
-    text = content |> Enum.filter(&(&1["type"] == "text")) |> Enum.map_join("", & &1["text"])
+      text = content |> Enum.filter(&(&1["type"] == "text")) |> Enum.map_join("", & &1["text"])
 
-    calls =
-      content
-      |> Enum.filter(&(&1["type"] == "tool_use"))
-      |> Enum.map(fn block ->
-        %{
-          "id" => block["id"],
-          "type" => "function",
-          "function" => %{"name" => block["name"], "arguments" => Jason.encode!(block["input"])}
-        }
-      end)
+      calls =
+        content
+        |> Enum.filter(&(&1["type"] == "tool_use"))
+        |> Enum.map(fn block ->
+          %{
+            "id" => block["id"],
+            "type" => "function",
+            "function" => %{"name" => block["name"], "arguments" => Jason.encode!(block["input"])}
+          }
+        end)
 
-    message = %{
-      "role" => "assistant",
-      "content" => text,
-      "provider_data" => %{"provider" => "anthropic", "content" => content}
-    }
+      message = %{
+        "role" => "assistant",
+        "content" => text,
+        "provider_data" => %{"provider" => "anthropic", "content" => content}
+      }
 
-    message =
-      if state.reported_model,
-        do: put_in(message, ["provider_data", "reported_model"], state.reported_model),
-        else: message
+      message =
+        if state.reported_model,
+          do: put_in(message, ["provider_data", "reported_model"], state.reported_model),
+          else: message
 
-    message = if calls == [], do: message, else: Map.put(message, "tool_calls", calls)
-    {:ok, message, state.usage}
+      message = if calls == [], do: message, else: Map.put(message, "tool_calls", calls)
+      with :ok <- Fragments.check_deadline(state), do: {:ok, message, state.usage}
+    end
   end
 
   def finish(_), do: {:error, "Anthropic response was incomplete; no tools were executed."}

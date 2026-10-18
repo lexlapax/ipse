@@ -12,9 +12,13 @@ source-fit criterion, actual interventions and review limitations. The final
 `f467de9` [Linux/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39152616173)
 passes. Its approved GPT-5.6 Sol/high verification scan completed at that exact
 candidate with one new Medium provider-stream finding and partial static coverage.
-The reproduced stream repair is undergoing final validation. The
+The reproduced stream repair and three focused-review composition corrections
+pass the full local source/native/package/installed checks and bounded source
+follow-up. Exact corrected-source hosted checks and trial acceptance remain open.
+The prior provider matrix passed Mac but failed Linux's strict diagnostic-question
+cleanup assertion; its cause remains unconfirmed. The
 [current dispositions](../developer/architecture-review-dispositions.md#p25-final-security-triage)
-own remaining coverage and triage. No trial acceptance is claimed. No additional
+own remaining coverage and triage. No additional
 P24 architecture-review sequence or continuous monitoring is scheduled.
 
 ## Retained focused pass

@@ -32,6 +32,9 @@ Provider responses also have finite byte, fragment, event and item limits. A
 none of its tools. Review any text already shown and prior effects before sending
 a fresh prompt. This does not trigger a retry or provider/billing change; see the
 [response limits](../developer/provider-limits.md#host-response-admission).
+Usage reported before a later framing failure remains recorded. Deadline refusal
+also prevents a late final callback from admitting an answer or tool proposal;
+it does not promise immediate interruption of a blocked callback or cleanup.
 
 Open the printed **Continue with ChatGPT** URL in a browser on the same machine.
 Authorize Ipse and ChatGPT plan usage. The app listens on a temporary

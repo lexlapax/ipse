@@ -42,19 +42,19 @@ defmodule Ipse.Provider.Fragments do
 
   def tick(state) do
     count = Map.get(state, :stream_events, 0)
-    deadline = Map.get(state, :stream_deadline, :infinity)
 
-    cond do
-      deadline != :infinity and System.monotonic_time(:millisecond) >= deadline ->
-        {:error, "Provider request timed out."}
-
-      count >= 65_536 ->
-        error()
-
-      true ->
-        {:ok, Map.put(state, :stream_events, count + 1)}
+    with :ok <- check_deadline(state) do
+      if count < 65_536, do: {:ok, Map.put(state, :stream_events, count + 1)}, else: error()
     end
   end
+
+  def check_deadline(%{stream_deadline: deadline}) when is_integer(deadline) do
+    if System.monotonic_time(:millisecond) < deadline,
+      do: :ok,
+      else: {:error, "Provider request timed out."}
+  end
+
+  def check_deadline(_), do: :ok
 
   def index?(index), do: is_integer(index) and index in 0..255
 

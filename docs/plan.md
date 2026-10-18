@@ -57,10 +57,12 @@ checks and the complete hosted Linux/macOS matrix at `f467de9`. The operator
 approved one verification security scan of that candidate. It completed with
 GPT-5.6 Sol/high, reporting one new Medium provider-stream resource finding and
 partial static coverage; no approval/journal finding was repeated. A bounded
-assembly repair passes 62 provider checks and a before/after resource probe.
-Its frozen full native-inclusive suite passes 909 checks with 15 platform
-exclusions; local build/demo/recovery/package and old compiled proofs pass. Hosted
-verification, affected independent review and trial acceptance remain open.
+assembly repair passes a before/after resource probe. Its focused review found
+three composition gaps; those corrections pass the full local source/native
+baseline, installed-package proofs and their bounded same-reviewer repair check.
+Final hosted verification and trial acceptance remain open. The prior hosted run passed Mac
+but failed Linux's strict diagnostic-question cleanup assertion; that outcome
+and its unconfirmed cause remain recorded rather than being counted as a pass.
 [Testing](developer/testing.md#current-evidence-and-next-checks) owns
 the exact source, failed attempts, checks and exclusions.
 The research subject is optional working/long-term memory, research, graph and

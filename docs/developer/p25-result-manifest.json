@@ -147,6 +147,47 @@
   },
   "proposal": "docs/developer/knowledge-extensions.md",
   "protocol": "docs/developer/self-hosting-evaluation.md",
+  "provider_repair_review": {
+    "corrective_patch_sha256": "a3caf8dfdd7ea082e737546d71acdf54cb98002b5fb26c193b2c86380610c170",
+    "cumulative_elapsed_ms": 940223,
+    "cumulative_requests": 40,
+    "disposition": "three_findings_addressed_source_level_no_new_actionable_finding",
+    "findings": [
+      {
+        "id": "P25-PV1",
+        "severity": "medium"
+      },
+      {
+        "id": "P25-PV2",
+        "severity": "medium"
+      },
+      {
+        "id": "P25-PV3",
+        "severity": "low"
+      }
+    ],
+    "followup_has_no_tools": true,
+    "followup_kind": "same_reviewer_one_remaining_request",
+    "followup_private_receipt": "ipse-provider-review/followup-checked-receipt.json",
+    "followup_receipt_sha256": "d754c36d0034f5fb415aa661e6120a833b2f7c2c5e240fb7c4f21467d5e95255",
+    "followup_report_characters": 9256,
+    "followup_report_sha256": "641fd5c93384010f3850c190dcdafe446342fed07834e92f66e54c96a12b8498",
+    "initial_private_receipt": "ipse-provider-review/checked-receipt.json",
+    "initial_receipt_sha256": "e8d639011db69aefb587e396d0799028ead28249fd48bd0aa38b86dc5607dde3",
+    "initial_report_characters": 12230,
+    "initial_report_sha256": "d377098847f118d438d782a9301cd83c62b0286877f3f819f04b6df31ba042a4",
+    "initial_requests": 39,
+    "initial_started_calls": 38,
+    "model": "gpt-6.1-sol",
+    "packet_files": 41,
+    "packet_sha256": "7e1b75d5cd174237a9b6e82b853d64c17a5af97d8bf1aab69256ef729a6ae4dd",
+    "provider": "own_chatgpt_subscription",
+    "reasoning_effort": "high",
+    "runtime_execution_by_reviewer": false,
+    "scope": "All changed provider source and meaningful tests; same-reviewer inline corrective patch under original remaining request/wall budget; other omissions retained",
+    "source_parent": "01966894ffe62c5fb0348bb900e331f5cea50db3",
+    "whole_design_acceptance": false
+  },
   "remaining_limits": [
     "final_security_coverage_and_triage_pending",
     "historical_independent_architecture_omissions_and_withheld_verdicts_retained",
@@ -410,11 +451,41 @@
     "runtime_diff_sha256": "11092e9ea8e872e084750a2ca9d58a63cdea4a479c7a55a148f9427ef8276197",
     "runtime_revision": "f467de9d9424d1f77d59bcff036a2e7cfec9e1e4"
   },
+  "security_provider_composition_validation": {
+    "affected_review": "same_reviewer_source_check_complete",
+    "archive_sha256": "42ba975adf5de9a2fd9ca511c78d11daade56f97fddbc2bddc5a5af3f4f28fc5",
+    "hosted_platforms": "pending",
+    "local_native_passed": 914,
+    "local_platform_exclusions": 15,
+    "old_compiled_installed_assertions": 50,
+    "parent_revision": "01966894ffe62c5fb0348bb900e331f5cea50db3",
+    "private_receipt": "final-security/verification/composition-validation/checked-receipt.json",
+    "provider_checks": 67,
+    "receipt_sha256": "31965670d3be18daeb5dd93fe7d4708d8580e66f3881d4a22aa43f6016a8f8f0",
+    "reviewer_did_not_execute_tests": true,
+    "runtime_and_test_files_sha256": {
+      "lib/ipse/provider/anthropic.ex": "5a6cdeb9ee4a259ee24853805c74946e6d815aa0973da71da5ff293d6aaf62b4",
+      "lib/ipse/provider/fragments.ex": "75605603c75d0d40e1485c429be9945bef75e09a63f52a3b892397677c2b2626",
+      "lib/ipse/provider/http.ex": "ed4d6d0077159796eda6142eb85b0682527fc24586d96b776077745f8375fff6",
+      "lib/ipse/provider/lines.ex": "0440c7c03222e05ab1b5249705897afc50d047fbceae79b229d13151d3a79d5c",
+      "lib/ipse/provider/ollama.ex": "d9f94156d5975341eefa2091af720798614e9753a5a4021f325574c8f35e9327",
+      "lib/ipse/provider/openai.ex": "ee7b4ca49865ebc212b6cec32b22a84486dfb48df79be5ca14660bb0a1de10b6",
+      "lib/ipse/provider/sse.ex": "3826ad6710526e27201c3dbafdd118023d89012b91999c3598e2022070540ff8",
+      "test/provider/http_test.exs": "97a4741935540c588c86bdfc2548d00d69becd1439347273477fb7043b20fe5b",
+      "test/provider/stream_bounds_test.exs": "1f8926bd8dbbe64cd1eee5e4eb7e1b6218b824f3f84b922dc6aa2775a8fc5e8f"
+    },
+    "runtime_test_patch_sha256": "a3caf8dfdd7ea082e737546d71acdf54cb98002b5fb26c193b2c86380610c170"
+  },
   "security_provider_validation": {
-    "affected_independent_review": "pending",
+    "affected_independent_review": "completed_with_three_composition_findings",
     "archive_sha256": "8b4790b923d33ce08389fe88d2d99e5b55861e7c250a74b395df238905cb79f2",
     "full_native_platform_package_checks": "local_passed_hosted_pending",
+    "hosted_matrix": "https://github.com/lexlapax/ipse/actions/runs/39155854298",
+    "hosted_platforms": "mac_passed_linux_cleanup_assertion_failed",
+    "hosted_private_receipt": "final-security/verification/hosted-0196689-checked-receipt.json",
+    "hosted_receipt_sha256": "471062a33babafb7b511dfd9db870aa6e739c10ff3eaab127e550c7c2c7f5718",
     "initial_new_regressions_failed_before_repair": 3,
+    "later_corrections_not_covered": true,
     "local_native_passed": 909,
     "local_package_and_old_compiled_proofs": "passed",
     "local_platform_exclusions": 15,
@@ -433,6 +504,7 @@
       "test/provider/http_test.exs": "d70a2260eb155c7700a964eeadd5c43c1ca741cb0656d44b380832d422655537",
       "test/provider/stream_bounds_test.exs": "9664be62b7ad3776ec3e03d9168a07229f5b847c5cb755d5cfc5f620e8f8774c"
     },
+    "runtime_revision": "01966894ffe62c5fb0348bb900e331f5cea50db3",
     "scanned_parent": "f467de9d9424d1f77d59bcff036a2e7cfec9e1e4",
     "supervisor_authored": true
   },
@@ -471,5 +543,5 @@
       "scope": "material_claim_checks_and_discrepancy_dispositions"
     }
   ],
-  "status": "provider_stream_security_repair_pending"
+  "status": "final_provider_composition_hosted_verification_pending"
 }

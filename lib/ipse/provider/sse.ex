@@ -6,18 +6,32 @@ defmodule Ipse.Provider.SSE do
   def new, do: %__MODULE__{}
 
   def feed(state, chunk) do
-    with {:ok, lines, parser} <- Lines.feed(state.lines, IO.iodata_to_binary(chunk)) do
-      Enum.reduce_while(lines, {[], %{state | lines: parser}}, fn line, {events, state} ->
-        case line(state, line, events) do
-          {:ok, state, events} -> {:cont, {events, state}}
-          error -> {:halt, error}
+    with {:ok, events, state} <-
+           reduce(state, chunk, [], fn event, events -> {:ok, [event | events]} end),
+         do: {Enum.reverse(events), state}
+  end
+
+  @doc "Processes each framed event before parsing later input; preserves callback observations on failure."
+  def reduce(state, chunk, acc, fun) do
+    handler = fn bytes, {state, acc} ->
+      with :ok <- Fragments.check_deadline(acc),
+           {:ok, state, events} <- line(state, bytes, []) do
+        case events do
+          [] ->
+            {:ok, {state, acc}}
+
+          [event] ->
+            with {:ok, acc} <- fun.(event, acc),
+                 :ok <- Fragments.check_deadline(acc),
+                 do: {:ok, {state, acc}}
         end
-      end)
-      |> case do
-        {events, state} when is_list(events) -> {Enum.reverse(events), state}
-        error -> error
       end
     end
+
+    with :ok <- Fragments.check_deadline(acc),
+         {:ok, parser, {state, acc}} <-
+           Lines.reduce(state.lines, IO.iodata_to_binary(chunk), {state, acc}, handler),
+         do: {:ok, acc, %{state | lines: parser}}
   end
 
   # An unterminated event is intentionally not dispatched at EOF.

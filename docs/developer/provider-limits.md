@@ -93,6 +93,12 @@ at its delimiter. OpenAI arguments, Anthropic text/tool JSON/thinking/signatures
 and Ollama text/thinking similarly materialize once into the completed native
 response. Ollama retains call batches in reverse order until completion.
 
+Production consumers process each completed line/event immediately through the
+reducers, before scanning later input. If a suffix exceeds a limit, earlier usage
+observations remain available and an earlier provider error keeps precedence.
+The collecting `feed` helpers alone do not publish a prefix after failure; use
+the reducers for callbacks that produce accounting or other observations.
+
 | Resource | Hard ceiling |
 | --- | --- |
 | Partial line, joined SSE data or one accumulated field | 8 MiB |
@@ -103,13 +109,19 @@ response. Ollama retains call batches in reverse order until completion.
 | Output items or Anthropic blocks | 256; indexes 0–255 |
 | Tool calls in a provider response | 32, including incremental Ollama batches |
 
-The first applicable ceiling wins. The existing request deadline is also checked
-before each decoded provider event, rather than only between HTTP callbacks.
+The first applicable ceiling wins; a nonempty Ollama EOF tail counts as a logical
+line. The request deadline is checked during framing, before and after provider
+callbacks, and before returning a successfully materialized response.
 Exceeded limits refuse the incomplete response; they do not truncate it into a
 successful assistant message or dispatch its tools. Already displayed text cannot
 be retracted. Usage already reported stays accounted; unavailable final usage
 retains the normal unknown-liability policy. No automatic retry, provider switch
 or wider generation setting follows a refusal.
+
+Deadline checks are cooperative. They refuse late successful admission when a
+callback returns after expiry; they do not forcibly interrupt a callback, JSON
+decoder or bounded materialization operation. Cleanup can outlast the request's
+inference deadline, and already displayed text cannot be retracted.
 
 CR, LF, split CRLF/UTF-8 and SSE multiline data retain their wire semantics. SSE
 EOF never invents an event; Ollama can finish its final JSON line without LF.

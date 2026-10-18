@@ -122,18 +122,18 @@ defmodule Ipse.Provider.OpenAI do
     do: %{sse: SSE.new(), response: nil, items: %{}, terminal: false, provider: provider}
 
   def consume(state, chunk, emit) do
-    with {events, parser} when is_list(events) <- SSE.feed(state.sse, chunk) do
-      Enum.reduce_while(events, {:ok, %{state | sse: parser}}, fn event, {:ok, state} ->
-        with {:ok, state} <- Fragments.tick(state),
-             {:ok, data} when is_map(data) <- Jason.decode(event.data),
-             {:ok, next} <- event(state, data, emit) do
-          {:cont, {:ok, next}}
-        else
-          {:error, message} when is_binary(message) -> {:halt, {:error, message}}
-          _ -> {:halt, {:error, "Invalid JSON in provider stream."}}
-        end
-      end)
+    handler = fn event, state ->
+      with {:ok, state} <- Fragments.tick(state),
+           {:ok, data} when is_map(data) <- Jason.decode(event.data) do
+        event(state, data, emit)
+      else
+        {:error, message} when is_binary(message) -> {:error, message}
+        _ -> {:error, "Invalid JSON in provider stream."}
+      end
     end
+
+    with {:ok, state, parser} <- SSE.reduce(state.sse, chunk, state, handler),
+         do: {:ok, %{state | sse: parser}}
   end
 
   defp event(state, %{"type" => "response.output_text.delta", "delta" => delta}, emit) do
@@ -202,44 +202,46 @@ defmodule Ipse.Provider.OpenAI do
 
   defp event(state, _, _), do: {:ok, state}
 
-  def finish(%{terminal: true, response: response, items: items}) do
-    output =
-      case response["output"] do
-        value when value in [nil, []] ->
-          items |> Enum.sort_by(&elem(&1, 0)) |> Enum.map(&Fragments.materialize(elem(&1, 1)))
+  def finish(%{terminal: true, response: response, items: items} = state) do
+    with :ok <- Fragments.check_deadline(state) do
+      output =
+        case response["output"] do
+          value when value in [nil, []] ->
+            items |> Enum.sort_by(&elem(&1, 0)) |> Enum.map(&Fragments.materialize(elem(&1, 1)))
 
-        value ->
-          value
-      end
+          value ->
+            value
+        end
 
-    text =
-      output
-      |> Enum.filter(&(&1["type"] == "message"))
-      |> Enum.flat_map(&(&1["content"] || []))
-      |> Enum.filter(&(&1["type"] == "output_text"))
-      |> Enum.map_join("", &(&1["text"] || ""))
+      text =
+        output
+        |> Enum.filter(&(&1["type"] == "message"))
+        |> Enum.flat_map(&(&1["content"] || []))
+        |> Enum.filter(&(&1["type"] == "output_text"))
+        |> Enum.map_join("", &(&1["text"] || ""))
 
-    calls =
-      output
-      |> Enum.filter(&(&1["type"] == "function_call"))
-      |> Enum.map(fn item ->
-        %{
-          "id" => item["call_id"],
-          "type" => "function",
-          "function" => %{"name" => item["name"], "arguments" => item["arguments"] || "{}"}
-        }
-      end)
+      calls =
+        output
+        |> Enum.filter(&(&1["type"] == "function_call"))
+        |> Enum.map(fn item ->
+          %{
+            "id" => item["call_id"],
+            "type" => "function",
+            "function" => %{"name" => item["name"], "arguments" => item["arguments"] || "{}"}
+          }
+        end)
 
-    message = %{
-      "role" => "assistant",
-      "content" => text,
-      "provider_data" => %{"provider" => "openai", "output" => output}
-    }
+      message = %{
+        "role" => "assistant",
+        "content" => text,
+        "provider_data" => %{"provider" => "openai", "output" => output}
+      }
 
-    message = put_reported_model(message, response["model"])
+      message = put_reported_model(message, response["model"])
 
-    message = if calls == [], do: message, else: Map.put(message, "tool_calls", calls)
-    {:ok, message, response["usage"] || %{}}
+      message = if calls == [], do: message, else: Map.put(message, "tool_calls", calls)
+      with :ok <- Fragments.check_deadline(state), do: {:ok, message, response["usage"] || %{}}
+    end
   end
 
   def finish(_),

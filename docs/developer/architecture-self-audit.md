@@ -259,15 +259,33 @@ with no tool dispatch, retry or billing change after an incomplete response.
 Existing OTP lists/iodata/binary search and Finch/Jason suffice. The locked SDK's
 SSE parser still accumulates combined input without the required limits. OTP may
 optimize binary appends; the observed retained-line rescan, not a blanket claim
-about concatenation, supports the measured repair. All 62 provider checks pass.
+about concatenation, supports the measured repair. The initial 62 provider checks pass.
 The same 4 MiB probe improves from approximately 13 seconds to 5 milliseconds
 while retaining exact bytes. This is local evidence, not a portable promise.
 The new early-abort fixture initially wrote after client closure; corrected
-send-before-abort staging preserves all existing byte-split assertions. The frozen
-full suite passes 909 native-inclusive cases with 15 platform exclusions; both
-formatter floors, strict build/compile, demo/recovery/package and old compiled
-41+9 proofs pass. Hosted verification and affected independent review remain open
-for this last correction.
+send-before-abort staging preserves all existing byte-split assertions.
+
+The subsequent affected-boundary review caught compositions this audit missed:
+batch parsing lost earlier usage/provider errors behind later framing failures,
+late final callbacks could admit success, and Ollama EOF bypassed line counting.
+Four new regressions fail on `0196689`. Incremental event folding now publishes
+complete prefix observations before later parsing; post-callback/final checks
+reject late success and the final nonempty line consumes its bound. The real
+Session/budget fixture retains failed-request input 60 and inert resume. Its first
+run incorrectly omitted cache partitions while expecting a known input total;
+explicit zero partitions repair the fixture without changing normalization.
+All 67 provider cases now pass. Deadline checks remain cooperative, without
+preemption of a blocked callback or a hard wall-clock completion guarantee.
+
+The reviewer checked the exact corrective patch in the one remaining request
+under its original budget, with all three findings addressed at source level and
+no new actionable defect. The [register](architecture-review-dispositions.md#provider-composition-review-and-corrections)
+records scope and immutable identities. The frozen full suite passes 914
+native-inclusive cases/15 platform exclusions; both formatter floors, strict
+build/compile, demo/recovery/package and unchanged precompiled 41+9 proofs pass.
+Exact corrected-source hosted verification remains open. The preceding `0196689`
+matrix passed Mac but failed Linux's strict diagnostic-question cleanup assertion;
+the current local pass does not establish that failure's cause.
 
 ### Residual limits
 

@@ -811,6 +811,57 @@ defmodule Ipse.Provider.HTTPTest do
     end
   end
 
+  test "Ollama's EOF tail charges its logical line and refuses late final admission" do
+    tail =
+      Jason.encode!(%{
+        "message" => %{
+          "tool_calls" => [%{"id" => "c", "function" => %{"name" => "read", "arguments" => %{}}}]
+        },
+        "done" => true,
+        "prompt_eval_count" => 17
+      })
+
+    for blanks <- [131_071, 131_072] do
+      {base, server} = fixture(:binary.copy("\n", blanks) <> tail, 200, "", :whole)
+
+      result =
+        Provider.complete(
+          %{provider: :ollama, model: "fixture", base_url: base, timeout_ms: 5000},
+          [],
+          [],
+          fn _ -> :ok end
+        )
+
+      if blanks == 131_071 do
+        assert {:ok, message, _} = result
+        assert length(message["tool_calls"]) == 1
+      else
+        assert {:error, message} = result
+        assert message =~ "stream limit"
+      end
+
+      Task.await(server)
+    end
+
+    {base, server} = fixture(tail, 200, "", :whole)
+    owner = self()
+
+    assert {:error, message} =
+             Provider.complete(
+               %{provider: :ollama, model: "fixture", base_url: base, timeout_ms: 2000},
+               [],
+               [],
+               fn event ->
+                 send(owner, event)
+                 if match?({:provider_usage, _}, event), do: Process.sleep(2100)
+               end
+             )
+
+    assert message =~ "timed out"
+    assert_received {:provider_usage, %{"input_tokens" => 17}}
+    Task.await(server)
+  end
+
   defp fixture(body, status \\ 200, response_headers \\ "", send_mode \\ :fragmented) do
     {:ok, listener} =
       :gen_tcp.listen(0, [:binary, active: false, reuseaddr: true, ip: {127, 0, 0, 1}])

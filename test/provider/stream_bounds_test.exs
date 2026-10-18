@@ -2,6 +2,173 @@ defmodule Ipse.Provider.StreamBoundsTest do
   use ExUnit.Case, async: false
   alias Ipse.Provider.{SSE, OpenAI, Anthropic}
 
+  defmodule PrefixModel do
+    def complete(config, _, _, emit) do
+      send(config.test_pid, :prefix_model_called)
+
+      state = %{
+        sse: Ipse.Provider.SSE.new(),
+        blocks: %{},
+        done: false,
+        stop_reason: nil,
+        usage: %{},
+        reported_model: nil
+      }
+
+      usage = %{
+        "type" => "message_start",
+        "message" => %{
+          "usage" => %{
+            "input_tokens" => 60,
+            "output_tokens" => 3,
+            "cache_read_input_tokens" => 0,
+            "cache_creation_input_tokens" => 0
+          }
+        }
+      }
+
+      wire = "data: " <> Jason.encode!(usage) <> "\n\n" <> :binary.copy("data:\n", 32_769)
+      Ipse.Provider.Anthropic.consume(state, wire, emit)
+    end
+  end
+
+  test "usage preceding framing refusal remains durable and covered by the budget ledger on resume" do
+    root = Path.join(System.tmp_dir!(), "ipse-stream-accounting-" <> Ipse.Usage.id())
+    File.mkdir_p!(root)
+    File.chmod!(root, 0o700)
+    dir = Path.join(root, "sessions")
+
+    config = %{
+      provider: :anthropic,
+      model: "fixture",
+      provider_module: PrefixModel,
+      test_pid: self(),
+      home: Path.join(root, "home"),
+      approval: :deny,
+      budget: %{
+        "version" => 1,
+        "max_requests" => 2,
+        "max_input_tokens" => 100,
+        "reserve_input_tokens" => 40,
+        "max_output_tokens" => 100,
+        "reserve_output_tokens" => 32
+      }
+    }
+
+    {:ok, pid} =
+      DynamicSupervisor.start_child(
+        Ipse.Sessions,
+        {Ipse.Session, config: config, cwd: root, state_dir: dir, subscriber: self()}
+      )
+
+    on_exit(fn ->
+      if Process.alive?(pid), do: Ipse.Session.close(pid)
+      File.rm_rf!(root)
+    end)
+
+    id = Ipse.Session.info(pid).id
+    :ok = Ipse.Session.prompt(pid, "Synthetic prefix accounting")
+    assert_receive :prefix_model_called, 5000
+    assert_receive {:ipse, ^pid, {:done, :error}}, 5000
+    {:ok, events} = Ipse.Journal.load(dir, id)
+    [observed] = Enum.filter(events, &(&1["type"] == "request_usage_observed"))
+    assert observed["usage"]["counts"]["input_tokens"] == 60
+    {:ok, usage} = Ipse.Usage.restore(events, id)
+    [request] = Map.values(usage.requests)
+    assert request.completion["outcome"] == "failed"
+    assert request.completion["usage"]["counts"]["input_tokens"] == 60
+    {:ok, snapshot} = Ipse.Budget.saved(dir, id)
+    assert Enum.find(snapshot["dimensions"], &(&1["unit"] == "input_tokens"))["booked"] == 60
+    assert :ok = Ipse.Session.close(pid)
+    before = File.read!(Path.join(dir, id <> ".jsonl"))
+
+    {:ok, resumed} =
+      DynamicSupervisor.start_child(
+        Ipse.Sessions,
+        {Ipse.Session, id: id, config: config, cwd: root, state_dir: dir, subscriber: self()}
+      )
+
+    on_exit(fn -> if Process.alive?(resumed), do: Ipse.Session.close(resumed) end)
+    assert File.read!(Path.join(dir, id <> ".jsonl")) == before
+    refute_receive :prefix_model_called, 20
+    assert :ok = Ipse.Session.close(resumed)
+  end
+
+  test "a valid usage prefix survives a later framing failure under either chunk boundary" do
+    prefix = sse(%{"type" => "message_start", "message" => %{"usage" => %{"input_tokens" => 17}}})
+
+    for suffix <- [:binary.copy("data:\n", 32_769), :binary.copy(":\n", 131_073)],
+        chunks <- [[prefix <> suffix], [prefix, suffix]] do
+      state = %{
+        sse: SSE.new(),
+        blocks: %{},
+        done: false,
+        stop_reason: nil,
+        usage: %{},
+        reported_model: nil
+      }
+
+      owner = self()
+
+      result =
+        Enum.reduce_while(chunks, {:ok, state}, fn chunk, {:ok, state} ->
+          case Anthropic.consume(state, chunk, &send(owner, &1)) do
+            {:ok, state} -> {:cont, {:ok, state}}
+            error -> {:halt, error}
+          end
+        end)
+
+      assert {:error, message} = result
+      assert message =~ "stream limit"
+      assert_received {:provider_usage, %{"input_tokens" => 17}}
+      refute_received {:provider_usage, _}
+    end
+  end
+
+  test "an earlier provider error keeps precedence over a later framing failure" do
+    prefix =
+      sse(%{
+        "type" => "error",
+        "error" => %{
+          "code" => "subscription_sharing_usage_limit_exceeded",
+          "message" => "private-provider-prose"
+        }
+      })
+
+    assert {:error, message} =
+             OpenAI.consume(
+               OpenAI.new(:chatgpt),
+               prefix <> :binary.copy("data:\n", 32_769),
+               fn _ -> :ok end
+             )
+
+    assert message =~ "ChatGPT plan stream failed"
+    refute message =~ "private-provider-prose"
+  end
+
+  test "a final event cannot admit a response after its usage callback exhausts the deadline" do
+    deadline = System.monotonic_time(:millisecond) + 2000
+    state = Map.put(OpenAI.new(), :stream_deadline, deadline)
+    owner = self()
+
+    emit = fn event ->
+      send(owner, event)
+      Process.sleep(max(deadline - System.monotonic_time(:millisecond) + 10, 0))
+    end
+
+    assert {:error, "Provider request timed out."} =
+             OpenAI.consume(
+               state,
+               sse(%{
+                 "type" => "response.completed",
+                 "response" => %{"output" => [], "usage" => %{"input_tokens" => 7}}
+               }),
+               emit
+             )
+
+    assert_received {:provider_usage, %{"input_tokens" => 7}}
+  end
+
   test "SSE bounds partial lines and ignored-line work before event dispatch" do
     assert {:error, message} = SSE.feed(SSE.new(), :binary.copy("x", 8_388_609))
     assert message =~ "stream limit"

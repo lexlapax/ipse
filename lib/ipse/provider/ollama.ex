@@ -71,7 +71,8 @@ defmodule Ipse.Provider.Ollama do
            HTTP.stream(url, headers, body, config, state, fn state, chunk ->
              consume(state, chunk, emit)
            end),
-         {:ok, state} <- last_line(state, emit) do
+         {:ok, state} <- last_line(state, emit),
+         :ok <- Fragments.check_deadline(state) do
       if state.done do
         response_id = :crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower)
         content = Fragments.value(state.content)
@@ -110,7 +111,7 @@ defmodule Ipse.Provider.Ollama do
             else: message
 
         message = if calls == [], do: message, else: Map.put(message, "tool_calls", calls)
-        {:ok, message, state.usage}
+        with :ok <- Fragments.check_deadline(state), do: {:ok, message, state.usage}
       else
         {:error, "Ollama stream ended before its completion marker; no tools were executed."}
       end
@@ -140,21 +141,28 @@ defmodule Ipse.Provider.Ollama do
   end
 
   defp consume(state, chunk, emit) do
-    with {:ok, lines, parser} <- Lines.feed(state.lines, chunk) do
-      Enum.reduce_while(lines, {:ok, %{state | lines: parser}}, fn line, {:ok, state} ->
-        case line(state, line, emit) do
-          {:ok, state} -> {:cont, {:ok, state}}
-          error -> {:halt, error}
-        end
-      end)
+    with {:ok, parser, state} <-
+           Lines.reduce(state.lines, chunk, state, fn line, state -> line(state, line, emit) end),
+         do: {:ok, %{state | lines: parser}}
+  end
+
+  defp last_line(state, emit) do
+    with :ok <- Fragments.check_deadline(state),
+         {:ok, tail, parser} <- Lines.finish(state.lines) do
+      state = %{state | lines: parser}
+      if is_nil(tail), do: {:ok, state}, else: line(state, tail, emit)
     end
   end
 
-  defp last_line(state, emit), do: line(state, Lines.tail(state.lines), emit)
-  defp line(state, "", _), do: {:ok, state}
+  defp line(state, "", _) do
+    with :ok <- Fragments.check_deadline(state), do: {:ok, state}
+  end
 
   defp line(state, line, emit) do
-    with {:ok, state} <- Fragments.tick(state), do: decode_line(state, line, emit)
+    with {:ok, state} <- Fragments.tick(state),
+         {:ok, state} <- decode_line(state, line, emit),
+         :ok <- Fragments.check_deadline(state),
+         do: {:ok, state}
   end
 
   defp decode_line(state, line, emit) do

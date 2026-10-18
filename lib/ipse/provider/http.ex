@@ -60,7 +60,9 @@ defmodule Ipse.Provider.HTTP do
 
             case result do
               {:ok, %{error: nil, status: status} = final} when status in 200..299 ->
-                {:ok, final.state}
+                with :ok <-
+                       Ipse.Provider.Fragments.check_deadline(%{stream_deadline: final.deadline}),
+                     do: {:ok, final.state}
 
               {:ok, %{error: nil} = final} ->
                 Ipse.Provider.Error.http(
