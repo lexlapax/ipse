@@ -9,13 +9,14 @@ exploit details remain outside Git. The [plan](../plan.md) owns scheduling and t
 
 ## Provenance and coverage
 
-**Current gate:** full internal adversarial audit and repairs precede one
-consolidated external handoff. The operator replaced separate external R/S/C/O
-assignments with this full internal pass. Its
+**Current gate:** the full internal adversarial audit and applicable repairs are
+complete at `a5912ab`; its frozen source/native/package/installed and hosted
+Linux/macOS gates pass. One consolidated external handoff is ready. The operator
+replaced separate external R/S/C/O assignments with this full internal pass. Its
 [report](architecture-self-audit.md) covers ownership, SDK/delivery, context/egress
-and OS/persistence/accounting, including new composition regressions. Final frozen
-source/native/package/installed and hosted verification must finish before the
-[brief](../operator/architecture-review.md) is released. The historical package R
+and OS/persistence/accounting, including new composition regressions. The
+[brief](../operator/architecture-review.md) pins this verified source and
+requires independent assessment before dispositions. The historical package R
 review at `7810925`/evidence `a46cc66` remains partial and unaccepted; internal
 inspection does not retroactively supply independent coverage. Baseline security
 and P25 remain gated. Exact failed and passing runs are retained in
@@ -222,8 +223,8 @@ started, and the raw report remains private.
 
 | ID | Current disposition | Evidence and remaining gate |
 | --- | --- | --- |
-| R-1 | Reproduced a registered MCP ticket surviving pre-spawn refusal. A captured Session additionally reproduced SDK failed-start link exit killing its worker | Shared owned-stdio launch settles known pre-spawn refusal and preserves post-spawn uncertainty for MCP/extension workers. SDK link exits are isolated in a nested scoped task with a caller guardian; the outer worker retains its scope link. Trapping exits in the outer worker failed the new blocked-MCP scope-death regression and was replaced before handoff. Scoped negative launches, capture-on refusal/retry and prompt scope-death termination pass; final platform checks pending |
-| R-2 / IA2 | Confirmed: the earlier provider cap covered streamed success only; the original broad claim was incorrect | Partial bodies for 201/302/429/500 reproduced timeout rather than limit refusal. Existing Finch now streams all statuses, counts bytes before adapter/error accumulation, bounds error retention and aborts at declared/content or chunked limits. Local provider/error/egress checks pass; no new dependency or live account claim. Final checks pending |
+| R-1 | Reproduced a registered MCP ticket surviving pre-spawn refusal. A captured Session additionally reproduced SDK failed-start link exit killing its worker | Shared owned-stdio launch settles known pre-spawn refusal and preserves post-spawn uncertainty for MCP/extension workers. SDK link exits are isolated in a nested scoped task with a caller guardian; the outer worker retains its scope link. Trapping exits in the outer worker failed the new blocked-MCP scope-death regression and was replaced before handoff. Scoped negative launches, capture-on refusal/retry and prompt scope-death termination pass; final a5912ab platform gates are recorded in testing |
+| R-2 / IA2 | Confirmed: the earlier provider cap covered streamed success only; the original broad claim was incorrect | Partial bodies for 201/302/429/500 reproduced timeout rather than limit refusal. Existing Finch now streams all statuses, counts bytes before adapter/error accumulation, bounds error retention and aborts at declared/content or chunked limits. Local provider/error/egress checks pass; no new dependency or live account claim. Final a5912ab source/package/installed and hosted gates pass |
 | R-3 | Required delivery remains enrolled across idle consumer/broker loss until explicit release | Broker retains bounded failed enrollments, bound policy updates preserve Session state, and `Session.unsubscribe_text/2` lets the embedding operator release a lost handle. A further compaction regression reproduced the summary clearing that policy; summaries now preserve the main requirement. Main inference refuses until release. Enrollment remains process-local, not a durable resume requirement |
 | R-4 | The earlier claim that the widened outcome assertion did not weaken evidence was too broad | Tests now separate controlled clean native exit 0/confirmed cleanup/usable Session, immediate clean exit with confirmed cleanup, and forced helper death with unconfirmed cleanup. Local strict cases pass. The precise cause of the earlier Mac unconfirmed result is not established by changing a test; keep it explicit until stronger evidence exists |
 | R-5 | Reproduced shell/lock pre-spawn ticket leakage with a temporary nonexecutable helper | Resolve launch inputs before registration; a refused Port settles its ticket without claiming a launched helper exited. Negative shell/lock paths pass. The pre-spawn fixture uses actual `Port.open` permission refusal rather than assuming a missing interpreter is a pre-launch error |
@@ -249,7 +250,7 @@ Session, runner, native stdio, action/subscription/worker, host/tool/model/servi
 CLI and skill paths remain partial as recorded in the private report. Grep-only
 provider-error inspection is not full coverage.
 
-The next unread point is **Session task-result handling at source `7810925`
+That review's next unread point was **Session task-result handling at source `7810925`
 lines 1790–2030**, followed by event-job question restoration, TextConsumer and
 Observability.Channel closure; Runner output/frame reducers; invocation/event-job/
 text fixture helpers; lifecycle top-level/metadata/answer, developer-trace,
@@ -261,9 +262,10 @@ adapter. Updated internal reads do not count as independent coverage.
 Earlier lifecycle/observability/developer-trace/diagnostics/worker-lease/handoff
 implementations were reported byte-unchanged from `091b2bd` to `7810925` and can
 carry forward subject to changed interactions. Their unread test bodies stay
-unread. Packages S/C/O retain the previous checkpoint; package R completion and
-whole-design acceptance remain separate. Resume this point rather than restarting
-all reviewed source.
+unread by that reviewer. This remains the historical independent checkpoint;
+the consolidated assessment should identify which omissions its actual reads
+close. The later internal audit is separate evidence and does not rewrite this
+reviewer's scope.
 
 ## Full internal audit and consolidated handoff
 
@@ -296,10 +298,10 @@ revisions and remaining verification limits. Future repairs still need a
 regression or measured counterexample, coherent operator/developer guidance and
 their own checks before commit/push; an earlier green baseline does not cover them.
 
-The reports retain their actual provenance and partial coverage. Complete the
-full internal pass, repairs and final platform gates before publishing one
-consolidated external brief. Its independent first phase precedes disclosure of
-this register and the internal report; later disposition checks challenge the
+The reports retain their actual provenance and partial coverage. The completed
+full internal pass, repairs and final platform checks support the single
+consolidated external brief at `a5912ab`. Its independent first phase precedes
+disclosure of this register and the internal report; later disposition checks challenge the
 whole delta and exact historical omissions. Preserve all private critiques and
 [archived briefs](../archive/index.md). No review count guarantees acceptance.
 Baseline security and P25 remain gated by applicable repairs and adequate

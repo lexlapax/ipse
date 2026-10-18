@@ -25,14 +25,17 @@ quality. Subscription, API and installed Ollama checks have separate
 P23 is complete within its one-shot text/accounting scope. P24 is the active gate.
 The package R review at `7810925` challenged pre-spawn cleanup, the incomplete
 provider HTTP bound and the broadened MCP test outcome. It also identified idle
-required-peer loss and an HTTP guardian race. The active work reproduces and
-repairs these interactions, then completes a full internal adversarial architecture
-review across ownership, SDK/delivery, context/egress and OS/persistence before
-another handoff. The operator explicitly requested one consolidated final handoff
+required-peer loss and an HTTP guardian race. Those findings and the additional
+composition defects from the full internal adversarial audit are repaired at
+`a5912ab`. Ownership, SDK/delivery, context/egress
+and OS/persistence have been inspected, with the complete Session state machine,
+actual test bodies and explicit residual limits. Frozen source/native/package/
+installed and hosted Linux/macOS verification pass; the consolidated handoff is
+ready. The operator explicitly requested one consolidated final handoff
 rather than further separate external R/S/C/O rounds. The previous brief is archived;
 the historical independent coverage remains partial and unaccepted. R/S/C/O
-now name internal inspection areas, not additional external assignments. Earlier internal
-and hosted passes remain scoped evidence, not architectural acceptance.
+now name internal inspection areas, not additional external assignments. Earlier
+internal and hosted passes remain scoped evidence, not architectural acceptance.
 The operator's 2026-10-17 direction
 puts independent architectural challenge, security review and a large supervised
 self-development trial ahead of media. P24 now owns architecture/security
@@ -45,7 +48,7 @@ new source transfer or dependency, or select a production engine.
 | Milestone or gate | Current state | Next result |
 | --- | --- | --- |
 | [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within selected scope; source/native/package/installed and hosted Linux/macOS passed | Retain accounting invariants through P24/P25 review and repairs |
-| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Full internal audit and repairs active; historical independent acceptance withheld | Verify the complete candidate, provide one consolidated external handoff, then triage the baseline security scan |
+| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Full internal audit/repairs and final platform checks complete at a5912ab; consolidated handoff ready; independent acceptance open | One consolidated external assessment, then triage the baseline security scan |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Planned revised scope; unstarted | Independent Codex/Ipse research, Ipse-authored repairs, fresh acceptance runs and final architecture/security review |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Deferred; proposed scope subject to P25 decisions | Independently selectable working/long-term memory tools and optional lifecycle policies |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; proposed scope subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
@@ -60,13 +63,12 @@ P25's runner. Historical repair revisions, platform results and investigations b
 
 Execution order:
 
-1. Complete the full internal adversarial audit and applicable repairs across
-   ownership, SDK/delivery, context/egress and OS/persistence; reconcile the
-   [internal audit](developer/architecture-self-audit.md) and
-   [repair register](developer/architecture-review-dispositions.md). Verify the
-   frozen source/native/package/installed and hosted Linux/macOS candidate. Then
-   provide one consolidated external handoff covering the delta and retained
-   omissions, followed by the triaged baseline OpenAI security audit.
+1. Use the completed [internal audit](developer/architecture-self-audit.md),
+   [repair register](developer/architecture-review-dispositions.md) and verified
+   `a5912ab` baseline for the single consolidated
+   [external handoff](operator/architecture-review.md). Disposition applicable
+   findings, then run and triage the baseline OpenAI security audit. The internal
+   audit and green platform checks do not grant independent acceptance.
 2. Execute P25's independent research, discrepancy comparison, Ipse-authored
    repairs and fresh same-input/held-out reruns. Finish with an external
    architecture delta review and security review/rescan of the final candidate.
@@ -147,7 +149,7 @@ and arbitrary trusted out-of-band calls cannot establish an invoice ceiling.
 
 ## P24: independent architecture validation and baseline security
 
-**In progress; full internal adversarial review and repairs active; external handoff withheld.**
+**In progress; full internal audit/repairs and platform gates complete; one consolidated external handoff ready.**
 The returned package R review of `7810925` confirms most prior repairs but finds
 a false cleanup failure before MCP launch and an HTTP bound covering only streamed
 success responses. It also challenges idle required-peer loss, unexplained clean
@@ -165,9 +167,10 @@ feed cleanup during task death, invalid/oversized prompt admission, ambiguous
 research previews, compacted unknown recovery and main endpoint drift on resume.
 It inspects the complete Session state machine and SDK/delivery, auth/egress,
 context/recovery and OS/persistence/accounting boundaries with actual regression
-bodies. Final platform verification and one consolidated
-[handoff](operator/architecture-review.md) follow those repairs. The historical
-external checkpoint remains partial; internal work is not independent acceptance.
+bodies. Frozen source/native/package/installed and hosted Linux/macOS checks pass
+at `a5912ab`; the single consolidated [handoff](operator/architecture-review.md)
+is ready. The historical external checkpoint remains partial; internal work is
+not independent acceptance.
 Exact failed and passing runs belong in
 [testing](developer/testing.md#current-evidence-and-next-checks).
 

@@ -92,11 +92,12 @@ safe for the new grant.
 
 ## Verification and remaining limits
 
-Final frozen source/native/package/installed and hosted checks are recorded in
-[testing](testing.md#current-evidence-and-next-checks), with exact revisions and
+The full internal audit and applicable repairs are complete at `a5912ab`. Final
+frozen source/native/package/installed and hosted Linux/macOS checks pass as
+recorded in [testing](testing.md#current-evidence-and-next-checks), with exact revisions and
 failed runs retained. This document does not promote earlier passes to evidence
-for later code. One consolidated external brief follows the final platform gate;
-the baseline security scan and P25 remain gated on applicable repairs and adequate
+for later code. The single consolidated external brief is ready after that
+platform gate; the baseline security scan and P25 remain gated on applicable repairs and adequate
 independent coverage. No scan or new external analysis was launched here.
 
 Residuals are explicit: full journal startup/memory and per-question prefix

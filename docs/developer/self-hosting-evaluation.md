@@ -9,8 +9,10 @@ repairs before one consolidated external handoff, with no further separate
 R/S/C/O assignments. [The internal audit](architecture-self-audit.md) owns its
 actual inspected scope and limitations; the
 [disposition register](architecture-review-dispositions.md) retains external
-findings and independent omissions. Verification of the final frozen candidate
-precedes that handoff. No comparative run or security scan has executed. Use the
+findings and independent omissions. The full internal audit and frozen
+source/native/package/installed and hosted Linux/macOS checks pass at `a5912ab`;
+the single consolidated handoff is ready. No comparative run or security scan has
+executed. Use the
 [operator runbook](../operator/self-development.md) for runner/candidate separation
 and the [knowledge design](knowledge-extensions.md) for research questions.
 Production knowledge packages remain deferred to P26/P27.
