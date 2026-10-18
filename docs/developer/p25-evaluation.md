@@ -309,7 +309,8 @@ Package/installed, hosted macOS and fresh research/held-out evidence remain
 separate checks. Supervisor status edits also reconciled current entry points;
 these are not authored product fixes.
 
-The pushed repair is `1fc50b5`; its new Linux/macOS matrix is running. A retrospective
+The pushed repair is `1fc50b5`; its initial matrix and later evidence are retained
+below. A retrospective
 check also retained an earlier documentation-only
 [Mac failure](https://github.com/lexlapax/ipse/actions/runs/39140664464) at `1f4aa5b`,
 whose runtime is still `375e607`: the feed task-death fixture did not reach its
@@ -338,7 +339,7 @@ the identical prompt digest is
 No reports, authored patch, scores, critique or held-out answers are inputs.
 The [cohort controls](p25-packet-method.md#repaired-runner-evaluation-cohort)
 freeze fresh per-session allocations while retaining earlier cumulative failures.
-Execution waits for the exact repair's hosted platform checks.
+Execution was held until the repair's hosted platform evidence was checked.
 
 The separately prepared six-case held-out prompt contains scenario inputs only,
 not expected answers (SHA-256
@@ -348,13 +349,39 @@ It uses the same 30-minute/60-request/128-proposal/zero-retrieval limits and a
 20-minute/14-request allocation: explicit question/answer with pending-question
 resume, four inert context-pressure turns, and cancellation of an unapproved
 file proposal followed by inert resume. Its synthetic `alpha` answer is not a
-real product or privacy preference and grants no effect. These controls and
-final reports have not executed or passed yet.
+real product or privacy preference and grants no effect. Preparation is not a
+passing result; final reports and control outcomes require separate assessment.
+
+The first `1fc50b5` matrix passed Linux but failed two Mac cases (894 tests,
+32 exclusions): extension-question continuation returned unknown; an MCP test's
+five-second whole-turn assertion expired with its call in progress. The new
+preflight regressions passed. Neither failure is silently attributed to the new
+helper or declared fixed by a subsequent green run.
+
+The already-triggered documentation-only `2c32d97`
+[matrix](https://github.com/lexlapax/ipse/actions/runs/39142415316) subsequently
+passed every applicable step on both hosts. Git verification confirms its only
+changes from `1fc50b5` are the two trial documents: runtime, native code and tests
+are identical. Full logs and all four JSON receipts were checked: 894 ordinary
+tests/zero failures/32 exclusions per host; enabled Mac subset 36/0/6; four Rust
+tests; signed App Sandbox enforcement, packaging and 41+9 installed assertions
+per host. This supplies platform compatibility evidence for the frozen runtime,
+not a cause or repair claim for intermittent startup/continuation failures.
+
+That scoped runtime is now promoted for the two prepared final research runs.
+Supervisor test-only diagnostics separately classify bounded synthetic worker
+call/close results without retaining arguments or return payloads. Their local
+privacy/owner-cleanup cases and affected suites pass 38 tests; no runtime timeout
+or success assertion is relaxed. An MCP assertion is staged at dispatch and the
+observed effect before the unchanged completion check, matching its existing
+server budget. Final model recovery remains unproven until reports are assessed.
 
 ## Remaining trial gates
 
-The corrected comparison is complete and its failing criterion is recorded.
-Useful Ipse-authored behavior changes and regressions, independent verification,
-fresh same-input/held-out runs, platform/package checks and final delta/security
-review remain required. A report alone cannot close P25. Production knowledge
+The initial comparison and its failed criterion remain recorded. The authored
+repair has passed independent local, installed and matching-runtime platform
+checks, with failed matrices and unconfirmed causes retained. Assess both fresh
+reports, the held-out cases and live controls, then complete final delta/security
+review. Test-only diagnostics are supervisor work, not additional product
+self-development credit. A report alone cannot close P25. Production knowledge
 engines remain deferred to P26/P27; no license change has occurred.

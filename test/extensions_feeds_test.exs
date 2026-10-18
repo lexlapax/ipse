@@ -1,3 +1,5 @@
+Code.require_file("support/stdio_probe.exs", __DIR__)
+
 defmodule Ipse.Extensions.FeedsTest do
   use ExUnit.Case, async: false
   alias Ipse.{Session, Journal}
@@ -389,8 +391,22 @@ defmodule Ipse.Extensions.FeedsTest do
       )
 
     case result do
-      {:ok, pid} -> on_exit(fn -> if Process.alive?(pid), do: Session.close(pid) end)
-      _ -> :ok
+      {:ok, pid} ->
+        on_exit(fn -> if Process.alive?(pid), do: Session.close(pid) end)
+
+        if System.get_env("IPSE_TEST_STDIO_PROBE") == "1" and
+             c.test in [
+               :"test an extension-tool question preserves its tool ID across restart without inventing elapsed downtime",
+               :"test unexpected owned-task death closes active feeds with a valid cleanup-failure reason"
+             ] do
+          probe = Ipse.Test.StdioProbe.start(pid, Atom.to_string(c.test))
+          on_exit(fn -> Ipse.Test.StdioProbe.stop(probe) end)
+        end
+
+        {:ok, pid}
+
+      _ ->
+        :ok
     end
 
     result

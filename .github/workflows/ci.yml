@@ -23,6 +23,8 @@ jobs:
       - run: mix compile --warnings-as-errors
       - run: elixir scripts/check-ci-policy.exs
       - run: mix test
+        env:
+          IPSE_TEST_STDIO_PROBE: '1'
       - name: macOS native enforcement
         if: runner.os == 'macOS'
         run: |

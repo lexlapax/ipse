@@ -57,7 +57,7 @@ no production engine, database or mandatory backend is selected.
 | --- | --- | --- |
 | [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within selected scope | Preserve accounting through the trial |
 | [P24: architecture/security readiness](#p24-independent-architecture-validation-and-baseline-security) | Complete for supervised P25 at `375e607`; accepted limits recorded | Refresh affected validation after trial changes |
-| [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Corrected packet scored: reference 14/21; Ipse 13/21, fit criterion fails; authored repair passes local review/tests | Complete installed/platform checks, then fresh same-input and held-out evaluation |
+| [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Initial packet fit fails; authored repair passes local/installed and matching-runtime platform checks, with intermittent Mac failures retained | Two fresh reports executing; assess held-out/live controls and final security |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Deferred; subject to P25 decisions | Independently selectable working/long-term memory tools and optional policies |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
 | [P28: voice and media](#p28-voice-and-realtime-media) | Deferred; unimplemented | Explicit media contracts and later device/service validation |

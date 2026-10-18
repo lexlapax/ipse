@@ -96,7 +96,27 @@ See [production gates and container lifecycle](sandbox.md#signing-and-integratio
 
 ### Stdio cleanup load diagnostic
 
-After building, capture synthetic decoded frames with the Elixir diagnostic:
+Two diagnostics address different boundaries. For the selected synthetic MCP/feed
+Session cases that have shown intermittent Mac failures, capture host worker-call
+and cleanup timing:
+
+```sh
+IPSE_TEST_STDIO_PROBE=1 mix test test/stdio_probe_test.exs test/extensions_feeds_test.exs test/mcp/session_test.exs
+```
+
+CI enables this test-only switch for its ordinary suite. The probe uses an
+isolated OTP trace session, arities instead of arguments, monotonic elapsed times
+and classified return outcomes. It retains no argument or response payloads;
+privacy and owner-cleanup fixtures verify that boundary. Enrollment uses OTP's
+synchronous process handshake. Capture ends at owner loss, twenty seconds or
+64 returned/pending calls; its report is explicitly incomplete. This is not a
+production tracing option or a reason to enable return tracing on real sessions.
+The diagnostic preserves operation deadlines and success assertions. Staged MCP
+checks distinguish dispatch, the observed effect and final completion instead of
+assuming the entire turn fits inside a shorter receive timeout. A green run does
+not identify the cause of an earlier failure.
+
+For the native helper's frame/drain boundary, use the separate Elixir load diagnostic:
 
 ```sh
 mix run scripts/diagnose-stdio-cleanup.exs --iterations 1000 --concurrency 16 > /tmp/ipse-stdio-cleanup.jsonl

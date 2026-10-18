@@ -1,3 +1,5 @@
+Code.require_file("../support/stdio_probe.exs", __DIR__)
+
 defmodule Ipse.MCP.SessionTest do
   use ExUnit.Case, async: false
 
@@ -103,6 +105,8 @@ defmodule Ipse.MCP.SessionTest do
 
     allowed = session(ctx, approval: :allow)
     :ok = Ipse.Session.prompt(allowed, "write")
+    assert_receive {:ipse, ^allowed, {:tool, "mcp__notes__write_note", _}}, 5_000
+    await_file(Path.join(ctx.root, "note.txt"), 1000)
     assert_receive {:ipse, ^allowed, {:done, :ok}}, 5_000
     id = Ipse.Session.info(allowed).id
     DynamicSupervisor.terminate_child(Ipse.Sessions, allowed)
@@ -354,6 +358,13 @@ defmodule Ipse.MCP.SessionTest do
     on_exit(fn ->
       if Process.alive?(pid), do: DynamicSupervisor.terminate_child(Ipse.Sessions, pid)
     end)
+
+    if System.get_env("IPSE_TEST_STDIO_PROBE") == "1" and
+         ctx.test ==
+           :"test headless policy denies all external tools and resume never replays completed calls" do
+      probe = Ipse.Test.StdioProbe.start(pid, Atom.to_string(ctx.test))
+      on_exit(fn -> Ipse.Test.StdioProbe.stop(probe) end)
+    end
 
     pid
   end
