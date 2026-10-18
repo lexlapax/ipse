@@ -11,11 +11,13 @@ exploit details remain outside Git. The [plan](../plan.md) owns scheduling and t
 
 **Current gate:** the fresh report for source `091b2bd` (evidence `20b377c`)
 withheld acceptance and found two applicable defects despite the prior green
-handoff. The used prompt is withdrawn pending the requested
-[supervisor adversarial audit](architecture-self-audit.md). That audit has found
-additional counterexamples in question sources, provider bounds and cleanup
-ownership. Historical closed rows below describe their exercised scope; they do
-not override these reopened interactions or certify the current candidate.
+handoff. The requested [supervisor adversarial audit](architecture-self-audit.md)
+reproduced and repaired them and five additional interaction defects. Candidate
+`7810925` passes local and hosted Linux/macOS checks. The
+[replacement brief](../operator/architecture-review.md) assigns independent
+repair-interaction coverage first, then the explicit remaining checkpoint below.
+Historical closed rows describe exercised scope; neither those rows nor this
+internal audit grant architectural acceptance. The scan and P25 remain gated.
 
 The reviewer reported Claude Code with Opus 5.5 (`claude-opus-5-5`), default
 reasoning, one subscription-selected session and no subagents or operator help
@@ -129,7 +131,7 @@ acceptance. This is independent source evidence, not runtime reproduction or a s
 | --- | --- | --- |
 | PA-1 / D8 | Reproduced optional pressure discarding a completed response | Operator-approved optional detachment and explicit required enrollment are implemented. Session/broker/actual-provider fixtures cover pressure, broker loss, healthy required peers, completion acknowledgment, fixed failure reporting and retained paid usage. Local native-inclusive and hosted Linux/macOS handoffs pass through `091b2bd`, including package/both installed proofs. Startup integrity and OS cleanup receipts remain separate |
 | PA-2 / D6 | Torn ledgers still refuse; the reviewer challenges that recovery cost | A real budget fixture verifies refusal preserves both ledger and partial journal, then explicit inert handoff into a fresh quota without replay, refund or transfer of old liability. This is continuation, not tree repair. Any future repair must lock/validate the complete canonical tree and preserve original evidence; blindly dropping a partial record is not adopted |
-| PA-3 | Task death alone does not acknowledge exit of task-owned shell groups or extension VMs | Initial scopes passed local/hosted checks at `451f97c`, but N-A1 exposed an invalid lifecycle closure, and internal IA3/IA4 exposed omitted nested-task/MCP receipts. Reopened for these interactions; the supervisor audit records their reproductions, repairs and new gates. Detached-descendant limits remain separate |
+| PA-3 | Task death alone does not acknowledge exit of task-owned shell groups or extension VMs | Initial scopes passed local/hosted checks at `451f97c`, but N-A1 exposed an invalid lifecycle closure, and internal IA3–IA5 exposed omitted nested/MCP receipts and pre-attachment ownership. Reproductions, repairs, capture-on recovery and local/hosted checks pass through `7810925`. Independent interaction coverage remains required; detached-descendant limits remain separate |
 | PA-4 | Reproduced fresh project skill shadowing on resume | Bounded catalog/provenance checkpoints retain selection, report discovery drift and refuse changed bodies/resources until explicit refresh. Corrupt snapshots refuse before tail repair. Legacy sessions checkpoint first observed selection at the next request; idle opening stays inert |
 | PA-5 | Auth accepted an unsupported proxy by falling back to direct egress; MCP private pools had no proxy options | Shared OTP/Finch policy at `42d9f1f` passed local and hosted Linux/macOS source/package/installed gates. Real local CONNECT fixtures cover auth, inference and MCP; unsupported schemes refuse and proxy credentials do not become origin headers. No live account or remote origin was used |
 | PA-6 | CLI endpoint overrides lacked profile-equivalent validation | Shared provider URI policy now covers profiles, CLI before credential acquisition and actual adapter routing. Remote cleartext, userinfo/query/fragment and malformed routes refuse; explicit loopback fixtures remain usable. Included in the PA-5 checks |
@@ -184,6 +186,28 @@ not knowledge-specific extensions. Each has a pre-fix counterexample and new
 verification. The internal report names actual inspected boundaries/test bodies
 and remaining independent coverage; no internal result grants acceptance.
 
+### Independent coverage checkpoint
+
+This is the latest reviewer's reported static coverage at `091b2bd`, sanitized
+from the private report. It is not a passing verdict or a claim that current
+dependencies are unchanged. Line ranges refer to that exact revision. The next
+review first checks the new delta; carry-forward requires comparing relevant
+source and interactions, not merely finding a file in this table. Earlier reports
+may add coverage only with their own pinned evidence and the same comparison.
+
+| Package | Latest reported reads | Remaining checkpoint |
+| --- | --- | --- |
+| R: interactions | Lifecycle modules, diagnostics, observability, developer trace and worker lease; Session init/restore/close/DOWN and extension question/action paths. Full lifecycle-runtime/tool/child and observability tests, task-resource tests; stream and recovery deltas | Reopen changed runtime/test bodies and affected dependencies at the new source. Lifecycle top-level/metadata/answer, developer-trace, diagnostics and parity/conformance test bodies were unread in this external pass |
+| S: SDK/delivery | Invocation/actions/operation/host, full event-job/subscriptions/feed/channel; history execute/collect/source validation; state namespace/operations, full store, child-usage restore/source functions. Invocation tests 1085–1800 and event-job tests 200–end | Invocation tests 1–1085, question-session/tool-action/services tests; usage-read, text-resources/consumer and their tests; subscriptions/history/feed/text-event bodies; manifest/conformance/config bodies and state/store/child-usage/model-job tests |
+| C: context/egress | Auth/main HTTP/store, HTTP proxy/profile, provider HTTP delta, MCP HTTP/config endpoint parsing/catalog dispatch; full skills/context/handoff, compaction delta. Full pending-refresh, egress and native catalog tests; auth/workspace-session deltas | JWT, MCP client/schema/transport, provider Ollama/error/SSE and MCP HTTP/client/config/schema test bodies; workspace-context and tool-result compaction implementations/tests, handoff and skill-resource tests |
+| O: OS/persistence | Full task resources; runner/native shell/stdio deltas, macOS cache/build/validation, delegation run-child; task-resource and tool-recovery deltas. Targeted terminal escaping, path normalization and environment stripping checked in phase B | Native sources beyond deltas, macOS/stdio/Linux policy and filesystem test bodies, delegation/parallel/budget bodies, usage/normalizer, writer and ledger. Recheck F3/F4/F7/S1/S2 substantively; grep or delta inspection did not establish full coverage |
+
+The report also left some Session and extension/CLI test-delta hunks unread.
+Package R must read the entire subsequent runtime/test delta, while the other
+packages retain these explicit omissions. Each returned report updates this
+checkpoint with exact functions and test bodies; partial packages continue from
+their next unread point. No ordinal review count closes the gate.
+
 ## Execution order and completion
 
 The scoped F1–F7/S1–S3 and A1–A5 repairs passed their own source/native/package/
@@ -194,9 +218,9 @@ regression or measured counterexample, coherent operator/developer guidance and
 their own checks before commit/push; an earlier green baseline does not cover them.
 
 The fresh cloud reports satisfy fresh-session provenance but do not close
-coverage or acceptance. Finish the internal audit, applicable repairs and their
-platform checks before refreshing the [review brief](../operator/architecture-review.md).
-Use the latest omissions and bounded coverage packages from the evaluation
+coverage or acceptance. The internal audit and repairs now pass their platform
+checks through `7810925`; only then was the [review brief](../operator/architecture-review.md)
+replaced. Use the latest omissions and bounded coverage packages from the evaluation
 protocol; do not restart an unbounded whole-repository review. Earlier briefs are
 preserved in the [archive](../archive/index.md); preserve all private critiques.
 The next session must retain its source assessment before checking this register

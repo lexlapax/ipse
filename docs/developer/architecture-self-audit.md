@@ -6,12 +6,13 @@ independent review, security scan or architectural acceptance. The private raw
 report remains outside Git. This record contains sanitized counterexamples,
 actual inspection scope, regressions and remaining work.
 
-## Gate before another external handoff
+## Gate applied before the replacement handoff
 
-The used external prompt is withdrawn. Before preparing another, reproduce and
-repair applicable findings, inspect the remaining implementations and test bodies,
-attack their interactions, and complete the source/native/demo/package/platform
-checks on the resulting candidate. A passing test file does not establish its
+The used external prompt was withdrawn. Before preparing its replacement, this
+pass reproduced and repaired applicable findings, inspected the remaining
+boundaries and selected test bodies, attacked their interactions, and completed
+the source/native/demo/package/platform checks on the resulting candidate.
+These remain requirements for subsequent material repairs. A passing test file does not establish its
 interactions with optional capture, pending questions, cancellation or recovery.
 Do not substitute test names or earlier green runs for reading the boundaries.
 
@@ -58,17 +59,26 @@ operator journal or credential was used.
 The internal pass reviews eight boundaries and their interactions, not every
 repository line or every test body. Rows below name actual implementation reads
 and selected test-body inspection; executing the full suite is separate evidence.
-The final candidate checks still gate the next handoff.
+The runtime repairs are at `c7745575e09f195bfe5abef2094f71249431617b`;
+candidate `7810925059dc6a4973e1c49bcebe7225df615420` changes only an older
+MCP test's lifetime observation. The repairs' first hosted Mac run exposed a query made
+after normal Session shutdown. The fixture now captures identity before dispatch,
+quiesces before history reads and asserts valid recovery and normal DOWN. It
+retains unknown/unstarted outcomes and no-replay checks. It does not assume
+process liveness proves cleanup or weaken a protocol deadline.
+Local verification and the [hosted candidate matrix](https://github.com/lexlapax/ipse/actions/runs/39091648455)
+pass at `7810925`, including both Mac enforcement steps and both installed proofs
+per host. The failed first Mac matrix is retained in the verification record.
 
 | Area | Current inspection/probes | Status |
 | --- | --- | --- |
-| Lifecycle and optional capture | Runtime/source/tool/child/event/metadata/answer/ephemeral modules; resource and channel lifetime; Session start/close/DOWN/observer paths. Lifecycle, metadata/answer/tool/child, developer-trace and diagnostics test bodies; actual sink/question recovery | Reviewed boundary; N-A1/N-A2 and cross-capture regressions, final checks pending |
+| Lifecycle and optional capture | Runtime/source/tool/child/event/metadata/answer/ephemeral modules; resource and channel lifetime; Session start/close/DOWN/observer paths. Lifecycle, metadata/answer/tool/child, developer-trace and diagnostics test bodies; actual sink/question recovery | Reviewed boundary; N-A1/N-A2 and cross-capture regressions pass locally and in hosted ordinary suites |
 | Extension authority and continuation | Actions, invocation, operation, host, service bindings/calls, tool actions and helper-model admission; projection and subscription/question restoration. Invocation bodies covering approval, corruption, helper IO/accounting, questions and workflow cancellation; services tests | Reviewed boundary; IA1/IA3, independent notifier + native question, strict source corruption and no permission inheritance |
 | Delivery and history | Text resources/consumer and stream control paths, feeds/channel, event jobs, history, usage-read and child-read validation. Actual history/usage, selected subscription/feed and stream Session test bodies | Reviewed boundary; explicit transport/admission semantics, pressure, fixed snapshots, private-view grants and inert recovery |
 | Auth, provider and MCP | Login/refresh/logout locking, JWT/storage, shared HTTP egress, provider endpoint selection, Ollama/SSE, MCP client/catalog/schema/stdio/HTTP. Actual adapter/error/egress and MCP Session/cancellation test bodies; official revocation contract | Reviewed boundary; IA2/IA4, no account access or billing changes |
 | Context and recovery | Skill parser/catalog/digest selection, workspace snapshot/nested/resource validation, historical question prefix projection, lower-role context, compaction/checkpoint and handoff paths. Selected skill/workspace/question/compaction/handoff and diagnostics test bodies | Reviewed boundary; N-A6, no result reuse across assistant groups, preserved unknown effects; startup costs remain open |
 | Trust, state and SDK | Identity/config/registry, manifest/import store, scoped CAS/tombstones, contributions, child-accounting physical sources and conformance. Complete state/store test bodies and selected binding/corruption/conformance cases | Reviewed boundary; no executable discovery, no route/grant widening, no state migration/deletion promise |
-| OS, delegation and accounting | Native shell/stdio/group owner and Linux policy; Mac native policy/cache/signing (static), task scopes, delegation worker/group, journal writer and budget/ledger/store/normalizer. Actual task-resource/writer/native-policy tests, selected delegation/parallel/budget cases | Reviewed boundary; IA3–IA5, missing helper exit never confirms cleanup; Mac enforcement requires hosted evidence |
+| OS, delegation and accounting | Native shell/stdio/group owner and Linux policy; Mac native policy/cache/signing (static), task scopes, delegation worker/group, journal writer and budget/ledger/store/normalizer. Actual task-resource/writer/native-policy tests, selected delegation/parallel/budget cases | Reviewed boundary; IA3–IA5, missing helper exit never confirms cleanup; hosted native/signed Mac enforcement passed with documented OS limits |
 | CLI and diagnostics | Complete client event loop and bounded display queue; EOF/cancel/done/next-approval ordering; content-free diagnosis and bounded trace ownership. Deterministic display-order, approval-interleaving, trace and saved-diagnosis test bodies | Reviewed boundary; N-A4, controls retain prompt authority, no deferral through the mailbox |
 
 No further source defect is currently confirmed beyond the findings above. This
@@ -83,8 +93,24 @@ interactions. More green tests do not close that independent gate.
 
 ## Completion and limits
 
-No new external prompt is ready. Record subsequent findings and their falsifiable
-tests here, reconcile operator/developer guidance, and keep the
+The internal inspection, reproductions and repairs are complete within the eight
+boundaries above. The source/native build, both formatter floors, strict compile,
+native-inclusive Linux suite, isolated demo, package verifier and both independently
+precompiled installed proofs pass on the final runtime bytes. The
+[verification record](testing.md#current-evidence-and-next-checks) owns counts,
+archive identity and hosted results. The full Linux suite also passed after the
+test-only follow-up, and the corrected hosted matrix passed on both platforms.
+All four installed receipts were parsed, with unchanged archive/host and no
+system development toolchain at runtime. Deliberate legacy service-crash cleanup
+remains unconfirmed; detached Mac descendants, startup/growth, ledger hashing and
+other documented limits remain unchanged.
+
+This closes the requested implementation-side audit and repair handoff, not P24.
+Only after these checks was the [replacement review brief](../operator/architecture-review.md)
+prepared. It assigns the new repair interactions first and retains a cumulative
+checkpoint for independent coverage still owed. No new external review was launched.
+
+Record subsequent findings and their falsifiable tests here and keep the
 [plan](../plan.md#p24-independent-architecture-validation-and-baseline-security),
 [dispositions](architecture-review-dispositions.md) and
 [verification](testing.md#current-evidence-and-next-checks) consistent. Internal

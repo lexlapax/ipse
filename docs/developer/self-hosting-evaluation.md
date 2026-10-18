@@ -5,8 +5,9 @@ independent architectural challenge, security gates and the supervised experimen
 the [plan](../plan.md#current-priorities-and-status) owns scheduling and acceptance
 status. Partial static architecture reports have returned, including the latest
 fresh cloud review of `091b2bd`, which found two applicable failures. The
-supervisor must finish its own adversarial review and repair checks before
-preparing another external prompt; the used handoff is withdrawn meanwhile. The
+supervisor completed its own adversarial boundary review and repair checks through
+`7810925`, including hosted Linux/macOS. The replacement handoff starts with a
+bounded repair-interaction assignment and preserves remaining independent coverage. The
 [disposition register](architecture-review-dispositions.md) owns verification and
 repair status. No comparative run or security scan has executed. Use the
 [operator runbook](../operator/self-development.md) for
@@ -120,6 +121,33 @@ interactions. A package can finish its named scope without claiming whole-design
 acceptance. Context exhaustion must leave exact unread paths/ranges and test
 bodies for the next package. The supervisor's audit is implementation-side
 evidence, never a replacement for independent coverage.
+
+For the post-audit candidate, use the following coverage queue. Each row is a
+bounded assignment, not a demand to re-review the entire repository. The first
+assignment challenges the new delta and its interactions; later assignments
+finish the latest external checkpoint. Source assessment still precedes exposure
+to supervisor findings. A reviewer may follow a dependency outside the package,
+but must record that extra read and any consequent omission rather than silently
+claiming the entire dependent subsystem.
+
+| Package | Required source and actual test-body coverage |
+| --- | --- |
+| R — repair interactions | The complete runtime/test delta from `091b2bd`; Session task creation, DOWN/close, question restoration and observer handlers; action/subscription/diagnostic validators; nested workflow/MCP ownership and streaming admission. Inspect every added regression body and its fixture, including negative/corrupt-history paths |
+| S — SDK and delivery checkpoint | Remaining invocation/question, state/store/child-usage/model-job, manifest/conformance/config/identity bodies; event-job/subscriptions/history/usage-read/feed/text tests. Challenge grants, source binding, async peers, fixed snapshots, replay and generic API seams |
+| C — context and egress checkpoint | Remaining auth/JWT and provider Ollama/error/SSE bodies and tests; MCP client/config/schema/HTTP/catalog; workspace/skills/resources, handoff and tool-result compaction. Challenge locking, continuation, endpoint/proxy/TLS policy, context roles and saved recovery |
+| O — OS and persistence checkpoint | Remaining native and sandbox/cache/stdio bodies/tests; delegation/parallel, journal writer, budget/ledger/store, usage/normalizer and corresponding tests. Challenge helper exit receipts, owner loss, aliases, concurrent liability and no replay; distinguish source inspection from platform execution |
+
+Keep a cumulative ledger with revision, exact path/function/test body, full or
+partial coverage, counterexample and next unread checkpoint. Prior private
+reports supply provenance to the supervisor; they are not copied into a fresh
+phase A. Do not infer coverage from a green test, a file name, or the supervisor's
+internal audit. Carry a read forward only when its bytes are unchanged and its
+relevant dependencies/interactions remain covered. Changes reopen affected rows.
+If context capacity ends a package, its next conversation resumes the exact
+unread checkpoint instead of restarting package R. The package verdict is scoped;
+whole-architecture acceptance still requires reconciliation of all applicable
+coverage and findings, followed by the separate baseline scan.
+
 Use these scenarios:
 
 | Area | Adversarial questions |

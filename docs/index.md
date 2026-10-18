@@ -21,7 +21,7 @@ start. Use the guides below for operation, development, and project context.
 | [Shared admission budgets](operator/budgets.md) | Operator-only session-tree reservations, supported bounds, inspection, refusal and unknown-liability recovery |
 | [Extensions](operator/extensions.md) | Review/import, operator trust and selection, capability procedures, limits and recovery |
 | [Independent extension lab](operator/extension-lab.md) | Build, review and select synthetic artifacts against an existing checkout or unchanged release |
-| [Independent architecture-review handoff](operator/architecture-review.md) | Pinned P24 source and fresh-session Claude cloud/local coverage prompt, followed by challenges to prior dispositions and verification receipts |
+| [Independent architecture-review handoff](operator/architecture-review.md) | Pinned P24 repair-interaction assignment, fresh-session Claude cloud/local prompt and cumulative independent coverage checkpoint |
 | [Troubleshooting](operator/troubleshooting.md) | Build, callback, account, lock, and recovery problems |
 
 ## Develop Ipse
@@ -33,7 +33,7 @@ start. Use the guides below for operation, development, and project context.
 | [Architecture](developer/architecture.md) | Modules, ownership, persistence, trust boundaries |
 | [Journal persistence](developer/persistence.md) | Owned durable appends, source offsets, failure handling and growth limits |
 | [Architecture review dispositions](developer/architecture-review-dispositions.md) | Sanitized P24 finding register, independent verification, repairs and remaining coverage gates |
-| [Supervisor architecture audit](developer/architecture-self-audit.md) | Internal adversarial inspection, reproduced interactions, repairs and mandatory gate before another external prompt |
+| [Supervisor architecture audit](developer/architecture-self-audit.md) | Internal adversarial inspection, reproduced interactions, verified repair handoff and explicit limits |
 | [Model-profile contract](developer/model-profiles.md) | Host routing, provider settings and child credential/native-history boundaries |
 | [Configuration contract](developer/configuration.md) | Bounded loader, scope, schema reuse, provenance and resume policy |
 | [Operator questions](developer/operator-questions.md) | Native question schema, explicit answers, approvals and durable recovery |

@@ -22,11 +22,14 @@ provider/account combinations, unattended self-development or production knowled
 quality. Subscription, API and installed Ollama checks have separate
 [provider verification](developer/testing.md#provider-verification-status).
 
-P23 is complete within its one-shot text/accounting scope. P24 is the active gate:
-the latest fresh review of `091b2bd` found failures missed by earlier passing
-checks. The active work is the supervisor's own adversarial boundary and
-interaction audit, repair and verification before another external handoff.
-Earlier reports remain provenance; none has granted architectural acceptance.
+P23 is complete within its one-shot text/accounting scope. P24 is the active gate.
+The fresh review of `091b2bd` found failures missed by earlier passing checks.
+The supervisor's internal adversarial audit reproduced and repaired those defects
+and five additional ownership, resource and recovery gaps in `c774557`. Candidate
+`7810925` adds a test-only lifetime correction and passes local and hosted
+Linux/macOS handoffs. The [new brief](operator/architecture-review.md) starts with
+the repair interactions and carries forward an explicit independent coverage
+checkpoint. Earlier reports remain provenance; none has granted architectural acceptance.
 The operator's 2026-10-17 direction
 puts independent architectural challenge, security review and a large supervised
 self-development trial ahead of media. P24 now owns architecture/security
@@ -39,28 +42,25 @@ new source transfer or dependency, or select a production engine.
 | Milestone or gate | Current state | Next result |
 | --- | --- | --- |
 | [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within selected scope; source/native/package/installed and hosted Linux/macOS passed | Retain accounting invariants through P24/P25 review and repairs |
-| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Latest review of `091b2bd` withheld acceptance; internal audit and repairs active, external prompt withdrawn; no scan yet | Verify reported and internally discovered counterexamples, complete internal boundary review and platform checks, then refresh independent coverage and run the baseline security audit |
+| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Internal audit and repairs verified through `7810925`, including hosted Linux/macOS; bounded external brief ready; acceptance and scan open | Complete independent repair-interaction and remaining-surface coverage, disposition findings, then run the baseline security audit |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Planned revised scope; unstarted | Independent Codex/Ipse research, Ipse-authored repairs, fresh acceptance runs and final architecture/security review |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Deferred; proposed scope subject to P25 decisions | Independently selectable working/long-term memory tools and optional lifecycle policies |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; proposed scope subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
 | [P28: voice and media](#p28-voice-and-realtime-media) | Deferred; former P24 scope, unimplemented | Chained STT/text/TTS, then explicit realtime/media capability; no prerequisite for P24/P25 |
 | [Apache-2.0 transition](#license-transition) | Requested; unimplemented | Separate verified license/package/documentation change after the agreed delivery scope |
 
-Feature status and runner readiness are separate. Accounted-model candidate
-`21e59fe` passed hosted Linux/macOS source, package and both independent installed
-proofs, including both Mac enforcement steps. The first review targeted that
-revision; the same-reviewer follow-up targeted repaired source `b570ef8` with
-documentation at `d14d6ac`. Repair candidate `b5297be` passed its local and hosted
-baseline; refreshed independent coverage is still needed before P25's runner is frozen.
-Actual revisions, platform results and investigation belong in
+Feature status, verified runtime behavior and independent architectural acceptance
+are separate. The latest internal audit records its actual inspected boundaries,
+counterexamples and omissions; it does not replace external coverage or freeze
+P25's runner. Historical repair revisions, platform results and investigations belong in
 [testing](developer/testing.md#current-evidence-and-next-checks).
 
 Execution order:
 
-1. Independently verify and disposition the returned critique using the
-   [repair register](developer/architecture-review-dispositions.md). Reproduce and
-   repair applicable defects, refresh independent delta/omitted-surface coverage,
-   then run the baseline OpenAI security audit on the resulting revision.
+1. Continue from the verified [internal audit](developer/architecture-self-audit.md)
+   and [repair register](developer/architecture-review-dispositions.md). Complete
+   independent delta/omitted-surface coverage in bounded packages, repair applicable
+   findings, then run the baseline OpenAI security audit on the resulting revision.
 2. Execute P25's independent research, discrepancy comparison, Ipse-authored
    repairs and fresh same-input/held-out reruns. Finish with an external
    architecture delta review and security review/rescan of the final candidate.
@@ -141,30 +141,27 @@ and arbitrary trusted out-of-band calls cannot establish an invoice ceiling.
 
 ## P24: independent architecture validation and baseline security
 
-**In progress; supervisor adversarial review must precede another external handoff.**
-The returned fresh review of `091b2bd` identified two applicable defects: invalid
-runtime closure on task death and diagnostic receipts invalidating pending
-extension questions. Prior green tests missed these interactions. Reproduce and
-repair them, resolve the mixed-stream/display/parsing findings, then audit the
-remaining implementations and actual test bodies internally. Record counterexamples,
-interaction coverage, fixes and measured limits; repeat the relevant failure and
-recovery checks before preparing another external prompt. The previous handoff
-is withdrawn while this work proceeds. The [internal audit record](developer/architecture-self-audit.md)
-tracks actual inspection and counterexamples. Internal review is not independent acceptance;
-the baseline security scan and P25 remain gated.
+**In progress; internal audit, repairs and platform gate complete; independent coverage next.**
+The fresh review of `091b2bd` identified an invalid lifecycle closure on task
+death and diagnostic receipts invalidating pending extension questions. The
+supervisor reproduced both, then audited eight architectural boundaries and their
+interactions. The [internal report](developer/architecture-self-audit.md) records
+the actual source/test-body reads, pre-fix counterexamples and additional repairs
+in `c774557`: subscription question checkpoints, provider response bounds,
+nested-task cleanup scope, MCP cleanup receipts and task ownership before dispatch.
+It also resolves display ordering and quoted Unicode parsing, clarifies transport
+completion versus answer admission, and records the remote-revocation uncertainty.
 
-The earlier verified baseline follows for provenance, not current acceptance.
-Candidate `091b2bd` implements optional text detachment with explicitly required
-delivery, labelled lower-role reference/helper context, saved skill selection,
-bounded approval display, login race protection and checkpoint wire compatibility.
-The local handoff passes 807 native-inclusive tests, both formatter floors,
-strict build/compile, isolated demo, package verification and both independently
-precompiled installed proofs. After the initial hosted matrix exposed two fixture
-failures, readiness and native-test scheduling were corrected without changing
-runtime bytes or protocol deadlines. The corrected hosted Linux/macOS matrix
-passes, including both Mac enforcement steps and both installed proofs per host.
-Earlier egress, cleanup, approval and receipt repairs passed their own local and
-hosted gates. No fixture or build result grants architectural acceptance.
+The final local source/native/demo/package and independent installed checks pass.
+The hosted Linux/macOS matrix passes at `7810925`, including both Mac enforcement
+steps and both installed proofs per host. Its only change from the audited runtime
+is an older MCP test's lifetime observation, corrected after the first matrix.
+The [replacement brief](operator/architecture-review.md) is ready; the used brief
+remains archived. Runtime tests and the implementation author's audit do not
+establish independent acceptance. The baseline security scan and P25 remain
+gated. Earlier role, text, catalog, egress and cleanup repairs retain
+their scoped evidence in [testing](developer/testing.md#current-evidence-and-next-checks),
+including the initial failed fixture matrix and the corrected hosted baseline.
 
 Torn-ledger continuation preserves the damaged tree and its liability; automatic
 ledger repair remains unavailable. Synthetic startup still takes about 20 seconds
@@ -176,13 +173,15 @@ owns exact revisions, counts and platform receipts.
 
 The earlier reports targeted `21e59fe`, `b570ef8`, `b5297be` and `091b2bd`;
 the latter two cloud passes satisfy fresh-session provenance but remain partial.
-All were static reviews with unrun regression proposals. The supervisor audit
-now prioritizes lifecycle modules/
-tests; invocation workflow/state/question and delivery/read tests; auth/MCP tests;
-handoff/compaction/workspace tests; state/child-usage/store; macOS/stdio; and
-delegation/parallel/budget tests plus usage/normalization. Preserve an independent
-source assessment before dispositions and record precise coverage checkpoints;
-elapsed time or accepted repair claims cannot substitute for substantive inspection.
+All were static reviews with unrun regression proposals. The next external work
+challenges the complete new delta and cross-boundary interactions first, then
+finishes the remaining SDK/delivery, context/egress and OS/persistence checkpoint
+from those reviews. Use the [bounded package queue](developer/self-hosting-evaluation.md#independent-adversarial-architecture-validation)
+and a cumulative ledger of exact source/functions/test bodies. Carry forward
+unchanged inspected surfaces only after checking their relevant interactions;
+do not restart a whole-repository review in each fresh context. Preserve an
+independent source assessment before dispositions. A package can complete its
+scope without granting whole-architecture acceptance.
 
 Retain explicit limits: journal growth/startup cost and same-size rewrite checks,
 linear ledger reads/hashes, unknown liability, fail-closed shared overdraw and
@@ -191,12 +190,6 @@ detached-descendant cleanup. Future memory migration/deletion proposals must
 distinguish retrieval state from retained host evidence. Then run the triaged
 baseline scan on the resulting exact revision. P25 execution remains gated;
 repaired findings do not certify omitted surfaces.
-The internal pass has additionally reproduced native extension-question source
-checkpoint refusal, an absent main-provider byte ceiling, missed nested-task
-cleanup registration, lost MCP-helper cleanup receipts and an unowned pre-attachment
-dispatch barrier. These generic repairs
-and their recovery/corruption probes are tracked in the internal audit; earlier
-green matrices do not verify them.
 Read-only Security Cloud access checks found the repository and available scan
 credits; no matching environment was found and no scan or billing change was
 started. Access readiness does not close either review gate.
