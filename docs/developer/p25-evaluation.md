@@ -309,6 +309,48 @@ Package/installed, hosted macOS and fresh research/held-out evidence remain
 separate checks. Supervisor status edits also reconciled current entry points;
 these are not authored product fixes.
 
+The pushed repair is `1fc50b5`; its new Linux/macOS matrix is running. A retrospective
+check also retained an earlier documentation-only
+[Mac failure](https://github.com/lexlapax/ipse/actions/runs/39140664464) at `1f4aa5b`,
+whose runtime is still `375e607`: the feed task-death fixture did not reach its
+ready/no-pending condition before the kill. The cleanup assertion was not exercised.
+Later unchanged-runtime green runs do not establish the cause or a repair. This
+startup failure remains unconfirmed; it is not evidence that the preflight patch
+caused or fixed it. Installed proofs and exact-source platform checks are evaluated
+separately.
+
+## Repaired installed runtime and frozen final cohort
+
+The `1fc50b5` Linux archive is SHA-256
+`cdd37e0dab3f2f4d2258b764061ada2e19c8de8e012cd201efe37e80cc8d066b`.
+Package verification passed. Parsed independent receipts confirm all 41 extension
+and nine model-call assertions, unchanged archive/host bytes and no system
+development toolchain on the installed runtime PATH. The deliberate service-crash
+case still reports unconfirmed cleanup and `safe_to_continue: false`; it is not
+promoted to success. A separate installed diagnostic probe preserved the specific
+refusal, generic queued result, zero execution, valid restoration and clean close.
+
+Two final workspaces are byte-identical, 332 files each, containing the original
+325 sources and seven v2 task/navigation inputs. Their inventory digest is
+`6f85957d1f4182a9355895c823a138ec8ac8d27bceda75cd93d9fafa43ffe85c`;
+the identical prompt digest is
+`35b6d01e185b89774747b00c45a166565f08996d4530a9a6d3ac2d6d67aae426`.
+No reports, authored patch, scores, critique or held-out answers are inputs.
+The [cohort controls](p25-packet-method.md#repaired-runner-evaluation-cohort)
+freeze fresh per-session allocations while retaining earlier cumulative failures.
+Execution waits for the exact repair's hosted platform checks.
+
+The separately prepared six-case held-out prompt contains scenario inputs only,
+not expected answers (SHA-256
+`a29f189f46d4e4902f25573c186d430a38f11dc8061f666b0159e3420fd876d3`).
+It uses the same 30-minute/60-request/128-proposal/zero-retrieval limits and a
+12,000-character response bound. A separate synthetic live control has a
+20-minute/14-request allocation: explicit question/answer with pending-question
+resume, four inert context-pressure turns, and cancellation of an unapproved
+file proposal followed by inert resume. Its synthetic `alpha` answer is not a
+real product or privacy preference and grants no effect. These controls and
+final reports have not executed or passed yet.
+
 ## Remaining trial gates
 
 The corrected comparison is complete and its failing criterion is recorded.

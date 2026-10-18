@@ -91,3 +91,29 @@ Retain reports unchanged, check their claims and limits, then select meaningful
 Ipse-authored improvements from actual discrepancies. This stage starts no
 production knowledge engine and does not close P25's self-development, rerun,
 platform/package or final delta/security gates.
+
+## Repaired-runner evaluation cohort
+
+After the authored preflight repair passes source/package/platform verification,
+freeze and test the new installed runtime separately from the unchanged baseline.
+Two fresh Ipse sessions receive the same v2 task, source export, packet and
+mechanical aids, with no old reports, patch, critique, scores or held-out answers.
+The input source remains `375e607`; runtime identity is recorded separately.
+Do not label the candidate's diagnostic change as a new researched source fact.
+
+Each final session receives the original 30-minute/128-proposal allocation,
+60 main steps, 1,200,000 context bytes, compaction, 300-second request timeout,
+zero retrieval and the same own-subscription model/settings. This is the planned
+post-repair cohort, not a reset of a failed initial packet attempt. Earlier
+cumulative counts and deadline receipts remain frozen. The reference v2 had 45
+calls left and used 37; its narrower remaining allowance is an explicit comparison
+limit, not a claim of identical native harness budgets.
+
+Freeze both final prompts before execution and assess them against the same
+seven-criterion minimum and hard length bound. No source-fit coaching or interim
+answer is supplied between runs. Report failures rather than automatically
+raising limits or repeating until agreement. Test the six previously frozen
+held-out scenarios separately after authorship; their answers are not research
+inputs. Native question/answer, retained-context pressure, interruption and inert
+resume controls have their own bounded receipts and do not substitute for report
+quality. These controls add no production knowledge engine or permission grant.
