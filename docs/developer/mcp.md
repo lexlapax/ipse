@@ -132,6 +132,12 @@ detached processes remain an OS-specific limitation.
 
 Both transports also register with the owned turn's cleanup scope. Their final
 closure result survives transport exit until the task's receipt is consumed.
+A known refusal before the stdio helper starts settles the ticket and returns a
+launch error while the Session remains usable. A rejected launch frame after
+spawn requires the helper's closure acknowledgment. The SDK connection runs in
+a nested scoped task that traps SDK link exits; an explicit caller monitor kills
+it on caller loss. The outer owned worker keeps its ordinary link to the scope,
+so SDK initialization errors cannot mask scope death during blocked IO.
 A stdio supervisor exit outside normal cleanup statuses is unconfirmed even if
 its Port has disappeared; disappearance alone cannot turn forced helper death
 into a successful Session close. This confirms local helper/pool cleanup only,
@@ -183,10 +189,13 @@ those flows remain unsupported. See the official
 [authorization specification](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization).
 
 Every request uses a private Finch HTTP/1 pool with one connection, owned by an
-`HTTPProfile` guardian. A task performs IO outside the transport GenServer;
+`HTTPProfile` guardian allocated before the request task starts. A task performs
+IO outside the transport GenServer;
 monitors stop the worker on transport/owner death, and the guardian closes the
-pool before releasing its fixed-name lease. Abnormal worker exit still waits for
-its guardian; it cannot confirm cleanup early. Closing waits for local cleanup and
+pool before releasing its fixed-name lease. The transport retains that exact
+guardian lease through cancellation, including before borrower registration.
+Abnormal worker exit still waits for its guardian; it cannot confirm cleanup early.
+Closing waits for local cleanup and
 makes a bounded best-effort authenticated DELETE for an assigned session. DELETE
 failure does not establish whether remote work stopped. Cancelling local IO,
 a local approval, and OS sandboxing cannot confine or undo remote effects.

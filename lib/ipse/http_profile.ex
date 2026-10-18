@@ -12,6 +12,44 @@ defmodule Ipse.HTTPProfile do
   def with_finch(fun, conn_opts \\ []) when is_function(fun, 1),
     do: with_client(fun, {:finch, conn_opts})
 
+  @doc false
+  def prepare_finch(owner) do
+    reference = make_ref()
+
+    guardian =
+      spawn(fn ->
+        monitor = Process.monitor(owner)
+
+        receive do
+          {^reference, :borrow, borrower, options, scope} ->
+            own_profile(borrower, reference, {:finch, options}, monitor, scope)
+
+          {^reference, :cancel} ->
+            :ok
+
+          {:DOWN, ^monitor, :process, _, _} ->
+            :ok
+        end
+      end)
+
+    {guardian, reference}
+  end
+
+  @doc false
+  def cancel_finch(nil), do: nil
+
+  def cancel_finch({guardian, reference}) do
+    send(guardian, {reference, :cancel})
+    guardian
+  end
+
+  @doc false
+  def with_finch(fun, options, {guardian, reference}) when is_function(fun, 1) do
+    monitor = Process.monitor(guardian)
+    send(guardian, {reference, :borrow, self(), options, Ipse.TaskResources.current()})
+    borrow(fun, guardian, monitor, reference)
+  end
+
   def finch_guardian(owner) do
     case Registry.lookup(Ipse.Registry, {__MODULE__, :finch_borrower, owner}) do
       [{guardian, _}] -> guardian
@@ -37,8 +75,15 @@ defmodule Ipse.HTTPProfile do
     Application.ensure_all_started(:ipse)
     owner = self()
     reference = make_ref()
-    {guardian, monitor} = spawn_monitor(fn -> own_profile(owner, reference, backend) end)
+    scope = Ipse.TaskResources.current()
 
+    {guardian, monitor} =
+      spawn_monitor(fn -> own_profile(owner, reference, backend, nil, scope) end)
+
+    borrow(fun, guardian, monitor, reference)
+  end
+
+  defp borrow(fun, guardian, monitor, reference) do
     receive do
       {^reference, {:ok, profile}} ->
         try do
@@ -57,10 +102,29 @@ defmodule Ipse.HTTPProfile do
     end
   end
 
-  defp own_profile(owner, reference, backend) do
+  defp own_profile(owner, reference, backend, lease_owner_monitor, scope) do
     Process.flag(:trap_exit, true)
     owner_monitor = Process.monitor(owner)
 
+    case Ipse.TaskResources.register(:http, scope) do
+      {:ok, ticket} ->
+        result =
+          try do
+            run_profile(owner, reference, backend, lease_owner_monitor, owner_monitor, ticket)
+          rescue
+            _ -> {:error, :cleanup_unconfirmed}
+          catch
+            _, _ -> {:error, :cleanup_unconfirmed}
+          end
+
+        Ipse.TaskResources.closed(ticket, result)
+
+      _ ->
+        send(owner, {reference, {:error, "HTTP cleanup scope is closed."}})
+    end
+  end
+
+  defp run_profile(owner, reference, backend, lease_owner_monitor, owner_monitor, ticket) do
     if match?({:finch, _}, backend),
       do: Registry.register(Ipse.Registry, {__MODULE__, :finch_borrower, owner}, nil)
 
@@ -76,18 +140,37 @@ defmodule Ipse.HTTPProfile do
                 {reference, {:ok, if(match?({:finch, _}, backend), do: name, else: profile)}}
               )
 
-              receive do
-                {^reference, :finished} -> :ok
-                {:DOWN, ^owner_monitor, :process, ^owner, _} -> :ok
-                {:DOWN, ^profile_monitor, :process, ^profile, _} -> :ok
-                {:EXIT, ^profile, _} -> :ok
-              end
+              borrower_stopped =
+                receive do
+                  {^reference, :finished} ->
+                    true
+
+                  {:DOWN, ^owner_monitor, :process, ^owner, _} ->
+                    true
+
+                  {:DOWN, ^profile_monitor, :process, ^profile, _} ->
+                    stop_borrower(owner, owner_monitor)
+
+                  {:EXIT, ^profile, _} ->
+                    stop_borrower(owner, owner_monitor)
+
+                  {^reference, :cancel} ->
+                    stop_borrower(owner, owner_monitor)
+
+                  {:DOWN, ^lease_owner_monitor, :process, _, _} ->
+                    stop_borrower(owner, owner_monitor)
+
+                  {:ipse_cancel_resource, id} when ticket != nil and ticket.id == id ->
+                    stop_borrower(owner, owner_monitor)
+                end
 
               Process.demonitor(profile_monitor, [:flush])
               stop_profile(profile, backend)
+              if borrower_stopped, do: :ok, else: {:error, :cleanup_unconfirmed}
 
             _ ->
               send(owner, {reference, {:error, "Could not start an isolated HTTP client."}})
+              :ok
           end
         after
           Registry.unregister(Ipse.Registry, {__MODULE__, name})
@@ -98,6 +181,18 @@ defmodule Ipse.HTTPProfile do
           owner,
           {reference, {:error, "HTTP clients are busy. Retry after another request finishes."}}
         )
+
+        :ok
+    end
+  end
+
+  defp stop_borrower(owner, monitor) do
+    Process.exit(owner, :kill)
+
+    receive do
+      {:DOWN, ^monitor, :process, ^owner, _} -> true
+    after
+      1000 -> false
     end
   end
 

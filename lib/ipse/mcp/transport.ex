@@ -37,9 +37,15 @@ defmodule Ipse.MCP.Transport do
     resource = Keyword.get(opts, :resource)
 
     with :ok <- register(resource),
-         {:ok, cleanup_ticket} <- Ipse.TaskResources.register(:mcp, opts[:cleanup_scope]),
-         {:ok, port} <-
-           Ipse.Runner.open_stdio(server.command, server.args, cwd, server.env, server.timeout_ms,
+         {:ok, port, cleanup_ticket} <-
+           Ipse.Runner.open_owned_stdio(
+             :mcp,
+             opts[:cleanup_scope],
+             server.command,
+             server.args,
+             cwd,
+             server.env,
+             server.timeout_ms,
              sandbox: Map.get(server, :sandbox, :off)
            ) do
       {:ok,

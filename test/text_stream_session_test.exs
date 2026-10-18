@@ -169,6 +169,52 @@ defmodule Ipse.TextStreamSessionTest do
     end
   end
 
+  test "required peer death while idle refuses the next provider request", ctx do
+    pid = start(ctx)
+    owner = self()
+
+    consumer =
+      spawn(fn ->
+        {:ok, handle} = Session.subscribe_text(pid, 2, required: true)
+        send(owner, {:enrolled_required, handle})
+        Process.sleep(:infinity)
+      end)
+
+    assert_receive {:enrolled_required, handle}, 2000
+    monitor = Process.monitor(consumer)
+    Process.exit(consumer, :kill)
+    assert_receive {:DOWN, ^monitor, :process, ^consumer, _}, 2000
+    assert map_size(:sys.get_state(handle.server).subscribers) == 0
+    :ok = Session.prompt(pid, "must preserve required enrollment")
+    assert_receive {:ipse, ^pid, {:error, error}}, 2000
+    assert error =~ "Required visible-text delivery failed"
+    assert_receive {:ipse, ^pid, {:done, :error}}, 2000
+    refute_received {:visible_worker, _}
+    assert :ok = Session.unsubscribe_text(pid, handle)
+    :ok = Session.prompt(pid, "explicitly release the lost requirement")
+    assert_receive {:visible_worker, _}, 2000
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 2000
+  end
+
+  test "required broker death while idle needs explicit release", ctx do
+    pid = start(ctx)
+    {:ok, handle} = Session.subscribe_text(pid, 2, required: true)
+    send(pid, {:text_policy, handle.server, make_ref(), false})
+    Session.info(pid)
+    monitor = Process.monitor(handle.server)
+    Process.exit(handle.server, :kill)
+    assert_receive {:DOWN, ^monitor, :process, _, _}, 2000
+    :ok = Session.prompt(pid, "must not silently downgrade after broker loss")
+    assert_receive {:ipse, ^pid, {:error, error}}, 2000
+    assert error =~ "Required visible-text delivery failed"
+    assert_receive {:ipse, ^pid, {:done, :error}}, 2000
+    refute_received {:visible_worker, _}
+    assert {:error, :text_stream_unavailable} = Session.subscribe_text(pid, 2)
+    assert :ok = Session.unsubscribe_text(pid, handle)
+    :ok = Session.prompt(pid, "explicit release allows inference")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 2000
+  end
+
   test "required completion waits for acknowledgment and retains final usage on refusal and resume",
        ctx do
     config =

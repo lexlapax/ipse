@@ -32,6 +32,12 @@ Required consumers must acknowledge the completed stream, including its `end`,
 before the response is admitted. Closure, broker loss or the five-second pressure/
 completion deadline then fails the request with a distinct required-delivery
 diagnosis. This policy is private enrollment state, not a new frame version.
+Unexpected consumer loss between turns retains the requirement: subsequent main
+inference is refused until the lost enrollment is explicitly released. Required
+broker loss likewise prevents silent replacement with optional delivery. Summary
+requests receive no visible frames and cannot clear the main delivery policy.
+These enrollments are process-local; idle resume recreates neither clients nor
+their delivery requirements.
 
 Messages are `{:ipse_text, server, payload}`. Normal frames carry their negotiated version,
 session ID, generation 1, request/stream ID, subscription ID, consecutive sequence
@@ -52,8 +58,13 @@ between consumers. Every consumer retains the same acknowledgment/flow rules.
 Call `Ipse.TextStream.ack(handle, sequence)` after consuming each normal frame.
 Only the enrolled consumer PID can acknowledge its current outstanding sequence.
 Wrong callers, stale/duplicate acknowledgments and stale request producers are
-refused. `Ipse.TextStream.unsubscribe(handle)` removes that consumer and releases
-pending flow. A server `DOWN` without completed `end` also means incomplete:
+refused. `Ipse.TextStream.unsubscribe(handle)` lets the enrolled consumer remove
+its enrollment and release pending flow. While idle, the Session owner can also
+release a live or lost enrollment through `Ipse.Session.unsubscribe_text(session,
+handle)`. After broker death, this explicit release clears its lost requirements;
+enroll replacement consumers before sending another prompt. Unsubscribing during
+an active required stream still fails that request. A server `DOWN` without
+completed `end` also means incomplete:
 an untrappable broker kill cannot send a notification.
 
 ```elixir
@@ -99,8 +110,9 @@ VM to initialize. All selected consumers must become ready before the first main
 request of that turn. Readiness/reuse checks actual broker enrollment, not merely
 a live consumer PID. Live consumers may remain enrolled across turns; a failed
 consumer is not restarted for another model call in the same turn. Fresh explicit
-operator input may start a new resource with new correlation. Summary requests
-receive no private text frames.
+operator input may start a new optional resource with new correlation. A lost
+required enrollment must first be explicitly released; replacement alone cannot
+remove that requirement. Summary requests receive no private text frames.
 
 The worker's `handle("stream.text", payload, state)` receives:
 

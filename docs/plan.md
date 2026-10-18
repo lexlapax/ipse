@@ -23,13 +23,13 @@ quality. Subscription, API and installed Ollama checks have separate
 [provider verification](developer/testing.md#provider-verification-status).
 
 P23 is complete within its one-shot text/accounting scope. P24 is the active gate.
-The fresh review of `091b2bd` found failures missed by earlier passing checks.
-The supervisor's internal adversarial audit reproduced and repaired those defects
-and five additional ownership, resource and recovery gaps in `c774557`. Candidate
-`7810925` adds a test-only lifetime correction and passes local and hosted
-Linux/macOS handoffs. The [new brief](operator/architecture-review.md) starts with
-the repair interactions and carries forward an explicit independent coverage
-checkpoint. Earlier reports remain provenance; none has granted architectural acceptance.
+The package R review at `7810925` challenged pre-spawn cleanup, the incomplete
+provider HTTP bound and the broadened MCP test outcome. It also identified idle
+required-peer loss and an HTTP guardian race. The active work reproduces and
+repairs these interactions, then completes internal source/test-body inspection
+and platform verification before another handoff. The previous brief is archived;
+package R remains partial and unaccepted, with S/C/O unstarted. Earlier internal
+and hosted passes remain scoped evidence, not architectural acceptance.
 The operator's 2026-10-17 direction
 puts independent architectural challenge, security review and a large supervised
 self-development trial ahead of media. P24 now owns architecture/security
@@ -42,7 +42,7 @@ new source transfer or dependency, or select a production engine.
 | Milestone or gate | Current state | Next result |
 | --- | --- | --- |
 | [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within selected scope; source/native/package/installed and hosted Linux/macOS passed | Retain accounting invariants through P24/P25 review and repairs |
-| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Internal audit and repairs verified through `7810925`, including hosted Linux/macOS; bounded external brief ready; acceptance and scan open | Complete independent repair-interaction and remaining-surface coverage, disposition findings, then run the baseline security audit |
+| [P24: architecture and security readiness](#p24-independent-architecture-validation-and-baseline-security) | Package R at `7810925` unaccepted; applicable repairs and internal interaction audit active; prompt withdrawn | Verify launch/bounds/delivery/cleanup repairs, resume the exact independent R checkpoint, then complete S/C/O and the baseline security audit |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Planned revised scope; unstarted | Independent Codex/Ipse research, Ipse-authored repairs, fresh acceptance runs and final architecture/security review |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Deferred; proposed scope subject to P25 decisions | Independently selectable working/long-term memory tools and optional lifecycle policies |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; proposed scope subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
@@ -57,8 +57,9 @@ P25's runner. Historical repair revisions, platform results and investigations b
 
 Execution order:
 
-1. Continue from the verified [internal audit](developer/architecture-self-audit.md)
-   and [repair register](developer/architecture-review-dispositions.md). Complete
+1. Complete the package R repairs, internal continuation and final platform checks
+   in the [internal audit](developer/architecture-self-audit.md) and
+   [repair register](developer/architecture-review-dispositions.md). Then complete
    independent delta/omitted-surface coverage in bounded packages, repair applicable
    findings, then run the baseline OpenAI security audit on the resulting revision.
 2. Execute P25's independent research, discrepancy comparison, Ipse-authored
@@ -141,27 +142,28 @@ and arbitrary trusted out-of-band calls cannot establish an invoice ceiling.
 
 ## P24: independent architecture validation and baseline security
 
-**In progress; internal audit, repairs and platform gate complete; independent coverage next.**
-The fresh review of `091b2bd` identified an invalid lifecycle closure on task
-death and diagnostic receipts invalidating pending extension questions. The
-supervisor reproduced both, then audited eight architectural boundaries and their
-interactions. The [internal report](developer/architecture-self-audit.md) records
-the actual source/test-body reads, pre-fix counterexamples and additional repairs
-in `c774557`: subscription question checkpoints, provider response bounds,
-nested-task cleanup scope, MCP cleanup receipts and task ownership before dispatch.
-It also resolves display ordering and quoted Unicode parsing, clarifies transport
-completion versus answer admission, and records the remote-revocation uncertainty.
+**In progress; package R repairs and internal continuation pass locally; hosted verification pending.**
+The returned package R review of `7810925` confirms most prior repairs but finds
+a false cleanup failure before MCP launch and an HTTP bound covering only streamed
+success responses. It also challenges idle required-peer loss, unexplained clean
+MCP exit outcomes, shell/lock ticket ordering and an HTTP guardian lookup race.
+The [internal audit](developer/architecture-self-audit.md) and
+[register](developer/architecture-review-dispositions.md) track concrete reproductions,
+repairs, source inspection and tests, including real Session startup failure and
+the additional active HTTP borrower/pool cleanup gap found internally.
 
-The final local source/native/demo/package and independent installed checks pass.
-The hosted Linux/macOS matrix passes at `7810925`, including both Mac enforcement
-steps and both installed proofs per host. Its only change from the audited runtime
-is an older MCP test's lifetime observation, corrected after the first matrix.
-The [replacement brief](operator/architecture-review.md) is ready; the used brief
-remains archived. Runtime tests and the implementation author's audit do not
-establish independent acceptance. The baseline security scan and P25 remain
-gated. Earlier role, text, catalog, egress and cleanup repairs retain
-their scoped evidence in [testing](developer/testing.md#current-evidence-and-next-checks),
-including the initial failed fixture matrix and the corrected hosted baseline.
+The current repair keeps pre-spawn refusals separate from post-spawn uncertainty,
+bounds every response status with the existing Finch client, retains required
+delivery until explicit release, and captures HTTP guardians before borrower
+startup. MCP tests pin clean exit and forced helper loss separately. The internal
+continuation found and repaired additional scope-link, HTTP ownership, NUL-input
+and compaction/delivery interactions. Final source/native/demo/package and both
+precompiled installed proofs pass locally. Verify the hosted platform candidate before a replacement
+[handoff](operator/architecture-review.md). The used brief is archived. No passing
+fixture, internal audit or hosted build establishes independent acceptance;
+baseline security and P25 remain gated. Earlier verified baselines through
+`7810925`, including the initial failed Mac fixture matrix and corrected run,
+remain scoped provenance in [testing](developer/testing.md#current-evidence-and-next-checks).
 
 Torn-ledger continuation preserves the damaged tree and its liability; automatic
 ledger repair remains unavailable. Synthetic startup still takes about 20 seconds
@@ -171,12 +173,11 @@ The [disposition register](developer/architecture-review-dispositions.md) owns
 F1–F7, S1–S3, D1–D9, A1–A7 and PA-1–PA-15; [testing](developer/testing.md#current-evidence-and-next-checks)
 owns exact revisions, counts and platform receipts.
 
-The earlier reports targeted `21e59fe`, `b570ef8`, `b5297be` and `091b2bd`;
-the latter two cloud passes satisfy fresh-session provenance but remain partial.
-All were static reviews with unrun regression proposals. The next external work
-challenges the complete new delta and cross-boundary interactions first, then
-finishes the remaining SDK/delivery, context/egress and OS/persistence checkpoint
-from those reviews. Use the [bounded package queue](developer/self-hosting-evaluation.md#independent-adversarial-architecture-validation)
+The reports through `7810925` are static reviews with unrun regression proposals;
+fresh-session provenance does not close omitted coverage. Package R resumes at
+its exact unread checkpoint, rechecking the subsequent repair delta and relevant
+interactions. SDK/delivery, context/egress and OS/persistence packages S/C/O remain
+unstarted. Use the [bounded package queue](developer/self-hosting-evaluation.md#independent-adversarial-architecture-validation)
 and a cumulative ledger of exact source/functions/test bodies. Carry forward
 unchanged inspected surfaces only after checking their relevant interactions;
 do not restart a whole-repository review in each fresh context. Preserve an

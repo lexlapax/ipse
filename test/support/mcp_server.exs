@@ -130,6 +130,19 @@ loop = fn loop, changed ->
               scenario == "disconnect_after_dispatch" ->
                 System.halt(0)
 
+              scenario == "controlled_disconnect" ->
+                File.write!("disconnect-ready", System.pid())
+
+                wait = fn wait ->
+                  if not File.exists?("disconnect-now") do
+                    Process.sleep(2)
+                    wait.(wait)
+                  end
+                end
+
+                wait.(wait)
+                System.halt(0)
+
               scenario == "rpc_error" ->
                 write.(%{
                   "jsonrpc" => "2.0",

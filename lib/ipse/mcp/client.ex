@@ -82,6 +82,36 @@ defmodule Ipse.MCP.Client do
   end
 
   defp connection(server, cwd, resource, fun) do
+    caller = self()
+
+    task =
+      Ipse.TaskResources.async(fn ->
+        Process.flag(:trap_exit, true)
+        worker = self()
+        guard = spawn(fn -> guard_connection(caller, worker) end)
+
+        try do
+          linked_connection(server, cwd, resource, fun)
+        after
+          send(guard, :finished)
+        end
+      end)
+
+    Task.await(task, :infinity)
+  end
+
+  defp guard_connection(caller, worker) do
+    caller_ref = Process.monitor(caller)
+    worker_ref = Process.monitor(worker)
+
+    receive do
+      {:DOWN, ^caller_ref, :process, ^caller, _} -> Process.exit(worker, :kill)
+      {:DOWN, ^worker_ref, :process, ^worker, _} -> :ok
+      :finished -> :ok
+    end
+  end
+
+  defp linked_connection(server, cwd, resource, fun) do
     transport_module =
       if Map.get(server, :transport) == :http, do: Ipse.MCP.HTTPTransport, else: Transport
 
@@ -122,7 +152,12 @@ defmodule Ipse.MCP.Client do
           end
 
         cleanup = Transport.close(transport)
-        MCP.Client.close(client)
+
+        try do
+          MCP.Client.close(client)
+        catch
+          :exit, _ -> :ok
+        end
 
         cleanup =
           receive do

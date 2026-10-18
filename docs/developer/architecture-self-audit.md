@@ -1,117 +1,111 @@
 # Supervisor adversarial architecture audit
 
-This is the implementation author's internal audit, requested after the fresh
-external review of source `091b2bd` with evidence at `20b377c`. It is not an
-independent review, security scan or architectural acceptance. The private raw
-report remains outside Git. This record contains sanitized counterexamples,
-actual inspection scope, regressions and remaining work.
+This is the implementation author's internal audit, not independent review,
+architectural acceptance or a security scan. The private external reports remain
+outside Git. This record names actual counterexamples, inspected boundaries,
+repairs and limits; [testing](testing.md#current-evidence-and-next-checks) owns
+verification receipts and [the disposition register](architecture-review-dispositions.md)
+owns the cumulative external coverage checkpoint.
 
-## Gate applied before the replacement handoff
+## Current gate
 
-The used external prompt was withdrawn. Before preparing its replacement, this
-pass reproduced and repaired applicable findings, inspected the remaining
-boundaries and selected test bodies, attacked their interactions, and completed
-the source/native/demo/package/platform checks on the resulting candidate.
-These remain requirements for subsequent material repairs. A passing test file does not establish its
-interactions with optional capture, pending questions, cancellation or recovery.
-Do not substitute test names or earlier green runs for reading the boundaries.
+The package R review of `7810925` reopened cleanup and HTTP-bound claims from the
+previous internal audit. That audit missed composition failures, and its passing
+matrix did not establish those claims. The used brief is
+[archived](../archive/2026-10-17-package-r-review-brief/index.md); its replacement
+remains withheld until final hosted verification passes. This repair batch and
+internal continuation pass their local source/package gates. R is unaccepted; S/C/O, baseline
+security and P25 remain gated. Internal inspection cannot supply independent
+coverage or certify the whole architecture.
 
-## Findings and counterexamples
+## Package R repairs and additional counterexamples
 
-| ID | Counterexample and disposition | Verification |
+| Item | Counterexample and resulting behavior | Actual probe |
 | --- | --- | --- |
-| N-A1 | Killing an owned model/tool task with lifecycle enabled emits an invalid `worker_failed` epoch closure. Use the existing `cleanup_failure` closure with unconfirmed cleanup; do not broaden the durable enum | Both model/tool regressions reproduced the old MatchError. The repair deliberately stops normally, closes the epoch with unconfirmed cleanup and resumes inertly |
-| N-A2 | Diagnostic lease intent/ready/closed records can occur during an extension question and poison its action reducer. Validate the complete diagnostic receipt stream, then allow its independent facts without changing question state | Real sink/question recovery reproduced `invalid_extension_action`. Repeated resume/answer, saved diagnosis/handoff, before-request/after-answer jobs, explicit sink stop and corrupt-receipt refusal pass |
-| IA1 | A native extension-tool question with prompt subscriptions records `lifecycle_question_sources` while the action reducer forbids it. This additional interaction was found in the supervisor audit | Real independent notifier + SDK question fixture reproduced refusal. The repair validates subscription history before permitting its source checkpoint; kill/resume/answer and corrupt-checkpoint refusal pass |
-| IA2 | Main provider HTTP responses had no default byte ceiling, permitting unbounded parser/adapter accumulation until the time deadline | A synthetic loopback response of 8,388,609 bytes was accepted before repair. The shared HTTP adapter now caps response consumption at 8 MiB and retains smaller caller limits; focused provider checks pass |
-| IA3 | Nested workflow tasks did not inherit the cleanup scope, so their native helpers were absent from confirmation | Real approved workflow + SIGSTOP of its exact shell supervisor reproduced `close_confirmed: :ok`. Linked nested tool/model/history tasks now explicitly inherit the outer scope; helper/cancellation, model-job and child-read fixtures pass |
-| IA4 | Abrupt MCP stdio-supervisor death discarded its exit status and could later yield confirmed Session cleanup | Killing the exact isolated MCP helper reproduced `close_confirmed: :ok`. MCP transports now join the task scope and preserve actual closure results. Forced helper loss with lifecycle on stops normally with a valid unconfirmed epoch; stdio/HTTP and owner-loss fixtures pass |
-| IA5 | An owner dying between task creation and scope attachment leaves the new task waiting forever at the dispatch barrier | Extracted the existing unchanged barrier and reproduced its failure to terminate on pre-attachment owner loss. The barrier now monitors owner and scope before readiness, then hands lifetime control to the attached scope. The fixture covers either process dying without dispatch; this is a controlled handshake probe, not a scheduler-timed Session reproduction |
-| N-A4 | Sending deferred CLI display back to the mailbox puts it after newer output already queued behind the approval decision | Deterministic suspended-client fixture reproduced reversed display order. Draining the bounded saved queue directly before newer mailbox events passes, retaining approval and overflow checks |
-| N-A6 | Quoted Unicode skill metadata mixes byte length and grapheme slicing, retaining a closing quote | Real discovery/load reproduced the error. Removing matching ASCII delimiter bytes passes single/double-quoted multibyte-name and description fixtures |
-| N-A3 | Stream transport completion can precede refusal of assistant admission because another required consumer fails | Reverse-peer Session fixture passes: healthy optional v1 delivery completes, required v2 timeout refuses admission with retained failed accounting. Developer/operator contracts explicitly distinguish transport from Session success and durable `answer.committed`; no corrective transport or new media protocol is introduced |
-| N-A5 | Fresh login replaces protected local credentials; remote revocation of the previous grant is speculative and server-dependent | Public profiles/sessions documentation specifies sign-out revocation, not the older-grant effect of replacement. Document that uncertainty; no speculative automatic revocation or live-account claim |
-| PA-13 wording | Historical questions skip repeated durable validators but still reconstruct and hash each prefix | Register corrected: no cached projection reuse or material latency improvement; the measured startup limit remains open |
+| R-1 / R-5 | Registering a cleanup ticket before a launch refusal left a nonexistent helper unconfirmed. Known pre-spawn errors now settle their tickets; post-spawn launch-frame failure awaits a real helper receipt | Scoped invalid-cwd MCP, nonexecutable shell/lock helper, extension artifact startup and real captured Session refusal/retry. The corrected pre-spawn fixtures failed before repair; actual forced helper loss still refuses confirmation |
+| R-1 SDK composition | The pinned SDK's failed `start_link` can kill the owned caller despite the transport's settled ticket. Trapping exits in that caller fixed startup but masked scope death during blocked IO | Both a real launch-refusal Session and a killed-scope blocked-MCP fixture were exercised. Only a nested scoped SDK task traps those exits; its caller guardian kills it on caller loss, while the outer task retains its normal scope link. Both regressions now pass |
+| R-2 / IA2 correction | OTP `httpc` streams only 200/206, leaving error and other success bodies outside the old consumption cap. Inference now uses the existing locked Finch streaming callbacks for every status | Ten length/chunked fixtures across 200/201/302/429/500 hold the oversized connection open and require refusal before EOF. The eight nonstreamed cases failed before repair. Positive TLS trust and negative hostname/untrusted-root fixtures, proxy fixtures, provider errors and helper-model tests pass |
+| R-3 | Required delivery disappeared when its consumer died while idle. A dead broker could also be silently replaced. Lost required enrollments now block main inference until explicit idle release | Consumer death, broker death, forged policy update, explicit release and replacement fixtures pass. Policy messages are bound to the broker and a Session-issued private reference. Live enrollments remain process-local, not resumed subscriptions |
+| R-3 compaction interaction | A summary request overwrote the main delivery flag after required broker loss, allowing the next main request through | A real compaction fixture reproduced main dispatch and successful completion before repair. Summary preparation now preserves the main requirement; the same fixture refuses main dispatch until explicit release |
+| R-4 | The previous MCP recovery regression accepted both confirmed and unconfirmed closure and therefore could not pin cleanup | Controlled disconnect observes the actual native-helper exit zero and requires confirmed receipt, live idle Session and inert unknown-result recovery. Immediate server exit separately requires confirmed close; forced helper loss separately requires unconfirmed close. The precise older Mac unconfirmed path remains unexplained |
+| R-6 | Looking up a guardian after killing its borrower can miss an unregistered request pool | MCP retains a guardian lease before spawning the borrower and waits for that exact guardian through cancellation and DELETE. Pre-borrow cancellation and deliberately stalled teardown are controlled probes; the narrow old scheduler race was not reproduced live |
+| Internal HTTP ownership | Scope close could report success while a provider HTTP borrower, pool and socket were still alive | A real held-open socket reproduced this. HTTP guardians now register in the task scope and acknowledge only after stopping the borrower and pool. The same fixture requires all three to stop before successful scope close |
+| Internal OS text admission | An embedded NUL truncated a shell command at the OS boundary; the intended invalid-input fixture actually performed a scratch-file effect | Commands/cwd and lock paths now reject invalid UTF-8 and NUL before helper launch. The no-effect fixture failed before repair and passes afterward |
 
-## Inspection and interaction coverage
+The 64 MiB chunked-500 memory comparison used separate isolated VMs with the old
+and candidate HTTP module. The old adapter consumed the full response; the
+candidate stopped at its transport ceiling. Sampled global binary memory was
+substantially lower. This measures that fixture, not process/OS peak memory or a
+hard memory cap. No credential, real model service or operator journal was used.
 
-The reported blockers affect availability and honest recovery. IA1 is another
-availability failure; IA2 bounds provider-driven memory growth; IA3/IA4 affect
-the correctness of cleanup confirmation; IA5 affects ownership before dispatch.
-These are material correctness gaps, without a demonstrated privilege escalation
-or credential disclosure in these reproductions. The display/Unicode issues are
-lower-impact correctness defects. Stream completion and remote revocation are
-explicit contracts/limits rather than claimed security fixes.
+## Continuation inspection
 
-Actual regression bodies live in
-[lifecycle runtime](../../test/lifecycle_runtime_test.exs),
-[extension invocation](../../test/extensions_invocation_test.exs),
-[event jobs](../../test/extensions_event_job_test.exs),
-[provider HTTP](../../test/provider/http_test.exs),
-[MCP Sessions](../../test/mcp/session_test.exs),
-[task resources](../../test/task_resources_test.exs),
-[CLI](../../test/cli_test.exs), [skills](../../test/ipse/skills_test.exs) and
-[text Sessions](../../test/text_stream_session_test.exs).
-All use synthetic inputs and temporary workspaces. The stopped/killed helper
-probes target their own known fixture processes. No real model/auth service,
-operator journal or credential was used.
+This pass read the complete current provider HTTP, HTTP profile ownership, MCP
+client/stdio/HTTP transports, task-resource and text-stream paths and the pinned
+MCP SDK's startup, link/exit and close behavior. It read Finch's streaming/pool
+and Mint header-bound implementation rather than assuming `httpc` semantics
+carried over. No dependency was added; the reuse rationale is in
+[dependencies](dependencies.md).
 
-The internal pass reviews eight boundaries and their interactions, not every
-repository line or every test body. Rows below name actual implementation reads
-and selected test-body inspection; executing the full suite is separate evidence.
-The runtime repairs are at `c7745575e09f195bfe5abef2094f71249431617b`;
-candidate `7810925059dc6a4973e1c49bcebe7225df615420` changes only an older
-MCP test's lifetime observation. The repairs' first hosted Mac run exposed a query made
-after normal Session shutdown. The fixture now captures identity before dispatch,
-quiesces before history reads and asserts valid recovery and normal DOWN. It
-retains unknown/unstarted outcomes and no-replay checks. It does not assume
-process liveness proves cleanup or weaken a protocol deadline.
-Local verification and the [hosted candidate matrix](https://github.com/lexlapax/ipse/actions/runs/39091648455)
-pass at `7810925`, including both Mac enforcement steps and both installed proofs
-per host. The failed first Mac matrix is retained in the verification record.
+The internal continuation also read the task-result branch and the remaining
+Session model/tool/question/extension helpers named in the package checkpoint;
+Runner launch, close, receive/output and frame paths; native stdio and process-group
+ownership; EventJob question restoration; TextConsumer; and the observability
+channel's close path. Actual fixture setup/helpers for invocation, event jobs and
+text delivery were checked. Full lifecycle top-level/metadata/answer,
+developer-trace, diagnostics and extension-conformance test bodies were read,
+in addition to all new or changed regression bodies. Local execution is recorded
+separately from reading those bodies.
 
-| Area | Current inspection/probes | Status |
-| --- | --- | --- |
-| Lifecycle and optional capture | Runtime/source/tool/child/event/metadata/answer/ephemeral modules; resource and channel lifetime; Session start/close/DOWN/observer paths. Lifecycle, metadata/answer/tool/child, developer-trace and diagnostics test bodies; actual sink/question recovery | Reviewed boundary; N-A1/N-A2 and cross-capture regressions pass locally and in hosted ordinary suites |
-| Extension authority and continuation | Actions, invocation, operation, host, service bindings/calls, tool actions and helper-model admission; projection and subscription/question restoration. Invocation bodies covering approval, corruption, helper IO/accounting, questions and workflow cancellation; services tests | Reviewed boundary; IA1/IA3, independent notifier + native question, strict source corruption and no permission inheritance |
-| Delivery and history | Text resources/consumer and stream control paths, feeds/channel, event jobs, history, usage-read and child-read validation. Actual history/usage, selected subscription/feed and stream Session test bodies | Reviewed boundary; explicit transport/admission semantics, pressure, fixed snapshots, private-view grants and inert recovery |
-| Auth, provider and MCP | Login/refresh/logout locking, JWT/storage, shared HTTP egress, provider endpoint selection, Ollama/SSE, MCP client/catalog/schema/stdio/HTTP. Actual adapter/error/egress and MCP Session/cancellation test bodies; official revocation contract | Reviewed boundary; IA2/IA4, no account access or billing changes |
-| Context and recovery | Skill parser/catalog/digest selection, workspace snapshot/nested/resource validation, historical question prefix projection, lower-role context, compaction/checkpoint and handoff paths. Selected skill/workspace/question/compaction/handoff and diagnostics test bodies | Reviewed boundary; N-A6, no result reuse across assistant groups, preserved unknown effects; startup costs remain open |
-| Trust, state and SDK | Identity/config/registry, manifest/import store, scoped CAS/tombstones, contributions, child-accounting physical sources and conformance. Complete state/store test bodies and selected binding/corruption/conformance cases | Reviewed boundary; no executable discovery, no route/grant widening, no state migration/deletion promise |
-| OS, delegation and accounting | Native shell/stdio/group owner and Linux policy; Mac native policy/cache/signing (static), task scopes, delegation worker/group, journal writer and budget/ledger/store/normalizer. Actual task-resource/writer/native-policy tests, selected delegation/parallel/budget cases | Reviewed boundary; IA3–IA5, missing helper exit never confirms cleanup; hosted native/signed Mac enforcement passed with documented OS limits |
-| CLI and diagnostics | Complete client event loop and bounded display queue; EOF/cancel/done/next-approval ordering; content-free diagnosis and bounded trace ownership. Deterministic display-order, approval-interleaving, trace and saved-diagnosis test bodies | Reviewed boundary; N-A4, controls retain prompt authority, no deferral through the mailbox |
+Cross-boundary review specifically challenged failed startup versus dispatched
+work, SDK links versus scope links, nested HTTP ownership, idle required loss
+through compaction, and helper exit versus server exit. It exposed the additional
+counterexamples above before this handoff. These implementation-side reads do
+not close the external omissions. The next independent pass must carry forward
+only unchanged reads and inspect this entire delta and its interactions.
 
-No further source defect is currently confirmed beyond the findings above. This
-is a bounded internal conclusion, not proof of absence. In particular, the review
-did not read every example/packaging script, the entire Session module, every
-provider adapter or all older test bodies. Independent inspection must still
-finish the latest external coverage checkpoint, including state/child/model-job,
-provider/MCP/auth, workspace/compaction/handoff, native/delegation/accounting and
-SDK tests not substantively read in earlier external passes. Preserve completed
-coverage only where code remains byte-identical; inspect new deltas and their
-interactions. More green tests do not close that independent gate.
+## Earlier audit and retained corrections
 
-## Completion and limits
+The previous internal repairs were implemented at `c774557`; the test-only
+candidate `7810925` passed its recorded local and hosted matrix. That evidence
+remains valid for its actual fixtures, with the following qualifications.
 
-The internal inspection, reproductions and repairs are complete within the eight
-boundaries above. The source/native build, both formatter floors, strict compile,
-native-inclusive Linux suite, isolated demo, package verifier and both independently
-precompiled installed proofs pass on the final runtime bytes. The
-[verification record](testing.md#current-evidence-and-next-checks) owns counts,
-archive identity and hosted results. The full Linux suite also passed after the
-test-only follow-up, and the corrected hosted matrix passed on both platforms.
-All four installed receipts were parsed, with unchanged archive/host and no
-system development toolchain at runtime. Deliberate legacy service-crash cleanup
-remains unconfirmed; detached Mac descendants, startup/growth, ledger hashing and
-other documented limits remain unchanged.
+| Item | Previous result and present limit |
+| --- | --- |
+| N-A1 | Lifecycle-on model/tool task death now uses the existing `cleanup_failure` closure, stops normally and resumes inertly. R-1 challenged when cleanup failure should be diagnosed, not that durable enum repair |
+| N-A2 | Diagnostic intent/ready/closed facts no longer poison pending extension questions after full receipt validation. Repeated resume/answer, diagnosis/handoff and corrupt-record refusal were exercised |
+| IA1 | Independently validated prompt-source checkpoints are permitted beside native extension-tool questions; subscription validation and checkpoint adjacency remain strict |
+| IA2 | The original 200-response cap test proved only streamed success consumption. Its universal wording was incorrect; R-2 supplies the all-status repair and regressions |
+| IA3 | Tool/model/history nested tasks inherit the cleanup scope. R-1 and the HTTP scope probe required inspecting the resources actually enrolled inside those tasks |
+| IA4 | MCP transports retain real cleanup results after forced helper death. R-1 showed that enrollment without startup settlement wrongly classified no-process refusal |
+| IA5 | The dispatch barrier monitors owner and scope before attachment. The probe tests the extracted handshake rather than claiming a timed Session reproduction |
+| N-A3 | Optional transport `end/complete` can precede required-peer failure and refusal of answer admission. The contract distinguishes delivery from Session success and durable `answer.committed`; no corrective terminal frame is promised |
+| N-A4 / N-A6 | CLI display drains its bounded deferred queue before newer mailbox events; quoted Unicode skill metadata removes ASCII delimiter bytes correctly |
+| N-A5 / PA-13 | Remote revocation of replaced login grants remains unspecified. Historical questions skip repeated validators but still rebuild/hash prefixes; no cached-projection or material startup-latency claim is made |
 
-This closes the requested implementation-side audit and repair handoff, not P24.
-Only after these checks was the [replacement review brief](../operator/architecture-review.md)
-prepared. It assigns the new repair interactions first and retains a cumulative
-checkpoint for independent coverage still owed. No new external review was launched.
+The prior assertion that the `7810925` test-only correction did not weaken the
+MCP test was too broad: accepting either cleanup result widened its evidence.
+R-4 now splits strict cases rather than treating both outcomes as equivalent.
+The older failure's cause is not established by subsequent green runs.
 
-Record subsequent findings and their falsifiable tests here and keep the
-[plan](../plan.md#p24-independent-architecture-validation-and-baseline-security),
-[dispositions](architecture-review-dispositions.md) and
-[verification](testing.md#current-evidence-and-next-checks) consistent. Internal
-completion cannot close the remaining independent review or baseline security gate.
+## Verification and limits
+
+Repairs and counterexamples pass locally. Final build, both actual formatter
+floors, strict compilation, native-inclusive suite, isolated demo, package and
+both independently precompiled installed proofs pass on frozen runtime bytes.
+All installed assertions were parsed with unchanged archive/host bytes and no
+system development toolchain on the runtime path. Actual hosted Ubuntu/macOS logs
+and enforcement results are the remaining repair handoff gate; see the verification
+record for receipts. No replacement prompt is ready yet.
+
+The review is bounded. It does not read every Session line, adapter, example or
+older test body, prove absence of defects, or replace package S/C/O. Detached Mac
+descendants, remote MCP persistence, sequential close deadlines, startup/journal
+growth, linear ledger prefix hashing and deliberate service-crash unconfirmed
+cleanup remain explicit limits. The earlier Mac discovery flake and the older
+MCP normal-exit unconfirmed path retain separate unconfirmed causes.
+
+After verification, prepare a package R continuation from its saved checkpoint
+and this delta. Do not restart all architecture areas or turn internal inspection
+into independent acceptance. Keep [the plan](../plan.md#p24-independent-architecture-validation-and-baseline-security),
+[dispositions](architecture-review-dispositions.md) and operator brief consistent.

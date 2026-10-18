@@ -119,6 +119,30 @@ defmodule Ipse.Extensions.WorkerTest do
     assert_raise ArgumentError, fn -> String.to_existing_atom("Elixir." <> c.entrypoint) end
   end
 
+  test "a refused native launch retires its scope ticket without loading the artifact", c do
+    File.rm(c.marker)
+    path = Path.join(c.root, "nonexecutable-helper")
+    File.write!(path, "fixture")
+    File.chmod!(path, 0o600)
+    previous = System.get_env("IPSE_RUNNER_PATH")
+    {:ok, scope} = Ipse.TaskResources.start(self())
+    old_scope = Ipse.TaskResources.bind(scope)
+    System.put_env("IPSE_RUNNER_PATH", path)
+
+    try do
+      assert {:error, :extension_admission_refused} = start(c, self())
+      assert :ok = Ipse.TaskResources.finish(scope)
+      refute File.exists?(c.marker)
+    after
+      Ipse.TaskResources.bind(old_scope)
+      Ipse.TaskResources.close(scope)
+
+      if previous,
+        do: System.put_env("IPSE_RUNNER_PATH", previous),
+        else: System.delete_env("IPSE_RUNNER_PATH")
+    end
+  end
+
   test "separate VM initializes once, preserves private state and validates capabilities", c do
     File.rm(c.marker)
     assert {:ok, pid} = start(c, self(), %{"label" => "fixture"})

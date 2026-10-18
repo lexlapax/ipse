@@ -94,7 +94,7 @@ defmodule Ipse.TaskResources do
   end
 
   def handle_call({:register, kind, pid}, {pid, _}, %{closed: false} = state)
-      when kind in [:shell, :lock, :extension, :mcp] and map_size(state.resources) < 32 do
+      when kind in [:shell, :lock, :extension, :mcp, :http] and map_size(state.resources) < 32 do
     id = make_ref()
     resource = %{pid: pid, kind: kind, monitor: Process.monitor(pid)}
     ticket = %{scope: self(), id: id}

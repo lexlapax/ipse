@@ -2,6 +2,88 @@ defmodule Ipse.HTTPProfileTest do
   use ExUnit.Case, async: false
   alias Ipse.HTTPProfile
 
+  test "closing an owned task confirms its active HTTP socket and pool have exited" do
+    {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}])
+    {:ok, {_, port}} = :inet.sockname(listener)
+    {:ok, scope} = Ipse.TaskResources.start(self())
+    parent = self()
+
+    task =
+      Task.Supervisor.async_nolink(Ipse.Tasks, fn ->
+        receive do: (:start -> :ok)
+        Ipse.TaskResources.bind(scope)
+
+        HTTPProfile.with_finch(fn name ->
+          send(parent, {:owned_pool, Process.whereis(name)})
+
+          Finch.build(:get, "http://127.0.0.1:#{port}")
+          |> Finch.request(name, receive_timeout: 10_000)
+        end)
+      end)
+
+    :ok = Ipse.TaskResources.attach(scope, task.pid)
+
+    try do
+      send(task.pid, :start)
+      assert_receive {:owned_pool, pool}, 2000
+      {:ok, socket} = :gen_tcp.accept(listener, 2000)
+      assert {:ok, _} = :gen_tcp.recv(socket, 0, 2000)
+      assert :ok = Ipse.TaskResources.close(scope)
+      refute Process.alive?(task.pid)
+      refute Process.alive?(pool)
+      assert {:error, :closed} = :gen_tcp.recv(socket, 0, 2000)
+      :gen_tcp.close(socket)
+    after
+      Process.exit(task.pid, :kill)
+      if Process.alive?(scope), do: Ipse.TaskResources.close(scope)
+      :gen_tcp.close(listener)
+    end
+  end
+
+  test "a prepared Finch guardian can be cancelled before borrower registration" do
+    lease = {guardian, _} = HTTPProfile.prepare_finch(self())
+    ref = Process.monitor(guardian)
+    assert ^guardian = HTTPProfile.cancel_finch(lease)
+    assert :ok = HTTPProfile.await_guardian(guardian)
+    assert_receive {:DOWN, ^ref, :process, ^guardian, :normal}, 1000
+
+    assert {:error, _} =
+             HTTPProfile.with_finch(fn _ -> flunk("cancelled lease borrowed") end, [], lease)
+  end
+
+  test "a prepared guardian cannot confirm cleanup while pool teardown is stalled" do
+    lease = {guardian, _} = HTTPProfile.prepare_finch(self())
+    parent = self()
+
+    borrower =
+      spawn(fn ->
+        HTTPProfile.with_finch(
+          fn name ->
+            send(parent, {:prepared_pool, Process.whereis(name)})
+            Process.sleep(:infinity)
+          end,
+          [],
+          lease
+        )
+      end)
+
+    assert_receive {:prepared_pool, pool}, 2000
+    :erlang.suspend_process(guardian)
+
+    try do
+      Process.exit(borrower, :kill)
+      HTTPProfile.cancel_finch(lease)
+      assert {:error, :cleanup_unconfirmed} = HTTPProfile.await_guardian(guardian)
+      assert Process.alive?(pool)
+    after
+      :erlang.resume_process(guardian)
+      Process.exit(borrower, :kill)
+    end
+
+    assert :ok = HTTPProfile.await_guardian(guardian)
+    refute Process.alive?(pool)
+  end
+
   test "private Finch pools and their guardians stop on return and borrower death" do
     {pid, monitor, guardian} =
       HTTPProfile.with_finch(fn name ->

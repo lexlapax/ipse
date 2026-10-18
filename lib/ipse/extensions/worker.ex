@@ -36,9 +36,16 @@ defmodule Ipse.Extensions.Worker do
          true <- Manifest.compatible?(artifact.manifest),
          :ok <- Ipse.MCP.Schema.validate_arguments(artifact.manifest["options_schema"], options),
          {:ok, executable, args, environment} <- launch(artifact),
-         {:ok, cleanup_ticket} <- Ipse.TaskResources.register(:extension, opts[:cleanup_scope]),
-         {:ok, port} <-
-           Ipse.Runner.open_stdio(executable, args, artifact.path, environment, 86_400_000) do
+         {:ok, port, cleanup_ticket} <-
+           Ipse.Runner.open_owned_stdio(
+             :extension,
+             opts[:cleanup_scope],
+             executable,
+             args,
+             artifact.path,
+             environment,
+             86_400_000
+           ) do
       {:ok,
        %{
          owner: owner,

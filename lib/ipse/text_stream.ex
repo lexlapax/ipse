@@ -12,7 +12,8 @@ defmodule Ipse.TextStream do
                    "Required visible-text delivery failed; inspect stream coverage before retrying."
   end
 
-  def start(owner, session_id), do: GenServer.start(__MODULE__, {owner, session_id})
+  def start(owner, session_id, policy_ref \\ nil),
+    do: GenServer.start(__MODULE__, {owner, session_id, policy_ref})
 
   def subscribe(server, consumer, version \\ 1, required \\ false),
     do: GenServer.call(server, {:subscribe, consumer, version, required})
@@ -85,15 +86,17 @@ defmodule Ipse.TextStream do
     do: GenServer.call(server, {:unsubscribe, id})
 
   @impl true
-  def init({owner, session_id}) do
+  def init({owner, session_id, policy_ref}) do
     if is_pid(owner) and id?(session_id) do
       {:ok,
        %{
          owner: owner,
+         policy_ref: policy_ref,
          monitor: Process.monitor(owner),
          session_id: session_id,
          epoch_id: Ipse.Usage.id(),
          subscribers: %{},
+         lost_required: %{},
          active: nil,
          pending: nil
        }}
@@ -105,7 +108,7 @@ defmodule Ipse.TextStream do
   @impl true
   def handle_call({:subscribe, consumer, version, required}, {owner, _}, %{owner: owner} = s)
       when is_pid(consumer) and version in [1, 2] and is_boolean(required) do
-    if map_size(s.subscribers) < @subscribers and is_nil(s.active) do
+    if map_size(s.subscribers) + map_size(s.lost_required) < @subscribers and is_nil(s.active) do
       id = Ipse.Usage.id()
 
       sub = %{
@@ -120,7 +123,9 @@ defmodule Ipse.TextStream do
       }
 
       handle = %{server: self(), subscription_id: id}
-      {:reply, {:ok, handle}, put_in(s, [:subscribers, id], sub)}
+      next = put_in(s, [:subscribers, id], sub)
+      policy_changed(next)
+      {:reply, {:ok, handle}, next}
     else
       {:reply, {:error, :text_subscription_unavailable}, s}
     end
@@ -130,7 +135,7 @@ defmodule Ipse.TextStream do
     do: {:reply, match?(%{pid: ^consumer}, s.subscribers[id]), s}
 
   def handle_call({:begin_with_policy, request_id, producer}, from, s) do
-    required = Enum.any?(s.subscribers, fn {_, sub} -> sub.required end)
+    required = required?(s)
 
     case handle_call({:begin, request_id, producer}, from, s) do
       {:reply, :ok, next} -> {:reply, {:ok, required}, next}
@@ -155,7 +160,7 @@ defmodule Ipse.TextStream do
             producer: producer,
             stream_id: Ipse.Usage.id(),
             offset: 0,
-            required_failed: false
+            required_failed: map_size(s.lost_required) > 0
           }
       }
 
@@ -263,9 +268,17 @@ defmodule Ipse.TextStream do
   end
 
   def handle_call({:unsubscribe, id}, {consumer, _}, s) do
-    case s.subscribers[id] do
-      %{pid: ^consumer} -> {:reply, :ok, flush_pending(remove(s, id, "unsubscribed"))}
-      _ -> {:reply, {:error, :unknown_text_subscription}, s}
+    case {s.subscribers[id], s.lost_required[id]} do
+      {%{pid: pid}, _} when consumer in [pid, s.owner] ->
+        {:reply, :ok, flush_pending(remove(s, id, "unsubscribed"))}
+
+      {nil, pid} when is_pid(pid) and consumer in [pid, s.owner] ->
+        next = %{s | lost_required: Map.delete(s.lost_required, id)}
+        policy_changed(next)
+        {:reply, :ok, next}
+
+      _ ->
+        {:reply, {:error, :unknown_text_subscription}, s}
     end
   end
 
@@ -470,8 +483,21 @@ defmodule Ipse.TextStream do
     active =
       if s.active != nil and sub.required, do: %{s.active | required_failed: true}, else: s.active
 
-    %{s | subscribers: Map.delete(s.subscribers, id), active: active}
+    lost =
+      if sub.required and reason != "unsubscribed",
+        do: Map.put(s.lost_required, id, sub.pid),
+        else: s.lost_required
+
+    next = %{s | subscribers: Map.delete(s.subscribers, id), active: active, lost_required: lost}
+    policy_changed(next)
+    next
   end
+
+  defp required?(s),
+    do: map_size(s.lost_required) > 0 or Enum.any?(s.subscribers, fn {_, sub} -> sub.required end)
+
+  defp policy_changed(%{policy_ref: nil}), do: :ok
+  defp policy_changed(s), do: send(s.owner, {:text_policy, self(), s.policy_ref, required?(s)})
 
   defp closed_frame(s, id, sub, reason) do
     frame = %{

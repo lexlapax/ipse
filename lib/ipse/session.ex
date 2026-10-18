@@ -105,6 +105,7 @@ defmodule Ipse.Session do
   def stop_feeds(pid), do: GenServer.call(pid, :stop_feeds, :infinity)
   def subscribe_text(pid), do: GenServer.call(pid, :subscribe_text)
   def subscribe_text(pid, version), do: GenServer.call(pid, {:subscribe_text, version})
+  def unsubscribe_text(pid, handle), do: GenServer.call(pid, {:unsubscribe_text, handle})
 
   def subscribe_text(pid, version, opts) do
     if is_list(opts) and Keyword.keyword?(opts) and Keyword.keys(opts) in [[], [:required]] and
@@ -219,6 +220,7 @@ defmodule Ipse.Session do
           ),
         text_stream: nil,
         text_stream_monitor: nil,
+        text_stream_policy_ref: nil,
         text_required: false,
         extension_text: %{},
         extension_text_count: Ipse.Extensions.TextResources.count(events),
@@ -631,7 +633,7 @@ defmodule Ipse.Session do
   def handle_call({:subscribe_text, version, required}, {consumer, _}, %{phase: :idle} = s)
       when version in [1, 2] and is_boolean(required) do
     s = ensure_text_stream(s)
-    result = Ipse.TextStream.subscribe(s.text_stream, consumer, version, required)
+    result = subscribe_text_stream(s.text_stream, consumer, version, required)
 
     next =
       if match?({:ok, _}, result), do: %{s | text_required: s.text_required or required}, else: s
@@ -643,6 +645,30 @@ defmodule Ipse.Session do
     do: {:reply, {:error, :unsupported_text_version}, s}
 
   def handle_call({:subscribe_text, _, _}, _, s), do: {:reply, {:error, :busy}, s}
+
+  def handle_call(
+        {:unsubscribe_text, %{server: stream, subscription_id: id} = handle},
+        _,
+        %{phase: :idle, text_stream: stream} = s
+      )
+      when is_pid(stream) and is_binary(id) do
+    if Process.alive?(stream) do
+      result =
+        try do
+          Ipse.TextStream.unsubscribe(handle)
+        catch
+          :exit, _ -> {:error, :text_stream_unavailable}
+        end
+
+      {:reply, result, s}
+    else
+      if s.text_stream_monitor, do: Process.demonitor(s.text_stream_monitor, [:flush])
+      {:reply, :ok, %{s | text_stream: nil, text_stream_monitor: nil, text_required: false}}
+    end
+  end
+
+  def handle_call({:unsubscribe_text, _}, _, s),
+    do: {:reply, {:error, :text_unsubscribe_refused}, s}
 
   def handle_call(
         {:extension_text_begin, ref, identity},
@@ -693,7 +719,7 @@ defmodule Ipse.Session do
          true <- is_pid(consumer) and Process.alive?(consumer),
          s = ensure_text_stream(s),
          {:ok, handle} <-
-           Ipse.TextStream.subscribe(
+           subscribe_text_stream(
              s.text_stream,
              consumer,
              Ipse.Extensions.TextResources.frame_version(intent["identity"]),
@@ -2211,7 +2237,11 @@ defmodule Ipse.Session do
 
     s =
       if ref == s.text_stream_monitor,
-        do: %{s | text_stream: nil, text_stream_monitor: nil, text_required: false},
+        do: %{
+          s
+          | text_stream: if(s.text_required, do: s.text_stream, else: nil),
+            text_stream_monitor: nil
+        },
         else: s
 
     resources =
@@ -2279,6 +2309,13 @@ defmodule Ipse.Session do
         {:noreply, s}
     end
   end
+
+  def handle_info(
+        {:text_policy, stream, ref, required},
+        %{text_stream: stream, text_stream_policy_ref: ref} = s
+      )
+      when is_boolean(required),
+      do: {:noreply, %{s | text_required: required}}
 
   def handle_info({:observer_closed, pid, id, cleanup}, s) when is_boolean(cleanup) do
     case s.observation.resources[id] do
@@ -2566,11 +2603,24 @@ defmodule Ipse.Session do
   end
 
   defp ensure_text_stream(%{text_stream: nil} = s) do
-    {:ok, stream} = Ipse.TextStream.start(self(), s.id)
-    %{s | text_stream: stream, text_stream_monitor: Process.monitor(stream)}
+    ref = make_ref()
+    {:ok, stream} = Ipse.TextStream.start(self(), s.id, ref)
+
+    %{
+      s
+      | text_stream: stream,
+        text_stream_monitor: Process.monitor(stream),
+        text_stream_policy_ref: ref
+    }
   end
 
   defp ensure_text_stream(s), do: s
+
+  defp subscribe_text_stream(stream, consumer, version, required) do
+    Ipse.TextStream.subscribe(stream, consumer, version, required)
+  catch
+    :exit, _ -> {:error, :text_stream_unavailable}
+  end
 
   defp launch_request(s, config, messages, tools, phase) do
     s = admit_request(s, config, Atom.to_string(phase))
@@ -2641,7 +2691,7 @@ defmodule Ipse.Session do
     case begin_text(stream, request_id, task.pid) do
       {:ok, required} ->
         send(task.pid, {:provider_start, required, true})
-        %{s | text_required: required}
+        %{s | text_required: if(phase == :model, do: required, else: s.text_required)}
 
       _ ->
         send(task.pid, {:provider_start, s.text_required, false})

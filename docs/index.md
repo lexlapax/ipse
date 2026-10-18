@@ -33,7 +33,7 @@ start. Use the guides below for operation, development, and project context.
 | [Architecture](developer/architecture.md) | Modules, ownership, persistence, trust boundaries |
 | [Journal persistence](developer/persistence.md) | Owned durable appends, source offsets, failure handling and growth limits |
 | [Architecture review dispositions](developer/architecture-review-dispositions.md) | Sanitized P24 finding register, independent verification, repairs and remaining coverage gates |
-| [Supervisor architecture audit](developer/architecture-self-audit.md) | Internal adversarial inspection, reproduced interactions, verified repair handoff and explicit limits |
+| [Supervisor architecture audit](developer/architecture-self-audit.md) | Internal adversarial inspection, current counterexamples, earlier repair evidence and explicit limits |
 | [Model-profile contract](developer/model-profiles.md) | Host routing, provider settings and child credential/native-history boundaries |
 | [Configuration contract](developer/configuration.md) | Bounded loader, scope, schema reuse, provenance and resume policy |
 | [Operator questions](developer/operator-questions.md) | Native question schema, explicit answers, approvals and durable recovery |

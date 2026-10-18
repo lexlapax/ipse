@@ -131,6 +131,68 @@ defmodule Ipse.TaskResourcesTest do
     assert {:error, :cleanup_unconfirmed} = Ipse.TaskResources.close_task(task.pid)
   end
 
+  test "a refused MCP launch with no process does not create cleanup liability", c do
+    scoped(fn ->
+      assert {:error, :launch_failed} =
+               Ipse.MCP.Transport.start_link(
+                 owner: self(),
+                 cleanup_owner: self(),
+                 cleanup_scope: Ipse.TaskResources.current(),
+                 cwd: Path.join(c.root, "absent"),
+                 server: %{command: "/bin/sh", args: [], env: %{}, timeout_ms: 1000}
+               )
+    end)
+  end
+
+  test "a shell or lock Port that cannot start leaves no cleanup liability", c do
+    path = Path.join(c.root, "nonexecutable-helper")
+    File.write!(path, "fixture")
+    File.chmod!(path, 0o600)
+    previous = System.get_env("IPSE_RUNNER_PATH")
+    System.put_env("IPSE_RUNNER_PATH", path)
+
+    try do
+      for action <- [
+            fn -> Ipse.Runner.run("true", c.root) end,
+            fn -> Ipse.Runner.lock(Path.join(c.root, "refused.lock")) end
+          ] do
+        scoped(fn -> assert {:error, _} = action.() end)
+      end
+    after
+      if previous,
+        do: System.put_env("IPSE_RUNNER_PATH", previous),
+        else: System.delete_env("IPSE_RUNNER_PATH")
+    end
+  end
+
+  test "OS arguments cannot silently truncate an approved command or lock path", c do
+    assert {:error, _} = Ipse.Runner.run("printf unsafe > nul-effect\0ignored", c.root)
+    path = Path.join(c.root, "nul-lock")
+    result = Ipse.Runner.lock(path <> <<0>> <> "ignored")
+    if match?({:ok, _}, result), do: Ipse.Runner.unlock(elem(result, 1))
+    assert {:error, _} = result
+    refute File.exists?(Path.join(c.root, "nul-effect"))
+    refute File.exists?(path)
+  end
+
+  defp scoped(fun) do
+    {:ok, scope} = Ipse.TaskResources.start(self())
+
+    task =
+      Task.async(fn ->
+        Process.flag(:trap_exit, true)
+        receive do: (:start -> :ok)
+        Ipse.TaskResources.bind(scope)
+        fun.()
+        Ipse.TaskResources.finish(scope)
+      end)
+
+    :ok = Ipse.TaskResources.attach(scope, task.pid)
+    send(task.pid, :start)
+    assert :ok = Task.await(task, 10_000)
+    assert :ok = Ipse.TaskResources.close_task(task.pid)
+  end
+
   test "owner or scope loss before attachment cannot orphan a dispatch-barrier worker" do
     for lost <- [:owner, :scope] do
       parent = self()

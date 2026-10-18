@@ -9,15 +9,14 @@ exploit details remain outside Git. The [plan](../plan.md) owns scheduling and t
 
 ## Provenance and coverage
 
-**Current gate:** the fresh report for source `091b2bd` (evidence `20b377c`)
-withheld acceptance and found two applicable defects despite the prior green
-handoff. The requested [supervisor adversarial audit](architecture-self-audit.md)
-reproduced and repaired them and five additional interaction defects. Candidate
-`7810925` passes local and hosted Linux/macOS checks. The
-[replacement brief](../operator/architecture-review.md) assigns independent
-repair-interaction coverage first, then the explicit remaining checkpoint below.
-Historical closed rows describe exercised scope; neither those rows nor this
-internal audit grant architectural acceptance. The scan and P25 remain gated.
+**Current gate:** package R at source `7810925`, evidence `a46cc66`, is unaccepted.
+The static review confirms most prior repairs but challenges pre-spawn cleanup,
+all-status HTTP bounds and the broadened MCP outcome test. Current work reproduces
+and repairs those interactions and completes the internal continuation before
+another [handoff](../operator/architecture-review.md). The latest package R section
+below owns its findings and checkpoint. Earlier green runs and closed rows retain
+their exercised scope; none grants architectural acceptance. The scan and P25
+remain gated, with S/C/O unstarted.
 
 The reviewer reported Claude Code with Opus 5.5 (`claude-opus-5-5`), default
 reasoning, one subscription-selected session and no subagents or operator help
@@ -161,7 +160,7 @@ tests; macOS cache/signing/sandbox and stdio tests; delegation/parallel/budget
 test bodies, usage and normalization. The cloud report's actual coverage replaces
 the earlier blanket-unread list; no accepted repair disposition closes those gaps.
 
-## Latest fresh review and supervisor audit
+## Review of 091b2bd and supervisor audit
 
 The private fresh-session report for source `091b2bd`, base `b5297be`, original
 `21e59fe` and evidence `20b377c` reports Opus 5.5, medium effort, subscription
@@ -208,6 +207,53 @@ packages retain these explicit omissions. Each returned report updates this
 checkpoint with exact functions and test bodies; partial packages continue from
 their next unread point. No ordinal review count closes the gate.
 
+## Package R review and current repairs
+
+The private package R report targets source `7810925`, base `091b2bd`, original
+`21e59fe` and evidence `a46cc66`. It reports a fresh context, configured Opus 5.5
+without verification of the served model, subscription/no overage, no subagents,
+read-only committed-object access and no execution or writes. It lasted about
+half an hour with an interruption and two short operator prompts. These are
+reviewer-reported facts. Package R is partial and unaccepted; S/C/O were not
+started, and the raw report remains private.
+
+| ID | Current disposition | Evidence and remaining gate |
+| --- | --- | --- |
+| R-1 | Reproduced a registered MCP ticket surviving pre-spawn refusal. A captured Session additionally reproduced SDK failed-start link exit killing its worker | Shared owned-stdio launch settles known pre-spawn refusal and preserves post-spawn uncertainty for MCP/extension workers. SDK link exits are isolated in a nested scoped task with a caller guardian; the outer worker retains its scope link. Trapping exits in the outer worker failed the new blocked-MCP scope-death regression and was replaced before handoff. Scoped negative launches, capture-on refusal/retry and prompt scope-death termination pass; final platform checks pending |
+| R-2 / IA2 | Confirmed: the earlier provider cap covered streamed success only; the original broad claim was incorrect | Partial bodies for 201/302/429/500 reproduced timeout rather than limit refusal. Existing Finch now streams all statuses, counts bytes before adapter/error accumulation, bounds error retention and aborts at declared/content or chunked limits. Local provider/error/egress checks pass; no new dependency or live account claim. Final checks pending |
+| R-3 | Required delivery remains enrolled across idle consumer/broker loss until explicit release | Broker retains bounded failed enrollments, bound policy updates preserve Session state, and `Session.unsubscribe_text/2` lets the embedding operator release a lost handle. A further compaction regression reproduced the summary clearing that policy; summaries now preserve the main requirement. Main inference refuses until release. Enrollment remains process-local, not a durable resume requirement |
+| R-4 | The earlier claim that the widened outcome assertion did not weaken evidence was too broad | Tests now separate controlled clean native exit 0/confirmed cleanup/usable Session, immediate clean exit with confirmed cleanup, and forced helper death with unconfirmed cleanup. Local strict cases pass. The precise cause of the earlier Mac unconfirmed result is not established by changing a test; keep it explicit until stronger evidence exists |
+| R-5 | Reproduced shell/lock pre-spawn ticket leakage with a temporary nonexecutable helper | Resolve launch inputs before registration; a refused Port settles its ticket without claiming a launched helper exited. Negative shell/lock paths pass. The pre-spawn fixture uses actual `Port.open` permission refusal rather than assuming a missing interpreter is a pre-launch error |
+| R-6 | Removed the startup lookup race by retaining a prepared guardian before spawning the HTTP borrower | Cancellation awaits that exact guardian even before borrower registration. Controlled pre-borrow cancellation, stalled teardown and existing MCP cancellation/TLS checks pass. The reported live race was not reproduced; this is source-order repair plus controlled lifetime evidence |
+| Internal HTTP ownership follow-through | Reproduced confirmed task cleanup while a live HTTP borrower, socket and pool remained | HTTP guardians now join the task scope where present, stop the borrower on cancellation, await pool exit and issue a real receipt. The socket-level regression passes. This covers the new provider client as well as direct scoped HTTP use; it does not confirm remote effects |
+| Internal OS text admission | A NUL-containing command was actually truncated and executed, rather than refused as the initial negative fixture assumed | Shell command/cwd and lock paths now reject invalid UTF-8 and NUL before launch. The no-effect regression failed before repair and passes afterward |
+
+### Package R coverage checkpoint
+
+The reviewer read the complete `091b2bd..7810925` runtime/test delta and the
+added/changed regression bodies, but not all fixture helpers. Full implementation
+reads include task resources, both MCP transports/client, provider HTTP, text
+stream, lifecycle runtime, diagnostic resources and HTTP profile. Targeted
+Session, runner, native stdio, action/subscription/worker, host/tool/model/service,
+CLI and skill paths remain partial as recorded in the private report. Grep-only
+provider-error inspection is not full coverage.
+
+The next unread point is **Session task-result handling at source `7810925`
+lines 1790–2030**, followed by event-job question restoration, TextConsumer and
+Observability.Channel closure; Runner output/frame reducers; invocation/event-job/
+text fixture helpers; lifecycle top-level/metadata/answer, developer-trace,
+diagnostics and parity/conformance test bodies. Read the relevant remaining
+Session functions in lines 2300–4230 and the subsequent repair delta. The SDK's
+link/exit behavior is an explicit dependency boundary, not inferred from the
+adapter. Updated internal reads do not count as independent coverage.
+
+Earlier lifecycle/observability/developer-trace/diagnostics/worker-lease/handoff
+implementations were reported byte-unchanged from `091b2bd` to `7810925` and can
+carry forward subject to changed interactions. Their unread test bodies stay
+unread. Packages S/C/O retain the previous checkpoint; package R completion and
+whole-design acceptance remain separate. Resume this point rather than restarting
+all reviewed source.
+
 ## Execution order and completion
 
 The scoped F1–F7/S1–S3 and A1–A5 repairs passed their own source/native/package/
@@ -217,10 +263,11 @@ revisions and remaining verification limits. Future repairs still need a
 regression or measured counterexample, coherent operator/developer guidance and
 their own checks before commit/push; an earlier green baseline does not cover them.
 
-The fresh cloud reports satisfy fresh-session provenance but do not close
-coverage or acceptance. The internal audit and repairs now pass their platform
-checks through `7810925`; only then was the [review brief](../operator/architecture-review.md)
-replaced. Use the latest omissions and bounded coverage packages from the evaluation
+The reports satisfy their recorded provenance but do not close coverage or
+acceptance. Package R reopens the affected repair claims despite the passing
+`7810925` matrix. Finish the current repairs, internal continuation and platform
+checks before replacing the [review brief](../operator/architecture-review.md).
+Use the latest omissions and bounded coverage packages from the evaluation
 protocol; do not restart an unbounded whole-repository review. Earlier briefs are
 preserved in the [archive](../archive/index.md); preserve all private critiques.
 The next session must retain its source assessment before checking this register

@@ -15,17 +15,16 @@ defmodule Ipse.Runner do
 
   @doc "Acquire a persistent advisory lock. Its Port must remain owned by the session."
   def lock(path) when is_binary(path) do
-    with {:ok, ticket} <- Ipse.TaskResources.register(:lock),
-         {:ok, helper} <- helper_path() do
-      port =
-        Port.open({:spawn_executable, String.to_charlist(helper)}, [
-          :binary,
-          :exit_status,
-          :use_stdio,
-          :hide,
-          args: ["--lock", Path.expand(path)]
-        ])
-
+    with :ok <- launch_text(path),
+         {:ok, helper} <- helper_path(),
+         {:ok, port, ticket} <-
+           owned_port(:lock, helper, [
+             :binary,
+             :exit_status,
+             :use_stdio,
+             :hide,
+             args: ["--lock", Path.expand(path)]
+           ]) do
       Process.put({__MODULE__, port}, ticket)
       result = receive_lock(port, <<>>, System.monotonic_time(:millisecond) + 5_000, ticket)
       if match?({:error, _}, result), do: unlock(port)
@@ -104,6 +103,9 @@ defmodule Ipse.Runner do
       not is_binary(command) or not is_binary(cwd) ->
         {:error, "command and cwd must be strings"}
 
+      not valid_text?(command) or not valid_text?(cwd) ->
+        {:error, "command and cwd must be valid UTF-8 without NUL bytes"}
+
       not is_integer(timeout) or timeout < 1 ->
         {:error, "timeout_ms must be a positive integer"}
 
@@ -139,9 +141,7 @@ defmodule Ipse.Runner do
   Selected environment values reach only the server, never the OS supervisor.
   """
   def open_stdio(executable, args, cwd, selected_env \\ %{}, timeout_ms \\ 120_000, opts \\ []) do
-    valid_text = fn value ->
-      is_binary(value) and String.valid?(value) and not String.contains?(value, <<0>>)
-    end
+    valid_text = &valid_text?/1
 
     valid_args =
       is_list(args) and length(args) <= 256 and Enum.all?(args, valid_text) and
@@ -194,17 +194,6 @@ defmodule Ipse.Runner do
                 {String.to_charlist(key), String.to_charlist(value)}
               end)
 
-          port =
-            Port.open({:spawn_executable, String.to_charlist(helper)}, [
-              :binary,
-              :exit_status,
-              :use_stdio,
-              :hide,
-              cd: String.to_charlist(Path.expand(cwd)),
-              env: environment,
-              args: launch
-            ])
-
           payload =
             [
               <<map_size(selected)::unsigned-big-32>>
@@ -219,19 +208,89 @@ defmodule Ipse.Runner do
             ]
             |> IO.iodata_to_binary()
 
-          if Port.command(port, <<?L, byte_size(payload)::unsigned-big-32, payload::binary>>, [
-               :nosuspend
-             ]) do
-            {:ok, port}
-          else
-            Port.close(port)
-            {:error, "could not send stdio launch environment"}
-          end
+          port =
+            Port.open({:spawn_executable, String.to_charlist(helper)}, [
+              :binary,
+              :exit_status,
+              :use_stdio,
+              :hide,
+              cd: String.to_charlist(Path.expand(cwd)),
+              env: environment,
+              args: launch
+            ])
+
+          send_launch(port, payload)
         end
     end
   rescue
     _ -> {:error, "could not open stdio server"}
   end
+
+  @doc false
+  def open_owned_stdio(kind, scope, executable, args, cwd, env, timeout, opts \\ [])
+      when kind in [:mcp, :extension] do
+    with {:ok, ticket} <- Ipse.TaskResources.register(kind, scope) do
+      case open_stdio(executable, args, cwd, env, timeout, opts) do
+        {:ok, port} ->
+          {:ok, port, ticket}
+
+        {:error, {:cleanup_unconfirmed, _}} = error ->
+          Ipse.TaskResources.closed(ticket, {:error, :cleanup_unconfirmed})
+          error
+
+        {:error, _} = error ->
+          Ipse.TaskResources.closed(ticket, :ok)
+          error
+      end
+    end
+  end
+
+  defp send_launch(port, payload) do
+    if Port.command(port, <<?L, byte_size(payload)::unsigned-big-32, payload::binary>>, [
+         :nosuspend
+       ]),
+       do: {:ok, port},
+       else: failed_launch(port)
+  rescue
+    _ -> failed_launch(port)
+  end
+
+  defp failed_launch(port) do
+    cleanup =
+      try do
+        close_stdio(port)
+      rescue
+        _ -> {:error, :cleanup_unconfirmed}
+      catch
+        _, _ -> {:error, :cleanup_unconfirmed}
+      end
+
+    if cleanup == :ok,
+      do: {:error, "could not send stdio launch environment"},
+      else: {:error, {:cleanup_unconfirmed, "could not send stdio launch environment"}}
+  end
+
+  defp owned_port(kind, helper, options) do
+    with {:ok, ticket} <- Ipse.TaskResources.register(kind) do
+      try do
+        {:ok, Port.open({:spawn_executable, String.to_charlist(helper)}, options), ticket}
+      rescue
+        _ ->
+          Ipse.TaskResources.closed(ticket, :ok)
+          {:error, "could not start OS helper"}
+      end
+    end
+  end
+
+  defp valid_text?(value),
+    do: is_binary(value) and String.valid?(value) and not String.contains?(value, <<0>>)
+
+  defp launch_text(value),
+    do:
+      if(valid_text?(value),
+        do: :ok,
+        else: {:error, "lock path must be valid UTF-8 without NUL bytes"}
+      )
 
   defp stdio_launch_args(
          helper,
@@ -428,19 +487,17 @@ defmodule Ipse.Runner do
   end
 
   defp run_supervised(command, cwd, timeout, limit, emit, profile) do
-    with {:ok, ticket} <- Ipse.TaskResources.register(:shell),
-         {:ok, helper} <- helper_path(profile != "macos-workspace-v1"),
-         {:ok, args} <- launch_args(helper, profile, cwd, timeout, command) do
-      port =
-        Port.open({:spawn_executable, String.to_charlist(helper)}, [
-          :binary,
-          :exit_status,
-          :use_stdio,
-          :hide,
-          env: bundled_shell_environment(),
-          args: args
-        ])
-
+    with {:ok, helper} <- helper_path(profile != "macos-workspace-v1"),
+         {:ok, args} <- launch_args(helper, profile, cwd, timeout, command),
+         {:ok, port, ticket} <-
+           owned_port(:shell, helper, [
+             :binary,
+             :exit_status,
+             :use_stdio,
+             :hide,
+             env: bundled_shell_environment(),
+             args: args
+           ]) do
       state = %{
         buffer: <<>>,
         output: <<>>,

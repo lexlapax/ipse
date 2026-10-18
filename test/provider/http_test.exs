@@ -2,6 +2,144 @@ defmodule Ipse.Provider.HTTPTest do
   use ExUnit.Case, async: false
   alias Ipse.Provider
 
+  test "provider TLS preserves system trust and hostname verification with private Finch pools" do
+    root = Path.join(System.tmp_dir!(), "ipse-provider-tls-#{Ipse.Usage.id()}")
+    File.mkdir_p!(root)
+
+    certificate =
+      :public_key.pkix_test_data(%{
+        root: [digest: :sha256, key: {:rsa, 2048, 65537}],
+        peer: [
+          digest: :sha256,
+          key: {:rsa, 2048, 65537},
+          extensions: [{:Extension, {2, 5, 29, 17}, false, [{:dNSName, ~c"localhost"}]}]
+        ]
+      })
+
+    original =
+      Enum.map(:public_key.cacerts_get(), fn
+        {:cert, der, _} -> der
+        der when is_binary(der) -> der
+      end)
+
+    pem = fn certs ->
+      :public_key.pem_encode(Enum.map(certs, &{:Certificate, &1, :not_encrypted}))
+    end
+
+    saved = Path.join(root, "original.pem")
+    trusted = Path.join(root, "fixture.pem")
+    File.write!(saved, pem.(original))
+    File.write!(trusted, pem.(certificate[:cacerts]))
+
+    try do
+      for {host, trust, expected} <- [
+            {"localhost", trusted, :ok},
+            {"127.0.0.1", trusted, :error},
+            {"localhost", saved, :error}
+          ] do
+        :ok = :public_key.cacerts_load(trust)
+
+        {:ok, listener} =
+          :ssl.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}] ++ certificate)
+
+        {:ok, {_, port}} = :ssl.sockname(listener)
+
+        server =
+          Task.async(fn ->
+            {:ok, socket} = :ssl.transport_accept(listener, 3000)
+
+            result =
+              case :ssl.handshake(socket, 3000) do
+                {:ok, tls} ->
+                  {:ok, _} = :ssl.recv(tls, 0, 3000)
+
+                  :ssl.send(
+                    tls,
+                    "HTTP/1.1 200 OK\r\ncontent-length: 2\r\nconnection: close\r\n\r\nok"
+                  )
+
+                  :ok
+
+                {:error, _} = error ->
+                  error
+              end
+
+            :ssl.close(socket)
+            :ssl.close(listener)
+            result
+          end)
+
+        result =
+          Provider.HTTP.stream(
+            "https://#{host}:#{port}",
+            [],
+            %{},
+            %{provider: :ollama, timeout_ms: 3000},
+            "",
+            fn acc, bytes -> {:ok, acc <> bytes} end
+          )
+
+        if expected == :ok do
+          assert {:ok, "ok"} = result
+          assert :ok = Task.await(server, 4000)
+        else
+          assert {:error, _} = result
+          assert {:error, _} = Task.await(server, 4000)
+        end
+      end
+    after
+      :ok = :public_key.cacerts_load(saved)
+      File.rm_rf!(root)
+    end
+  end
+
+  for status <- [200, 201, 302, 429, 500], encoding <- [:length, :chunked] do
+    test "HTTP #{status} #{encoding} reception stops at the byte bound before EOF" do
+      {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}])
+      {:ok, {_, port}} = :inet.sockname(listener)
+      limit = 65_536
+
+      server =
+        Task.async(fn ->
+          {:ok, socket} = :gen_tcp.accept(listener, 5000)
+          request(socket, "")
+
+          framing =
+            if unquote(encoding) == :length,
+              do: "content-length: 100000000\r\n",
+              else: "transfer-encoding: chunked\r\n"
+
+          :ok = :gen_tcp.send(socket, "HTTP/1.1 #{unquote(status)} Fixture\r\n#{framing}\r\n")
+          bytes = String.duplicate("x", limit + 1)
+
+          bytes =
+            if unquote(encoding) == :chunked,
+              do: [Integer.to_string(byte_size(bytes), 16), "\r\n", bytes, "\r\n"],
+              else: bytes
+
+          :gen_tcp.send(socket, bytes)
+          # No body EOF or final chunk: the client must actively abort reception.
+          result = :gen_tcp.recv(socket, 0, 5000)
+          :gen_tcp.close(socket)
+          :gen_tcp.close(listener)
+          result
+        end)
+
+      assert {:error, message} =
+               Provider.HTTP.stream(
+                 "http://127.0.0.1:#{port}",
+                 [],
+                 %{},
+                 %{provider: :ollama, timeout_ms: 2000, max_response_bytes: limit},
+                 0,
+                 fn count, bytes -> {:ok, count + byte_size(bytes)} end
+               )
+
+      assert message =~ "byte limit"
+      assert {:error, :closed} = Task.await(server, 6000)
+    end
+  end
+
   test "ordinary provider requests enforce a transport byte ceiling before parsing" do
     bytes = String.duplicate("x", 8_388_609)
     {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}])

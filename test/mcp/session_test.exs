@@ -53,6 +53,41 @@ defmodule Ipse.MCP.SessionTest do
     assert Enum.at(events, intent)["approval"] == "approved"
   end
 
+  test "pre-spawn MCP refusal leaves a recorded Session usable", ctx do
+    pid = session(ctx, capture: true)
+    id = Ipse.Session.info(pid).id
+    path = Path.join(ctx.root, "nonexecutable-helper")
+    File.write!(path, "fixture")
+    File.chmod!(path, 0o600)
+    previous = System.get_env("IPSE_RUNNER_PATH")
+    System.put_env("IPSE_RUNNER_PATH", path)
+
+    try do
+      :ok = Ipse.Session.prompt(pid, "write")
+      assert_receive {:ipse, ^pid, {:error, error}}, 5000
+      assert error =~ "Could not launch"
+      assert_receive {:ipse, ^pid, {:done, :error}}, 5000
+      assert Ipse.Session.info(pid).phase == :idle
+      refute File.exists?(Path.join(ctx.root, "calls.log"))
+    after
+      if previous,
+        do: System.put_env("IPSE_RUNNER_PATH", previous),
+        else: System.delete_env("IPSE_RUNNER_PATH")
+    end
+
+    :ok = Ipse.Session.prompt(pid, "inspect")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5000
+    assert :ok = Ipse.Session.close_confirmed(pid)
+    {:ok, events} = Ipse.Journal.load(ctx.dir, id)
+    assert {:ok, _} = Ipse.Session.restore_context(events)
+
+    refute Enum.any?(
+             events,
+             &(&1["type"] == "lifecycle_epoch_closed" and
+                 &1["closure"] == "cleanup_failure")
+           )
+  end
+
   test "headless policy denies all external tools and resume never replays completed calls",
        ctx do
     denied = session(ctx, approval: :deny)
@@ -75,15 +110,24 @@ defmodule Ipse.MCP.SessionTest do
   end
 
   test "post-dispatch loss stops the batch, preserves unknown, and resume does not retry", ctx do
-    pid = session(ctx, scenario: "disconnect_after_dispatch", approval: :allow, call_count: 2)
+    pid = session(ctx, scenario: "controlled_disconnect", approval: :allow, call_count: 2)
     id = Ipse.Session.info(pid).id
     monitor = Process.monitor(pid)
     :ok = Ipse.Session.prompt(pid, "write")
+    await_file(Path.join(ctx.root, "disconnect-ready"))
+
+    [transport] =
+      :sys.get_state(pid).mcp_resources |> Map.keys() |> Enum.filter(&Process.alive?/1)
+
+    :erlang.trace(transport, true, [:send, :receive])
+    File.write!(Path.join(ctx.root, "disconnect-now"), "exit normally")
     assert_receive {:ipse, ^pid, {:done, :error}}, 5_000
     assert File.read!(Path.join(ctx.root, "calls.log")) == "write_note\n"
-    # Unconfirmed helper cleanup may already have stopped the Session. Quiesce
-    # either path before reading history; process liveness is not a cleanup receipt.
-    assert Ipse.Session.close_confirmed(pid) in [:ok, {:error, :cleanup_unconfirmed}]
+    trace = cleanup_trace(transport, [])
+    assert {:helper_exit, 0} in trace, inspect(trace)
+    assert {:cleanup, :ok} in trace, inspect(trace)
+    assert Ipse.Session.info(pid).phase == :idle
+    assert :ok = Ipse.Session.close_confirmed(pid)
     assert_receive {:DOWN, ^monitor, :process, ^pid, :normal}, 5_000
     {:ok, events} = Ipse.Journal.load(ctx.dir, id)
     assert {:ok, _} = Ipse.Session.restore_context(events)
@@ -96,7 +140,7 @@ defmodule Ipse.MCP.SessionTest do
     assert outcomes == ["unknown", "not_started"]
 
     resumed =
-      session(ctx, [scenario: "disconnect_after_dispatch", approval: :allow, call_count: 2], id)
+      session(ctx, [scenario: "controlled_disconnect", approval: :allow, call_count: 2], id)
 
     :ok = Ipse.Session.prompt(resumed, "inspect")
     assert_receive {:ipse, ^resumed, {:done, :ok}}, 5_000
@@ -111,6 +155,37 @@ defmodule Ipse.MCP.SessionTest do
     assert File.read!(Path.join(ctx.root, "calls.log")) == "write_note\nwrite_note\n"
     assert File.read!(Path.join(ctx.root, "note.txt")) == "approved fixture 2"
     assert Enum.all?(:sys.get_state(pid).mcp_resources |> Map.keys(), &(not Process.alive?(&1)))
+  end
+
+  test "immediate clean server exit retains a usable Session and confirmed cleanup", ctx do
+    pid = session(ctx, scenario: "disconnect_after_dispatch", approval: :allow, capture: true)
+    id = Ipse.Session.info(pid).id
+    :ok = Ipse.Session.prompt(pid, "write")
+    assert_receive {:ipse, ^pid, {:done, :error}}, 5000
+    assert Ipse.Session.info(pid).phase == :idle
+    assert :ok = Ipse.Session.close_confirmed(pid)
+    {:ok, events} = Ipse.Journal.load(ctx.dir, id)
+    assert {:ok, _} = Ipse.Session.restore_context(events)
+    assert List.last(events)["cleanup_confirmed"] == true
+    assert File.read!(Path.join(ctx.root, "calls.log")) == "write_note\n"
+  end
+
+  test "cleanup scope death still stops a worker blocked in MCP IO", ctx do
+    pid = session(ctx, scenario: "hang", approval: :allow, capture: true)
+    id = Ipse.Session.info(pid).id
+    :ok = Ipse.Session.prompt(pid, "write")
+    await_file(Path.join(ctx.root, "hang-ready"))
+    worker = :sys.get_state(pid).task.pid
+    [{scope, _}] = Registry.lookup(Ipse.Registry, {Ipse.TaskResources, worker})
+    monitor = Process.monitor(worker)
+    Process.exit(scope, :kill)
+    assert_receive {:DOWN, ^monitor, :process, ^worker, _}, 1000
+    assert_receive {:ipse, ^pid, {:done, :error}}, 5000
+    assert {:error, :cleanup_unconfirmed} = Ipse.Session.close_confirmed(pid)
+    {:ok, events} = Ipse.Journal.load(ctx.dir, id)
+    assert {:ok, _} = Ipse.Session.restore_context(events)
+    assert List.last(events)["closure"] == "cleanup_failure"
+    refute List.last(events)["cleanup_confirmed"]
   end
 
   test "abrupt stdio supervisor loss cannot become confirmed Session cleanup", ctx do
@@ -267,5 +342,23 @@ defmodule Ipse.MCP.SessionTest do
           Process.sleep(10)
           await_file(path, retries - 1)
         )
+  end
+
+  defp cleanup_trace(transport, events) do
+    receive do
+      {:trace, ^transport, :receive, {port, {:exit_status, status}}} when is_port(port) ->
+        cleanup_trace(transport, [{:helper_exit, status} | events])
+
+      {:trace, ^transport, :send, {:mcp_cleanup, ^transport, result}, _} ->
+        [{:cleanup, result} | events]
+
+      {:trace, ^transport, _, _} ->
+        cleanup_trace(transport, events)
+
+      {:trace, ^transport, _, _, _} ->
+        cleanup_trace(transport, events)
+    after
+      5000 -> flunk("missing cleanup receipt: #{inspect(events)}")
+    end
   end
 end

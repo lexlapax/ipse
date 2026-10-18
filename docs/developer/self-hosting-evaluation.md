@@ -3,11 +3,11 @@
 P24/P25 review and evaluation protocol, revised 2026-10-17. This guide defines
 independent architectural challenge, security gates and the supervised experiment;
 the [plan](../plan.md#current-priorities-and-status) owns scheduling and acceptance
-status. Partial static architecture reports have returned, including the latest
-fresh cloud review of `091b2bd`, which found two applicable failures. The
-supervisor completed its own adversarial boundary review and repair checks through
-`7810925`, including hosted Linux/macOS. The replacement handoff starts with a
-bounded repair-interaction assignment and preserves remaining independent coverage. The
+status. Package R returned at `7810925` with applicable cleanup and HTTP-bound
+findings and partial coverage. Internal reproductions, repairs and interaction
+review pass locally; hosted verification is required before another handoff.
+The used brief is archived. Continue
+the exact independent checkpoint instead of restarting the package. The
 [disposition register](architecture-review-dispositions.md) owns verification and
 repair status. No comparative run or security scan has executed. Use the
 [operator runbook](../operator/self-development.md) for
@@ -132,7 +132,7 @@ claiming the entire dependent subsystem.
 
 | Package | Required source and actual test-body coverage |
 | --- | --- |
-| R — repair interactions | The complete runtime/test delta from `091b2bd`; Session task creation, DOWN/close, question restoration and observer handlers; action/subscription/diagnostic validators; nested workflow/MCP ownership and streaming admission. Inspect every added regression body and its fixture, including negative/corrupt-history paths |
+| R — repair interactions | Continue the saved independent `7810925` checkpoint: Session task-result handling at lines 1790–2030, then EventJob question restoration, TextConsumer, observability channel close, Runner frames, fixture helpers and remaining lifecycle/diagnostic/conformance test bodies. Inspect the entire subsequent repair delta, SDK link/exit behavior and affected Session paths. Carry forward the reviewed `091b2bd..7810925` delta only where unchanged |
 | S — SDK and delivery checkpoint | Remaining invocation/question, state/store/child-usage/model-job, manifest/conformance/config/identity bodies; event-job/subscriptions/history/usage-read/feed/text tests. Challenge grants, source binding, async peers, fixed snapshots, replay and generic API seams |
 | C — context and egress checkpoint | Remaining auth/JWT and provider Ollama/error/SSE bodies and tests; MCP client/config/schema/HTTP/catalog; workspace/skills/resources, handoff and tool-result compaction. Challenge locking, continuation, endpoint/proxy/TLS policy, context roles and saved recovery |
 | O — OS and persistence checkpoint | Remaining native and sandbox/cache/stdio bodies/tests; delegation/parallel, journal writer, budget/ledger/store, usage/normalizer and corresponding tests. Challenge helper exit receipts, owner loss, aliases, concurrent liability and no replay; distinguish source inspection from platform execution |

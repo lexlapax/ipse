@@ -96,6 +96,10 @@ or RPC error after a request may have been dispatched is recorded as `unknown`;
 the remaining batch stops and resume never retries it. Inspect the affected
 service or files before explicitly requesting another call. If process cleanup
 cannot be confirmed, the session stops with recovery guidance.
+If the helper cannot start at all, Ipse returns a launch error and keeps the
+Session usable. Correct the configured command, workspace or sandbox availability
+before another explicit attempt. A helper that started but failed to acknowledge
+shutdown remains an unconfirmed cleanup, even when its server reported exit zero.
 
 The helper also treats an output-read error or a pipe that remains open past
 its 500 ms post-exit drain deadline as a transport failure. Stdout alone is not

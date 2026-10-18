@@ -25,8 +25,12 @@ cross-process lock. Provider and tool work runs in monitored tasks, with events
 sent back to the owning session and its CLI subscriber.
 
 Each owned task also has a private `TaskResources` process. Shell helpers,
-task-owned advisory locks and independent extension workers register before
-dispatch and report their actual native-helper exit. Task completion retains a
+task-owned advisory locks, independent extension workers and MCP transports register
+before dispatch and report their actual native-helper exit. Known pre-spawn
+refusals settle their tickets without an OS-cleanup failure; once a helper has
+started, only its actual receipt can confirm cleanup. Commands, working directories
+and lock paths reject invalid UTF-8 and embedded NUL bytes before launch.
+Task completion retains a
 single cleanup receipt until Session consumes it. Cancellation closes registered
 resources before killing the task, within a shared four-second resource deadline;
 missing acknowledgments, resource-owner death and failed closure remain
@@ -122,10 +126,14 @@ stream byte ranges independently of consumer-local delivery sequence. V1 remains
 unchanged; neither channel supplies history replay or playback confirmation.
 
 `Ipse.HTTPProfile` owns per-request HTTP lifetimes for authentication, providers,
-and network MCP. A monitored guardian starts a standalone OTP HTTP profile or
-private Finch HTTP/1 pool and retains its lease until the client exits. Borrower
-death closes its profile and sockets;
-another request cannot reuse the name during shutdown. A fixed pool of 64 names
+and network MCP. Authentication uses a standalone OTP HTTP profile; inference
+uses Finch streaming for every HTTP status, and MCP uses Req with Finch.
+A monitored guardian retains the private client lease through borrower and pool
+shutdown. Guardians in an owned task also join its cleanup scope, so cancellation
+waits for the borrower and pool before confirming local cleanup. MCP allocates
+the guardian lease before starting its request task; close never depends on a
+later registry lookup succeeding. Another request cannot reuse the name during
+shutdown. A fixed pool of 64 names
 bounds atom usage and keeps proxy settings and connection state isolated between
 concurrent requests. Exhaustion returns a retryable error instead of creating
 unbounded profile names.
@@ -222,11 +230,16 @@ and an `additional_tools` item, preserving native continuation data; the API rou
 keeps its existing wire shape. Subscription endpoints are pinned below the CLI;
 only test-compiled code permits loopback fixtures. Provider errors redact the
 active credential and stop the turn; the CLI clears queued requests visibly.
-All HTTP provider adapters enforce an 8 MiB response-consumption ceiling before
-parsing. Internal callers can select a smaller positive `max_response_bytes`
+All HTTP provider adapters enforce an 8 MiB response-consumption ceiling across
+success, error and redirect statuses, including chunked responses, before
+adapter parsing or error-body accumulation. A larger declared Content-Length is
+refused at the headers; otherwise received chunks count toward the same ceiling.
+Internal callers can select a smaller positive `max_response_bytes`
 ceiling; extension helper calls retain their 64 KiB limit. Oversized responses
 stop without admitting an assistant response or tools, and are not retried.
-This bounds accumulated adapter/parser data, not the HTTP client's instantaneous
+Error formatting retains only a bounded prefix. Requests disable automatic
+redirects and retries and request identity encoding. This bounds accumulated
+adapter/parser data, not the HTTP client's instantaneous
 network buffers or OS memory. It is separate from model token caps and cost budgets.
 
 ## Trust and side effects

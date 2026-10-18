@@ -94,6 +94,21 @@ defmodule Ipse.CompactionSessionTest do
     %{root: root, dir: dir, id: id, original: messages}
   end
 
+  test "summary admission cannot clear a lost required visible-text enrollment", ctx do
+    {:ok, pid} = start(ctx)
+    {:ok, handle} = Ipse.Session.subscribe_text(pid, 2, required: true)
+    monitor = Process.monitor(handle.server)
+    Process.exit(handle.server, :kill)
+    assert_receive {:DOWN, ^monitor, :process, _, _}, 2000
+    :ok = Ipse.Session.prompt(pid, "Continue after summarizing old history")
+    assert_receive {:summary_request, _, _}, 3000
+    assert_receive {:ipse, ^pid, {:error, error}}, 3000
+    assert error =~ "Required visible-text delivery failed"
+    assert_receive {:ipse, ^pid, {:done, :error}}, 3000
+    refute_received {:normal_request, _}
+    assert :ok = Ipse.Session.close(pid)
+  end
+
   defp start(ctx, extra \\ %{}) do
     config =
       Map.merge(

@@ -525,6 +525,12 @@ must acknowledge every frame including completion before answer admission;
 loss or a five-second deadline stops the request with a required-delivery error.
 Already paid usage remains recorded. Embedded clients use
 `Session.subscribe_text(session, 2, required: true)` for the same policy.
+Unexpected required-consumer loss between turns still blocks the next main
+request; broker loss cannot silently downgrade delivery. Embedded operators can
+explicitly release the lost enrollment while idle with
+`Session.unsubscribe_text(session, handle)`, then enroll a replacement. Without
+that handle, use a reviewed fresh Session. These live enrollments do not survive
+resume. A summary request cannot clear an existing main-delivery requirement.
 Omitting the setting leaves delivery optional; it does not bypass startup checks
 or turn an unconfirmed worker shutdown into confirmed cleanup.
 

@@ -36,6 +36,7 @@ defmodule Ipse.MCP.HTTPTransport do
          deadline: now() + server.timeout_ms,
          queue: [],
          task: nil,
+         task_guardian: nil,
          pending: %{},
          active_id: nil,
          bytes: 0,
@@ -79,7 +80,7 @@ defmodule Ipse.MCP.HTTPTransport do
 
   def handle_info({ref, result}, %{task: %{ref: ref}} = s) do
     Process.demonitor(ref, [:flush])
-    s = %{s | task: nil}
+    s = %{s | task: nil, task_guardian: nil}
 
     cond do
       s.closing ->
@@ -118,6 +119,7 @@ defmodule Ipse.MCP.HTTPTransport do
 
   def terminate(_, s) do
     if s.task, do: Process.exit(s.task.pid, :kill)
+    Ipse.HTTPProfile.cancel_finch(s.task_guardian)
     Ipse.TaskResources.closed(s.cleanup_ticket, s.cleanup_result)
     send(s.cleanup_owner, {:mcp_cleanup, self(), s.cleanup_result})
   end
@@ -127,8 +129,8 @@ defmodule Ipse.MCP.HTTPTransport do
 
   defp launch(%{task: nil, queue: [{body, id} | rest], closing: false} = s) do
     timeout = max(s.deadline - now(), 1)
-    task = request_task(s, :post, body, timeout)
-    %{s | queue: rest, task: task, active_id: id}
+    {task, guardian} = request_task(s, :post, body, timeout)
+    %{s | queue: rest, task: task, task_guardian: guardian, active_id: id}
   end
 
   defp launch(s), do: s
@@ -137,6 +139,7 @@ defmodule Ipse.MCP.HTTPTransport do
     parent = self()
     server = s.server
     session_id = s.session_id
+    lease = Ipse.HTTPProfile.prepare_finch(parent)
 
     task =
       Task.Supervisor.async_nolink(Ipse.Tasks, fn ->
@@ -154,67 +157,72 @@ defmodule Ipse.MCP.HTTPTransport do
             end
           end)
 
-        try do
-          with :ok <- Ipse.HTTPProfile.await_guardian(previous_guardian) do
-            if method == :delete and is_nil(session_id) do
-              :ok
-            else
-              proxy_options = Ipse.HTTPProxy.finch_options(URI.parse(server.url))
+        result =
+          try do
+            with :ok <- Ipse.HTTPProfile.await_guardian(previous_guardian) do
+              if method == :delete and is_nil(session_id) do
+                :ok
+              else
+                proxy_options = Ipse.HTTPProxy.finch_options(URI.parse(server.url))
 
-              Ipse.HTTPProfile.with_finch(
-                fn finch ->
-                  # The Finch guardian closes this private pool on borrower death too.
-                  headers = [
-                    {"accept", "application/json, text/event-stream"},
-                    {"content-type", "application/json"},
-                    {"accept-encoding", "identity"},
-                    {"mcp-protocol-version", "2025-11-25"}
-                  ]
+                Ipse.HTTPProfile.with_finch(
+                  fn finch ->
+                    # The Finch guardian closes this private pool on borrower death too.
+                    headers = [
+                      {"accept", "application/json, text/event-stream"},
+                      {"content-type", "application/json"},
+                      {"accept-encoding", "identity"},
+                      {"mcp-protocol-version", "2025-11-25"}
+                    ]
 
-                  headers =
-                    if session_id, do: [{"mcp-session-id", session_id} | headers], else: headers
+                    headers =
+                      if session_id, do: [{"mcp-session-id", session_id} | headers], else: headers
 
-                  headers =
-                    case Map.values(server.env) do
-                      [token] -> [{"authorization", "Bearer " <> token} | headers]
-                      [] -> headers
+                    headers =
+                      case Map.values(server.env) do
+                        [token] -> [{"authorization", "Bearer " <> token} | headers]
+                        [] -> headers
+                      end
+
+                    into = fn {:data, bytes}, {req, resp} ->
+                      if byte_size(resp.body) + byte_size(bytes) > @body_limit do
+                        {:halt,
+                         {req, %{resp | private: Map.put(resp.private, :ipse_limit, true)}}}
+                      else
+                        {:cont, {req, %{resp | body: resp.body <> bytes}}}
+                      end
                     end
 
-                  into = fn {:data, bytes}, {req, resp} ->
-                    if byte_size(resp.body) + byte_size(bytes) > @body_limit do
-                      {:halt, {req, %{resp | private: Map.put(resp.private, :ipse_limit, true)}}}
-                    else
-                      {:cont, {req, %{resp | body: resp.body <> bytes}}}
-                    end
-                  end
-
-                  Req.request(
-                    method: method,
-                    url: server.url,
-                    body: body,
-                    headers: headers,
-                    finch: [name: finch, pool_timeout: min(timeout, 2000)],
-                    raw: true,
-                    retry: false,
-                    redirect: false,
-                    into: into,
-                    receive_timeout: timeout
-                  )
-                end,
-                proxy_options
-              )
+                    Req.request(
+                      method: method,
+                      url: server.url,
+                      body: body,
+                      headers: headers,
+                      finch: [name: finch, pool_timeout: min(timeout, 2000)],
+                      raw: true,
+                      retry: false,
+                      redirect: false,
+                      into: into,
+                      receive_timeout: timeout
+                    )
+                  end,
+                  proxy_options,
+                  lease
+                )
+              end
             end
+          rescue
+            _ -> {:error, :http_failure}
+          catch
+            _, _ -> {:error, :http_failure}
           end
-        rescue
-          _ -> {:error, :http_failure}
-        catch
-          _, _ -> {:error, :http_failure}
-        after
-          send(guard, :finished)
-        end
+
+        cleanup = lease |> Ipse.HTTPProfile.cancel_finch() |> Ipse.HTTPProfile.await_guardian()
+        send(guard, :finished)
+        if cleanup == :ok, do: result, else: {:error, :cleanup_unconfirmed}
       end)
 
-    task
+    {task, lease}
   end
 
   defp receive_response(s, {:ok, response}) do
@@ -345,16 +353,24 @@ defmodule Ipse.MCP.HTTPTransport do
   defp begin_close(%{closing: true} = s, from), do: %{s | close_from: s.close_from || from}
 
   defp begin_close(s, from) do
-    guardian = if s.task, do: Ipse.HTTPProfile.finch_guardian(s.task.pid)
+    guardian = Ipse.HTTPProfile.cancel_finch(s.task_guardian)
 
     if s.task do
       Process.exit(s.task.pid, :kill)
       Process.demonitor(s.task.ref, [:flush])
     end
 
-    s = %{s | closing: true, queue: [], task: nil, close_from: from || s.close_from}
+    s = %{
+      s
+      | closing: true,
+        queue: [],
+        task: nil,
+        task_guardian: nil,
+        close_from: from || s.close_from
+    }
 
-    %{s | task: request_task(s, :delete, "", 1500, guardian), session_id: nil}
+    {task, lease} = request_task(s, :delete, "", 1500, guardian)
+    %{s | task: task, task_guardian: lease, session_id: nil}
   end
 
   defp finish_close(s, confirmed) do
