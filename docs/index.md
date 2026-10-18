@@ -85,6 +85,7 @@ start. Use the guides below for operation, development, and project context.
 
 - [Plan](plan.md): priorities and acceptance criteria.
 - [Naming](naming.md): the name and its sources.
+- [License](../LICENSE): Ipse's Apache-2.0 terms; [third-party notices](../THIRD_PARTY_NOTICES.md) preserve dependency terms.
 - [Archive](archive/index.md): superseded documentation preserved for historical reference.
 
 ## Documentation ownership

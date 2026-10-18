@@ -664,7 +664,8 @@ checked full logs and exact revision/job/step conclusions. No further Cloud run
 is launched. These security corrections are supervisor work,
 separate from the frozen Ipse-authored change and comparative scores.
 The researched P26/P27 proposal is in the [knowledge design](knowledge-extensions.md);
-no production engine is installed. The requested license transition follows this campaign.
+no production engine is installed. The requested Apache-2.0 transition completed separately after this trial; its
+license/recovery and platform evidence is in the verification record.
 
 ## Scoped acceptance decision
 

@@ -74,10 +74,10 @@ no production engine, database or mandatory backend is selected.
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Deferred; subject to P25 decisions | Independently selectable working/long-term memory tools and optional policies |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
 | [P28: voice and media](#p28-voice-and-realtime-media) | Deferred; unimplemented | Explicit media contracts and later device/service validation |
-| [Apache-2.0 transition](#license-transition) | Implemented after P25; local source/native/package checks pass | Exact-source hosted verification, with identity/recovery boundary documented |
+| [Apache-2.0 transition](#license-transition) | Complete; local and hosted `7bb642b` checks pass | Preserve bundled identity/recovery and third-party license boundaries |
 
-Next work is final hosted verification of the separate license transition, whose
-local source/native/package/installed checks pass. Preserve P25's frozen
+The requested P22–P25 campaign and separate Apache-2.0 transition are complete
+within their documented scopes. Preserve P25's frozen
 inputs, runners, source/review/scan identities, scores and failed attempts; newer
 documentation does not rescan code or expand an earlier verdict. Select any P26/P27
 production increment separately from its evidence-backed proposal. Keep P28
@@ -337,9 +337,12 @@ licenses, prior artifacts and historical evidence retain their own provenance.
 
 The bundled license is part of built-in artifact identity. Older selected sessions
 need their preserved runner or reviewed explicit handoff; the transition does not
-rewrite saved journals or imported artifacts. Verify this boundary, source checks,
-release contents and installed compatibility before declaring this separate
-transition complete. The [verification record](developer/testing.md#current-evidence-and-next-checks)
+rewrite saved journals or imported artifacts. The synthetic recovery boundary,
+local source/native/package checks, both packaged license copies and old compiled
+compatibility proofs pass. Exact `7bb642b` Linux/macOS source/native/package and
+installed checks also pass after correcting a proof-fixture preparation timer;
+production code and request/assertion deadlines are unchanged. This separate
+transition is complete. The [verification record](developer/testing.md#current-evidence-and-next-checks)
 owns actual receipts. No new runtime capability, dependency or service is added.
 
 ## Completed milestones P0–P22
