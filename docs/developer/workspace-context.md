@@ -30,11 +30,29 @@ against a hostile process concurrently replacing filesystem entries.
 
 ## Action scope
 
-Before a file tool targets a deeper directory, the session discovers applicable
-nested `AGENTS.md` files. A changed snapshot is journaled before the model sees
-it. Pending calls from the earlier proposal are returned as not started, so the
-model must reconsider its proposed actions with the new instructions. Loading
-instructions never executes a pending mutation or bypasses approval.
+Before a file tool targets a deeper directory, the session checks the target path
+and discovers applicable nested `AGENTS.md` files. Preflight happens before tool
+start or an approval decision. If path/context preflight refuses, the affected
+call's tool result retains the specific refusal and asks the model to check that
+call's target path and workspace guidance before retrying. Later queued calls
+receive only a generic stopped-before-start result: the first target's failure is
+not attributed to their paths. All of these calls remain `not_started` with
+approval `not_decided`; a failed preflight is not evidence that a read ran.
+
+When discovery changes the snapshot, Session journals it before settling the old
+proposal and requesting reconsideration. The affected call's result tells the
+model that new scoped context was loaded and must be reviewed before retrying;
+the next model request contains both the saved context and that reason. Later
+queued calls remain generically not started. A revised mutation proposal still
+passes through normal approval; loading guidance neither executes old calls nor
+transfers permission to new ones. A useful diagnostic enables replanning but does
+not guarantee that a model will recover or complete the task.
+
+These are preflight-specific results, not a change to interruption settlement.
+An actually started effect interrupted before a recorded result remains unknown;
+subsequent unstarted calls remain not started. Saved tool messages retain their
+reasons during restoration, and idle resume does not replay either old proposal
+or effect.
 
 An arbitrary shell string has no reliably inferable target set. The model sees
 the active workspace context and explicit scope warning; the host cannot claim
@@ -47,8 +65,9 @@ A `workspace_context_snapshot` journal event retains the bounded source text and
 manifest. Resume uses the last validated saved snapshot rather than silently
 substituting changed instructions. Invalid saved snapshots stop recovery.
 Drift diagnostics identify changed or unavailable saved sources without adopting
-new text. Newly created, previously undiscovered files require an explicit refresh
-to be discovered; drift is not a recursive filesystem watcher.
+new text. Explicit refresh adopts changed saved text and rediscovers launch-scope
+sources; drift is not a recursive filesystem watcher. Action preflight can add
+previously unseen nested guidance as described above.
 
 The selected skill catalog is independently checkpointed with names, descriptions,
 canonical paths, content digests and shadowed-source provenance, capped at 256

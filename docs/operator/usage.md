@@ -301,8 +301,9 @@ not export conversations or other metadata, but the allowed fields can still
 contain private workspace paths or model names; review output before sharing.
 
 Resume keeps the original workspace, provider, and model. It reconstructs history
-without replaying tools. Interrupted tool calls receive an explicit unknown
-outcome, and a partially written final journal record can be repaired under the
+without replaying tools. Saved not-started results retain their status and reason;
+unmatched calls without a recorded result are conservatively reconstructed as
+unknown. A partially written final journal record can be repaired under the
 session lock. Full transcripts remain on disk, including tool output.
 
 For a fresh conversation after a retained-context refusal, explicitly import an
@@ -467,8 +468,23 @@ Instructions, skill metadata and extension contributions are labelled reference
 context in a user-role message. Only core-owned rules occupy the system message.
 Reference text grants no tool permission and is not a new operator request.
 
-For deeper file-tool targets, newly discovered nested instructions return the
-pending proposals as not started so the model can reconsider them before approval.
+For deeper file-tool targets, Ipse checks the path and discovers applicable
+nested instructions before starting the call or requesting approval. A refused
+path/context check returns the specific reason on that call and asks the model to
+check its target path and workspace guidance. Later queued calls receive only a
+generic stopped-before-start result, not the first path's failure. These results
+mean `not_started` and approval `not_decided`, not that a read ran or an effect
+has an unknown outcome.
+
+Newly discovered guidance is saved before reconsideration. The next model request
+includes that context and an explicit review-before-retry reason for the affected
+call; the old proposals remain unexecuted. Any revised mutation still needs its
+own approval under the current policy. Better diagnostic text does not guarantee
+that the model will successfully replan. Saved results retain the reasons on
+restoration, and idle resume never retries the calls. By contrast, an actually
+started effect interrupted without a result remains unknown; inspect its effects
+before explicitly retrying.
+
 Arbitrary shell commands can target directories indirectly; the host cannot infer
 every applicable scope. Review deeper guidance and full shell arguments before
 approving. See the [context contract](../developer/workspace-context.md) for
@@ -626,8 +642,8 @@ Current delivery and remaining work follow this sequence:
 | Milestone | Scope | Status and boundary |
 | --- | --- | --- |
 | P23 | Complete within selected scope | Own-session/child reports, optional [shared reservations](budgets.md) and explicit [extension text calls](extensions.md#accounted-model-calls); source/package/platform gates passed. Context bytes are not tokens or an invoice |
-| P24 | Independent architecture validation and baseline security | First static critique returned; [verification and repairs](../developer/architecture-review-dispositions.md) in progress. Security audit remains gated; no scan yet |
-| P25 | Larger supervised comparative research/self-development trial | Independent Codex/Ipse study, repairs, held-out reruns and final architecture/security review; unstarted |
+| P24 | Independent architecture validation and baseline security | See the [review checkpoint](architecture-review.md) and [dispositions](../developer/architecture-review-dispositions.md) for current evidence and remaining gates |
+| P25 | Larger supervised comparative research/self-development trial | Supervised trial and repair work in progress; patches require independent supervisor review before acceptance |
 | P26/P27 | Optional working/long-term memory, research engine, graph and RAG | Production packages deferred pending P25 selection; independently configurable and default-off |
 | P28 | STT/text-agent/TTS and realtime media | Deferred former-P24 scope, with explicit device/provider/billing selection; text authentication does not imply audio access |
 

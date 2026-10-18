@@ -1,11 +1,13 @@
 # P25 execution record
 
-P25 is executing its first live research package. The
+P25 has frozen its live research and scored the corrected common-packet comparison;
+installed Ipse authored a reproduced harness repair now under independent checks. The
 [common brief](p25-common-brief.md) and [source manifest](p25-input-manifest.json)
 were committed at `c91fa94` before either scored session. The
 [protocol](self-hosting-evaluation.md) owns acceptance; the [plan](../plan.md)
-owns scheduling. No research comparison, self-development result or P25 acceptance
-is claimed yet. Raw reports, journals and operational logs remain private outside Git.
+owns scheduling. The reference meets the packet minimum; Ipse's source-fit
+criterion fails. No completed self-development result or P25 acceptance is claimed.
+Raw reports, journals and operational logs remain private outside Git.
 
 ## Frozen baseline and preparation
 
@@ -260,11 +262,52 @@ compaction and a 300-second request timeout. Provider/model/billing remain the
 installed own-subscription profile. Retrieval, delegation, dependencies, Git
 writes and publication are denied. Mutations and focused local checks require
 individual supervisor decisions bound to their complete arguments; held-out cases
-remain private. No authored repair or passing verification is claimed yet.
+remain private. Independent review, platform/package checks and fresh evaluation
+are separate gates after authoring.
 
 The supervisor built the untouched candidate using the inspected build script
 and existing locked/local dependency copies; strict compilation passed. This is
 setup evidence, not an Ipse-authored test or a new dependency adoption.
+
+The original focused suite passed 16 tests. With Ipse's added assertions and
+unchanged production code, the supervisor reran it: 16/18 passed; both failures
+are the specific preflight-reason assertions. Ipse's proposed test wrapper was
+denied because literal escaped quotes would become path bytes. No denied command
+ran. Ipse asked a structured clarification and stopped rather than bypassing the
+denial. The supervisor driver then closed the session, recording that question
+as cancelled; it is not a durable answered-question success.
+
+An explicit same-session continuation supplies the quoting explanation and actual
+supervisor test results. Its original wall deadline remains 16:00:50 UTC, with
+16 requests/23 proposals already charged, leaving at most 44/105. Scope, model,+billing and acceptance stay fixed. Driver intervention, denied effect, cancelled
+question and continuation remain distinct from product behavior and authorship.
+
+Idle continuation preserved the journal byte-for-byte. Ipse authored a focused
+preflight-only helper and developer/operator explanations; interruption settlement
+is unchanged. Its first focused run passed 17/18. The remaining new fixture
+incorrectly included a later pending proposal in the settled-prefix expectation;
+Ipse corrected the boundary without changing recovery behavior. Independent
+checks of the corrected fixtures still fail twice on the baseline and pass all
+18 on the candidate. A local fixture pass does not establish model recovery.
+
+The author stopped for review with confirmed cleanup, 32 cumulative canonical
+requests, 38 proposed calls and 24 individual effect decisions, inside the
+original wall/call limits. Its unchanged four-file patch is SHA-256
+`0876dc251288eea1596ec8d4b534bb331fba5a1cc4b86e3341c643a99d9849ef`.
+Independent review checked both handlers, settlement callers, journal/restoration,
+snapshot/approval ordering and all new assertions. No authority, egress, journal
+schema, extension API or interruption-policy change was identified. This is a
+scoped review of the authored delta, not another whole-tree security scan.
+
+The full candidate suite passed 862 tests with 32 exclusions. The integrated
+four files match the frozen candidate bytes exactly. Both actual Elixir
+1.18.4/1.20.4 formatter checks, strict compilation, the credential-free demo,
+12 enabled Linux sandbox tests and 21 stdio tests (five Mac exclusions) passed.
+The first floor-check invocation used a nonexistent path and ran nothing;
+the corrected invocation explicitly selected the isolated 1.18.4 runtime.
+Package/installed, hosted macOS and fresh research/held-out evidence remain
+separate checks. Supervisor status edits also reconciled current entry points;
+these are not authored product fixes.
 
 ## Remaining trial gates
 

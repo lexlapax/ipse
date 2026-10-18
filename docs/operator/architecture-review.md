@@ -6,9 +6,9 @@ combine retained independent critiques, the completed static baseline scan and
 checked repairs. The final [Linux/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39134788296)
 passed source, native enforcement, packaging and installed-artifact checks.
 This is not a new independent post-fix verdict or a security certification.
-P25's live comparison is underway; the
-[execution record](../developer/p25-evaluation.md) retains failed access and
-bounded recovery. No comparative score or trial acceptance is claimed. No additional
+P25's corrected packet comparison is scored; the
+[execution record](../developer/p25-evaluation.md) retains the failed source-fit
+criterion and supervised repair. No trial acceptance is claimed. No additional
 P24 review sequence, scan or continuous monitoring is scheduled.
 
 ## Focused pass and current gate

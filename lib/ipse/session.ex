@@ -2001,7 +2001,7 @@ defmodule Ipse.Session do
           s = persist_context(%{s | context_drift: drift}, snapshot)
 
           s =
-            settle_calls(
+            settle_preflight_calls(
               s,
               "Not executed: new scoped workspace context was loaded. Review it before retrying this action."
             )
@@ -2011,9 +2011,9 @@ defmodule Ipse.Session do
 
       {:context_preflight, {:error, reason}} ->
         s =
-          settle_calls(
+          settle_preflight_calls(
             s,
-            "Not executed: scoped context could not be loaded (#{inspect(reason)}). Review workspace guidance before retrying."
+            "Not executed: scoped context could not be loaded (#{inspect(reason)}). Check this call's target path and review workspace guidance before retrying."
           )
 
         {:noreply, model(s)}
@@ -3314,6 +3314,22 @@ defmodule Ipse.Session do
     s = append_tool_message(s, message, true)
     notify(s, {:tool_result, get_in(call, ["function", "name"]), message["content"]})
     next_tool(%{s | calls: tl(s.calls), tool_decision: "not_decided"})
+  end
+
+  defp settle_preflight_calls(%{phase: :context_preflight, calls: [call | queued]} = s, text) do
+    s =
+      append_tool_message(
+        s,
+        %{
+          "role" => "tool",
+          "tool_call_id" => call["id"],
+          "content" => text,
+          "ipse_tool_outcome" => %{"status" => "not_started", "approval" => "not_decided"}
+        },
+        false
+      )
+
+    settle_calls(%{s | calls: queued}, "Not executed: work stopped before this call started.")
   end
 
   defp settle_calls(s, text) do

@@ -7,8 +7,17 @@ defmodule Ipse.WorkspaceSessionTest do
 
       case config[:mode] do
         :scoped_write -> scoped_write(config, messages)
+        :calls -> fixture_calls(config)
         _ -> {:ok, %{"role" => "assistant", "content" => "ok"}, %{}}
       end
+    end
+
+    defp fixture_calls(config) do
+      stage = Agent.get_and_update(config.agent, &{&1, &1 + 1})
+
+      if stage == 0,
+        do: {:ok, write_response(config.fixture_calls), %{}},
+        else: {:ok, %{"role" => "assistant", "content" => "reconsidered"}, %{}}
     end
 
     defp scoped_write(config, _messages) do
@@ -225,6 +234,22 @@ defmodule Ipse.WorkspaceSessionTest do
              &(&1["role"] == "tool" and &1["ipse_tool_outcome"]["status"] == "not_started")
            ) == 2
 
+    assert [first, second] = tool_messages(replanned_messages)
+    assert first["tool_call_id"] == "first"
+
+    assert first["content"] ==
+             "Not executed: new scoped workspace context was loaded. Review it before retrying this action."
+
+    assert second["tool_call_id"] == "second"
+    assert second["content"] == "Not executed: work stopped before this call started."
+
+    for message <- [first, second] do
+      assert message["ipse_tool_outcome"] == %{
+               "status" => "not_started",
+               "approval" => "not_decided"
+             }
+    end
+
     assert_receive {:ipse, ^pid,
                     {:approval, ref, "write",
                      %{"path" => "nested/result.txt", "content" => "after review"}}},
@@ -242,11 +267,188 @@ defmodule Ipse.WorkspaceSessionTest do
              get_in(event, ["message", "ipse_tool_outcome", "status"]) == "not_started"
            end) == 2
 
+    snapshot_index =
+      Enum.find_index(events, fn event ->
+        event["type"] == "workspace_context_snapshot" and
+          Enum.any?(event["snapshot"]["sources"], &(&1["content"] == "nested-scope-v1"))
+      end)
+
+    refusal_index = Enum.find_index(events, &(get_in(&1, ["message", "tool_call_id"]) == "first"))
+    assert is_integer(snapshot_index)
+    assert snapshot_index < refusal_index
+    assert get_in(Enum.at(events, refusal_index + 1), ["message"]) == second
+    settled_prefix = Enum.take(events, refusal_index + 2)
+    assert {:ok, restored_before_approval} = Ipse.Session.restore_context(settled_prefix)
+    assert tool_messages(restored_before_approval) == [first, second]
+
     :ok = Ipse.Session.approve(pid, ref, true)
     assert_receive {:model_input, [_system, reference | _]}, 2_000
     assert reference["content"] =~ "nested-scope-v1"
     assert_receive {:ipse, ^pid, {:done, :ok}}, 2_000
     assert File.read!(Path.join(nested, "result.txt")) == "after review"
+    {:ok, completed_events} = Ipse.Journal.load(ctx.dir, Ipse.Session.info(pid).id)
+
+    assert [^first, ^second, written] =
+             completed_events
+             |> Enum.map(& &1["message"])
+             |> Enum.reject(&is_nil/1)
+             |> tool_messages()
+
+    assert written["tool_call_id"] == "scoped-write"
+
+    assert written["ipse_tool_outcome"] == %{
+             "status" => "result_recorded",
+             "approval" => "approved"
+           }
+
+    File.write!(Path.join(nested, "result.txt"), "operator edit")
+
+    resumed =
+      assert_idle_restoration(ctx, pid, %{mode: :scoped_write, agent: agent}, [
+        first,
+        second,
+        written
+      ])
+
+    assert File.read!(Path.join(nested, "result.txt")) == "operator edit"
+    refute File.exists?(Path.join(nested, "first.txt"))
+    refute File.exists?(Path.join(nested, "second.txt"))
+    assert :ok = Ipse.Session.close(resumed)
+  end
+
+  defp tool_call(id, name, args) do
+    %{
+      "id" => id,
+      "type" => "function",
+      "function" => %{"name" => name, "arguments" => Jason.encode!(args)}
+    }
+  end
+
+  defp tool_messages(messages), do: Enum.filter(messages, &(&1["role"] == "tool"))
+
+  defp assert_idle_restoration(ctx, pid, extra, expected_tools) do
+    id = Ipse.Session.info(pid).id
+    assert :ok = Ipse.Session.close(pid)
+    path = Path.join(ctx.dir, id <> ".jsonl")
+    bytes = File.read!(path)
+    assert {:ok, events} = Ipse.Journal.load(ctx.dir, id)
+    assert {:ok, restored} = Ipse.Session.restore_context(events)
+    assert tool_messages(restored) == expected_tools
+
+    resumed = start(ctx, extra, id)
+    assert Ipse.Session.info(resumed).phase == :idle
+    assert File.read!(path) == bytes
+    refute_receive {:model_input, _}, 50
+    refute_receive {:ipse, ^resumed, {:tool, _, _}}, 50
+    refute_receive {:ipse, ^resumed, {:approval, _, _, _}}, 50
+    resumed
+  end
+
+  test "preflight refusal retains its reason only on the affected call and restores without replay",
+       ctx do
+    File.write!(Path.join(ctx.cwd, "known.txt"), "queued read must not run")
+
+    for {target, reason} <- [
+          {"missing/result.txt", ":enoent"},
+          {nil, "invalid nested context request"},
+          {"/absolute.txt", "target must be workspace-relative"},
+          {"../outside.txt", "target is outside the workspace"}
+        ] do
+      {:ok, agent} = Agent.start_link(fn -> 0 end)
+
+      extra = %{
+        mode: :calls,
+        agent: agent,
+        fixture_calls: [
+          tool_call("affected", "read", %{"path" => target}),
+          tool_call("queued", "read", %{"path" => "known.txt"})
+        ]
+      }
+
+      pid = start(ctx, extra)
+      assert :ok = Ipse.Session.prompt(pid, "inspect proposed paths")
+      assert_receive {:model_input, _}, 2_000
+      assert_receive {:model_input, messages}, 2_000
+      assert_receive {:ipse, ^pid, {:done, :ok}}, 2_000
+      assert [affected, queued] = tool_messages(messages)
+      assert affected["tool_call_id"] == "affected"
+      assert affected["content"] =~ "scoped context could not be loaded"
+      assert affected["content"] =~ reason
+      assert affected["content"] =~ "Check this call's target path"
+      assert queued["tool_call_id"] == "queued"
+      assert queued["content"] == "Not executed: work stopped before this call started."
+
+      for message <- [affected, queued] do
+        assert message["ipse_tool_outcome"] == %{
+                 "status" => "not_started",
+                 "approval" => "not_decided"
+               }
+      end
+
+      assert {:ok, events} = Ipse.Journal.load(ctx.dir, Ipse.Session.info(pid).id)
+      refute Enum.any?(events, &(&1["type"] == "tool_started"))
+      refute_receive {:ipse, ^pid, {:tool, _, _}}, 50
+      refute_receive {:ipse, ^pid, {:approval, _, _, _}}, 50
+      resumed = assert_idle_restoration(ctx, pid, extra, [affected, queued])
+      assert :ok = Ipse.Session.prompt(resumed, "reconsider without repeating the reads")
+      assert_receive {:model_input, restored_messages}, 2_000
+      assert tool_messages(restored_messages) == [affected, queued]
+      assert_receive {:ipse, ^resumed, {:done, :ok}}, 2_000
+      assert :ok = Ipse.Session.close(resumed)
+    end
+  end
+
+  test "cancelling a started effect leaves only that call unknown and never replays queued calls",
+       ctx do
+    {:ok, agent} = Agent.start_link(fn -> 0 end)
+
+    extra = %{
+      mode: :calls,
+      agent: agent,
+      fixture_calls: [
+        tool_call("started", "shell", %{
+          "command" => "printf effected > effect.txt; printf ready; sleep 30"
+        }),
+        tool_call("queued", "write", %{"path" => "queued.txt", "content" => "must not run"})
+      ]
+    }
+
+    pid = start(ctx, extra)
+    assert :ok = Ipse.Session.prompt(pid, "start a cancellable synthetic effect")
+    assert_receive {:model_input, _}, 2_000
+    assert_receive {:ipse, ^pid, {:approval, ref, "shell", _}}, 2_000
+    assert :ok = Ipse.Session.approve(pid, ref, true)
+    assert_receive {:ipse, ^pid, {:tool_output, "ready"}}, 5_000
+    assert File.read!(Path.join(ctx.cwd, "effect.txt")) == "effected"
+    assert :ok = Ipse.Session.cancel(pid)
+    assert_receive {:ipse, ^pid, {:done, :cancelled}}, 5_000
+    assert {:ok, events} = Ipse.Journal.load(ctx.dir, Ipse.Session.info(pid).id)
+
+    assert [started, queued] =
+             events |> Enum.map(& &1["message"]) |> Enum.reject(&is_nil/1) |> tool_messages()
+
+    assert started["tool_call_id"] == "started"
+    assert started["ipse_tool_outcome"] == %{"status" => "unknown", "approval" => "approved"}
+    assert started["content"] =~ "effects may have occurred"
+    assert queued["tool_call_id"] == "queued"
+
+    assert queued["ipse_tool_outcome"] == %{
+             "status" => "not_started",
+             "approval" => "not_decided"
+           }
+
+    assert queued["content"] == "Not executed: work stopped before this call started."
+
+    assert Enum.map(Enum.filter(events, &(&1["type"] == "tool_started")), & &1["call_id"]) == [
+             "started"
+           ]
+
+    refute File.exists?(Path.join(ctx.cwd, "queued.txt"))
+    File.write!(Path.join(ctx.cwd, "effect.txt"), "operator edit")
+    resumed = assert_idle_restoration(ctx, pid, extra, [started, queued])
+    assert File.read!(Path.join(ctx.cwd, "effect.txt")) == "operator edit"
+    refute File.exists?(Path.join(ctx.cwd, "queued.txt"))
+    assert :ok = Ipse.Session.close(resumed)
   end
 
   test "canonical cwd metadata remains resumable through a directory alias", ctx do

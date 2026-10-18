@@ -20,9 +20,10 @@ documented trust limit. Pipe/pressure/startup follow-ups passed the complete loc
 and hosted Linux/macOS matrix at `375e607`. The
 [readiness decision](architecture-review-dispositions.md#p24-scoped-readiness-decision)
 records the evidence and accepted limits. It is not independent post-fix acceptance
-or a second scan. P25's live comparison is underway under the frozen brief;
-the [execution record](p25-evaluation.md) retains failed access and assistance.
-No comparative score or trial acceptance is claimed yet.
+or a second scan. P25's corrected common-packet comparison is scored under the
+frozen rubric; the [execution record](p25-evaluation.md) retains failures,
+assistance and the unmet source-fit criterion. Supervised authoring is underway;
+trial acceptance remains open.
 Use the [operator runbook](../operator/self-development.md) for runner/candidate
 separation and the [knowledge design](knowledge-extensions.md) for research
 questions. Production knowledge packages remain deferred to P26/P27.

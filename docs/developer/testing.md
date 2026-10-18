@@ -230,7 +230,8 @@ approval interleaving, writer acknowledgment and oversized question-ID admission
 The PA-5/PA-6 egress repair at `42d9f1f` also passed its local and hosted
 Linux/macOS handoffs. The role/text/catalog/login batch and fixture follow-up
 passed local and hosted gates through `091b2bd`; the failed first matrix remains
-recorded below rather than being overwritten. No comparative P25 run has executed.
+recorded below rather than being overwritten. P25's subsequent research/comparison
+and supervised authoring are recorded separately in the [trial record](p25-evaluation.md).
 The OpenAI security-service baseline completed with five static findings. Four
 repairs passed local and hosted checks at `bfce156`; final composition follow-up
 verification passed at `375e607`, as recorded below.
@@ -361,9 +362,10 @@ runtime enforcement. Security-repair/follow-up platform verification has passed
 at `375e607`. The supervisor's
 [scoped P24 readiness decision](architecture-review-dispositions.md#p24-scoped-readiness-decision)
 assesses that evidence and accepted limits for supervised P25. It supplies no
-new independent post-fix verdict. P25's live comparison is underway; its
-[record](p25-evaluation.md) retains actual access failures and assistance. No
-comparative score/acceptance or further P24 architecture-review sequence is claimed.
+new independent post-fix verdict. P25's corrected comparison is scored; its
+[record](p25-evaluation.md) retains failures, assistance and the source-fit gap
+driving supervised authoring. Trial acceptance is open; no further P24
+architecture-review sequence is scheduled.
 
 During P23E2 iteration, a full run overlapped a focused recompile and produced
 eight artifact-admission failures; that run was discarded. Final verification
