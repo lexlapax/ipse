@@ -145,20 +145,15 @@ defmodule Ipse.DeveloperTraceTest do
   end
 
   test "owner death revokes capture and closes its collector", %{target: target} do
-    parent = self()
-
-    owner =
-      spawn(fn ->
+    {:ok, owner} =
+      Agent.start(fn ->
         {:ok, policy} = DeveloperTrace.policy(developer_trace: true, trace_ms: 5000)
         {:ok, tracer} = DeveloperTrace.start(target, policy)
-        send(parent, {:tracer, tracer})
-
-        receive do
-          :stop -> :ok
-        end
+        tracer
       end)
 
-    assert_receive {:tracer, tracer}
+    on_exit(fn -> Process.exit(owner, :kill) end)
+    tracer = Agent.get(owner, & &1)
     assert weak(target) != nil
     Process.exit(owner, :kill)
     eventually(fn -> not Process.alive?(tracer) and weak(target) == nil end)
