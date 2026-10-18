@@ -2,8 +2,8 @@
 
 This guide owns the P25 research rationale, P26 baseline selection and deferred
 P27 research/graph/RAG proposals. All optional capabilities remain independently
-**disabled by default**. P26's [explicit note extensions](memory.md) are under
-implementation/verification; no third-party memory engine is selected or installed.
+**disabled by default**. P26's [explicit note extensions](memory.md) pass their
+source/installed/hosted gates; no third-party memory engine is selected or installed.
 P14 already supplies a research skill,
 configured MCP retrieval and a durable evidence ledger. P22's
 [synthetic installed memory/workflow lab](extension-proof.md) proves exercised SDK
@@ -19,7 +19,7 @@ affected reviews and exact-source platform checks support
 [scoped P25 acceptance](p25-evaluation.md#scoped-acceptance-decision). This guide owns proposed domain decisions;
 the [plan](../plan.md#p25-comparative-research-and-supervised-self-development)
 owns scheduling and the [protocol](self-hosting-evaluation.md) owns acceptance.
-P26A/P26B are authorized; advanced engines remain deferred to P27. P23 reports
+P26A/P26B's explicit baseline is complete; advanced engines remain deferred to P27. P23 reports
 and shared main/summary/child budgets are available, within their covered operations.
 [Accounted one-shot text calls](extension-model-calls.md) now supply the optional
 model seam verified in P23F; embeddings and production engines remain separate.
@@ -239,12 +239,12 @@ this direction; Ipse's first proposals remain provisional where source inspectio
 failed. A shared recommendation is not proof, and final reruns do not retroactively
 repair earlier reports. The [trial record](p25-evaluation.md) owns acceptance.
 
-| Proposed increment | Delivery and measurable gate |
-| --- | --- |
-| P26A — explicit notes | Independent default-off working/project-memory tools, bounded state/context and selected-note export; deterministic scope, permission, quota and disabled-side-effect cases all pass |
-| P26B — lifecycle integrity | Source-generation suppression, TTL/conflicts, derivative inventory and explicit migration/collection design; zero forbidden resurrection across delayed work, reingestion, restart and import fixtures |
-| P27A — research and lexical RAG | Pluggable configured tools, cited sources/claims and bounded lexical retrieval; useful without memory, graphs or embeddings; explicit partial results on unavailable services |
-| P27B — optional comparisons | Independently test extraction, embeddings/hybrid retrieval and graph adapters after generic host gaps/dependency approvals; publish matched baseline quality/resource deltas before selection |
+| Increment | Delivery and measurable gate | Status |
+| --- | --- | --- |
+| P26A — explicit notes | Independent default-off working/project-memory tools, bounded state/context and selected-note export; deterministic scope, permission, quota and disabled-side-effect cases | Complete at `108aa86`; source, package and hosted gates pass |
+| P26B — lifecycle integrity | Source-generation suppression, TTL/conflicts, derivative inventory/collection and explicit migration/import; no forbidden resurrection in delayed-work/reingestion/restart/import fixtures | Complete explicit baseline; cached history requires the documented manual affected-session policy |
+| P27A — research and lexical RAG | Pluggable configured tools, cited sources/claims and bounded lexical retrieval; useful without memory, graphs or embeddings; explicit partial results on unavailable services | Deferred; approved autonomous MCP bridge remains a host gap |
+| P27B — optional comparisons | Independently test extraction, embeddings/hybrid retrieval and graph adapters after generic host gaps/dependency approvals; publish matched baseline quality/resource deltas before selection | Deferred; embeddings need a versioned provider/accounting contract |
 
 No stage requires voice, a cost UI, a mandatory database or a workflow framework.
 Required host authority/accounting gaps must close before operations that need

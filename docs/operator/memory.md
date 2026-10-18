@@ -5,7 +5,8 @@ and persistent project/operator notes. They store only what you explicitly ask
 them to remember. Recall is local lexical retrieval with source excerpts; there
 is no automatic transcript capture, model extraction, embedding, database
 installation or external memory service. Ordinary conversation and recovery work
-without either extension. Full P26 acceptance is pending the verification record.
+without either extension. Source, installed-package and hosted Linux/macOS gates
+pass within the [recorded scope and limits](../developer/testing.md#current-evidence-and-next-checks).
 
 ## Choose scope and retention
 
@@ -207,6 +208,12 @@ previous tool results, cached publications from other extensions, journals,
 backups, exports or earlier provider transfers. The memory extensions have no
 private history-read or history-redaction grant. Core retains mandatory recovery
 and accounting records; deleting extension files is not secure erasure.
+State-read receipts retain the full scanned value pages, including notes that
+were not selected in the final recall/export result. They stay in the private
+session journal and consume its finite quota. They are not automatically added
+to model context, but TTL, forget and collection do not redact these copies.
+Keep journal storage private and outside version control; repeated large scans
+can reach the journal limit even when returned recall is small.
 
 After forgetting, close every session that previously received affected recall
 or copied derivative text. Start fresh without importing the forgotten material;

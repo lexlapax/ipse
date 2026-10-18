@@ -271,7 +271,7 @@ and validated contracts; the examples are not a fixed mandatory workflow.
 
 The [independent lab](extension-proof.md) exercises synthetic memory/workflow
 adapters through the generic SDK. P25's completed scoped comparison informed
-P26's [explicit memory baseline](memory.md), now under implementation/verification.
+P26's [explicit memory baseline](memory.md), now implemented and verified within its documented scope.
 Advanced research, graph and RAG engines remain P27 work. The two hook examples
 do not implement those systems. Session journals, research ledgers and compaction
 checkpoints are not cross-session long-term memory.

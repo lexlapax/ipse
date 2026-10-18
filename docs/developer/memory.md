@@ -6,8 +6,8 @@ invocations and domain continuations; `Memory.Records` owns note validation,
 source versions, suppression and lexical ranking. `WorkingMemory` restricts
 initialization to session scope. Registry supplies inert built-in metadata and
 binds each helper BEAM into artifact identity. No Session memory branch, automatic
-capture, model call, database or service is added. Full milestone acceptance
-remains pending the current verification gates.
+capture, model call, database or service is added. P26A/P26B's source, installed
+and hosted gates pass at `108aa86`, with the limitations below retained.
 
 Use [operator memory](../operator/memory.md) for selection, commands, sharing,
 retention, collection and recovery. This document owns implementation invariants;
@@ -118,6 +118,11 @@ invalidate either. This baseline selects an explicit affected-session policy:
 close sessions containing prior affected recall, then start fresh with no
 forgotten text in any manually reviewed handoff. Idle resume preserves the old
 committed projection exactly and never re-reads the backend to rewrite history.
+State action receipts also retain all scanned values, including nonselected
+notes, in private journals. Only the final tool result enters model messages;
+receipt retention is separate and repeated full-store reads can exhaust the
+finite journal quota. The benchmark's state-byte metric is not total journal or
+backup storage, and memory TTL/collection does not redact these receipts.
 
 This policy is distinct from live cross-session invalidation, history redaction,
 journal/backup retention, secure erasure and prior provider transfers. Those are
@@ -135,6 +140,21 @@ stale continuations, reread/reingestion/import suppression, derivative closure a
 collection, expiration and explicit schema migration. Real Sessions exercise the
 owned worker path and restore saved transcripts inertly. Fixture helpers are not
 substitutes for live model/algorithm evaluation.
+
+| Acceptance boundary | Evidence |
+| --- | --- |
+| Independent/default-off packages, session/project isolation, explicit operator sharing | [Real-session tests](../../test/extensions_memory_session_test.exs), inert registry cases and the actual documented two-package config/CLI check |
+| Stable reviewed storage, legacy compatibility and scope/grant ceilings | [Binding tests](../../test/extensions_state_binding_test.exs); byte-identical legacy namespaces, shared bound CAS, malformed policies and project-override refusal |
+| Bounded value reads, exact receipts and no extended write authority | [Scan tests](../../test/extensions_state_scan_test.exs) and the real-worker scan beyond step 16; step 513, ungranted reads and step-17 writes refuse |
+| Notes, selected export, source versions, TTL, conflicts and suppression | [Domain tests](../../test/extensions_memory_test.exs) plus [state quota/locking tests](../../test/extensions_state_test.exs); delayed continuation, reread/reingestion, stale imports, expired values and retained suppression |
+| Derivative integrity and approved schema/namespace transfer | Domain transitive/missing-parent exclusion, portable suppression export, direct collection, active v1 migration and digest-only legacy suppression import; every mutation retains generic host approval/CAS |
+| Cancellation, denial and unchanged recovery | Real tool/write approval and cancel/denial tests; inert resume and [recorded controlled probes](testing.md#current-evidence-and-next-checks) with backend forget, retained cached messages and no resume inference |
+| Quality/resources and platform delivery | Frozen source/installed corpus below, local full native suite, both real formatter floors, package/unchanged-artifact proofs and exact-source Linux/macOS gates at `108aa86` |
+
+These boundaries complete the explicit P26A/P26B baseline. They do not close
+future automatic capture, cross-store deletion synchronization, live context
+revocation or semantic-engine evaluation. The retained first Mac cleanup failure
+and its unknown cause remain part of the verification record.
 
 `mix run scripts/measure-memory.exs` uses the frozen
 [`examples/memory/corpus.json`](../../examples/memory/corpus.json) across six

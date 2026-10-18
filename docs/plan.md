@@ -62,26 +62,27 @@ owns exact source, failed attempts, checks and exclusions. The requested license
 transition follows this completed campaign as a separate verified change.
 
 The research subject is optional working/long-term memory, research, graph and
-RAG, including the operator's Zero-Mem inspiration. Production engines remain deferred to P26/P27, and the
-former media milestone is deferred P28. External services remain configurable;
-no production engine, database or mandatory backend is selected.
+RAG, including the operator's Zero-Mem inspiration. P26's explicit-note baseline
+is complete at `108aa86`; advanced research/graph/RAG engines remain deferred to
+P27, and media to P28. External services remain configurable; no third-party
+engine, database or mandatory backend is selected.
 
 | Milestone or gate | Current state | Next result |
 | --- | --- | --- |
 | [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within selected scope | Preserve accounting through the trial |
 | [P24: architecture/security readiness](#p24-independent-architecture-validation-and-baseline-security) | Complete for supervised P25 at `375e607`; accepted limits recorded | Refresh affected validation after trial changes |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Complete within declared supervision/assistance at `3307563`; security findings triaged and corrected scopes verified | Preserve frozen evidence; select a later production increment separately |
-| [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Active: P26A and P26B authorized | Default-off explicit memory extensions, lifecycle integrity and verified upgrade/recovery |
+| [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Complete: P26A/P26B at `108aa86`, local/installed/hosted gates pass | Preserve suppression, explicit retention and affected-session recovery; select P27 separately |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
 | [P28: voice and media](#p28-voice-and-realtime-media) | Deferred; unimplemented | Explicit media contracts and later device/service validation |
 | [Apache-2.0 transition](#license-transition) | Complete; local and hosted `7bb642b` checks pass | Preserve bundled identity/recovery and third-party license boundaries |
 
 The requested P22–P25 campaign and separate Apache-2.0 transition are complete
-within their documented scopes. P26A/P26B are now authorized and active; P27/P28
+within their documented scopes. P26A/P26B are complete; P27/P28
 remain deferred. Preserve P25's frozen
 inputs, runners, source/review/scan identities, scores and failed attempts; newer
-documentation does not rescan code or expand an earlier verdict. Select any P26/P27
-production increment separately from its evidence-backed proposal. Keep P28
+documentation does not rescan code or expand an earlier verdict. Select P27 or
+further memory automation/backends separately from their evidence-backed proposals. Keep P28
 deferred. No further broad architecture-review loop or Cloud scan is scheduled.
 
 The [register](developer/architecture-review-dispositions.md) owns dispositions,
@@ -261,15 +262,15 @@ and [security execution constraints](developer/self-hosting-evaluation.md#securi
 
 ## P26: optional working and long-term memory
 
-**Active: complete P26A and P26B.** Deliver useful independently
-selectable session/task working-memory and cross-session memory capabilities,
-initially explicit recall/remember/forget/export tools or existing MCP where that
-meets the need. Add optional lifecycle recall/capture adapters only when justified.
-The researched proposal starts with bounded explicit task cards/project notes and
-lexical recall, then proves source-generation suppression and migration before
-automatic capture. Zero-Mem is inspiration, not a selected package or reproduced
-benchmark result. The [knowledge design](developer/knowledge-extensions.md#research-handoff-and-deferred-production-acceptance)
-owns the proposed P26A/P26B gates and unresolved choices.
+**Complete: P26A and P26B at `108aa86`.** Independently selectable default-off
+session/task and persistent project/operator memory ship as bundled extensions.
+Explicit recall/remember/forget/export tools and commands provide bounded task
+cards/facts and lexical recall. Source suppression, TTL/conflicts, derivative
+inventory/collection and approved migration/import preserve lifecycle integrity.
+Optional automatic recall/capture remains a separately justified adapter; it is
+not enabled by this baseline. Zero-Mem is inspiration, not a selected package or
+reproduced benchmark result. The [knowledge design](developer/knowledge-extensions.md#research-handoff-and-deferred-production-acceptance)
+owns the researched selection and deferred engine comparisons.
 
 Acceptance: default-off parity; explicit namespace/project/operator scopes;
 stable logical identity with explicit export/migration/collection across artifact
@@ -288,11 +289,11 @@ preserve legacy identities and grants; they are reviewed and tested separately.
 
 | Increment | Deliverable | Status |
 | --- | --- | --- |
-| P26H1 | Operator-only, versioned logical state bindings across reviewed artifact/configuration versions; legacy namespace compatibility and scope ceilings | Implemented; focused and full Linux/native regressions pass; platform gate pending |
-| P26H2 | Bounded value scans and explicit read-work allowance for useful lexical recall, with strict receipt/recovery validation | Implemented; byte pages, forged/ungranted/over-limit actions and extended real-worker receipt chain pass; platform gate pending |
-| P26A | Separate default-off working and persistent memory, explicit remember/recall/forget/export, provenance, bounded lexical ranking and approvals | Implemented; real-session scope, sharing, approval, denial/cancel and inert-resume cases pass |
-| P26B | Durable source suppression, TTL/conflicts, derivative inventory/collection, schema migration/import, stale-work and cached-context recovery policy | Implemented explicit baseline; domain regressions pass; affected sessions require manual reviewed fresh-session recovery, not automatic history redaction |
-| P26 verification | Deterministic authority/concurrency/restart/import cases, measured retrieval/resources, source/native/installed/platform checks and coherent operator/developer guidance | Corrected source passes 933 native-inclusive tests/15 Mac exclusions, 23 focused cases, package verification and unchanged precompiled 41+9 assertions. Installed 100-record/100-query fixture passes with zero model calls; exact-source hosted gate pending |
+| P26H1 | Operator-only, versioned logical state bindings across reviewed artifact/configuration versions; legacy namespace compatibility and scope ceilings | Complete; source/native/installed and exact-source hosted gates pass |
+| P26H2 | Bounded value scans and explicit read-work allowance for useful lexical recall, with strict receipt/recovery validation | Complete; byte pages, forged/ungranted/over-limit actions and extended real-worker receipt chain pass |
+| P26A | Separate default-off working and persistent memory, explicit remember/recall/forget/export, provenance, bounded lexical ranking and approvals | Complete; scope, sharing, approval, denial/cancel, selected export and inert-resume cases pass |
+| P26B | Durable source suppression, TTL/conflicts, derivative inventory/collection, schema migration/import, stale-work and cached-context recovery policy | Complete explicit baseline; affected sessions require manual reviewed fresh-session recovery, not automatic history redaction |
+| P26 verification | Deterministic authority/concurrency/restart/import cases, measured retrieval/resources, source/native/installed/platform checks and coherent operator/developer guidance | Complete: 933 local native-inclusive passes/15 Mac exclusions, 23 focused cases, package and unchanged precompiled 41+9 assertions. Both hosted platforms pass 948/0/32, installed 100-record/100-query corpus and 41+9 assertions; enabled Mac 36/0/6, four Rust checks and signed enforcement pass. Initial Mac cleanup failure remains recorded with unconfirmed cause; unchanged rerun passes |
 
 Stable logical storage is an explicit operator grant, never a namespace chosen by
 project text or extension code. Existing journals and provider-visible history are
