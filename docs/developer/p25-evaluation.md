@@ -87,8 +87,48 @@ no further retrieval is allowed. Provider/model/reasoning, evidence and rubric
 remain fixed. The initial 120-second configuration has failed this task; a later
 successful continuation cannot be counted as an unassisted first-pass success.
 This is a supervisor configuration intervention, not an Ipse-authored behavior
-change. L2's already-started session retains its initial 120-second setting and
-its own separately recorded limits.
+change. The third L1 attempt returned successfully in 115.1 seconds, with confirmed
+cleanup, cumulative 20 requests and unchanged 85 tools/13 retrievals/five searches.
+Because that successful request itself took less than 120 seconds, this does not
+prove the larger timeout alone caused success. Both earlier timeouts remain real.
+
+L2's original run also timed out on its final request: 383.6 seconds, 16 requests,
+73 tools, 17 retrievals/eight searches, 16 source entries and 19 claims, confirmed
+cleanup and no final report. Its explicit round-1 continuation uses the same
+300-second request setting with no further retrieval, inside the original overall
+allocation. Fresh synthesis sessions will declare that setting from startup.
+
+## Initial reports and mechanical checks
+
+Initial reports are retained unchanged and separately from later synthesis:
+
+| Artifact | Observed result |
+| --- | --- |
+| Codex L1 reference | Completed; 36 local-reader calls and 12 native web operations, plus the retained failed attempt's allocation. Report: 28,639 characters, SHA-256 `1345dab692c7c8119d6e15117d074e5dc3e75ef52c7c73630ebbb784497f70d6` |
+| Ipse L1 after recorded continuations | Completed; 20,537 characters, SHA-256 `56f09900daaa3e29b8cf9baeeedf5765a3454278cf7fc8c48440d3b20ef3bec1`. Original task length bound met; shorter continuation request not met |
+| Codex L2 | Completed; 28 local-reader calls/12 native web operations. Report: 29,757 characters, SHA-256 `7540c080dfe9c398a16c200f539568d264c4d9feb74ccc942fc6a0d9e093c70e` |
+| Ipse L2 | Original result incomplete; explicit bounded continuation pending |
+
+Both Codex package reports exceed the frozen 24,000-character bound; they are
+not passing references merely because they completed. One Ipse source excerpt
+contains 27 words against the task's 25-word bound. These are retained instruction
+misses, not silently trimmed artifacts. Full claim/rubric assessment remains open.
+Both tracks identify small explicit notes as a baseline and distinguish raw
+retention from recall deletion. Independent source checks, not agreement alone,
+must establish support.
+
+An actual retrieval difference affects the independent Rust candidate's mutable
+workspace manifest: Codex reports 0.2.0, Ipse 0.3.0. The web adapter's inspected raw
+page is labeled cached two months earlier and contains 0.2.0. A direct bounded
+HTTPS fetch pinned to public remote HEAD
+`eda212665a35cd01c188121e759de282728238d5` confirms
+[0.3.0](https://raw.githubusercontent.com/ptaranat/zeromem/eda212665a35cd01c188121e759de282728238d5/Cargo.toml)
+at 14:50:53 UTC; response SHA-256 is
+`07ef9d5e9f84c4ab3f02c1307b2d3a42b66df7e70262c00cf4126e5689781fe5`.
+This checks a current immutable source, not what an earlier cached response said.
+The common-packet stage must control that freshness difference rather than force
+Ipse to repeat the reference's version. The pin/check result is not supplied to
+the initial synthesis sessions before their outputs freeze.
 
 ## Remaining trial gates
 

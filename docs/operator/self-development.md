@@ -23,7 +23,7 @@ Use the [review checkpoint](architecture-review.md) for provenance and the
 [readiness decision](../developer/architecture-review-dispositions.md#p24-scoped-readiness-decision)
 for scope and accepted limits. The operator approved scan-first order after the
 focused report was interrupted, without another architecture-review round. No
-further P24 review or scan is scheduled. P25's first live package is executing;
+further P24 review or scan is scheduled. P25's live comparison is underway;
 its [record](../developer/p25-evaluation.md) preserves actual access failures and
 assistance, with no comparative score or acceptance yet. Keep raw reports private and use the
 [security threat model](../../SECURITY.md) for safe evidence handling.

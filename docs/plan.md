@@ -41,7 +41,7 @@ for a trusted, cooperative workspace under supervision, not a new independent
 post-fix verdict, a second scan, or a security certification. Raw findings remain
 private. No R/S/C/O review sequence or continuous monitoring is scheduled.
 
-P25's brief/runner/inputs are frozen and the first live research package is running.
+P25's brief/runner/inputs are frozen and live research/synthesis is underway.
 The [execution record](developer/p25-evaluation.md) retains a failed reference
 access attempt and bounded recovery; no comparative score or acceptance is claimed.
 It compares fresh,
@@ -56,7 +56,7 @@ no production engine, database or mandatory backend is selected.
 | --- | --- | --- |
 | [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within selected scope | Preserve accounting through the trial |
 | [P24: architecture/security readiness](#p24-independent-architecture-validation-and-baseline-security) | Complete for supervised P25 at `375e607`; accepted limits recorded | Refresh affected validation after trial changes |
-| [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | First live package running; frozen inputs/limits and reference access intervention recorded | Freeze independent reports, check sources and compare before authoring |
+| [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Live research/synthesis; frozen inputs/limits, actual failures and interventions recorded | Finish independent synthesis/common-packet comparison before authoring |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Deferred; subject to P25 decisions | Independently selectable working/long-term memory tools and optional policies |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
 | [P28: voice and media](#p28-voice-and-realtime-media) | Deferred; unimplemented | Explicit media contracts and later device/service validation |

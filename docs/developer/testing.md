@@ -361,7 +361,7 @@ runtime enforcement. Security-repair/follow-up platform verification has passed
 at `375e607`. The supervisor's
 [scoped P24 readiness decision](architecture-review-dispositions.md#p24-scoped-readiness-decision)
 assesses that evidence and accepted limits for supervised P25. It supplies no
-new independent post-fix verdict. P25's first live package is executing; its
+new independent post-fix verdict. P25's live comparison is underway; its
 [record](p25-evaluation.md) retains actual access failures and assistance. No
 comparative score/acceptance or further P24 architecture-review sequence is claimed.
 
