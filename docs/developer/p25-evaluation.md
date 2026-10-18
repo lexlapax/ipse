@@ -196,6 +196,47 @@ already used, leaving 45 until 15:43:03 UTC; Ipse conservatively charges 22 tool
 proposals and 23 requests, leaving 106 tools/37 main steps until 15:42:50 UTC.
 No new retrieval, prior report, provider or billing mode is introduced.
 
+The v2 sessions are now frozen. Both used zero retrieval and finished before the
+original deadlines:
+
+| Track | Corrected-packet result |
+| --- | --- |
+| Reference | 37 local-reader calls; 11,289 characters; SHA-256 `320b25a560d58a76730d9cec4e5bfafb6da11d389047cd3aee2461ce2a4b14a6`; successful CLI exit. Cumulative packet calls: 120/128 |
+| Installed Ipse | 127.1 seconds, 15 requests, 35 proposed/27 started tools; 13,255 characters; SHA-256 `05dfaf76312610d82ae8ccc7c9d72a14e5ccd6f2737cf545a29e0f16d0e21252`; successful turn and confirmed cleanup. Cumulative packet requests: 38/60, proposals: 57/128 |
+
+Ipse's valid frozen-contract read batch triggered discovery of nested source
+guidance. The new snapshot was journaled; eight proposed reads were settled as
+not started, again with the generic message. Its final report honestly disclaims
+implementation verification instead of retrying. This is distinct from v1's
+missing-path failure and demonstrates both preflight reasons in actual trial
+artifacts. Neither is a lost OS-cleanup receipt or a claim that a read executed.
+
+The supervisor read both v2 reports and checked decision-driving external claims
+against the supplied packet, and the reference's concrete fit claims against the
+frozen context/state/jobs/model/services/research contracts. This is source
+assessment, not production-backend testing or full license clearance. Both
+distinguish Zero-Mem origins, reject automatic backend selection, preserve
+default-off independence and separate retrieval deletion from retained copies.
+No material packet-fidelity error was identified within that checked scope.
+
+| Frozen criterion, 0–3 | Reference v2 | Ipse v2 |
+| --- | ---: | ---: |
+| Coverage and decisions | 2 | 2 |
+| Source fidelity | 2 | 2 |
+| Exact Ipse fit | 2 | 1 |
+| Privacy and security | 2 | 2 |
+| Reproducibility and dependencies | 2 | 2 |
+| Resources and failures | 2 | 2 |
+| Usefulness | 2 | 2 |
+| Total | 14 | 13 |
+
+The reference meets the minimum for this compressed-packet comparison; Ipse does
+not, because every criterion must reach two. A one-point total difference cannot
+override that gate. Honest uncertainty is preferable to invented APIs, but does
+not replace required inspection. These scores do not retroactively pass oversized
+live reports or establish exhaustive research, matching system prompts or backend
+equivalence. Final fresh and held-out checks remain necessary after authoring.
+
 ## Selected self-development task
 
 A credential-free probe against the frozen installed runner reproduced the live
@@ -221,10 +262,13 @@ writes and publication are denied. Mutations and focused local checks require
 individual supervisor decisions bound to their complete arguments; held-out cases
 remain private. No authored repair or passing verification is claimed yet.
 
+The supervisor built the untouched candidate using the inspected build script
+and existing locked/local dependency copies; strict compilation passed. This is
+setup evidence, not an Ipse-authored test or a new dependency adoption.
+
 ## Remaining trial gates
 
-Finish the corrected common-packet sessions within the original allocation.
-Check both reports against sources and the frozen rubric; diagnose discrepancies.
+The corrected comparison is complete and its failing criterion is recorded.
 Useful Ipse-authored behavior changes and regressions, independent verification,
 fresh same-input/held-out runs, platform/package checks and final delta/security
 review remain required. A report alone cannot close P25. Production knowledge

@@ -56,7 +56,7 @@ no production engine, database or mandatory backend is selected.
 | --- | --- | --- |
 | [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within selected scope | Preserve accounting through the trial |
 | [P24: architecture/security readiness](#p24-independent-architecture-validation-and-baseline-security) | Complete for supervised P25 at `375e607`; accepted limits recorded | Refresh affected validation after trial changes |
-| [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Live research/synthesis; frozen inputs/limits, actual failures and interventions recorded | Finish independent synthesis/common-packet comparison before authoring |
+| [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Corrected packet scored: reference 14/21; Ipse 13/21, fit criterion fails | Installed Ipse authors the reproduced preflight-diagnostic repair; independent verification and fresh reruns follow |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Deferred; subject to P25 decisions | Independently selectable working/long-term memory tools and optional policies |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
 | [P28: voice and media](#p28-voice-and-realtime-media) | Deferred; unimplemented | Explicit media contracts and later device/service validation |
@@ -191,7 +191,7 @@ the [evaluation protocol](developer/self-hosting-evaluation.md) owns trial contr
 
 ## P25: comparative research and supervised self-development
 
-**Research outputs frozen; corrected packet comparison and a reproduced diagnostic repair underway, no acceptance claim.** Replace P25's production-engine delivery
+**Corrected packet comparison scored; Ipse-authored diagnostic repair underway, no acceptance claim.** Replace P25's production-engine delivery
 with a large supervised evaluation using those engines as a research/planning
 problem. Track A uses Codex; Track B uses stable installed Ipse. Both research
 working/long-term memory, configurable research providers, graph and RAG, including
