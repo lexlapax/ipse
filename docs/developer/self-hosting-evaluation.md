@@ -22,8 +22,10 @@ and hosted Linux/macOS matrix at `375e607`. The
 records the evidence and accepted limits. It is not independent post-fix acceptance
 or a second scan. P25's corrected common-packet comparison is scored under the
 frozen rubric; the [execution record](p25-evaluation.md) retains failures,
-assistance and the unmet source-fit criterion. Supervised authoring is underway;
-trial acceptance remains open.
+assistance and the initial source-fit failure. Ipse's authored repair passes
+independent source/package/platform checks. Two fresh reports meet the rubric;
+held-out and live controls pass within recorded assistance and limits. Final
+security review and trial acceptance remain open.
 Use the [operator runbook](../operator/self-development.md) for runner/candidate
 separation and the [knowledge design](knowledge-extensions.md) for research
 questions. Production knowledge packages remain deferred to P26/P27.

@@ -41,13 +41,14 @@ for a trusted, cooperative workspace under supervision, not a new independent
 post-fix verdict, a second scan, or a security certification. Raw findings remain
 private. No R/S/C/O review sequence or continuous monitoring is scheduled.
 
-P25's live research and corrected common-packet reports are frozen. The
-[execution record](developer/p25-evaluation.md) retains actual failures,
-interventions and rubric scores; Ipse's source-fit criterion fails and a reproduced
-diagnostic repair has passed local source review/tests. No trial acceptance is claimed.
-The experiment compares fresh,
-independent Codex and installed-Ipse research, then requires meaningful
-Ipse-authored behavior changes, review and fresh reruns. The subject is optional
+P25's supervised research, authored repair and reruns have completed. The
+[execution record](developer/p25-evaluation.md) retains the initial source-fit
+failure, actual interventions and rubric scores. After the Ipse-authored diagnostic
+repair, two fresh reports meet every criterion at 14/21, matching the checked
+reference. Held-out cases pass with formatting assistance; question/resume,
+compaction and cancellation controls pass after a supervisor fixture correction.
+The repair passes independent source, installed-package and hosted platform checks.
+Final security review and trial acceptance remain open. The subject is optional
 working/long-term memory, research, graph and RAG, including the operator's
 Zero-Mem inspiration. Production engines remain deferred to P26/P27, and the
 former media milestone is deferred P28. External services remain configurable;
@@ -57,7 +58,7 @@ no production engine, database or mandatory backend is selected.
 | --- | --- | --- |
 | [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within selected scope | Preserve accounting through the trial |
 | [P24: architecture/security readiness](#p24-independent-architecture-validation-and-baseline-security) | Complete for supervised P25 at `375e607`; accepted limits recorded | Refresh affected validation after trial changes |
-| [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Initial packet fit fails; authored repair passes local/installed and matching-runtime platform checks, with intermittent Mac failures retained | Two fresh reports executing; assess held-out/live controls and final security |
+| [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Authored repair, two fresh reports, assisted held-out cases and corrected live controls pass; intermittent CI failures retained | Final candidate security triage and acceptance decision |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Deferred; subject to P25 decisions | Independently selectable working/long-term memory tools and optional policies |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
 | [P28: voice and media](#p28-voice-and-realtime-media) | Deferred; unimplemented | Explicit media contracts and later device/service validation |
@@ -192,7 +193,7 @@ the [evaluation protocol](developer/self-hosting-evaluation.md) owns trial contr
 
 ## P25: comparative research and supervised self-development
 
-**Corrected packet comparison scored; Ipse-authored repair passes local review/tests, no acceptance claim.** Replace P25's production-engine delivery
+**Research, authored repair and rerun gates pass within recorded assistance; final security/acceptance open.** Replace P25's production-engine delivery
 with a large supervised evaluation using those engines as a research/planning
 problem. Track A uses Codex; Track B uses stable installed Ipse. Both research
 working/long-term memory, configurable research providers, graph and RAG, including

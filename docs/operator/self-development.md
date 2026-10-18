@@ -23,10 +23,14 @@ Use the [review checkpoint](architecture-review.md) for provenance and the
 [readiness decision](../developer/architecture-review-dispositions.md#p24-scoped-readiness-decision)
 for scope and accepted limits. The operator approved scan-first order after the
 focused report was interrupted, without another architecture-review round. No
-further P24 review or scan is scheduled. P25's corrected comparison is scored;
-its [record](../developer/p25-evaluation.md) preserves actual failures, assistance
-and the unmet source-fit criterion driving supervised authoring. Trial acceptance
-remains open. Keep raw reports private and use the
+further P24 review or scan is scheduled. P25's
+[record](../developer/p25-evaluation.md) preserves the initial source-fit failure,
+Ipse-authored repair and independently passing source/package/platform checks.
+Two fresh reports now meet every minimum at 14/21; held-out cases pass with
+formatting assistance, and live question/resume, compaction and cancellation
+controls pass after a supervisor fixture correction. Earlier failures and
+intermittent CI causes remain recorded. Final security review and trial acceptance
+remain open. Keep raw reports private and use the
 [security threat model](../../SECURITY.md) for safe evidence handling.
 
 The [evaluation protocol](../developer/self-hosting-evaluation.md) defines the
