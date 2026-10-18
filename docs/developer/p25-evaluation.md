@@ -148,6 +148,31 @@ Its 40-entry compressed corpus is built from both live tracks' source union;
 full pages/private reports are not published. No initial report is an input to
 the packet sessions, and no packet result or comparative acceptance is claimed yet.
 
+## Common-packet execution
+
+The packet/method were frozen and pushed at `ab9d748` before either fresh packet
+session. Direct protocol checks confirmed equal packet bytes, bounded reads and
+refusal of old notes and traversal. Ipse's packet session is executing with
+retrieval unconfigured; the reference explicitly disables public search.
+
+The first reference packet attempt stopped incomplete after one listing and ten
+failed reads, returning no input content. Its 875-character access report is not
+a research proposal. All ten read requests used `offset: 0`, below the advertised
+minimum of one; four also tried unsupported absolute paths. The supervisor's
+temporary reader returned the same generic allowlist/integrity error for invalid
+line bounds, obscuring the actual parameter failure. This is model misuse plus
+an integration diagnostic problem, not demonstrated loss of filesystem access.
+
+Reader version 2 keeps the same one-based bounds and file grants, makes the units
+explicit in the schema/description, and returns a specific range error. Actual
+protocol checks prove offset zero refuses and offset one reads the unchanged
+input; old-note/traversal denials and the packet digest still pass. Reader SHA-256:
+`adcd0187282c1c814fa944d8f8da4359583fff0c9e12b77bc5a1fbe5378634f5`.
+This is supervisor-authored adapter assistance, not Ipse self-development.
+The original attempt remains retained. A fresh reference retry receives no
+research answer, at most 117 remaining tool calls, zero retrieval and the original
+15:43:03 UTC wall deadline. Criteria/source/model/billing are unchanged.
+
 ## Remaining trial gates
 
 Finish and freeze independent L1/L2 reports and source-aware synthesis, then build
