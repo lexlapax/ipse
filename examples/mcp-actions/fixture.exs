@@ -119,7 +119,7 @@ defmodule IpseMCPExample.Fixture do
 
   def records(root) do
     case File.read(Path.join(root, "transport.jsonl")) do
-      {:ok, bytes} -> bytes |> String.split("\n", trim: true) |> Enum.map(&:json.decode/1)
+      {:ok, bytes} -> bytes |> String.split("\n", trim: true) |> Enum.map(&JSON.decode!/1)
       {:error, :enoent} -> []
     end
   end
@@ -172,6 +172,23 @@ defmodule IpseMCPExample.Fixture do
   def http(root, owner, mode \\ :normal) do
     {:ok, supervisor} = Task.Supervisor.start_link()
     Process.unlink(supervisor)
+    caller = self()
+    ready = make_ref()
+
+    {:ok, _} =
+      Task.Supervisor.start_child(supervisor, fn ->
+        {:ok, lifecycle} = GenServer.start_link(__MODULE__.HTTPLifecycle, owner)
+        send(caller, {ready, lifecycle})
+        monitor = Process.monitor(lifecycle)
+        receive do: ({:DOWN, ^monitor, :process, ^lifecycle, _} -> :ok)
+      end)
+
+    lifecycle =
+      receive do
+        {^ready, pid} -> pid
+      after
+        2000 -> raise "HTTP fixture lifecycle did not start"
+      end
 
     {:ok, listener} =
       :gen_tcp.listen(0, [:binary, active: false, reuseaddr: true, ip: {127, 0, 0, 1}])
@@ -179,7 +196,7 @@ defmodule IpseMCPExample.Fixture do
     {:ok, {_, port}} = :inet.sockname(listener)
 
     Task.Supervisor.start_child(supervisor, fn ->
-      accept(listener, supervisor, root, owner, mode)
+      accept(listener, supervisor, root, owner, mode, lifecycle)
     end)
 
     entry = %{
@@ -191,11 +208,31 @@ defmodule IpseMCPExample.Fixture do
       "timeout_ms" => 5000
     }
 
-    {%{listener: listener, supervisor: supervisor}, entry}
+    {%{listener: listener, supervisor: supervisor, lifecycle: lifecycle}, entry}
   end
 
-  def stop(%{listener: listener, supervisor: supervisor}) do
+  def http_session(%{lifecycle: lifecycle}, handler) do
+    case GenServer.call(lifecycle, {:session, handler}) do
+      {:ok, session} -> session
+      error -> raise "HTTP fixture has no established synthetic session: #{inspect(error)}"
+    end
+  end
+
+  def hold_delete(%{lifecycle: lifecycle}, session),
+    do: GenServer.call(lifecycle, {:hold_delete, session})
+
+  def release_delete(%{lifecycle: lifecycle}, session),
+    do: GenServer.call(lifecycle, {:release_delete, session})
+
+  def await_delete(%{lifecycle: lifecycle}, session, timeout \\ 5000) do
+    GenServer.call(lifecycle, {:await_delete, session}, timeout)
+  catch
+    :exit, _ -> {:error, :delete_cleanup_unconfirmed}
+  end
+
+  def stop(%{listener: listener, supervisor: supervisor, lifecycle: lifecycle}) do
     monitor = Process.monitor(supervisor)
+    lifecycle_monitor = Process.monitor(lifecycle)
     :gen_tcp.close(listener)
 
     try do
@@ -204,36 +241,73 @@ defmodule IpseMCPExample.Fixture do
       :exit, {:noproc, _} -> :ok
     end
 
-    receive do
-      {:DOWN, ^monitor, :process, ^supervisor, _} -> :ok
-    after
-      2000 -> raise "MCP fixture supervisor cleanup unconfirmed"
-    end
+    deadline = System.monotonic_time(:millisecond) + 2000
+    confirmed_stop(supervisor, monitor, deadline)
+    confirmed_stop(lifecycle, lifecycle_monitor, deadline)
 
     :ok
   end
 
-  defp accept(listener, supervisor, root, owner, mode) do
+  defp confirmed_stop(pid, monitor, deadline) do
+    receive do
+      {:DOWN, ^monitor, :process, ^pid, _} -> :ok
+    after
+      max(deadline - System.monotonic_time(:millisecond), 0) ->
+        raise "MCP fixture process cleanup unconfirmed"
+    end
+  end
+
+  defp accept(listener, supervisor, root, owner, mode, lifecycle) do
     case :gen_tcp.accept(listener) do
       {:ok, socket} ->
         {:ok, handler} =
           Task.Supervisor.start_child(supervisor, fn ->
-            receive do: (:serve -> serve(socket, root, owner, mode))
+            receive do: (:serve -> serve(socket, root, owner, mode, lifecycle))
           end)
 
         :ok = :gen_tcp.controlling_process(socket, handler)
         send(handler, :serve)
-        accept(listener, supervisor, root, owner, mode)
+        accept(listener, supervisor, root, owner, mode, lifecycle)
 
       _ ->
         :ok
     end
   end
 
-  defp serve(socket, root, owner, mode) do
+  defp serve(socket, root, owner, mode, lifecycle) do
     try do
-      {method, rpc} = read_request(socket, "")
-      record(root, rpc)
+      {method, headers, rpc} = read_request(socket, "")
+
+      session =
+        GenServer.call(
+          lifecycle,
+          {:request, self(), method, headers["mcp-session-id"], rpc["method"]}
+        )
+
+      if method == "DELETE" do
+        case GenServer.call(lifecycle, {:delete_entered, session, self()}) do
+          :hold ->
+            receive do
+              {:release_mcp_delete, ^session} -> :ok
+            after
+              5000 -> raise "HTTP DELETE barrier not released"
+            end
+
+          :ok ->
+            :ok
+        end
+      end
+
+      File.write!(
+        Path.join(root, "transport.jsonl"),
+        JSON.encode!(%{
+          "method" => rpc["method"],
+          "params" => rpc["params"],
+          "http_method" => method,
+          "session_id" => session
+        }) <> "\n",
+        [:append]
+      )
 
       cond do
         rpc["method"] == "tools/call" and mode == :disconnect ->
@@ -241,7 +315,7 @@ defmodule IpseMCPExample.Fixture do
 
         rpc["method"] == "tools/call" and mode == :hold ->
           send(owner, {:extension_mcp_fixture, :dispatched, self()})
-          :gen_tcp.recv(socket, 0, 30_000)
+          {:error, :closed} = :gen_tcp.recv(socket, 0, 30_000)
           send(owner, {:extension_mcp_fixture, :closed, self()})
 
         true ->
@@ -259,11 +333,17 @@ defmodule IpseMCPExample.Fixture do
                 })
                 |> IO.iodata_to_binary()
 
-          :gen_tcp.send(
-            socket,
-            "HTTP/1.1 #{status} Fixture\r\ncontent-type: application/json\r\nmcp-session-id: synthetic-session\r\ncontent-length: #{byte_size(body)}\r\nconnection: close\r\n\r\n" <>
-              body
-          )
+          sent =
+            :gen_tcp.send(
+              socket,
+              "HTTP/1.1 #{status} Fixture\r\ncontent-type: application/json\r\nmcp-session-id: #{session}\r\ncontent-length: #{byte_size(body)}\r\nconnection: close\r\n\r\n" <>
+                body
+            )
+
+          :ok = :gen_tcp.close(socket)
+
+          if method == "DELETE",
+            do: GenServer.call(lifecycle, {:delete_complete, session, self(), sent})
       end
     after
       :gen_tcp.close(socket)
@@ -283,7 +363,7 @@ defmodule IpseMCPExample.Fixture do
 
         size = String.to_integer(headers["content-length"] || "0")
         body = read_body(socket, body, size)
-        {hd(String.split(first, " ")), if(body == "", do: %{}, else: :json.decode(body))}
+        {hd(String.split(first, " ")), headers, if(body == "", do: %{}, else: :json.decode(body))}
 
       [_] ->
         {:ok, bytes} = :gen_tcp.recv(socket, 0, 5000)
@@ -296,5 +376,159 @@ defmodule IpseMCPExample.Fixture do
   defp read_body(socket, body, size) do
     {:ok, bytes} = :gen_tcp.recv(socket, 0, 5000)
     read_body(socket, body <> bytes, size)
+  end
+end
+
+defmodule IpseMCPExample.Fixture.HTTPLifecycle do
+  @moduledoc false
+  use GenServer
+
+  @impl true
+  def init(owner), do: {:ok, %{owner: owner, sessions: %{}, handlers: %{}}}
+
+  @impl true
+  def handle_call({:request, handler, http_method, supplied, rpc_method}, _from, state) do
+    if map_size(state.handlers) >= 1024 or
+         (rpc_method == "initialize" and map_size(state.sessions) >= 128) do
+      {:stop, :fixture_lifetime_limit, {:error, :fixture_lifetime_limit}, state}
+    else
+      session =
+        cond do
+          rpc_method == "initialize" ->
+            "fixture-" <> Base.encode16(:crypto.strong_rand_bytes(16), case: :lower)
+
+          is_binary(supplied) and Map.has_key?(state.sessions, supplied) ->
+            supplied
+
+          true ->
+            nil
+        end
+
+      sessions =
+        if rpc_method == "initialize",
+          do:
+            Map.put(state.sessions, session, %{
+              status: :pending,
+              gate: false,
+              delete_handler: nil,
+              waiters: []
+            }),
+          else: state.sessions
+
+      monitor = Process.monitor(handler)
+
+      row = %{
+        session: session,
+        established: is_binary(session) and supplied == session,
+        http_method: http_method,
+        monitor: monitor
+      }
+
+      {:reply, session,
+       %{state | sessions: sessions, handlers: Map.put(state.handlers, handler, row)}}
+    end
+  end
+
+  def handle_call({:session, handler}, _from, state) do
+    result =
+      case state.handlers[handler] do
+        %{session: session, established: true} -> {:ok, session}
+        _ -> {:error, :session_not_established}
+      end
+
+    {:reply, result, state}
+  end
+
+  def handle_call({:hold_delete, session}, _from, state) do
+    case state.sessions[session] do
+      %{status: :pending} = entry ->
+        {:reply, :ok, put_in(state.sessions[session], %{entry | gate: true})}
+
+      _ ->
+        {:reply, {:error, :delete_already_started_or_unknown}, state}
+    end
+  end
+
+  def handle_call({:delete_entered, session, handler}, _from, state) do
+    case state.sessions[session] do
+      %{status: :pending} = entry ->
+        status = if entry.gate, do: :waiting, else: :running
+
+        state =
+          put_in(state.sessions[session], %{entry | status: status, delete_handler: handler})
+
+        if entry.gate,
+          do: send(state.owner, {:extension_mcp_fixture, :delete_waiting, session, handler})
+
+        {:reply, if(entry.gate, do: :hold, else: :ok), state}
+
+      _ ->
+        {:reply, {:error, :unexpected_delete}, state}
+    end
+  end
+
+  def handle_call({:release_delete, session}, _from, state) do
+    case state.sessions[session] do
+      %{status: :waiting, delete_handler: handler} = entry ->
+        send(handler, {:release_mcp_delete, session})
+        {:reply, :ok, put_in(state.sessions[session], %{entry | gate: false, status: :running})}
+
+      _ ->
+        {:reply, {:error, :delete_not_waiting}, state}
+    end
+  end
+
+  def handle_call({:delete_complete, session, handler, sent}, _from, state) do
+    case state.sessions[session] do
+      %{delete_handler: ^handler} = entry ->
+        result = if sent == :ok, do: :ok, else: {:error, :delete_ack_incomplete}
+        Enum.each(entry.waiters, &GenServer.reply(&1, result))
+
+        state =
+          put_in(state.sessions[session], %{
+            entry
+            | status: if(sent == :ok, do: :complete, else: :failed),
+              waiters: []
+          })
+
+        {:reply, result, state}
+
+      _ ->
+        {:reply, {:error, :unexpected_delete_completion}, state}
+    end
+  end
+
+  def handle_call({:await_delete, session}, from, state) do
+    case state.sessions[session] do
+      %{status: :complete} ->
+        {:reply, :ok, state}
+
+      %{status: :failed} ->
+        {:reply, {:error, :delete_ack_incomplete}, state}
+
+      %{waiters: waiters} = entry when length(waiters) < 128 ->
+        {:noreply, put_in(state.sessions[session], %{entry | waiters: [from | waiters]})}
+
+      _ ->
+        {:reply, {:error, :unknown_or_unbounded_delete_wait}, state}
+    end
+  end
+
+  @impl true
+  def handle_info({:DOWN, ref, :process, handler, _}, state) do
+    case state.handlers[handler] do
+      %{monitor: ^ref, session: session, http_method: "DELETE"} ->
+        case state.sessions[session] do
+          %{status: status} = entry when status not in [:complete, :failed] ->
+            Enum.each(entry.waiters, &GenServer.reply(&1, {:error, :delete_ack_incomplete}))
+            {:noreply, put_in(state.sessions[session], %{entry | status: :failed, waiters: []})}
+
+          _ ->
+            {:noreply, state}
+        end
+
+      _ ->
+        {:noreply, state}
+    end
   end
 end

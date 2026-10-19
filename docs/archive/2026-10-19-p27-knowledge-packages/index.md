@@ -86,6 +86,9 @@ corrected-source hosted verification is still required.
 
 ## Remaining full-milestone gates
 
+The later [HTTP fixture lifetime correction](http-lifetime.md) retains the
+corrected-format run's Linux failure and the controlled ordering proof and repair.
+
 Exact-source hosted checks still need their final receipts. Actual domain
 embedding, extraction, hybrid and rerank
 Session comparisons, remaining lifecycle/authority controls, and the complete

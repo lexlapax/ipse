@@ -59,9 +59,14 @@ defmodule Ipse.Extensions.MCPCallSessionTest do
   end
 
   defp server(ctx, :http, mode) do
+    {_fixture, server} = http_server(ctx, mode)
+    server
+  end
+
+  defp http_server(ctx, mode) do
     {fixture, entry} = Fixture.http(ctx.root, self(), mode)
     on_exit(fn -> Fixture.stop(fixture) end)
-    parsed_server(ctx, entry)
+    {fixture, parsed_server(ctx, entry)}
   end
 
   defp parsed_server(ctx, entry) do
@@ -562,13 +567,15 @@ defmodule Ipse.Extensions.MCPCallSessionTest do
     test "#{interruption}: post-dispatch uncertainty is durable and idle resume never replays",
          ctx do
       mode = if unquote(interruption) == :disconnect, do: :disconnect, else: :hold
-      cfg = config(ctx, server(ctx, :http, mode))
+      {http, selected} = http_server(ctx, mode)
+      cfg = config(ctx, selected)
       pid = start(ctx, cfg)
       id = Session.info(pid).id
       monitor = Process.monitor(pid)
       timeout = if unquote(interruption) == :timeout, do: 100, else: 5000
       invoke(pid, %{"request" => Map.put(request(), "timeout_ms", timeout)})
       assert_receive {:extension_mcp_fixture, :dispatched, handler}, 5000
+      old_session = Fixture.http_session(http, handler)
 
       case unquote(interruption) do
         :cancel -> assert :ok = Session.cancel(pid)
@@ -584,6 +591,7 @@ defmodule Ipse.Extensions.MCPCallSessionTest do
       end
 
       if mode == :hold, do: assert_receive({:extension_mcp_fixture, :closed, ^handler}, 5000)
+      assert :ok = Fixture.await_delete(http, old_session, 5000)
       assert Fixture.calls(ctx.root) == 1
       assert {:ok, ev} = Journal.load(ctx.dir, id)
       assert {:ok, _} = Session.restore_context(ev)
@@ -602,5 +610,60 @@ defmodule Ipse.Extensions.MCPCallSessionTest do
       assert Fixture.records(ctx.root) == before
       refute_receive :unexpected_mcp_model_call
     end
+  end
+
+  test "old HTTP DELETE completes after held POST closure before the idle-resume traffic snapshot",
+       ctx do
+    {http, selected} = http_server(ctx, :hold)
+    cfg = config(ctx, selected)
+    pid = start(ctx, cfg)
+    id = Session.info(pid).id
+    monitor = Process.monitor(pid)
+    invoke(pid, %{"request" => Map.put(request(), "timeout_ms", 5000)})
+    assert_receive {:extension_mcp_fixture, :dispatched, handler}, 5000
+    old_session = Fixture.http_session(http, handler)
+    assert :ok = Fixture.hold_delete(http, old_session)
+    Process.exit(pid, :kill)
+    assert_receive {:DOWN, ^monitor, :process, ^pid, :killed}, 5000
+    assert_receive {:extension_mcp_fixture, :closed, ^handler}, 5000
+    assert_receive {:extension_mcp_fixture, :delete_waiting, ^old_session, delete_handler}, 5000
+
+    # The old POST is closed, yet its transport's DELETE has not entered the log.
+    pending = Fixture.records(ctx.root)
+
+    assert %{"http_method" => "POST", "method" => "tools/call", "session_id" => ^old_session} =
+             List.last(pending)
+
+    assert Process.alive?(delete_handler)
+    assert :ok = Fixture.release_delete(http, old_session)
+    assert :ok = Fixture.await_delete(http, old_session, 5000)
+    before = Fixture.records(ctx.root)
+
+    assert before ==
+             pending ++
+               [
+                 %{
+                   "http_method" => "DELETE",
+                   "method" => nil,
+                   "params" => nil,
+                   "session_id" => old_session
+                 }
+               ]
+
+    assert Fixture.calls(ctx.root) == 1
+
+    assert {:ok, ev} = Journal.load(ctx.dir, id)
+    assert {:ok, _} = Session.restore_context(ev)
+
+    assert Enum.any?(
+             ev,
+             &(&1["type"] == "extension_action_intent" and &1["request"]["op"] == "mcp.call")
+           )
+
+    refute Enum.any?(ev, &(&1["type"] == "extension_effect_result"))
+    resumed = start(ctx, cfg, id)
+    assert Session.info(resumed).phase == :idle
+    assert Fixture.records(ctx.root) == before
+    refute_receive :unexpected_mcp_model_call
   end
 end

@@ -117,6 +117,14 @@ would interrupt its asynchronous pool closure. Owner loss enters the same
 bounded close path as cancellation. `test/mcp/http_owner_cleanup_test.exs`
 checks the actual receipt and normal transport exit after abnormal owner death.
 
+When testing idle resume, capture traffic after the old transport finishes its
+cleanup exchange. Closing an active POST socket precedes the separate DELETE
+request. In `test/extensions_mcp_call_session_test.exs`, the HTTP fixture assigns
+each initialized connection a synthetic session ID. Its DELETE barrier lets you
+hold that request, observe POST closure, then release and confirm the exact
+session's DELETE before taking the full traffic snapshot. Compare all recorded
+traffic after resume. Filtering cleanup requests would hide unexpected activity.
+
 A single deadline covers handshake/catalog/call. Initialization alone may set the
 session header; later changes refuse. Requests need matching responses and
 notifications use HTTP 202. Only server `ping` is supported. No GET subscription,
