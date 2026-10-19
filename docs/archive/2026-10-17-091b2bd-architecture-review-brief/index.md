@@ -9,7 +9,7 @@ is retained with relative links rebased. No private report or tool results are
 archived.
 
 Use the [current handoff](../../operator/architecture-review.md),
-[internal audit](../../developer/architecture-self-audit.md),
-[dispositions](../../developer/architecture-review-dispositions.md),
-[testing](../../developer/testing.md#current-evidence-and-next-checks) and
+[internal audit](../2026-10-18-before-manual-rewrite/docs/developer/architecture-self-audit.md),
+[dispositions](../2026-10-18-before-manual-rewrite/docs/developer/architecture-review-dispositions.md),
+[testing](../2026-10-18-before-manual-rewrite/docs/developer/testing.md#current-evidence-and-next-checks) and
 [plan](../../plan.md#p24-independent-architecture-validation-and-baseline-security).

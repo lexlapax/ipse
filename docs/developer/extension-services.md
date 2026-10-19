@@ -1,141 +1,139 @@
-# Typed extension service composition
+# Compose extensions with typed value services
 
-P22A11 adds explicit operator-bound value-service contract 1 to the
-[host-call protocol](extension-host-calls.md). Requirements and routes are inert
-data; discovery does not run registration callbacks. Calls use owned independent
-workers and durable source-bound receipts. This initial contract composes typed
-values. Nested interactive/effectful services need a separately negotiated future
-contract; they cannot silently acquire permission through a value reply.
+Use a value service when one extension needs a typed result from another selected
+extension. The caller declares an alias and schemas; the operator binds that alias
+to an exact target artifact and service. Host opens a separate owned target worker
+and returns a recorded result. No discovery callback selects dependencies or
+silently starts another package.
+
+The lab's memory/lookup pair is a complete example. Read
+`examples/extension-lab/spec.exs`, `src/lookup.ex`, and the recall branch in
+`src/memory.ex` together. Lookup returns a synthetic corpus string. Memory uses the
+host receipt to publish an attributable excerpt for the next model request.
 
 ## Artifact requirements and operator routes
 
-The optional manifest `requires` object is closed:
+The caller's optional manifest `requires` field is a closed version-1 object:
 
 ```json
 {
   "version": 1,
   "services": [{
-    "alias": "search",
-    "contract": 1,
+    "alias": "search", "contract": 1,
     "arguments_schema": {"type": "object"},
     "result_schema": {"type": "object"}
   }]
 }
 ```
 
-At most eight unique lowercase ASCII aliases (32 characters) are allowed. Schemas
-reuse the existing bounded object subset; external references are refused. A
-nonempty requirement set requires `host.actions` and `host.services`; declaring
-`host.services` without requirements is invalid. Missing requirements normalize
-to empty for older transform/tool artifacts. Executable `describe/0` must match
-the reviewed manifest's normalized requirements as well as SDK/capabilities/exports.
-The original manifest/SDK byte limits remain unchanged.
+There are at most eight unique lowercase ASCII aliases, each at most 32
+characters. Argument and result schemas use the bounded object-schema subset.
+Nonempty requirements need `host.actions` and `host.services`; the service
+capability without requirements is invalid. Executable `describe/0` must match
+normalized requirements, exports, and capabilities exactly. Missing requirements
+normalize to empty for artifacts that use no services.
 
-Each required alias needs one explicit operator trust binding. For a caller
-artifact's existing `extension_trust` record, add:
+Add a route to the caller artifact's operator `extension_trust` record:
 
 ```json
 {
   "service_bindings": [{
-    "caller": "client",
-    "alias": "search",
-    "target": "retrieval",
-    "artifact": "TARGET_ARTIFACT_DIGEST",
-    "service": "query"
+    "caller": "client", "alias": "search", "target": "retrieval",
+    "artifact": "TARGET_ARTIFACT_DIGEST", "service": "query"
   }]
 }
 ```
 
-This fragment must be merged with that record's artifact/capability/ceiling fields;
-the digest placeholder is not runnable configuration. Caller artifact identity is
-implicit in the containing trust record; `caller` selects an exact instance.
-Target instance, artifact reference and local service ID must all match. At most
-64 bindings fit one record, subject to the whole configuration's JSON limits.
-Duplicate caller/alias pairs and unknown fields refuse validation. Project trust
-cannot grant routes; generic project-config trust does not bypass this ceiling.
+This fragment needs the containing record's normal artifact/capability fields.
+Replace the digest placeholder with the actual target reference. `caller` selects
+the exact caller instance. `target`, `artifact`, and local `service` must all match
+an already selected target. A route does not install or enable it. There are at
+most 64 bindings per trust record, with unique caller/alias pairs and no unknown
+fields. Project trust cannot grant routes.
 
-Both instances must already be explicitly selected. A binding neither installs
-nor enables a target. Active requirements need exact argument/result schema
-equality with the target's `invoke.service` export and contract 1. Missing/extra
-routes for an active caller, unavailable code, schema mismatch or cycles refuse
-activation before executable initialization. Routes for inactive callers stay
-inert. Child subsets must also contain the required targets with explicit child
-ceilings; missing dependencies refuse child startup.
+Active schemas must equal the target's `invoke.service` argument/result schemas
+and contract must be 1. Missing or extra active routes, unavailable targets,
+schema mismatch, and cycles refuse activation before initialization. Inactive
+caller routes stay inert. Child subsets must contain the required targets with
+separate child ceilings.
 
-Registry uses OTP `:digraph` in acyclic/private mode and `:digraph_utils` topological
-ordering, deleting temporary tables afterward. Dependency identities are computed
-first; each caller pins normalized requirement digest and sorted public routes
-with the target's complete activation-identity digest. That transitively binds
-code/options/runtime/host/scope/source/lease/child policy and downstream routes.
-This is integrity/compatibility pinning, not a signature or authenticity proof.
+`Services` and `Registry` use private acyclic OTP graph utilities to order identity
+construction. Each caller pins its requirements and sorted routes including the
+target's complete activation-identity digest. Code, options, scope, lease, runtime,
+and downstream routes are therefore transitively bound. These hashes establish
+compatibility consistency, not publisher authenticity.
 
 ## Owned value calls
 
-A caller returns an outer `host_call` request with exactly:
+The caller returns an ordinary outer `host_call` with this request:
 
 ```json
 {
-  "op": "service.call",
-  "alias": "search",
+  "op": "service.call", "alias": "search",
   "arguments": {"text": "explicit query"},
   "checkpoint": {"next": "use_result"}
 }
 ```
 
-Arguments must match the bound schema and full wire envelope. Checkpoint is an
-object of at most 8 KiB, returned only to the caller with its result. The request
-uses the existing 16-operation invocation budget. Session checks the caller,
-route, target and both live leases, then syncs action intent before startup.
-The receipt's `service` field contains exact target identity/descriptor; ordinary
-state/question/tool receipts use null. No Session PID, credentials or provider
-configuration crosses the worker boundary.
+Arguments must fit the bound schema and whole SDK envelope. Checkpoint is an
+object up to 8 KiB, returned only to the caller. This call consumes the ordinary
+16-action budget. Session checks caller, route, target, and both leases, then
+syncs action intent before target startup. The receipt's `service` field pins
+exact target identity and descriptor; unrelated operations use null.
 
-The target receives `invoke.service`, with standard IDs/id/arguments plus
-`service_contract: 1` and `parent_invocation_id`. Its invocation ID is the unique
-host operation ID. Initialization/callback deadlines and cleanup reuse Worker.
-Only a schema-checked `kind: result` object is accepted. Returned host calls,
-questions, effects and nested service proposals refuse this value contract and
-stop with unknown outcome; core does not execute them. A standalone embedded
-service invocation still uses its original explicit invocation capabilities.
+The target receives `invoke.service` with standard invocation/session/turn/local
+ID/arguments fields, plus `service_contract: 1` and `parent_invocation_id`.
+Its invocation ID is the host operation ID. Worker initialization and callback
+have the usual five-second bounds. The target can return only a schema-valid
+`kind: result` value. Host calls, questions, nested services, or effects in that
+reply fail this value contract; the host never executes them.
 
-After confirmed worker cleanup, the host returns `status: ok` with:
+After normal target cleanup, the caller's `host.actions` outcome has status `ok`
+and this value shape:
 
 ```json
 {
   "result": {"text": "typed service value"},
-  "service": {
-    "instance": "retrieval",
-    "name": "ext__retrieval__query",
+  "service": {"instance": "retrieval", "name": "ext__retrieval__query",
     "artifact_sha256": "TARGET_ARTIFACT_DIGEST",
-    "operation_id": "00000000000000000000000000000000"
-  }
+    "operation_id": "00000000000000000000000000000000"}
 }
 ```
 
-IDs/digests above are illustrative. The result and receipt must fit the full SDK
-envelope. Core constructs this provenance; target domain fields are untrusted
-data, not automatically verified research evidence. A root workflow may compose
-multiple value services with explicit state/questions/tool operations between
-them. Value calls do not implicitly run a model, select a provider or grant
-mutation permission. Trusted executable code retains its documented OS access;
-return-value validation is not an OS sandbox or proof of arbitrary code purity.
+The host constructs provenance; domain result fields remain untrusted data.
+This whole value must fit the continuation envelope. It is not automatically
+research evidence or model context. The root caller may compose further services,
+state, questions, and tools under their separate grants. A standalone explicit
+service invocation still follows its own invocation capabilities; this routed
+contract intentionally permits only target values.
 
 ## Recovery and future contracts
 
-Mandatory intent/result records bind alias/arguments, full target identity/schema,
-receipt and final invocation chain. The pure restorer validates target identity
-against pinned metadata/catalog and refuses altered, missing or replayed receipts
-before tail repair. Idle resume restores cached values without initializing either
-artifact. Cancellation/owner death kills the owned service VM; interrupted calls
-stay unknown and are never retried automatically. Target expiry before result
-admission refuses commit even if the callback ran.
+Intent/result records bind alias, arguments, target identity/schema, receipt, and
+final invocation chain. Restore checks those bindings against pinned metadata
+before tail repair. Idle resume restores cached results without starting either
+worker. Cancellation or owner death stops the owned target VM. Interrupted calls
+remain unknown and are never retried; target expiry before result admission
+refuses the commit even if callback code ran.
 
-Unknown contracts/capabilities fail explicitly. A future interactive/effectful
-contract must reuse these aliases, operator grants, identities, bounded checkpoints
-and receipts while defining nested approval/pause/cancellation and no-replay
-semantics. It cannot reinterpret value data as actions. No remote registry,
-downloader, background service daemon or mandatory workflow framework is added.
+This API supplies neither implicit inference nor file/network authority. Trusted
+worker code retains ordinary OS permissions, so value validation is not proof
+that arbitrary code is effect-free. An interactive or effectful nested-service
+API would need an explicit versioned contract for pause, approval, cancellation,
+and unknown outcomes rather than reinterpreting ordinary result data.
 
-No dependency is added: OTP graph utilities, JSONSchex/Jason and the existing
-owned Worker are reused. See [operator configuration](../operator/extensions.md#service-composition),
-[artifact contract](extension-artifacts.md) and [actual verification](testing.md).
+## Exercise a bad dependency
+
+In a scratch lab configuration, compare the caller's required schema with lookup's
+export. Change one schema field and confirm activation refuses before worker
+startup. Then follow the required-recall crash case in the lab verifier: inference
+must not start when its required lookup is unknown.
+
+```sh
+mix test test/extensions_services_test.exs test/extensions_registry_test.exs
+```
+
+The service fixtures check route/schema equality, cycles, pinned dependencies,
+owned calls, cancellation, and saved receipt validation. Use the
+[installed compatibility lab](extension-proof.md) to prove your packaged target
+runs without loading its module into the host.

@@ -4,10 +4,10 @@ Ipse is a local AI harness running with an operator's account. This document own
 the review threat model and finding criteria. It is context for reviewers, not
 permission to execute code, access credentials, install tools or publish findings.
 The [architecture](docs/developer/architecture.md) and linked contracts describe
-implementation; the [review protocol](docs/developer/self-hosting-evaluation.md)
-owns scan execution, triage and revision coverage. The
-[verification record](docs/developer/testing.md#current-evidence-and-next-checks)
-distinguishes tested behavior from open review gates.
+implementation; the [review manual](docs/developer/reviewing-changes.md)
+teaches source review, reproduction and evidence assessment. The
+[plan](docs/plan.md) owns acceptance gates and links to dated verification records
+in the [archive](docs/archive/index.md).
 
 ## Reporting
 
@@ -88,7 +88,7 @@ Contracts for [configuration](docs/developer/configuration.md),
 [artifacts/workers](docs/developer/extension-artifacts.md),
 [host calls](docs/developer/extension-host-calls.md),
 [model calls](docs/developer/extension-model-calls.md),
-[lifecycle coverage](docs/developer/lifecycle-events.md#supported-lifecycle-coverage),
+[lifecycle delivery](docs/developer/lifecycle-events.md),
 [accounting](docs/developer/usage-accounting.md) and
 [budgets](docs/developer/budgets.md) define the exact supported boundaries.
 
@@ -143,4 +143,5 @@ reasoning from a successful runtime reproduction; record unavailable platforms a
 coverage limits. Test a proposed repair against the original failure. Disposition
 findings with evidence, retain residual risks and refresh affected review coverage
 after changes. A completed scan, a green test suite or no findings alone does not
-establish security. P24/P25 acceptance remains with the review protocol and plan.
+establish security. Acceptance remains with the scoped decisions linked from the
+[plan](docs/plan.md) and their preserved evidence.

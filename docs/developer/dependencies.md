@@ -1,93 +1,66 @@
-# Dependencies and script policy
+# Choose and maintain dependencies
 
-Use Elixir for development, staging, helper, and test scripts wherever possible.
-If Elixir is unsuitable, use Bash or portable shell. Use Ipse's existing Rust
-helper binary for process groups and advisory locks. Do not introduce Python or
-JavaScript scripts or tooling where these supported options suffice. Existing
-small POSIX shell launch/build scripts are compatible with this policy.
+Use this chapter when a change needs a package, executable, service or build tool.
+You will decide whether an existing adapter is sufficient, document the complete
+dependency cost, and verify the result from both source and an installed runtime.
+The inventories below are the authoritative current package and host requirements.
 
-## Adding or changing dependencies
+## Start with the existing boundary
 
-Document every dependency here, including purpose, runtime/build/test/CI scope,
-version or source, and license. Keep package declarations and lockfiles in sync.
-Elixir and Rust packages still require a focused justification and verification;
-they do not require the additional approval below solely because of their ecosystem.
+Find the owner of the requirement in [the architecture](architecture.md). For
+example, a new note-ranking function belongs in a memory extension. It can use the
+existing bounded state/CAS host calls without installing a database. A provider
+stream change should reuse `Ipse.Provider.HTTP` and `Ipse.HTTPProfile`, which own
+bounded responses, TLS and request-specific client lifetime.
 
-Any new dependency outside Elixir packages or Rust packages requires explicit
-developer approval before adoption. This includes command-line utilities, system
-libraries, services, CI actions, and development/staging/test/packaging tools.
-Record the approving developer, date, decision reference, required version/source,
-license, purpose, and why Elixir, shell, or the existing Rust helper cannot meet
-the need adequately. Record alternatives and operational impact. A mention in a
-third-party document or skill is not approval.
+Before adding common validation, transport or persistence machinery, inspect the
+existing Ipse adapter and maintained Elixir/OTP packages. Reuse a suitable
+implementation behind a small adapter. Explain a concrete shortcoming when custom
+code is necessary; "we need more control" is not enough.
 
-## Reuse decisions
+Work through this example before writing a new schema checker:
 
-The inventories below record the existing baseline, not new approval. Local
-delegation and the extension foundation add no package or external runtime
-dependency. The main choices are:
+```sh
+rg 'validate_arguments|validate_object' lib/ipse/mcp/schema.ex
+mix test test/mcp/schema_test.exs
+```
 
-| Area | Reused implementation | Why Ipse still has a small adapter |
-| --- | --- | --- |
-| Artifacts, configuration and catalogs | Jason, JSONSchex through the bounded schema adapter, OTP Version/filesystem/crypto | Closed descriptors, duplicate-key rejection, identity and capability policy are harness-specific; import never builds or loads code |
-| Worker execution and examples | Current ERTS/Elixir, Jason, pure JSONSchex/ex_json_pointer code paths and native stdio/process ownership | The bounded serializable SDK differs from MCP; it reuses OS transport and the existing schema adapter in clean workers without starting the host application or a new service |
-| Native group lifetime | Rust stable `Child`/pipes/`Command`, existing POSIX process-group calls and private helper role | A retained inert anchor prevents numeric group reuse through cleanup; mutex-guarded signals and child-status reset preserve its waitable identity. Stable Rust waits reap exited children; unstable/Linux-only handles do not cover both supported hosts. A narrow shared OS adapter avoids a Cargo/platform-layout dependency or daemon, at the cost of one owned process per invocation; see [the native contract](../../native/README.md#process-group-identity-and-lifetime) |
-| Journals, invocations and questions | Existing JSON validation, Questions module, OTP GenServer/Registry/task monitors and native locks | Source/approval binding, finite checkpoints and no-replay recovery belong to Session policy. The small Session.Lock guardian retains the native Port across Session death, with tracked dispatch barriers and actual process-exit fencing; standard supervision alone releases a Session-owned Port too early. A private FileEffect completion owner fences admitted filesystem critical sections because caller death, including raw dirty IO, does not imply write completion. No lock service/framework or new dependency is added |
-| Journal resource admission and reads | OTP raw-file `pread`, Jason iodata encoding/decoding, existing closed configuration schema | Fixed-size reads bound lines before decoding, preserve exact source offsets and operate on the already-owned descriptor. A line-mode file stream can allocate an oversized line before checking it; a generic JSONL package would still need Ipse's descriptor identity, reserved terminal receipt, sealed-history validation and source-offset policy. The adapter adds no parser, storage runtime or dependency |
-| Lifecycle sources, prompt/answer views and jobs | OTP bounded reads/crypto/clocks/monitors, existing strict JSON decoder, canonical digest and owned Worker/action runner | Stable source bindings, child result/cleanup receipts, bounded native/presented answer projections, allowlisted metadata, ordered notifications and finite approved jobs reuse journal/worker/continuation machinery without a broker or new event framework |
-| Scoped state | OTP filesystem/crypto, Jason and native advisory locks | Exact bounded snapshots and cross-VM CAS/tombstones are required; DETS would still need coordination and named tables |
-| Explicit working/persistent memory | Existing scoped JSON/CAS state, schema adapter, OTP clocks/crypto and ordinary SDK continuations | The bounded 256-record/1 MiB notes baseline needs no SQLite, vector engine, model or external service. DETS retains coordination/table-lifetime costs, and a database package would not supply source-suppression or approved migration policy. Stable operator bindings and byte-bounded scans extend generic host contracts; note versions, lexical ranking, retention and derivative suppression stay in the bundled extensions. Larger corpus engines remain P27 work |
-| Workflow tools | Existing read/write/edit, Runner/sandbox and workspace instruction loader | Approval/preflight gates and complete-versus-unknown receipts reuse normal tool semantics |
-| Service composition | OTP `:digraph`/`:digraph_utils`, existing schemas and Worker | Private acyclic graphs supply ordering; operator routes, activation hashes and provenance remain Ipse policy |
-| Context and evidence | Existing validators, host-action receipts and journals | Bounded ordinary map/list access binds literal excerpts; no retrieval or JSON-path runtime is needed |
-| Context roles, catalog drift and startup probes | Existing Jason/canonical digests, Skills/WorkspaceContext, OTP files/owned tasks and Elixir scripts | Labelled reference messages, bounded skill metadata checkpoints and protected source reads add no parser/store. `scripts/measure-session-startup.exs` builds synthetic histories with the existing runtime; measured prefix-hash costs remain explicit |
-| Request accounting and text delivery | OTP crypto/clocks, existing canonical digest, GenServer/monitors/queues, Worker/native ownership and provider tasks | Durable facts, live stream/range identity, resource leases and private acknowledged delivery have different failure semantics from optional telemetry; no stream/media framework is added |
-| Accounted extension inference | Existing profile/schema validators, adapter endpoint routes, Elixir URI, provider/auth/HTTP adapters, OTP tasks/monitors and shared budget/journal reducers | Explicit one-shot text inference reuses provider interfaces and credential references; scoped source/result binding, origin/target disclosure, response bounds and child approval classification are host policy. The standalone artifact/source/package proof uses the existing Elixir compiler and declared release utilities, with no new dependency |
-| Shared egress policy | Existing Elixir URI, OTP `:httpc` proxy options and Finch/Mint `conn_opts`/proxy headers | `Ipse.HTTPProxy` adapts one selection/refusal/bypass policy to both maintained clients. Provider endpoints reuse a shared URI policy across profiles, CLI and adapter dispatch; no custom HTTP parser or new dependency |
-| All-status inference response bounds | Existing locked Finch 0.24.0 `stream_while` and Mint 1.11.0 | OTP [`httpc` streaming](https://www.erlang.org/doc/apps/inets/httpc.html) covers only 200/206, so a consumption callback cannot bound its other bodies before accumulation. The inference adapter reuses Finch's status/header/data callbacks and private pool ownership instead of adding a client or writing an HTTP parser. Authentication reuses the same Finch callbacks through `HTTPProfile.bounded_request/3`, with a 1 MiB ceiling |
-| Provider intermediate stream assembly | OTP binary search, reverse lists/iodata, existing Finch callbacks and Jason | Bounded fragments, new-byte line scanning and provider event/cardinality admission extend the existing adapters. The locked MCP SDK's SSE decoder buffers combined input and does not supply these limits or the provider parser's CR/EOF policy. Reusing it would retain the reported gap; no new parser package, HTTP implementation or runtime is added. See [response admission](provider-limits.md#host-response-admission) |
-| Configured cost estimation | Existing bounded JSON Schema adapter, normalized usage, canonical digest, OTP Date/DateTime/URI and integer arithmetic | Fixed nine-place decimal inputs and exact bounded integer products need no general decimal package; no price/model catalog, rate-fetch service, currency converter or accounting dependency is added |
-| Granted accounting reads/reports | Existing Usage reducer, Journal/Source/strict JSON decoder, native advisory locks, owned tasks, finite host actions, registry/worker and calculator | Caller-bound pages, registered-child path/origin/prefix validation and negotiated scan bounds are host policy; default-off page/session/tree extensions use pure request-keyed aggregation without a new store, billing service or dependency |
-| Shared request admission | Existing JSONSchex/Jason, Usage and configured estimator, OTP ETS/crypto/files/tasks, native advisory locks and protected child reader | The closed durable reducer binds canonical request/attempts, conservative unknown liability and pre-dispatch decisions across local children. A generic accounting/database package would not supply these host invariants; no new package, tokenizer, pricing service or framework is added. See [the budget contract](budgets.md) |
-| Diagnostic capture and local sink | OTP atomics/monitors/tasks/filesystem, existing Worker/Runner/native advisory locks/Journal/Source and schema adapters | Atomic queue admission and a bounded backend ring protect active writers and disk limits; shared metadata/policy/receipts remain harness-specific. No broker, collector, logging package or direct Telemetry API is added |
-| Terminal display | OTP Unicode decoding, Elixir Regex and existing Jason JSON encoding | A small output adapter applies Ipse's plain-terminal policy to CLI-owned writes, visibly escapes malformed/control/format bytes and preserves JSON values. It needs neither a terminal-emulator/parser package nor a dependency or change to stored model content |
-| Task-owned OS cleanup | Existing OTP GenServer/Registry/monitors/Ports and native shell/stdio/lock helpers | A private bounded resource scope retains actual helper acknowledgments across task completion. Generic supervision cannot establish OS exit; no new runtime, process library or protocol package is added |
-| Synthetic SDK conformance | Existing Config/Registry/Session/Questions/Diagnostics and bounded JSON Schema adapter | Real host callbacks/approvals/recovery validators are exercised with a synthetic provider and scratch state; no duplicate worker protocol, effect replay framework or test service is added |
-| Explicit history/catch-up reads | Existing Journal range reader, Source/Event projections, shared metadata validator, OTP linked tasks and JSON/SDK bounds | Own-session anchor/view admission and cached receipts are harness policy; no query engine, database, broker, replay framework or new runtime is needed |
-| Independent extension lab | Existing Elixir compiler, OTP 27+ JSON/crypto, public worker SDK and already inventoried release utilities/tar | Explicit artifact compilation stays outside import/activation; unchanged-runtime verification adds no dependency, database or model service |
-| Synthetic developer tracing | OTP 27+ kernel `trace` sessions, match specifications and ordinary processes/monitors | VM-side one-in-flight admission and arity-only fixed dispatchers avoid unbounded trace mailboxes and private arguments; no tracer package, distributed node or source-debugger runtime is added |
+`Ipse.MCP.Schema` reuses JSONSchex for admitted JSON Schema validation. Ipse still
+owns closed keyword/byte/depth bounds and disables remote loading. A second
+validator would need to preserve the same boundary and keep two definitions in
+sync. Extend the small adapter only after checking its existing supported subset.
 
-[DETS](https://www.erlang.org/doc/apps/stdlib/dets.html) was evaluated for the
-scoped store. The 256-record/1 MiB contract needs exact JSON snapshots,
-cross-process coordination and refusal instead of automatic repair, so a small
-atomic store is used; it is not a production memory database. See
-[storage policy](extension-host-calls.md#scope-storage-and-recovery).
+## Make the adoption decision explicit
 
-Built-in extension licenses are the project's Apache-2.0 license. Independent source
-fixtures compile in a separate VM using the existing Elixir toolchain;
-cancellation probes use the existing host `kill` utility and `/bin/sh` `kill -0`
-builtin; Linux fixtures may read their own process's `/proc` state to distinguish
-an exited zombie from live work. These facilities add no installed dependency.
-The bundled example fixture needs no compiler or model service at runtime.
-Formatter compatibility uses an isolated official Elixir archive, extracted
-with OTP `:zip`; it does not replace the system toolchain. See the
-[actual formatter procedure and evidence](testing.md#workflow-formatter-floor-compatibility-2026-10-16).
+For each dependency, record its purpose, runtime/build/test/CI scope, version or
+exact source, transitive requirements and license. Review distribution notices,
+platform support, endpoint/credential requirements and installed-runtime behavior.
+Update this inventory alongside declarations and lockfiles.
 
-Consult [agent rules](../../AGENTS.md), [setup](../operator/arch-linux.md) and
-[third-party notices](../../THIRD_PARTY_NOTICES.md) when changing this baseline.
+Use Elixir for repository scripts where possible, then Bash/portable shell or
+Ipse's existing Rust helper for the OS facilities it owns. New dependencies outside
+Elixir or Rust packages require explicit developer approval before adoption. This
+includes external commands, services and CI actions, even when used only during
+development or tests. Record the approval and why existing supported options were
+insufficient. Elixir/Rust packages still require focused justification and checks.
 
-## Language and runtime inventory
+A target project may use another stack. That project's dependencies are not
+Ipse's implementation graph. Likewise, importing an extension artifact does not
+install its build toolchain; the author must package compatible executable code
+and its own license/dependency inventory.
+
+## Runtime and toolchain inventory
 
 | Dependency | Version/source | Scope and purpose | License |
 | --- | --- | --- | --- |
 | Elixir and Mix | Elixir 1.18+; `mix.exs` requires `~> 1.18` | Core implementation, build, release, ExUnit tests, scripts | Apache-2.0 |
 | Erlang/OTP and ERTS | OTP 27+; system toolchain or bundled release | VM, OTP supervision, crypto, public-key/TLS, HTTP, filesystem and process APIs | Apache-2.0 with component notices |
-| Jason | Git tag `v1.4.4`, commit `926d2ac6cc0271b9a7079b2ec16ae0cf802f7963` in `mix.lock`; direct override for shared package requirements | JSON for HTTP, native protocol, and journals | Apache-2.0 (corrected from the earlier MIT label against the pinned upstream notice) |
+| Jason | Git tag `v1.4.4`, commit `926d2ac6cc0271b9a7079b2ec16ae0cf802f7963` in `mix.lock`; direct override for shared package requirements | JSON for HTTP, native protocol, and journals | Apache-2.0 |
 | MCP Elixir SDK | Hex `mcp_elixir_sdk` 1.1.0, pinned in `mix.exs` and `mix.lock` | MCP 2025-11-25 client handshake, request matching, and protocol types; Ipse supplies bounded stdio/HTTP transports and reuses the SDK's SSE parser | MIT |
 | elixir_uuid | Hex 1.2.1, transitive SDK dependency, locked in `mix.lock` | SDK UUID utilities | Apache-2.0 |
 | JSONSchex | Hex `jsonschex` 0.10.0, pinned in `mix.exs` and `mix.lock` | JSON Schema Draft 2020-12 validation behind Ipse's bounded keyword allowlist; no remote loader | MIT |
 | ex_json_pointer | Hex 0.8.0, transitive JSONSchex dependency, locked in `mix.lock` | JSON Pointer handling inside schema compilation | MIT |
-| Req and Plug | Hex `req` 0.7.5, `plug` 1.20.3, pinned in `mix.exs` and `mix.lock` | The SDK 1.1.0 advertises optional HTTP dependencies but unconditionally references their modules; required for successful compilation on Elixir 1.20. P10 also reuses Req for bounded opt-in HTTP MCP; no HTTP server is enabled | Apache-2.0 |
+| Req and Plug | Hex `req` 0.7.5, `plug` 1.20.3, pinned in `mix.exs` and `mix.lock` | The SDK 1.1.0 advertises optional HTTP dependencies but unconditionally references their modules; required for successful compilation on Elixir 1.20. Ipse also reuses Req for bounded opt-in HTTP MCP; no HTTP server is enabled | Apache-2.0 |
 | Finch | Hex 0.24.0, locked | All-status bounded inference/authentication streaming and Req/MCP HTTP pools; private HTTP/1 request pools with owned teardown | MIT |
 | Mint | Hex 1.11.0, locked | Finch transport with default certificate/hostname verification and a header bound | Apache-2.0 |
 | HPAX | Hex 1.1.0, locked | Mint HTTP/2 compression support | Apache-2.0 |
@@ -99,327 +72,99 @@ Consult [agent rules](../../AGENTS.md), [setup](../operator/arch-linux.md) and
 | Rust toolchain and standard library | Rust 1.85+; `native/build.sh` invokes `rustc --edition=2021` | Build the OS helper; no third-party Cargo packages | MIT OR Apache-2.0 |
 | Ipse native helper | `native/ipse-runner.rs`, `native/ipse-process-group.rs`, `native/ipse-stdio.rs`, `native/ipse-linux-sandbox.rs`, `native/ipse-macos-sandbox.rs`, compiled as `priv/ipse-runner` | Runtime anchored process groups, advisory locks, bidirectional OS pipes, optional Linux user/mount/network/PID namespaces, private descriptor procfs, Landlock/seccomp and macOS signed App Sandbox worker policies; used by tests | Apache-2.0 (project source) |
 
-OTP libraries are distributed with OTP rather than fetched as separate packages.
-Mix lists `logger`, `inets`, and `ssl` applications; authentication also uses OTP
-crypto/public-key facilities. Jason has no additional package dependencies in
-its own package. The MCP/schema packages add the transitive packages listed
-above. Req/Plug are included for SDK compilation; Finch/Mint also serve bounded
-provider inference and authentication, and Req/Finch/Mint serve P10's
-explicit HTTP client. Bandit/Decimal/IDNA are not
-enabled. No MCP listener or remote transport starts automatically.
-No Node, JavaScript, or Python runtime is required.
+OTP libraries ship with OTP. The application starts `logger`, `inets` and `ssl`;
+authentication also uses crypto/public-key facilities. Req/Plug satisfy the SDK's
+compile-time references; Finch/Mint also serve bounded provider/authentication
+transport. Optional Bandit, Decimal and IDNA dependencies are not enabled. No MCP
+listener starts automatically. Ipse requires no Node, JavaScript or Python runtime.
 
-## Existing host and build requirements
+## Host and build inventory
 
 | Dependency | Scope and reason | Source/license notes |
 | --- | --- | --- |
 | Unix OS and C library | Runtime process groups, advisory locks, filesystem, native runtime ABI | Host distribution; libc varies by platform. Match release OS/architecture/libc |
 | OpenSSL and system CA trust | OTP TLS and verified HTTPS provider/auth connections | Host/toolchain distribution; preserve its version-specific notices |
-| `/bin/sh` | Runtime shell tool and source/release launchers; optional native Bash compatibility probes use the already-installed host Bash (5.3.20 tested), required by those project scripts, with no installation or bundled Bash runtime | Host shell implementation/licenses vary; Bash uses GPL-3.0-or-later for the recorded version |
+| `/bin/sh` | Runtime shell tool and source/release launchers; optional native Bash compatibility probes use the already-installed host Bash, required by those project scripts, with no installation or bundled Bash runtime | Host shell implementation/licenses vary; Bash uses GPL-3.0-or-later for the recorded version |
 | C linker/toolchain | Link the Rust helper; compile synthetic loader probes for native enforcement tests (`/usr/bin/cc` on Linux, `/usr/bin/clang` on macOS) | Arch `base-devel` or macOS build toolchain; versions/licenses supplied by distribution |
 | Git | Fetch the pinned Jason dependency and repository work | Host Git package, GPL-2.0 |
 | Standard filesystem/text utilities | Scripts use `dirname`, `mkdir`, `cp`, `chmod`, `rm`, `uname`, and `tr`; setup examples use `mktemp`; helper verification uses `sleep`, and tests use `head`/`tr`. Existing bundled OTP launchers/fresh-release checks also need `basename`, `cut`, `sed`, `cat`, `grep`, `readlink`, `expr`, `awk`, and `id`; the package verifier makes that utility-only PATH explicit | Existing host utility implementation/licenses vary, commonly GNU coreutils plus GNU sed/grep and awk on Linux; OS-supplied equivalents on macOS |
 | `tar`, gzip support, `getconf` | Packaging archive and Linux libc identification | Host distribution; `getconf` is a libc utility. `getconf` failure falls back to `system-libc` naming |
 | Hex bootstrap | Documented `mix local.hex --force` setup step; fetch and verify locked MCP/schema packages | [Hex](https://github.com/hexpm/hex), Apache-2.0; Jason itself is fetched through Git |
-| Rebar3 | Build Telemetry's Erlang code during Mix dependency compilation; existing installation on Serenity; developer approved on 2026-10-15 | Standard BEAM build tool, [upstream](https://github.com/erlang/rebar3), Apache-2.0 |
+| Rebar3 | Build Telemetry's Erlang code during Mix dependency compilation; developer approved on 2026-10-15 | Standard BEAM build tool, [upstream](https://github.com/erlang/rebar3), Apache-2.0 |
 
-Bundled releases include ERTS, Elixir code, all locked runtime packages, and the helper; they still need
-compatible OS libraries and `/bin/sh`. Toolchain license notices and
-`IPSE_NOTICES_DIR` handling are described in the
-[release check](testing.md#release-check). Record actual versions and tested
-platforms in [verification results](testing.md#current-evidence-and-next-checks).
+A bundled release contains ERTS, Elixir code, the locked runtime packages and the
+helper. It still needs compatible OS libraries and `/bin/sh`. On Linux, native
+mode also needs Landlock ABI 6+ and the permitted namespace/mount facilities. On
+macOS, the system `codesign` utility signs and verifies generated App Sandbox
+workers; it needs no personal signing certificate. Unavailable enforcement fails
+closed. See [sandbox implementation](sandbox.md).
 
-On 2026-10-15 the developer explicitly selected “Approve Telemetry and Rebar3”
-after reviewing the working package-backed MCP integration and the dependency
-question. Serenity already had Rebar3 3.27.0. These BEAM dependencies are needed
-by the selected SDK's compile-time Req/Plug chain; they introduce no JavaScript,
-Python, container, or outside runtime service. The alternatives considered were
-another broader MCP stack or maintaining custom protocol code; package reuse
-was selected. See [the package decision](mcp.md#package-decision).
+Telemetry/Rebar3 and macOS's built-in `codesign` have existing developer approval.
+Their scopes are the BEAM dependency build chain and fixed worker signing and
+verification, respectively. The [preserved adoption record](../archive/2026-10-18-before-manual-rewrite/docs/developer/dependencies.md)
+contains the original approvals and one-off interoperability investigations.
+Those optional investigation tools are not mandatory runtime or CI requirements.
 
-The optional Linux native sandbox uses kernel APIs through the existing Rust
-helper, without bubblewrap, containers, new packages, or a separate daemon.
-It requires enabled Landlock ABI 6+ (Linux 6.12+) and permitted unprivileged
-user/mount/network/PID namespaces and modern mount APIs. These are host capabilities,
-not automatically installed dependencies; unavailable enforcement fails closed.
-See [the fixed profile](sandbox.md).
+## CI inventory
 
-## Existing CI dependencies
+The [checks workflow](../../.github/workflows/ci.yml) uses GitHub Actions with
+`ubuntu-latest` and `macos-14` runners. These hosted services are CI-only inputs.
 
-The [checks workflow](../../.github/workflows/ci.yml) uses GitHub Actions on
-`ubuntu-latest` and `macos-14`,
-[actions/checkout v4](https://github.com/actions/checkout/tree/11d5960a326750d5838078e36cf38b85af677262),
-[erlef/setup-beam v1](https://github.com/erlef/setup-beam/tree/54075bcc5e249e4758d363f27d099f55d843f124)
-(Elixir 1.18 / OTP 27), and
-[dtolnay/rust-toolchain stable action](https://github.com/dtolnay/rust-toolchain/tree/b725eda525362e7cf34af9a7243cac1e3f01a7ec).
-These are CI-only hosted services/actions,
-not Ipse runtime packages. Their sources are the named GitHub repositories;
-checkout, setup-beam, and the rust-toolchain action use MIT. The Rust compiler
-and standard library have separate MIT OR Apache-2.0 licensing.
-All three action implementations are pinned to full commit SHAs, resolved from
-their official upstream selectors on 2026-10-18; the setup-beam annotated tag was
-dereferenced to its commit. `elixir scripts/check-ci-policy.exs` rejects mutable
-external action selectors and runs in CI. Runner images and compiler channels
-remain rolling inputs; record their actual versions. Review pin updates and obtain
-developer approval before introducing additional actions or external CI tools.
-The macOS runner extends the existing workflow/actions to the native platform
-selected by the developer on 2026-10-15. The separately approved built-in
-`codesign` signs and validates immutable App Sandbox workers at runtime. No
-container, VM runtime, new CI action, or downloaded testing utility is introduced.
+| Action | Pinned source | Purpose and license |
+| --- | --- | --- |
+| checkout | `actions/checkout@11d5960a326750d5838078e36cf38b85af677262` | Checkout the candidate repository; MIT |
+| setup-beam | `erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124` | Supply Elixir 1.18/OTP 27 for floor compatibility; MIT |
+| rust-toolchain | `dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec` | Select stable Rust; MIT for the action, separate compiler/standard-library notices |
 
-The optional macOS process diagnostic compiles
-`scripts/support/macos_process_probe.rs` with the existing Rust standard library
-and orchestrates it from Elixir. Its `setsid`, `setpgid`, `getpgrp`, and
-`kill(pid, 0)` checks use the existing host C library. It adds no package,
-external command dependency, or runtime service. This diagnostic is separate
-from OS file/network enforcement. Detached children can survive cancellation
-or timeout; their cleanup is best effort.
+Runner images and stable toolchain channels remain rolling inputs. Record their
+actual versions with results. Pin any external action to a full commit and review
+updates. Introducing another action requires the same outside-language dependency
+approval as a local executable.
 
-The optional `scripts/diagnose-stdio-cleanup.exs` uses the existing Elixir/OTP,
-Jason, `/bin/sh`, `sleep`, and Rust helper to generate synthetic local load.
-It adds no package, service, or external testing tool. Native mode uses the
-already approved macOS signing path. See the
-[diagnostic bounds](testing.md#stdio-cleanup-load-diagnostic).
-
-## Optional integrations
-
-The developer approved macOS's built-in `/usr/bin/codesign` on 2026-10-15
-in response to the sandbox dependency question ("Approve built-in codesign").
-Its approved scope is ad-hoc signing and validation of Ipse's generated worker
-application and its fixed App Sandbox entitlements. It needs no signing
-certificate or personal signing key. The utility
-is supplied and licensed with macOS; supported macOS versions and enforcement
-results must be recorded before claiming a working backend. Elixir and Rust
-can generate the bundle and entitlement files but do not replace Apple's
-platform code-signing facility. Deprecated `sandbox-exec` and a Linux VM were
-considered alternatives; native platform tooling was selected by the developer.
-Native macOS enforcement checks passed locally on macOS 26.7.2 arm64; see
-[actual evidence](testing.md#macos-native-backend-2026-10-15).
-
-ChatGPT/OpenAI, Ollama, and Anthropic are selected providers, not automatically
-installed dependencies. The scripted demo needs none of them. Remote providers
-require network access and account authorization; Ollama requires a separately
-installed local service and model. Provider selection never authorizes an
-installation or a switch in billing. See [usage](../operator/usage.md).
-
-A browser is needed for subscription sign-in. Codex CLI is optional development
-tooling, with its own account and terms; it is not an Ipse dependency. Optional
-tools must not silently become prerequisites for builds, tests, or operation.
-
-The operator approved a private cloud environment for security preparation on
-2026-10-18. Its retained Elixir 1.18.3/OTP 27/Rust 1.85.1 toolchains have the
-licenses listed above; bootstrap helpers use Elixir and shell, verified HTTPS,
-locked package hashes and Hex verification. A short environment-only Rust
-subreaper uses the existing Linux C library (`prctl`/`waitpid`) to compensate for
-its container's non-reaping PID 1 during process tests. It adds no crate or
-third-party source and is not part of Ipse runtime, packaging or ordinary host
-test requirements. Its retained source is outside the repository. The Cloud
-service and images remain optional operator-selected services, not new local
-dependencies; actual limitations/results are in [testing](testing.md#focused-review-and-cloud-setup-2026-10-18).
-
-### Isolated independent MCP investigation
-
-For an optional one-off P7 compatibility investigation, inspected and built
-[13thx-mcp/filesystem](https://github.com/13thx-mcp/filesystem/tree/df98dc38c969c92f25c778d37691e7a3f1914367),
-package `rust-mcp-filesystem` 0.2.0, MIT, at that exact commit. Its complete Rust
-dependency graph is pinned in the upstream
-[Cargo.lock](https://github.com/13thx-mcp/filesystem/blob/df98dc38c969c92f25c778d37691e7a3f1914367/Cargo.lock),
-including rmcp 3.4.0, Tokio, cap-std, Serde, Clap, and their Rust dependencies.
-The existing Rust 1.99/C linker built it; no new system runtime was installed.
-It is not part of Ipse's Mix dependencies, Rust helper, default tests, CI, or
-bundled release. No upstream server source or binary is redistributed here.
-
-Automatic review rejected an unconfined Cargo build. On 2026-10-15 the developer
-explicitly approved downloading locked Rust dependencies and an offline native
-sandbox build/test in a temporary workspace. The build passed with network and
-credential isolation. An isolated SDK diagnostic negotiated 2025-11-25 and read
-synthetic text. This did not pass the full Ipse transport: nesting that helper
-inside the sandbox conflicts with intentional process-group escape denial.
-The server's generated `$schema` also exposed a concrete P7 schema compatibility
-gap. P7 now runs the full Ipse client outside that profile and confines only the
-server, retaining provider access and process-group supervision. The optional
-`mix run scripts/verify-independent-mcp.exs /path/to/reviewed/filesystem-server`
-passed native stdio discovery, exact individually approved synthetic read/list/
-write calls, nullable/default/dialect compatibility, and idle resume. It never
-downloads or builds the server. A separate live ChatGPT read also passed on Arch;
-see [P7 evidence](testing.md#p7-expanded-local-mcp-2026-10-15). This investigation
-adds no mandatory build/test dependency or general compatibility claim.
-
-### Second independent MCP investigation: memory
-
-On 2026-10-15, the developer selected a second pinned independent local-server
-check. Reviewed the Apache-2.0
-[`mcp-memory` 2.0.0 published source](https://docs.rs/crate/mcp-memory/2.0.0/source/),
-whose archive SHA-256 matches the crates.io registry checksum:
-`fd6e3eb273e9ae8e829113f20c90f4d57c222340d7b3620c08dc3424e9f19215`.
-The archive's VCS metadata records `ec9737bed066fa821281dd60877ca671b3a5355e`;
-the published archive and checksum, rather than the current repository branch,
-pin this investigation. Selected this older binary-log release to avoid the
-current SQLite/code-indexing implementation's broader scope. No current-release
-compatibility is claimed.
-
-Its Rust package graph is pinned by the archive's
-[Cargo.lock](https://docs.rs/crate/mcp-memory/2.0.0/source/Cargo.lock), including
-Tokio, Serde/serde_json, Clap, axum, ahash, parking_lot, arc-swap,
-crossbeam-channel, crc32fast, futures, tracing, thiserror, anyhow, and subtle.
-These are temporary investigation dependencies, not additions to Ipse's
-runtime, Mix lockfile, default tests, CI, or bundle. The original P7 check exercised stdio. P10 separately exercised its authenticated
-HTTP/SSE endpoint on literal loopback using a synthetic bearer token and
-disposable graph. No embedding model, external database, or additional system
-tool was used. The verifier uses existing Elixir/OTP and
-Jason. No upstream source or executable is redistributed.
-
-Downloaded locked Rust dependencies into a temporary Cargo cache without
-executing the server. Built offline with the existing Rust 1.99 toolchain
-inside Ipse's Linux native workspace sandbox. The unmodified source failed
-on x86_64 because `_mm_prefetch` expects `*const i8`; the sole source patch in
-`src/kg.rs` was:
-
-```diff
--    std::arch::x86_64::_mm_prefetch::<3>(addr);
-+    std::arch::x86_64::_mm_prefetch::<3>(addr.cast());
+```sh
+elixir scripts/check-ci-policy.exs
 ```
 
-The patched build passed. This is independent protocol interoperability with
-an explicitly patched upstream build, not acceptance of the unmodified release.
-The optional `scripts/verify-independent-memory-mcp.exs` never downloads,
-builds, or installs a server. See [verification and limits](testing.md#second-independent-local-mcp-server-2026-10-15).
+That command rejects mutable action selectors. It does not audit an action's
+implementation, license or hosted service terms.
 
-### Long-turn context reduction
+The workflow also runs `elixir scripts/check-docs.exs` using the existing Elixir/OTP
+and Git toolchain. It checks local documentation links, headings, JSON examples,
+manual rules and preserved snapshot hashes without executing example commands.
 
-P13's deterministic tool-output checkpoint policy reuses existing Elixir/OTP,
-Jason, SHA-256, and journal durability/integrity code. It adds no package,
-external runtime, workflow framework, or provider-native compaction dependency.
-The existing bundled-runtime verifier now also restores a synthetic long-turn
-checkpoint; this is an Elixir test artifact, not a new testing dependency.
-Workload dependencies in separate trial apps remain distinct from Ipse's graph.
+## Verify an update
 
-### Neutral coding workload trial
+Review the declaration and lockfile together, then build and exercise the affected
+behavior. Check transitive applications and notices, not just the top-level name.
 
-The separate P13 task tracker selected Python/Flask, Flask-WTF/WTForms, Waitress,
-and Python's bundled SQLite after inspecting installed runtimes. Its project-local
-virtual environment, exact direct/transitive lock and license notices live in
-`~/projects/lexlapax/ipse-task-tracker-open`. They are workload dependencies under
-the developer's explicit general-purpose/stack-choice trial authorization, not
-Ipse runtime, build, test, CI, packaging or helper dependencies. Ipse itself still
-has no Python or JavaScript runtime/tooling dependency. Independent HTTP checks
-and trial orchestration used existing Elixir/OTP; existing Chromium was used only
-for local visual inspection. See [trial evidence](testing.md#p13-neutral-stack-coding-trial-2026-10-16).
+```sh
+mix deps
+./scripts/build.sh
+mix compile --warnings-as-errors
+mix test test/mcp/schema_test.exs
+```
 
-### Shared operator skills
+The focused command above is an example for a schema-adapter change. Choose the
+actual affected fixture for another dependency. Run the [source baseline](testing.md#run-the-source-baseline)
+for runtime changes. Keep the source/build output fixed while checks are active.
 
-Shared discovery reuses existing Elixir path/filesystem functions, canonical-path
-handling and SHA-256. It installs or copies no shared skills and adds no package,
-metadata parser, script runner or permission mechanism. The supported frontmatter
-subset remains explicit in the skill discovery contract.
+If the dependency affects worker or runtime paths, also build the package and
+run its extracted verifier. Before distribution, provide notices for the exact
+bundled Erlang/Elixir toolchain via `IPSE_NOTICES_DIR`. The packager copies locked
+package notices and supplied toolchain notices into `licenses/`; inspect that
+folder in the extraction. [Third-party notices](../../THIRD_PARTY_NOTICES.md) and
+[release verification](testing.md#verify-the-extracted-package) describe the
+remaining distribution obligations.
 
-### Native operator questions
+## Keep optional services optional
 
-P17 reuses the existing bounded `Ipse.MCP.Schema` adapter and JSONSchex for
-question/answer shapes, with small host checks for unique option identities and
-cross-field semantics. OTP session messages and the current Jason/SHA-256 journal
-implement durable questions/answers. This adds no dependency or schema engine.
-The release verifier includes a synthetic question/explicit-answer fixture.
+Providers, MCP servers, source debuggers and retrieval engines are selected
+integrations, not silently installed dependencies. Configuration must make the
+service, endpoint, credentials and billing choice explicit. The deterministic demo
+and ordinary tests require no model service. A browser is needed for subscription
+sign-in; an operator's separate coding assistant is not part of Ipse's graph.
 
-### Scoped configuration
-
-P15 uses the existing Jason JSON parser and bounded JSONSchex schema adapter.
-JSON fits the small closed data-only settings schema; no executable config, YAML
-package, new runtime or separate validation engine is introduced. Canonical paths,
-SHA-256 and journal metadata reuse existing OTP/Ipse modules.
-
-### Execution profiles
-
-P16 reuses Jason/JSONSchex, fixed provider adapters and ordinary OTP delegation.
-It adds no dependency, inference framework, model downloader or credential store.
-Reasoning effort is a small documented Responses mapping with a conservative
-model allowlist; unsupported provider settings fail explicitly.
-
-Bundled shell environment cleanup reuses existing OTP Port environment overrides.
-The blocked-write regression compiles a small Rust standard-library/POSIX FIFO
-probe with the existing compiler. It gates a real write and exits on harness stdin
-EOF; no `mkfifo` utility, package or runtime dependency is added.
-
-Test HOME isolation preserves the existing Rustup toolchain location explicitly;
-no compiler download, new toolchain package or runtime dependency is introduced.
-
-### P22 extension and diagnostics evaluation
-
-The extension foundation reuses Elixir behaviours, OTP-owned workers, the existing
-Jason/schema adapters, journals and Rust stdio/process ownership. Local immutable
-import, the worker bridge and typed host actions are implemented without a new
-package or external runtime. Artifacts carry their own locked dependency,
-runtime-target and license inventory; author builds do not assume that a bundled
-release includes Mix. Non-Elixir/Rust dependencies still need explicit developer
-approval. No upstream harness/plugin runtime is installed or redistributed.
-
-The [lifecycle design](lifecycle-events.md#reuse-decisions-and-sources) evaluates
-Telemetry 1.4.2, Phoenix.PubSub and CloudEvents 1.0.2. Telemetry's synchronous
-unordered handlers cannot provide ordered transforms or durable approved jobs;
-PubSub topic fan-out alone does not provide bounded admission, private-view
-authority or recovery. The initial design uses existing local OTP/worker/journal
-facilities for those host-specific policies. Phoenix.PubSub/CloudEvents packages
-are not adopted. Telemetry remains a locked transitive Finch/Plug dependency;
-promote it explicitly if Ipse begins calling its API directly.
-
-OpenTelemetry API/SDK/OTLP exporter packages remain optional future sinks, not
-installed dependencies or mandatory collectors. Inventory selected versions and
-licenses before adoption, with explicit endpoints/export authority. Memory engines,
-remote catalogs/signatures and download helpers remain unselected. Package
-acquisition, building and trust are separate from event subscription and execution;
-see [adoption scenarios](extension-scenarios.md).
-
-The follow-on [runtime](runtime-capabilities.md) and [knowledge](knowledge-extensions.md)
-reviews compare OpenAI Agents SDK/voice, LangGraph/LangSmith, ADK, ElixirLS/OTP
-debugging, LlamaIndex and Haystack primary documentation. Ipse reuses the shipped
-OTP kernel trace API for synthetic dispatcher samples; ElixirLS and the optional
-OTP GUI debugger were evaluated but no source-debugger integration was installed.
-Pricing services, source-debugger/GUI dependencies, codecs, audio
-devices/transports, memory databases, embedding/rerank providers and graph/vector
-engines remain unselected. P22 uses existing OTP/helper/schema/journal facilities
-where suitable; subsequent milestones must evaluate/inventory packages and obtain
-any required outside-Elixir/Rust approval before implementation. No mandatory
-backend or hardcoded service/rate is introduced by these planning entries.
-Provider output ceilings reuse the settings/profile JSONSchex schemas with small
-provider capability/range checks and existing request adapters; no new parser,
-tokenizer, native library or pricing service is introduced.
-Lifecycle feeds and admitted-tool views reuse the existing independent Worker bridge,
-Journal/source/schema adapters, OTP processes/monitors, atomics and private ETS.
-They share worker cleanup with diagnostic channels and add no package or broker.
-The owner-managed admission/receipt queue supplies the permission, finite-capacity
-and recovery guarantees that the earlier PubSub/Telemetry review found insufficient
-on their own; it is not a general workflow or distribution framework.
-Tool view/source binding uses the same bounded JSON/source/hash adapters and OTP
-monotonic clock, with no new inference, storage engine or parser dependency.
-Zero-Mem's paper/authors' repository and independent Rust `zeromem` implementation
-are research candidates only. Their licenses, dependencies, model/encoder needs,
-source availability and measured suitability must be assessed before reuse;
-no memory engine, Python bindings or embedding runtime was adopted.
-
-P19 diagnostics and explicit handoff export add no dependency: existing Jason,
-OTP monotonic time, session restore, research validation and SHA-256 supply the
-implementation. This does not install Telemetry/OTLP hooks or memory services.
-
-P20 adds inert bundled skill/resources and an Elixir scripted fixture at
-`priv/self-development-demo.exs`, invoked by `scripts/demo-self-development.exs`
-and extracted-package verification. It reuses existing Session/Jason/journals and
-adds no dependency, model service, workflow framework or automatic script loading.
-
-### Optional research retrieval and evidence ledger
-
-P14 adds no package, HTTP/HTML/search engine, executable plugin or non-Elixir
-tooling dependency. Existing Jason/JSONSchex/OTP/MCP/journals implement bounded
-source/claim bookkeeping. JSONSchex's supported 2020-12 validator explicitly
-handles only the admitted identical-keyword Draft-07 subset after Ipse shape
-validation; this does not enable a remote loader or arbitrary draft machinery.
-
-The optional live interoperability trial used hosted Exa MCP, observed server
-version 3.5.0 on 2026-10-16, from its operator-selected HTTPS endpoint and exact
-search/fetch allowlist. [Official setup](https://exa.ai/docs/get-started/exa-mcp)
-documents anonymous rate-limited use; [upstream](https://github.com/exa-labs/exa-mcp-server)
-is MIT-licensed. No upstream Node package, bridge, source or executable is installed
-or redistributed. Hosted service terms/availability are separate from its source
-license. This is an optional external integration example, not a build/test/CI/
-packaging/runtime requirement. Any compatible server can be selected through
-MCP configuration; no Exa endpoint or tool name is embedded in runtime code.
-Credential-free fixtures/packages perform no external retrieval.
+For a new retrieval adapter, start with a synthetic source and the existing SDK.
+Measure the requirement before selecting a database, encoder or remote service.
+See [knowledge extension development](knowledge-extensions.md). Do not turn an
+optional example into a prerequisite for building or operating the harness.

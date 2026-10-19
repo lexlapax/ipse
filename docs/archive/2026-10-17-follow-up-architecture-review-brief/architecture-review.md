@@ -16,7 +16,7 @@ Review source revision `b570ef8422d83f70ebd13386a0e0bf5630d9c3d6`, against origi
 worktree, index and branch untouched. The first critique was a partial static
 review with unrun regression proposals. Its supervisor dispositions and test
 results are evidence to challenge, with current scope recorded separately in
-the [repair register](../../developer/architecture-review-dispositions.md).
+the [repair register](../2026-10-18-before-manual-rewrite/docs/developer/architecture-review-dispositions.md).
 
 The prompt separates an independent source assessment from checking the repair
 register. Keep the first assessment intact before opening supervisor narratives.
@@ -27,7 +27,7 @@ review target while allowing an honest check of later verification receipts.
 Use the selected subscription model and record its displayed identity/settings.
 This handoff enables no API billing, overages, dependency install or publication.
 Source-only review cannot reproduce runtime or certify OS enforcement. The
-[evaluation protocol](../../developer/self-hosting-evaluation.md#independent-adversarial-architecture-validation)
+[evaluation protocol](../2026-10-18-before-manual-rewrite/docs/developer/self-hosting-evaluation.md#independent-adversarial-architecture-validation)
 owns acceptance, and the [plan](../../plan.md) keeps the security scan and P25 behind
 applicable repairs and adequate independent coverage.
 

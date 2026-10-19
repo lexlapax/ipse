@@ -1,131 +1,107 @@
-# Choosing how to add a feature
+# Ask Ipse to add a capability
 
-Use this guide when asking Ipse to add a capability, whether for one task, one
-project or every session. Prefer an extension when the existing host contracts
-can express the behavior safely. A feature's usefulness or complexity does not,
-by itself, determine whether it belongs in core. The deciding question is whether
-it needs a new guarantee from the harness.
+Describe the result you need before choosing an implementation. Ipse can use
+skills, existing tools, configured MCP, and reviewed extensions. Core changes
+are appropriate when those mechanisms lack a generic guarantee the feature needs.
+Keep optional domain behavior outside the agent loop whenever existing extension
+contracts can express it.
 
-This guide owns the operator decision criteria. The [extension guide](extensions.md)
-owns installation, trust, configuration and recovery; the [plan](../plan.md) owns
-what is implemented, authorized or deferred. A researched design or an entry in
-the plan is not an available API or permission to install it.
+## Prepare a bounded request
 
-## Choose the smallest suitable mechanism
+Start in a workspace using your explicitly chosen provider. This makes real
+model requests after submission:
 
-| Request | Preferred mechanism | Condition |
-| --- | --- | --- |
-| Teach a repeatable procedure, project convention or research method | Skill or scoped instructions | Existing tools suffice; loading text neither executes scripts nor grants permissions |
-| Connect an existing search, database, Git/GitHub or other external service | Configured MCP tools, resources or prompts | The server exposes the needed operation; review its permissions, credentials, dependencies and remote effects separately |
-| Add a typed model tool or explicit operator command | Extension invocation | Its arguments/results fit the SDK and its effects use supported approved host calls |
-| React to a supported prompt/answer boundary or observe live facts/text | Extension notification, feed, event job or text consumer | The supported stage/view, delivery policy and grants match the need; read-only acknowledgments cannot request effects |
-| Add ranking, note policy, a report, presentation or a bounded workflow | Extension, optionally composed with bound value services | Existing state, context, tools, questions and model contracts cover all required work |
-| Change a guarantee shared by sessions or extensions | Generic core enhancement | An existing contract cannot safely provide the required authority, ownership, persistence, accounting or protocol behavior |
+```sh
+ipse chat --provider chatgpt --cwd /path/to/project
+```
 
-A tool and an extension are not opposing choices: an extension can expose tools.
-MCP is a separate integration boundary. Main-agent MCP access does not mean an
-extension callback can call MCP; current extension `tool.call` supports the
-specified built-in file/shell tools and refuses MCP tool IDs. Value services
-return data, not nested effects. A skill can explain how to use either mechanism,
-but it cannot create a missing host capability.
+For example, ask for a proposal before executable work:
 
-## Test an extension proposal against the host contracts
+```text
+I want an optional command that recalls explicit project notes for a release
+checklist. It should run only when I invoke it, keep data local, and show source
+excerpts. Propose the smallest supported mechanism. Identify configuration,
+permissions, retention, limits, and recovery. Do not install or enable anything
+until I have reviewed the code and configuration.
+```
 
-For a future request, ask the implementing agent to establish all of the following
-from the running version's documented contracts and code:
+State whether the behavior is for one task, a project, or all your projects.
+Name permitted services/models, data that may leave the machine, spending limits,
+and any files it may change. Explain whether it runs on command, before a model
+request, after an answer, or continuously during work. Timing changes the
+available contracts.
 
-1. **Inputs and timing.** Identify the explicit invocation or supported event,
-   the exact public/private view and when the result must be available. A feed
-   acknowledgment is not a committed write; after-turn work cannot change the
-   answer already saved. Do not assume that every internal event is subscribable
-   or that jobs run concurrently.
-2. **Authority and effects.** List every state, filesystem, external service,
-   model and device operation. Map each to a supported grant, operator binding
-   and approval. Repository text, generated code and extension output cannot
-   grant trust, credentials, execution or a new destination.
-3. **Ownership and failure.** Show how cancellation, owner death, timeout and
-   incomplete cleanup are handled. Optional observation should follow its
-   documented failure policy; required delivery must remain explicit. An
-   interrupted effect stays unknown and is never automatically replayed.
-4. **Persistence and change.** Specify scope, stable identity needs, revisions,
-   concurrent writes, expiration, export/migration and code/configuration
-   upgrades. Distinguish backend deletion from cached context, transcripts,
-   backups and prior remote transfers. Resume must preserve committed facts
-   without silently rerunning callbacks or replacing saved content.
-5. **Bounds and accounting.** Fit the documented bytes, records, actions,
-   deadlines, queue and context limits. Use configured model profiles and the
-   host's canonical usage/admission path for supported inference. Do not hide
-   extra model calls, paid service work or downloads in a callback. Unknown or
-   uncovered costs remain explicit.
-6. **Selection and evidence.** Keep optional behavior independently selectable,
-   configurable and disabled by default. Prove disabled-side-effect parity,
-   permission refusal, scope isolation, cancellation and recovery, then test
-   against an installed release where applicable. Measure algorithm quality
-   separately from protocol correctness and identify untested platforms.
+## Choose the mechanism with the proposal
 
-If these checks pass using existing contracts, implement the feature as an
-extension without changing the agent loop. Prefer ordinary approved tools or a
-skill if no executable extension is needed. Trusted executable extensions still
-run with operator OS permissions: a separate VM and capability schema are not
-an OS sandbox. Being able to open a socket or write a file from trusted code is
-not evidence that doing so satisfies the host approval/accounting contract.
+| Your need | Start with |
+| --- | --- |
+| A repeatable procedure using existing tools | A skill or scoped instructions |
+| Access to an existing external service | Explicitly configured MCP capabilities |
+| A typed model tool or explicit local command | An extension invocation |
+| Prompt annotations or answer formatting | Selected extension transforms |
+| Supported notifications, metadata feeds, or text delivery | Read-only extension consumers |
+| Ordered recall or maintenance at a supported prompt/answer boundary | An extension event job with its separate grants |
+| Ranking, note policy, reports, or a bounded workflow | An extension using supported host calls and bound value services |
+| A missing shared ownership, approval, persistence, accounting, or transport guarantee | A small generic core enhancement |
 
-## When a core change is justified
+A skill supplies instructions; it does not enable a service or execute its
+scripts on load. An extension may expose tools, but main-agent MCP access does
+not make MCP callable from extension callbacks. The current extension workflow
+tool bridge supports bounded built-in file/shell calls, not MCP or delegation.
 
-Core owns the guarantees that extensions rely on: session/task ownership,
-approvals, credential and destination authority, provider transport and
-continuations, canonical accounting/admission, journals/recovery, OS confinement,
-and the SDK's bounded delivery and storage contracts.
+## Require the proposal to show its boundaries
 
-Change core when a feature needs a missing guarantee in one of those areas,
-or when a defect breaks an existing guarantee. Examples include a new approved
-external-operation bridge, an accounted embedding request type, a genuinely new
-stream/media transport, or a reviewed way to invalidate retained context across
-sessions. A new database, ranking algorithm, graph representation or prompt
-policy usually belongs behind an extension boundary instead.
+Ask the implementing agent to map each required operation to the current
+[extension contracts](extensions.md), not just say that the SDK is extensible.
+The design needs exact inputs and timing, selected private views, effects,
+operator grants/bindings, approvals, and provider destinations.
 
-A missing contract is a reason to design a small generic enhancement, not to
-bypass it with shell, worker networking, copied credentials, a hidden model call
-or an unbounded background process. The enhancement should be versioned where
-compatibility requires it, reusable by more than one domain feature, and covered
-for grants, bounds, cancellation, uncertainty and resume. After that foundation
-is verified, keep the requested domain behavior in the extension. A core feature
-must not become a mandatory memory engine, provider, database or workflow.
+For storage, require scope, stable identity, revisions, retention, export,
+migration, and concurrent-write behavior. Deletion of a store value does not
+erase earlier recall, journals, exports, or provider transfers. For automation,
+ask how cancellation, owner death, timeout, incomplete cleanup, and unknown
+outcomes are handled. Interrupted effects must not replay automatically.
 
-## Apply the criteria to likely requests
+For inference, require named profiles and the supported accounted model path.
+One-shot text inference is not an embeddings or audio API. Host budgets do not
+cover arbitrary worker network calls, external-service costs, or device access.
+Executable extensions run with trusted operator OS permissions; their separate
+VM does not turn them into an OS sandbox.
 
-| Example | Extension or tool responsibility | Core boundary to check |
-| --- | --- | --- |
-| Prompt annotation or answer formatting | Selected transforms with bounded attributed text | Existing hooks suffice; annotations remain untrusted context and cannot rewrite core permissions |
-| Short-term or long-term memory (P26A/P26B) | Explicit notes, lexical ranking, provenance, retention, suppression and migration policy | Stable logical storage, bounded reads and cached-context/recovery behavior must be proved; a storage tombstone alone does not erase earlier recall |
-| Research and lexical RAG (P27A) | Search strategy, source/citation ledger, corpus/chunk policy and ranking | Existing main-agent configured MCP can be used now; autonomous extension MCP effects require a separately reviewed host bridge |
-| Graph or hybrid/embedding retrieval (P27B) | Extraction, graph/index adapters, traversal and retrieval comparisons | Existing one-shot text inference is not an embedding API; new embeddings need explicit destination, vector bounds, usage/cost and cancellation contracts |
-| Knowledge graph listening to prompts | Supported selected private event view, extraction and separately approved storage | Notifications/feeds alone grant no effects; same-turn recall needs an awaited job and committed context before inference |
-| Token-cost dashboard or diagnostic exporter | Reports, configured estimates and selected sinks | Core remains responsible for canonical facts, budgets and bounded delivery; turning diagnostics off does not disable journals/accounting |
-| Voice input/output | Configured STT/TTS orchestration and presentation where supported | Text delivery is available; device access, audio streams and realtime interruption/accounting require their own supported contracts (P28 remains deferred) |
-| Project Git/GitHub workflow | Skill plus reviewed tools/MCP, or an extension that sequences supported calls | Ordinary approvals still apply; authentication, remote effects and publication are not implied by reading a project or installing a skill |
+Require exact byte/action/deadline limits and behavior when exceeded. A feed
+acknowledgment does not prove storage success. After-turn work cannot revise the
+answer already saved. Current event jobs do not imply fully concurrent background
+turns or subscriptions to every internal event.
 
-These examples describe ownership, not completion claims. Consult the current
-[plan](../plan.md) and [verification record](../developer/testing.md#current-evidence-and-next-checks)
-before depending on a proposed capability. Temporary selection applies to a new
-session using reviewed configuration; live installation or hot activation is
-not implied.
+## Review before installation and selection
 
-## What to include in a feature request
+For an extension proposal, request the source, manifest, schemas, license,
+dependencies, options, declared capabilities, and focused verification. Include
+normal behavior, denial, cancellation, uncertainty, resume, scope isolation, and
+behavior with the extension disabled. Algorithm quality needs its own examples;
+protocol correctness alone does not prove useful retrieval or reasoning.
 
-Give Ipse the desired result, when it should run, whether it is temporary or
-persistent, the intended project/operator sharing scope, and any allowed external
-services, models, retention or spending limits. Ask it to return:
+Follow [Extensions](extensions.md) to import an inert artifact, inspect its digest,
+grant an operator capability ceiling, and select an instance in a fresh session.
+These are separate decisions. Generated code, repository text, and skills cannot
+grant their own trust. Prefer temporary selection before changing persistent
+operator configuration.
 
-- The proposed mechanism and the existing contracts that cover it.
-- Any specific missing generic host guarantee, with the smallest justified core
-  change and a compatibility/recovery plan.
-- Required permissions, configuration, dependencies and approvals, including
-  what leaves the machine and which costs are not covered by host budgets.
-- Acceptance checks for behavior, disabled parity, failure/recovery and quality,
-  with implemented, proposed and unverified claims kept distinct.
+If a generic guarantee is missing, ask for the smallest reusable core change
+and its compatibility/recovery plan. Do not bypass that gap with copied
+credentials, hidden model calls, worker networking, or an unbounded background
+process. The feature's complexity alone is not a reason to put domain logic in
+core.
 
-Ipse may help author an extension, but generated code still needs review,
-explicit operator trust and ordinary action approvals. Installing, enabling and
-promoting it to persistent configuration are separate decisions. See
-[selection and execution boundaries](extensions.md#recovery-and-execution-boundaries).
+## Check the result and recover
+
+Try the capability in a scratch workspace with synthetic data first. Compare the
+actual output and effects with your request. Inspect `/ext`, `/session`, and
+`/diagnostics` for the selected identities and outcomes. A source-only example
+is not proof that an installed release can run the artifact.
+
+If a callback or effect is interrupted, inspect receipts and the actual files or
+store before another invocation. Changed artifact/options/configuration may
+prevent ordinary resume. Preserve the original session and use a reviewed
+[handoff](recovery.md) when moving to a newly reviewed version. Enabling a revised
+extension must not silently rewrite old committed results.

@@ -1,231 +1,136 @@
-# Durable request accounting
+# Following a request through durable accounting
 
-`Ipse.Usage` and `Ipse.Usage.Normalizer` implement P22's mandatory, content-free
-request facts independently of optional tracing and extensions. P23's pure
-[configured cost calculator and report](costs.md) consume explicit normalized
-snapshots through a separate own-session read grant. Host accounting does not
-fetch rates or quote prices. Separately configured [shared admission](budgets.md)
-uses these facts for durable main/summary/child and
-[extension model](extension-model-calls.md) reservations. See
-[operator inspection](../operator/usage-accounting.md) and
-[cost/media boundaries](runtime-capabilities.md#usage-facts-and-costs).
-Separately configured [provider output caps](provider-limits.md) bound supported
-individual requests; they do not change this version-1 accounting schema or
-supply aggregate admission control.
+Accounting answers which model work Ipse admitted and what the provider measured.
+It must remain available when tracing is off and after a failed request.
+`Ipse.Usage` owns the content-free reducer; `Ipse.Usage.Normalizer` owns provider
+counter semantics. Reports and [cost estimation](costs.md) consume these facts.
+They do not reconstruct usage from visible text.
 
-## Identity and admission
+## Trace admission, observations, and completion
 
-Session synchronously journals closed version-1 `request_admitted` before starting
-a model, summary or approved extension-inference task. It carries 128-bit hexadecimal request/attempt/
-turn IDs, session ID, kind, selected provider/model/profile, billing mode,
-admission time and optional SHA-256 of an explicitly configured endpoint. Raw
-URLs and credentials are excluded. There is one attempt per request and no
-automatic retry; adding retries requires an explicit contract enhancement.
+Read `admission/4`, `observation/3`, `completion/4`, and `apply_event/2` in
+`lib/ipse/usage.ex`. Session syncs version-1 `request_admitted` before starting the
+owned model, summary, or approved extension task. The record contains fresh
+128-bit hexadecimal request/attempt/turn IDs, session, kind, provider, requested
+model, selected profile, billing mode, admission time, and optional explicit
+endpoint SHA-256. Raw URLs, credentials, prompts, and reasoning are excluded.
+There is one attempt per request and no automatic retry.
 
-Extension kind `extension` uses its action operation ID as request ID, a fresh
-attempt ID and the selected helper profile's actual provider/billing/model. Its
-approved source and private response bind the canonical facts and returned text;
-they never widen main/summary scope or become conversation messages. Separate
-private-data grants and normal egress approval remain required.
+Adapters emit cumulative snapshots to the current owned job. Session suppresses
+identical observations and assigns consecutive sequences to distinct ones.
+Completion commits before assistant processing or summary validation. A rejected
+summary can therefore retain completed paid work. A successful response uses its
+actual final usage, including missing fields; an earlier partial count cannot
+be promoted into exact final usage.
 
-Children carry the originating model request ID and parent session ID, including
-when selecting another profile. Their journals remain separate; the parent
-snapshot is not a recursively aggregated report. Operator-question continuation
-retains its recorded turn identity on resume. Original assistant/native messages
-remain unchanged: the enclosing journal event binds to the request ID. Accepted
-summary checkpoints similarly bind to their request. Restore checks these bindings.
+The reducer exercise in `test/usage_test.exs` uses growing snapshots. If a request
+reports 10 output tokens and then 12, the latest output is 12, not 22. Read the
+fixture "snapshots replace cumulative observations and exact duplicates do not
+double count", then follow the interrupted version. Cancellation/failure keeps
+the last observation with `finality: partial`; abrupt owner loss leaves an unknown
+outcome. Failed work may still have consumed resources.
 
-The in-memory reducer indexes attempt IDs and accumulates admission order without
-scanning or copying all prior requests at every admission. `Usage.order/1`
-projects canonical chronological IDs; snapshots and own/child accounting readers
-use that order. This changes no persisted record, paging fingerprint or SDK wire
-schema. Duplicate attempts remain invalid even under different request IDs.
+[Budgeted requests](budgets.md) add a write-ahead step: their shared ledger must
+cover an observation before Session publishes it. Failed observation or settlement
+writes cannot publish unsupported final counters. Earlier committed observations
+survive, and unavailable measurements retain unknown liability.
 
-## Counter semantics
+## Normalize units without inventing measurements
 
-Adapters send internal usage observations only to the current owned Session job.
-These cumulative snapshots are never added as increments. Distinct normalized
-observations receive consecutive sequence numbers; identical snapshots are
-suppressed. A request retains at most 64 observations. Final success always uses
-the actual returned usage, including missing fields, rather than promoting an
-earlier partial snapshot to exact final usage.
+Counts are integers from zero through 10^12. Missing/null remains null; reported
+zero remains zero. Invalid types, negatives, overflow, and inconsistent totals
+invalidate counters with fixed issue codes. Unknown provider fields are discarded.
+The closed normalized record separates counts, derived fields, quality, and issues.
 
-`request_finished` commits before assistant processing or summary validation.
-A rejected summary retains its completed provider request and usage. Cancellation/
-failure retains the last recorded observation with `finality: partial`; an abrupt
-owner crash leaves an unknown outcome. Failed work may consume resources. Older
-sessions without `usage_version: 1` stay explicitly `legacy_unmetered`; no historical
-zero-token balance is inferred.
-
-Configured shared budgets add a write-ahead requirement: their ledger must accept
-an observation before Session records it. A failed observation write or final
-settlement cannot publish counters beyond that durable liability. Earlier
-committed observations survive; unavailable measurements and reservations remain
-explicitly unknown. See [budget durability and recovery](budgets.md#ledger-and-recovery)
-for the lock-refusal and crash boundaries. Unbudgeted request accounting keeps
-the ordinary observation path.
-
-Counts are integers from zero through 10^12. Missing/null stays null; reported
-zero stays zero. Invalid types, negatives, overflow or inconsistent totals
-invalidate counters instead of producing a plausible bill. The closed normalized
-record separates nullable counts, derived fields, quality and fixed issue codes.
-Unknown provider fields are discarded. Provider prose, hidden reasoning, signatures,
-auth and raw endpoint URLs never enter this API.
-
-Primary references checked on 2026-10-16:
-
-| Provider | Interpretation and source |
+| Provider | Interpretation |
 | --- | --- |
-| OpenAI/ChatGPT | Inclusive input/output/total counts; cached input, cache writes and reasoning are breakdowns, not additional totals. [Responses reference](https://developers.openai.com/api/reference/resources/responses/methods/retrieve) |
-| Anthropic | Input total is uncached input + cache reads + cache creation, derived only when all three are known. TTL creation details, thinking and server web-tool counts remain separate. Output includes thinking. [Messages reference](https://platform.claude.com/docs/en/api/http/messages), [prompt caching](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) |
-| Ollama | Prompt/generated evaluation counts, optional cached prompt count and nanosecond total duration. Omitted counts stay unknown. [Chat reference](https://docs.ollama.com/api/chat) |
-| Demo | Scripted operation is `not_applicable`, not metered inference. |
+| OpenAI/ChatGPT | Inclusive input/output/total; cache and reasoning are subsets |
+| Anthropic | Input is uncached + cache reads + cache creation only when all are known; TTL creation subsets remain separate; output includes thinking |
+| Ollama | Prompt/generated evaluation counts, optional cached prompt, nanosecond total duration |
+| Demo | `not_applicable` |
 
-Billing attribution is subscription for ChatGPT, API for OpenAI/Anthropic, local
-for Ollama, and none for demo. These are routing facts, not prices or entitlements.
-When input/output totals are known and total absent, their sum is marked derived.
-Reasoning/cached subcounts are never added twice. Provider metering is neither a
-visible-text token measurement nor an invoice.
+If input/output are known and total is absent, their sum is explicitly derived.
+Billing modes are subscription, API, local, or none according to route. These are
+routing facts, not prices or entitlements. Native continuation and private provider
+prose never enter accounting.
 
-## Extension accounting reads
+## Teach an extension to read facts
 
-`Ipse.Extensions.UsageRead` implements `usage.read`, available only with
-`host.actions` and separately trusted `host.usage`. It is independent of historical
-content capabilities. The request has exactly `op: "usage.read"`, `cursor`
-(request index 0–10,000), `limit` (1–4) and nullable `snapshot`. It accepts no
-directory, other session ID, child selector, provider call or state mutation.
+`Ipse.Extensions.UsageRead` implements a separately granted `usage.read` action.
+It requires `host.actions` and `host.usage`, independently of transcript access:
 
-A first read syncs its ordinary action intent before admission. Session supplies
-the source reference, calling identity, current request-count boundary and legacy
-flag; a successful committed result registers that snapshot. Later pages must
-match the registered snapshot and caller/session. Cursors may select any index
-within its fixed prefix; new admissions are excluded. Each page contains the
-latest canonical cumulative record per selected request, not every provider
-observation and not a truncated latest-sixteen display.
+```json
+{"op":"usage.read","cursor":0,"limit":4,"snapshot":null}
+```
 
-The closed version-1 snapshot contains `source` (metadata-only journal reference),
-`operation_id`, `identity_sha256`, `request_count` and `legacy_unmetered`. Its
-reference is identity, not authentication or a new permission. Pages carry
-version 1, `scope: "session"`, `coverage: "canonical_requests"`, snapshot, cursor,
-next cursor/null and `requests`. Rows reuse `Usage.request_record/1`; the strict
-validator accepts only admission identity/billing/profile/endpoint hash and
-normalized completion/partial/unknown counters. Prompt/answer/native data,
-credentials and raw endpoints never enter this projection.
+A first successful read captures the admitted request count and registers a
+version-1 snapshot containing source, operation ID, identity digest, request count,
+and legacy flag. Later pages must echo that exact registered snapshot and caller.
+New admissions fall outside the cut. Cursor is 0–10,000; limit is 1–4. Pages use
+`scope: "session"`, `coverage: "canonical_requests"`, cursor/next cursor and
+latest cumulative request rows. They contain no directory selector, prompts,
+provider operation, or mutation authority.
 
-At supported invocation/job boundaries the owned model request has settled.
-Previously admitted request facts cannot subsequently be completed by replay;
-only a new request ID can begin new work. This makes the fixed admitted prefix
-stable across later prompts and restarts. Child reads use the separate contract
-below; neither contract creates a globally atomic cross-session snapshot.
+Pages are prepared from the validated in-memory reducer, not a filesystem scan
+inside Session. Each page is at most 12 KiB within the SDK's 16 KiB object bound.
+Overflow refuses. At most 10,000 initial successful snapshots are retained.
+Existing registered ranges remain readable when fresh snapshot capacity is full.
+Recovery compares cached pages to their original canonical facts and physically
+resolves each initial source before tail repair; it never refreshes or replays a
+read. Fixed failures include `usage_snapshot`, `usage_cursor`, `usage_bounds`,
+and `usage_limit`.
 
-Page construction copies at most four bounded records from Session's validated
-ledger; it does no filesystem scan or provider work in the GenServer. Existing
-owned action tasks deliver the prepared result and Session checks it against the
-expected page before committing. Pages are bounded to 12 KiB within the SDK's
-16 KiB object limit; overflow refuses rather than truncating. At most 10,000
-initial successful snapshots are retained per durable session. Exhaustion denies
-fresh snapshots while existing admitted ranges remain readable.
+## Read registered children without reading their conversations
 
-Recovery reuses `Usage` to reconstruct accounting once alongside the saved read
-intents. Cached pages are compared to the facts at their original read, including
-exact ordering/fields and legacy/unknown states. Physical validation resolves each
-initial read's source once to its actual intent before tail repair, diagnostics
-or handoff. A self-consistent changed page or unrelated source is refused; no
-balance is reread from a provider and no callback runs. An interrupted read stays
-historical incomplete/unknown. Failed requests retain fixed `usage_snapshot`,
-`usage_cursor`, `usage_bounds` or `usage_limit` codes. No write authority or budget
-reservation follows from a read acknowledgment.
+`Ipse.Extensions.ChildUsage` requires `host.usage.children` in addition to
+`host.usage` and `host.actions`:
 
-### Registered child accounting
-
-`Ipse.Extensions.ChildUsage` implements the separately trusted
-`host.usage.children` capability, requiring `host.usage` and `host.actions`.
-It grants accounting for actual registered direct children of the owned session;
-it accepts no directory, arbitrary session root, recursive selection, content
-view or provider operation. Child execution/inheritance remains a different grant.
-
-| Operation | Closed request beyond `op` | Result |
+| Action | Additional fields | Returned scope |
 | --- | --- | --- |
-| `usage.children` | `cursor`, `limit` (1–4), nullable `snapshot` | `scope: "children"`, `coverage: "registered_children"`, snapshot, cursor/next and `children` |
-| `usage.child.read` | Same paging fields plus a 32-hex `child_id` | `scope: "child"`, `coverage: "canonical_requests"`, snapshot, cursor/next and `requests` |
+| `usage.children` | cursor, limit 1–4, nullable snapshot | `children`, registered direct children |
+| `usage.child.read` | same plus 32-hex `child_id` | `child`, canonical requests |
 
-Both envelopes use version 1. Discovery rows contain child ID, nullable recorded
-parent request/turn IDs, parent-side status/cleanup acknowledgment and
-`origin_recorded`. They omit tasks, results and raw provider call IDs. New
-delegation registration records the exact child-origin call ID, including the
-actual parallel suffix, before prompting the child. Older journals without that
-binding remain discoverable but child reads refuse; no origin is invented.
+Discovery rows retain child ID, recorded parent request/turn, status/cleanup, and
+origin availability. They omit tasks/results/raw call IDs. A version-2 discovery
+snapshot pins source, operation, identity, and child count. A version-3 child
+snapshot also pins child ID, request count, legacy flag, byte prefix, and SHA-256
+of accounting projections. The digest is not a private transcript hash.
 
-A version-2 discovery snapshot pins `source`, `operation_id`, `identity_sha256`
-and `child_count`. A version-3 child snapshot has those first three fields plus
-`child_id`, `request_count`, `legacy_unmetered`, `bytes` and `sha256`. Both bind
-the caller and parent intent's metadata source. `bytes` fixes a complete journal
-prefix; `sha256` fingerprints only its ordered canonical accounting projections,
-not private prompts, native payloads or the entire journal. It grants no new
-private-content hash. Later pages must match a previously committed snapshot.
+The host derives a protected child path, acquires its native lock, reads at most
+16 MiB within five seconds, and verifies exact parent/request/call origin. The
+reader rejects unsafe paths/files, incomplete/duplicate-key/oversized records,
+and unrelated admissions. Missing, busy, malformed, or unbound older children
+refuse; none becomes an empty successful balance. No child resume or recursive
+traversal occurs. Parent discovery/initial child snapshots each have a 10,000
+ceiling. Recovery checks frozen prefixes before parent tail repair; later child
+appends remain outside them.
 
-Child IO runs in a linked owned task with a five-second bound. The host derives
-the path under the canonical owner-only session root, refuses symlinked or
-other-writable child directories and non-private/non-regular journal/lock files,
-and acquires the existing native child lock. It reads at most 16 MiB, rejects
-incomplete/invalid/duplicate-key or oversized records, verifies the exact parent/
-request/call origin and restores `Usage` with the actual child ID. Every admitted
-request must retain that parent/request scope. Busy, missing, oversized, malformed
-or unrelated journals yield fixed failed outcomes, never an empty successful page.
-No tail repair, child resume, model request or recursive traversal occurs.
+`host.usage.scan` permits only these three reads in invocation steps 17–10,000.
+Other operations remain in the first 16 steps, including interleaved reads. A
+scan admits no new call after 120 seconds; five-second callbacks and the 64 MiB
+worker-output limit remain. The grant adds no child, content, model, or write
+permission.
 
-At most 10,000 registered children and 10,000 successful initial child/discovery
-snapshots are supported per parent. Discovery refuses explicitly beyond its
-index limit. Read/shape/timeout failures remain visible in receipts. Recovery
-reconstructs the parent index and snapshot registry, validates cached discovery,
-resolves each original intent physically and compares each successful child page
-against its frozen accounting prefix before parent tail repair, diagnostics or
-handoff. Later child appends remain outside the old prefix. Missing/changed/busy
-sources refuse recovery; cached results are never silently refreshed or replayed.
-This validates accounting provenance, not all child conversation semantics or a
-cryptographically signed audit log. Protect both parent and child journals.
+## Change and verify the reducer
 
-### Extended read allowance
+Children record originating parent session/request IDs. Extension kind `extension`
+uses the action operation ID as request ID and a fresh attempt, bound to the
+approved helper route. Assistant messages and checkpoints bind their actual
+requests. Recovery rejects orphan outcomes, reused attempts, bad order, conflicting
+scope, malformed versions/fields, and missing bindings. Exact repeated admissions,
+latest observations, and terminal records are idempotent.
 
-The separately negotiated `host.usage.scan` capability requires `host.usage` and
-`host.actions`. Only the three accounting-read operations may occupy steps 17 through 10,000 of an
-invocation. Other operations still require their individual capabilities and
-remain within the first 16 steps; interleaved reads consume those steps too.
-Invocation receipts and restore validate the same per-operation bound, including
-event-job receipts. A scan-enabled worker admits no further host call after
-120 seconds; an in-flight call and cleanup keep their existing finite deadlines.
-The five-second callback and 64 MiB worker-output traffic limits remain. This
-is a finite read allowance, not a new concurrent job, content/child grant or
-mutation authority. The optional summary extension follows these pages; an
-interrupted scan does not become a complete balance or restart on resume.
+A session admits at most 10,000 requests and retains at most 64 observations per
+request. Inspection shows only the latest 16 rows plus total/unknown counts; it
+must not imply those rows are full coverage. Legacy journals are explicitly
+`legacy_unmetered`. Idle resume dispatches nothing and invents no settlement.
 
-## Recovery and bounds
+```sh
+mix test test/usage_normalizer_test.exs test/usage_test.exs test/usage_session_test.exs
+mix test test/extensions_usage_read_test.exs test/extensions_child_usage_test.exs
+```
 
-The reducer rejects unsupported versions, unknown accounting fields, orphaned
-outcomes, conflicting IDs/revisions, out-of-order observations, mismatched session/
-provider/model/parent scope and invalid assistant/checkpoint bindings. Exact
-repeated admissions, latest observations and terminal records are idempotent.
-Deleting accounting required by a saved assistant/checkpoint refuses recovery.
-These checks are not a signature or tamper-proof audit log.
-
-Resume validates accounting before truncated-tail repair. Idle resume dispatches
-no providers and appends no synthetic settlements. The ledger permits 10,000
-unique requests per session, then admission stops with fresh-session guidance.
-Inspection reports total/unknown counts and only the latest 16 request records
-in journal admission order. Full records remain in the private journal. The old
-latest-successful `info.usage` map remains compatible; `info.accounting` contains
-the canonical facts.
-
-No dependency is added: Jason, the shared bounded plain-JSON adapter, OTP
-crypto/clock and existing owned Session tasks are reused. A small pure reducer
-implements Ipse-specific durable admission, revisions and no-replay recovery;
-a workflow/accounting framework would not replace those ownership semantics.
-
-Fixtures in `usage_normalizer_test.exs`, `usage_test.exs`, `usage_session_test.exs`,
-`compaction_session_test.exs`, `parallel_delegation_test.exs` and provider HTTP
-tests cover normalization, revisions/deduplication, final versus partial facts,
-crash outcomes, pre-repair refusal, rejected summaries, parent attribution and
-native integrity without paid accounts. P23 reports and [shared budgets](budgets.md)
-have separate contracts/fixtures. Accounted extension inference has its
-[own source/package fixtures](extension-model-calls.md#recovery-and-verification);
-deferred P28 audio usage remains open.
+The first command checks normalization, state transitions, and Session bindings.
+The second checks real worker paging, private exclusion, child-source validation,
+and cached recovery. For a new counter, specify its unit/subset relation first,
+then test missing, zero, contradictory, partial, and final measurements.

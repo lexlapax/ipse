@@ -138,7 +138,7 @@ exposes the same list. Facts distinguish requested policy from activation,
 hidden paths from host absence, private HOME/TMPDIR from the operator's home,
 and minimal shell environment from inherited host state. They contain no
 credential/environment dumps and do not grant extra roots. See
-[Linux descriptor support and visibility](../../../../developer/sandbox.md#observed-bash-and-dependency-visibility-limits).
+[Linux descriptor support and visibility](../../../2026-10-18-before-manual-rewrite/docs/developer/sandbox.md#observed-bash-and-dependency-visibility-limits).
 
 ## Trust and side effects
 
@@ -173,7 +173,7 @@ values and files remain accessible. A deliberately adversarial process can
 escape the process group. On macOS, the signed App Sandbox worker enforces file
 and network boundaries, while cleanup of detached descendants is best effort;
 they may survive cancellation or timeout with workspace access. See
-[native policy](../../../../developer/sandbox.md) and [actual checks](../../../../developer/testing.md#macos-native-backend-2026-10-15).
+[native policy](../../../../developer/sandbox.md) and [actual checks](../../../2026-10-18-before-manual-rewrite/docs/developer/testing.md#macos-native-backend-2026-10-15).
 
 ## Persistence and recovery
 
@@ -197,8 +197,8 @@ with missing fields encoded as null. It does not export arbitrary metadata or
 messages. Empty/missing stores and skipped invalid journals retain the existing
 listing behavior, and truncated tails are read without repair. This is a local
 read, not a configuration/provider request or journal mutation. See
-[operator listing usage](../../../../operator/usage.md#saved-session-listings) and
-[local verification](../../../../developer/testing.md#p18-macos-supervised-self-development-evidence).
+[operator listing usage](../../../2026-10-18-before-manual-rewrite/docs/operator/usage.md#saved-session-listings) and
+[local verification](../../../2026-10-18-before-manual-rewrite/docs/developer/testing.md#p18-macos-supervised-self-development-evidence).
 
 ## Boundaries and current limits
 
@@ -206,7 +206,7 @@ The line-oriented terminal client is not a full-screen TUI. Explicit opt-in
 serial local delegation is implemented with bounded child sessions and an
 explicit two-child parallel mode. Recursive and remote agents are not implemented.
 Network MCP supports explicitly configured Streamable HTTP endpoints; see the
-[transport contract](../../../../developer/mcp.md#streamable-http-boundary). Windows is unsupported.
+[transport contract](../../../2026-10-18-before-manual-rewrite/docs/developer/mcp.md#streamable-http-boundary). Windows is unsupported.
 Native Linux and macOS sandbox profiles are optional. macOS
 does not provide reliable cleanup for descendants that detach from the process
 group; its filesystem and network enforcement do not make those descendants
@@ -218,7 +218,7 @@ and keeps the original journal.
 ChatGPT subscription sign-in follows the documented open-source app flow.
 Browser sign-in, inference, coding tools, resume, and logout passed with one
 account on Arch; natural-expiry refresh and rotation also passed on 2026-10-15.
-See [testing.md](../../../../developer/testing.md#p0-closure-on-serenity-2026-10-15). A permission-off
+See [testing.md](../../../2026-10-18-before-manual-rewrite/docs/developer/testing.md#p0-closure-on-serenity-2026-10-15). A permission-off
 request returned the live usage-limit error. Exhausted allowance and broader
 account/model eligibility remain unverified; fixtures do not establish those
 live-service properties.
@@ -305,7 +305,7 @@ gather relevant implementation, current changes, and validation before operator
 steps, while preserving read-only scope when requested. It uses existing read,
 approved shell, and skill-resource tools. No automatic execution, additional
 roots, dependencies, or mandatory workflow framework is introduced. See
-[operator invocation](../../../../operator/usage.md#working-with-the-agent).
+[operator invocation](../../../2026-10-18-before-manual-rewrite/docs/operator/usage.md#working-with-the-agent).
 
 
 ## Extension guidance

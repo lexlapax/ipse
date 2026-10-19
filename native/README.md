@@ -114,7 +114,7 @@ and a 10-second deadline. Initial-child exit ends output draining within 500 ms
 even if a detached child retains a pipe.
 
 Actual native macOS enforcement tests passed on macOS 26.7.2 arm64. See
-[verification and limits](../docs/developer/testing.md#macos-native-backend-2026-10-15).
+[verification and limits](../docs/archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#macos-native-backend-2026-10-15).
 
 ## Optional native Linux workspace sandbox
 
@@ -155,7 +155,7 @@ close-all-descriptors waiters; user code runs as an ordinary child. They forward
 exit status and preserve the final command's spawn-error pipe until actual exec.
 PID 1 reaps orphaned children; default command signals remain ordinary. Existing
 supervisor cancellation kills the owned group and namespace. See
-[descriptor design and evidence](../docs/developer/sandbox.md#observed-bash-and-dependency-visibility-limits).
+[descriptor design and evidence](../docs/archive/2026-10-18-before-manual-rewrite/docs/developer/sandbox.md#observed-bash-and-dependency-visibility-limits).
 
 Landlock additionally confines file access
  and signal recipients to the new
@@ -243,8 +243,8 @@ private `HOME`/`TMPDIR` in native mode. Linux native stdio tests verify
 workspace writes, outside-workspace denial, network denial, and supervisor
 protection. The macOS stdio route uses the signed worker and exact entitlements;
 its four native stdio enforcement cases passed on macOS 14 arm64 CI. See
-[P7 evidence](../docs/developer/testing.md#p7-expanded-local-mcp-2026-10-15)
-and the subsequent [local cleanup investigation](../docs/developer/testing.md#macos-stdio-cleanup-load-2026-10-15).
+[P7 evidence](../docs/archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#p7-expanded-local-mcp-2026-10-15)
+and the subsequent [local cleanup investigation](../docs/archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#macos-stdio-cleanup-load-2026-10-15).
 Native launch or capability failures fail closed and do not retry in trusted
 mode. See [the sandbox policy](../docs/developer/sandbox.md) for the common
 profiles and their limits.

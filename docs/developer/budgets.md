@@ -1,178 +1,115 @@
-# Host-owned shared admission
+# Enforcing a shared request budget
 
-`Ipse.Budget` covers main, summary, registered local-child and
-[accounted extension model](extension-model-calls.md) provider requests.
-It supplies optional per-session-tree admission independently of diagnostic
-capture and report extensions. Embeddings, audio,
-MCP/tool charges and operator-wide quotas are not implemented by this increment.
-See [operator configuration and recovery](../operator/budgets.md) for procedures.
+A budget decides whether work may start and whether a completed response may be
+admitted. It must make that decision across a parent and registered local children
+without treating interrupted work as free. `Ipse.Budget` wraps the existing provider
+path; it is independent of optional diagnostics and cost reports.
 
-## Policy and ownership
+The implementation covers main, summary, local-child, and explicitly
+[accounted extension model](extension-model-calls.md) requests. It does not meter
+embeddings, audio, arbitrary MCP/tool charges, out-of-band executable calls, or
+operator-wide account usage. A new independent root session is a new quota.
 
-`Budget.Policy` reuses the existing JSONSchex adapter, usage normalizer, provider
-limit validator and fixed-point configured cost estimator. Its closed version-1
-policy validates integral limits/reservations and explicit money-basis/rate-card
-pairs. It adds no tokenizer, rate service, database or dependency. The custom
-reducer is necessary for Ipse's canonical request identity, uncertain liability
-and no-replay semantics; ordinary OTP/files/native locks own execution and storage.
+## Read the three layers
 
-Only operator config can select the policy. Session metadata pins it for embedded
-callers too, and the ordinary configuration fingerprint includes a configured
-policy. Absent policy keeps the previous fingerprint and request behavior.
-Strict resume comparison precedes tail repair. Root metadata uses a null root
-descriptor; children pin the host-derived root directory and 128-bit session ID,
-retain exact delegation origin and inherit the parent's policy. Profile selection
-preserves this authority and refuses unsupported effective output caps.
+Start with these files:
 
-The root Session owns a live ETS prefix checkpoint shared with trusted host
-request tasks and children through a private runtime reference. Its identity binds
-root and policy; its prefix length/hash is checked under the native ledger lock
-before each transaction. It detects live truncation/replacement across children.
-Owner death deletes it; orphaned request code cannot book more work. It is not
-serialized into configuration, metadata or extension views. This is host integrity,
-not cryptographic attestation against an operator who can alter files and code.
+| File | Responsibility |
+| --- | --- |
+| `lib/ipse/budget/policy.ex` | Closed operator policy, reservations, output-cap narrowing, configured money measurements |
+| `lib/ipse/budget/ledger.ex` | Pure validated transitions and per-request liability |
+| `lib/ipse/budget/store.ex` | Protected JSONL, native lock, prefix validation, append and fsync |
+| `lib/ipse/budget.ex` | Dispatch ordering, observation publication, settlement, resume source validation |
 
-## Dispatch and settlement
+Only operator configuration can choose the policy. Session metadata pins it,
+including embedded callers. Children inherit the policy and exact root/origin;
+profile selection cannot replace it. A root-owned ETS checkpoint is a private
+runtime reference shared with trusted request tasks. Its identity binds root,
+policy, and a validated prefix length/hash. Owner death removes this authority,
+so orphaned work cannot book another request. It is never serialized to workers.
 
-Session records canonical `request_admitted` before starting the owned request
-task. `Budget.run/4` executes inside that task, keeping slow lock/file IO outside
-the active GenServer callback. With a policy, the task:
+## Work through one reservation
 
-1. Narrows/validates supported provider output caps, takes the shared native lock,
-   validates the current prefix and ledger, and durably reserves all configured
-   dimensions or records a refusal. Refusal never reaches the provider path.
-2. Durably records `dispatch_intent` before invoking the existing provider path.
-   The provider task's credential lookup/inference follows admission; ordinary
-   CLI auth preflight is separate and OAuth traffic is not a model quota. Each attempt is unique;
-   retries and summaries need their own canonical request and reservation.
-3. Persists and fsyncs normalized usage peaks before forwarding observations to
-   Session's canonical accounting. Duplicate observations are suppressed. A
-   committed overdraw still forwards its counters before stopping the provider
-   path. An unsuccessful write forwards no observation; its counters remain
-   unavailable and the request retains unknown liability, never a zero balance.
-   Original provider continuation/admission rules remain applicable.
-4. Fsyncs settlement before returning the result to Session. Successful known
-   dimensions release unused booking to at least their observed peak. Every other
-   dimension retains at least its booking/peak. Final-only overdraw emits actual
-   usage before refusing assistant/tool admission. Unconfirmed settlement returns
-   an explicit error without publishing uncovered final-only counters, retrying
-   or refunding. Previously committed observations remain available.
+Session first syncs canonical `request_admitted`, then starts its owned request
+task. `Budget.run/4` performs slow storage work there, outside the GenServer:
 
-The settlement decision applies to the entire shared tree. Another request's
-overdraw can therefore refuse an already-completed response whose own usage is
-within its reservation. The ledger retains that provider completion and measured
-usage, while the invoking Session reports failed admission; those are different
-boundaries. Refused assistant/native response content is not durably quarantined,
-although visible text already emitted cannot be retracted. Keep this fail-closed
-policy rather than admitting effects merely because inference was paid for.
-Any future private quarantine/export must preserve that distinction and approval
-boundary across main, summary and extension-model calls. A controlled interleaved
-two-request fixture verifies both refusal and retained ledger usage; it is not a
-live-provider or full parallel-child scheduling experiment.
+1. Under the native ledger lock, validate root/policy/prefix and reserve every
+   configured dimension, or durably record refusal.
+2. Sync `dispatch_intent` before entering provider setup or inference.
+3. Sync normalized cumulative usage peaks before forwarding them to Session.
+4. Sync settlement before returning a result that Session can admit.
 
-Request-count bookings are never refunded, including a reserved request whose
-provider setup fails. Different billing bases never offset one another. Only
-configured dimensions are limited; input/money reservations cannot guarantee
-actual in-flight liability. Output reservations narrow public provider fields
-where supported. ChatGPT subscription output quotas refuse rather than inventing
-support. Returned amount overflow is internally greater than the safe numeric
-ceiling and appears as null/overflow plus overdraw in inspection.
+Request-count bookings are never refunded, even if setup fails. A completed,
+known dimension can release unused booking down to at least its observed peak.
+Failure, cancellation, missing counters, or uncertain settlement retain at least
+the reservation/peak. API estimates, subscription API-equivalent estimates, and
+local estimates never offset one another.
 
-## Ledger and recovery
+Read the "full known usage releases unused bookings" fixture in
+`test/budget_test.exs`. Follow its second failed request into `Ledger.liability/2`.
+Then read "usage reaches the canonical consumer only after the ledger covers it".
+The ordering prevents the journal from advertising measurements unsupported by
+durable liability. If an observation write fails, its measurement is unavailable;
+it must not become a zero balance.
 
-`Budget.Store` uses owner-only JSONL and the existing Rust advisory lock. The
-stable lock inode is retained. Each transaction runs in a private filesystem
-completion owner that owns the ledger lock until the transaction returns. Killing
-the caller does not kill that owner or release the lock during pending IO. A
-Session cleanup deadline may expire while this admitted critical section finishes;
-its result remains unknown to the interrupted caller and is never replayed. Every mutation locks, verifies the protected file
-and live prefix, applies the pure transition, appends and fsyncs before releasing.
-The root-owned ETS checkpoint also caches validated reducer state at that exact
-prefix. Subsequent live transactions decode/fold only a new suffix; valid external
-tail records still undergo all transition checks. Cache identity never replaces
-root/policy or prefix validation, and state is pinned only after a successful
-write/sync or fully validated read. Fresh resume and independent inspection still
-decode the full ledger. Every transaction still reads and hashes the bounded
-prefix to detect same-size rewrites and rollback: this is not constant-time IO.
-The header binds exact root
-identity, policy and digest. Closed records are `reserved`, `refused`,
-`dispatch_intent`, `observed` and `settled`; unsupported versions/fields/order,
-duplicate attempts and foreign scope refuse. `Budget.Ledger` caches aggregate
-liability while folding to avoid repeatedly scanning all previous requests.
+Final-only overdraw records covered actual counters and refuses assistant/tool
+admission. Another concurrent request's overdraw can also refuse this request's
+already-completed response. The ledger retains provider completion and usage;
+Session success is a separate decision. Visible text already sent cannot be
+retracted, and refused response content has no durable quarantine/export contract.
 
-Bounds are 32 MiB per ledger, 64 KiB per JSON line, 40,000 reserved and 40,000
-refused requests, and 64 distinct observations per request. Strict decoding rejects
-duplicate JSON keys and incomplete final lines. Decode has a five-second bound;
-lock acquisition has a one-second retry window plus the native helper's existing
-startup bound. Limits/failures refuse safely, without provider fallback or repair.
-Files must be regular, single-link and owner-only; directories must be canonical
-and owner-only. Existing missing lock files are not recreated on resume.
+## Understand storage and recovery
 
-Resume creates a fresh checkpoint and cross-validates the saved budget against
-canonical own-session accounting and every registered child's protected, locked,
-origin-validated accounting source. It compares each request's liability, not the
-whole tree total, and checks every historical observation, including peaks above
-later/final counters. A refusal cannot conceal canonical usage evidence. It
-refuses unregistered entries, unavailable sources or an under-accounted ledger.
-The internal child read returns only validated accounting events for this check,
-without changing extension transcript grants or the public accounting projection.
-This reuses the existing child reader's 16 MiB/10,000-request
-bounds. Validation precedes journal tail repair. Idle resume leaves both ledgers
-unchanged and never starts a provider.
+Closed records are `reserved`, `refused`, `dispatch_intent`, `observed`, and
+`settled`. The header binds exact root, policy, and digest. Unsupported fields,
+versions, order, duplicate attempts, foreign scope, duplicate JSON keys, and
+incomplete final lines refuse.
 
-Observation durability precedes publication, so loss of the request worker at
-the publication boundary leaves a conservative ledger ahead of the journal,
-rather than making honest canonical accounting exceed its backing liability.
-A temporary observation/settlement lock refusal stops the request; after the
-lock is released, an otherwise valid idle resume remains possible without replay.
-Measurements whose writes failed are unavailable in canonical accounting. Fixed
-reservations still cannot bound actual unmetered usage; this ordering is not a
-guaranteed invoice ceiling. Do not infer that an unknown reservation is an exact
-measurement or relax source validation to recover previously inconsistent files.
+| Resource | Ceiling |
+| --- | --- |
+| Ledger / line | 32 MiB / 64 KiB |
+| Reserved requests / refused requests | 40,000 each |
+| Observations per request | 64 |
+| Decode deadline | 5 seconds |
+| Lock retry window | 1 second, plus native-helper startup bound |
 
-An interrupted reservation/dispatch retains unknown liability. A crash between
-canonical intent and the durable decision leaves a source mismatch and refuses
-resume; there is no automated reconciliation/repair command. Likewise missing or
-corrupt state is not treated as a new quota. A fresh independent root session
-is deliberately a new quota, not a migration or clearance of old liability.
+Directories must be canonical and owner-only. Files must be regular, single-link,
+and owner-only. Existing missing lock files are not recreated on resume. Lock
+files retain their inode; releasing the OS lock ends ownership.
 
-A torn tail remains refused. The tested continuation route exports a bounded
-reviewed handoff without activating budget state, then imports into a fresh idle
-session. Both original ledger and journal remain byte-identical, including a torn
-journal suffix. Old reservations/observations are neither released nor copied
-into the new quota; this route cannot claim repair of the old tree.
+Each transaction runs in a filesystem completion owner that retains the lock
+until IO returns, even after caller death. Session cleanup can time out while that
+critical section completes. Its interrupted caller keeps an unknown result and
+never retries automatically. The checkpoint caches reducer state at a validated
+prefix, but each transaction still reads/hashes the bounded prefix to catch
+rollback and same-size replacement. Fresh resume and inspection decode the full
+ledger.
 
-Future explicit repair would need all affected ledger/session/tree locks, retained
-original bytes, validation against canonical admissions/observations and registered
-children, and conservative retention of known reservations/peaks. Dropping any
-unterminated line, including valid JSON lacking its newline, without that
-cross-check is not a recovery contract.
+Resume cross-validates each request's liability against own canonical accounting
+and every registered child's protected, locked, exact-origin accounting source.
+It checks historical peaks, not just the latest lower counters. Missing,
+unregistered, unavailable, or under-accounted sources refuse before journal tail
+repair. Child accounting uses its separate 16 MiB/10,000-request read bounds.
+An idle resume starts no provider and changes no ledger.
 
-`ipse budget --resume` is read-only protected-ledger inspection, using the saved
-policy without acquiring provider authority. It does not establish full source
-coverage; source cross-validation occurs during actual resume. Budget counts
-exclude durable refusals while canonical request reports retain those attempted
-requests. Optional reports do not mutate this ledger or enforce admission.
+A crash between canonical admission and the durable budget decision can leave a
+source mismatch. A torn ledger also refuses. There is no automatic repair or
+refund. Bounded reviewed handoff into a fresh idle session preserves original
+bytes and leaves old liability in the old tree. `ipse budget --resume` inspects
+protected saved state; it does not establish the full source coverage of resume.
 
-## Verification
+## Extend the policy safely
 
-Fixtures exercise atomic competing processes, actual parallel children, profile
-authority, output-cap refusal, known release, failed/unknown holds, observed and
-final-only overdraw, money basis separation/overflow, cancellation/owner death,
-live and resumed rollback, historical parent/child peaks, unsafe/missing storage,
-real observation-lock refusal followed by inert resume, worker loss between
-ledger commit and publication, and pre-repair source validation.
-The same `priv/budget-demo.exs` runs in source tests and extracted-package checks:
-one parent and two successful child provider entries share the quota, the parent's
-follow-up call refuses, default-off creates no ledger, and idle resume changes no
-journal/ledger bytes. A separate last-slot race covers fail-fast sibling
-cancellation while preserving booked liability, rather than assuming every
-reservation reaches the provider.
-The separate [model-call artifact](../../examples/model-calls/README.md) exercises
-the same admission boundary through an independent worker and actual loopback
-provider in source and the extracted runtime. Model-job fixtures hold two real
-child HTTP requests open together and validate registered-child source facts;
-model cancellation/owner loss retain liability without replay.
-All providers/rates/credentials in these checks are synthetic. See
-[actual evidence](testing.md#current-evidence-and-next-checks) for commands and
-results; fixtures do not establish paid inference enforcement or invoice accuracy.
+Add a pure transition fixture before changing storage. For a new dimension,
+specify reservation units, known/unknown measurement, overflow, and release rules.
+Then exercise cancellation between reservation, dispatch, observation, and
+settlement. Input/money reservations cannot guarantee actual in-flight charges;
+unsupported subscription output quotas refuse rather than simulate enforcement.
+
+```sh
+mix test test/budget_test.exs
+```
+
+This suite uses synthetic providers and local child requests to check competing
+bookings, overdraw, failed writes, owner death, prefix rollback, source validation,
+and no-replay recovery. It proves these host protocols, not live invoice accuracy.

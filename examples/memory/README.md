@@ -34,5 +34,5 @@ The JSON result also reports p50/p95 end-to-end command latency, current state
 file bytes, observed VM-memory samples and the actual runtime/scheduler count.
 Those samples are not a peak-memory bound; timings are not portable promises.
 The tool returns at most five results, so nDCG@10 is not measured. Consult the
-[verification record](../../docs/developer/testing.md#current-evidence-and-next-checks)
+[verification record](../../docs/archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#current-evidence-and-next-checks)
 for source and installed results with their exact scope and remaining gates.

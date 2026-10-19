@@ -7,4 +7,4 @@ links were rebased; their then-current claims are unchanged.
 - [Original operator guide](operator-observability.md), from `docs/operator/observability.md`.
 - [Original developer guide](developer-observability.md), from `docs/developer/observability.md`.
 - Current replacements: [operator controls](../../operator/observability.md) and
-  [developer contract](../../developer/observability.md#local-ring-retention).
+  [developer contract](../2026-10-18-before-manual-rewrite/docs/developer/observability.md#local-ring-retention).

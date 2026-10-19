@@ -65,7 +65,7 @@ cannot set it, even to `off`. Mode precedence is built-in `off`, operator file,
 Current sources are supported **committed journal facts**, not every proposed
 group. Raw stream chunks, approval wait messages, hidden reasoning and arbitrary
 runtime state are excluded. See the
-[implemented vocabulary](../../developer/lifecycle-events.md#internal-journal-source-and-prompt-views).
+[implemented vocabulary](../2026-10-18-before-manual-rewrite/docs/developer/lifecycle-events.md#internal-journal-source-and-prompt-views).
 
 In chat, `/observability off` immediately revokes new samples and discards pending
 delivery without waiting for a callback. An in-flight callback may finish;

@@ -1,43 +1,47 @@
-# Inspect request usage and configured costs
+# Inspect usage and configured cost estimates
 
-## Recorded counters
+Use built-in accounting to inspect recorded requests. Add an optional report
+extension only when you want broader totals or configured cost estimates.
+Accounting is always recorded; tracing and reports are separate choices.
 
-Interactive `/diagnostics` and `/session` include mandatory `accounting`, whether
-or not an extension or tracing is enabled. Inspect a saved session without
-starting a model or repairing its journal:
+## Read the recorded usage
+
+In chat, enter `/session` or `/diagnostics`. For a saved session:
 
 ```sh
-./bin/ipse diagnose --resume SESSION_ID --state-dir /path/to/sessions
+ipse diagnose --resume SESSION_ID --state-dir /private/path/sessions
 ```
 
-Accounting shows total request count, unknown-outcome count, whether historical
-usage is unmetered, and the latest 16 request records. Records identify provider,
-requested/reported model, selected profile where configured, billing mode,
-main/summary/extension kind and nullable normalized counters. An approved extension
-call records its actual selected profile/provider, even if they differ from the
-main model; its text/native payload is excluded from accounting. Child records live in their
-own journals under `sessions/subagents/PARENT_SESSION_ID` and identify the parent
-request. The built-in parent display shows its own requests; the optional tree
-report below combines granted child accounting. See
-[subagents](subagents.md) for ownership and approvals.
+Use the original ID and state directory. Omit `--state-dir` for the default store.
+Diagnosis is local: it does not start inference, activate extensions, or repair
+the journal.
 
-## Enable the optional report
+Accounting shows request count, unknown-outcome count, historical unmetered status,
+and the latest 16 records. Each identifies provider, requested/reported model,
+configured profile, billing mode, main/summary/extension kind, and nullable
+normalized counters. Accounted extension inference records its actual selected
+profile/provider. Text and native payloads are excluded from accounting views.
 
-Choose the scope explicitly. All three shipped report extensions are disabled
-by default, with no automatic hook, rate lookup or model request:
+Parent displays cover parent requests. Children keep their own journals; a
+separately granted tree report can combine registered direct children. Unknown
+or absent counters remain unknown. Failed or cancelled work can still consume
+resources, and cache/reasoning counters are breakdowns of inclusive totals.
+Do not add them twice.
 
-| Artifact | Commands for instance `costs` | Scope |
-| --- | --- | --- |
-| `builtin:cost-report:1` | `ext__costs__report` | Individual own-session requests, at most four per page |
-| `builtin:cost-summary:1` | `ext__costs__summary` | Captured own-session totals |
-| `builtin:cost-tree:1` | `ext__costs__tree_summary`, `ext__costs__children`, `ext__costs__child_usage` | Parent plus actual registered direct children, under an additional explicit read grant |
+## Enable an explicit summary command
 
-Configure operator trust and a rate card. This own-session summary example
-deliberately has no price rows, so unmatched usage stays unpriced:
+Save this complete configuration as `/private/path/costs.json`. The empty card
+is deliberate: it exercises reporting without inventing provider prices.
 
 ```json
 {
   "version": 1,
+  "extension_trust": [{
+    "artifact": "builtin:cost-summary:1",
+    "capabilities": ["invoke.command", "host.actions", "host.usage", "host.usage.scan"],
+    "allow_project": false,
+    "allow_children": false
+  }],
   "extensions": [{
     "instance": "costs",
     "artifact": "builtin:cost-summary:1",
@@ -45,53 +49,109 @@ deliberately has no price rows, so unmatched usage stays unpriced:
     "options": {"rate_card": {
       "version": 1,
       "id": "my-rates",
-      "revision": "2026-10-17",
+      "revision": "reviewed-1",
       "currency": "USD",
       "source": "operator:my-reviewed-rates",
-      "published_on": "2026-10-17",
+      "published_on": "2026-10-18",
       "rows": []
     }},
     "order": 0,
     "lifetime": "persistent"
-  }],
-  "extension_trust": [{
-    "artifact": "builtin:cost-summary:1",
-    "capabilities": ["invoke.command", "host.actions", "host.usage", "host.usage.scan"],
-    "allow_project": false,
-    "allow_children": false
   }]
 }
 ```
 
-Use your reviewed rate rows for the exact provider, billing, requested/reported
-model, endpoint identity, admission date and input-token band. The
-[rate-card contract](../developer/costs.md#rate-identity-and-selection) defines
-fields, decimal rates, units and supported pricing dimensions. No default service
-supplies prices. A card revision changes the pinned extension configuration;
-start a fresh session after edits instead of silently repricing a resumed one.
-
-For a credential-free configuration check, launch with your actual file path:
+Inspect and try it without a real service:
 
 ```sh
-./bin/ipse chat --provider demo --config /path/to/operator.json --no-project-config
+ipse config --config /private/path/costs.json --no-project-config
+ipse chat --provider demo --config /private/path/costs.json --no-project-config --cwd /path/to/scratch
 ```
 
-In chat, request the summary explicitly:
+In chat:
 
 ```text
 /ext ext__costs__summary {}
 ```
 
-For individual request pages, select `builtin:cost-report:1` in both artifact
-fields and remove `host.usage.scan` from trust. Its command is
-`/ext ext__costs__report {}` or `/ext ext__costs__report {"limit":1}`. Separate
-instances may enable different reports with distinct names. For the tree report,
-select `builtin:cost-tree:1` in both artifact fields and add
-`host.usage.children` to trust, retaining the summary's other capabilities. Keep
-`allow_children: false` unless you also want this extension to execute inside
-children; parent-side child reads do not require that separate execution grant.
+Expect a captured own-session report, with no priced real usage. The command
+makes no model request. To inspect real requests, select your normal provider
+explicitly, perform a small task, then invoke the command. A report has no
+automatic hook, price lookup, or inference call.
 
-With that tree selection, use the actual 32-hex child ID returned by `children`:
+## Configure a rate card
+
+A card records your reviewed prices and provenance. This complete card uses
+synthetic prices for a model named `fixture`; it is a schema example, not current
+market pricing. Replace identities, dates, rates, and source with your reviewed
+values before using estimates for decisions:
+
+```json
+{
+  "version": 1,
+  "id": "synthetic-card",
+  "revision": "example-1",
+  "currency": "USD",
+  "source": "operator:synthetic-example",
+  "published_on": "2026-10-18",
+  "rows": [{
+    "id": "fixture-model",
+    "provider": "openai",
+    "billing_mode": "api",
+    "basis": "api_estimate",
+    "model": "fixture",
+    "endpoint_sha256": null,
+    "from": "2026-01-01",
+    "until": "2027-01-01",
+    "input_min": 0,
+    "input_max": null,
+    "input_mode": "flat",
+    "rates": {"input": "2", "output": "10"}
+  }]
+}
+```
+
+Put a reviewed card at `extensions[].options.rate_card` for the report. Up to 32
+nonoverlapping rows select exact provider, billing mode, model identity,
+endpoint digest, admission date, and input-token band. `until` is exclusive;
+null leaves the end open. Provider-reported model identity takes precedence over
+the requested alias when available. A default endpoint uses null identity;
+custom routes need the matching recorded endpoint hash.
+
+Rates are decimal strings. Token rates are per million tokens; supported
+search/fetch extras use per-thousand-request rates, and duration rates are per
+second. Flat input uses `input`; cache-split modes need their distinct component
+rates. Do not invent missing dimensions or apply an unrelated model's rate.
+See [the rate reference](../developer/costs.md) for cache variants and exact
+selection rules.
+
+Currency has three uppercase letters. `api_estimate`, `api_equivalent`, and
+`local_estimate` remain separate bases. Subscription equivalence is not API spend;
+a local request needs an explicit resource estimate. Prices are never fetched
+automatically. Editing the card changes pinned configuration; start fresh rather
+than silently repricing an existing session.
+
+## Choose page or tree reports
+
+All three bundled report artifacts are disabled unless explicitly selected.
+
+| Artifact | Command for instance `costs` | Coverage |
+| --- | --- | --- |
+| `builtin:cost-report:1` | `ext__costs__report` | At most four own-session requests per page |
+| `builtin:cost-summary:1` | `ext__costs__summary` | Captured own-session totals |
+| `builtin:cost-tree:1` | `ext__costs__tree_summary` | Parent plus registered direct children |
+
+To use page reports, change both artifact references in the complete configuration
+to `builtin:cost-report:1` and remove `host.usage.scan`. Invoke
+`/ext ext__costs__report {"limit":1}`. Pass the complete returned `snapshot` and
+`next` cursor for continuation. Null `next` ends that captured range. Omit the
+snapshot to capture a new range. Repeated/overlapping pages contain the same
+requests; do not add them twice.
+
+For a tree report, use `builtin:cost-tree:1` in both references and add
+`host.usage.children` to the summary grants. Keep `allow_children: false` unless
+you also intend the extension to execute inside children. Parent-side child reads
+are a different permission. Use:
 
 ```text
 /ext ext__costs__tree_summary {}
@@ -99,118 +159,49 @@ With that tree selection, use the actual 32-hex child ID returned by `children`:
 /ext ext__costs__child_usage {"child_id":"CHILD_ID_FROM_CHILDREN"}
 ```
 
-For real usage, select your normal provider/profile explicitly. No report command
-starts inference. Disable an instance for future sessions with `enabled: false`,
-or use `--no-extensions`. See [selection and executable trust](extensions.md).
+Replace the placeholder with the actual 32-hex child ID returned by discovery.
+Discovery/child pages retain their returned snapshot and cursor too.
 
-## Understand scope and totals
+## Read completeness and uncertainty
 
-The summary reads all canonical requests in its captured range, including those
-older than the latest-sixteen display. `coverage: "session"` excludes child
-journals. `enumeration_complete` says the captured requests were all read;
-`cost_estimate_complete` additionally requires priced final usage and no unmetered
-history or monetary overflow. A completed scan can therefore have unknown costs.
-The snapshot includes `legacy_unmetered`; it must remain visible when old work
-has no canonical records. Starting another summary captures later work anew.
+`coverage: "session"` excludes children. `enumeration_complete` means the captured
+requests were read; `cost_estimate_complete` also requires priced final usage,
+no unmetered history, and no monetary overflow. A complete scan can therefore
+have incomplete costs. `coverage: "page"` covers only that page.
 
-Groups separate providers, billing modes and estimate bases; API spend estimates
-are never added to subscription equivalents or local estimates. Counter `total`
-is null for missing, partial or overflowing usage; `known_subtotal` retains only
-known observations. Cache and reasoning counters are breakdowns of inclusive
-token totals. Do not add those fields to inclusive totals.
+Tree coverage uses separate cuts for parent, discovery, and children, rather than
+one atomic timestamp. Check `child_count`, `captured_child_count`, `gap_count`,
+and `gap_reasons`. Missing, locked, invalid, oversized, or legacy-unbound journals
+are gaps, never zero-cost children. Unknown child outcomes/cleanup also prevent
+a complete cost claim.
 
-The page command reads at most four canonical requests. Its `coverage: "page"`
-means its groups cover only those returned rows, with per-request rate attribution.
+Missing/partial/overflowing totals remain null. `known_subtotal` and
+`known_amount_nanos` cover only observed known values. Monetary results use
+`currency_scale: 9`: divide nanos by one billion for currency units. Keep providers,
+billing modes, and estimate bases separate. Reports include card revision/digest
+and provenance so you can inspect the assumptions.
 
-The returned `snapshot` pins the admitted request range to this session and
-extension instance. To continue, pass its complete object back with the returned
-`next` cursor; limit can be 1–4. Null `next` exhausts that captured range. Omitting
-the snapshot starts a new range including later work. Repeated or overlapping
-pages are the same requests: do not add them twice. The summary handles request
-identity itself. Discovery and child pages use the same explicit continuation
-pattern; pass the returned snapshot with `next` and retain the child ID for child
-pages.
+A `report_bounds` result can supply `retry_cursor`/`snapshot`; issue a new explicit
+command with a smaller page. `summary_bounds` supplies no complete total; use
+pages. `summary_incomplete` means the read failed. No result is silently truncated.
 
-The tree report uses `coverage: "session_tree"`, with separate captured cuts for
-the parent, discovery and each child. These cuts are not one globally atomic
-timestamp. `child_count`, `captured_child_count`, `gap_count` and `gap_reasons`
-show missing coverage. Locked, missing, invalid, oversized or legacy-unbound
-child journals remain gaps. `unknown_child_outcome_count` prevents a complete cost
-claim when parent-side child completion/cleanup is uncertain, even if all available
-request records were read. Legacy unmetered history also prevents completeness.
-Group amounts cover enumerated requests; a nonzero gap does not price missing
-children as zero. The child-manifest digest binds the captured cuts recorded in
-action receipts without returning an unbounded list in one result.
+## Recover and respect reporting limits
 
-Reports carry rate revision/digest and provenance. Monetary integers use
-`currency_scale: 9`: divide `amount_nanos` by one billion for configured currency
-units. Unknown totals stay null; `known_amount_nanos` is only the priced observed
-subtotal. Overflow is explicit. If a large configured report returns
-`report_bounds`, issue a new explicit command at its `retry_cursor`/`snapshot`
-with a smaller limit. A summary returning `summary_bounds` supplies no complete
-total; use page reports for inspection. `summary_incomplete` reports a failed
-read. Cancellation, deadline, worker failure or an exhausted action allowance can
-leave an unknown invocation; inspect its receipts before explicitly trying again.
-There is no silent truncation or automatic retry.
+Child reads require protected registered journals and take the child's lock.
+Let active ownership finish/cancel normally; never remove locks or alter files
+to force completeness. A captured child prefix is at most 16 MiB. Discovery
+supports 10000 children, tree accumulation 40000 unique attempts, and extended
+accounting scans 10000 reads within a two-minute admission deadline. Ordinary
+non-accounting actions still have the 16-step bound.
 
-Child reads require protected regular journals beneath this parent's recorded
-child directory and take the child's existing lock. A live separately opened child
-can therefore refuse a read or recovery check. Let its active owner finish or
-cancel that work normally, then inspect the original files; do not delete lock files or alter records to force a
-complete report. A captured child prefix is at most 16 MiB. Discovery supports
-10,000 children; the tree accumulator supports 40,000 unique request attempts.
-Its shared 10,000-read allowance may stop a larger scan with incomplete coverage.
+Idle resume displays committed report results without recalculation or worker
+startup. Changed/corrupt read receipts can refuse recovery. Preserve originals
+and use [Recovery](recovery.md). After 10000 requests, deliberately continue in
+a fresh session with reviewed context.
 
-The summary's `host.usage.scan` grant raises only accounting-read steps to 10,000
-per invocation. It admits no further host call after two minutes; an already
-admitted call and cleanup retain their own deadlines. Existing per-callback,
-traffic and object bounds still apply. Other operations remain limited to the
-first 16 steps, with their ordinary capabilities and approvals. This grant adds
-no content, child or mutation access.
-
-## Unknowns and recovery
-
-**Unknown is not zero.** Failed/cancelled work can consume tokens. Partial usage
-retains only recorded observations; owner crashes leave unknown outcomes.
-Successful requests can omit counters too. Sessions predating canonical
-accounting stay `legacy_unmetered`, including after new measured turns. Cached
-input and reasoning output are breakdowns, not extra totals to add. Anthropic
-input is derived only when all uncached/cache components are known. Invalid or
-inconsistent counters are labelled invalid.
-
-Subscription usage is not API spend. API usage is not an invoice; local usage
-does not mean hardware/electricity costs nothing. Subscription equivalents require
-an explicit subscription row; local estimates require explicit local rates.
-The report does not enforce monetary/token budgets or promise an invoice ceiling.
-Optional [shared admission budgets](budgets.md) reserve main, summary and child
-requests separately in the host. Displayed counters or estimates do not supply
-that authority; unknown liability remains explicit. A budget ledger must durably
-accept counters before canonical accounting publishes them. Failed persistence
-leaves unwritten counters unavailable and the reservation held, while preserving
-earlier committed observations. This can understate actual consumption; it is
-neither a zero measurement nor an invoice ceiling. See the budget guide's
-[recovery procedure and limits](budgets.md#inspect-stop-and-recover).
-
-An explicit [`max_output_tokens` setting](configuration.md) can cap individual
-OpenAI API, Anthropic and Ollama requests; children retain or narrow the parent's
-cap, and lower adapter limits remain. ChatGPT subscription rejects this setting
-because its public interface does not support it. A per-request output cap does
-not limit input or aggregate requests/costs. Truncated provider output stops
-incomplete without admitting tools, retaining available partial usage. Already
-streamed text remains visible; inspect the error before explicitly continuing.
-
-Turning optional tracing off does not remove usage facts. No extra remote request
-collects them. The report's own-session read grant excludes prompts,
-results, credentials, raw endpoint URLs and native reasoning. The separate child
-grant exposes the same canonical accounting plus child discovery, not transcripts.
-Its snapshot fingerprint covers only granted accounting. The underlying
-journal still contains the private conversation; protect it as described in
-[usage](usage.md).
-
-Idle resume preserves facts without reissuing requests. Invalid committed
-accounting, changed cached read receipts or unavailable captured child sources refuse recovery before truncated-tail
-repair. Idle resume displays cached results without recalculating costs or
-initializing a report worker. Keep the original file
-and inspect it rather than deleting records to make a balance look complete.
-After 10,000 requests, start a fresh session with reviewed context. See
-[recovery](recovery.md) and the [developer contract](../developer/usage-accounting.md).
+These reports do not enforce budgets or calculate invoices. Use the separate
+[admission budget](budgets.md) for covered reservations. Budget persistence
+failures can leave counters unavailable and liability held; neither means zero
+consumption. Turning tracing off removes no mandatory usage facts. Underlying
+journals still contain private conversation even when report grants expose only
+accounting and selected child discovery.

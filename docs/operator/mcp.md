@@ -1,245 +1,194 @@
-# MCP servers
+# Connect an MCP server
 
-Ipse can connect to explicitly configured stdio or Streamable HTTP MCP servers. MCP is
-disabled unless you pass `--mcp-config PATH`. Ipse does not discover config in
-the workspace or `~/.ipse`, and instructions or skills cannot enable a server.
-Discovery does not install executables.
+Use MCP to give Ipse selected tools, text resources, or prompts from a service you
+choose. MCP is disabled unless you pass `--mcp-config PATH`. Ipse does not discover
+MCP files from a project or install server executables. A skill cannot enable a
+server or authorize its calls.
 
-## Configure local stdio and start
+Choose a trusted service and review its executable, dependencies, credentials,
+remote effects, and exact capability names before starting. Local server startup
+and discovery can themselves have effects.
 
-Create a JSON file in a location you trust, for example `~/.ipse/mcp.json`.
-Select exact capabilities and use the absolute path to an installed executable:
+## Configure a local stdio server
+
+Install/review the server separately. Save this complete configuration as a
+private file, replacing the executable and allowlisted names with the server's
+actual values:
 
 ```json
 {
-  "servers": [
-    {
-      "id": "notes",
-      "command": "/opt/tools/notes-server",
-      "args": ["--stdio"],
-      "tools": ["write_note"],
-      "resources": ["notes://workspace/README"],
-      "prompts": ["summarize_note"],
-      "sandbox": "off",
-      "env": {},
-      "timeout_ms": 30000
-    }
-  ]
+  "servers": [{
+    "id": "notes",
+    "command": "/opt/tools/notes-server",
+    "args": ["--stdio"],
+    "tools": ["write_note"],
+    "resources": ["notes://workspace/README"],
+    "prompts": ["summarize_note"],
+    "sandbox": "off",
+    "env": {},
+    "timeout_ms": 30000
+  }]
 }
 ```
 
-Each server must allowlist at least one exact tool name, resource URI, or prompt
-name. The combined allowlist is at most 16 entries per server. Remove capability
-types you do not need. MCP resources use exact configured URIs; templates and
-subscriptions are not enabled. Prompts use exact names. Provider-facing names
-look like `mcp__notes__write_note` for tools; resources and prompts get stable
-digest-based IDs such as `mcp__notes__r_<digest>` and `mcp__notes__p_<digest>`.
+This is a template for your selected server, not an executable shipped at that
+path. Remove capability types you do not need. At least one exact tool name,
+resource URI, or prompt name is required; the combined allowlist is at most 16
+entries per server. Templates/subscriptions are not enabled by listing a resource.
+
+Launch a real conversation with your chosen model:
 
 ```sh
-./bin/ipse chat --mcp-config "$HOME/.ipse/mcp.json" --cwd /path/to/workspace
+ipse chat --provider chatgpt --mcp-config /private/path/mcp.json --cwd /path/to/workspace
 ```
 
-The startup display shows each server ID, executable, redacted arguments,
-enabled tool names, exact resource URIs, prompt names, environment variable
-names, timeout, sandbox selection, and configuration fingerprint. Resource
-metadata is validated and bound to the descriptor; descriptions and supported
-argument schemas are shown to the model as untrusted server data. Review the
-configured URIs/names and full approval details before allowing any call.
+The startup manifest shows the server ID, executable, redacted arguments,
+capability allowlists, environment variable names, timeout, sandbox selection,
+and fingerprint. Inspect it before submitting work. The example uses subscription
+requests after task submission, plus your explicitly selected local server.
 
-Every model-requested tool, resource read, or prompt retrieval requires approval.
-The approval displays the namespaced item, exact resource URI or prompt name,
-server fingerprint and requested sandbox policy, and validated arguments. Prompt
-messages retain their `user` or `assistant` role, but their text remains
-untrusted data and does not become system/developer instruction. Resources expose
-only bounded text; invalid or non-text resource/prompt results stop as unknown.
-Ordinary tool results report unsupported blocks as omitted. Neither feature grants
-permissions, changes billing, or enables additional tools.
+Ask for a specific permitted operation:
 
-## Server permissions and sandbox
+```text
+Read the configured notes guide resource. Summarize its instructions with source
+references. Do not write a note until I request one.
+```
 
-The default `"sandbox": "off"` launches a trusted server with your user
-permissions, outside the shell sandbox. Server startup and discovery may have
-effects. Use only server executables you trust. Ordinary process-group children
-are cleaned up; detached descendants can escape cleanup.
+Ipse exposes tool IDs such as `mcp__notes__write_note`. Resources/prompts use stable
+digest-based IDs. Discovery supplies descriptions/schemas as untrusted service
+data. Every model-requested call, resource read, and prompt retrieval requires
+approval. Check the namespaced item, exact URI/name, fingerprint, sandbox, and
+full validated arguments, then use its printed `allow CODE` or deny with `n`.
 
-To request the fixed OS sandbox for one MCP server, set `"sandbox": "native"`.
-This per-server choice is independent of the CLI `--sandbox` setting for shell
-commands. It fails closed if that profile is unavailable or setup fails; there
-is no fallback to trusted execution. Linux currently permits workspace and
-private temporary writes, selected system reads, and denies external network
-access. The macOS profile uses a signed worker and the declared App Sandbox
-entitlements; check the current [native verification record](../developer/testing.md)
-before relying on platform coverage. Native setup can fail after the Port is
-allocated, so successful startup text alone does not establish sandbox
-activation. See the [native policy and limits](../developer/sandbox.md).
-The macOS profile retains its ordinary process-group cleanup limit: detached
-children may survive with workspace access. An abrupt supervisor crash can also
-leave owner-only temporary environment data; normal worker execution removes it
-before starting the server.
+Prompt messages retain user/assistant roles as untrusted data; they do not become
+system instructions. Resources expose bounded text. Invalid/non-text
+resource/prompt results stop as unknown; ordinary tool results identify omitted
+unsupported blocks. Returned content grants no permissions.
 
-The helper and supervisor receive a fixed `PATH=/usr/bin:/bin` and `LANG=C.UTF-8`.
-The final server process receives those values plus only the environment entries
-selected in the config. Native mode also gives it a fresh private HOME/TMPDIR.
-An interpreted launcher must find its runtime through the selected `PATH`; add
-an approved runtime directory explicitly if it is outside `/usr/bin:/bin`.
-Provider credential environment names are refused. Do not place secrets in
-arguments; protect config files containing private values with mode `600`.
-Known selected values are redacted from visible output, but this is not a general
-secret detector or an ambient-permission boundary.
+## Set a local server's permissions
 
-## Recovery and limits
+`sandbox: "off"` runs a trusted server with your user permissions, separately
+from shell policy. CLI `--sandbox native` does not constrain that MCP process.
+For a server that fits the fixed profile, explicitly set its own
+`sandbox: "native"`. Unavailable or failed setup refuses without fallback.
 
-Ipse uses a short-lived connection for discovery and each approved call. It
-rediscovers and checks the reviewed schema/description before dispatch. A changed
-descriptor prevents dispatch. A connection loss, timeout, malformed response,
-or RPC error after a request may have been dispatched is recorded as `unknown`;
-the remaining batch stops and resume never retries it. Inspect the affected
-service or files before explicitly requesting another call. If process cleanup
-cannot be confirmed, the session stops with recovery guidance.
-If the helper cannot start at all, Ipse returns a launch error and keeps the
-Session usable. Correct the configured command, workspace or sandbox availability
-before another explicit attempt. A helper that started but failed to acknowledge
-shutdown remains an unconfirmed cleanup, even when its server reported exit zero.
+Linux native mode permits workspace/private-temp writes and selected system
+reads while denying external networking. macOS uses its signed worker and declared
+App Sandbox policy. Ordinary process groups are cleaned up, but detached
+descendants can survive and retain workspace access. See
+[the native contract](../developer/sandbox.md) for the boundary you are selecting.
 
-The helper also treats an output-read error or a pipe that remains open past
-its 500 ms post-exit drain deadline as a transport failure. Stdout alone is not
-successful completion. Ordinary group cleanup retries within that deadline;
-detached children can still retain pipes and workspace access. Inspect effects
-before requesting another call. Developers can use the credential-free
-[stdio load diagnostic](../developer/testing.md#stdio-cleanup-load-diagnostic)
-to distinguish these failures without connecting to a model or real MCP server.
-The cleanup fix passed local Mac load checks and Linux/macOS source/package CI;
-see the [verification record](../developer/testing.md#macos-stdio-cleanup-load-2026-10-15)
-for evidence and remaining limits. The subsequent
-[Serenity return check](../developer/testing.md#linux-return-after-macos-cleanup-2026-10-15)
-passed actual Linux enforcement, the concurrent cleanup regression, and fresh
-Linux package verification without a live provider or fresh sign-in.
+The helper/supervisor use `PATH=/usr/bin:/bin` and `LANG=C.UTF-8`. The server gets
+those defaults plus only configured environment entries. Native mode supplies a
+private HOME/TMPDIR. An interpreted launcher may need an explicit reviewed `PATH`
+entry for its runtime. Provider credential variable names are refused. Never put
+secrets in arguments. Protect private-valued configuration with mode `600`.
+Selected known values are redacted from output; this is not a general secret
+detector or an OS permission boundary. Abrupt supervisor failure can leave
+owner-only temporary environment data on macOS.
 
-Resume with the same `--mcp-config` file. Public configuration changes—including
-allowlists or sandbox mode—refuse resume. Private environment values are not
-stored in the fingerprint; each launch loads selected values from the supplied
-stdio config or the named HTTP credential environment variable.
-An in-flight approval retains its immutable configuration snapshot.
+## Configure a remote HTTP endpoint
 
-The supported protocol is MCP 2025-11-25 over stdio or bounded Streamable HTTP. Each server supports
-at most 16 combined allowlist entries. Pagination, protocol messages, schemas,
-arguments, and results are bounded. Tool and prompt schemas allow the canonical
-JSON Schema Draft 2020-12 dialect (or no `$schema`) and the explicitly checked
-identical-keyword Draft-07 subset, supported scalar/object/
-array types, a narrow keyword subset, and nullable type pairs. Defaults are
-validated as bounded data but never inserted into calls. References, arbitrary
-dialects, combinators, patterns, formats, and remote loading fail closed.
-
-OAuth negotiation, GET streams, resource templates/subscriptions, sampling, elicitation,
-MCP tasks, an Ipse MCP server, and automatic fetching of links or embedded
-resources are unavailable. Local serial/parallel subagents are a separate opt-in feature;
-they do not inherit MCP servers. See [local delegation](subagents.md) and the
-[developer contract](../developer/mcp.md).
-
-## Configure a network endpoint
-
-Use a trusted endpoint and its exact capability allowlist. For example:
+Save a separate configuration using the endpoint and exact tools you intend to
+allow. This example URL/name is a placeholder:
 
 ```json
 {
-  "servers": [
-    {
-      "id": "remote",
-      "transport": "http",
-      "url": "https://mcp.example.test/mcp",
-      "tools": ["lookup"],
-      "bearer_env": "IPSE_MCP_REMOTE_TOKEN",
-      "timeout_ms": 30000
-    }
-  ]
+  "servers": [{
+    "id": "remote",
+    "transport": "http",
+    "url": "https://mcp.example.test/mcp",
+    "tools": ["lookup"],
+    "bearer_env": "IPSE_MCP_REMOTE_TOKEN",
+    "timeout_ms": 30000
+  }]
 }
 ```
 
-Set `IPSE_MCP_REMOTE_TOKEN` privately in the launching environment to the
-server-specific bearer token, then pass this file with `--mcp-config`. Ipse does
-not automatically load `.env` files. Omit `bearer_env` for an unauthenticated
-server. Never put the token in the URL/config or reuse provider credentials.
-Missing/invalid credentials fail configuration; HTTP 401/403 fails the request.
-Ipse supports static bearer authentication, not OAuth discovery/login/refresh.
-A token change takes effect at restart and does not change public resume identity.
+Supply that server-specific bearer token privately in the launch environment.
+Omit `bearer_env` for an unauthenticated service. Missing/invalid selected tokens
+fail configuration; HTTP 401/403 fails the request. Token rotation takes effect
+after restart. Ipse does not load `.env`, perform OAuth discovery/login/refresh,
+or reuse model-provider credentials for MCP.
 
-HTTPS verifies certificates and hostnames against system trust. There is no
-insecure HTTPS mode. A separately selected literal loopback test endpoint can
-use `http://127.0.0.1:PORT/mcp` or `http://[::1]:PORT/mcp` with
-`"allow_insecure_loopback": true`; this exception does not accept `localhost` or
-other HTTP addresses. URLs cannot contain userinfo, queries, or fragments.
-Redirects are rejected and requests are never automatically retried.
+```sh
+ipse chat --provider chatgpt --mcp-config /private/path/remote-mcp.json --cwd /path/to/workspace
+```
 
-Network MCP honors `HTTPS_PROXY`/`HTTP_PROXY` (or lowercase variants) and `NO_PROXY`
-using the same policy as auth and inference. HTTP proxy URLs may include encoded
-credentials. Unsupported proxy schemes refuse; a failed selected proxy never
-falls back to a direct connection. Loopback endpoints bypass ambient proxies.
+Verify the manifest's endpoint, exact allowlists, timeout, selected credential
+name, and fingerprint. Review each call's full arguments. Local shell/server
+sandboxes cannot isolate a remote service or establish that its work stopped.
 
-The startup manifest shows the endpoint, allowlists, selected credential variable
-name, timeout, exception flag, and fingerprint; token/session values are private.
-Calls use the same full approval and intent journal as stdio. The transport is
-MCP 2025-11-25 Streamable HTTP POST with JSON or finite SSE responses. Servers
-requiring long-lived GET streams, OAuth negotiation, reconnection, subscriptions,
-or event replay are unsupported. Session DELETE on close is best effort.
+HTTPS checks system trust and hostnames. There is no insecure HTTPS mode.
+Literal loopback test URLs such as `http://127.0.0.1:PORT/mcp` or
+`http://[::1]:PORT/mcp` require `allow_insecure_loopback: true`. That exception
+does not accept `localhost` or other HTTP hosts. URLs cannot contain userinfo,
+queries, or fragments. Redirects are rejected, and calls never retry automatically.
 
-The local shell/server sandbox cannot isolate a remote server or stop its work.
-A disconnect after dispatch can leave a completed or continuing remote effect;
-Ipse records unknown, stops the batch, and never replays it on resume. Inspect
-remote state before requesting another effect. Configure only endpoints you trust
-with the selected arguments; MCP content cannot change endpoints or credentials.
-See the [transport contract](../developer/mcp.md#streamable-http-boundary) and
-[actual verification](../developer/testing.md#p10-streamable-http-mcp-2026-10-15).
+HTTP MCP honors `HTTPS_PROXY`/`HTTP_PROXY`, their lowercase variants, and
+`NO_PROXY` using the shared operator proxy policy. Supported proxies use HTTP
+URLs, including encoded credentials. Failed/unsupported selected proxies do not
+fall back to direct connections. Literal loopback endpoints bypass ambient
+proxies.
 
-## Credential-free source demo
+## Know what the transport supports
 
-After building the source checkout:
+The protocol is MCP 2025-11-25 over stdio or bounded Streamable HTTP POST.
+HTTP responses can be JSON or finite SSE; long-lived GET streams, reconnection,
+subscriptions, and event replay are unsupported. Session DELETE on close is best
+effort. Resource templates, OAuth negotiation, sampling, elicitation, MCP tasks,
+an Ipse MCP server, and automatic link/embedded-resource fetching are unavailable.
+Children do not inherit the parent's MCP servers.
+
+A configuration file is at most 64 KiB and contains up to four servers. Server
+IDs use lowercase letters/digits/underscore, beginning with a letter, up to 24
+characters. Tool/prompt names have at most 32 supported name characters.
+Timeouts range from 1 to 120000 ms. Stdio arguments allow 16 entries, each at most
+4096 bytes and 16384 bytes combined. Selected environment allows 16 values of at
+most 4096 bytes each. Exact resource URIs are at most 2048 bytes.
+
+Pagination, messages, schemas, arguments, and results are bounded. Supported
+schemas use the canonical JSON Schema Draft 2020-12 dialect or no `$schema`,
+plus the explicitly checked identical-keyword Draft-07 subset. Scalar/object/
+array types and nullable pairs are supported within a narrow keyword subset.
+References, arbitrary dialects, combinators, patterns, formats, and remote schema
+loading refuse. Defaults are validated data and are never inserted into a call.
+If your server needs a larger schema contract, it cannot be fixed by an approval.
+See [the MCP reference](../developer/mcp.md).
+
+## Recover after a failed call
+
+Ipse uses short-lived discovery/call connections. Before dispatch it rediscovers
+and checks the reviewed schema/description. A changed descriptor prevents the
+call; review the change before a new request.
+
+Connection loss, timeout, malformed response, or RPC error after dispatch can
+leave an unknown outcome. The remaining batch stops. Inspect affected files or
+the remote service before explicitly asking again. Resume never replays the
+call. A helper launch refusal before startup is a known error; correct the
+executable/workspace/profile before a new attempt.
+
+A helper that started must acknowledge cleanup. Exit zero or a terminal frame
+alone is insufficient. An output-read error or a pipe still open after the
+500 ms post-exit drain deadline is a transport failure. Detached children can
+retain pipes/workspace access. Unconfirmed cleanup stops the session; inspect
+running work before resuming.
+
+Resume with the same `--mcp-config` public fields, including allowlists and sandbox.
+Changed public configuration refuses resume. Private environment values are
+reloaded and excluded from the public fingerprint. In-flight approvals keep
+their immutable snapshot. Follow [Recovery](recovery.md) when uncertainty remains.
+
+## Try the bundled credential-free example
+
+From an already-built source checkout with its Elixir toolchain:
 
 ```sh
 mix run scripts/demo-mcp.exs
 ```
 
-A scripted model requests three calls using `priv/mcp-notes.exs`: one scratch
-write, the fixed guide resource, and a summary prompt. The host demo prints and
-approves only those exact proposals, then verifies file bytes and journaled
-results without contacting a model service. The demo requires the Elixir
-toolchain. Ipse does not bundle or install arbitrary server runtimes.
-
-P5 fixture, package, and live tool checks are recorded in the
-[verification record](../developer/testing.md#p5-local-mcp-2026-10-15). They do
-not establish P7 resource/prompt or cross-platform sandbox coverage; consult the
-current [P7 record](../developer/testing.md#p7-expanded-local-mcp-2026-10-15)
-for those results. See [usage](usage.md) and
-[troubleshooting](troubleshooting.md).
-
-## Optional independent memory-server check
-
-For a separately reviewed and built `mcp-memory` executable, developers can run:
-
-```sh
-mix run scripts/verify-independent-memory-mcp.exs /path/to/reviewed/mcp-memory
-```
-
-This optional source check uses a scripted model, a disposable local graph, and
-per-server native enforcement. It denies one write, then approves exact synthetic
-create/get/search and missing-record calls, checks journal outcomes, and resumes
-idle without replay. It creates no persistent memory service or normal-session
-configuration, and never downloads, builds, or installs a server. Supported
-Linux native enforcement is required for the recorded check; unavailable setup
-fails closed. The independently tested 2.0.0 release needed a documented upstream
-build patch. See [exact evidence and limits](../developer/testing.md#second-independent-local-mcp-server-2026-10-15)
-and [source/dependencies](../developer/dependencies.md#second-independent-mcp-investigation-memory)
-before reproducing it with an executable you have reviewed. This is separate
-from the credential-free bundled SDK demo and live provider evidence.
-
-To repeat the independent check over authenticated literal loopback HTTP instead
-of native stdio:
-
-```sh
-mix run scripts/verify-independent-memory-mcp.exs /path/to/reviewed/mcp-memory --http
-```
-
-This starts that reviewed executable as a temporary loopback daemon with a
-synthetic server-only token, runs the same approval/recovery checks, then stops
-its process group and removes disposable state. It does not claim remote
-isolation or install a service. The bundled runtime verifier additionally runs
-`priv/mcp-http-demo.exs` using only its extracted OTP runtime and local sockets.
+A scripted model requests a scratch write, a fixed guide resource, and a summary
+prompt through `priv/mcp-notes.exs`. The demo approves only its exact synthetic
+proposals and checks file bytes and journal outcomes without a model service.
+It does not install a general-purpose server. For real research retrieval, follow
+[Research](research.md) with your own explicitly chosen service.

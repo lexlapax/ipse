@@ -1,3 +1,7 @@
+> Historical reference only. Snapshot of `docs/developer/architecture-self-audit.md` at `10b9dd66d06ef28718b58530a7e5b01c7c50397a` on 2026-10-18.
+> Original body retained; relative links rebased for this archive.
+> Use the [current manual](../../../../developer/reviewing-changes.md).
+
 # Supervisor adversarial architecture audit
 
 This is the implementation author's internal review, not independent acceptance,

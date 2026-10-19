@@ -6,7 +6,7 @@ The requested internal adversarial audit and repairs finished before this brief
 was prepared. Source `7810925` passes local verification and the
 [hosted Linux/macOS pipeline](https://github.com/lexlapax/ipse/actions/runs/39091648455),
 including packages, both independent installed proofs and both Mac enforcement
-steps. The [internal report](../../developer/architecture-self-audit.md) records its
+steps. The [internal report](../2026-10-18-before-manual-rewrite/docs/developer/architecture-self-audit.md) records its
 inspection scope and limits; it is implementation-side evidence. It does not
 grant independent architectural acceptance.
 
@@ -18,9 +18,9 @@ Do not paste prior critiques or the implementation conversation.
 
 This assignment is **package R: repair interactions**, followed by a scoped
 evidence challenge. It replaces the repeated whole-repository assignment.
-The [coverage queue](../../developer/self-hosting-evaluation.md#independent-adversarial-architecture-validation)
+The [coverage queue](../2026-10-18-before-manual-rewrite/docs/developer/self-hosting-evaluation.md#independent-adversarial-architecture-validation)
 retains SDK/delivery, context/egress and OS/persistence work as packages S/C/O.
-The [register](../../developer/architecture-review-dispositions.md#independent-coverage-checkpoint)
+The [register](../2026-10-18-before-manual-rewrite/docs/developer/architecture-review-dispositions.md#independent-coverage-checkpoint)
 records the latest independent checkpoint. A package verdict advances that
 checkpoint; it cannot erase other omissions or certify the entire design.
 The used brief remains in the [dated archive](../2026-10-17-091b2bd-architecture-review-brief/index.md).

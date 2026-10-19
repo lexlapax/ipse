@@ -1,115 +1,115 @@
-# Local subagents
+# Delegate a bounded task to a local subagent
 
-Local delegation is disabled by default. Source, fixture, and live subscription
-checks passed on Arch; see [actual evidence](../developer/testing.md#p6-local-delegation-2026-10-15).
+Use a child for a small task whose result you can inspect, such as reviewing one
+module or comparing a proposed change with tests. Children share your workspace;
+they are separate conversations, not isolated checkouts. Delegation is disabled
+by default and makes additional requests to the selected model service.
 
-## Enable delegation
+## Enable a read-only child review
 
-```sh
-./bin/ipse chat --provider chatgpt --subagents --cwd /path/to/workspace
-```
-
-The startup notice confirms the option. The model can propose one `delegate`
-call with a task and selected context. Review both fields before approving:
-starting a child makes additional model requests using the selected profile/role,
-or the parent provider/model when no routine role is configured. See
-[model profiles](model-profiles.md) for explicit mixed-provider routing. There is no automatic billing or model
-switch. A child shares the workspace and saved workspace instructions, but gets
-its own conversation and journal instead of the parent's full transcript.
-
-The parent CLI displays each required child approval with the child session ID,
-tool name, and complete arguments. Approving delegation does not approve its
-later writes, edits, or shell commands. Ordinary file reads and skill loading
-retain their existing policy. Rejecting one proposal grants no permission to
-evade it. Children cannot delegate recursively or use configured MCP servers.
-
-Separately permitted child extensions can propose [accounted model calls](extensions.md#accounted-model-calls)
-through named profiles. Those calls need their own full approval, retain the child
-origin and share the tree quota. Pure model-egress approvals can overlap and do
-not release an enclosing tool's filesystem mutation lease; existing file/shell/
-opaque-extension conflict policy still applies.
-
-Headless delegation is denied without `--yes`. With explicit `--yes`, the session
-allowance also covers child mutations:
+Choose a provider you have configured, then launch:
 
 ```sh
-./bin/ipse run --provider chatgpt --subagents --yes --cwd /path/to/workspace \
-  'Delegate a small review task, inspect its evidence, then finish'
+ipse chat --provider chatgpt --subagents --cwd /path/to/project
 ```
 
-Use that option only when the selected workspace and tools are appropriate.
-Shell commands keep the parent's requested `--sandbox off|native` policy.
-Sharing a workspace is not isolation: a child may change files the parent is
-using. Existing native/trusted execution limits, including detached descendants,
-still apply. See [shell policy](usage.md#shell-policy).
+This example uses real ChatGPT subscription requests. For another provider,
+select it explicitly or use [model profiles](model-profiles.md).
+At the prompt, ask:
 
-## Bounds and recovery
+```text
+Inspect the current diff. Delegate a read-only review of the changed error
+handling with only the necessary context. Check the child's findings against
+the source and report actionable problems with file locations. Do not edit.
+```
 
-Children run serially by default, with at most two child tasks in one parent
-turn. Each child has at most six admitted main/helper model steps and two minutes of active work;
-waiting for your approval pauses that budget. Tasks
-and selected context are each limited to 8 KiB; final child results to 16 KiB.
-Oversized results stop with uncertainty instead of silently truncating evidence.
-Required child approval arguments must fit the full 32 KiB display bound.
+The model proposes `delegate` with a task and selected context. Review both before
+approving. The child receives those fields and the saved workspace-instruction
+snapshot, not your full transcript. It uses a selected configured profile/role,
+the configured routine role, or the inherited provider/model. No route silently
+changes billing.
 
-`/cancel` stops active parent/child work and clears queued input. A stopped,
-interrupted, timed-out, or oversized child result marks the parent delegation
-unknown and stops its remaining tool batch. Previously executed effects may
-remain; inspect the workspace and both journals before requesting another try.
-Stopping a child does not roll back its actions.
+After it finishes, inspect the evidence in the parent's result. The child's
+claims are untrusted output. A completion receipt establishes observed completion
+and cleanup status, not correctness of the review.
 
-Parent sessions resume using the usual `--resume ID` command. The saved
-delegation opt-in is restored and displayed; a conflicting `--subagents` or
-`--no-subagents` refuses resume. Start a new session to change that opt-in.
-Resume never restarts a child or replays its tools.
-Child journals are separate private files under
-`STATE_DIR/subagents/PARENT_SESSION_ID/CHILD_SESSION_ID.jsonl`, with parent/call
-provenance. They cannot be resumed as standalone root CLI sessions. The parent
-history retains the selected task, approvals, relationship, bounded untrusted
-result and a parent-side completion receipt. The receipt distinguishes an observed
-bounded result from an unknown outcome and records whether the child acknowledged
-cleanup, including acknowledgments from task-owned shell and extension helpers.
-A stopped or unresponsive helper leaves cleanup unconfirmed, even if its BEAM
-task exits. A process exit alone is insufficient; an abruptly killed parent may
-leave an incomplete start. None of these statuses certifies a child's claims.
-Selected lifecycle consumers can observe metadata through
-[event feeds](extensions.md#live-event-feeds); task/result text is not included.
-The optional [tree usage report](usage-accounting.md) can aggregate these registered
-children under a separate read grant. Unavailable journals or uncertain outcomes
-remain explicit gaps; delegation itself does not enable reporting or pricing.
+## Approve effects separately
 
-See [usage](usage.md), [the developer contract](../developer/delegation.md), and
-[the plan](../plan.md#p9-parallel-local-subagents). Remote agents, automatic
-retries, and child MCP remain unavailable.
+The CLI displays child proposals with the child session ID, tool, and complete
+arguments. Approving delegation does not approve later file writes, edits, shell
+commands, or permitted extension effects. Read each proposal and use its own
+printed `allow CODE`, or deny with `n`.
 
-## Parallel local children
+Children cannot use MCP, delegate recursively, or ask structured operator
+questions. Ask the child to return missing information to the parent. Explicitly
+allowed child extensions keep their separate grants, approvals, and tree budget.
+Shell commands use the parent's selected shell sandbox. Workspace sharing does
+not protect files against concurrent reads or unrelated processes.
+
+Headless work denies delegation/effects without `--yes`. This deliberately broad
+example permits them for the task:
 
 ```sh
-./bin/ipse chat --subagents --subagent-concurrency 2 --cwd /path/to/workspace
+ipse run --provider chatgpt --subagents --yes --cwd /path/to/scratch \
+  'Delegate a small review task, inspect its evidence, and finish'
 ```
 
-This exposes `delegate_parallel` for exactly two bounded task/context objects.
-The parent approves the complete group before either child starts. Children use
-configured profiles/roles or inherited provider/model, separate journals and individually routed mutation
-approvals; results return in task order. One group consumes the two-child turn
-budget, at most twelve child model calls in total. Serial delegation remains
-available. The concurrency setting is saved and must match on resume.
+Use interactive mode when you need to approve each effect.
 
-Only one child mutation executes at a time. Approved write/edit targets are
-claimed by that child for the group. Comparison folds Unicode case and canonical
-normalization and removes format controls, combining grapheme joiners and variation
-selectors. Another child's request for an equivalent target is denied, including
-on a case-sensitive filesystem where the spellings could name distinct files.
-Approval arguments and the actual path retain their original spelling. Shell
-claims the whole workspace and conflicts with every other child's mutation in
-either ordering. Parallel children cannot mutate hardlinked files.
-Reads/model work may overlap writes and observe changing data;
-this is not filesystem isolation or protection against unrelated processes or
-hostile path replacement. Conflict denials are journaled as `conflict_denied`
-by the parent and denied in the child's own journal.
+## Run two independent children
 
-Approvals queue behind the current decision/effect, pausing the child's active
-budget. `/cancel` and parent death stop both owned children. A failed/unknown
-child stops its sibling and leaves the group unknown without replay. Run
-`mix run scripts/demo-subagents.exs` for credential-free serial/parallel demos.
-See [P9 evidence](../developer/testing.md#p9-parallel-local-delegation-2026-10-15).
+```sh
+ipse chat --provider chatgpt --subagents --subagent-concurrency 2 --cwd /path/to/project
+```
+
+Then ask for two bounded tasks, for example a source review and a test review of
+the same small change. `delegate_parallel` contains exactly two task/context
+objects. You approve the full group before either starts. Results return in task
+order, while each child has a separate journal and its own approval route.
+
+Only one child mutation runs at a time. A file write/edit claims that target for
+the group. Equivalent Unicode/case spellings also conflict; hardlinked targets
+cannot be mutated in parallel mode. A shell command claims the whole workspace
+and conflicts with another child's mutation. Reads and model work can still
+observe changing files. These rules reduce conflicting effects; they do not give
+each child a filesystem snapshot.
+
+## Keep tasks within the limits
+
+A parent turn admits at most two children, serially by default. A parallel group
+uses that full allowance. Each child gets at most six admitted main/helper model
+calls and two minutes of active work; approval waiting pauses active time. Task
+and selected context are each at most 8 KiB. A final result is at most 16 KiB, and
+full child approval arguments must fit the 32 KiB display bound. Oversized results
+stop with uncertainty instead of silently losing evidence.
+
+Parent and child accounting remain separate in their journals. Optional
+[tree cost reports](usage-accounting.md) can combine registered children under an
+additional read grant. A configured [budget](budgets.md) shares reservations
+across the tree, including selected extension model requests.
+
+## Cancel, inspect, and resume
+
+`/cancel` stops parent and owned children and clears queued input. An interrupted,
+timed-out, failed/unknown, or oversized child makes the delegation unknown and
+stops remaining work; a failed parallel child also stops its sibling. Started
+effects can remain. Inspect the workspace before requesting another attempt.
+
+Resume the parent with its original configuration and delegation settings:
+
+```sh
+ipse diagnose --resume PARENT_SESSION_ID
+ipse chat --resume PARENT_SESSION_ID
+```
+
+Add the original `--state-dir` when customized. Resume restores the saved opt-in
+and concurrency and refuses conflicting choices. It never restarts children or
+replays their tools. Start a fresh session to change those choices.
+
+Child journals live under
+`STATE_DIR/subagents/PARENT_SESSION_ID/CHILD_SESSION_ID.jsonl`. They are private
+and cannot be resumed as standalone root CLI sessions. Parent receipts record
+whether a bounded result and cleanup were observed. An exited task or helper
+alone cannot confirm all cleanup; deliberately detached descendants retain the
+[documented shell limits](usage.md#shell-policy). If cleanup is unconfirmed,
+inspect running work and use the [recovery procedure](recovery.md).

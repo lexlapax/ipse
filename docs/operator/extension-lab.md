@@ -1,44 +1,43 @@
-# Run the independent extension lab
+# Try the optional extension lab
 
-The lab demonstrates separately built memory/workflow/retrieval artifacts using
-synthetic data and a synthetic model adapter. It needs no credentials, model
-service, database or network endpoint. Its deterministic label parser and literal
-corpus are SDK examples, not production memory or research engines.
+Use the lab to see independently built extensions remember synthetic labels,
+recall data through a bound lookup service, ask a question, and propose a file
+workflow. It uses synthetic data and a scripted model, with no credentials,
+network model, database, or paid service. Its literal corpus and deterministic
+parser are teaching examples, not production memory or retrieval engines.
 
-## Build against an existing runtime
+You need the source checkout, its supported Elixir/OTP toolchain, and an already
+built Ipse SDK. Run commands from the checkout root. For ordinary explicit notes,
+use [Memory](memory.md) instead of these lab artifacts.
 
-Use an already-built checkout and its supported Elixir/OTP toolchain:
+## Build inert artifacts
 
 ```sh
 IPSE_LAB_ARTIFACTS=$(mktemp -d)
 elixir examples/extension-lab/build.exs --sdk _build/dev/lib/ipse/ebin --output "$IPSE_LAB_ARTIFACTS"
+```
+
+Expect seven separately compiled local artifacts under the output directory.
+The builder compiles reviewed example source and copies the license. Building
+neither imports them nor enables them. Keep artifacts compatible with the
+runner's platform and OTP version; activation refuses incompatible code.
+
+Run the synthetic verification walkthrough:
+
+```sh
 mix run --no-compile examples/extension-lab/verify.exs "$IPSE_LAB_ARTIFACTS"
 ```
 
-The explicit compiler step creates seven inert local artifacts. Import does not
-compile code, fetch dependencies, grant trust or enable an instance. The proof
-creates isolated workspace/state, drives actual approvals/questions and cleans
-its scratch files. Its last deliberate service crash keeps cleanup unconfirmed;
-the report stops with `safe_to_continue: false`. Exit zero means the declared
-positive and negative assertions matched, not that every cleanup was confirmed.
+It creates isolated workspace/state, exercises real host approvals/questions,
+checks its assertions, and cleans scratch files. Its last deliberate service
+crash leaves cleanup unconfirmed, so the report ends with
+`safe_to_continue: false`. Exit zero means expected positive and negative cases
+matched. It does not mean every callback succeeded or every cleanup was confirmed.
 
-To test those same artifacts against an already-built archive, without rebuilding
-Ipse or using system development tools inside the release:
+## Import examples into an isolated home
 
-```sh
-elixir examples/extension-lab/verify-package.exs dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz "$IPSE_LAB_ARTIFACTS"
-```
-
-Use your actual archive filename. Build artifacts with a compatible SDK/toolchain
-for that archive's platform and OTP version; activation refuses incompatible
-artifacts. This procedure verifies the unchanged archive plus installed worker
-execution and explicit temporary selection. [Verification scope](../developer/extension-proof.md)
-distinguishes those results from production quality and supported-host evidence.
-
-## Inspect and select the examples manually
-
-Review the source/license and use a dedicated application home and scratch
-workspace. The generated operator configuration leaves every instance disabled:
+Use fresh directories so the exercise cannot mix with your ordinary notes or
+session store:
 
 ```sh
 IPSE_LAB_HOME=$(mktemp -d)
@@ -46,16 +45,31 @@ IPSE_LAB_WORKSPACE=$(mktemp -d)
 elixir examples/extension-lab/config.exs "$IPSE_LAB_ARTIFACTS" "$IPSE_LAB_ARTIFACTS/operator.json"
 IPSE_HOME="$IPSE_LAB_HOME" ./bin/ipse extension import "$IPSE_LAB_ARTIFACTS/memory"
 IPSE_HOME="$IPSE_LAB_HOME" ./bin/ipse extension import "$IPSE_LAB_ARTIFACTS/lookup"
-IPSE_HOME="$IPSE_LAB_HOME" ./bin/ipse chat --provider demo --config "$IPSE_LAB_ARTIFACTS/operator.json" --extension memory --extension lookup --no-project-config --cwd "$IPSE_LAB_WORKSPACE"
 ```
 
-Inspect each printed digest with `ipse extension inspect DIGEST`. Both caller and
-lookup target must be imported and selected; there is no implicit installation
-or fallback. The examples use private prompt views and can propose scoped writes
-and file actions under ordinary approval. The question's answer never approves a
-write. The demo provider is deterministic and uses no model service.
+Review the generated configuration and source. All instances start disabled.
+Inspect the actual digests printed by import:
 
-In chat, explicit commands include:
+```sh
+IPSE_HOME="$IPSE_LAB_HOME" ./bin/ipse extension inspect DIGEST
+```
+
+Repeat for each imported artifact with its real digest. Import/inspect are inert;
+they do not execute code or grant trust. The generated file grants the reviewed
+lab capabilities and service routes. Both caller and lookup target must be
+imported and selected; no missing dependency is installed automatically.
+
+## Remember, recall, and run a file workflow
+
+Launch only the memory and lookup instances:
+
+```sh
+IPSE_HOME="$IPSE_LAB_HOME" ./bin/ipse chat --provider demo \
+  --config "$IPSE_LAB_ARTIFACTS/operator.json" --no-project-config \
+  --extension memory --extension lookup --cwd "$IPSE_LAB_WORKSPACE"
+```
+
+In chat, use explicit commands:
 
 ```text
 /ext ext__memory__remember {"text":"entity: Ada; link: Ada -> OTP"}
@@ -63,19 +77,54 @@ In chat, explicit commands include:
 /ext ext__memory__export {}
 /ext ext__memory__stats {}
 /ext ext__memory__workflow {"path":"lab-note.txt"}
-/ext ext__memory__forget {"entity":"all"}
 ```
 
-The memory state is project-scoped to this workspace and pinned artifact/instance/
-configuration source. Forget-all retains a tombstone and blocks recreation in that
-namespace; it does not erase journals or old request context. The lab's conservative
-deletion behavior is described in the [developer contract](../developer/extension-proof.md#capture-recall-and-deletion).
-`stats` reads counts plus the host revision/deleted flag without returning labels
-or source identities. Missing/deleted records return zero counts; the command
-does not recreate state, call lookup or publish context.
+Review each state/file proposal and enter its own printed `allow CODE`. Answer
+any structured question using its printed `answer CODE VALUE`; that answer does
+not approve a later write. Expect recalled labels/source data, an export, and
+counts/revision metadata from `stats`. `stats` returns no label/source content,
+performs no lookup/context publication, and does not recreate missing state.
+After the approved workflow, inspect `lab-note.txt` in the scratch workspace.
 
-For deliberate persistent selection, change only the memory/lookup instances to
-`enabled: true` and `lifetime: "persistent"` in that dedicated operator file.
-Keep the metadata, usage, tool and text observers disabled unless explicitly testing them. Existing
-sessions pin their selection; use a fresh session for changed code/configuration.
-See [general trust and recovery procedures](extensions.md).
+The lab memory is project-scoped to this working directory and its pinned
+artifact/instance/configuration source. It is deliberately separate from the
+bundled explicit-note memory's schema and deletion policy.
+
+## Forget and inspect the outcome
+
+```text
+/ext ext__memory__forget {"entity":"all"}
+/ext ext__memory__stats {}
+/ext ext__memory__recall {"text":"Ada"}
+```
+
+After approved forgetting, expect a retained tombstone and no recreated labels.
+Forget-all blocks recreation in that namespace. It does not erase old journals,
+exports, or request context. Keep affected content out of a fresh session if
+that is your goal. Do not edit state or remove locks to undo suppression.
+
+For later persistent lab use, explicitly change only the desired instances to
+`enabled: true` and `lifetime: "persistent"` in this dedicated file. Leave metadata,
+usage, tool, and text observers disabled unless testing their additional views.
+Changed code/configuration requires a fresh session; existing history stays
+pinned. Follow [Extensions](extensions.md) for general recovery.
+
+## Exercise an extracted release
+
+To check an already-built compatible archive using these artifacts:
+
+```sh
+elixir examples/extension-lab/verify-package.exs /path/to/ipse-release.tar.gz "$IPSE_LAB_ARTIFACTS"
+```
+
+Use the actual archive path for your OS/architecture/runtime. This checks the
+unchanged archive's installed worker execution and temporary selection; it does
+not build a new Ipse release. The outer verifier uses your development toolchain,
+while the extracted runner uses its bundle. Review actual failures and cleanup
+status before accepting the result. [The developer lab guide](../developer/extension-proof.md)
+explains how the examples and their verification are structured.
+
+When finished, exit every lab session before removing the disposable directories.
+If cleanup is unconfirmed, inspect remaining processes first. Keep any report
+you need, and never treat the lab's deliberate failure as authorization to retry
+an uncertain effect automatically.

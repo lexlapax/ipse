@@ -1,137 +1,151 @@
-# Diagnostic capture
+# Capture diagnostic metadata
 
-Capture is **off by default**. It sends allowlisted lifecycle metadata to selected
-sink extensions, independently of journals, request usage, private subscribers and
-visible-text clients. `/diagnostics` remains available with capture off.
+Use diagnostic capture when investigating session behavior without exporting
+conversation text. Capture is off by default. `/diagnostics` works without it.
+Journals, usage accounting, private subscribers, and visible-text clients are
+separate mechanisms.
 
-## Select a local sink
+## Configure a private local trace
 
-Merge these fields into operator configuration, preserving existing entries.
-Choose an absolute directory whose parent exists. The sink creates its leaf with
-mode `0700`; existing leaves must be private directories, not symlink aliases.
-Parent aliases are resolved before admission.
+Choose an absolute leaf directory whose parent already exists. The sink creates
+the leaf with mode `0700`; an existing leaf must be private and cannot be a
+symlink. Save this complete example as an operator file, replacing the directory:
 
 ```json
 {
   "version": 1,
   "observability": {"mode": "off"},
-  "extension_trust": [
-    {"artifact": "builtin:local-trace:1", "capabilities": ["observe.local"],
-     "allow_project": false, "allow_children": false}
-  ],
-  "extensions": [
-    {"instance": "trace", "artifact": "builtin:local-trace:1", "enabled": false,
-     "options": {"directory": "/absolute/existing-parent/ipse-traces", "retained_leases": 4},
-     "order": 30, "lifetime": "persistent"}
-  ]
+  "extension_trust": [{
+    "artifact": "builtin:local-trace:1",
+    "capabilities": ["observe.local"],
+    "allow_project": false,
+    "allow_children": false
+  }],
+  "extensions": [{
+    "instance": "trace",
+    "artifact": "builtin:local-trace:1",
+    "enabled": false,
+    "options": {
+      "directory": "/absolute/existing-parent/ipse-traces",
+      "retained_leases": 4
+    },
+    "order": 30,
+    "lifetime": "persistent"
+  }]
 }
 ```
 
-Inspect policy locally, then try the credential-free demo:
+Inspect and exercise it with the credential-free scripted demo:
 
 ```sh
-./bin/ipse config --extension trace --observability local
-./bin/ipse demo --extension trace --observability local
+ipse config --config /private/path/trace.json --no-project-config --extension trace --observability local
+ipse demo --config /private/path/trace.json --no-project-config --extension trace --observability local
 ```
 
-Import/trust, instance selection and capture permission are separate. Mode `off`
-initializes no sink, even if selected. Mode `local` without a sink creates no log
-files. For persistent use, explicitly enable the instance and set policy to
-`local`. Tool approvals remain independent.
+The demo creates its own temporary workspace and performs the usual file/shell
+probe, without a model service. Expect sink metadata and private trace files in
+the configured directory. Import/trust, instance selection, and capture policy
+are separate. Mode `off` starts no sink even when selected; `local` without a sink
+creates no log. For persistent capture, explicitly enable the instance and change
+the file policy to `local` for a fresh session.
 
-## Policy and stop
+## Inspect and stop capture
 
-`observability` is a top-level **operator-only** object; project configuration
-cannot set it, even to `off`. Mode precedence is built-in `off`, operator file,
-`IPSE_OBSERVABILITY`, then `--observability`. Other controls come from the file:
+For a real task, launch with the same configuration and your chosen provider:
 
-| Setting | Default | Accepted values |
+```sh
+ipse chat --provider chatgpt --config /private/path/trace.json --no-project-config \
+  --extension trace --observability local --cwd /path/to/project
+```
+
+This uses real subscription requests after task submission. In chat:
+
+```text
+/diagnostics
+/observability off
+/diagnostics
+```
+
+The snapshot shows mode, limits, sink readiness/closure, counts for pending,
+admitted, delivered, dropped, filtered, and failed samples, and cleanup status.
+Stopping revokes new samples and discards pending delivery immediately. An
+in-flight callback may finish and earlier transfers cannot be retracted. Cleanup
+settles separately. `/cancel` cancels task work but does not disable capture.
+
+There is no in-session enable or promotion to export. Use reviewed configuration
+or flags in a new invocation. An enabled resume creates a fresh diagnostic lease
+and new resume metadata; it does not replay old samples. Mode flag/environment
+overrides do not change the tool fingerprint, while file edits retain ordinary
+source-identity compatibility checks.
+
+## Set metadata and retention limits
+
+`observability` is operator-only. Precedence for mode is default `off`, file,
+`IPSE_OBSERVABILITY`, then `--observability`. Projects cannot set it, even to off.
+Other controls come from the file:
+
+| Setting | Default | Allowed values |
 | --- | --- | --- |
 | `mode` | `off` | `off`, `local`, `export` |
-| `groups` | All known groups | Unique subset of `session`, `prompt`, `context`, `model`, `stream`, `tool`, `approval`, `question`, `child`, `compaction`, `extension`, `turn`, `error` |
-| `level` | `info` | `info` or `debug`; interim usage observations are debug metadata |
-| `sample_every` | 1 | 1..1000; errors bypass sampling/level filtering, but obey category and capacity limits |
-| `queue_events` | 256 | 1..256 queued/in-flight samples per sink |
-| `event_bytes` | 16384 | 1024..16384 bytes per encoded sample |
-| `file_bytes` | 10485760 | 16384..10485760 bytes per local file |
-| `retained_files` | 2 | 1 or 2 files per local diagnostic lease |
+| `groups` | All known groups | Unique subset of known group names |
+| `level` | `info` | `info`, `debug` |
+| `sample_every` | 1 | 1..1000 |
+| `queue_events` | 256 | 1..256 per sink |
+| `event_bytes` | 16384 | 1024..16384 encoded bytes |
+| `file_bytes` | 10485760 | 16384..10485760 bytes |
+| `retained_files` | 2 | 1 or 2 per diagnostic lease |
 
-Current sources are supported **committed journal facts**, not every proposed
-group. Session start/resume and approval/question wait metadata use group
-`session`; wait outcomes include their process-local elapsed milliseconds.
-Raw stream chunks, approval arguments/question text, hidden reasoning and arbitrary
-runtime state are excluded. See the
-[implemented vocabulary](../developer/lifecycle-events.md#internal-journal-source-and-prompt-views).
+Known groups are `session`, `prompt`, `context`, `model`, `stream`, `tool`,
+`approval`, `question`, `child`, `compaction`, `extension`, `turn`, and `error`.
+Current supported sources are committed journal facts, not every possible event
+in those groups. Errors bypass sampling/level filters but still obey categories
+and capacity. Debug can include interim usage metadata.
 
-In chat, `/observability off` immediately revokes new samples and discards pending
-delivery without waiting for a callback. An in-flight callback may finish;
-previous transfers cannot be retracted. Cleanup settles separately. `/diagnostics`
-shows current mode/limits, pending/admitted/delivered/dropped/filtered/error/failure
-counts and sink readiness/closure. The original configuration manifest stays fixed;
-the live snapshot reflects the stop. `/cancel` cancels work without disabling capture.
-The process's enrolled metadata sources remain recorded in its private journal
-until close or their bounded source limit; stopping a sink does not erase or
-disable independent journal recording. A reviewed extension can also request
-these sources through `lifecycle.record` with capture off.
+Capture excludes raw stream chunks, prompts/results, approval arguments,
+question text, hidden reasoning, and arbitrary runtime state. Wait metadata
+records observed process-local elapsed time, not downtime inferred after a crash.
+Enrolled source facts remain in the private journal after a sink stops.
 
-There is no in-session enable/export promotion or general hot reload. Use reviewed
-flags/configuration for a new invocation. Mode flags/environment overrides do not
-change the tool fingerprint; file edits still follow ordinary
-[resume compatibility](configuration.md). Enabled resume creates fresh diagnostic
-leases and a new `session.resumed` fact; it never replays old samples.
+## Locate files and handle ring failures
 
-## Files, failures and export
+The local sink writes mode-`0600` `slot-N.jsonl` files and optional `.jsonl.1`
+backups under `DIRECTORY/trace-ring-v1`. Its private `catalog.json` maps diagnostic
+resource IDs to slots. `retained_leases` ranges from 1 to 32, default 4. Active
+writers hold slots; later writers reuse inactive slots in ring order and erase
+those old logs. A full ring refuses new writers rather than evicting active ones.
 
-The bundled sink writes private `slot-N.jsonl` files and optional `.jsonl.1`
-backups inside `DIRECTORY/trace-ring-v1`, with mode `0600`. Its private
-`catalog.json` maps resource IDs from `/diagnostics` to slots. Lines wrap shared
-metadata events, preserving journal correlation without copying content hashes.
+Managed log bytes are bounded by
+`retained_leases × retained_files × file_bytes`. Defaults permit eight files and
+80 MiB, plus bounded control files. This is slot retention, not age-based expiry.
+Journals are never pruned. Earlier root-level resource logs are outside this ring
+quota; review/move them separately or use a fresh directory for a fresh bound.
+Unrelated files are not scanned or deleted.
 
-Sink option `retained_leases` is 1..32, default 4. Active writers hold their slots;
-new writers reuse inactive slots in ring order, erasing those old slot logs. A full
-ring refuses new writers instead of evicting active ones. Managed log data is
-bounded by `retained_leases × retained_files × file_bytes`: defaults permit eight
-files totaling at most **80 MiB**, plus small bounded control files. This is slot
-retention, not an age/TTL policy. Journals are independent and are never pruned.
+Writers sharing a directory must agree on file/rotation/lease limits. Changed
+limits, unsafe paths, corrupt catalogs, or an interrupted first catalog write
+can refuse later capture. Preserve the files, select a fresh private directory,
+and start a new session. Resume does not repair an incomplete ring. Do not remove
+a live writer's data to reclaim a slot.
 
-Writers sharing a directory must use identical file/rotation/lease limits.
-Mismatch, corrupt catalogs and unsafe managed paths refuse without rewriting other
-logs. Choose a fresh directory when changing limits. Earlier root-level
-`RESOURCE_ID.jsonl` files remain outside the managed ring and its quota. For a fresh
-aggregate bound, use a fresh directory or review and remove/move legacy files
-separately. Unrelated operator files are never scanned or deleted.
+At most four sinks coexist. Overload drops samples with visible counters rather
+than delaying inference or dropping mandatory recovery/usage facts. Invalid
+replies, expiry, crash, or timeout closes the sink. A failed callback can have
+confirmed cleanup when the native helper supplies its receipt. VM exit alone is
+insufficient. Orderly close allows up to 500 ms for idle capture to settle, then
+drops remaining samples; final logical-close delivery to that sink is not assured.
 
-An interruption during the first catalog write can leave an incomplete ring,
-including a missing `catalog.json`. Later capture refuses that state without
-repairing or deleting files. Review the old files, configure a fresh private
-directory and start a new session. Resume does not repair the ring.
+## Share or export deliberately
 
-At most four sinks coexist. Overload drops samples with visible counters; it never
-drops mandatory recovery/usage facts or waits for a sink before inference.
-Invalid replies, expiry, crashes and timeouts stop that sink with a fixed notice.
-Inspect cleanup status: VM exit alone does not confirm complete descendant cleanup,
-and explicit close reports uncertainty when appropriate. A failed callback can
-still have confirmed cleanup when its native helper supplied the receipt.
-An idle active capture
-gets up to 500 ms to settle during orderly shutdown; remaining samples are dropped.
-The CLI uses this close path and reports cleanup failures separately from turn success.
-Its final logical close fact is durable after sink cleanup, so delivery of that
-last fact to the closing sink is not guaranteed. An unclosed recorded epoch/wait
-remains incomplete after a crash; resume does not invent success or elapsed downtime.
+Review even metadata before sharing because it contains correlation identities
+and operational facts. A private journal is not a sanitized trace.
+Mode `export` additionally allows explicitly trusted `observe.export` artifacts
+selected in operator scope. It configures no collector by itself. No OTLP adapter
+is shipped. The reviewed adapter owns endpoints, authentication, and verified TLS.
+Trusted worker code retains ordinary OS permissions, so metadata contracts are
+not a network sandbox.
 
-Mode `export` additionally admits reviewed `observe.export` artifacts selected in
-operator scope. It configures no collector by itself. Endpoints, authentication
-and verified TLS belong to the explicitly configured adapter. No OTLP adapter is
-shipped or live remote exporter verified. Only metadata crosses this host path;
-reviewed worker code retains ordinary OS permissions, so these checks are not a
-network sandbox.
-
-For a reproducible extension issue, use a dedicated synthetic
-[conformance fixture](../developer/extension-conformance.md). Its optional
-`--developer-trace` flag samples only newly created synthetic Session dispatchers,
-with bounded time/event limits and no arguments or message contents. The report
-retains the first closing cause when a deadline and explicit stop race. Capture is
-independent of sink capture and does not attach to an existing account session.
-The [developer contract](../developer/observability.md#synthetic-dispatcher-tracing)
-owns tracing and source-debugging details. [Recovery](recovery.md) owns saved
-inspection and reviewed handoff export; a private journal is not a sanitized trace.
+For a reproducible extension bug, prefer a synthetic
+[conformance fixture](../developer/extension-conformance.md) with no account data.
+Developer dispatcher tracing is a separate bounded diagnostic, not attachment to
+an existing private session. Use [Recovery](recovery.md) for saved-session
+inspection and handoff.

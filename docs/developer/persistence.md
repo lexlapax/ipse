@@ -1,152 +1,100 @@
-# Session journal ownership and durability
+# Keeping session evidence durable
 
-Session owns conversation and effects. `Ipse.Journal` supplies JSONL creation,
-validated reads, inactive-file appends and locked tail repair;
-`Ipse.Journal.Writer` owns the active append descriptor. `Ipse.Journal.Reader` decodes bounded
-chunks, lines and record counts; operator-only `Journal.Limits` narrows finite
-host ceilings without disabling mandatory persistence. The Rust advisory lock
-continues to exclude a second session owner. `Ipse.Session.Lock` owns that Port
-independently of Session, so a Session kill or supervisor shutdown does not itself
-release it. Lock files retain their inode.
-The [architecture](architecture.md#persistence-and-recovery) owns the wider
-recovery model; [shared budgets](budgets.md) have a separate ledger contract.
+The journal is the recovery authority for conversation and admitted effects.
+`Ipse.Journal` creates/reads JSONL and handles inactive appends and allowed tail
+repair. `Ipse.Journal.Writer` owns an active append descriptor. `Journal.Reader`
+decodes bounded records; `Journal.Limits` enforces finite growth. The independent
+`Ipse.Session.Lock` guardian retains the Rust advisory lock until owned work has
+actually quiesced. Lock files remain in place to preserve inode identity.
 
-## Ownership and appends
+Start with `lib/ipse/journal/writer.ex`, `file_effect.ex`, and `session/lock.ex`.
+Follow a synced tool intent into execution before attempting a storage refactor.
+The timing of the receipt is part of correctness, not an implementation detail.
 
-Session acquires its lock, validates configuration and recovery sources, and
-repairs only an allowed final torn record before opening its writer. The writer
-validates the complete journal once for its lifetime. Initialization failure
-returns an error before linking; a successful writer links to its caller and
-monitors normal owner exit. Session also monitors writer loss, stops and shuts
-down dependent work. There is no writer restart or automatic append retry.
+## Follow an active append
 
-Only the owner may append or close. Each call encodes the new record and checks
-the open descriptor against its path and expected length. A private completion
-owner opens a separate append descriptor, checks the same identity/protection/length,
-writes and fsyncs, then closes it before replying. This adds constant work per
-record; it does not reread history.
-Session waits for that acknowledgment before admitting an effect or offering a
-lifecycle source. Input encoding and IO failures never become successful
-receipts. Optional source bounds can refuse a reference while still committing
-the mandatory journal event; required-source refusal writes no event.
+Session validates configuration and recovery sources, repairs only an allowed
+final torn record, and opens its writer under the session lock. Writer startup
+validates the complete journal once. Successful initialization links to the owner;
+Session monitors writer loss and stops dependent work if it disappears. There is
+no automatic writer restart or append retry.
 
-The writer tracks its byte offset and file identity instead of rereading and
-decoding previous records per append. Descriptor/path device, inode, owner,
-single-link, permissions and length checks reject replacement, foreign appends,
-truncation, links and permission changes. A detected write/file failure closes
-the writer; mandatory journaling failure stops the session. Status reports omit
-record contents and private paths.
+Only the owner may append or close. For every record the writer encodes the JSON,
+checks descriptor/path identity and expected length, and admits a private
+filesystem completion owner. That process opens a separate append descriptor,
+checks identity/protection/length again, writes, fsyncs, closes, and replies. Session
+waits for confirmation before dispatching effects or exposing a lifecycle source.
 
-Active writer calls have an explicit five-second acknowledgment deadline. A call exit
-returns `journal_write_unconfirmed` without including private call arguments;
-mandatory Session append paths exit deliberately as `journal_unavailable` on
-unconfirmed IO or invalid records. Confirmed quota exhaustion instead stops as
-`journal_limit_reached`, after its terminal receipt. A timeout proves neither
-absence nor completion of a write. Session
-termination shuts down owned work and kills its writer. The independent lock
-guardian waits for tracked writer, root/nested worker, scope, registered resource
-and delegated child-guard exits, plus admitted filesystem completion owners,
-before unlocking, including when Session death skips its termination callback.
-Dispatch barriers register workers before they
-can act; the writer is registered before its first append. A queued append cannot
-overlap a replacement writer while that functioning lock is retained. It never
-retries a timed-out record. A BEAM caller's `DOWN` does not prove its filesystem
-IO finished: both ordinary file servers and raw dirty IO can continue after it.
-`FileEffect` therefore owns admitted workspace writes, active appends, tail repair,
-state critical sections and budget transactions until their synchronous calls
-return. It is tracked before dispatch and is never killed by core cancellation.
-Scope cleanup may time out, but the lock guardian still waits for that owner.
-This does not promise bounded disk latency. A stuck tracked process can retain the
-lock indefinitely; do not remove its lock file or claim cleanup from a timeout.
-Unexpected loss of the lock helper or guardian stops Session without appending.
-The guard is an ownership mechanism, not protection from same-user interference
-or proof that an unknown OS/remote effect stopped. Resume trusts only validated durable records
-and keeps started effects without recorded results unknown.
+Checks include device/inode, owner, regular-file type, single link, permissions,
+and length. Replacement, foreign append, truncation, or protection changes close
+the writer. This avoids rereading history per append, but it is not a live prefix
+hash proof: a same-size in-place rewrite is not revalidated each time. Exclusive
+advisory ownership and full resume/source validation remain necessary.
 
-These checks are not a live cryptographic prefix proof: a same-size in-place
-rewrite is not revalidated on every append. The journal is exclusively owned
-while its session holds the advisory lock; other programs must not edit it.
-Same-user filesystem control is not an adversarial security boundary. Full
-resume/source validation remains mandatory. In particular, this journal strategy
-does not replace the budget ledger's stronger live prefix-hash check.
+Active acknowledgment has a five-second deadline. An unconfirmed call reports
+`journal_write_unconfirmed`, and mandatory Session paths stop as
+`journal_unavailable`. A timeout proves neither presence nor absence of the write.
+Never retry the same append merely because its caller timed out.
 
-Use the stateless `Journal.append*` functions only for inactive journals under
-the appropriate lock. They validate history and reuse the writer's admission
-and fsync primitives synchronously inside a filesystem completion owner. They do
-not create a temporary GenServer or return while an append/close timeout leaves
-queued work behind. Slow storage can keep the call pending until actual completion.
-An existing Session lock guardian or task scope tracks that completion owner;
-embedding callers remain responsible for their own lock lifetime. Repeatedly
-opening inactive journals still has linear validation cost.
-All active Session append paths, including feed receipts and operator-wait
-sources, use the owned writer. Its BEAM participates in extension host identity;
-the persisted JSONL and source-offset formats do not change.
+## Keep the lock longer than the caller
 
-## Recovery and growth
+A BEAM process can die while ordinary file-server or dirty IO continues.
+`Ipse.FileEffect` therefore owns admitted writes until synchronous IO returns and
+is tracked before dispatch. Cancellation does not kill that completion owner.
+The lock guardian waits for writer, root/nested workers, scopes, registered
+resources, child guards, and filesystem completion owners before unlocking,
+including after an untrappable Session death.
 
-Appends do constant work with respect to prior journal length. Fsync is still a
-synchronous durability barrier: Session waits for its writer, so slow storage can
-delay replies. No universal approval-latency guarantee follows from moving IO
-and repeated decoding out of Session. Caller deadlines and unknown-effect rules
-still apply.
+Read the blocked-write fixture in `test/journal_writer_test.exs`. Its FIFO delays
+real IO while Session dies. A replacement session must remain locked until the
+reader drains and completion returns. A monitor `DOWN` for the original caller
+cannot establish that fact. A stuck completion owner can retain the lock
+indefinitely; deleting the lock file would defeat ownership rather than repair it.
+Unexpected loss of the helper/guardian stops Session without another append.
 
-Each journal has finite host ceilings: 128 MiB total bytes, 100,000 events and
-16 MiB per encoded JSON record, excluding its newline. Operator configuration may
-lower each ceiling through top-level `journal`; project files cannot select it.
-These are per-file admission/work bounds, not a process-RAM, whole-directory disk
-or billing quota. Main and routed/inherited child Sessions use the operator policy.
-Policy resolution reuses the existing closed schema adapter. No runtime service
-or dependency is added.
+Stateless `Journal.append*` APIs are for inactive journals under the proper lock.
+They validate history and perform synchronous completion-owned writes; repeated
+inactive appends therefore have linear validation cost. Embedded callers remain
+responsible for their own lock lifetime.
 
-The writer reserves 512 bytes and one event for `journal_limit_reached`. Normal
-admission requires space for both the proposed record and that terminal receipt.
-On exhaustion it writes/fsyncs the receipt once, refuses the proposed record and
-stops Session before further dispatch. The receipt binds its enforced limits,
-reason, previous byte offset and event count, without retaining rejected content.
-No later record is valid in that sealed journal. A quota write with unconfirmed
-IO keeps ordinary journal-unavailable/unknown rules; a timeout does not certify
-that the terminal receipt committed. Already admitted effects can therefore
-remain unknown, as with any lost result append.
+## Understand sealing and recovery bounds
 
-Restore, repair and writer initialization decode incrementally with bounded
-record and event counts, checking file size before reading and bytes during reads.
-They do not allocate a whole encoded file or split it into every line first.
-Decoded history is still retained for recovery, within those configured bounds.
-Each reader scan is linear; complete Session startup repeats higher-level
-validation/projection and can have additional costs with historical questions.
-Sessions listing reads only a bounded header and does not certify the later tail.
-CLI resume also discovers only that host-bounded header to recover workspace and
-saved settings, then resolves operator policy before loading complete history.
-The header is not a successful resume or proof that the later file fits the
-operator's smaller bounds.
-A legacy file over the host ceiling is refused unchanged rather than truncated.
-`Journal.source_page` permits bounded inspection only for records within its
-separate 1 MiB record bound; it is not a universal legacy export. Larger records
-need developer-assisted bounded inspection and reviewed notes for a fresh session.
-An overlong torn tail is also refused, and repair never adds a missing newline
-beyond the byte limit.
+| Resource | Host ceiling |
+| --- | --- |
+| Journal bytes | 128 MiB |
+| Events | 100,000 |
+| Encoded JSON record, excluding newline | 16 MiB |
+| Reserved terminal receipt | 512 bytes and one event |
 
-Read-only saved diagnosis and handoff remain available for valid sealed journals,
-including pending questions and missing started-effect results. A typed terminal
-receipt is accepted independently by strict question/action reducers, while a
-forged count or a subsequent record refuses restoration. An attempted answer
-that cannot be journaled does not become an answered checkpoint. Sealed journals
-cannot reopen for work, even with a larger policy: use an explicit reviewed
-[fresh-session handoff](../operator/recovery.md), inspecting unknown effects and
-asking unanswered questions again. Existing extension/runtime identity pins still
-apply, including the reader and limits modules in the host digest.
+Operator-only `journal` configuration can lower ceilings. Children inherit that
+policy across profile routing. These are per-file admission/work bounds, not an
+aggregate disk, memory, retention, or billing quota.
 
-Context compaction does not shrink retained evidence. There is no automatic
-rotation, retention deletion, segmentation, redaction or secure erasure; these
-require separate contracts. An extension must not promise them by deleting only
-its own retrieval state.
+Normal admission reserves space for both the proposed record and a
+`journal_limit_reached` receipt. On exhaustion the writer syncs that receipt once,
+refuses the proposal, and stops before further dispatch. The receipt binds limits,
+reason, prior offset, and prior event count without rejected content. Nothing may
+follow it. Confirmed exhaustion is `journal_limit_reached`; unconfirmed quota IO
+still has the ordinary unknown-write behavior.
 
-Regression checks cover source offsets, optional versus mandatory records,
-owner-only calls, initial corruption, file changes, normal/abrupt owner exit,
-writer loss during inference, a real blocked FIFO write with Session death and
-lock refusal until the reader drains, budget-lock retention, controlled callback stalls beyond the acknowledgment
-deadline, owned-worker cleanup, unknown-effect resume without replay, retained
-memory and append CPU across 2/64 MiB
-histories. Timing probes separately measure the actual filesystem and Session
-approval path. See [verification evidence](testing.md#current-evidence-and-next-checks)
-for measured results and platform limits; no power-failure certification is made.
+Reader, restore, repair, and writer initialization decode incrementally with size,
+line, and event bounds. They retain decoded recovery history within those bounds;
+streamed reading is not a claim of constant RAM. Session listing and CLI resume
+first read only a bounded header, which does not certify the rest of the journal.
+Over-ceiling legacy files and overlong torn tails refuse unchanged. Source paging
+has a separate 1 MiB record ceiling and cannot export every valid large record.
+
+A valid sealed journal remains available for read-only diagnosis and reviewed
+handoff. It cannot reopen for work under a larger policy. Ask unanswered questions
+again in the fresh session and inspect unknown effects first. Compaction reduces
+model context, not retained evidence. Automatic rotation, deletion, redaction, and
+secure erasure are not implemented.
+
+```sh
+mix test test/ipse/journal_test.exs test/journal_writer_test.exs test/journal_limits_test.exs test/inactive_journal_test.exs
+```
+
+Use writer tests for ownership/IO races and limits tests for sealing and strict
+recovery. A meaningful storage change must preserve intent-before-effect,
+confirmation-before-success, lock retention after owner loss, and unknown outcomes
+without replay. See [budget storage](budgets.md) for its stronger live-prefix check.

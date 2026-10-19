@@ -1,107 +1,102 @@
-# Configuration contract
+# Resolving and pinning configuration
 
-`Ipse.Config.resolve/4` loads bounded version-1 JSON using existing Jason and
-the existing `Ipse.MCP.Schema`/JSONSchex adapter. JSON is suitable for a small,
-data-only closed schema; no YAML parser or executable configuration is needed.
-The loader never reads auth, journals, arbitrary environment dumps or credential
-values. Environment inputs are a fixed allowlist. Errors omit file contents.
+Configuration is the first trust boundary a contributor encounters. A repository
+may suggest a model or a smaller limit, but it cannot appoint its own credential
+endpoint, authorize executable extensions, or replace operator policy. Follow a
+configuration value through `Ipse.Config.resolve/4` before changing its behavior.
+The [operator guide](../operator/configuration.md) explains how users supply it.
 
-Discovery canonicalizes the workspace, stops at the nearest ancestor `.git`
-directory/file, and enumerates root-to-cwd scopes. With no Git boundary it uses
-cwd alone. File reads cap bytes independently of stat size; malformed, oversized,
-unknown-version/field and escaping project aliases fail closed. Missing default
-files are optional; explicit operator paths are required. Project settings require
-explicit current-run trust. This authorization does not replace effect approvals.
+## Follow one setting into a session
 
-Project merges can only tighten sandbox policy: a project `off` cannot replace
-an operator-file or earlier project's `native`. The skipped field does not
-replace its stricter provenance. Other settings keep normal scoped precedence;
-the later operator environment and CLI overlays can explicitly select either
-sandbox mode. This is configuration authority, not a claim that every OS backend
-is available; native setup still fails closed without fallback.
+`lib/ipse/config.ex` canonicalizes the workspace, finds the nearest Git boundary,
+and loads version-1 JSON sources from operator scope through project scopes.
+Outside a repository, only the launch directory contributes project settings.
+Project files require explicit current-run trust. Missing default files are
+optional; an explicitly selected operator file must exist.
 
-The schema also accepts validated named `profiles` and `roles`; see the
-[profile contract](model-profiles.md). Before merging or selecting execution,
-`profile_authority/1` refuses project endpoints and replacement of operator profile
-IDs. Generic project trust cannot authorize credential-bearing endpoint changes;
-operator endpoints remain configurable. Project-defined IDs may be overridden by
-nearer project scopes, and role assignment retains normal precedence.
-All profile definitions and assignments
-participate in resume fingerprints. The result contains effective string-keyed settings, field provenance, source
-path/canonical path/scope/SHA-256 and a canonical fingerprint over effective
-settings and source descriptors. Field provenance is excluded from the fingerprint
-so equivalent explicit overrides do not invalidate resume. Source content drift,
-including whitespace, does invalidate it conservatively. No raw file is journaled
-or inserted into model context. The CLI converts only fixed known field names to
-runtime keys, and persists the manifest in session metadata.
+Resolution proceeds in this order: built-in defaults, operator file, project
+files from root to launch directory, selected main profile, allowlisted
+environment settings, and explicit CLI options. Nearer profiles replace whole
+profile definitions; role assignments merge by key. `runtime_settings/1` converts
+only known field names to atoms. Do not create atoms from arbitrary JSON keys.
 
-Optional `max_output_tokens` follows this same precedence and fingerprint contract,
-with provider capability/range checks after effective selection. It adds no default
-setting to old configurations. The CLI restores it on resume; Session also pins
-the effective cap for embedded callers before journal repair. See
-[provider output ceilings](provider-limits.md) for wire mappings, inherited child
-limits and the explicit subscription refusal.
+The result keeps effective settings, field provenance, source descriptors, and a
+canonical fingerprint. Source descriptors include paths, scope, and SHA-256.
+Whitespace changes alter a source digest and therefore invalidate resume even
+when decoded settings are equal. Equivalent CLI overrides do not change identity
+merely because their provenance differs. Raw file contents never become model
+context or journal metadata.
 
-Operator-only `budget` uses the closed shared-admission policy schema; project
-presence refuses rather than overriding it. A configured policy participates in
-the manifest/fingerprint; absence preserves old identity. Root/child budget
-descriptors and live ETS authority are host runtime state, not accepted JSON
-configuration. See [shared budget ownership and recovery](budgets.md).
+For a concrete exercise, read the precedence fixture in
+`test/config_test.exs` and follow `max_steps` through its operator, project,
+environment, and CLI assignments. Then inspect `overlay/3` and `manifest/1`.
+The winning value and its provenance answer different questions.
 
-Operator-only `journal` narrows mandatory finite byte, record-size and event-count
-ceilings through `Journal.Limits`. Project declarations refuse even with generic
-project trust. The resolved runtime policy is inherited across child profile
-routing; profiles cannot replace it. The manifest shows effective limits, while
-unchanged source/config fingerprints retain their prior identity. A changed
-operator file follows the normal source-drift rule. Embedded callers may provide
-the same string-keyed `config[:journal]` object. Sealing and bounded legacy reads
-are [persistence policy](persistence.md#recovery-and-growth), independent of context
-compaction, optional diagnostics and budget ledgers.
+```sh
+mix test test/config_test.exs test/config_session_test.exs
+```
 
-`Session.info/1` exposes the non-secret manifest. Resume compares fingerprints
-before acquiring work or requesting inference. Legacy metadata without a manifest
-accepts only a config with no loaded files, retaining existing provider/model/
-sandbox/MCP/delegation checks. Embedded Session callers may omit configuration;
-the CLI always resolves it. The actual main provider destination is separately pinned at Session creation as
-its origin and target digest, including direct CLI/embedded base URLs; this stores
-no endpoint credentials. Invalid routes refuse before journal creation. Resume
-requires the same destination even when no request has run. Explicit and implicit
-forms of the same default wire route are equivalent. Legacy metadata checks all
-recorded main/compaction request endpoint hashes; with no such requests, only an
-implicit default or exactly pinned execution profile is accepted. An idle legacy
-session did not record its original direct route, so its historical destination
-cannot be reconstructed. Implicit-default legacy resume is retained for
-compatibility and cannot detect a previous custom-to-default change in that
-request-free history. Use a fresh reviewed session when the original route is
-unknown; unverifiable custom routing is refused.
-Instruction refresh deliberately does not reload
-execution configuration. An operator starts a new session after policy changes.
+The first suite checks source resolution and closed validation. The second checks
+that saved sessions reject configuration drift before work or journal repair.
+These fixtures do not require a provider account.
 
-See [operator configuration](../operator/configuration.md) for supported fields,
-limits, flags and examples. Fixtures cover precedence, nearest-repository scope,
-project trust, aliases, malformed files, secret exclusion, local CLI inspection,
-durable metadata, source drift and idle resume without replay.
+## Keep authority separate from precedence
 
-## Extension selection data
+Several fields need stricter rules than ordinary last-writer precedence:
 
-P22A3 adds top-level `extensions` and `extension_trust`, validated through
-`Ipse.Extensions.Config` and the existing schema adapter. Closed instance/trust
-records, bounds, whole-instance scoped replacement and deterministic ordering are
-specified in [operator extensions](../operator/extensions.md#configure-selections).
-Only operator sources may declare trust; enabled project instances require the
-matching operator artifact ceiling with `allow_project`. CLI instance selection
-is temporary, while `--no-extensions` disables selections. Validation/discovery
-never opens an artifact, invokes code or installs it. Activation must separately
-revalidate hashes/runtime/options, capabilities, child scope, trust/lease expiry
-and revocation before invoking callbacks. P22A4 now admits the two supported
-prompt/presentation capabilities, rechecking required code in a monitored task
-before Session startup. Expiry and explicit child ceilings apply; live revocation
-is still a later delivery check. See [session hooks](extension-hooks.md).
+| Input | Authority rule |
+| --- | --- |
+| Project `sandbox` | Can tighten to `native`; cannot replace an earlier `native` with `off` |
+| Operator environment or CLI sandbox | May explicitly select either supported mode |
+| Profile `base_url` and operator profile IDs | Project scopes cannot introduce endpoints or replace operator IDs |
+| `budget`, `journal`, extension trust, capture policy | Operator-only policy; project declarations refuse |
+| Extension selection/options | Require independent artifact/trust admission before callbacks |
 
-Config JSON now rejects duplicate keys recursively using Jason's ordered decoder
-behind the existing artifact decoder. Fingerprints include resolved extension
-selection, options and trust when nonempty; unchanged no-extension configurations
-retain their earlier fingerprint exactly. Inspection/journal manifests replace
-option contents with a canonical SHA-256, retaining selection identity and source
-provenance. This is not credential encryption: operator configuration remains a
-data file, and credentials must not be placed in extension options.
+Generic project trust does not waive these checks. Discovery validates data; it
+never opens an extension artifact, invokes code, or installs a dependency.
+Extension options are represented by digest in inspected manifests. Do not place
+credentials in options; hashing inspection output does not protect the file.
+
+## Read the closed settings contract
+
+Files are at most 16 KiB, with at most 17 sources. Duplicate keys, unknown fields,
+unsupported versions, malformed UTF-8/JSON, and escaping project aliases refuse.
+Errors do not include file contents. Environment input uses a fixed allowlist,
+not a dump of the operator's process environment.
+
+| Setting | Default | Accepted range or values |
+| --- | --- | --- |
+| `provider` | `chatgpt` | `chatgpt`, `openai`, `ollama`, `anthropic`, `demo` |
+| `sandbox` | `off` | `off`, `native` |
+| `max_steps` | 30 | 1–100,000 |
+| `context_bytes` | 400,000 | 8,192–16,000,000 |
+| `compact` | true | Boolean |
+| `subagents` | false | Boolean |
+| `subagent_concurrency` | 1 | 1–2; 2 requires subagents |
+| `timeout_ms` | 120,000 | 1,000–600,000 |
+| `max_output_tokens` | absent | Provider-specific validation in [provider limits](provider-limits.md) |
+
+`model` is a nonempty string of at most 200 characters. When omitted, resolution
+selects the configured provider's default in `@models`; consult that table when
+updating defaults. [Profiles](model-profiles.md), [budgets](budgets.md), and
+[persistence](persistence.md) own their nested schemas.
+
+## Preserve resume identity when adding a field
+
+Session metadata pins the manifest. Resume compares it before requesting
+inference or repairing a torn tail. Legacy metadata without a manifest accepts
+only a configuration with no loaded files, alongside existing execution checks.
+Instruction refresh reloads workspace text and skills, not execution policy.
+
+The actual main route is also pinned by origin and target digest, including direct
+CLI or embedded base URLs. Invalid routes refuse before journal creation. Explicit
+and implicit forms of the same default route compare equally. Legacy recovery
+checks recorded request endpoint hashes; request-free legacy sessions cannot prove
+an old custom route and accept only an implicit default or exactly pinned profile.
+Use a fresh session when the old destination is unknown.
+
+To add a setting, update the schema, fixed runtime-key map, environment parser,
+manifest/fingerprint policy, CLI conversion, and resume checks together. Decide
+whether absence must preserve legacy fingerprints. Add a precedence fixture and
+a changed-saved-value fixture. A field that works only on fresh CLI launches is
+an incomplete configuration change.

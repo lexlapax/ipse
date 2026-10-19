@@ -1,13 +1,15 @@
-# Bounded research
+# Research a question and retain its evidence
 
-Use `$research` to clarify scope, plan a small search, evaluate primary sources,
-retain evidence, distinguish inference/conflicts and produce a cited report.
-The skill is inert instruction. It enables no service and grants no permissions.
-Search and retrieval are **operator-configured MCP capabilities**. Ipse embeds
-no search provider, endpoint, account or automatic fallback. Choose any server
-compatible with the [MCP contract](mcp.md); keep credentials explicit.
+Use `$research` for a bounded question that needs sources, comparison, and a cited
+answer. Ipse has no built-in search service. Configure a compatible MCP server
+explicitly, or provide local sources and ask for a local-only assessment.
 
-A generic configuration template is:
+## Prepare a retrieval service
+
+Choose a service and review its exact tools, schemas, credentials, terms, and
+data-transfer behavior. Save an MCP configuration outside the workspace. This
+complete-shaped example uses placeholder names and a nonworking example URL;
+replace them with your chosen server's real values before use:
 
 ```json
 {
@@ -21,77 +23,93 @@ A generic configuration template is:
 }
 ```
 
-Replace the example endpoint and exact tool names with your selected server.
-Review its schemas, terms, network/data-transfer behavior and output limits.
-Authenticated servers can reference an operator environment variable with
-`bearer_env`; never put a token in a URL or committed configuration. Project
-`.ipse/config.json` cannot silently enable MCP. Select its configuration explicitly:
+For static bearer authentication, add `bearer_env` with your server-specific
+environment variable name and supply the value privately in the launching
+environment. Do not put tokens in the URL or committed config. Ipse does not load
+`.env` automatically. [MCP servers](mcp.md) explains supported transports and
+schemas. Project configuration and skills cannot enable MCP.
+
+## Ask a question with a source limit
+
+Select your model and retrieval file:
 
 ```sh
-./bin/ipse chat --mcp-config /path/to/research-mcp.json --max-steps 30
+ipse chat --provider chatgpt --mcp-config /private/path/research-mcp.json \
+  --cwd /path/to/research-workspace --max-steps 30
 ```
 
-Then ask, for example: “Use $research to compare SQLite WAL concurrency constraints
-from official documentation; at most two searches and three fetched sources.”
-Interactive external calls require their full usual approval. Headless `--yes`
-authorizes configured tools broadly; use interactive review when that is preferable.
-A native shell policy denies network access through shell, while explicitly
-configured HTTP MCP operates remotely under its separate visible boundary.
-Unknown calls must not be automatically replayed. Failure/rate limits do not
-switch to another service, model or billing mode.
+This uses real subscription model requests and, when approved, the selected
+external retrieval service. Enter a bounded prompt:
 
-## Optional service example
+```text
+Use $research to compare SQLite WAL concurrency constraints using official
+sources. Use at most two searches and three fetched sources. Record sources
+and claims in the evidence ledger. Distinguish supported facts, inference,
+conflicts, and unanswered questions. Do not write a report file until I ask.
+```
 
-One independently exercised option is the hosted
-[Exa MCP service](https://exa.ai/docs/get-started/exa-mcp), which documents anonymous
-rate-limited search/fetch without an API key. It is optional, changeable and not
-installed or bundled with Ipse. An example uses URL `https://mcp.exa.ai/mcp`, server
-ID `exa`, and the explicit tool allowlist `web_search_exa`, `web_fetch_exa`.
-Ipse's query-free endpoint policy uses that default URL. No paid `agent_run`, OAuth
-or automatic service selection is enabled. Different credentials/limits require
-separate explicit configuration. Service availability and schemas can change;
-discovery changes fail closed rather than silently altering a reviewed call.
+Review each MCP proposal's full query/URL and server identity before approval.
+Native shell mode can deny shell networking while explicitly configured HTTP
+MCP still uses its separate remote boundary. Headless `--yes` broadly authorizes
+configured calls; interactive mode provides per-call review.
 
-## Evidence ledger
+A useful answer states its scope, cites the actual source passages, explains
+conflicting evidence, and identifies what it could not establish. Source counts
+in the prompt guide the model; request/context/ledger bounds are host-enforced.
+If a service fails or rate-limits a call, decide explicitly whether to try later.
+Ipse never silently changes search service, model, or billing route.
 
-Successful external tool results expose a host-recorded call ID. `research_source`
-captures an exact URL and literal excerpt from one successful recorded MCP result.
-It records source/result SHA-256, tool identity, retrieval time and any reported
-title/author/publication date. Metadata is marked unverified. New retrieval times
-come from host result completion; old results lacking that field use source-capture
-time, without claiming the server fetched fresh content at that moment.
+## Inspect the evidence rather than just the answer
 
-`research_claim` links a statement to captured source IDs, with kind `supported`,
-`inference`, `conflict` or `open`. Non-open claims need references; unknown IDs
-are rejected. The kind is the model's assessment: the host checks provenance and
-references, **not semantic truth, authenticity, freshness or whole-page coverage**.
-Read the actual passages and primary sources before trusting the conclusion.
-Fetching one page per call makes source/excerpt correspondence easier to audit.
+Ask the agent to show the `research_ledger` and explain the claims attached to its
+source IDs. This reads already recorded evidence; it retrieves nothing.
+`research_source` can capture an exact URL and literal excerpt from one successful
+recorded MCP result. The host retains call/result identity, hashes, retrieval
+completion time, and any reported title/author/publication metadata. The metadata
+remains unverified.
 
-`research_ledger` reads durable evidence independently of compacted context and
-lists up to 16 recent successful external results with call IDs, reviewed request arguments and explicitly
-untrusted previews. Ambiguous legacy call IDs or repeated results are omitted
-rather than pairing a result with another invocation's arguments. It retrieves nothing. A ledger holds at most 16 sources,
-32 claims and 64 KiB JSON; excerpts are at most 4000 UTF-8 bytes, statements 1000
-bytes and claim references eight unique IDs. The native display, including bounded
-recovery references, is at most 64 KiB + 512 bytes. Capture repeats are idempotent.
-When a limit is reached, stop or start a separately scoped session; do not pretend
-missing evidence was captured. The skill's search/source count is guidance;
-Session step/context budgets and tool/ledger sizes are host-enforced bounds.
+`research_claim` links statements to source IDs as `supported`, `inference`,
+`conflict`, or `open`. The host validates recorded provenance and references,
+not the truth, freshness, authenticity, or completeness of a page. A model's
+`supported` label is an assessment for you to check. Fetching one source per call
+usually makes excerpt correspondence easier to inspect.
 
-Ledger entries live in the **private original session journal**, outside transient
-model context. Resume validates committed entries against recorded evidence,
-without replaying retrieval, inference or report writes. Export a saved ledger
-locally, without authentication or model calls:
+The ledger holds at most 16 sources, 32 claims, and 64 KiB JSON. Excerpts are at
+most 4000 UTF-8 bytes; claim statements 1000 bytes; references eight unique source
+IDs per claim. Recent-result discovery lists up to 16 successful external calls
+with reviewed arguments and untrusted previews. Ambiguous old call IDs are
+omitted instead of paired with the wrong result. When a bound is reached, stop
+or start another deliberately scoped session and identify the evidence gap.
+
+## Export a saved ledger
+
+Use the session ID printed by `/session` or `ipse sessions`:
 
 ```sh
-./bin/ipse research --resume SESSION_ID --state-dir /path/to/sessions > evidence.json
+umask 077
+ipse research --resume SESSION_ID --state-dir /private/path/sessions > /private/path/evidence.json
 ```
 
-The exported ledger contains selected excerpts and may be private. Share it only
-intentionally. A requested report uses ordinary reviewed workspace writes. Keep
-source/claim IDs alongside citations, and label incomplete or conflicting evidence.
-Historical open notes remain immutable; later claims can explain their resolution.
-Children cannot retrieve via MCP or record the parent's ledger. Optional child
-analysis receives only selected collected evidence; the parent verifies synthesis.
-See [verification and limits](../developer/research.md).
+Use the original state directory, or omit that flag for the default store.
+Export is local: it makes no inference, retrieval, or report-writing call and
+does not resume tools. The JSON includes selected source excerpts and can be
+private. Review it before sharing.
+
+To create a narrative artifact, ask in chat for a specific workspace-relative
+path and format. Inspect the proposed write, then approve it separately. Keep
+source/claim IDs alongside citations so a reader can compare the report with the
+ledger.
+
+## Resume or recover interrupted research
+
+Evidence stays in the original private journal even if context is compacted.
+Resume validates committed entries without retrieving or writing the report
+again. Repeated source capture is idempotent. Old open claims remain historical;
+a later claim can explain their resolution.
+
+An unknown retrieval may have reached the server. Inspect available service
+records before explicitly requesting another call. Corrupt committed evidence
+refuses resume/export; preserve the journal and follow [Recovery](recovery.md).
+A child cannot use the parent's MCP servers or write its evidence ledger. You
+can delegate analysis of selected collected material, then verify the synthesis
+in the parent session.

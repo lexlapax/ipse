@@ -1,212 +1,108 @@
-# Observability, usage and streaming boundaries
+# Choosing the right runtime contract
 
-The comparison was originally reviewed on 2026-10-16 against `cdaa003` and informs
-the [P22 SDK](extensions.md) and [adoption scenarios](extension-scenarios.md).
-Current implementation coverage is summarized below; later sections distinguish
-delivery targets from existing contracts. External references were read as primary
-documentation/source; no compared framework, source debugger, media service or
-exporter was installed. Recommendations are architectural inferences, not
-interoperability results.
+A contributor adding a capability must decide who owns its authority, lifetime,
+and result. Ipse keeps generic admission, approvals, durable evidence, provider
+routing, and cancellation in the host. Extensions implement domain algorithms,
+reports, and presentation through explicit contracts. This division lets a feature
+remain optional without making its effects invisible.
 
-## Current Ipse behavior
+Read this chapter before adding a new callback to Session. Often an existing
+command, action, or resource already supplies the needed boundary.
 
-Provider adapters already emit visible `{:text, delta}` events. Session forwards
-progress from its current job and CLI writes text as it arrives. The saved
-assistant message/native continuation remains separate from the live display.
-HTTP/SSE request handling and cancellation exist. P22 now adds an explicit
-[private text subscription](text-streams.md) with bounded coalescing and
-acknowledgments for embedded clients and selected installed workers. There is no
-multimodal session interface or audio device/backend yet.
-Explicit [v2 negotiation](stream-events.md) adds live epoch/stream/range identity
-without changing v1 consumers or treating a delivery acknowledgment as playback.
-Text deltas are chunks, not necessarily individual tokens.
+## Match the result to its channel
 
-P22 now implements [durable request accounting](usage-accounting.md): request/
-attempt/parent identities, normalized cumulative usage snapshots, final/partial/
-unknown outcomes, rejected-summary retention and inert resume. Ollama omitted
-counters stay unknown. The old latest-successful usage map remains compatible.
-P19 context measurements are encoded JSON bytes, not tokens. P23 adds a pure
-[configured rate-card estimator and opt-in page/session/child reports](costs.md)
-through separately granted accounting reads. Supported
-[provider output ceilings](provider-limits.md) are an explicit per-request control.
-Optional [shared monetary/token reservations](budgets.md) now cover main,
-summary, local-child and [accounted extension model](extension-model-calls.md)
-requests. P23F source/package/platform checks passed; audio usage belongs to deferred P28.
-
-P19's local on-demand diagnostics and request timing are available. Optional
-metadata capture, bounded sink workers, stop controls and opt-in synthetic
-dispatcher tracing are implemented. Their authoritative
-[configuration/debugging contract](observability.md) distinguishes recovery
-journals from optional sinks and raw developer inspection.
-
-## Comparison with other harnesses and frameworks
-
-| System and primary source | Observed mechanism | Implication for Ipse |
+| Need | Existing owner/contract | Consequence |
 | --- | --- | --- |
-| [Codex configuration](https://learn.chatgpt.com/docs/config-file/config-reference) | Separate OTEL log, trace and metrics exporter settings, raw-prompt opt-in and analytics control; disabling analytics also disables custom metrics exporters. | Give each channel an explicit gate and explain how the gates interact; optional export must not disable recovery/accounting. |
-| [OpenCode CLI](https://opencode.ai/docs/cli/) and [troubleshooting](https://opencode.ai/docs/troubleshooting/) | Session/model/project token-cost statistics, local logs with retention and a selectable log level. | Make local inspection and reporting usable without a tracing service; configuration needs operator-facing explanations. |
-| [Pi provider layer](https://raw.githubusercontent.com/earendil-works/pi/main/packages/ai/README.md) | Typed incremental events and final messages carrying token usage and calculated cost. | Providers should expose facts; presentation extensions should consume normalized facts and retain final-message integrity. |
-| [OpenAI Agents SDK observability](https://developers.openai.com/api/docs/guides/agents/integrations-observability) and [running agents](https://developers.openai.com/api/docs/guides/agents/running-agents) | Normal server-side SDK tracing is enabled by default with SDK/per-run controls. Streaming consumes events from the same agent loop. | Reuse one owned runtime/event identity; choose Ipse's explicit default-off export policy rather than inheriting another SDK's defaults. |
-| [LangGraph streaming](https://docs.langchain.com/oss/python/langgraph/streaming), [LangSmith costs](https://docs.langchain.com/langsmith/cost-tracking) and [Studio](https://docs.langchain.com/langsmith/studio) | Distinct stream projections/modes; model-price mappings and direct cost metadata; graph/chat development views. | Separate runtime data channels, make prices replaceable/versioned and let a viewer consume supported events without requiring a workflow engine. |
-| [OpenAI voice architectures](https://developers.openai.com/api/docs/guides/voice-agents) and [Realtime sessions](https://developers.openai.com/api/docs/guides/realtime) | Chained speech recognition/agent/synthesis, or speech-to-speech sessions managing interruptions/tools and WebRTC/WebSocket connections. | A voice extension can adapt a text workflow, but realtime connection/turn/ownership capability belongs in the host/provider boundary. |
-| [Google ADK live sessions](https://adk.dev/live/sessions/) | Concurrent input/output, explicit queue close and separate ephemeral media versus persisted final transcripts/usage. Its documented input queue is unbounded and needs caller rate control. | Specify bounded flow control and persistence independently; do not put raw audio into ordinary diagnostic/journal events. |
+| Request facts and normalized counters | `Usage`, Session journal | Available with tracing disabled; unknown stays unknown |
+| Request admission across children | `Budget` and protected ledger | Reserve before dispatch; interrupted liability remains |
+| Cost reporting | `Extensions.Costs` and report family | Configured rates, exact basis, no billing authority |
+| Metadata diagnosis | `Observability.Channel` | Bounded sampled delivery; gaps/drop counts allowed |
+| Ordered visible provider text | `TextStream` | Private grant, acknowledgments, bounded pressure |
+| Admitted completed answer | Lifecycle answer source | Distinct from transport end and presentation acknowledgment |
+| Bounded domain effects | Owned extension actions/jobs | Ordinary approval and intent/outcome receipts |
+| OS execution confinement | `Sandbox`, native helper | Independent of all SDK permissions and approval |
 
-These comparisons describe the reviewed documents, including moving upstream
-branches. They do not establish compatibility with a locally installed version.
-No external framework is selected as an Ipse runtime dependency.
+An observer cannot enforce a budget after dispatch. A text acknowledgment cannot
+write state. A tool's read-like name cannot waive external-call approval. Keep
+these implications visible when designing an API.
 
-## Core and extension responsibility
+## Trace a new text-derived feature
 
-| Capability | Generic core/host responsibility | Extension or client responsibility | Delivery |
-| --- | --- | --- | --- |
-| Observability on/off | Capture/privacy/egress gate, IDs, bounded dispatch and immediate sink-stop | Local JSONL, OTLP and dashboard sinks, filters/presentation | Controls/local sink in P22; remote adapters later |
-| Developer diagnosis | Sanitized snapshots, owned trace lease, cleanup and SDK conformance inputs | Timeline viewer, IDE integration and standalone worker tooling | P22 local procedures; richer viewers later |
-| Usage accounting | Provider normalization, request/attempt identity, durable facts and idempotent aggregation | Reports, allocation, dashboards and optional export | Minimal facts in P22; P23 reports |
-| Cost estimates | Expose billing mode and authoritative measured units | Versioned configurable rate tables and estimation strategies | P23 |
-| Monetary/token limits | Request admission, atomic parallel reservations, cancellation and unknown-charge handling | Policy configuration and displays; extension may request stricter limits | P23 main/summary/child reservations and accounted one-shot extension text calls verified within documented fixture/platform scope |
-| Visible text streaming | Ordered content channel, sequence/completion identity, flow control and cancellation | Terminal/web renderers and stream consumers | Existing CLI; P22 bounded subscription proof |
-| Stateful stream rewriting | Preserve original messages, enforce required filter/failure policy and buffering limits | Parser/formatter/filter algorithm | Later explicit capability, not the completed-answer hook |
-| Chained voice | Managed input/output resources, admitted text turn, profiles, approval/control separation | STT/TTS adapters, microphone/speaker/client UI | Deferred P28 |
-| Realtime speech-to-speech | Session/transport/media lifetime, barge-in, played-output reconciliation and tool gating | Provider adapter and voice experience | Deferred P28 host enhancement |
+Consider a selected extension that counts words in visible output. It needs
+`stream.text` and a read-only callback. It can keep private worker-local counters
+and acknowledge frames. It receives no hidden reasoning/native continuation and
+cannot return `host_call` from this callback. To save a domain record, expose an
+explicit invocation or a separately admitted event job using state actions.
 
-An extension cannot reconstruct authoritative accounting, reliably cancel a
-transport or enforce a budget merely by watching callbacks. Those are host
-invariants. Conversely, provider-specific prices, charts, voice choice and UI
-should not add feature-specific cases to Session or CLI.
+For a source-reading exercise, follow `Ipse.TextStream.push_delta/3` in
+`lib/ipse/text_stream.ex`, then the negotiated frame projection in
+`lib/ipse/lifecycle/ephemeral.ex`. Compare the end frame to Session's final answer
+admission. A healthy optional consumer can receive completed transport while a
+required peer later fails and prevents answer admission. The correct trigger for
+an admitted-answer workflow is `answer.committed`.
 
-## Usage facts and costs
+```sh
+mix test test/text_stream_session_test.exs test/lifecycle_answer_test.exs
+```
 
-P22 must establish a small canonical request/attempt record independently of
-optional telemetry: session/turn/parent/child/request IDs, request kind (agent,
-compaction or approved extension request), selected profile/provider/billing mode,
-requested/reported model, outcome and measured units with provenance/status.
-Normalize known token counts; leave unavailable values unknown. Preserve whether
-provider fields are deltas, cumulative values, subsets or final measurements.
-Reject malformed/negative counts. Cache/reasoning/modality details need explicit
-unit semantics so subsets are not added to totals twice. Do not expose raw model
-payloads, native reasoning or auth through the usage API.
+These suites teach the distinction through real Session behavior. They also check
+that private native history remains unchanged. See [text streams](text-streams.md)
+for flow control and [lifecycle events](lifecycle-events.md) for saved sources.
 
-Journal canonical facts before notifying optional consumers. Record usage even
-when a paid summary's checkpoint later fails validation. Failed/cancelled requests
-may have consumed resources: unknown is not zero. Use request/attempt identity
-and finality/revision fields to avoid double counting late/final events, retries,
-parent/child totals and resumed work. Legacy journals without facts report gaps;
-do not infer invoice history from text length. Resume never reissues a request to
-measure its cost. Presentation and aggregation must work with tracing disabled.
+## Add inference through admission
 
-P23 adds a bundled optional report/cost extension over those facts. Price data
-is operator-configurable and versioned by provider, billing mode, model, unit,
-currency, effective date/source and rate-table digest. Support cached input,
-output, audio/duration/tool units only where their semantics/rates are defined.
-Persist the price identity used for an estimate, with decimal/fixed-point math;
-never silently reprice old reports. Missing rates or units produce an explicitly
-incomplete estimate. Optional price refresh has an explicit source and egress
-configuration, not a mandatory service or hardcoded current price.
+Model work needs an explicitly selected profile, credential reference, egress
+approval, canonical request/attempt identity, normalized usage, and shared budget
+admission where configured. The [one-shot extension model action](extension-model-calls.md)
+supplies these for text helpers. It does not open a second conversation loop or
+receive private data without separate grants.
 
-ChatGPT subscription usage must not be presented as per-request API charges.
-Local Ollama token counts do not prove electricity/hardware cost is zero.
-Distinguish observed tokens/units, estimated API-equivalent cost if requested,
-provider-reported charges and actual account invoices. No billing mode/provider
-switch follows from a budget or cost estimate. Provider capabilities and account
-eligibility remain explicit; this research makes no new live billing claim.
+Counters describe measurements, not prices. OpenAI cache/reasoning values are
+subsets; Anthropic cache totals have separate semantics; Ollama missing counters
+stay unknown. Cost estimates identify rate-card digest/revision and keep API,
+subscription equivalent, and local basis apart. Subscription text entitlement is
+not API credit or authority for another endpoint. A refusal never silently changes
+provider/billing mode.
 
-The optional P23 [shared admission host capability](budgets.md) gates covered main,
-summary and local-child requests with atomic reservations, retained unknown
-liability and durable reconciliation. Input/money reservations remain conservative
-estimates; providers cannot guarantee an exact monetary ceiling for in-flight
-work. Explicit `host.model` calls share this boundary, with their own approved
-source and selected profile; embeddings remain unsupported. Tool services
-and executable extensions making out-of-band calls are not automatically covered;
-fully trusted code is not confined by an SDK accounting API. Subscription output
-quotas refuse because its public interface lacks that cap. No requested bound is
-silently dropped and no billing switch follows from a refusal.
+Usage and budget state survive failed/cancelled work. Optional diagnostics can be
+dropped; canonical accounting cannot. Out-of-band executable calls and arbitrary
+MCP service charges are outside covered host model accounting. Explain that limit
+when adding a backend rather than inferring coverage from a shared worker process.
 
-## Text and media are distinct from diagnostics
+## Keep unsupported capabilities explicit
 
-The implemented private text channel defaults to optional delivery. A stalled
-consumer detaches while inference continues; explicit operator-required consumers
-may refuse response admission on loss or deadline. Startup validation and actual
-worker cleanup remain independent checks. See [the current delivery contract](text-streams.md)
-for enrollment, acknowledgment and recovery. This does not supply audio/media IO.
+Current runtime contracts do not provide embeddings, microphone/speaker IO,
+audio frames, STT/TTS, bidirectional realtime inference, playback acknowledgment,
+or stateful streaming rewriting. A completed-answer formatter changes display
+only after generation. It cannot promise live redaction, retract displayed text,
+or redact journals and provider context.
 
-The implemented [visible-text contract](text-streams.md) carries
-stream/session/generation/request identity, monotonic sequence, text chunks and
-one logical terminal outcome.
-Sequence IDs reject duplicate/late deliveries; crash/disconnect may leave delivery
-incomplete even when a request finished. Do not promise exactly-once delivery.
-It is a private content capability, separate from sanitized diagnostic observers;
-hidden reasoning/native payloads are excluded. Embedded and independent-worker
-source and independently precompiled installed-package fixtures exercise read-only
-consumption; exact revisions and remaining limits belong to [testing](testing.md).
-Preserve the
-saved provider message and native continuation. A formatter cannot retract text
-already displayed; the initial completed-answer wrapper remains a separate view.
+A future media capability needs a versioned bounded data plane, opaque scoped
+handles, negotiated format, ownership, interruption, and cleanup. It must keep
+transcripts/accounting distinct from ephemeral media and define retention/consent.
+Generated output and actually played output are different facts. A spoken "yes"
+is not by itself approval of arbitrary pending effects. These requirements are
+API design criteria, not available configuration fields.
 
-The [lifecycle design](lifecycle-events.md) shares event vocabulary and correlation
-while separating delivery contracts: diagnostics may drop with counters;
-usage/effect/projection facts are durable; visible content is ordered
-with bounded buffering/credit. Coalesce text only while preserving its concatenated
-value/order. A slow/disconnected consumer must apply supported backpressure or
-receive an explicit termination/error, not silently lose chunks or grow an
-unbounded mailbox. If the provider transport cannot safely pause, cancel or
-detach under a documented bounded policy. Do not claim current asynchronous
-Session notification already proves these flow-control guarantees.
+## Propose a host enhancement only for a shared invariant
 
-Stateful streaming transforms are a later negotiated capability with incremental
-UTF-8/grapheme handling, cross-chunk state, bounded buffering and final flush.
-Required redaction cannot fall back to raw text on failure, and display filtering
-alone does not redact private journals or provider context. Test every channel
-before claiming a privacy feature. Partial tool arguments are never actionable
-tool calls or approval requests; execute only validated complete calls.
+Write down the exact missing guarantee: for example, a new measured unit, source
+view, owned resource, or cancellation boundary. Specify closed schemas, numerical
+bounds, stale/wrong-owner refusal, and no-replay recovery. Unknown versions or
+capabilities must fail before executable activation. Reuse existing modules and
+maintained Elixir/OTP packages before introducing protocol machinery.
 
-For deferred P28, use the same generic owned-resource model for input streams and
-output sinks, with explicit start/stop/interrupt and bounded lifetimes. Voice
-pipeline extensions select STT/TTS separately from the main model, using approved profiles,
-endpoints and credential references. Final admitted transcripts become ordinary
-user turns; interim hypotheses/revisions do not repeatedly trigger inference or
-grant approvals. Record provenance and a deliberate operator decision through
-the existing question/approval control path. Audio saying "yes" is not by itself
-an approval of arbitrary pending effects.
+`Ipse.RuntimeInfo` is an example of a deliberately small projection. Its snapshot
+exposes application/version, selected provider/model, separately reported current
+and saved model names, and profile ID/role/effort. It accepts model identifiers of
+1–200 bytes from a safe alphabet; malformed/unavailable values stay unavailable.
+It does not copy arbitrary configuration or promise an exact backend revision.
+Read `test/runtime_info_test.exs` before adding another model-visible runtime fact.
 
-Realtime speech needs a foreseen host/provider capability beyond today's
-single-request `complete/4`: bidirectional transport, activity/turn state,
-interruption/cancellation, sequence/timestamps, output playback acknowledgment
-and reconciliation of generated versus actually played content. Test disconnects
-and retries without replaying tools or unheard audio. Never infer a Realtime
-credential/billing entitlement from ChatGPT text subscription authentication.
+```sh
+mix test test/runtime_info_test.exs
+```
 
-Define a separate versioned media data plane with bounded frames/opaque host
-handles and negotiated codecs/rates; do not serialize high-rate raw audio into
-16-KiB diagnostic events, provider-text history or ordinary JSONL journals.
-The host validates handle scope/owner/generation. Explicitly specify overflow,
-underrun/gaps, endpoint/device consent, raw-media retention and cleanup on owner
-death. Canonical transcripts, tool outcomes and usage remain durable; raw media
-is ephemeral by default. P22 defines/negotiates the boundary and refuses unsupported
-media capabilities. Actual microphone, codec, WebRTC/WebSocket or STT/TTS packages
-are evaluated/inventoried in P28, with required dependency approval before adoption.
-
-## Verification and milestone scope
-
-P22 adds default-off/local/export control fixtures, sink-stop, secret exclusion,
-request IDs and durable usage normalization/deduplication with unknown counts,
-and bounded read-only text subscriptions (split chunks, slow consumer, cancelled
-request, terminal outcome and unchanged provider history). Its extension conformance
-runner uses synthetic inputs; it is not a journal/effect replay engine. Its bounded
-trace CLI runs in source and extracted packages; source breakpoints remain a
-separate development procedure with existing debuggers. No audio provider or
-remote tracing account is needed for P22 fixtures.
-
-P23 supplies cost reports, shared main/summary/child reservations and accounted
-extension text calls. Its source/package/platform evidence distinguishes rate changes,
-missing/partial usage, concurrency and resume from live billing guarantees.
-P24 now challenges these runtime boundaries through independent external
-architecture validation and baseline security review. P25 compares Codex/Ipse
-research and exercises supervised self-development, then requires final
-architecture/security review. Production knowledge packages defer to P26/P27.
-
-The former P24 media scope moves to deferred P28: chained voice first, then
-explicit realtime capability with synthetic media/backpressure/interrupt/playback
-tests before opt-in live account checks. It does not block P24/P25. A rich visual
-debugger can be an independently selected extension/client; it does not require
-a graph engine or become a P22 completion dependency. The [current plan](../plan.md)
-owns this revised order; older dated evidence retains contemporary numbering.
+Every new exposed field needs a reason the reader requires it, a bounded validator,
+and a test excluding nearby private data. Avoid placing credentials, raw endpoints,
+private hashes, or whole process state in a convenient metadata map.

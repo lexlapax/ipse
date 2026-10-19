@@ -8,7 +8,7 @@ its private VM state for that lease. Its exact acknowledgments grant no actions,
 context changes or provider requests. [Prompt/answer notifications](../../developer/extension-events.md)
 retain their ordered barriers and fresh-worker contract; [event jobs](../../developer/extension-event-jobs.md)
 retain separate effect admission. Operator selection and stop are described under
-[event subscribers](../../operator/extensions.md#event-subscribers).
+[event subscribers](../2026-10-18-before-manual-rewrite/docs/operator/extensions.md#event-subscribers).
 
 ## Declare a feed
 
@@ -34,7 +34,7 @@ topic is admitted. Installation, inspection and disabled selection execute no co
 
 `Feeds.types/0` lists supported metadata types: model, saved assistant/tool,
 context/compaction, questions, children, extension activity, waits and turn
-settlement. These use the shared [metadata vocabulary](../../developer/lifecycle-events.md#committed-metadata).
+settlement. These use the shared [metadata vocabulary](../2026-10-18-before-manual-rewrite/docs/developer/lifecycle-events.md#committed-metadata).
 Waits and `session.recording_stopped` additionally require `lifecycle.record` in
 that artifact's trust ceiling so their sources exist with diagnostics off.
 Prompt/answer stages use their existing boundary subscriptions. Creation,

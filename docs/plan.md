@@ -7,10 +7,12 @@ OTP for ownership, and reviewed generic core changes for missing host invariants
 No mandatory workflow framework, service, database or hardcoded external endpoint.
 
 This document owns priorities, scope and acceptance. The
-[documentation map](index.md) owns navigation; developer contracts own API details;
-[testing and evidence](developer/testing.md#current-evidence-and-next-checks) owns
-actual verification. Historical test counts and execution narratives belong there,
-not in competing current-status sections. The
+[documentation map](index.md) owns navigation. The [user manual](operator/index.md)
+teaches operation; the [contributor manual](developer/index.md) teaches implementation
+and verification. Dated test counts, receipts and investigations live in the
+[archive](archive/index.md), including the
+[verification record](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#current-evidence-and-next-checks)
+preserved before the manual rewrite. The
 [previous plan and knowledge design](archive/2026-10-17-before-self-hosting-review/index.md)
 are preserved with provenance.
 
@@ -19,7 +21,7 @@ are preserved with provenance.
 P0–P22 are complete within the scopes summarized under
 [completed milestones](#completed-milestones-p0p22). P23 is complete within its
 one-shot text/accounting scope. Provider/account combinations have separate
-[verification](developer/testing.md#provider-verification-status); these milestones
+[verification](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#provider-verification-status); these milestones
 do not establish production knowledge quality or unattended self-development.
 
 P24 is complete as a scoped readiness gate for the supervised P25 trial at
@@ -35,7 +37,7 @@ Supervisor follow-through separately repaired private macOS credential transfer,
 optional-consumer retirement and large-launch-frame readiness. The final
 `375e607` source passed local native-inclusive checks and the complete hosted
 Linux/macOS source/native/package/installed matrix. The
-[readiness decision](developer/architecture-review-dispositions.md#p24-scoped-readiness-decision)
+[readiness decision](archive/2026-10-18-before-manual-rewrite/docs/developer/architecture-review-dispositions.md#p24-scoped-readiness-decision)
 combines that evidence and records accepted limits. This is supervisor acceptance
 for a trusted, cooperative workspace under supervision, not a new independent
 post-fix verdict, a second scan, or a security certification. Raw findings remain
@@ -45,7 +47,7 @@ P25 is complete as a scoped supervised evaluation at `3307563`. Installed Ipse
 authored a meaningful diagnostic repair; two fresh reports meet every criterion
 at 14/21, matching the checked reference. Held-out cases and live question/resume,
 compaction and cancellation controls pass with declared assistance. The
-[acceptance decision](developer/p25-evaluation.md#scoped-acceptance-decision)
+[acceptance decision](archive/2026-10-18-before-manual-rewrite/docs/developer/p25-evaluation.md#scoped-acceptance-decision)
 retains initial failures, interventions, resource differences and unconfirmed
 intermittent CI causes. This establishes supervised research/self-development
 within those conditions, not unattended operation or statistical parity.
@@ -57,7 +59,7 @@ passes affected source review, bounded same-reviewer follow-up, local native and
 installed checks, and the complete exact-source Linux/macOS matrix at `3307563`.
 Earlier independent architecture omissions and withheld verdicts remain unchanged;
 no security certification or further review/scan loop is claimed. The
-[verification record](developer/testing.md#current-evidence-and-next-checks)
+[verification record](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#current-evidence-and-next-checks)
 owns exact source, failed attempts, checks and exclusions. The requested license
 transition follows this completed campaign as a separate verified change.
 
@@ -86,9 +88,9 @@ documentation does not rescan code or expand an earlier verdict. Select P27 or
 further memory automation/backends separately from their evidence-backed proposals. Keep P28
 deferred. No further broad architecture-review loop or Cloud scan is scheduled.
 
-The [register](developer/architecture-review-dispositions.md) owns dispositions,
-the [internal audit](developer/architecture-self-audit.md) owns supervisor methods,
-and [testing](developer/testing.md#current-evidence-and-next-checks) owns dated
+The [register](archive/2026-10-18-before-manual-rewrite/docs/developer/architecture-review-dispositions.md) owns dispositions,
+the [internal audit](archive/2026-10-18-before-manual-rewrite/docs/developer/architecture-self-audit.md) owns supervisor methods,
+and [testing](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#current-evidence-and-next-checks) owns dated
 commands, receipts, failures and exclusions. Internal reads, external static
 coverage and actual execution support different claims. Earlier records retain
 their contemporary numbering and verdicts.
@@ -136,7 +138,7 @@ request/attempt/provider/billing/model facts separately from diagnostics. The
 API/Ollama requests. ChatGPT subscription refuses the unsupported setting; no
 output-token ceiling is invented for that public interface. Verification scope
 and limitations are recorded in
-[actual evidence](developer/testing.md#current-evidence-and-next-checks).
+[actual evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#current-evidence-and-next-checks).
 The [shared budget contract](developer/budgets.md) covers main, summary and local
 children and [extension model operations](developer/extension-model-calls.md)
 independently of reports. P23F's source and installed proofs passed locally and on
@@ -175,9 +177,9 @@ shared Mac grant, a retiring optional consumer rejecting the next turn, and a
 large launch frame leaving the first protocol write backpressured. Exact-source
 local and hosted verification passed at `375e607`, including actual macOS native
 environment/stdin handling, signed sandbox enforcement and both installed proofs.
-The [readiness decision](developer/architecture-review-dispositions.md#p24-scoped-readiness-decision)
+The [readiness decision](archive/2026-10-18-before-manual-rewrite/docs/developer/architecture-review-dispositions.md#p24-scoped-readiness-decision)
 records the evidence chain and selected acceptance scope. Historical failures and
-unconfirmed intermittent causes remain in [testing](developer/testing.md#current-evidence-and-next-checks).
+unconfirmed intermittent causes remain in [testing](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#current-evidence-and-next-checks).
 
 Accepted limits remain explicit: trusted user-permission code; non-atomic host
 file checks under hostile concurrent workspace changes; same-user journal/storage
@@ -196,8 +198,10 @@ supports proceeding under supervision; the old independent reviewers' withheld
 verdicts are not rewritten. P25 must preserve the frozen runner and approvals,
 record interventions and revalidate changed surfaces. Its final architecture
 delta/security review remains a separate gate. The
-[operator checkpoint](operator/architecture-review.md) links the actual scan;
-the [evaluation protocol](developer/self-hosting-evaluation.md) owns trial controls.
+[preserved operator checkpoint](archive/2026-10-18-before-manual-rewrite/docs/operator/architecture-review.md)
+links the actual scan; the
+[preserved evaluation protocol](archive/2026-10-18-before-manual-rewrite/docs/developer/self-hosting-evaluation.md)
+owns that trial's controls.
 
 ## P25: comparative research and supervised self-development
 
@@ -209,12 +213,13 @@ Zero-Mem and alternatives, then propose implementable P26/P27 designs. Each work
 independently before comparison, with common requirements and recorded resource,
 provider/model, retrieval and assistance differences.
 
-The [evaluation protocol](developer/self-hosting-evaluation.md) owns the rubric,
+The [preserved evaluation protocol](archive/2026-10-18-before-manual-rewrite/docs/developer/self-hosting-evaluation.md) owns the rubric,
 artifact manifest, proposed round limits, held-out cases and review process.
-The [frozen common brief](developer/p25-common-brief.md) pins the initial research
+The [frozen common brief](archive/2026-10-18-before-manual-rewrite/docs/developer/p25-common-brief.md) pins the initial research
 controls and identical source manifest before scored execution.
-The [knowledge design](developer/knowledge-extensions.md) owns domain questions and
-selection gates. Existing P14 tools/skills/ledger and P22 SDK are available; engine
+The [preserved knowledge design](archive/2026-10-18-before-manual-rewrite/docs/developer/knowledge-extensions.md)
+owns that study's domain questions and selection gates. New evaluation work follows
+the [contributor training](developer/self-hosting-evaluation.md). Existing P14 tools/skills/ledger and P22 SDK are available; engine
 installation or production implementation is not required by this milestone.
 
 Execution readiness requires a passing frozen runner, reviewed task/resource
@@ -258,8 +263,8 @@ triage and fixes need regression evidence. Raw findings stay private. P24's base
 scan completed; all applicable repairs and composition follow-ups passed their
 source/platform gates. Preparation is not scored P25 execution. No recurring
 monitoring is enabled and no new dependency is approved by this plan. See
-[architecture validation](developer/self-hosting-evaluation.md#independent-adversarial-architecture-validation)
-and [security execution constraints](developer/self-hosting-evaluation.md#security-review-before-and-after-the-trial).
+[architecture validation](archive/2026-10-18-before-manual-rewrite/docs/developer/self-hosting-evaluation.md#independent-adversarial-architecture-validation)
+and [security execution constraints](archive/2026-10-18-before-manual-rewrite/docs/developer/self-hosting-evaluation.md#security-review-before-and-after-the-trial).
 
 ## P26: optional working and long-term memory
 
@@ -267,7 +272,7 @@ and [security execution constraints](developer/self-hosting-evaluation.md#securi
 diagnostic-worker cleanup repair `fb4627e` pass applicable source/native/package
 and exact-source hosted gates. Local causal reproduction and controlled
 before/after regressions explain the strict cleanup failure; the original failed
-attempts and unchanged rerun remain in the [verification record](developer/testing.md#macos-diagnostic-cleanup-repair-2026-10-18).
+attempts and unchanged rerun remain in the [verification record](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#macos-diagnostic-cleanup-repair-2026-10-18).
 Independently selectable default-off session/task and persistent project/operator
 memory ship as bundled extensions.
 Explicit recall/remember/forget/export tools and commands provide bounded task
@@ -275,7 +280,7 @@ cards/facts and lexical recall. Source suppression, TTL/conflicts, derivative
 inventory/collection and approved migration/import preserve lifecycle integrity.
 Optional automatic recall/capture remains a separately justified adapter; it is
 not enabled by this baseline. Zero-Mem is inspiration, not a selected package or
-reproduced benchmark result. The [knowledge design](developer/knowledge-extensions.md#research-handoff-and-deferred-production-acceptance)
+reproduced benchmark result. The [knowledge design](archive/2026-10-18-before-manual-rewrite/docs/developer/knowledge-extensions.md#research-handoff-and-deferred-production-acceptance)
 owns the researched selection and deferred engine comparisons.
 
 Acceptance: default-off parity; explicit namespace/project/operator scopes;
@@ -304,7 +309,8 @@ preserve legacy identities and grants; they are reviewed and tested separately.
 Stable logical storage is an explicit operator grant, never a namespace chosen by
 project text or extension code. Existing journals and provider-visible history are
 retained; memory deletion must state its separate recall/suppression and cached
-context limits. See the authoritative [knowledge design](developer/knowledge-extensions.md).
+context limits. See the [knowledge development manual](developer/knowledge-extensions.md)
+for current placement and design guidance.
 The [operator guide](operator/memory.md) owns configuration/retention/recovery;
 the [extension contract](developer/memory.md) owns suppression and measurement limits.
 
@@ -350,7 +356,7 @@ barge-in, stale/unplayed frames, owner death, approval waits and no-replay recov
 source/package checks and separately recorded opt-in live account/device checks.
 Evaluate maintained Elixir/Rust/OS facilities and approve/inventory external
 dependencies before adoption. No codec, frontend runtime or service is selected.
-See [media boundaries](developer/runtime-capabilities.md#text-and-media-are-distinct-from-diagnostics).
+See [media boundaries](archive/2026-10-18-before-manual-rewrite/docs/developer/runtime-capabilities.md#text-and-media-are-distinct-from-diagnostics).
 
 ## License transition
 
@@ -367,7 +373,7 @@ local source/native/package checks, both packaged license copies and old compile
 compatibility proofs pass. Exact `7bb642b` Linux/macOS source/native/package and
 installed checks also pass after correcting a proof-fixture preparation timer;
 production code and request/assertion deadlines are unchanged. This separate
-transition is complete. The [verification record](developer/testing.md#current-evidence-and-next-checks)
+transition is complete. The [verification record](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#current-evidence-and-next-checks)
 owns actual receipts. No new runtime capability, dependency or service is added.
 
 ## Completed milestones P0–P22
@@ -385,13 +391,13 @@ subscription browser sign-in, natural-expiry refresh/token rotation, streamed
 inference, approved tools, idle resume and logout. A permission-off error was
 observed; allowance exhaustion and ineligible accounts remain unverified. Broader
 host/model/account portability is not implied. See the
-[P0 closure](developer/testing.md#p0-closure-on-serenity-2026-10-15).
+[P0 closure](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#p0-closure-on-serenity-2026-10-15).
 
 ## P1: make everyday use clearer
 
 Complete: line-oriented running/waiting/cancelled/finished states, EOF/queued-input
 and unknown-effect recovery checks. Skills remain explicit, bounded and inert.
-See [verification](developer/testing.md) and [operator usage](operator/usage.md).
+See [verification](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md) and [operator usage](operator/usage.md).
 
 ### Runtime identity and extension boundaries
 
@@ -408,7 +414,7 @@ Complete: validated durable checkpoints preserve user intent, host approval/acti
 metadata and native continuation while retaining original journals; unsafe
 reduction stops explicitly. P13/P19/P21 added bounded long-turn recovery and
 handoff capabilities. See [compaction](developer/context-compaction.md) and
-[P2 evidence](developer/testing.md#p2-context-compaction-2026-10-15).
+[P2 evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#p2-context-compaction-2026-10-15).
 
 ## P2b: define an OS sandbox boundary
 
@@ -416,7 +422,7 @@ Complete for the optional Linux native profile's tested filesystem/network/proce
 resource boundary. Trusted execution remains the default; requested native policy
 fails closed. Mac enforcement and best-effort descendant lifetime have distinct
 limits. See [sandbox contract](developer/sandbox.md),
-[Linux evidence](developer/testing.md#p2-native-linux-sandbox-2026-10-15) and
+[Linux evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#p2-native-linux-sandbox-2026-10-15) and
 [Mac boundary](developer/sandbox.md#macos-production-boundary).
 
 ## P3: workspace context from any directory
@@ -425,7 +431,7 @@ Complete: launch/explicit working directory, bounded scoped instruction snapshot
 provenance and deterministic resume/refresh, with coding and non-coding trials.
 Shell target scope can remain unknown; instruction path checks are not an OS
 sandbox. See [contract](developer/workspace-context.md) and
-[evidence](developer/testing.md#p3-workspace-context-2026-10-15).
+[evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#p3-workspace-context-2026-10-15).
 
 ## P4: packaging and protocols
 
@@ -433,14 +439,14 @@ Complete within Linux/macOS source/archive verification and separate MCP/delegat
 protocol design scope. Packages identify OS/architecture/libc and include notices;
 fresh extraction checks do not establish all architectures or signing/notarization.
 Windows and adversarial detached-descendant termination on Mac remain outside scope.
-See [evidence](developer/testing.md#p4-release-verification-and-protocol-proposal-2026-10-15).
+See [evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#p4-release-verification-and-protocol-proposal-2026-10-15).
 
 ## P5: local MCP tools
 
 Complete: explicit stdio tools, bounded descriptors/allowlists, schema validation,
 full approvals, durable intent and owned transport/no-replay recovery using reused
 MCP/schema packages. Source, extracted and scoped live checks are recorded in
-[P5 evidence](developer/testing.md#p5-local-mcp-2026-10-15); arbitrary servers are
+[P5 evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#p5-local-mcp-2026-10-15); arbitrary servers are
 not certified by the demo. See [MCP contract](developer/mcp.md).
 
 ## P6: local subagent delegation
@@ -448,27 +454,27 @@ not certified by the demo. See [MCP contract](developer/mcp.md).
 Complete: opt-in serial local children, separate journals/approvals, bounded
 context/results, parent ownership and no recursive delegation/child MCP. See
 [delegation contract](developer/delegation.md) and
-[P6 evidence](developer/testing.md#p6-local-delegation-2026-10-15).
+[P6 evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#p6-local-delegation-2026-10-15).
 
 ## P7: expanded MCP capability
 
 Complete within bounded local resources/prompts and pinned independent-server
 interoperability. Ordinary stdio cleanup repairs do not remove the documented Mac
-detached-child limit. See [P7 evidence](developer/testing.md#p7-expanded-local-mcp-2026-10-15)
-and [second-server coverage](developer/testing.md#second-independent-local-mcp-server-2026-10-15).
+detached-child limit. See [P7 evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#p7-expanded-local-mcp-2026-10-15)
+and [second-server coverage](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#second-independent-local-mcp-server-2026-10-15).
 
 ## P8: bounded skill resources
 
 Complete: explicit source-bound `load_skill_resource`, bounds, provenance and
 inert resume; loading does not run scripts or install dependencies. See
-[P8 evidence](developer/testing.md#p8-skill-resources-2026-10-15).
+[P8 evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#p8-skill-resources-2026-10-15).
 
 ## P9: parallel local subagents
 
 Complete: opt-in two-child groups, separate approval routing, bounded scheduling,
 results and cancellation. Serial remains default; P23 separately adds atomic shared
 token/cost reservations. See
-[P9 evidence](developer/testing.md#p9-parallel-local-delegation-2026-10-15).
+[P9 evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#p9-parallel-local-delegation-2026-10-15).
 
 ## P10: network MCP
 
@@ -476,8 +482,8 @@ Complete: explicitly configured MCP Streamable HTTP POST with JSON/finite SSE,
 verified TLS, server-specific credentials, limits, exact approvals and no replay.
 Redirects/retries, OAuth negotiation, GET subscriptions and reconnection are not
 implemented. Remote cancellation is best effort. See
-[contract](developer/mcp.md#streamable-http-boundary) and
-[P10 evidence](developer/testing.md#p10-streamable-http-mcp-2026-10-15).
+[contract](archive/2026-10-18-before-manual-rewrite/docs/developer/mcp.md#streamable-http-boundary) and
+[P10 evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#p10-streamable-http-mcp-2026-10-15).
 
 ## P11: live dotsetup trial
 
@@ -485,31 +491,31 @@ Complete within read-only project/next-step assessment and selected Ipse follow-
 Bash descriptor compatibility, sandbox visibility facts and project-orientation/Git
 skill guidance. Existing dotsetup edits were preserved; no dotsetup coding/deployment
 or GitHub adapter trial was performed. Multi-repository read roots remain separate.
-See [comparison](developer/testing.md#p11-live-project-assessment-2026-10-15) and
-[repairs](developer/testing.md#native-bash-and-visibility-repair-2026-10-15).
+See [comparison](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#p11-live-project-assessment-2026-10-15) and
+[repairs](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#native-bash-and-visibility-repair-2026-10-15).
 
 ## P12: task tracker coding trial
 
 Complete in a separate app workspace: forms/SQLite CRUD, validation, persistence,
 independent review and layout checks. Elixir was imposed by the test operator, so
 this did not prove neutral stack selection. Long-turn limitations led to P13.
-See [P12 evidence](developer/testing.md#p12-task-tracker-coding-trial-2026-10-15).
+See [P12 evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#p12-task-tracker-coding-trial-2026-10-15).
 
 ## P13: long-turn compaction and general-purpose trials
 
 Complete: safe long-turn checkpoints/diagnostics, a neutral-stack task tracker
 (Ipse chose Python/Flask) and a source-backed non-coding task. Ipse's implementation
 language does not constrain target workloads. These are bounded trials, not
-unrestricted task coverage. See [compaction](developer/testing.md#p13-long-turn-compaction-2026-10-16),
-[coding](developer/testing.md#p13-neutral-stack-coding-trial-2026-10-16) and
-[non-coding](developer/testing.md#p13-non-coding-document-trial-2026-10-16) evidence.
+unrestricted task coverage. See [compaction](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#p13-long-turn-compaction-2026-10-16),
+[coding](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#p13-neutral-stack-coding-trial-2026-10-16) and
+[non-coding](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#p13-non-coding-document-trial-2026-10-16) evidence.
 
 ### First supervised self-development trial
 
 Complete: frozen installed Ipse authored shared operator skill discovery in a
 separate candidate, with independent checks, approved effects and idle resume.
 The trial exposed and repaired bundled launcher environment contamination of
-system Mix. See [integration evidence](developer/testing.md#shared-skills-questions-configuration-and-profiles-integration-2026-10-16).
+system Mix. See [integration evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#shared-skills-questions-configuration-and-profiles-integration-2026-10-16).
 Later P18/P21/P22 trials broadened this supervised evidence; P25 proposes a larger
 comparative evaluation without claiming unattended self-development.
 
@@ -519,7 +525,7 @@ Complete: inert research skill, configured provider-agnostic MCP retrieval and
 bounded durable source/claim ledger/export, plus an independently checked live
 primary-source trial. No mandatory search service, recursive research engine or
 production knowledge backend. See [research contract](developer/research.md) and
-[five-stage evidence](developer/testing.md#five-stage-integrated-verification-2026-10-16).
+[five-stage evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#five-stage-integrated-verification-2026-10-16).
 
 ## P15: scoped configuration and shared operator skills
 
@@ -528,7 +534,7 @@ project > Ipse user > shared operator `~/.agents/skills` > bundled precedence.
 Project text cannot enable executable extensions, change billing or grant effects.
 See [operator configuration](operator/configuration.md),
 [developer contract](developer/configuration.md) and
-[integrated evidence](developer/testing.md#five-stage-integrated-verification-2026-10-16).
+[integrated evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#five-stage-integrated-verification-2026-10-16).
 
 ## P16: explicit model profiles and task routing
 
@@ -537,7 +543,7 @@ explicit child selection and credential/native-payload isolation. A stronger
 subscription main/local Ollama child trial passed; no hidden billing/provider
 fallback or automatic summary routing is claimed. See
 [profiles](operator/model-profiles.md) and
-[integrated evidence](developer/testing.md#five-stage-integrated-verification-2026-10-16).
+[integrated evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#five-stage-integrated-verification-2026-10-16).
 
 ## P17: structured operator questions
 
@@ -545,7 +551,7 @@ Complete: validated single-choice, multiple-choice and text answers, explicit
 submission, durable waiting/resume, cancellation/EOF/headless behavior and separate
 approval authority. Child questions and MCP elicitation remain unsupported.
 See [contract](developer/operator-questions.md) and
-[integrated evidence](developer/testing.md#five-stage-integrated-verification-2026-10-16).
+[integrated evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#five-stage-integrated-verification-2026-10-16).
 
 ## P18: supervised self-development on the operator's Mac
 
@@ -554,7 +560,7 @@ independent local Mac/native/package checks, bounded review and hosted Linux/Mac
 verification before PR #1 merged. Review budget exhaustion, supervisor assistance
 and safe context refusal remain recorded. See the
 [Mac runbook](operator/self-development.md) and
-[local evidence](developer/testing.md#p18-macos-supervised-self-development-evidence).
+[local evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#p18-macos-supervised-self-development-evidence).
 
 ## P19: long-session diagnosis and recovery
 
@@ -563,14 +569,14 @@ without silently trimming native continuation or intent. Synthetic fixtures
 reproduce the failure shape, not a private original Mac transcript. See
 [observability contract](developer/observability.md),
 [operator recovery](operator/recovery.md) and
-[P19 evidence](developer/testing.md#p19-diagnosis-and-explicit-recovery).
+[P19 evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#p19-diagnosis-and-explicit-recovery).
 
 ## P20: repeatable supervised self-development
 
 Complete: inert bundled self-development skill/resources, credential-free real
 Session fixture and supervised live use. Existing approvals, profiles and journals
 supply the boundaries; there is no mandatory workflow engine. See
-[P20 evidence](developer/testing.md#p20-reusable-self-development-skill).
+[P20 evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#p20-reusable-self-development-skill).
 
 ## P21: larger self-development trial on Serenity
 
@@ -578,7 +584,7 @@ Complete: Ipse-authored fresh-chat handoff import from a frozen P20 runner,
 independent Linux/package checks, separate bounded live review and hosted Linux/Mac
 checks. Repeated orientation needed supervisor narrowing; a reviewed manual handoff
 and unchanged idle resume were exercised. See
-[P21 evidence](developer/testing.md#p21-supervised-serenity-trial-and-independent-checks).
+[P21 evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#p21-supervised-serenity-trial-and-independent-checks).
 
 ## P22: extension scaffold and lifecycle hooks
 
@@ -591,7 +597,7 @@ Two shipped prompt/presentation examples are default-off.
 
 The [architecture/comparison](developer/extensions.md),
 [adoption scenarios](developer/extension-scenarios.md) and
-[lifecycle coverage audit](developer/lifecycle-events.md#supported-lifecycle-coverage)
+[lifecycle coverage audit](archive/2026-10-18-before-manual-rewrite/docs/developer/lifecycle-events.md#supported-lifecycle-coverage)
 define supported and unsupported seams. Hooks share lifecycle occurrence identity
 with notifications/feeds/jobs while retaining distinct private-view, ordering and
 effect authority. Remote event bridges, nested effectful services, automatic
@@ -603,4 +609,4 @@ rebuilding the installed archive. A separately reviewed live extension-only chan
 and hosted Linux/Mac checks closed P22's gates. This proves the exercised SDK
 contracts, not production graph/retrieval quality; later core changes require
 fresh compatibility evidence. See
-[completion evidence](developer/testing.md#supervised-extension-only-trial-2026-10-17).
+[completion evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#supervised-extension-only-trial-2026-10-17).

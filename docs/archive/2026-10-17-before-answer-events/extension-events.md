@@ -14,9 +14,9 @@ or inference for that input. This implements the first subscription seams in the
 [event jobs](extension-event-jobs.md) support finite actions and awaited recall;
 this guide covers read-only delivery. Broader lifecycle observation remains pending.
 
-Use [operator selection](../../operator/extensions.md#event-subscribers) for
+Use [operator selection](../2026-10-18-before-manual-rewrite/docs/operator/extensions.md#event-subscribers) for
 trust/configuration and [artifacts](../../developer/extension-artifacts.md) for installation.
-The [source/view adapter](../../developer/lifecycle-events.md#internal-journal-source-and-prompt-views)
+The [source/view adapter](../2026-10-18-before-manual-rewrite/docs/developer/lifecycle-events.md#internal-journal-source-and-prompt-views)
 owns occurrence identity and source paging. This guide owns subscription
 declarations, callback values and delivery recovery.
 
@@ -175,7 +175,7 @@ private versus metadata views, final transformed text, disabled behavior, strict
 acknowledgment/no action bypass, bounds, optional/required failures, timeout,
 actual VM shutdown, byte-identical idle resume, fresh identical prompts and
 coherently forged physical references before repair. See
-[actual platform/package evidence](../../developer/testing.md#current-evidence-and-next-checks).
+[actual platform/package evidence](../2026-10-18-before-manual-rewrite/docs/developer/testing.md#current-evidence-and-next-checks).
 
 The separate [job contract](extension-event-jobs.md) now provides finite host
 actions, pre-request recall and after-turn maintenance. Remaining foundation work

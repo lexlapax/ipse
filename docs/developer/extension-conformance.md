@@ -1,160 +1,140 @@
-# Synthetic extension conformance checks
+# Write repeatable extension conformance scenarios
 
-`ipse extension check` exercises selected extensions through ordinary Sessions,
-using a synthetic model and scratch workspace/state. Built-in and installed
-worker artifacts share the existing callback, approval, question, context and
-recovery validators. It does not replay a saved journal or use host model credentials.
-Optional [dispatcher tracing](observability.md#synthetic-dispatcher-tracing) samples
-only the synthetic Sessions created by this runner.
+`ipse extension check` drives selected extensions through real Sessions with a
+synthetic model and isolated workspace/state. Use it to turn an author workflow
+into inspectable assertions about prompts, actions, questions, files, and recovery.
+The fixture grants no code trust or capabilities. Review and select the exact
+artifacts through normal operator configuration first.
 
-## Review and select code
+## Run the first scenario
 
-Use a dedicated operator configuration with reviewed trust and fixture instances.
-Import independent artifacts through the normal
-[inert import procedure](../operator/extensions.md#import-and-inspect), then set
-their trust/selection explicitly. Check activates the effective selected set,
-including other enabled instances; fixture data cannot add artifacts or capabilities.
-Use `--no-project-config` to avoid unrelated project settings.
-
-For a credential-free first check, save this dedicated operator configuration:
-
-```json
-{
-  "version": 1,
-  "extension_trust": [
-    {"artifact": "builtin:prompt-annotation:1", "capabilities": ["transform.prompt"],
-     "allow_project": false, "allow_children": false}
-  ],
-  "extensions": [
-    {"instance": "annotation", "artifact": "builtin:prompt-annotation:1",
-     "enabled": false, "options": {"text": "Synthetic note"},
-     "order": 0, "lifetime": "session"}
-  ]
-}
-```
-
-Save this separate fixture:
-
-```json
-{
-  "version": 1,
-  "cases": [
-    {"id": "annotate", "kind": "prompt", "text": "Synthetic question",
-     "expect": {"status": "ok", "requests": 1,
-       "user_contains": "Synthetic note", "final": "Conformance fixture completed.",
-       "records": {"extension_transform_result": 1}}}
-  ]
-}
-```
-
-```sh
-./bin/ipse extension check --config /path/to/fixture-operator.json --fixture /path/to/scenarios.json --extension annotation --no-project-config
-```
-
-The same reviewed examples ship as [operator config](../../priv/conformance-operator.json)
-and [fixture](../../priv/conformance-demo.json), runnable directly from the checkout:
+The checkout includes a dedicated operator file and prompt fixture. Read
+`priv/conformance-operator.json` and `priv/conformance-demo.json`, then run:
 
 ```sh
 ./bin/ipse extension check --config priv/conformance-operator.json --fixture priv/conformance-demo.json --extension annotation --no-project-config
 ```
 
-The report contains assertion booleans, statuses/counts, fixture digest and selected
-artifact/runtime/API identities. It excludes input text, options, answers, returned
-values and journal content. Exit is nonzero for invalid configuration, an unexpected
-result or a suite stopped before all declared cases ran. Matching negative cases
-are behavioural evidence, not a safety certificate or independent OS-containment proof.
+The operator file trusts the builtin annotation but leaves it disabled by default.
+`--extension annotation` selects it for this run. The fixture sends synthetic input
+and asserts one admitted request, the appended marker, final presentation, and one
+transform result. It needs no credentials or model service.
 
-Add `--developer-trace` to include bounded, argument-free dispatcher samples in
-each case report. `--trace-ms` is 1..5000 (default 1000); `--trace-events` is 1..128
-(default 32). Both limit flags require tracing to be enabled. These are explicit
-operator options, not fixture fields or extension grants. Capture failure makes
-the check fail; reaching a normal time/sample limit does not. The
-[tracing contract](observability.md#synthetic-dispatcher-tracing) explains sampling
-gaps, cleanup and the distinction from source debugging.
+The fixture body is:
+
+```json
+{
+  "version": 1,
+  "cases": [{
+    "id": "annotate", "kind": "prompt", "text": "Synthetic question",
+    "expect": {
+      "status": "ok", "requests": 1, "user_contains": "Synthetic note",
+      "final": "Conformance fixture completed.",
+      "records": {"extension_transform_result": 1}
+    }
+  }]
+}
+```
+
+The report includes assertion booleans, status/counts, fixture digest, and exact
+artifact/runtime/API identities. It excludes input text, options, answers, values,
+and journal bodies. Nonzero exit indicates invalid setup, unexpected behavior,
+or a suite stopped before all cases ran. A matching negative case is useful
+behavioral evidence, not OS-containment certification.
 
 ## Fixture and execution contract
 
-Input is a duplicate-key-rejecting JSON object of at most 16 KiB. Version is 1;
-unknown fields refuse. `Conformance.schema/0` owns the closed schema, validated
-through the existing bounded JSON Schema adapter. Other checks below enforce
-ownership/cross-field policy rather than duplicating the worker protocol.
+`Conformance.schema/0` owns the version-1 closed schema. Input is at most 16 KiB
+and rejects duplicate keys and unknown fields.
 
-| Field | Meaning and bounds |
+| Field | Meaning and limits |
 | --- | --- |
-| `files` | Optional initial workspace files; at most 16 relative paths, 256 bytes each, no traversal; contents at most 4096 bytes |
-| `options` | Optional instance-to-options objects, limited to already selected instance IDs |
-| `cases` | 1..16 ordered cases with unique lowercase ASCII IDs of at most 32 characters |
-| Case `kind` | `prompt`, `tool`, `command` or `service` |
-| Case `text` | Required for `prompt`; optional synthetic prompt for `tool` |
-| Case `name`, `arguments` | Required for tool/command/service, using actual scoped catalog names and schemas |
-| Case `options` | Instance options replacing the complete object; overrides common fixture options |
-| Case `script` | Prompt-only array of at most eight synthetic replies: exactly `{"assistant":"text"}` or `{"tool":{"name":"name","arguments":{}}}` |
-| Case `answers` | At most eight explicit answer objects, consumed in order through the real question validator |
-| Case `timeout_ms` | 100..60000, default 15000; timeout cancels owned work |
-| Case `cancel_after_ms` | Optional 1..60000 cancellation delay; use a deliberately blocked fixture when testing cancellation |
-| Case `expect` | Required assertions described below |
+| `files` | Optional seed files, at most 16 safe relative paths up to 256 bytes; contents up to 4,096 bytes |
+| `options` | Optional instance-to-options objects for already selected IDs |
+| `cases` | 1–16 ordered cases, unique lowercase ASCII IDs up to 32 characters |
+| `kind` | `prompt`, `tool`, `command`, or `service` |
+| `text` | Required prompt text; optional synthetic prompt for a tool case |
+| `name`, `arguments` | Actual qualified export and schema-valid arguments for tool/command/service |
+| Case `options` | Complete replacement option objects, overriding common fixture options |
+| `script` | Prompt-only array, at most eight replies, each exactly `{"assistant":"text"}` or `{"tool":{"name":"name","arguments":{}}}` |
+| `answers` | At most eight explicit answers, checked in order by the real validator |
+| `timeout_ms` | 100–60,000, default 15,000; timeout cancels owned work |
+| `cancel_after_ms` | Optional 1–60,000 cancellation delay |
+| `expect` | Required expected status and optional assertions |
 
-Tool cases issue one synthetic tool call, then finish. Prompt scripts use their
-declared replies in order; when exhausted, the model returns
-`Conformance fixture completed.` A tool reply needs ordinary approval. Commands
-and standalone services use explicit operator invocation; each later mutation
-still needs its own permission. Host mutations and model-selected tools are denied
-without `--yes`. Question answers never grant that permission, and missing answers
-stop at `question` without selecting a recommendation.
+Tool cases request one synthetic tool call and then finish. When a prompt script
+is exhausted, the synthetic model returns `Conformance fixture completed.`
+Commands/services use explicit invocation. Model-selected tools and later host
+mutations remain denied without `--yes`. Question answers never grant permission;
+missing answers stop at `question` rather than selecting recommendations.
 
-All cases share one scratch workspace and isolated application home, but use fresh
-session IDs. This supports explicit remember/recall sequences without borrowing
-operator state. Files are seeded once. Literal `{{workspace}}` and `{{home}}`
-placeholders expand in option/input/expected values to those scratch paths; keys
-are not expanded, and no environment or shell interpolation occurs. Options are
-schema-checked and pinned again before executable startup.
+Cases share one scratch workspace and isolated application home, using fresh
+session IDs. This permits explicit remember/recall sequences without touching
+operator state. Files seed once. Literal `{{workspace}}` and `{{home}}` expand
+inside option/input/expected values, never keys. No shell/environment interpolation
+occurs. Options are validated and pinned before execution.
 
-Use synthetic inputs only. Host inference is replaced, MCP/delegation and compaction
-are not activated by this runner, and live provider/replay CLI options refuse.
-Reviewed code and explicitly approved shell still have ordinary OS permissions;
-scratch host state is not an OS sandbox. In particular, real absolute paths in
-callback options are not automatically redirected: use placeholders in a dedicated
-configuration for I/O adapters. Shell sandbox selection retains its ordinary
-[platform boundary](sandbox.md); workers remain outside that shell profile.
+Use synthetic data and dedicated configuration. Host inference is replaced;
+MCP, delegation, and compaction are not activated. Live-provider/replay CLI options
+refuse. Trusted workers and explicitly approved shell still have ordinary OS
+permissions. Real absolute paths in options are not redirected, so use scratch
+placeholders for IO adapters. Shell policy retains its own platform limits;
+it does not sandbox workers.
 
-## Assertions, failure and inspection
+## Assert observable behavior
 
-`expect.status` is one of `ok`, `error`, `question`, `cancelled`, `refused` or
-`timeout`. Optional assertions are:
+`expect.status` is `ok`, `error`, `question`, `cancelled`, `refused`, or `timeout`.
+Add assertions that prove the user's intended result:
 
-- `requests`: count of host-admitted synthetic requests, 0..10.
-- `final`: exact final presentation string.
-- `value`: exact object returned by the last extension invocation.
-- `user_contains`: marker in the latest effective user message of any synthetic request.
-- `context_contains`: marker in the labelled user-role reference context of any synthetic request, useful for recall.
-- `records`: exact counts for the named journal types, each 0..1000.
-- `action_statuses`: exact ordered host-action outcome statuses, at most 128.
-- `files`: exact contents at safe relative workspace paths.
-- `cleanup`: expected result of Session close acknowledgment, default true.
+| Assertion | What it checks |
+| --- | --- |
+| `requests` | Synthetic host-admitted request count, 0–10 |
+| `final` | Exact completed presentation |
+| `value` | Exact last invocation object |
+| `user_contains` | Marker in an effective user message sent to the synthetic model |
+| `context_contains` | Marker in labelled reference context, useful for recall |
+| `records` | Exact counts for named journal types, each 0–1,000 |
+| `action_statuses` | Exact ordered action outcomes, at most 128 |
+| `files` | Exact contents at safe workspace-relative paths |
+| `cleanup` | Expected Session close acknowledgment, default true |
 
-Returned values remain extension assertions. Check host action receipts, context
-snapshots and file results separately for effects. After close, saved diagnostics,
-usage/session bindings, physical prompt sources and text-resource receipts are
-validated without repair or callback replay. Unexpected loss of journal evidence
-cannot pass. `cleanup_confirmed` reports the Session close result, not a separate
-proof about detached descendants; see [actual platform limits](sandbox.md).
+A handler's `value` assertion cannot prove a file or state write. Assert host
+action receipts and files/snapshots separately. After close, the checker validates
+saved diagnostics, usage/session links, physical sources, and text resources
+without repair or replay. Missing journal evidence cannot pass.
 
-Cases run once in order. An unexpected assertion failure or unconfirmed cleanup
-stops later cases; the report distinguishes `case_count`, `declared_cases`,
-`stopped_early` and `safe_to_continue`. An explicitly expected unknown cleanup can
-match its case while still preventing further execution. No automatic retries,
-resume or recommended answers occur.
+Cases run once in order. Unexpected assertions or unconfirmed cleanup stop later
+cases. Inspect `case_count`, `declared_cases`, `stopped_early`, and
+`safe_to_continue`. An explicitly expected unknown-cleanup case may match while
+still preventing further execution. Nothing retries or resumes automatically.
 
-Scratch files/journals are removed by default. Add `--keep-fixture` to retain the
-private directory for local inspection; its path appears only with that flag.
-Retained journals contain fixture inputs/results, so do not use private account
-transcripts. Abrupt process/host termination can leave scratch directories even
-without the flag; ownership cleanup and filesystem deletion are separate concerns.
+## Inspect a failure
 
-The current checker validates declared scenarios, not arbitrary extension quality,
-production services, real account providers, all crash schedules or compatibility
-with every runtime. The [independent lab](extension-proof.md) uses this checker
-for temporary CLI selection, then a separate operator verifier for its broader
-domain assertions. Its supervised trial and the lifecycle audit are recorded;
-hosted Linux/macOS verification passed. See [P22's completion scope](../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
-See [verification scope](testing.md#current-evidence-and-next-checks).
+Add `--keep-fixture` to retain the private scratch directory and print its path.
+Its journals contain fixture content, so avoid private transcripts. Without the
+flag, scratch data is removed normally; abrupt host termination may still leave
+it behind. Filesystem deletion and process cleanup are separate results.
+
+For bounded argument-free dispatcher samples, add `--developer-trace`.
+`--trace-ms` is 1–5,000, default 1,000; `--trace-events` is 1–128, default 32.
+Both require tracing. Capture failure fails the check; a normal sample/time limit
+does not. These flags are operator policy, never fixture grants. See
+[synthetic tracing](observability.md#diagnose-with-synthetic-data).
+
+## Extend the training fixture
+
+Copy the demo fixture into a scratch file. Change `user_contains` to a marker
+that is not appended and observe the failed assertion. Then restore it and add
+an exact record count. For a stateful package, use the lab's remember/recall cases
+as a model and add a denied write after an explicit question answer.
+
+```sh
+mix test test/extensions_conformance_test.exs
+```
+
+The tests cover trust ceilings, scratch isolation, placeholders, questions without
+implicit answers, denial before code loading, honest cancellation reports,
+tracing ownership, and stopping later effectful cases. Use the
+[compatibility lab](extension-proof.md) when you also need evidence against an
+unchanged extracted runtime; conformance scenarios alone do not establish every
+platform, crash schedule, provider, or production algorithm.

@@ -1,6 +1,6 @@
 # Historical P25 packet-v1 method
 
-Historical only. Original path: `docs/developer/p25-packet-method.md`, source commit `ab9d748`, archived 2026-10-18. Body retained below; relative links point to its original snapshot. Use the [current method](../../developer/p25-packet-method.md) and [execution record](../../developer/p25-evaluation.md).
+Historical only. Original path: `docs/developer/p25-packet-method.md`, source commit `ab9d748`, archived 2026-10-18. Body retained below; relative links point to its original snapshot. Use the [current method](../2026-10-18-before-manual-rewrite/docs/developer/p25-packet-method.md) and [execution record](../2026-10-18-before-manual-rewrite/docs/developer/p25-evaluation.md).
 
 # P25 common-packet comparison
 

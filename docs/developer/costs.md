@@ -1,216 +1,112 @@
-# Configurable usage estimates
+# Calculating and reporting configured costs
 
-P23 starts with `Ipse.Extensions.Costs`, a pure extension-side calculator over
-explicit data. It validates a versioned rate card and estimates one canonical
-cumulative request snapshot. It performs no IO, pricing lookup, model request,
-state mutation, subscription or request admission. No rates ship enabled and no
-provider/model price is embedded. Default-off report and summary extensions
-use the granted accounting-read SDK for explicit own-session pages and captured
-session totals. See
-[operator selection](../operator/usage-accounting.md#enable-the-optional-report).
-The separately granted `builtin:cost-tree:1` adds captured parent/direct-child
-aggregation. Optional [host admission](budgets.md) enforces shared reservations
-separately, including [accounted extension model operations](extension-model-calls.md).
+Cost reporting is extension behavior. `Ipse.Extensions.Costs` is a pure calculator
+that receives a validated rate card and one canonical cumulative request record.
+It performs no IO, pricing lookup, inference, mutation, subscription, or admission.
+No rates are enabled by default. [Shared budgets](budgets.md) enforce separately.
 
-## Rate identity and selection
+Begin with `lib/ipse/extensions/costs.ex` and the synthetic `card/0` and `request/2`
+helpers in `test/extensions_costs_test.exs`. These helpers make the entire pricing
+input visible. Avoid using a live price service to test arithmetic.
 
-`schema/0` returns the closed schema; `validate/1` reuses the existing bounded
-JSON Schema adapter plus semantic date, decimal and overlap checks. A card has
-version 1, ID, revision, uppercase three-letter currency label, publication date,
-source and up to 32 rows. The existing SDK object bounds apply, including 16 KiB
-per object. Currency is an explicit label, not an exchange-rate or ISO-registry
-lookup. A source is `https:` without user information/query, or an `operator:`
-reference; neither is fetched.
+## Calculate one request by hand
 
-Each row selects exact provider, billing mode, model and endpoint hash, a UTC
-admission-date interval and an input-token interval. Dates use `YYYY-MM-DD`;
-intervals include the lower bound and exclude the upper bound, with null upper
-bounds allowed. Intersecting date/token bands for the same identity refuse.
-Unknown input cannot select a finite token band. A reported model takes precedence
-over the requested model; aliases do not silently match. Null endpoint matches
-only a request with no explicit endpoint hash, never an arbitrary custom endpoint.
+The flat-rate fixture prices 100 input and 20 output tokens at synthetic rates of
+2 and 10 currency units per million tokens:
 
-The basis must match billing: API → `api_estimate`, subscription → explicitly
-configured `api_equivalent`, local → `local_estimate`. An API row cannot price
-a subscription/local request. Missing subscription pricing says it is not API
-spend; missing local pricing remains unconfigured, not free. Scripted demo usage
-is not applicable. These are estimates of configured measured dimensions, not
-account charges or invoices.
+```text
+input:  100 × 2  / 1,000,000 = 0.0002
+output:  20 × 10 / 1,000,000 = 0.0002
+amount: 0.0004 = 400,000 nanos at currency_scale 9
+```
 
-## Units and arithmetic
+Seven reasoning tokens in the output breakdown do not add another charge. They
+are already included in the 20 output tokens. Follow this case through
+`Costs.estimate/2`, then change the input mode to `cache_split` in the next fixture.
+Cached input and cache writes partition inclusive input; they do not increase it.
 
-Rates are nonnegative decimal strings, with at most nine fractional digits and
-nine integer digits. Floats, exponents, signs and unsupported dimensions refuse.
-Token rates are currency per million tokens, web-search/fetch rates per thousand
-reported requests, and duration rates per second against normalized nanoseconds.
+The calculator uses exact integer intermediate products and adds components before
+rounding up once per request to one billionth of the configured currency. Rates
+are nonnegative decimal strings with at most nine integer and nine fractional
+digits. Floats, signs, exponents, and unknown dimensions refuse. Overflow beyond
+the SDK-safe integer bound produces an explicit overflow and no amount.
 
-| Input policy | Required token rates | Interpretation |
-| --- | --- | --- |
-| `flat` | `input`, `output` | Operator-selected approximation applying one rate to all input tokens |
-| `cache_split` | `input_uncached`, `input_cached`, `input_cache_write`, `output` | Inclusive input minus known cached/write subsets; no double counting |
-| `cache_ttl_split` | `input_uncached`, `input_cached`, `input_cache_write_5m`, `input_cache_write_1h`, `output` | Aggregate writes must equal the sum of known TTL subsets |
+## Match a rate row deliberately
 
-Reasoning tokens are already within output and have no additional rate dimension.
-Unknown cache breakdowns do not become zero. Zero inclusive input or zero aggregate
-writes can mathematically establish zero subsets. Contradictory partitions are
-excluded from the known subtotal. Optional `web_search`, `web_fetch` and
-`duration_second` rates need their corresponding counts; a positive reported extra
-without a rate keeps the total unknown. Unreported, unconfigured extras are outside
-the stated `text_tokens_and_reported_extras` scope, not certified zero charges.
+A version-1 card has ID, revision, uppercase three-letter currency label,
+publication date, source, and up to 32 rows, within the 16 KiB SDK object limit.
+The currency label is not an exchange-rate lookup. Sources are `https:` without
+userinfo/query or `operator:` references; neither is fetched.
 
-OTP integers retain exact intermediate products with a common denominator.
-The calculator adds components before rounding up once per request to one
-billionth of the configured currency (`currency_scale: 9`). It never uses binary
-floating point for money. A result above the SDK-safe integer bound is an explicit
-overflow with no amount. This fixed precision and bounded decimal syntax need no
-general decimal-arithmetic package; the schema adapter, normalized counters,
-canonical digest and OTP arithmetic are already dependencies.
-[Decimal 3.1.1](https://decimal.hexdocs.pm/readme.html), Apache-2.0, was evaluated
-for its arbitrary decimal precision and bounded parsing. This contract deliberately
-accepts only a fixed nonnegative nine-place format and performs exact integer
-products before one rounding step, so no decimal context, arbitrary exponent or
-additional package is needed. Reevaluate Decimal if that numeric contract expands.
+A row matches exact provider, billing mode, model, endpoint hash, admission date,
+and input-token band. Reported model takes precedence over requested model; no
+alias is inferred. Null endpoint matches only absent explicit endpoint identity.
+Date and token intervals include their lower bound and exclude their upper bound;
+null upper bounds are open-ended. Overlapping rows for the same identity refuse.
+Unknown input cannot select a finite token band.
 
-## Input and result
+| Billing mode | Required basis |
+| --- | --- |
+| API | `api_estimate` |
+| Subscription | explicitly configured `api_equivalent` |
+| Local | `local_estimate` |
+| Demo | Not applicable |
 
-`estimate/2` requires exactly these request fields, selected from validated host
-accounting: `provider`, `billing_mode`, `model`, `reported_model`,
-`endpoint_sha256`, `admitted_at_ms`, `outcome`, `finality`, `usage`. Usage must be
-a valid normalized record. The calculator validates data; it does not authenticate
-a caller's claimed accounting or read a private Session/journal.
+Subscription equivalents are not API charges. Missing local prices do not imply
+free computation. A card cannot price another billing mode by fallback.
 
-An estimate identifies provider/billing, requested/reported/rated model, endpoint
-hash and admission time, plus card revision/digest, source/publication date,
-selected row/input policy, currency/scale, basis, components and rounding rule.
-`amount_nanos` is present
-only for a fully priced final completed snapshot. `known_amount_nanos` can retain
-the priced subtotal of partial/unknown work; it stays null when nothing is known.
-Missing rates/counts, invalid partitions, incomplete requests and overflow have
-explicit reasons. A known observed zero is different from an unknown total.
+| Input mode | Required rates |
+| --- | --- |
+| `flat` | `input`, `output` |
+| `cache_split` | `input_uncached`, `input_cached`, `input_cache_write`, `output` |
+| `cache_ttl_split` | `input_uncached`, `input_cached`, `input_cache_write_5m`, `input_cache_write_1h`, `output` |
 
-Recompute from the latest cumulative snapshot, not by adding successive provider
-observations. The calculator has no mutable ledger or deduplication state; the
-report caller must retain request/attempt identity, replace revisions and avoid
-counting a child twice. Card changes produce a different digest and estimate;
-they do not rewrite saved request facts or retrospectively certify a bill.
+TTL subsets must sum to aggregate writes. Unknown subsets remain unknown unless
+known zero totals establish zero. Contradictory partitions cannot contribute a
+known input subtotal. Optional `web_search` and `web_fetch` rates use thousands of
+reported requests; `duration_second` uses normalized nanoseconds. Positive extras
+without a rate keep the total unknown.
 
-## Reports, cumulative aggregation and evidence
+## Keep estimates tied to accounting
 
-`Ipse.Extensions.Examples.CostReport` declares one operator command and no model
-tool or lifecycle subscription. `host.actions` plus `host.usage` permits a bounded
-`usage.read` operation; it grants no prompt/history, write, model or child access.
-The [accounting-read contract](usage-accounting.md#extension-accounting-reads)
-owns snapshot identity, canonical records, paging and recovery validation.
+`estimate/2` accepts exactly `provider`, `billing_mode`, `model`, `reported_model`,
+`endpoint_sha256`, `admitted_at_ms`, `outcome`, `finality`, and normalized `usage`.
+It validates those values but does not authenticate their provenance. Host
+[accounting reads](usage-accounting.md) provide authenticated session projections.
 
-Each explicit report prices at most four returned requests. Its groups are page
-totals separated by provider, billing and estimate basis. Unknown costs do not
-become zero, and a summed amount can overflow even when individual quotes fit;
-both cases keep the total null. Request/attempt/parent/profile identities remain
-available for future aggregation. The configured rate card is identified once
-per report, with row/input policy, components and model attribution per request.
-Repeated/overlapping pages must not be added blindly. The report never claims a
-whole-session or child balance, and old cached reports do not reprice on resume.
+A result retains card digest/revision, row, rated/requested/reported model,
+source/date, basis, currency/scale, components, and rounding rule.
+`amount_nanos` exists only for a fully priced final completed snapshot.
+`known_amount_nanos` can preserve a partial subtotal. Missing data never becomes
+zero, and a changed card creates a new estimate without rewriting request facts.
 
-`Ipse.Extensions.Examples.CostSummary` supplies the separate
-`builtin:cost-summary:1` command, with the explicit `host.usage.scan` capability.
-It follows every page of one snapshot and passes each canonical row to the pure
-`Ipse.Extensions.CostSummary` accumulator. The accumulator keys contributions by
-session/request/attempt identity, replacing a cumulative revision instead of
-adding it. Admission identity must stay unchanged. Callers supply revisions in
-authoritative order; token values or timestamps do not establish revision order.
-Repeated or overlapping pages do not multiply a request. Separate attempts remain
-separate liability. Each command starts a fresh accumulator and one rate card;
-rate revisions are never mixed in a total.
+## Follow the report family
 
-Groups retain billing/basis separation, known monetary subtotals, unknown-cost/
-outcome counts and normalized counter summaries. Each counter has `total`,
-`known_subtotal`, `unknown_count` and `overflow`; partial outcomes prevent a final
-total even when their observed counts are known. Each dimension is summed
-independently, preserving cache/reasoning subsets without double counting them.
-Exact intermediate integers may exceed SDK-safe precision; overflowing output
-totals/subtotals become null with an explicit flag.
+`Examples.CostReport` reads at most four requests per explicit page using
+`host.actions` and `host.usage`. It has no model tool, transcript grant, or write
+permission. Its totals describe that page, not the whole session.
+`Examples.CostSummary` adds `host.usage.scan`, follows one captured snapshot, and
+uses the pure `Ipse.Extensions.CostSummary` accumulator. The accumulator keys by
+session/request/attempt and replaces cumulative revisions instead of adding them.
+Admission identity must remain fixed; callers supply authoritative revision order.
 
-`enumeration_complete` requires the entire captured own-session request count.
-`cost_estimate_complete` additionally excludes unmetered history and unknown or
-overflowing monetary totals. Neither is an invoice guarantee or a child-journal
-claim. A result too large for the SDK returns `summary_bounds`, without a
-truncated success; a failed read returns `summary_incomplete`. Deadline,
-cancellation or worker interruption retains the ordinary unknown invocation
-semantics and never causes automatic replay.
+`Examples.CostTree` separately requires `host.usage.children`. It combines a
+parent cut, a frozen registered-child list, and each child's fixed accounting
+prefix. These are separate captured cuts, not a globally atomic timestamp.
+Unavailable children remain gaps. The tree accumulator permits 40,000 attempts;
+own-session summaries permit 10,000. Billing/basis groups retain known subtotals,
+unknown counts, and overflow independently.
 
-Semantic card errors return `invalid_rate_card`; malformed snapshots return
-`invalid_arguments` or the host's fixed failure code. A report exceeding the SDK
-object bound returns `report_bounds` with an unchanged retry cursor and snapshot,
-without silently dropping requests. Bundled artifact identity pins the report
-and calculator BEAM files; the summary also pins its accumulator. Host identity
-pins the read implementation. All pricing/grouping behavior stays in extensions.
+`enumeration_complete` means the captured request range was read. Complete costs
+also require no unmetered history, unknown outcomes, missing rates, or overflow.
+Neither flag certifies an invoice. `report_bounds`, `summary_bounds`, and
+`summary_incomplete` refuse or report incomplete coverage rather than truncate a
+successful balance. Interrupted commands are never replayed on resume.
 
-Fifteen focused fixtures cover exact arithmetic/rounding, cache/TTL partitions,
-reasoning inclusion, missing/zero/contradictory counters, partial work, subscription/
-local/demo distinction, request/duration extras, dates/bands, exact model/endpoint
-matching, revision provenance, invalid schemas/decimal inputs and overflow. They
-use synthetic rates and no service/account. Independent-worker reader fixtures
-cover private exclusion, stable pages beyond sixteen requests, caller/session
-refusal, unknown/legacy usage, snapshot limits, source/page forgery, cancellation
-and inert resume. Report/summary fixtures cover real callbacks, separated billing
-groups, unknown totals, cost/counter overflow, cumulative replacement, immutable
-admission and known invalid-card results. A 70-request worker scenario reads 18
-pages and validates byte-identical idle resume; it crosses the ordinary 16-step
-limit under a separate read grant. The credential-free `priv/cost-report-demo.exs`
-also runs the report family in extracted-package verification. See
-[actual checks](testing.md#current-evidence-and-next-checks).
+```sh
+mix test test/extensions_costs_test.exs test/extensions_cost_report_test.exs test/extensions_cost_summary_test.exs
+```
 
-`Ipse.Extensions.Examples.CostTree` uses the same pure accumulator and a separate
-`host.usage.children` grant. It reads one parent range, a frozen registered-child
-list and each selected child's fixed accounting prefix through the SDK. It exports
-`tree_summary`, `children` and `child_usage` as operator-only commands; no model
-tool, hook, storage action or extension execution inside children is required.
-The [child read contract](usage-accounting.md#registered-child-accounting) owns
-path/origin validation, locks, prefix bounds and recovery. No child-feature branch
-is added to Session's reporting logic; core changes admit generic accounting reads
-and record exact child-origin facts.
-
-Tree scope is a vector of cuts, not a globally atomic timestamp. The report retains
-the parent/discovery snapshots and a digest of the exact child descriptors,
-snapshots, completion/error entries in action receipts. Bounded summary output
-uses child/captured/gap counts, gap reasons and uncertain child-outcome counts;
-it never silently counts an unavailable child as zero. `enumeration_complete`
-requires all captured request records; complete costs additionally require no
-unmetered history, unknown child outcomes or unpriced/partial/overflowing usage.
-The accumulator permits 40,000 unique attempts for this reader; ordinary own-
-session summaries retain 10,000. The common read/traffic/deadline bounds remain.
-An exhausted read allowance can return visibly incomplete coverage. No automatic
-retry or catch-up updates an already saved result.
-
-Synthetic fixtures exercise serial and concurrent children, cumulative child
-usage, failed-child observations, missing/busy/unrelated/unsafe/oversized sources,
-changed cached counters and physical origins, later appends outside a fixed prefix
-and pre-repair refusal. The release fixture now runs a real parallel delegation
-and cached tree report with synthetic rates/provider. These verify accounting
-protocols, not live prices, account charges or a transactional external ledger.
-
-Optional [provider output caps](provider-limits.md) now supply a supported
-per-request control; subscription requests explicitly refuse that unsupported
-setting. Optional [host-owned shared reservations](budgets.md) cover main,
-summary, local-child and explicitly accounted extension requests, retaining
-partial/unknown liability independently of these reports. Selected knowledge
-packages can request one-shot text inference through the approved host operation;
-embeddings need their own supported provider/accounting contract. The planned
-P25 research trial can use existing explicit provider/tools without implementing
-a production engine. A calculator or event observer cannot enforce admission.
-
-## Primary-source review
-
-Reviewed on 2026-10-17; no published numeric rate is copied into runtime defaults:
-
-- OpenAI pricing varies by model, cache category, context band and processing
-  mode. Those dimensions require explicit configured rows; a model string alone
-  cannot establish an invoice. [API pricing](https://developers.openai.com/api/docs/pricing).
-- OpenAI output includes non-visible generated tokens; the output limit applies
-  beyond displayed text. Meter output once, retaining reasoning as a breakdown.
-  [Reasoning and cost control](https://developers.openai.com/api/docs/guides/reasoning).
-- Anthropic separates cache reads and TTL-specific writes and documents additional
-  context/geography/tool modifiers. A configured scope must not silently promise
-  coverage of unsupported charges. [Pricing](https://platform.claude.com/docs/en/about-claude/pricing).
-- Ollama reports token counts and nanosecond durations. Those measurements do not
-  determine hardware/electricity prices. [Usage metrics](https://docs.ollama.com/api/usage).
+Use the arithmetic suite for row selection and units; use worker suites for actual
+read capabilities, stable pages, bounded results, and saved receipts. When changing
+aggregation, test overlapping pages and a revised request before testing totals.

@@ -27,8 +27,8 @@ It accepted the prior scoped repairs but retained substantial omissions. It is
 useful follow-up evidence, not a fresh independent assessment. The repaired source
 passed its local handoff and [hosted Linux/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39077065133),
 including both Mac enforcement steps and independent installed proofs. The
-[register](../../developer/architecture-review-dispositions.md)
-and [testing record](../../developer/testing.md#current-evidence-and-next-checks)
+[register](../2026-10-18-before-manual-rewrite/docs/developer/architecture-review-dispositions.md)
+and [testing record](../2026-10-18-before-manual-rewrite/docs/developer/testing.md#current-evidence-and-next-checks)
 hold details for phase B only.
 
 The next review must substantively inspect previously unread implementations and
@@ -36,7 +36,7 @@ test bodies. Rechecking only the repair diff or listing test names cannot close
 the architecture gate. If the workload cannot fit one session, return precise
 coverage checkpoints for another fresh session. Two hours is a cap, not an adequacy
 target. Source review proposes runtime regressions; it does not claim to execute
-them or certify OS enforcement. The [evaluation protocol](../../developer/self-hosting-evaluation.md#independent-adversarial-architecture-validation)
+them or certify OS enforcement. The [evaluation protocol](../2026-10-18-before-manual-rewrite/docs/developer/self-hosting-evaluation.md#independent-adversarial-architecture-validation)
 owns acceptance; the [plan](../../plan.md#p24-independent-architecture-validation-and-baseline-security)
 keeps baseline security and P25 behind applicable repairs and adequate coverage.
 

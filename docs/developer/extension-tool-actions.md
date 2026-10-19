@@ -1,17 +1,17 @@
-# Extension workflow tool actions
+# Run file and shell work from an extension
 
-P22A10 adds `host.tools` to the [finite host-call protocol](extension-host-calls.md).
-It calls the existing `read`, `write`, `edit` and `shell` tools through host-owned
-schema, context, approval and execution boundaries. It does not register a new
-agent loop or authorize arbitrary tool IDs. [Value-service composition](extension-services.md)
-is implemented separately, alongside [context contributions](extension-context.md).
-The [independent installed lab](extension-proof.md) verifies the exercised workflow
-paths; arbitrary nested effects remain outside the value-service contract.
+Use `tool.call` when a workflow needs Ipse's existing `read`, `write`, `edit`, or
+`shell` tool. Session retains schema validation, workspace instructions,
+approval, sandbox selection, and durable outcomes. A worker's ordinary value or
+question answer cannot execute a tool.
 
-## Request and permission
+Read the `workflow` export and answered continuation in
+`examples/extension-lab/src/memory.ex`. It turns a selected note into this typed
+proposal rather than writing directly from extension code.
 
-An artifact explicitly declares `host.actions` and `host.tools`; operator trust
-must allow both. A callback may return:
+## Propose a bounded tool call
+
+Declare `host.actions` and `host.tools` in the artifact and operator trust ceiling:
 
 ```json
 {
@@ -26,77 +26,84 @@ must allow both. A callback may return:
 }
 ```
 
-These are the exact request keys. Arguments reuse the existing tool's closed
-schema and SDK plain-JSON limits. `timeout_ms` is required, integer 1–30,000.
-An optional shell argument `timeout_ms` cannot exceed the outer deadline; when
-omitted, shell execution uses that explicit outer deadline. All host calls,
-including questions/state and resumed continuations, share the 16-operation cap.
+The request has exactly those keys. Arguments use the existing tool's closed
+schema and SDK JSON bounds. `timeout_ms` is required and ranges from 1 through
+30,000. A shell argument's optional inner timeout cannot exceed the outer one;
+when omitted, shell uses the explicit outer deadline. The call consumes one of
+the ordinary 16 host-action steps, including across question continuations.
 
-Write/edit/shell require separate full mutation approval unless execution was
-explicitly enabled for the session. Read follows ordinary read-tool policy and
-still needs the trusted capability. Operator command invocation, original model
-tool approval and question answers cannot approve a later effect. Approval shows
-the full request, extension/artifact and null state namespace. Unknown tools,
-MCP IDs, recursive extension calls and delegation IDs are refused by this API.
+Write, edit, and shell require full separate mutation approval unless the session
+explicitly enables execution. Read uses ordinary read policy but still requires
+the trusted capability. Approval shows the complete request, instance/artifact,
+and null state namespace. Unknown tool names, MCP, delegation, and recursive
+extension calls refuse. Neither invoking a command, approving its enclosing model
+tool, nor answering a question approves this effect.
 
 ## Workspace context and owned execution
 
-Before tool admission, the owned host task snapshots the Session's current
-workspace instructions and performs existing nested-path discovery outside the
-GenServer. Newly discovered guidance is persisted and stops the invocation before
-tool intent/approval/effect. The operator can inspect `/context` and explicitly
-choose a fresh invocation. No callback or effect automatically retries.
-Already loaded instruction drift follows the existing explicit `/context refresh`
-policy. Worker code does not receive instruction contents or a Session PID.
+Before admission, the host task snapshots current workspace instructions and
+performs nested-path discovery outside the GenServer. If new guidance is found,
+it persists that guidance and stops before approval, intent, or execution.
+The operator can inspect `/context` and explicitly invoke fresh work. Existing
+loaded-instruction drift follows `/context refresh`. There is no automatic retry,
+and instruction text does not enter the worker's payload.
 
-The Session binds reviewed request and workspace snapshot digest in a consumable
-admission gate. Action intent includes `context_sha256`, checked against the
-current journaled workspace snapshot on recovery. State/question receipts use
-null for this field. The mandatory intent sync precedes tool execution.
+Session consumes an admission gate binding the exact reviewed request and
+workspace snapshot digest. Its action intent records `context_sha256`; recovery
+compares that hash with the journaled workspace snapshot. State/question calls
+use null for this field. The intent sync precedes execution.
 
-`ToolAction` reuses existing file tools and native Runner. A linked leaf task owns
-IO; cancelling/killing its host task also stops that leaf and its shell Port.
-File operations have the explicit outer deadline. Shell calls additionally allow
-the existing supervisor setup window (5 seconds, or 25 for macOS native setup).
-Owner cleanup, deadlines and native process groups do not constitute an OS sandbox;
-the selected Session shell policy is forwarded unchanged and fails closed when
-unavailable. macOS detached-descendant cleanup retains its documented limits.
+`ToolAction` reuses `Ipse.Tools` and native `Runner`. A linked leaf task owns IO;
+cancelling the host task stops that leaf and its shell Port. File operations use
+the outer deadline. Shell also allows the existing supervisor setup window,
+five seconds or 25 seconds for macOS native setup.
 
-File path/symlink/workspace/.git and parallel-child hardlink checks remain in
-`Ipse.Tools`. Child extensions still need explicit `allow_children`; mutation
-approval relays through the existing parent path. Extension approval names take
-the parent's conservative whole-workspace conflict claim, rather than gaining
-an exemption from child mutation coordination. No MCP or recursive delegation
-capability is supplied to children by this tool API.
+Path, symlink, workspace, `.git`, and parallel-child hardlink checks stay in
+`Ipse.Tools`. Session shell policy passes through unchanged and fails closed when
+unavailable. Workers themselves are trusted OS-level code; host tool ownership
+and shell sandboxing do not sandbox arbitrary worker operations.
 
-## Results and recovery
+A child extension still needs explicit `allow_children`. Its mutation approval
+relays through the parent and uses the conservative whole-workspace conflict
+claim. This API does not grant child MCP or recursive delegation.
 
-Successful file tools return `{"text": ...}`. Normally completed shell calls
-return `text`, `exit_code`, `output_bytes`, `output_truncated: false`. A nonzero
-exit code remains visible; `ok` describes recorded execution, not semantic
-success of the command. Runner counts all drained output bytes and exposes
-truncation/incomplete-tail metadata while preserving existing terminal output.
+## Interpret recorded outcomes
+
+Successful file tools return `{"text": "..."}`. Normally completed shell calls
+return `text`, `exit_code`, `output_bytes`, and `output_truncated: false`.
+A nonzero exit code remains visible. Status `ok` means execution was recorded,
+not that the command achieved its domain goal.
 
 Returned text is at most 4 KiB and must fit the complete escaped SDK envelope.
-Timeout, signal/ambiguous failure, incomplete output or oversized encoding yields
-an unknown action result and stops the callback chain. Partial text is not
-silently treated as complete or automatically streamed to another callback.
-Read errors return a known `failed` result with fixed `reason: tool_failed`;
-oversized read results use `reason: result_limit` without returning partial data.
-A bounded callback can then choose an explicit smaller read or another action,
-still subject to the same budgets/approval. Write/edit errors are conservatively
-unknown because a failed write may have partially happened. Cancellation can leave
-only intent; it is never replayed.
+Timeout, signal, ambiguous failure, incomplete output, or oversized encoding
+stops the chain as unknown; partial output is not fed to another callback as a
+complete result. Runner counts drained bytes and preserves truncation/incomplete
+tail metadata.
 
-Results sync before returning to the worker. Their source/context/request hashes
-and final invocation action-chain digest validate before tail repair. A committed
-receipt restores without rerunning the tool; an interrupted effect stays unknown.
-Inspect the workspace before explicit recovery. An exact host upgrade changes
-activation identity; use a frozen runner or reviewed fresh-session handoff for
-older pinned sessions rather than editing receipts.
+Read errors are known `failed` outcomes with `reason: tool_failed`. Oversized
+reads return `reason: result_limit` without partial text. A callback can propose
+an explicitly smaller read within its remaining budget. Write/edit failures are
+conservatively unknown because an effect may have partially happened.
 
-No dependency was added: existing JSONSchex/Jason, tools, OTP linked tasks and
-native Runner are reused. Independently compiled fixtures exercise real approved/
-denied writes, nested instruction refusal, bounded shell completion/output,
-actual process-group cancellation and altered context receipt refusal. See
-[verification](testing.md) and [operator procedures](../operator/extensions.md#workflow-tools).
+Session syncs results before continuing the worker. Recovery checks exact
+source/context/request bindings and the final action-chain digest before repair.
+Committed receipts restore without running tools; missing results stay unknown.
+Inspect the workspace before explicitly deciding to repeat an effect. A host
+upgrade changes activation identity, requiring the documented frozen-runtime or
+reviewed fresh-session handoff for old sessions.
+
+## Exercise denial and interrupted output
+
+Follow `ToolAction.validate/1`, `Operation.mutating?/1`, and the execution branch
+in `Host`. Find the fixtures for a denied write and a shell that outlives its
+owner. Confirm that denial records a known result without a file, while an
+interrupted intent never becomes successful merely because its process exited.
+
+```sh
+mix test test/extensions_invocation_test.exs test/extensions_event_job_test.exs
+```
+
+Those fixtures exercise full approval, nested instruction discovery, shell output
+bounds, process-group cancellation, and tampered context receipts. Use the
+[installed lab](extension-proof.md) to check the same workflow against a packaged
+runtime. No provider or paid service is needed for these synthetic scenarios.

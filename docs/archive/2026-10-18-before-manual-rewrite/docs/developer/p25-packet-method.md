@@ -1,3 +1,7 @@
+> Historical reference only. Snapshot of `docs/developer/p25-packet-method.md` at `10b9dd66d06ef28718b58530a7e5b01c7c50397a` on 2026-10-18.
+> Original body retained; relative links rebased for this archive.
+> Use the [current manual](../../../../developer/self-hosting-evaluation.md).
+
 # P25 common-packet comparison
 
 This is version 2 of the second comparison defined by the [common brief](p25-common-brief.md).
@@ -42,7 +46,7 @@ The reference caught a v1 pin mismatch: a filename-suffix lookup attached the
 workspace `Cargo.toml` metadata to `crates/zeromem/Cargo.toml`. Version 2 matches
 the full repository/document path and checks distinct workspace/crate hashes.
 All entry IDs, source locators and excerpts remain unchanged. The
-[v1 archive](../archive/2026-10-18-p25-packet-v1/index.md) preserves provenance;
+[v1 archive](../../../2026-10-18-p25-packet-v1/index.md) preserves provenance;
 its reports are not silently rescored against v2.
 
 Packet-v2 bytes: 49,645; SHA-256:

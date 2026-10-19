@@ -10,7 +10,7 @@ Event jobs let selected extensions propose normal host actions in response to
 committed prompt facts. They use a distinct `event.job` capability and typed job
 exports. [Read-only notifications](extension-events.md) retain their exact
 acknowledgment contract; enabling them does not authorize actions or model calls.
-See [operator procedures](../../operator/extensions.md#event-jobs) for selection.
+See [operator procedures](../2026-10-18-before-manual-rewrite/docs/operator/extensions.md#event-jobs) for selection.
 
 ## Declarations and handlers
 
@@ -190,7 +190,7 @@ write approval/denial, source provenance, false success claims, awaited recall,
 after-turn ordering and later context visibility, questions/resume in both
 schedules, committed-write interruption with no idle replay, a captured-revision
 write conflicting with concurrent forget, and metadata hash/native exclusion.
-See [actual verification scope](../../developer/testing.md#current-evidence-and-next-checks).
+See [actual verification scope](../2026-10-18-before-manual-rewrite/docs/developer/testing.md#current-evidence-and-next-checks).
 
 This is a generic host contract and synthetic coverage, not a production graph
 engine or the frozen-core independent installed-package proof. Explicit history

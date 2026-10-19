@@ -7,8 +7,8 @@ complete at source `a5912ab`. Its final local build/format/compile, native-inclu
 suite, demo, package and previously compiled artifact proofs pass. The
 [hosted matrix](https://github.com/lexlapax/ipse/actions/runs/39100702633) is the
 platform evidence for that source; exact counts and receipts are in
-[testing](../../developer/testing.md#current-evidence-and-next-checks).
-The [internal report](../../developer/architecture-self-audit.md) records inspected
+[testing](../2026-10-18-before-manual-rewrite/docs/developer/testing.md#current-evidence-and-next-checks).
+The [internal report](../2026-10-18-before-manual-rewrite/docs/developer/architecture-self-audit.md) records inspected
 boundaries, concrete counterexamples and explicit residual limits. Internal
 inspection is not independent acceptance or a security scan.
 

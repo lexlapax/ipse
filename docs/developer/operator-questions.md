@@ -1,72 +1,80 @@
-# Structured operator questions
+# Suspending a turn for operator clarification
 
-The native `ask_operator` tool accepts a `questions` array of one to three objects.
-Each has an `id` (ASCII letter followed by up to 63 letters/digits/underscore/hyphen),
-nonblank `prompt` (at most 2000 characters) and `kind`: `single`, `multiple` or
-`text`. Choice questions have two to eight options with unique `id`, nonblank
-`label` (120 characters) and optional `description` (512 characters); optional
-`recommended` is an existing option ID. Text questions omit options/recommendation
-or use null. Unknown fields, duplicate IDs and invalid combinations are rejected.
-The existing MCP schema adapter/JSONSchex provides bounded schema/JSON validation;
-identity and cross-field checks are small host policy, not another schema engine.
-Arguments/answer JSON are at most 16 KiB, and free text at most 8000 UTF-8 bytes.
+`ask_operator` pauses inference for structured clarification. It does not grant
+action permission. `Ipse.Questions` owns pure schema/answer validation, Session owns
+the durable suspension, and the terminal client owns its input codes and rendering.
+The [user manual](../operator/usage.md) explains the interactive experience.
 
-The tool definition explicitly uses `strict: false` and nullable optional choice
-fields to avoid Responses normalizing absent fields into mandatory dummy choices.
-Host validation still runs before waiting. This follows the public
-[function-calling optional/strict guidance](https://developers.openai.com/api/docs/guides/function-calling).
-It does not relax tool permissions or accept extra schema keys.
+## Validate a question before waiting
 
-## Session and client interface
+Start in `lib/ipse/questions.ex` with `definition/0`, `validate/1`, and
+`validate_answers/2`. A tool request contains one to three question objects:
 
-Session emits `{:ipse, pid, {:question, id, arguments}}`. `id` is the persisted
-provider call ID, separate from individual question IDs. `Ipse.ToolCall.valid_id?/1`
-defines the shared live/checkpoint contract: opaque valid UTF-8, 1–256 bytes.
-Admission rejects the whole proposed call batch before approval or question
-emission if any ID is invalid or duplicated. Extension invocation/source validators
-use the same bound. Handoff exports additionally encode unsafe display identifiers
-as hashes; their restricted display alphabet is not a provider-ID requirement.
-`Session.info/1` includes
-the pending ID/arguments and phase `:question`. `Session.answer/3` accepts exactly
-one map entry for every question: an option ID for `single`, a nonempty unique list
-of option IDs for `multiple`, or nonblank text. Invalid/stale/duplicate answers
-return an error and keep current state; no default/recommendation is an answer.
-Answers are clarification data, never action permissions.
+```json
+{"questions":[{"id":"stack","prompt":"Choose a stack","kind":"single","options":[{"id":"local","label":"Local"},{"id":"remote","label":"Remote"}],"recommended":"local"}]}
+```
 
-There is no live model worker while waiting. Any later calls in the same proposed
-batch are journaled as not started; after an explicit answer the model reconsiders
-work with all original assistant/native fields retained. Future mutations still
-use ordinary approvals. Headless and child sessions cannot wait for input; they
-record an error and finish without an implicit answer. Child-to-parent question
-routing remains unsupported. The terminal prints a fresh `answer CODE VALUE`
-prefix after each displayed question. The value supports numbers/IDs,
-comma-separated multi-select and text, with the existing `=` literal escape.
-Only the code for that exact question is accepted; buffered task text and codes
-from earlier questions cannot become answers after a UI-state transition. Invalid
-values keep the current code; a valid partial answer creates a fresh code for
-the next question. Partial terminal answers remain local until the whole bundle
-is submitted. These client-only codes grant no action permission and do not
-change the persisted arguments or `Session.answer/3` API.
+`id` starts with an ASCII letter followed by at most 63 letters, digits,
+underscores, or hyphens. Prompts are nonblank and at most 2,000 characters.
+Choice kinds `single` and `multiple` require 2–8 unique option IDs; labels are at
+most 120 characters and optional descriptions 512. A recommendation must name an
+option. Kind `text` omits options/recommendation or uses null. Unknown fields,
+duplicate question IDs, and inconsistent combinations refuse. Argument and answer
+JSON are at most 16 KiB; free text is at most 8,000 UTF-8 bytes.
 
-## Durable events and interruption
+The provider definition uses `strict: false` with nullable optional choice fields.
+This prevents wire normalization from forcing dummy options into text questions.
+Host validation remains closed and mandatory.
 
-`operator_question` version 1 records the exact call/validated arguments, model
-step count, covered effective-message count and canonical prefix SHA-256 before
-emitting the question. Resume validates call/argument identity, schema and prefix
-integrity, then restores the pending question without a synthetic unknown tool
-outcome, inference or replay. Existing unrelated interrupted outcomes retain their
-normal handling. A headless resume refuses pending input without journal changes.
+For the example above, the complete Session answer is `%{"stack" => "remote"}`.
+An empty map and an unknown ID refuse. A recommendation is never a submitted
+answer. Multiple answers require a nonempty unique option-ID list; text must be
+nonblank and retains its exact value. Read `test/questions_test.exs` to follow
+these cases through `parse_line/2` and `validate_answers/2`.
 
-`operator_answer` version 1 atomically stores the complete tool-result message
-before continuation; its explicit answers are revalidated against the question.
-`operator_question_closed` stores a cancellation result with no answer. Original
-message events stay intact, and new event messages compose with context checkpoints.
-Corrupt committed questions/answers stop resume. VM/session or monitored-owner death
-preserves an unanswered question; explicit close/cancel/EOF settles it as not started.
-A committed answer survives death during the next provider request, while idle
-resume does not restart that request. The OS lock still serializes session owners.
+## Follow the suspended Session
 
-All journal content, including operator answers, remains private local transcript
-data. The implementation adds no dependency or inference request for validation.
-See [verification](testing.md#p17-structured-operator-questions-2026-10-16) and
-[operator usage](../operator/usage.md#operator-questions).
+Session emits `{:ipse, pid, {:question, id, arguments}}`. The outer `id` is the
+provider call ID, separate from question IDs. `ToolCall.valid_id?/1` permits opaque
+valid UTF-8 IDs of 1–256 bytes. Invalid or duplicate IDs reject the whole proposed
+call batch before approval or question emission.
+
+`Session.info/1` exposes phase `:question` and pending ID/arguments.
+`Session.answer/3` accepts exactly one entry for every question. Invalid, stale,
+or duplicate submissions return an error without leaving the pending state.
+No model worker remains active while waiting. Later calls in the original batch
+are recorded not started; after an explicit answer, the model reconsiders with
+original assistant/native data preserved. Future mutations need ordinary approvals.
+Headless and child sessions cannot wait; they record an error without inventing
+an answer or routing it through a parent.
+
+The terminal displays a fresh `answer CODE VALUE` prefix per displayed question.
+Only that exact code is valid. Numbers/IDs, comma-separated multiple choices,
+and text use `Questions.parse_line/2`; `=` escapes literal command-looking text.
+Partial answers stay client-local until the full bundle is submitted. A valid
+partial answer changes the next code, preventing buffered task text or old input
+from answering a newly displayed question.
+
+## Recover the wait without replay
+
+Before emitting the UI event, Session syncs version-1 `operator_question` with
+validated arguments, call ID, model step count, covered effective-message count,
+and canonical prefix digest. `operator_answer` atomically stores the complete
+validated result before continuation. `operator_question_closed` records
+cancellation with no answer.
+
+Resume validates schema, identity, prefix, and answer bindings. It restores a
+pending question without inference or a synthetic unknown tool result. Headless
+resume refuses pending input without changing the journal. Owner/VM loss preserves
+an unanswered question; explicit cancel/close/EOF settles it as not started. A
+committed answer survives a later request crash, but resume does not restart that
+request. Corrupt committed questions or answers stop recovery before tail repair.
+
+```sh
+mix test test/questions_test.exs test/question_session_test.exs
+```
+
+The pure suite teaches accepted data. Session fixtures establish durable waits,
+invalid/stale replies, cancellation, recovery, and native-message integrity. When
+changing input handling, add a terminal-state fixture as well: Session validation
+cannot catch a stale buffered line interpreted by the UI as a fresh answer.

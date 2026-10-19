@@ -157,7 +157,7 @@ profiles; no backend or endpoint is mandatory. Project selections may narrow
 operator grants, not authorize egress or widen memory access. Unsupported
 operations refuse instead of hiding unaccounted work inside a hook. Use the
 independent [installed-package evidence](../../developer/extension-proof.md) to assess the exercised
-contracts alongside the [lifecycle audit](../../developer/lifecycle-events.md#supported-lifecycle-coverage)
+contracts alongside the [lifecycle audit](../2026-10-18-before-manual-rewrite/docs/developer/lifecycle-events.md#supported-lifecycle-coverage)
 and supervised trial; hosted checks passed. Production graph queries, embeddings, database installation
 and research-engine algorithms and measurements belong to P25.
 

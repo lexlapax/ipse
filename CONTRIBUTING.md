@@ -1,38 +1,66 @@
-# Contributing
+# Contribute to Ipse
 
-Run `./scripts/build.sh`, then `mix test`. A small change with a clear problem,
-observable behavior, and relevant verification is welcome. Open an issue for
-larger changes before expanding the architecture.
-Use the [private security reporting policy](SECURITY.md#reporting) for potential
-vulnerabilities; the same guide supplies the review threat model and evidence rules.
+Start with the [contributor training manual](docs/developer/index.md). It walks
+through a credential-free Session example, the ownership of a turn, and the
+verification needed to change it. Read [AGENTS.md](AGENTS.md) for repository
+conventions, invariants and the source map. The [plan](docs/plan.md) describes
+priorities; it does not authorize implementing every proposed feature.
 
-Ordinary tests exclude host-dependent native sandbox enforcement. On a supported
-Linux host, also run `mix test --include native_sandbox` for OS-boundary changes;
-included checks fail when enforcement is unavailable. See the
-[fixed profile](docs/developer/sandbox.md#verification).
+## Prepare a change
 
-Read [AGENTS.md](AGENTS.md) for repository conventions and the code map. Start
-with [docs/operator/arch-linux.md](docs/operator/arch-linux.md) for a local Codex CLI setup;
-[docs/plan.md](docs/plan.md) describes priorities and acceptance criteria.
-Use the [documentation map](docs/index.md) to find operator and developer guides,
-including [testing and evidence](docs/developer/testing.md).
+Choose a small, observable behavior. Read its implementation and focused tests
+before editing. Discuss larger architectural changes before expanding their
+scope. New domain behavior should use the documented extension APIs where they
+fit; core changes should address host correctness, invariants or an identified
+extension API gap.
 
-Use Elixir for orchestration and Rust for narrow OS integration. Keep scripts and
-provider fixtures credential-free. Avoid committing transcripts, credentials,
-build artifacts, or generated binaries.
-Use Elixir for scripts wherever possible, then Bash/portable shell or Ipse's
-Rust helper for appropriate OS work. Document dependencies in the
-[inventory](docs/developer/dependencies.md); new dependencies outside Elixir or
+Keep orchestration in Elixir/OTP and OS helpers in Rust. Use Elixir for repository
+scripts where possible, then Bash or portable shell when appropriate. Consult
+maintained packages before building common machinery, and record every dependency
+in the [inventory](docs/developer/dependencies.md). Dependencies outside Elixir or
 Rust packages require explicit developer approval with recorded reasons.
 
-Contributions are provided under the repository's Apache-2.0 license. This early
-prototype has no stability or support guarantee; changes should document any compatibility
-impact. Never claim live-provider validation when only fixtures were used.
+Use synthetic providers and isolated temporary homes. Keep credentials, private
+transcripts, generated binaries and build artifacts out of commits. Report
+potential vulnerabilities through the [private reporting procedure](SECURITY.md#reporting).
 
-Before completing a sub-goal or milestone, review and update developer and
-operator documentation for accurate content, current commands, actual results,
-and valid file links and heading anchors. Keep one authoritative guide per topic,
-update the documentation map, and preserve superseded guides using the
-[archive policy](docs/archive/index.md#archive-policy). Commit and push focused
-changes to `origin` after the relevant checks pass; see
-[AGENTS.md](AGENTS.md#finish-a-change).
+## Verify the result
+
+For runtime changes, run the baseline from the repository root:
+
+```sh
+./scripts/build.sh
+mix format --check-formatted
+mix compile --warnings-as-errors
+mix test
+./bin/ipse demo
+```
+
+The [verification manual](docs/developer/testing.md) explains focused fixtures,
+loopback requirements, native enforcement and packaging checks. Native tests need
+a supported host; a fixture pass does not establish live-provider behavior or
+coverage on another operating system. State exactly what ran and what remains
+unverified.
+
+Review the affected manuals as whole chapters. Operator chapters must teach
+users through prerequisites, complete usage examples, expected results and
+recovery. Developer chapters must teach contributors through execution flow,
+source ownership, worked examples and focused change exercises. Keep status in
+the plan and dated evidence in the [archive](docs/archive/index.md), following its
+[archive policy](docs/archive/index.md#archive-policy).
+
+For documentation changes, validate the examples against the implementation and
+run the local link, heading, manual and archive checks:
+
+```sh
+elixir scripts/check-docs.exs
+```
+
+## Submit focused work
+
+Describe the problem, resulting behavior, relevant verification and compatibility
+impact. Keep changes focused and preserve unrelated edits. Once a complete
+sub-goal passes its required checks, commit it and push to `origin`; do not
+force-push another contributor's work. Contributions use the repository's
+Apache-2.0 license. This prototype does not promise a stable public API or support
+service.

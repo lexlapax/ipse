@@ -1,94 +1,87 @@
-# Workspace context
+# Loading workspace instructions without changing authority
 
-Workspace context is an instruction input, separate from provider selection,
-billing, approvals, and OS enforcement. A file cannot grant permission to run a
-tool. Explicit user requests take precedence over repository guidance. Within a
-project, nearer `AGENTS.md` scope overrides broader guidance; Ipse-wide
-`AGENTS.md` supplies defaults.
+Workspace context tells the model how a project wants work done. It does not
+choose credentials, grant tool permission, or enforce an OS sandbox. Explicit
+operator requests take precedence; nearer `AGENTS.md` guidance overrides broader
+guidance within a project, while Ipse-wide instructions supply defaults.
 
-## Discovery and bounds
+`Ipse.WorkspaceContext` owns discovery, bounds, manifests, drift, and nested-path
+checks. Session owns when a snapshot becomes active and durable. Skills have an
+independent saved catalog. Read `lib/ipse/workspace_context.ex` alongside
+`test/workspace_context_test.exs` to keep filesystem policy concrete.
 
-The workspace is the canonical launch directory, or explicit `--cwd`. Discovery
-walks only to the nearest valid Git repository/worktree boundary. Outside a Git
-repository, the workspace itself is the boundary: unrelated parent directories
-are not imported. A Git directory needs a regular `HEAD`; a Git worktree pointer
-must resolve to a valid Git directory. No Git command or new dependency is needed.
+## Build the launch snapshot
 
-The snapshot loads `IPSE_HOME/AGENTS.md` (default `~/.ipse/AGENTS.md`), applicable
-boundary-to-workspace `AGENTS.md` files, and the workspace's `README.md`.
-One level of explicit local Markdown references from these files may load
-`.md`, `.txt`, `.adoc`, or `.rst` resources within the project boundary. Resources
-are context data, not additional permission or recursively discovered scripts.
-Absolute/outside links, symlink sources, and sensitive path components such as
-`.git`, `.ipse`, `.ssh`, `.aws`, `.codex`, `auth`, `secrets`, and `tokens` are excluded.
+`snapshot/2` takes the launch directory and Ipse home. It canonicalizes the
+workspace and searches upward to the nearest valid Git repository/worktree
+boundary. A Git directory needs a regular `HEAD`; a worktree pointer must resolve
+to a valid Git directory. Outside a repository, cwd itself is the boundary.
+Unrelated ancestors never become instructions.
 
-Each source is UTF-8 and at most 32 KiB, with at most 16 sources and 128 KiB
-aggregate content. Missing optional sources are normal; invalid, inaccessible,
-or oversized sources produce bounded diagnostics. Paths, scope, kind, and SHA-256
-content digests accompany source text. These bounded path checks do not defend
-against a hostile process concurrently replacing filesystem entries.
+Discovery reads `IPSE_HOME/AGENTS.md`, boundary-to-workspace `AGENTS.md` files, and
+the workspace `README.md`. One level of explicit local Markdown references may
+load `.md`, `.txt`, `.adoc`, or `.rst` resources inside the boundary. Discovery
+never recursively runs scripts or loads arbitrary links. Absolute/outside links,
+symlink sources, and sensitive components such as `.git`, `.ipse`, `.ssh`, `.aws`,
+`.codex`, `auth`, `secrets`, and `tokens` are excluded.
 
-## Action scope
+| Resource | Limit |
+| --- | --- |
+| One UTF-8 source | 32 KiB |
+| Source count | 16 |
+| Aggregate source text | 128 KiB |
+| Skill catalog | 256 entries, 256 KiB encoded metadata |
 
-Before a file tool targets a deeper directory, the session checks the target path
-and discovers applicable nested `AGENTS.md` files. Preflight happens before tool
-start or an approval decision. If path/context preflight refuses, the affected
-call's tool result retains the specific refusal and asks the model to check that
-call's target path and workspace guidance before retrying. Later queued calls
-receive only a generic stopped-before-start result: the first target's failure is
-not attributed to their paths. All of these calls remain `not_started` with
-approval `not_decided`; a failed preflight is not evidence that a read ran.
+Missing optional sources are normal. Invalid, oversized, or inaccessible files
+produce bounded diagnostics. Each source carries path, scope, kind, and SHA-256.
+Path checks are not protection from a hostile process concurrently replacing
+filesystem entries.
 
-When discovery changes the snapshot, Session journals it before settling the old
-proposal and requesting reconsideration. The affected call's result tells the
-model that new scoped context was loaded and must be reviewed before retrying;
-the next model request contains both the saved context and that reason. Later
-queued calls remain generically not started. A revised mutation proposal still
-passes through normal approval; loading guidance neither executes old calls nor
-transfers permission to new ones. A useful diagnostic enables replanning but does
-not guarantee that a model will recover or complete the task.
+## Reconsider a tool after discovering deeper guidance
 
-These are preflight-specific results, not a change to interruption settlement.
-An actually started effect interrupted before a recorded result remains unknown;
-subsequent unstarted calls remain not started. Saved tool messages retain their
-reasons during restoration, and idle resume does not replay either old proposal
-or effect.
+Read the fixture "loads only one-level local Markdown references and applies
+nested guidance by target". It creates a launch snapshot, then targets a deeper
+directory containing another `AGENTS.md`.
 
-An arbitrary shell string has no reliably inferable target set. The model sees
-the active workspace context and explicit scope warning; the host cannot claim
-that every directory mentioned indirectly by a command was resolved. Review
-shell arguments and applicable deeper instructions before approval.
+Before a file tool starts or asks for approval, Session calls nested preflight for
+its target. New scoped guidance is synced as a snapshot, the old proposal settles
+not started, and the model is asked to reconsider. The next request sees the new
+context and the affected call's specific reason. Later queued calls receive a
+generic stopped-before-start result. They do not inherit the first target's
+path-specific diagnosis. Approval remains `not_decided`; preflight is not a read
+or mutation receipt.
 
-## Persistence and refresh
+A revised mutation must obtain its own approval. An actually started interrupted
+effect still has an unknown outcome. A shell string has no reliably inferable
+complete target set, so this path preflight does not certify every directory a
+shell may reach. Preserve that distinction when adding tool kinds.
 
-A `workspace_context_snapshot` journal event retains the bounded source text and its
-manifest. Resume uses the last validated saved snapshot rather than silently
-substituting changed instructions. Invalid saved snapshots stop recovery.
-Drift diagnostics identify changed or unavailable saved sources without adopting
-new text. Explicit refresh adopts changed saved text and rediscovers launch-scope
-sources; drift is not a recursive filesystem watcher. Action preflight can add
-previously unseen nested guidance as described above.
+## Keep saved instructions stable
 
-The selected skill catalog is independently checkpointed with names, descriptions,
-canonical paths, content digests and shadowed-source provenance, capped at 256
-entries and 256 KiB encoded metadata. Resume retains this selection and diagnoses
-fresh discovery drift. Skill loading and resource loading recheck the selected
-source path/digest; changed or missing bodies refuse until explicit refresh.
-Catalog snapshots contain metadata, not skill bodies. Older journals acquire
-their first catalog checkpoint at the next model boundary, not on idle inspection.
+A `workspace_context_snapshot` event stores bounded source text and manifest.
+Resume uses the last validated saved snapshot and diagnoses changed/missing
+sources without adopting their contents. Invalid snapshots stop recovery.
+Explicit `/context refresh` reloads saved text and launch-scope sources through an
+owned idle task, then commits both instruction and skill selections. Cancellation
+must not commit half a refresh. Execution configuration is not reloaded.
 
-`/context` displays instruction and skill manifests without inference or source
-contents; `/skills` shows the saved catalog. The standalone `ipse skills` command
-performs fresh discovery. `/context refresh` reloads both while idle through an owned task,
-then commits the new snapshots before replacing the active selections. Cancellation
-must not commit a partial refresh. These events do not replay effects, transfer
-old approvals, or change provider settings. Journals contain workspace instruction
-text and should be treated as private session data.
+The skill catalog records names, descriptions, canonical paths, digests, and
+shadowed-source provenance, not skill bodies. Loading a selected skill or resource
+rechecks path/digest; drift refuses until explicit refresh. Older journals acquire
+a first catalog snapshot at the next model boundary, never on idle inspection.
+`/context` and `/skills` show saved manifests; standalone `ipse skills` performs
+fresh discovery.
 
-Workspace text, selected skill metadata and extension contributions enter a
-labelled user-role reference message. Core rules remain in system text. Explicit
-skill bodies remain in the operator turn that requested them. Reference context
-is not a new task, instruction-authority upgrade or permission grant.
+Workspace text, skill metadata, and extension contributions enter a labelled
+user-role reference message. Core rules stay in system text. Explicitly requested
+skill bodies remain in the requesting operator turn. Neither representation
+upgrades text into a fresh task or permission grant.
 
-See [operator usage](../operator/usage.md),
-[architecture](architecture.md), and [verification evidence](testing.md).
+```sh
+mix test test/workspace_context_test.exs
+```
+
+This suite checks repository boundaries, aliases, reference depth, sensitive paths,
+size/UTF-8 limits, snapshot validation, and drift. For a Session preflight change,
+find its assertions in the Session fixtures as well; pure discovery cannot prove
+that intent journaling and approval occur after reconsideration.

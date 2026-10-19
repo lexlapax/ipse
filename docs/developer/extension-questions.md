@@ -1,17 +1,17 @@
-# Structured extension questions and continuation
+# Pause an extension for an operator question
 
-P22A9 adds `host.question` to the [finite host-call protocol](extension-host-calls.md).
-Tools, operator commands, standalone services and
-[event jobs](extension-event-jobs.md#questions-cancellation-and-recovery) can ask
-bounded single-choice, multiple-choice and text questions. Workers close before questions appear.
-Pending questions restore without code execution; only an explicit answer admits
-a fresh journaled continuation. This does not complete P22 or install a workflow
-framework.
+A question saves a bounded checkpoint and closes its worker before asking for
+input. An explicit valid answer admits a fresh worker continuation. Build the
+checkpoint as durable domain data; a private VM heap does not survive this pause.
 
-## Contract
+The lab's `workflow` export in `examples/extension-lab/src/memory.ex` is a complete
+example. It asks which note to write, then proposes a separately approved file
+write. Follow that sequence when adding a human decision to a command or job.
 
-An artifact declares `host.actions` and `host.question` alongside `invoke.*` or `event.job`;
-operator trust must allow them. Its callback can return:
+## Return a question proposal
+
+Declare `host.actions` and `host.question` with the invocation or event-job
+capability. Return the ordinary outer protocol:
 
 ```elixir
 {:ok,
@@ -19,76 +19,109 @@ operator trust must allow them. Its callback can return:
    "request" => %{
      "op" => "operator.question",
      "arguments" => %{"questions" => [
-       %{"id" => "choice", "prompt" => "Which result should be kept?",
+       %{"id" => "choice", "prompt" => "Which note should be written?",
          "kind" => "single", "recommended" => "first",
-         "options" => [%{"id" => "first", "label" => "First"},
-                       %{"id" => "second", "label" => "Second"}]}
+         "options" => [%{"id" => "first", "label" => "First note"},
+                       %{"id" => "second", "label" => "Second note"}]}
      ]},
-     "checkpoint" => %{"next" => "show_selection"}
+     "checkpoint" => %{"path" => "result.txt"}
    }},
- private_state}
+ state}
 ```
 
-The closed request has exactly `op`, `arguments`, `checkpoint`. Arguments use
-the [existing question schema](operator-questions.md): at most three questions,
-eight options each, unique IDs and no automatic answer. Checkpoint is a plain
-JSON object of at most 8 KiB encoded; the entire proposal obeys SDK 16 KiB/depth/
-string/collection bounds. It is private continuation data, not permission, model
-context or serialized Erlang state. This operation has null state namespace.
+The request has exactly `op`, `arguments`, and `checkpoint`. Arguments use the
+[question schema](operator-questions.md), supporting single-choice,
+multiple-choice, and text questions. There are at most three questions and eight
+options per question, with unique IDs. Recommendations are never auto-answered.
+Checkpoint is a plain JSON object up to 8 KiB encoded. The whole proposal also
+obeys the SDK's 16 KiB, string, depth, and collection bounds.
 
-Session checks availability, lease, capability, schema and the remaining
-16-operation invocation budget, then syncs action intent. Host confirms worker
-cleanup before returning its pause. Session syncs `extension_question` and
-publishes the ordinary client `{:question, id, arguments}` event using its
-host-generated operation ID. No worker/task waits for input. Unavailable
-headless/child questions stop without selecting recommendations. The terminal
-reuses its existing question rendering and `/cancel`; no new flag is needed.
+Session checks question availability, capability, lease, schema, and remaining
+16-operation budget, then commits action intent. Host confirms worker cleanup
+before pausing. Session commits `extension_question` and publishes the ordinary
+`{:question, operation_id, arguments}` client event. No worker/task waits for input.
+Unavailable headless or child questions stop without choosing an option.
 
-## Explicit answer
+## Reconstruct the continuation
 
-`Session.answer/3` validates the current ID, complete answers, live identity and
-answer/checkpoint envelope before committing. Stale/invalid/oversized answers
-leave the question and journal unchanged; content is never silently truncated.
+`Session.answer/3` validates the current question ID, complete answers, live
+identity, and checkpoint/answer envelope. Invalid, stale, or oversized answers
+leave the pending question and journal unchanged.
 
-A valid answer syncs an `extension_action_result` with status `answered`, value
-`{"answers": ...}`, then a unique `extension_continuation_intent` binding that
-result. Only afterward can an owned task reverify the artifact, open a fresh VM,
-initialize with original options and invoke `host.actions`. Its payload has the
-normal invocation/operation/step/outcome fields plus the exact saved `checkpoint`.
-This is an explicitly answered continuation, not idle-resume replay. Authors must
-reconstruct work from the checkpoint; arbitrary old VM state is gone.
+For a valid answer, Session syncs an `extension_action_result` with status
+`answered`, then a unique `extension_continuation_intent`. Only then may Host
+reverify the artifact, initialize a fresh VM with original options, and call
+`handle("host.actions", payload, state)`. The payload contains the normal
+invocation, operation, step, and outcome fields plus the exact saved checkpoint.
 
-The callback can finish or propose another supported operation. Prior receipts/
-counts carry forward, so questions cannot reset the 16-operation budget. Answers
-never authorize a later mutation or change provider/billing/capability ceilings.
-After an extension model tool finishes, its actual original call/result settles
-and the agent loop can continue. Standalone commands/services need no model
-request to ask/answer a question.
+The lab handles this continuation with a specific clause:
+
+```elixir
+def handle(
+      "host.actions",
+      %{"outcome" => %{"status" => "answered"}, "checkpoint" => checkpoint} = payload,
+      state
+    ) do
+  choice = payload["outcome"]["value"]["answers"]["choice"]
+
+  request = %{
+    "op" => "tool.call",
+    "name" => "write",
+    "arguments" => %{
+      "path" => checkpoint["path"],
+      "content" => "Operator selected #{choice}\n"
+    },
+    "timeout_ms" => 1_000
+  }
+
+  {:ok, %{"api_version" => 1, "kind" => "host_call", "request" => request},
+   Map.put(state, :phase, "workflow_done")}
+end
+```
+
+This expands the lab's private reply helper so the complete public result is
+visible. Keep enough information in the checkpoint
+to construct the next request after `init/1` has run again. Never serialize Erlang
+terms or assume the previous private `state` has returned.
+
+Answers authorize a continuation, not a later write, provider transfer, or wider
+capability. The lab's next `tool.call` still needs its own full mutation approval.
+Earlier action counts carry forward, so a question cannot reset the finite budget.
+A model-selected extension tool retains its real original provider call/result;
+a command or standalone service needs no model request to ask a question.
 
 ## Recovery and cancellation
 
-The pure action reducer validates publication against its pending source-bound
-action, answered/cancelled outcomes, unique continuation IDs and result digest.
-Further operations/final results require the explicit continuation intent. Final
-invocation receipts bind the complete action chain. Projection checks these
-records before tail repair.
+The action reducer validates question publication against its pending action,
+answered/cancelled outcomes, continuation IDs, and result digest. Further actions
+or final results require the explicit continuation intent. Final invocation
+receipts bind the complete chain.
 
-An interrupted pending question restores schema/checkpoint/parent/step history
-and waits without initialization/callbacks. Native tools retain their actual
-provider call and approval; recovery removes only that call's generated historical
-unknown placeholder while waiting. Other proposed calls settle without execution
-when clarification is required. No synthetic native call is manufactured.
+A pending question restores its schema, checkpoint, parent, and step history
+without executing code. Native-tool restoration removes only that call's generated
+unknown placeholder while waiting; it does not invent a native call or execute
+other proposed tools. Prompt/answer jobs additionally retain their source-bound
+schedule and immutable remaining declaration plan.
 
-Cancellation saves a `cancelled` result without an answer/continuation and stops
-the turn; a previously started native extension tool remains unknown. Owner death
-preserves a pending question. Interruption after answer/continuation intent
-restores idle with unknown work, without reoffering the answer or restarting code.
-Inspect receipts before explicitly choosing a fresh action. Missing/altered/
-replayed question/continuation records refuse recovery. Hashes check integrity,
-not signatures.
+Cancellation records a `cancelled` result without an answer or continuation.
+A previously started native extension tool remains unknown. Owner death preserves
+the pending question. Interruption after answer/continuation admission restores
+idle with unknown work; it neither offers the answer again nor restarts code.
+Missing, altered, or replayed records refuse recovery before tail repair. Expiry
+cannot be overridden by answering.
 
-These mandatory private records are independent of optional tracing. Checkpoints/
-answers are not diagnostics or hidden model reasoning. Expiry cannot be overridden
-by an answer; restore still needs the exact pinned code/config/host. See
-[operator procedures](../operator/extensions.md#structured-questions) and
-[actual verification](testing.md).
+## Exercise both sides of the pause
+
+Locate the question fixtures in `test/extensions_invocation_test.exs` and the
+before-request/after-turn cases in `test/extensions_event_job_test.exs`. Compare
+journal bytes before and after idle resume, then explicitly answer and check for
+one new continuation intent. Add a denied write after the answer to prove that
+clarification cannot grant mutation permission.
+
+```sh
+mix test test/extensions_invocation_test.exs test/extensions_event_job_test.exs
+```
+
+Use [conformance cases](extension-conformance.md) with explicit `answers` to test
+your own workflow. Missing answers should stop at `question`; never make a
+recommended option the fixture's implicit response.

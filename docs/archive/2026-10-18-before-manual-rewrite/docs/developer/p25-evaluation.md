@@ -1,3 +1,7 @@
+> Historical reference only. Snapshot of `docs/developer/p25-evaluation.md` at `10b9dd66d06ef28718b58530a7e5b01c7c50397a` on 2026-10-18.
+> Original body retained; relative links rebased for this archive.
+> Use the [current manual](../../../../developer/self-hosting-evaluation.md).
+
 # P25 execution record
 
 P25 is accepted as a scoped supervised research/self-development evaluation at
@@ -203,7 +207,7 @@ Packet v2 corrects that metadata without changing entry IDs, locators or excerpt
 Fresh paired workspaces additionally receive the declared source manifest and
 mechanical filename/evidence indexes. Their previous omission created asymmetric
 file discovery; this is supervisor input repair, not an Ipse product improvement.
-The [method](p25-packet-method.md) and [v1 archive](../archive/2026-10-18-p25-packet-v1/index.md)
+The [method](p25-packet-method.md) and [v1 archive](../../../2026-10-18-p25-packet-v1/index.md)
 record provenance. Original cumulative limits carry forward: reference 83 tools
 already used, leaving 45 until 15:43:03 UTC; Ipse conservatively charges 22 tool
 proposals and 23 requests, leaving 106 tools/37 main steps until 15:42:50 UTC.

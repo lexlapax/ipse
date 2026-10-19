@@ -11,5 +11,5 @@ the returned critique and supervisor repairs. It requests no new review or scan.
 - Current replacement: [follow-up review handoff](../../operator/architecture-review.md).
 
 The private critique itself is not archived here. Its sanitized findings and
-verification belong to the [disposition register](../../developer/architecture-review-dispositions.md),
+verification belong to the [disposition register](../2026-10-18-before-manual-rewrite/docs/developer/architecture-review-dispositions.md),
 with current scope in the [plan](../../plan.md).

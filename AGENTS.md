@@ -55,14 +55,16 @@ did not require mechanisms unavailable when they shipped.
 
 - [README.md](README.md): current behavior and usage.
 - [docs/index.md](docs/index.md): documentation map and audience ownership.
-- [docs/operator/arch-linux.md](docs/operator/arch-linux.md): Arch setup and local Codex workflow.
+- [docs/operator/index.md](docs/operator/index.md): user manual and task paths.
+- [docs/developer/index.md](docs/developer/index.md): contributor training path.
+- [docs/operator/arch-linux.md](docs/operator/arch-linux.md): Arch installation and native policy setup.
 - [docs/operator/usage.md](docs/operator/usage.md): providers, approvals, and sessions.
 - [docs/operator/troubleshooting.md](docs/operator/troubleshooting.md): diagnosis and recovery.
 - [docs/plan.md](docs/plan.md): priorities and acceptance criteria.
 - [docs/developer/architecture.md](docs/developer/architecture.md): ownership and trust boundaries.
 - [docs/developer/dependencies.md](docs/developer/dependencies.md): dependency inventory and approval policy.
 - [docs/naming.md](docs/naming.md): name, sources, and the Hofstadter connection.
-- [docs/developer/testing.md](docs/developer/testing.md): verification and unverified integrations.
+- [docs/developer/testing.md](docs/developer/testing.md): verification procedures and fixture boundaries.
 
 Treat the plan as direction, not authorization to implement every milestone.
 For an unspecified next task, use the active milestone and first open acceptance
@@ -144,6 +146,20 @@ are needed for tests or the demo.
   Codex credentials or rely on private ChatGPT endpoints.
 - Never add AI authorship or code attribution such as "Claude" or "Codex" to
   source code or code comments.
+
+## Write for the reader
+
+`docs/operator/` is the Ipse user manual. Write task-oriented instructions with
+prerequisites, complete usage/configuration examples, expected results and recovery.
+`docs/developer/` is the contributor training manual. Teach architecture and
+execution flow, connect invariants to source, and include worked examples or
+change exercises with focused verification. Rewrite the chapter around its
+reader's learning task; do not append a feature summary or acceptance report.
+Keep milestone status in `docs/plan.md` and dated investigations, benchmarks,
+CI receipts and review/evaluation records in `docs/archive/`, with provenance and
+replacement links. Manuals describe current behavior and relevant limits, not
+the project's implementation history. Update the audience indexes and run
+`elixir scripts/check-docs.exs` after documentation changes.
 
 ## Finish a change
 

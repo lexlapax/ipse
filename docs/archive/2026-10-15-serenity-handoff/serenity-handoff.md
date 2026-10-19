@@ -1,5 +1,5 @@
 > Historical handoff archived on 2026-10-15 after the Serenity return checks.
-> Use [current testing and evidence](../../developer/testing.md#p0-closure-on-serenity-2026-10-15) and [the plan](../../plan.md).
+> Use [current testing and evidence](../2026-10-18-before-manual-rewrite/docs/developer/testing.md#p0-closure-on-serenity-2026-10-15) and [the plan](../../plan.md).
 
 # Resume development on Serenity
 
@@ -97,7 +97,7 @@ and the experimental signed-helper file/network probe. Compilation from the
 local Homebrew tool root passed; CI verified denial of its working toolchain
 outside the fixed readable roots. CI does not run Linux native enforcement;
 repeat that check on Serenity using the command above.
-See [the detailed evidence](../../../docs/developer/testing.md#macos-native-backend-2026-10-15).
+See [the detailed evidence](../2026-10-18-before-manual-rewrite/docs/developer/testing.md#macos-native-backend-2026-10-15).
 
 ## Continue from Serenity
 

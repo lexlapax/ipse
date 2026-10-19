@@ -21,12 +21,12 @@ original is `21e59fefea90faa028bc752899d776a09da357af`. Local build, both format
 installed proofs pass. The [hosted Linux/macOS matrix](https://github.com/lexlapax/ipse/actions/runs/39086249225)
 also passes, including both Mac enforcement steps and both installed proofs per
 host. Exact receipts belong to phase B's
-[testing record](../../developer/testing.md#current-evidence-and-next-checks).
+[testing record](../2026-10-18-before-manual-rewrite/docs/developer/testing.md#current-evidence-and-next-checks).
 
 Read actual test bodies. Names, elapsed time, earlier green builds and accepted
 repair claims cannot close architecture coverage. If one session cannot finish,
 return a precise coverage checkpoint; two hours is a cap, not an adequacy target.
-The [evaluation protocol](../../developer/self-hosting-evaluation.md#independent-adversarial-architecture-validation)
+The [evaluation protocol](../2026-10-18-before-manual-rewrite/docs/developer/self-hosting-evaluation.md#independent-adversarial-architecture-validation)
 owns acceptance. Applicable defects and adequate independent coverage gate the
 baseline security scan and P25; no scan or comparative trial has run.
 

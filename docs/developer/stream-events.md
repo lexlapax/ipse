@@ -1,101 +1,98 @@
-# Ephemeral visible-text events
+# Identifying ephemeral visible-text occurrences
 
-The opt-in version-2 [private text channel](text-streams.md) attaches live source
-identity to actual deliveries. `Lifecycle.Ephemeral` projects frames into the
-shared event-envelope shape. These sources describe accepted visible-text ranges
-and subscription closure; they are not journal positions, provider tokens,
-hidden reasoning or playback receipts.
+Version-2 text frames give consumers a shared identity for accepted byte ranges.
+`Ipse.Lifecycle.Ephemeral` projects them into lifecycle envelopes. They are not
+journal positions, provider tokens, hidden reasoning, answer admission, or playback
+receipts. Learn this identity model before building a stream-derived index.
 
-## Negotiate before delivery
+## Negotiate a format before inference
 
-Embedded consumers call `Session.subscribe_text(session, 2)` or
-`TextStream.subscribe(broker, consumer, 2)` while idle. Existing calls keep v1.
-An independent artifact additionally declares `stream.text.events`, requiring
-`stream.text` and explicit operator trust for both. Its existing
-`handle("stream.text", payload, state)` and outer `api_version: 1` remain;
-only its negotiated `frame.version` changes to 2. Peers on the same broker can
-remain v1. Unsupported versions refuse; an unsupported Session request does not
-initialize a broker.
+Embedded clients call `Session.subscribe_text(session, 2)` while idle; existing
+calls keep v1. A selected worker declares and receives operator trust for both
+`stream.text` and `stream.text.events`. Its `handle("stream.text", payload, state)`
+and outer `api_version: 1` stay unchanged; only `frame.version` becomes 2.
+Peers may use different versions on one broker. Unsupported versions refuse before
+broker initialization. Negotiation adds no write/model/export permission.
 
-Selection retains ordinary configuration, flags and immutable identity pins.
-The extra capability selects a format, granting no write, model or export access.
-Default-off behavior, four-consumer capacity, 2 KiB UTF-8 chunks, bounded buffers,
-acknowledgments and cancellation retain the existing channel contract. Native
-worker output/lifetime bounds still apply. No dependency or broker service is added.
+The ordinary [text channel](text-streams.md) retains four consumers, 2 KiB UTF-8
+chunks, bounded buffers, exact acknowledgments, and required/optional delivery.
 
-## Occurrence identity and delivery position
+## Read a source independently of its delivery
 
-Each broker has a fresh random `epoch_id`, distinct from diagnostic/runtime epoch
-recording. Each `begin` gets a fresh `stream_id`, including if an embedded owner
-reuses a request ID. V2 `request_id` retains the owner's host request correlation;
-v2 `stream_id` identifies this actual stream. V1 retains `stream_id == request_id`.
-`generation: 1` is not an activation/epoch counter.
+Each broker creates a random `epoch_id`, independent of runtime/diagnostic epochs.
+Each begin creates a fresh `stream_id`, even when an embedded owner reuses the
+request ID. V1 retains `stream_id == request_id`; v2 separates those identities.
+`generation: 1` is not a restart counter.
 
-V2 adds exactly one `source` object to each existing frame kind:
+Every v2 frame adds one closed `source`:
 
-| Fields | Stream-scoped start/text/end | Subscription-scoped closed |
+| Field | Stream start/text/end | Subscription closed |
 | --- | --- | --- |
-| Common | `version: 1`, `kind: "ephemeral"`, `session_id`, `epoch_id`, `event_id` | Same |
-| Scope | `scope: "stream"`, `stream_id`, `request_id` | `scope: "subscription"`, `subscription_id` |
+| Common | `version: 1`, `kind: ephemeral`, `session_id`, `epoch_id`, `event_id` | Same |
+| Scope | `scope: stream`, `stream_id`, `request_id` | `scope: subscription`, `subscription_id` |
 | Position | `start_byte`, `end_byte` | Absent |
 
-Actual event IDs are the first 128 bits of the existing canonical digest over a
-domain-separated source body and frame kind. They contain no text/content hash.
-Text uses the half-open accepted UTF-8 byte range `[start_byte, end_byte)`; start
-is `[0,0)` and end is a point at the accepted byte count. Pending text enters the
-range only when admitted; cancelled pending text is excluded. Position overflow
-closes visibly with `position_limit` instead of wrapping.
+Text ranges are half-open accepted UTF-8 bytes. Start is `[0,0)` and end is a point
+at the accepted count. Pending text counts only once admitted; cancelled pending
+text has no accepted range. Position overflow closes with `position_limit`.
+IDs are the first 128 bits of a domain-separated canonical source/frame-kind
+digest. They contain no text hash.
 
-Consumers keep separate delivery sequences and may receive different coalesced
-ranges. Matching stream/kind/ranges share an occurrence ID across consumers;
-different chunk boundaries have different IDs, correlated by their ranges.
-Final point identity is shared even when delivery sequence differs. Sequence is
-not a global source order, and a frame is not a provider token. Splits stay on
-UTF-8 boundaries; offsets count bytes, not characters or graphemes.
+For example, two consumers may coalesce the same six accepted bytes differently:
 
-Unsequenced `closed` is subscription-scoped, with no invented current request or
-stream position: queued work can span requests and closure can happen while idle.
-Different subscriptions get different closure identities. Existing incomplete
-counts/reasons stay visible.
+```text
+consumer A: text [0,2), text [2,6), end [6,6)
+consumer B: text [0,6),             end [6,6)
+```
 
-## Projection and authority
+Their text occurrence IDs differ because ranges differ. Their final point ID is
+shared even if delivery sequences differ. Sequence orders one consumer's frames;
+it is not global occurrence order. Splitting preserves UTF-8 boundaries, while
+offsets count bytes rather than characters or graphemes.
 
-`Ephemeral.valid_frame?/1` checks closed frame/source schemas, computed ID,
-request/session/stream binding, numeric bounds, Unicode and exact range length.
-`Ephemeral.project(frame, view)` returns a version-1 common envelope with an
-ephemeral source and host origin:
+`closed` is unsequenced and subscription-scoped. Queued work can span requests or
+closure can happen while idle, so it has no invented request or byte position.
+Different subscriptions have different closure identities. Existing incomplete
+reason/count fields remain available.
 
-| Kind | Event type | Views and data |
+## Project only an authorized view
+
+`Ephemeral.valid_frame?/1` checks closed schemas, computed ID, scope bindings,
+numeric bounds, Unicode, and exact range length. `project/2` produces a version-1
+common envelope with host origin and selected metadata/private data:
+
+| Frame | Event | Data |
 | --- | --- | --- |
-| `start` | `text.started` | `metadata`: empty data |
-| `text` | `text.delta` | `metadata`: output byte count; `text.visible`: selected text |
-| `end` | `text.finished` | `metadata`: transport outcome and complete flag |
-| `closed` | `text.subscription_closed` | `metadata`: incomplete flag, fixed reason and counts |
+| Start | `text.started` | Empty metadata |
+| Text | `text.delta` | Metadata byte count or `text.visible` text |
+| End | `text.finished` | Transport outcome and complete flag |
+| Closed | `text.subscription_closed` | Incomplete flag, reason, counts |
 
-Normal events correlate the actual request ID. Closure invents no request link.
-Private and metadata views share range identity; subscription/sequence stays in
-the outer frame. Projection grants no read authority and authenticates no
-worker-supplied frame. Session dispatch binds request IDs to accounting; a
-standalone broker cannot prove an owner-provided ID represents admitted inference.
+Metadata/private projections retain the same source ID. Subscription and sequence
+stay in the outer frame. Projection authenticates no worker-supplied frame and
+grants no read access. Session binds request IDs to admitted accounting; a
+standalone broker cannot prove an arbitrary owner-provided request ID is inference.
 
-This adapter is separate from durable `Event.project/3` and its metadata validator.
-Journal readers, feeds and history do not accept ephemeral sources or gain new
-subscription types. No frame is journaled, replayed, automatically indexed or
-exported. Native history/accounting stays authoritative. Acknowledgment is receipt,
-not presentation, business success or playback. Idle resume starts no consumer;
-explicit new work gets new live identity.
+Durable `Event.project/3`, history, and live metadata feeds reject these ephemeral
+sources. No text frame is journaled or replayed, and idle resume enrolls no
+consumer. Acknowledgment confirms receipt, not display, business success, or audio
+playback. Another required consumer can fail after this consumer receives a
+completed end; use Session's result or `answer.committed` for admitted answers.
 
-`text.finished` reports provider transport completion, including its per-consumer
-coverage flag. It does not promise Session admission: another required peer can
-fail after this consumer receives its end. Use the Session result or the durable
-`answer.committed` subscription for admitted answers; no corrective text event
-changes a transport that already completed.
+## Practice a range change
 
-Fixtures cover unequal consumer boundaries, request reuse, broker restart,
-Unicode ranges, cancelled pending text, idle closure, malformed bindings and
-negotiated Session/worker delivery. Independently compiled workers cover disabled
-behavior, no-effect acknowledgments and inert resume. The bundled fixture runs
-both versions through a real Session in source/extracted runtimes. The separate
-[installed lab](extension-proof.md) verifies v2 worker acknowledgment of start,
-visible answer and end, plus public metadata projection. External transport and
-voice remain separate capabilities.
+Read the unequal-consumer-boundary and request-reuse fixtures in
+`test/text_stream_test.exs`. Follow `lib/ipse/lifecycle/ephemeral.ex` to see which
+fields enter the event ID. Then read negotiated Session cases in
+`test/text_stream_session_test.exs`. Compare malformed range refusal with valid
+split Unicode text.
+
+```sh
+mix test test/text_stream_test.exs test/text_stream_session_test.exs
+```
+
+These suites establish byte concatenation/ranges, identity reuse/restart,
+cancellation of pending text, idle closure, negotiation, and no effectful replies.
+When changing a source field, test both consumers with different coalescing and a
+broker restart. A stable ID for one delivery shape does not establish shared
+occurrence identity across consumers.

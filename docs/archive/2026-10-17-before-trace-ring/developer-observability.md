@@ -34,7 +34,7 @@ Source overflow cannot lose/duplicate the recovery append; refused observations
 are counted. Required prompt admission retains `append_with_source/3` and its
 stricter bounds. Both require existing journal lock ownership. Off bypasses optional
 projection work. `Lifecycle.Event.project/3` supplies the
-[shared metadata envelope](../../developer/lifecycle-events.md#internal-journal-source-and-prompt-views),
+[shared metadata envelope](../2026-10-18-before-manual-rewrite/docs/developer/lifecycle-events.md#internal-journal-source-and-prompt-views),
 preserving source IDs and actual host correlation, without new random IDs per view
 or guessed legacy links. Projection is not authentication or action authority.
 
@@ -163,5 +163,5 @@ remain open in [P22](../../plan.md#p22-extension-scaffold-and-lifecycle-hooks).
 
 Thirteen focused fixtures cover off parity, privacy/source identity, stop, export
 scope, blocked/invalid sinks, owner-death VM cleanup, rotation, filtering, historical
-resume and corruption. [Testing](../../developer/testing.md#current-evidence-and-next-checks)
+resume and corruption. [Testing](../2026-10-18-before-manual-rewrite/docs/developer/testing.md#current-evidence-and-next-checks)
 distinguishes source, hosted and extracted evidence.

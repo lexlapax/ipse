@@ -1,26 +1,18 @@
 # Ipse
 
-A general-purpose local AI harness built with Elixir/OTP, with local skills,
-resumable conversations, and a small Rust process supervisor. Apache-2.0 licensed.
-No JavaScript or Python runtime.
+Ipse is a general-purpose local AI harness with a terminal client, resumable
+conversations, project instructions, skills and approved tools. Its core is
+Elixir/OTP with a small Rust OS helper. Projects handled by Ipse may use other
+languages and runtimes. The project is licensed under Apache-2.0.
 
-**Prototype 0.1:** a terminal application and an embeddable OTP session API,
-currently focused on coding and project workflows. The implementation language
-does not restrict the languages or runtimes of projects handled by Ipse.
-The agent loop, providers, skills, approvals, and journal are Elixir. Rust owns
-shell and configured MCP process groups and advisory file locks. This is an independent implementation
-informed by lessons from [Loopex](https://github.com/lexlapax/loopex) and
-[rs-llmspell](https://github.com/lexlapax/rs-llmspell).
+The current prototype runs on Linux and macOS. It is a line-oriented terminal
+application and an embeddable Session API. Start with the scripted demo, then
+choose a provider explicitly when you are ready to use a model.
 
-The name comes from Latin *ipse* (the emphatic “self”), inspired by Douglas
-Hofstadter's *I Am a Strange Loop*. See [why Ipse](docs/naming.md) for the
-sources and the connection to continuity and feedback.
+## Build and try the demo
 
-## Build and try it
-
-Source prerequisites: Elixir 1.18+ on Erlang/OTP 27+, Rust 1.85+, a C linker, and
-Git. Linux and macOS are targeted; Linux is tested in the development environment.
-No Cargo packages are required. Jason is pinned to a Git tag and commit in mix.lock.
+You need Elixir 1.18+, Erlang/OTP 27+, Rust 1.85+, Git and a C linker. From a source
+checkout:
 
 ```sh
 git clone https://github.com/lexlapax/ipse.git
@@ -31,147 +23,85 @@ mix local.rebar --force
 ./bin/ipse demo
 ```
 
-If you received a source archive, extract it and start at `./scripts/build.sh`.
-The demo needs no credentials. It loads the review skill and its checklist, creates and reads
-`ipse-demo.txt` in a new temporary directory, and runs `printf`. It is a
-deterministic fixture, **not a model**. The printed session ID can be resumed.
+The demo creates a temporary workspace, loads the review skill and its checklist,
+writes and reads `ipse-demo.txt`, and runs a small shell command. It needs no
+credentials or model service. Its answer is scripted, not inference. Expect tool
+results followed by `Demo finished` and a saved session ID.
 
-For a bundled platform release, extract the archive and run `./ipse demo`.
-It includes Erlang, Elixir application code, and the native helper; no toolchain is
-needed. Match the OS/architecture and libc requirements in the release filename.
+For a bundled release, extract an archive matching your OS/architecture/libc and
+run `./ipse demo` from its root. It contains the VM, application and helper; a
+development toolchain is not needed to run it.
 
-## Use Ipse
+## Start a real conversation
 
-Follow the [operator guide](docs/operator/usage.md) for login, provider selection,
-approvals and chat. ChatGPT subscription is the default; API billing requires
-explicit provider selection. `/info` reports the running application and
-configured provider/model locally. Review full file/shell arguments before
-approving them. Structured [operator questions](docs/operator/usage.md#operator-questions)
-accept explicit single-choice, multi-select or text answers; answering grants
-no action permission.
-
-Shell commands run with trusted local permissions by default.
-`--sandbox native` explicitly requests the Linux/macOS workspace profile and
-fails closed when unavailable; see [shell policy](docs/operator/usage.md#shell-policy).
-Core/package checks have passed on Linux x86_64 and macOS arm64. Native macOS
-enforcement passed locally on macOS 26.7.2 and on macOS 14 CI; detached children
-can still survive cancellation with workspace access. Windows is future work.
-The [verification record](docs/developer/testing.md#current-evidence-and-next-checks)
-identifies tested revisions and remaining platform gates.
-
-### Workspace, skills and configuration
-
-Start from the target directory or use `--cwd`. `/context` shows saved scoped
-instructions and skill selection; `/context refresh` reloads both while idle.
-Resume keeps saved selections and reports drift rather than adopting changed
-skill bodies silently. Operator and trusted
-project/directory JSON settings have explicit precedence, local `ipse config`
-inspection and pinned resume identity. See [configuration](docs/operator/configuration.md)
-and [workspace instructions](docs/operator/usage.md#workspace-instructions).
-
-Use `$project-orientation` to assess a project's purpose, current changes and
-available checks before choosing next steps. Skills are discovered in project
-`.agents/skills`, Ipse user `IPSE_HOME/skills`, shared operator `~/.agents/skills`,
-then bundled definitions. Shared skills are independent of `IPSE_HOME`; see
-[skill provenance and limits](docs/operator/usage.md#skills).
-
-### Sessions and recovery
-
-Automatic compaction retains the original journal. Older-turn summaries use
-the selected provider; a long-turn fallback excerpts older settled tool output
-without a model request. Use `/diagnostics` or local `ipse diagnose` for byte
-accounting and [provider usage facts](docs/operator/usage-accounting.md).
-Optional operator [session-tree budgets](docs/operator/budgets.md) reserve main,
-summary, child and accounted extension model requests before provider dispatch
-and retain unknown liability.
-These estimates do not promise an invoice ceiling.
-When safe compaction cannot continue, export a reviewed handoff and import it
-with `chat --handoff PATH` into a fresh idle session. See
-[compaction limits](docs/operator/usage.md#context-compaction) and
-[context recovery](docs/operator/recovery.md).
-
-### Extensions and external capabilities
-
-[Extensions](docs/operator/extensions.md) use inert local import, separate
-operator trust and explicit session selection. Bundled extensions are
-default-off. Reviewed artifacts can expose typed tools/commands/services and
-negotiate state, questions, workflow tools, [accounted one-shot model calls](docs/operator/extensions.md#accounted-model-calls), service composition, contextual
-evidence and private visible-text consumption. Prompt delivery has separate
-[read-only notifications](docs/operator/extensions.md#event-subscribers) and
-[approved jobs](docs/operator/extensions.md#event-jobs) for before-request recall
-or after-turn maintenance.
-Completed-answer subscribers can separately select original or presented text;
-native provider continuation remains private.
-Explicit [history reads](docs/operator/extensions.md#explicit-history-and-catch-up) provide bounded
-own-session recorded views for catch-up, with separate private grants and no replay.
-Optional [runtime metadata](docs/developer/lifecycle-events.md#runtime-epochs-and-operator-waits)
-records session epochs and operator waits, preserving incomplete spans across restart.
-Selected [live feeds](docs/operator/extensions.md#live-event-feeds) observe metadata
-or explicitly granted tool input/results, with bounded queues and visible incomplete
-coverage on failure. [Admitted-tool sources](docs/developer/tool-events.md) retain
-host tool IDs, actual source links and normal approvals.
-`/ext` inspects the active catalog
-and invokes operator commands, including optional
-[configured cost pages and own-session/child summaries](docs/operator/usage-accounting.md#enable-the-optional-report).
-Separately selected [explicit memory](docs/operator/memory.md) adds session/task
-or project/operator notes, local lexical recall and approved retention/suppression;
-it performs no automatic capture or model call. Logical storage bindings remain
-operator grants, and forgetting does not erase earlier transcripts or provider transfers.
-Effects retain normal approval; cached receipts/projections restore without
-replay. Default-off [diagnostic capture](docs/operator/observability.md) supports
-bounded local sink workers and separate export authority. Synthetic extension
-checks offer optional [dispatcher tracing](docs/developer/observability.md#synthetic-dispatcher-tracing).
-The [independent extension lab](docs/operator/extension-lab.md) exercises prompt-driven
-memory, graph extraction, recall, workflows and private tool/text observers without
-changing core or rebuilding the installed release. It uses synthetic data and
-does not select production knowledge engines. A frozen release also authored a
-reviewed extension-only change. See [supported lifecycle coverage](docs/developer/lifecycle-events.md#supported-lifecycle-coverage)
-and [P22 verification status](docs/plan.md#p22-extension-scaffold-and-lifecycle-hooks).
-
-Explicit stdio and Streamable HTTP [MCP tools](docs/operator/mcp.md) use
-`--mcp-config`. Local servers have their own trusted/native sandbox setting;
-shell policy does not change it. Network MCP needs a configured endpoint,
-verified HTTPS and optional server-specific bearer credentials. Literal
-loopback HTTP requires an explicit exception.
-
-Opt-in [local subagents](docs/operator/subagents.md) support serial or bounded
-parallel work with separate approvals, journals and explicit model routing.
-An optional [provider output cap](docs/operator/configuration.md) applies to
-supported API/Ollama requests and is retained or narrowed by children. ChatGPT
-subscription rejects that unsupported setting; it never switches to API billing.
-Use `$research` with configured search/fetch MCP tools for a durable
-[source/claim ledger](docs/operator/research.md). No search service or automatic
-memory backend is required. The terminal is line-oriented; remote agents and
-a full-screen TUI remain unsupported. Use the [documentation map](docs/index.md)
-for the authoritative operator, developer and verification guides.
-
-## Development
-
-For Arch Linux and a local Codex CLI handoff, start with
-[docs/operator/arch-linux.md](docs/operator/arch-linux.md). Coding agents should read
-[AGENTS.md](AGENTS.md). The [plan](docs/plan.md),
-[architecture](docs/developer/architecture.md), and [verification guide](docs/developer/testing.md)
-describe the next work and current limits.
+ChatGPT subscription is the default provider:
 
 ```sh
-mix format --check-formatted
-mix compile --warnings-as-errors
-mix test
-./bin/ipse demo
-./scripts/package.sh
+./bin/ipse login
+./bin/ipse chat --cwd /path/to/your/project
 ```
 
-The tests exercise local HTTP fixtures, fragmented streaming/tool calls, skill
-selection, file edits, approvals, cancellation, journaling/recovery, OAuth checks,
-and real Rust process cleanup. No paid model credentials are required.
+Open the displayed sign-in URL and complete authorization in a browser that can
+reach the same machine's loopback listener. Replace the example project path with
+an existing directory. Then ask a bounded task, such as:
 
-Keep the core small: ordinary modules and OTP primitives, behavior-driven tests,
-and short design notes when a consequential tradeoff needs explanation. See
-[CONTRIBUTING.md](CONTRIBUTING.md) and the
-[security context and private reporting policy](SECURITY.md).
+```text
+Read README.md and explain how to run this project. Do not change files.
+```
+
+Review full proposed arguments before approving any mutation or shell command.
+Interactive approvals require the fresh `allow CODE` printed with that proposal;
+`n` denies it. A question answer grants no action permission. Headless `run`
+denies mutations without `--yes`.
+
+Use the [user manual](docs/operator/index.md) for API or local providers, model
+profiles, commands and complete configuration examples. Selecting an API provider
+uses its billing separately from a subscription. Ipse never silently switches
+providers or billing modes.
+
+## Find your next task
+
+| Task | Guide |
+| --- | --- |
+| Work with approvals, skills and workspace instructions | [Terminal usage](docs/operator/usage.md) |
+| Configure providers, profiles and project policy | [Configuration](docs/operator/configuration.md) |
+| Connect external tools | [MCP](docs/operator/mcp.md) |
+| Select reviewed extensions | [Extensions](docs/operator/extensions.md) |
+| Store explicit notes with retention and suppression | [Memory](docs/operator/memory.md) |
+| Recover interrupted work or start from a reviewed handoff | [Session recovery](docs/operator/recovery.md) |
+| Inspect usage and shared quotas | [Usage](docs/operator/usage-accounting.md), [budgets](docs/operator/budgets.md) |
+| Contribute to the harness or build an extension | [Developer training](docs/developer/index.md) |
+
+Shell commands use your ordinary account permissions by default. An explicit
+`--sandbox native` requests the supported workspace OS policy and fails closed
+when unavailable. Approvals, process supervision and OS confinement are different
+boundaries. Deliberately detached macOS descendants may survive cancellation with
+workspace access. See [native policy](docs/operator/usage.md) before using it on
+sensitive data.
+
+Journals retain user/model/tool content locally. Resume restores saved work and
+marks interrupted effects unknown; it never automatically replays them. Protect
+that state and inspect effects before asking for a retry. Optional extensions,
+MCP, memory, delegation and diagnostic capture require their own selection and
+authority. Loading a skill or importing code grants no permission to execute it.
+
+## Develop Ipse
+
+Follow the [developer learning path](docs/developer/index.md) to build a checkout,
+run a credential-free Session example and trace its owners. Read
+[AGENTS.md](AGENTS.md) before repository changes and
+[CONTRIBUTING.md](CONTRIBUTING.md) before submitting them.
+
+The [documentation map](docs/index.md) separates user and contributor manuals.
+The [plan](docs/plan.md) owns project status. Dated verification and research records
+live in the [archive](docs/archive/index.md). The [security policy](SECURITY.md)
+explains the threat model and private reporting procedure.
+
+The name comes from Latin *ipse*, the emphatic "self", with inspiration from
+Douglas Hofstadter's *I Am a Strange Loop*. See [naming](docs/naming.md).
 
 ## License
 
 [Apache-2.0](LICENSE), Copyright (c) 2026 Sandeep Puri. Dependencies and bundled
-Erlang/Elixir runtimes retain their own licenses; packaged releases include
-third-party notices.
+Erlang/Elixir runtimes retain their licenses and notices; see
+[third-party notices](THIRD_PARTY_NOTICES.md).

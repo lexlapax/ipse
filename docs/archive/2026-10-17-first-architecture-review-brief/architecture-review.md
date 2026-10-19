@@ -3,7 +3,7 @@
 # Independent architecture-review handoff
 
 The first critique has returned; use the
-[disposition register](../../developer/architecture-review-dispositions.md) for
+[disposition register](../2026-10-18-before-manual-rewrite/docs/developer/architecture-review-dispositions.md) for
 verification, repairs and the follow-up coverage gate. The original first-pass
 prompt below retains its scope and target. It does not request another first pass.
 
@@ -12,7 +12,7 @@ on Serenity: `/home/lexlapax/projects/lexlapax/ipse`. No packet download,
 extraction, new checkout or Mac repair session is required. This is P24's
 independent design challenge, separate from security scanning and the later
 Codex/Ipse research comparison. The
-[evaluation protocol](../../developer/self-hosting-evaluation.md#independent-adversarial-architecture-validation)
+[evaluation protocol](../2026-10-18-before-manual-rewrite/docs/developer/self-hosting-evaluation.md#independent-adversarial-architecture-validation)
 owns findings, triage and acceptance; the [plan](../../plan.md) owns status.
 
 ## Review target and local access
@@ -33,7 +33,7 @@ instructions for the reviewer, not an OS confinement claim for the Claude client
 
 The previously prepared ZIP remains an optional transport for reviewing elsewhere;
 its 325 source files and manifest are recorded in the
-[preparation evidence](../../developer/testing.md#current-evidence-and-next-checks).
+[preparation evidence](../2026-10-18-before-manual-rewrite/docs/developer/testing.md#current-evidence-and-next-checks).
 Local Git access replaces that transport; it does not change the target or expand
 the review's authority. Use the selected subscription model and record its displayed
 identity/settings. This handoff installs no client or dependency and enables no

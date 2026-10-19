@@ -7,7 +7,7 @@ The [original body](architecture-review.md) is retained with relative links reba
 no private critique or transcript is included.
 
 Current replacements: [handoff](../../operator/architecture-review.md),
-[dispositions](../../developer/architecture-review-dispositions.md),
-[internal audit](../../developer/architecture-self-audit.md),
-[verification](../../developer/testing.md#current-evidence-and-next-checks) and
+[dispositions](../2026-10-18-before-manual-rewrite/docs/developer/architecture-review-dispositions.md),
+[internal audit](../2026-10-18-before-manual-rewrite/docs/developer/architecture-self-audit.md),
+[verification](../2026-10-18-before-manual-rewrite/docs/developer/testing.md#current-evidence-and-next-checks) and
 [plan](../../plan.md#p24-independent-architecture-validation-and-baseline-security).

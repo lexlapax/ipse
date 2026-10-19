@@ -1,3 +1,7 @@
+> Historical reference only. Snapshot of `docs/developer/p25-common-brief.md` at `10b9dd66d06ef28718b58530a7e5b01c7c50397a` on 2026-10-18.
+> Original body retained; relative links rebased for this archive.
+> Use the [current manual](../../../../developer/self-hosting-evaluation.md).
+
 # P25 common brief and frozen controls
 
 Frozen 2026-10-18 before scored execution. This brief is released identically to

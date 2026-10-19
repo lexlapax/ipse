@@ -1,207 +1,106 @@
-# Context compaction
+# Reducing model context while retaining evidence
 
-`Ipse.Compaction` prepares and validates bounded context checkpoints.
-`Ipse.Session` owns the model request, cancellation, durable commit, and effective
-conversation. Model summaries use the selected provider and model. A deterministic
-older-tool-output fallback makes no model request. Neither path changes provider,
-credential source, billing mode, or workflow engine.
+Compaction changes the effective conversation sent to a model. It does not delete
+journal history or authorize repeated work. `Ipse.Compaction` prepares and validates
+pure checkpoint projections. Session owns summary inference, cancellation,
+durable commit, and replacement of its effective messages.
 
-## Preserved information
+Read `prepare/3`, `finish/4`, `restore_tool_results/2`, and `digest/1` in
+`lib/ipse/compaction.ex`. There are two reduction paths with different trade-offs.
 
-The preferred model-summary path retains the latest two user turns, including every assistant/tool
-message and native continuation payload in those turns, without reconstructing
-them. Older user requests are pinned verbatim. The checkpoint also pins prior
-call IDs, tool names, exact arguments, host-written outcome and approval metadata,
-and result excerpts with SHA-256, full byte counts, and a shortened flag.
-Excerpts contain at most 256 characters. Full results remain in the journal.
-Older journals without host outcome metadata are labelled historically
-unclassified; words in file/shell output cannot establish a host approval.
-Previous approvals never grant permission for future calls.
+## Follow the summary path
 
-The selected model summarizes older decisions, facts, and open questions into
-three arrays of strings. The input is one user message containing normalized
-transcript JSON, governed by a separate summarization instruction. Old native
-reasoning/opaque continuation fields are excluded from that request; recent
-native exchanges remain intact. The original journal retains all fields.
-The summary and checkpoint are historical data, not higher-priority instructions.
-Structural validation cannot prove a model summary's semantic fidelity. Exact
-user intent, action provenance, recent exchanges, and the original transcript
-provide recovery evidence; inspect current state before repeating an effect.
+The default encoded context ceiling is 400,000 bytes. Core system instructions
+and the labelled user-role reference message count toward it. At a model-request
+boundary after tools settle, automatic compaction triggers above 80% of the
+ceiling. `--context-bytes` accepts at least 8,192; `--no-compact` disables reduction
+but retains hard admission limits. Encoded bytes are not provider tokens.
 
-## Bounds and failure behavior
+The planner selects a complete older prefix, retaining the latest two user turns
+and all their assistant/tool/native data exactly. Older user requests remain
+verbatim in an intent ledger. The action ledger pins prior call IDs, names, exact
+arguments, host approval/outcome metadata, and result excerpts with SHA-256,
+original bytes, and shortened flag. Excerpts use at most 256 characters. Legacy
+results without host classification remain historically unclassified; output text
+cannot prove approval.
 
-The default conservative encoded context ceiling is 400,000 bytes. Core system
-instructions and the separate untrusted user-role reference message both count
-toward planning, admission and diagnostics. Automatic
-compaction is attempted above 80% of that ceiling at the model-request boundary,
-after tools have settled. The model-summary path requires a complete older prefix; unresolved calls
-cannot be split away. The summary request must fit the ceiling, the generated
-JSON must fit 16,000 bytes, and the resulting context must shrink below the
-trigger threshold. Pinned ledgers and recent exchanges are never silently trimmed
-to make this work. Oversized user input, recent tool results, or an ever-growing
-intent ledger can therefore stop work with recovery guidance.
+The summary request contains normalized older transcript JSON in one user message
+under a separate summarization instruction. Older opaque/native reasoning is
+excluded from that request; the full original stays in the journal. The provider
+must return exactly three string arrays:
 
-If planning that summary fails, Ipse tries deterministic tool-output reduction,
-including within a single long user turn. It retains every message and all user
-text, assistant text, provider continuation fields, call IDs/names/arguments, and
-host approval/outcome metadata unchanged. The two newest assistant tool-call
-batches, including all parallel results, remain full. Only older results over
-4096 bytes with known settled outcomes and approved or approval-free provenance
-are eligible. Unknown, denied, historically unclassified, and already reduced
-results remain untouched. Unresolved or duplicate calls prevent reduction.
+```json
+{"decisions":["Keep changes local"],"facts":["The failing case is reproducible"],"open_questions":["Which input triggers it?"]}
+```
 
-Eligible output becomes an explicitly incomplete beginning/end excerpt (256
-characters each), with original byte count and SHA-256 plus a warning to inspect
-original evidence rather than repeat an effect. This changes tool-result text;
-it does not preserve its full semantic content. The original journal stays intact.
-The entire proposed projection must shrink below the trigger or none is saved.
-A later model summary carries original result provenance forward, rather than
-hashing the shortened text as though it were the original output.
+Check the exact keys in `valid_summary_map?/1` when editing the schema. One exact
+outer JSON Markdown fence is tolerated; surrounding prose, multiple documents,
+extra/missing keys, non-string values, tool calls, and over-limit raw content refuse.
+Summary JSON must fit 16,000 bytes, its request must fit the context ceiling, and
+the resulting context must shrink below the trigger. Required ledgers/native data
+are never trimmed to make the projection fit. Structural checks cannot establish
+semantic fidelity of a model-written summary.
 
-The [P12 trial](testing.md#p12-task-tracker-coding-trial-2026-10-15) exposed the
-earlier complete-turn-only limitation; [P13](testing.md#p13-long-turn-compaction-2026-10-16)
-reproduces that failure with the fallback. Retained user text, arguments, native
-payloads, recent results, or an intent ledger can still prevent a safe checkpoint.
+Summary inference uses the selected provider/model and consumes normal usage and
+budget. Ollama summary-only config requests the schema, `think: false`, zero
+temperature, and a 4,096-token cap narrowed by configured limits. Ordinary turns
+retain their options. Summary deltas never go to the UI.
 
+## Reduce old tool output when a summary cannot be planned
 
-`--context-bytes` adjusts the ceiling (minimum 8192); `--no-compact` retains
-hard-ceiling behavior without either reduction path. These byte bounds are not model
-token counts or a guarantee that any provider accepts a request of that size.
-A model summary consumes one configured model call and normal provider usage.
-Deterministic output reduction consumes neither. Summary deltas are not forwarded to the UI.
-Cancellation stops the owned task and does not save a partial checkpoint.
+A single long turn may have no complete older prefix. The deterministic fallback
+keeps every message, user/assistant text, call arguments, native continuation,
+and host metadata. It shortens only eligible settled results over 4,096 bytes.
+The two newest assistant tool-call batches, including all parallel results,
+remain complete. Unknown, denied, historically unclassified, already reduced,
+unresolved, or duplicated calls cannot be shortened.
 
-One exact outer JSON Markdown fence is accepted as presentation; prose before
-or after it, multiple documents, missing/extra schema keys, non-string array
-values, tool calls, and over-limit raw responses remain rejected. The same
-checkpoint validation applies after JSON decoding. For Ollama summaries only,
-the host sends the three-array JSON schema with `think: false`, zero temperature,
-and a 4096-token generation cap. Ordinary turns retain their existing options.
-These controls follow Ollama's documented
-[structured outputs](https://docs.ollama.com/capabilities/structured-outputs)
-and [thinking controls](https://docs.ollama.com/capabilities/thinking); unavailable
-model support fails rather than changing provider or billing mode.
+Eligible output becomes an explicitly incomplete beginning/end excerpt of 256
+characters each, original byte count, SHA-256, and a warning to inspect original
+evidence before repeating an effect. This loses result text intentionally; it
+never claims full semantic preservation. The whole projection must fit below the
+trigger or nothing is saved. A later summary carries original provenance rather
+than hashing the excerpt as if it were the source result.
 
-## Durable checkpoint and resume
+## Commit once and restore deterministically
 
-A successful summary is validated for its exact schema, size, absence of tool
-calls, and effective context size. Session appends and syncs a
-`context_compacted` event before changing its effective messages. Version 1 stores
-the checkpoint, covered effective-message count, canonical JSON SHA-256 of that
-prefix, and before/after byte sizes. Original `message` events stay untouched.
-The checkpoint contains the deterministic intent/action ledger and the summary;
-its rendered content must match its structured metadata.
+Session syncs `context_compacted` before changing its messages. Version 1 binds
+the checkpoint, covered effective-message count, canonical JSON prefix digest,
+and before/after sizes. `tool_results_compacted` instead binds original/projected
+digests and deterministic result indices. Original `message` events remain intact.
+Canonical digests sort JSON object keys recursively rather than depend on term
+serialization.
 
-Resume folds events in order. It reconstructs unknown outcomes, verifies the
-covered prefix and checkpoint, and replaces only the effective projection.
-Later messages remain intact. A committed checkpoint survives owner death before
-the next response; an incomplete final record uses ordinary tail repair.
-A damaged committed checkpoint stops resume rather than silently choosing another
-context. No restore path executes a tool or automatically restarts inference.
-The digest uses recursively sorted JSON object keys rather than runtime-specific
-term encoding, so checkpoints do not depend on an OTP term serialization version.
+Resume folds events in order, reconstructs unknown outcomes, validates covered
+prefixes and checkpoint metadata, and applies only the effective projection.
+Later messages survive. A damaged committed checkpoint stops recovery; no alternate
+projection or inference is silently chosen. Owner death after commit retains the
+checkpoint without replay. Cancellation does not save partial output.
 
-The `tool_results_compacted` version-1 event instead stores the covered effective
-message count, canonical prefix and projected-message digests, deterministic
-result indices, and before/after sizes. Session syncs it before continuation.
-Restore verifies the original prefix, call settlement, eligibility/indices, and
-regenerated projection digest before accepting it. It composes with earlier
-summary/output checkpoints and leaves later messages untouched. Corrupt events
-stop resume; owner death after commit retains the projection without replay.
+`compaction_failed` records prepare/summary/validation stage with a bounded host
+diagnosis. Raw provider errors are replaced with a static message. Oversized user
+text, recent results, native payloads, or the pinned ledger can still prevent
+reduction. A shorter continuation, explicit ceiling change, or reviewed fresh
+session is an operator choice, never an automatic provider/billing switch.
 
-Failures record a `compaction_failed` event with prepare, summary, or validation
-stage and a bounded host diagnosis. Planner/validator causes are shown to the
-operator; provider-summary failures use a static message to avoid exposing raw
-provider bodies. Inspect effects and retained evidence first. A short continuation
-can make an older turn eligible for a model summary; otherwise explicitly adjust
-the ceiling or start a new session with necessary context. No failure retries a
-tool or changes provider.
+## Practice a checkpoint change
 
-## Provider guidance and verification
+Read the "preserves two recent user turns" fixture in `test/compaction_test.exs`.
+Compare the recent native message before/after `finish/4`. Then read
+`test/tool_result_compaction_test.exs` and identify why a denied result stays full
+while an older approved settled result can become an excerpt.
 
-The summary path keeps provider continuation data for recent exchanges, and the
-output-reduction path keeps all such fields. Tool-output reduction is a host
-tradeoff with marked incomplete results, not intact replay of every exchange;
-OpenAI documents preserving all items between the latest user message and a tool
-result when manually optimizing context. See official
-[reasoning guidance](https://developers.openai.com/api/docs/guides/reasoning).
-OpenAI also offers [native compaction](https://developers.openai.com/api/docs/guides/compaction),
-whose returned window must be used intact. Ipse's current implementation is a
-provider-neutral host checkpoint, not that endpoint or server-side compaction.
+```sh
+mix test test/compaction_test.exs test/tool_result_compaction_test.exs test/compaction_session_test.exs
+```
 
-For Anthropic, a validated historical checkpoint is projected to user-role context
-on the wire, leaving the canonical assistant checkpoint and retained native
-continuations unchanged. Adapter fixtures verify this projection, not a live
-service failure. The official [Messages contract](https://platform.claude.com/docs/en/api/messages/create)
-describes alternating roles and merging adjacent turns; it does not establish the
-review's speculative assistant-first rejection. No new paid check is claimed.
+The pure suites establish projections and validation; Session fixtures establish
+sync-before-replacement, accounting, cancellation, and recovery. When changing
+checkpoint structure, test a committed corrupted field and a crash immediately
+after commit. A smaller context alone does not prove safe recovery.
 
-See [testing and actual evidence](testing.md#p2-context-compaction-2026-10-15)
-for fixtures and the separate live ChatGPT scratch check. The later
-[provider acceptance](testing.md#live-provider-acceptance-follow-up-2026-10-15)
-also verifies live Ollama, Anthropic, and OpenAI API checkpoint requests over
-seeded synthetic history. Future changes must
-preserve failure, cancellation, checkpoint integrity, and no-replay behavior.
-
-## Diagnostics and explicit handoff
-
-`Ipse.Diagnostics.context/3` partitions the exact JSON encoding into fixed
-categories, including map/list framing, escaped field names/values, core instructions,
-reference context,
-user/assistant text, the newest two result batches, older results, tool-call
-arguments/envelopes, provider-native data, checkpoint data and host provenance.
-Only numbers and fixed labels leave that calculation. Original field content is
-not inspected or returned. The shared `Compaction.target_bytes/2` keeps the
-diagnostic trigger consistent with the planner. Category sizes are encoded bytes,
-not model tokens or independent minimum checkpoint sizes.
-
-`Session.diagnostics/1` adds current phase/step/wait/worker facts. Saved inspection
-uses the public pure `Session.restore_context/1` restoration path and research
-ledger validation without opening a live Session, repairing a tail or inference.
-Its scope omits derived system/reference headers and labels a missing saved
-ceiling. Compaction refusals now record exact request measurements in a private
-`compaction_failed` event. Model/summary workers record bounded-category completion,
-failure/cancellation and elapsed milliseconds; approval/tool time is excluded.
-Idle resume does not add measurements or replay requests. This is a minimal
-local diagnostic foundation. P22's separate [observability contract](observability.md)
-adds bounded capture, retention and synthetic dispatcher tracing. External OTLP
-exporters remain optional, separately configured and unselected.
-
-`Ipse.Handoff.export/3` requires an explicit bounded operator note and emits a
-small versioned recovery artifact with source-event digest and unknown-call
-references. It never copies arbitrary source metadata, history, approval settings
-or native continuation into a new session. Original events stay private and
-unchanged. Export neither creates nor resumes a session. Existing compaction
-rules are unchanged: there is no undocumented trimming of required native data
-or pinned intent. Unknown outcomes still require inspection.
-
-P21 adds explicit import through fresh interactive `chat --handoff PATH`. CLI mode
-conflicts fail before reading the artifact; `Handoff.read/1` reads at most 16 KiB
-plus one overflow byte and validates before configuration/authentication or Session
-startup. `Handoff.prepare/1` accepts raw UTF-8 JSON bytes only, rejects duplicate
-object keys using Jason's ordered decoding, and reuses the existing bounded
-`MCP.Schema`/JSONSchex adapter for a closed version-1 shape. Additional host checks
-validate lowercase source ID/digest, note byte length/nonblank content, bounded
-safe identifiers and exact count/cap/omission relationships. No new dependency,
-source-journal lookup, signature check or secret scanner is introduced.
-
-Embedding passes the same raw bytes as the Session `:handoff` option; Session
-validates them before creating any state and rejects the option alongside any
-existing `:id`. Callers cannot supply a prebuilt projection to bypass validation.
-The fresh journal records one `handoff_imported` event immediately after its header,
-before instruction/catalog snapshots, containing the original artifact bytes, SHA-256 and deterministic
-user-role projection. The projection attributes the source and labels the note
-as untrusted historical text, never a fresh task or permission. Import leaves the
-session idle until a new prompt; current provider/model/approval/tool configuration
-alone applies. No source provider-native history or executable calls are imported.
-
-`Handoff.validate_events/1` rederives the entire committed record and checks exact
-equality, beginning-of-journal placement and uniqueness. Both Session startup and
-pure `restore_context/1` validate it; invalid committed imports fail before resume
-can repair a tail. Resume restores the saved projection without reading the old
-artifact path. Compaction continues to treat it as historical user context under
-the ordinary checkpoint rules. Import never authorizes replay or changes unknown
-outcomes in the source journal.
-
-See [operator recovery](../operator/recovery.md) and
-[P19 evidence](testing.md#p19-diagnosis-and-explicit-recovery).
+`Ipse.Diagnostics.context/3` measures exact encoded categories using the shared
+trigger; it exports numbers and fixed labels, not source text. Saved inspection
+uses pure restoration without replay. Explicit [handoff](../operator/recovery.md)
+exports a bounded reviewed note into a fresh idle session, not native history,
+permissions, or executable calls. Handoff validation and compaction remain separate.

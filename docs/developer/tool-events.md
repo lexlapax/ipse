@@ -1,110 +1,98 @@
-# Admitted-tool events and private views
+# Exposing admitted tool facts safely
 
-`Lifecycle.Tool` gives a model-selected admitted tool a host-issued `tool_id` and
-binds its input and recorded outcome to actual saved sources. Select these through
-the existing [feed contract](extension-feeds.md) or explicit
-[history reads](extension-history.md). Original assistant/tool messages, provider
-continuation, execution and approval rules retain their existing formats.
+`Ipse.Lifecycle.Tool` assigns a host tool ID to an actually admitted model-selected
+tool and binds private input/results to saved sources. It does not expose arbitrary
+proposals or provide approval/veto hooks. Native, MCP, extension, and delegation
+tools keep their existing execution and journal formats.
 
-## Recording and read authority
+Start in `lib/ipse/lifecycle/tool.ex`, then follow Session's
+`lifecycle_tool_intent` and `lifecycle_tool_outcome` appends. Read the source
+fixtures in `test/lifecycle_tool_test.exs` alongside those calls.
 
-The default-off `lifecycle.tools` capability requires `lifecycle.record`. It
-enrolls bounded source recording for admitted native, MCP, extension and delegation
-tools in that session. It starts no worker and grants no read, write or inference
-permission. Live subscriptions to the three tool types below require this source
-capability, including metadata-only declarations. Source limits and unavailable
-references end recording visibly while ordinary tools and approvals remain active.
+## Separate recording from reading
 
-| Occurrence | View | Additional live read grant |
+Default-off `lifecycle.tools` requires `lifecycle.record`. It records bounded
+sources without starting a worker or granting private access. Live subscriptions,
+even metadata-only ones, require that source capability.
+
+| Event | Views | Additional live read capability |
 | --- | --- | --- |
-| `tool.intent_committed` | `metadata` or `tool.input` | Private input needs `event.tool.input` |
-| `tool.outcome_recorded` | `metadata` or `tool.result` | Private result needs `event.tool.result` |
+| `tool.intent_committed` | `metadata`, `tool.input` | `event.tool.input` for input |
+| `tool.outcome_recorded` | `metadata`, `tool.result` | `event.tool.result` for result |
 | `tool.recording_stopped` | `metadata` | None |
 
-Historical reads instead need `host.actions`, `host.history` and the selected
-`host.history.tool.input` or `host.history.tool.result` grant. Live access does
-not grant history. Older journals without these recorded views are not relabeled
-or reconstructed from adjacent private data. All subscriptions remain inert
-until ordinary trust/selection and explicit work admission.
+History instead requires `host.actions`, `host.history`, and the selected
+`host.history.tool.input` or `host.history.tool.result`. Live authority does not
+grant history. Older journals without markers have no reconstructed private view.
+See [feeds](extension-feeds.md) and [history](extension-history.md) for enrollment.
 
-## What the sources establish
+## Trace an admitted read
 
-After actual approval and the existing synced `tool_started` intent, Session
-syncs `lifecycle_tool_intent` before starting the tool task. Its fresh tool ID is
-independent of raw provider call IDs. It binds the real session, epoch, turn,
-request, source assistant call/index, admitted intent and approval category.
-Repeated provider IDs in later requests still produce distinct host occurrences.
-Read-only callbacks may run after execution has begun; their acknowledgment does
-not gate or approve the tool.
+After actual approval and synced ordinary `tool_started`, Session syncs
+`lifecycle_tool_intent` before starting its task. Its fresh tool ID binds session,
+epoch, turn, request, source assistant call/index, admitted intent, and approval.
+Reusing a provider call ID in a later request still creates a distinct occurrence.
+The read-only callback may run after execution begins; its acknowledgment cannot
+approve or gate execution.
 
-When an admitted tool's message is recorded, `lifecycle_tool_outcome` binds that
-actual result source to its original tool source/ID. Its status is the host's
-recorded `result_recorded`, `error` or `unknown`, not an extension's business
-success assertion. Metadata carries only byte counts, permitted status/approval,
-epoch/tool/turn/request IDs and causing-event links. It excludes tool names,
-arguments, result text, raw call IDs and private content hashes.
-
-Private data has a closed structured shape:
+A structured input view preserves the exact name and original arguments JSON:
 
 ```json
 {"name":"read","arguments_json":"{\"path\":\"notes.txt\"}"}
 ```
 
+When the real tool message is recorded, the outcome marker binds that source to
+the original tool ID/source. Its result view is:
+
 ```json
 {"text":"the exact recorded tool result"}
 ```
 
-Input preserves the original arguments JSON string and tool name; parsed external
-arguments are checked against the actual admitted intent where retained. Result
-text comes from the saved tool message. Both remain untrusted data. They expose
-no provider-native continuation or complete assistant message. Metadata and the
-selected private view share one occurrence ID; private source binding never
-turns a worker-supplied event into host authority.
+The host status is `result_recorded`, `error`, or `unknown`, not the extension's
+assessment of business success. Metadata carries counts, status/approval, permitted
+IDs, and actual causing sources, excluding name, arguments, text, raw call IDs,
+and private hashes. Both views remain untrusted data and expose no native payload
+or complete assistant message.
 
-Each structured view is retained only when its encoded data object fits 8 KiB.
-The complete SDK object retains the normal 16 KiB/string bounds. Larger views
-are unavailable, with byte count and private digest retained; no truncation is
-substituted. A private feed closes with a visible `view_unavailable` gap, while
-metadata and original native history remain available. Historical pages report
-the normal unavailable-view gap. Input/output byte counts describe these encoded
-structured data objects.
+Each encoded private data object fits 8 KiB; complete SDK objects retain 16 KiB and
+string bounds. Larger views remain unavailable with byte count/private digest,
+not a truncated substitute. A private feed closes with a `view_unavailable` gap;
+metadata and native history stay available. History reports its unavailable-view
+gap. Counts describe encoded structured objects, not raw result-text bytes alone.
 
-## Interruption, recovery and limits
+## Retain uncertainty across interruption
 
-Timing runs from admission to recorded outcome within a process, including any
-operator wait there. An explicitly resumed extension-tool question keeps its
-original tool ID and source; its outcome uses the new epoch and omits duration,
-since elapsed downtime cannot be inferred from the old monotonic clock. No
-callback, tool or earlier effect is replayed on idle resume.
+Process-local timing spans admission through recorded outcome, including operator
+waits within that span. An explicitly resumed extension-tool question keeps its
+tool ID/source but uses the new epoch and omits duration. Restart downtime cannot
+be added to an old monotonic clock.
 
-Cancellation/interruption records an unknown outcome where the existing tool
-message says its effect may have occurred. An abrupt exit without a result leaves
-the tool occurrence incomplete. Denied, invalid and unstarted queued calls do
-not receive synthetic execution events. Native `ask_operator`, standalone
-extension commands/services and nested `host.tools` actions retain their own
-question/invocation/operation identities; this recorder does not relabel them as
-model-selected executions.
+Cancellation records unknown where the existing tool result says its effect may
+have happened. Abrupt exit can leave only intent. Denied, invalid, and unstarted
+queued calls receive no fabricated execution events. Native `ask_operator`,
+standalone extension commands/services, and nested `host.tools` actions retain
+their own question/invocation/operation identities rather than being relabelled.
 
-At most 10,000 ordinary tool facts plus one recording-stop notice are retained per
-durable session. Input admission reserves room for its outcome. A limit, missing
-epoch/source or unavailable binding stops further recording and closes relevant
-feeds visibly. Existing history, usage, cleanup and approval remain independent.
+A session retains at most 10,000 tool facts plus one stop notice, reserving room
+for each admitted input's outcome. Missing epoch/source/binding or exhaustion
+stops recording and relevant feeds visibly while tools/approvals continue.
+Recovery verifies actual request/turn/epoch, call position, intent, approval,
+result, and exact view/digest before repair/work. Physical source-to-marker scans
+stop within ten records, allowing up to eight feed intents before a torn suffix.
 
-Before repair/work, validation checks actual request/turn/epoch, assistant call
-position, intent, approval, recorded result and exact private view/digest. Source
-references resolve physically; each source-to-marker scan stops within ten
-records, allowing up to eight feed intents without reading a later torn tail.
-References are identity/content binding under existing append-only ownership,
-not authentication against hostile same-user journal replacement.
+## Practice a private-view change
 
-Source fixtures cover private/metadata parity, coherent content/reference
-tampering, limits and incomplete recovery. Independent workers exercise native
-effects with separate approval, reused IDs, unavailable views, historical grants,
-question continuation, cancellation and source refusal before tail repair.
-Primitive extracted-runtime checks are separate from the
-[installed lab](extension-proof.md), which verifies four private/metadata feed
-acknowledgments around a model-selected extension tool. Neither establishes
-production graph quality. Broader proposal/validation/private-action events and
-causal links are unsupported enhancements in the
-[coverage audit](lifecycle-events.md#supported-lifecycle-coverage); P22 completion
-does not imply those hooks or permissions.
+Read "self-consistent private text changes and mismatched host correlations are
+rejected" in `test/lifecycle_tool_test.exs`. Its changed text and digest still fail
+because physical journal evidence is authoritative. Then inspect the unavailable
+view cases in feed/history fixtures. A digest check alone is insufficient.
+
+```sh
+mix test test/lifecycle_tool_test.exs
+```
+
+Use this suite for marker validation, bounds, privacy, and incomplete recovery.
+When changing actual delivery, also run the focused extension feed/history suites
+for the selected view. Test reused provider IDs, an oversized view, cancellation,
+and a source mismatch before tail repair. No case should reexecute a tool merely
+to reconstruct its event.

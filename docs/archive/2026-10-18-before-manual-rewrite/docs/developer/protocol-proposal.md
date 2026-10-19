@@ -1,3 +1,7 @@
+> Historical reference only. Snapshot of `docs/developer/protocol-proposal.md` at `10b9dd66d06ef28718b58530a7e5b01c7c50397a` on 2026-10-18.
+> Original body retained; relative links rebased for this archive.
+> Use the [current manual](../../../../developer/architecture.md).
+
 # Protocol and delegation proposal
 
 **Status:** This document preserves the P4 protocol design. P5 implements the

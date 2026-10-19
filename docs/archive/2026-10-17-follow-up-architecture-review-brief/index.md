@@ -11,6 +11,6 @@ This snapshot requests no new review or scan.
 - [Archived brief](architecture-review.md).
 - Current replacement: [fresh-session handoff](../../operator/architecture-review.md).
 
-The private report is not archived. The [register](../../developer/architecture-review-dispositions.md)
-owns sanitized provenance and repair dispositions; [testing](../../developer/testing.md#current-evidence-and-next-checks)
+The private report is not archived. The [register](../2026-10-18-before-manual-rewrite/docs/developer/architecture-review-dispositions.md)
+owns sanitized provenance and repair dispositions; [testing](../2026-10-18-before-manual-rewrite/docs/developer/testing.md#current-evidence-and-next-checks)
 owns actual verification and the [plan](../../plan.md) owns remaining gates.

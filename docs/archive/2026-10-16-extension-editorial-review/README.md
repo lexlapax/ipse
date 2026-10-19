@@ -49,7 +49,7 @@ ChatGPT subscription is the default; API billing always requires explicit provid
 selection. In chat, `/info` shows the running application version and configured
 provider/model without calling a model. Review proposed file and shell calls before approving them.
 Interactive chat also supports validated single-choice, multi-select and free-text
-[operator questions](../../operator/usage.md#operator-questions), with explicit
+[operator questions](../2026-10-18-before-manual-rewrite/docs/operator/usage.md#operator-questions), with explicit
 answers and resumable waiting; answers grant no action permission.
 Shell commands use trusted local execution by default. `--sandbox native` requests
 the opt-in Linux or macOS workspace sandbox and fails closed when unavailable; see
@@ -60,14 +60,14 @@ children may survive cancellation with workspace access. Windows is future work.
 
 Automatic context compaction retains the original journal. Older-turn summaries
 use the selected provider; a long-turn fallback excerpts older settled tool output
-without a model request; see [operation and limits](../../operator/usage.md#context-compaction).
+without a model request; see [operation and limits](../2026-10-18-before-manual-rewrite/docs/operator/usage.md#context-compaction).
 Use `/diagnostics` or local `ipse diagnose` for context byte accounting and
 [provider usage facts](../../operator/usage-accounting.md). For an
 explicit reviewed recovery into a fresh idle chat, export a bounded handoff note
 and import it with `chat --handoff PATH`; see [context recovery](../../operator/recovery.md).
 Run from any working directory or use `--cwd`; `/context` shows applicable saved
 instructions and `/context refresh` reloads them while idle. See
-[workspace instructions](../../operator/usage.md#workspace-instructions).
+[workspace instructions](../2026-10-18-before-manual-rewrite/docs/operator/usage.md#workspace-instructions).
 Operator and trusted project/directory JSON settings support explicit precedence,
 local `ipse config` inspection and resume checks; see [configuration](../../operator/configuration.md).
 `ipse extension import PATH` and `ipse extension inspect DIGEST` provide inert,
@@ -89,11 +89,11 @@ Explicit context publications support bounded assertions or receipt-backed
 excerpts, with cached request snapshots and separate mandatory instructions.
 Use `$project-orientation` to assess a repository's purpose, current changes,
 and available checks before choosing next steps; see
-[project assessment](../../operator/usage.md#working-with-the-agent).
+[project assessment](../2026-10-18-before-manual-rewrite/docs/operator/usage.md#working-with-the-agent).
 Skills are discovered without copying from project `.agents/skills`, Ipse user
 `IPSE_HOME/skills`, shared operator `~/.agents/skills`, then bundled definitions
 (in that precedence order). The shared home is independent of `IPSE_HOME`;
-see [skill limits and provenance](../../operator/usage.md#skills).
+see [skill limits and provenance](../2026-10-18-before-manual-rewrite/docs/operator/usage.md#skills).
 Explicit stdio and Streamable HTTP MCP tools are available through `--mcp-config`; see
 [configuration and trust boundaries](../../operator/mcp.md).
 Local MCP servers default to trusted execution; a per-server `"sandbox": "native"`
@@ -109,7 +109,7 @@ in the same workspace with separate journals and parent-mediated approvals.
 [Named profiles and task roles](../../operator/model-profiles.md) can route bounded
 children to an explicitly configured provider/model, including local Ollama. See [local subagents](../../operator/subagents.md) for limits and
 recovery behavior. There is no full-screen TUI, remote-agent, or Windows support.
-See [runtime limits](../../operator/usage.md#runtime-and-limits)
+See [runtime limits](../2026-10-18-before-manual-rewrite/docs/operator/usage.md#runtime-and-limits)
 and [architecture](../../developer/architecture.md) for details.
 
 Use `$research` with explicitly configured search/fetch MCP tools for bounded

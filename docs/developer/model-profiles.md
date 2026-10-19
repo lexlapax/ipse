@@ -1,72 +1,81 @@
-# Execution profile contract
+# Routing requests with execution profiles
 
-`Ipse.Profiles` validates up to eight named profiles and main/routine/review role
-references with existing JSONSchex plus small cross-field policy checks. Profiles
-are closed data, not a workflow engine. P15 scope/trust/precedence bounds apply.
-Operator-declared IDs and any `base_url` are operator authority: project/directory
-sources cannot redefine those IDs or carry an endpoint, even with generic project
-trust. Project-defined IDs still use whole-profile replacement at nearer project
-scopes; roles override by key. The shared `Provider.valid_base_url?/2` policy uses
-`URI.new/1` to validate profile, CLI and actual adapter endpoints with explicit
-scheme, loopback, userinfo/query/fragment and port policy.
-The selected main profile overlays file settings before environment/CLI limits;
-conflicting provider/model/endpoint overrides fail. The effective manifest and
-fingerprint include all configured profiles, roles and selected execution data.
-Resume restores the selected profile ID, checks this fingerprint and execution
-identity before work, and never changes providers or replays a child automatically.
+An execution profile chooses provider behavior without giving model text access
+to credentials or routing policy. `Ipse.Profiles` owns validation, selection, and
+child configuration. `Ipse.Config` owns source authority and precedence; Session
+owns the selected execution identity throughout recovery.
 
-Reasoning effort maps to Responses `reasoning.effort` while preserving the exact
-model name and native continuation. Only documented exact `gpt-6.1-sol` supports
-Ipse's initial low/medium/high/xhigh/max allowlist, shared by subscription and API
-adapters. Both profile validation and the provider dispatcher reject unsupported
-settings. See [model documentation](https://developers.openai.com/api/docs/models/gpt-6.1-sol)
-and [reasoning guidance](https://developers.openai.com/api/docs/guides/reasoning).
-The [public subscription inference interface](https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference)
-uses the public Responses endpoint with storage disabled; account/model support
-must still be tested live. Configurable Ollama/Anthropic thinking is omitted:
-[Ollama's controls](https://docs.ollama.com/capabilities/thinking) are model-dependent
-and must not be guessed from OpenAI effort names.
+Start in `lib/ipse/profiles.ex`. Read `validate_profile/1`, `select/3`,
+`validate_route/2`, and `child_config/3` in that order. The progression mirrors a
+profile's lifetime: accepted data, main selection, proposed child route, then a
+new child's runtime configuration.
 
-Delegation definitions advertise only configured IDs and routine/review roles.
-Validation rejects unknown routes before approval or child creation, including
-parallel groups. A selected profile child starts with an allowlist of inherited
-host policy (workspace/sandbox, instruction/skill home inputs, approval, origin
-and the parallel-child hardlink restriction),
-then selected execution fields. It drops parent API keys, endpoint, provider
-module, conversations, native payloads, profiles and MCP state. Credential lookup
-occurs in its own request task using the fixed reference for its provider; the
-ChatGPT auth directory is passed only to a ChatGPT child. Same-provider inherited
-routing retains existing fixture/embedded-provider behavior but removes unused
-ordinary delegation-role/configuration data. Separately permitted `host.model`
-instances retain a private helper-profile catalog and protected auth-directory
-reference, including when the child's main provider differs. These are not SDK
-payloads or inherited API keys; helper requests resolve their explicitly selected
-provider's credential after admission. See [accounted model calls](extension-model-calls.md).
-Helper approval displays the actual egress origin and a SHA-256 of the full target,
-derived from the same adapter `endpoint/1` function used for HTTP dispatch. This
-avoids a second default-route table and disclosure of URL paths/credentials.
-Canonical saved execution facts retain their original profile/root-endpoint
-digest contract; the approval's destination facts do not grant extra access.
-Children remain owned by the worker and
-parent, with existing cancellation, process-group cleanup, separate journal,
-mutation approvals, conflict serialization and unknown-effect handling.
+## Trace a routed child
 
-Child execution metadata is persisted before inference. `RuntimeInfo` exposes
-only profile ID, role and effort alongside the existing provider/model facts.
-Successful child results carry host routing facts before the explicitly untrusted
-model result; this prevents the parent relying on child self-description. Limits
-remain at most six admitted model/helper calls, 120 seconds and the parent's context ceiling.
-An optional output cap also ceilings inherited/selected children: the selected
-profile can narrow it but cannot widen or omit a parent bound. Combined provider
-capability/range checks occur before delegation approval; unsupported subscription
-routing refuses instead of dropping the cap. See [provider limits](provider-limits.md).
-There is no fallback policy, recursive delegation, child MCP or summary-profile
-routing. Configured roles are explicit host routes; semantic task classification
-is the parent's proposal, validated by the host.
+A parent can propose a configured profile ID or a `routine`/`review` role in a
+delegation request. The host resolves the role to an exact profile before
+approval and child creation. Unknown routes refuse at this point, including
+inside a parallel group. The model cannot choose an arbitrary provider URL.
 
-The feature adds no dependencies. Fixtures cover configuration selection,
-unsupported effort/credential/endpoint combinations, explicit role and ID routes,
-every adapter's configured model mapping, parent secret/native-history isolation,
-forged-route denial, child metadata and idle no-replay. Existing ownership,
-cancellation, approvals and interrupted-effect suites remain applicable.
-See [operator setup](../operator/model-profiles.md) and [verification](testing.md).
+The child starts with an allowlist of inherited host policy: workspace, sandbox,
+instruction and skill inputs, approval policy, origin, journal/budget constraints,
+and the parallel-child hardlink restriction. The selected profile supplies its
+execution fields. Parent API keys, provider module, direct endpoint, conversations,
+native continuation, profile catalog, and MCP state are dropped. Credential
+lookup happens later in the child's owned request task for its selected provider.
+Only a ChatGPT child receives the protected ChatGPT auth-directory reference.
+
+Read the fixture named "child profile isolates credentials and parent payloads
+while preserving host policy" in `test/profiles_test.exs`. It constructs a parent
+containing synthetic secrets and native data, then inspects the child config.
+Repeat that exercise for any newly inherited field. An allowlist is intentional:
+a broad `Map.merge` can turn a convenience field into leaked authority.
+
+## Understand profile identity
+
+At most eight named profiles are accepted. `main`, `routine`, and `review` roles
+refer to configured IDs. IDs begin with an ASCII letter and contain at most 64
+letters, digits, underscores, or hyphens. Profiles are closed data; they do not
+schedule workflows or classify tasks.
+
+Operator IDs and every `base_url` are operator authority. Even trusted project
+configuration cannot replace an operator profile or introduce an endpoint.
+Nearer project scopes can replace project-defined profiles as whole records.
+The selected main profile overlays file settings before environment/CLI limits,
+but conflicting provider/model/endpoint overrides refuse.
+
+All profile definitions, role assignments, and selected execution facts enter the
+configuration fingerprint. Resume restores that identity before work and never
+falls back to another profile, provider, or billing mode. Host routing facts in
+child results precede the explicitly untrusted child answer; self-description in
+an answer is not routing evidence.
+
+Reasoning effort is separate from the model name. The current dispatcher accepts
+`low`, `medium`, `high`, `xhigh`, and `max` only for exact model `gpt-6.1-sol` on
+the OpenAI/ChatGPT paths. It maps effort into Responses `reasoning.effort` and
+retains native continuation. Do not infer analogous Anthropic or Ollama settings.
+Both validation and dispatch reject unsupported combinations.
+
+## Preserve inherited ceilings
+
+A selected child's output cap can narrow its parent's cap, but cannot widen or
+omit it. Combined provider capability checks precede delegation approval. A route
+to a provider that cannot honor the inherited cap refuses. Child limits also
+retain at most six model/helper calls, 120 seconds of active work, and the
+parent's context ceiling. See [delegation](delegation.md) for scheduling and
+[provider limits](provider-limits.md) for wire fields.
+
+Separately granted `host.model` extensions keep a private helper-profile catalog
+and protected credential reference. Those are host runtime values, never SDK
+payloads or inherited API keys. Approval displays the actual egress origin and a
+full-target SHA-256 derived from the adapter's `endpoint/1`. See
+[extension model calls](extension-model-calls.md) before changing helper routing.
+
+```sh
+mix test test/profiles_test.exs test/profile_session_test.exs
+```
+
+Use these suites when changing selection or inheritance. They check role/ID
+routing, unsupported settings, endpoint policy, secret isolation, native integrity,
+output ceilings, and inert saved-session recovery. Add a fixture to the appropriate
+layer rather than testing only the JSON schema.
