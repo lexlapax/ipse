@@ -77,6 +77,15 @@ owner-loss cases retain `session_cleanup: "unconfirmed_owner_loss"` and remain
 listed separately in `session_cleanup_unconfirmed_cases`. Socket closure or lock
 release does not substitute for a missing Session acknowledgment.
 
+The exact-source [hosted matrix](https://github.com/lexlapax/ipse/actions/runs/39229781991)
+at `e98575e9a9cf11e73d31c86d297d4bda8b667cc8` completed successfully on both
+Ubuntu and macOS. All 24 job steps were inspected per host: 24 succeeded on
+macOS, and 22 succeeded on Ubuntu with only the two macOS enforcement steps
+skipped. The knowledge step includes both source and installed Graph/Corpus
+lifecycle commands. This establishes that revision's platform gate, not a
+later domain repair's gate or held-out quality. Earlier unexplained MCP
+discovery failures remain separate negative evidence.
+
 ## Remaining scope
 
 These State-backed domain controls supplement the earlier generic host,

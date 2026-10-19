@@ -181,7 +181,16 @@ Traversal follows outgoing positive relationships, matching entity names without
 case. Negative assertions can be retained but are not traversal steps. Bounds
 are depth 0..4, 1..128 nodes, 1..256 edges, and 1..10 returned passages. Depth zero
 follows no edge. `coverage.complete: false` means a traversal bound cut the path;
-it does not mean the absent relationships were checked and disproved.
+the result is `partial`, and absent relationships have not been checked and
+disproved. An unpublished source also makes the result partial, including an
+empty result. Complete empty traversal returns `abstain`.
+
+Forgotten and non-current sources remain excluded, with diagnostics in `gaps`
+and `coverage.exclusions`. Facts outside their validity interval also appear
+there as `excluded_fact`. These exclusions alone do not make a completed
+traversal partial. A missing source or changed source generation leaves a
+`stale_fact` gap and partial coverage. Read the
+coverage and supporting citations before drawing a conclusion from absence.
 
 Facts retain one to eight citations. Subject/object IDs are at most 256 bytes,
 predicates 128 bytes, and quotations 1024 bytes. Facts may be marked `inferred`

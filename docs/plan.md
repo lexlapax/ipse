@@ -373,6 +373,9 @@ controls and separate ranked/answer-context citations. The [domain lifecycle
 record](archive/2026-10-19-p27-knowledge-packages/domain-lifecycle.md) covers
 State-backed delayed projection/forget races, interrupted provider IO, quota,
 malformed/unavailable responses and idle resume in source and installed execution.
+The [query completeness record](archive/2026-10-19-p27-knowledge-packages/query-completeness.md)
+retains controlled exclusion, unfinished-ingestion and traversal-limit regressions;
+these protocol checks do not replace held-out quality evaluation.
 Successful tuning and
 scripted provider responses do not establish quality. Held-out predictions,
 independent semantic review and the complete resource comparison remain unmeasured.

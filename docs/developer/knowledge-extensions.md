@@ -57,6 +57,44 @@ the selected time. Corpus revalidates the captured roots immediately before
 returning. A mismatch produces a conflict instead of stale success. That final
 check cannot revoke an answer already returned elsewhere.
 
+Query completeness applies to the eligible sources at that selected time.
+`suppressed`, `stale_source` and `excluded_fact` diagnostics describe eligibility
+exclusions; they remain visible in `gaps` and `coverage.exclusions`. Other gaps
+remain failures of coverage. In particular, an unpublished source must produce
+`partial` even when the ranking is empty, rather than a complete abstention.
+Trace `Evidence.query_scope/4` from the final `:query_revalidate` branches in both
+Corpus and Graph. The shared rule keeps their direct and combined routes consistent.
+
+Follow `fuse_ranks/2` when changing graph or hybrid retrieval. It keeps the
+component claims, gaps and coverage alongside the fused order. A completed
+reciprocal-rank calculation does not prove that a bounded graph traversal
+completed. Every required component must be complete before the final result
+can claim complete coverage. Missing or replaced fact provenance and missing
+embeddings remain partial or refused. In `Evidence.validate_facts/3`, inspect
+the citation's generation, hash and span before applying source or fact time
+policy. A valid expired fact is excluded, while missing or replaced provenance
+remains `stale_fact` even if the fact has also expired. An invalid span still
+refuses validation.
+
+Run the public regression before changing these rules:
+
+```sh
+mix test test/knowledge_query_completeness_test.exs
+```
+
+The lexical case combines current, forgotten, expired and future-dated sources,
+then opens an unpublished draft. Compare a query with a valid current passage
+to a no-match query before and after that draft. The graph case extracts two
+explicit relationships and permits one edge during retrieval. It must retain
+the passage and report partial coverage. Query again at the facts' expiry time
+with a wide traversal bound. Expect complete abstention with `excluded_fact`
+diagnostics. The pure Evidence suite separately checks that missing or replaced
+provenance still fails coverage at that same expiry boundary.
+The hybrid case allows a lexical
+fallback for missing vectors; one accounted synthetic query embedding does not
+turn that fallback into complete retrieval. These exercises measure status and
+provenance, not semantic answer quality.
+
 Large inputs use explicit `open`, contiguous `append` and `publish` commands.
 Each append binds its draft, expected revision and byte offset. Publish verifies
 the declared whole-body length and SHA256. An incomplete draft stays inert, and

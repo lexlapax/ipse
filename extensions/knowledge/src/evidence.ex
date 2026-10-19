@@ -44,6 +44,34 @@ defmodule IpseKnowledge.Evidence do
       valid_source?(s) and timestamp?(now) and s["observed_at_ms"] <= now and
         (is_nil(s["expires_at_ms"]) or s["expires_at_ms"] > now) and not s["origin"]["historical"]
 
+  def query_scope(rank, sources, store_gaps, now) do
+    source_exclusions =
+      sources
+      |> Enum.reject(&current?(&1, now))
+      |> Enum.map(&%{"code" => "stale_source", "source_id" => &1["source_id"]})
+
+    gaps = Enum.uniq(rank["gaps"] ++ store_gaps ++ source_exclusions)
+
+    {exclusions, failures} =
+      Enum.split_with(gaps, &(&1["code"] in ~w(suppressed stale_source excluded_fact)))
+
+    complete = rank["coverage"]["complete"] === true and failures == []
+
+    status =
+      cond do
+        not complete -> "partial"
+        rank["evidence"] == [] -> "abstain"
+        true -> "ok"
+      end
+
+    Map.merge(rank, %{
+      "status" => status,
+      "gaps" => gaps,
+      "coverage" =>
+        Map.merge(rank["coverage"], %{"complete" => complete, "exclusions" => exclusions})
+    })
+  end
+
   def chunks(source) do
     if valid_source?(source) do
       chunks =
@@ -385,7 +413,7 @@ defmodule IpseKnowledge.Evidence do
                     :forged
 
                   not current?(s, now) ->
-                    :stale
+                    :excluded
 
                   true ->
                     :ok
@@ -397,7 +425,7 @@ defmodule IpseKnowledge.Evidence do
           :forged in checks ->
             {:halt, {:error, :invalid_span}}
 
-          Enum.any?(checks, &(&1 != :ok)) or not fact_current?(f, now) ->
+          Enum.any?(checks, &(&1 in [:missing, :stale])) ->
             {:cont,
              {:ok,
               Map.update!(
@@ -405,6 +433,22 @@ defmodule IpseKnowledge.Evidence do
                 "gaps",
                 &(&1 ++
                     [%{"code" => "stale_fact", "source_id" => hd(f["citations"])["source_id"]}])
+              )}}
+
+          :excluded in checks or not fact_current?(f, now) ->
+            {:cont,
+             {:ok,
+              Map.update!(
+                acc,
+                "gaps",
+                &(&1 ++
+                    [
+                      %{
+                        "code" => "excluded_fact",
+                        "fact_id" => f["fact_id"],
+                        "source_id" => hd(f["citations"])["source_id"]
+                      }
+                    ])
               )}}
 
           true ->

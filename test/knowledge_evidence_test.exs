@@ -145,6 +145,35 @@ defmodule Ipse.KnowledgeEvidenceTest do
     ''')
   end
 
+  test "fact policy exclusions remain distinct from missing or replaced provenance" do
+    pure(~S'''
+    s=source.("Release requires quiescence.",%{})
+    original=fact.("Release","quiescence",cite.(s,"Release requires quiescence."))
+    {:ok,expires}=E.fact(original |> Map.drop(~w(version fact_id)) |> Map.put("valid_to_ms",20))
+    {:ok,future}=E.fact(original |> Map.drop(~w(version fact_id)) |> Map.put("valid_from_ms",21))
+    limits=%{"depth"=>2,"max_nodes"=>16,"max_edges"=>16,"top_k"=>10}
+    {:ok,before}=E.traverse([s],[expires],"Release",limits,19)
+    assert E.query_scope(before,[s],[],19)["status"]=="ok"
+    for {sources,facts} <- [{[s],[expires]},{[s],[future]},{[Map.put(s,"expires_at_ms",20)],[original]}] do
+      {:ok,rank}=E.traverse(sources,facts,"Release",limits,20)
+      result=E.query_scope(rank,sources,[],20)
+      assert result["status"]=="abstain" and result["coverage"]["complete"]
+      assert Enum.any?(result["gaps"],&(&1["code"]=="excluded_fact"))
+      assert result["evidence"]==[]
+    end
+    for sources <- [[],[Map.put(s,"generation",2)]] do
+      {:ok,rank}=E.traverse(sources,[expires],"Release",limits,20)
+      result=E.query_scope(rank,sources,[],20)
+      assert result["status"]=="partial" and not result["coverage"]["complete"]
+      assert Enum.any?(result["gaps"],&(&1["code"]=="stale_fact"))
+    end
+    citation=hd(expires["citations"])
+    forged=Map.put(citation,"chunk_id",String.duplicate("0",64))
+    {:ok,forged_fact}=E.fact(expires |> Map.drop(~w(version fact_id)) |> Map.put("citations",[forged]))
+    assert {:error,:invalid_span}=E.validate_facts([s],[forged_fact],20)
+    ''')
+  end
+
   test "frozen development source bytes and span annotations stay independent of rank output" do
     fixture = Path.join(@root, "extensions/knowledge/fixtures")
 

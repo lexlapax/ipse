@@ -295,7 +295,13 @@ defmodule IpseKnowledge.Corpus do
 
   defp advance({:done, {:ok, checked}}, %{phase: :query_revalidate} = state) do
     if checked["valid"] == true do
-      rank = state.ctx.rank
+      rank =
+        Evidence.query_scope(
+          state.ctx.rank,
+          state.ctx.snapshot["sources"],
+          state.ctx.snapshot["gaps"],
+          state.ctx.as_of_ms
+        )
 
       coverage =
         Map.merge(rank["coverage"], %{
@@ -305,21 +311,12 @@ defmodule IpseKnowledge.Corpus do
           "revalidated" => true
         })
 
-      gaps = rank["gaps"] ++ state.ctx.snapshot["gaps"]
-
-      status =
-        cond do
-          rank["evidence"] == [] -> "abstain"
-          gaps != [] -> "partial"
-          true -> "ok"
-        end
-
       claims =
         if rank["claims"] == [],
           do: elem(Evidence.classify(rank["evidence"], [], state.ctx.args["query"]), 1),
           else: rank["claims"]
 
-      finish(state, output(status, rank["evidence"], claims, gaps, coverage, nil))
+      finish(state, output(rank["status"], rank["evidence"], claims, rank["gaps"], coverage, nil))
     else
       finish(state, output("conflict", [], [], [%{"code" => "snapshot_changed"}], %{}, nil))
     end
@@ -412,13 +409,7 @@ defmodule IpseKnowledge.Corpus do
                  limits,
                  state.ctx.as_of_ms
                ),
-             {:ok, fused} <-
-               Evidence.fuse([lexical["evidence"], graph["evidence"]], args["top_k"], 60) do
-          ranked =
-            fused
-            |> Map.put("claims", graph["claims"])
-            |> Map.update!("gaps", &(graph["gaps"] ++ &1))
-
+             {:ok, ranked} <- fuse_ranks([{"lexical", lexical}, {"graph", graph}], args["top_k"]) do
           maybe_rerank(%{state | ctx: Map.put(state.ctx, :rank, ranked)})
         else
           _ -> finish(state, refused(:invalid_evidence))
@@ -455,16 +446,10 @@ defmodule IpseKnowledge.Corpus do
                  ),
                {:ok, graph} <- hybrid_graph(state),
                {:ok, fused} <-
-                 Evidence.fuse(
-                   [lexical["evidence"], result["evidence"], graph["evidence"]],
-                   args["top_k"],
-                   60
+                 fuse_ranks(
+                   [{"lexical", lexical}, {"dense", result}, {"graph", graph}],
+                   args["top_k"]
                  ) do
-            fused =
-              fused
-              |> Map.put("claims", graph["claims"])
-              |> Map.update!("gaps", &(graph["gaps"] ++ &1))
-
             {:ok,
              if(missing == 0,
                do: fused,
@@ -488,12 +473,7 @@ defmodule IpseKnowledge.Corpus do
                    ),
                  {:ok, graph} <- hybrid_graph(state),
                  {:ok, fused} <-
-                   Evidence.fuse([result["evidence"], graph["evidence"]], args["top_k"], 60) do
-              fused =
-                fused
-                |> Map.put("claims", graph["claims"])
-                |> Map.update!("gaps", &(graph["gaps"] ++ &1))
-
+                   fuse_ranks([{"lexical", result}, {"graph", graph}], args["top_k"]) do
               {:ok,
                Map.update!(
                  fused,
@@ -512,6 +492,26 @@ defmodule IpseKnowledge.Corpus do
     case ranked do
       {:ok, result} -> maybe_rerank(%{state | ctx: Map.put(state.ctx, :rank, result)})
       _ -> finish(state, refused(:missing_embedding))
+    end
+  end
+
+  defp fuse_ranks(components, top_k) do
+    ranks = Enum.map(components, &elem(&1, 1))
+
+    with {:ok, fused} <- Evidence.fuse(Enum.map(ranks, & &1["evidence"]), top_k, 60) do
+      coverage =
+        Map.merge(fused["coverage"], %{
+          "components" => Map.new(components, fn {name, rank} -> {name, rank["coverage"]} end),
+          "complete" =>
+            fused["coverage"]["complete"] === true and
+              Enum.all?(ranks, &(&1["coverage"]["complete"] === true))
+        })
+
+      {:ok,
+       fused
+       |> Map.put("claims", Enum.flat_map(ranks, & &1["claims"]))
+       |> Map.put("gaps", fused["gaps"] ++ Enum.flat_map(ranks, & &1["gaps"]))
+       |> Map.put("coverage", coverage)}
     end
   end
 
@@ -609,7 +609,13 @@ defmodule IpseKnowledge.Corpus do
   defp hybrid_graph(state) do
     case state.ctx.retrieval["graph"] do
       nil ->
-        {:ok, %{"evidence" => [], "claims" => [], "gaps" => []}}
+        {:ok,
+         %{
+           "evidence" => [],
+           "claims" => [],
+           "gaps" => [],
+           "coverage" => %{"method" => "none", "complete" => true}
+         }}
 
       name ->
         with {:ok, profile} <- Profiles.lookup(state.resolved, "retrieval", name),

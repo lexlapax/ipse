@@ -99,6 +99,42 @@ defmodule IpseKnowledgeExample.Proof do
         )["status"]
 
       "abstain" = invoke(cp, "corpus", "query", query)["status"]
+
+      "ok" =
+        invoke(cp, "corpus", "source", source("put", source_args("manual:eligible")))["status"]
+
+      for {name, extra} <- [
+            {"expired", %{"expires_at_ms" => @at}},
+            {"future", %{"observed_at_ms" => @at + 1}}
+          ] do
+        "ok" =
+          invoke(
+            cp,
+            "corpus",
+            "source",
+            source("put", Map.merge(source_args("manual:" <> name), extra))
+          )["status"]
+      end
+
+      eligible = invoke(cp, "corpus", "query", query)
+      "ok" = eligible["status"]
+      true = eligible["coverage"]["complete"] and length(eligible["coverage"]["exclusions"]) == 3
+      [eligible_candidate] = eligible["evidence"]
+      citation!(eligible_candidate["citation"], "manual:eligible", @text)
+
+      missing =
+        source_args("manual:pending")
+        |> Map.delete("text")
+        |> Map.merge(%{"content_sha256" => sha(@text), "byte_count" => byte_size(@text)})
+
+      "draft" = invoke(cp, "corpus", "source", source("open", missing))["status"]
+      partial = invoke(cp, "corpus", "query", query)
+      "partial" = partial["status"]
+      false = partial["coverage"]["complete"]
+      partial_empty = invoke(cp, "corpus", "query", Map.put(query, "query", "absent mineral"))
+      "partial" = partial_empty["status"]
+      [] = partial_empty["evidence"]
+      true = Enum.any?(partial_empty["gaps"], &(&1["code"] == "incomplete_source"))
       before = events(cp, root, "corpus")
       id = Session.info(cp).id
       :ok = Session.close(cp)
@@ -147,6 +183,145 @@ defmodule IpseKnowledgeExample.Proof do
       events(gp, root, "graph")
       :ok = Session.close(gp)
 
+      shared_home = Path.join(root, "home-bounded")
+
+      bounded_profile = %{
+        "kind" => "graph",
+        "version" => 1,
+        "lexical" => "words",
+        "depth" => 2,
+        "max_nodes" => 8,
+        "max_edges" => 1
+      }
+
+      bounded_corpus =
+        prepare(artifacts, "corpus", root, true, home: shared_home, retrieval: bounded_profile)
+
+      bounded_graph = prepare(artifacts, "graph", root, true, home: shared_home)
+
+      bounded_config = %{
+        bounded_corpus
+        | extensions: bounded_corpus.extensions ++ bounded_graph.extensions
+      }
+
+      bp = start(bounded_config, root, "bounded")
+      raw = source_args("manual:bounded")
+      "ok" = invoke(bp, "corpus", "source", source("put", raw))["status"]
+
+      [bounded_chunk] =
+        invoke(bp, "corpus", "source", source("inspect", %{"source_id" => raw["source_id"]}))[
+          "coverage"
+        ]["chunks"]
+
+      fact_expiry = System.system_time(:millisecond) + 86_400_000
+
+      facts = [
+        explicit_fact(
+          raw,
+          bounded_chunk["chunk_id"],
+          "Release",
+          "quiescence",
+          0,
+          byte_size("Release requires quiescence."),
+          fact_expiry
+        ),
+        explicit_fact(
+          raw,
+          bounded_chunk["chunk_id"],
+          "Quiescence",
+          "worker exit",
+          byte_size("Release requires quiescence. "),
+          byte_size(@text),
+          fact_expiry
+        )
+      ]
+
+      "ok" =
+        invoke(bp, "graph", "extract", %{
+          "store" => "notes",
+          "extraction" => "asserted",
+          "source_id" => raw["source_id"],
+          "generation" => 1,
+          "max_edges" => 2,
+          "chunks" => [bounded_chunk["chunk_id"]],
+          "facts" => facts
+        })["status"]
+
+      bounded =
+        invoke(bp, "corpus", "query", %{query | "retrieval" => "bounded", "query" => "Release"})
+
+      "partial" = bounded["status"]
+      false = bounded["coverage"]["complete"]
+      false = bounded["coverage"]["components"]["graph"]["complete"]
+      true = bounded["evidence"] != [] and bounded["coverage"]["revalidated"]
+
+      direct_args = %{
+        "store" => "notes",
+        "entity" => "Release",
+        "depth" => 2,
+        "max_nodes" => 8,
+        "max_edges" => 1,
+        "top_k" => 5,
+        "as_of_ms" => @at
+      }
+
+      direct_bounded = invoke(bp, "graph", "query", direct_args)
+      "partial" = direct_bounded["status"]
+      false = direct_bounded["coverage"]["complete"]
+
+      "ok" =
+        invoke(bp, "corpus", "source", source("put", source_args("manual:graph-forgotten")))[
+          "status"
+        ]
+
+      forgotten =
+        invoke(
+          bp,
+          "corpus",
+          "source",
+          source("inspect", %{"source_id" => "manual:graph-forgotten"})
+        )["coverage"]
+
+      "ok" =
+        invoke(
+          bp,
+          "corpus",
+          "source",
+          source("forget", %{
+            "source_id" => "manual:graph-forgotten",
+            "expected_revision" => forgotten["revision"]
+          })
+        )["status"]
+
+      direct_current = invoke(bp, "graph", "query", %{direct_args | "max_edges" => 8})
+      "ok" = direct_current["status"]
+      true = direct_current["coverage"]["complete"]
+      true = Enum.any?(direct_current["coverage"]["exclusions"], &(&1["code"] == "suppressed"))
+
+      direct_expired =
+        invoke(bp, "graph", "query", %{direct_args | "max_edges" => 8, "as_of_ms" => fact_expiry})
+
+      "abstain" = direct_expired["status"]
+      [] = direct_expired["evidence"]
+      true = direct_expired["coverage"]["complete"]
+      2 = Enum.count(direct_expired["coverage"]["exclusions"], &(&1["code"] == "excluded_fact"))
+
+      graph_pending =
+        source_args("manual:graph-pending")
+        |> Map.delete("text")
+        |> Map.merge(%{"content_sha256" => sha(@text), "byte_count" => byte_size(@text)})
+
+      "draft" = invoke(bp, "corpus", "source", source("open", graph_pending))["status"]
+
+      direct_empty =
+        invoke(bp, "graph", "query", %{direct_args | "entity" => "absent", "max_edges" => 8})
+
+      "partial" = direct_empty["status"]
+      [] = direct_empty["evidence"]
+      false = direct_empty["coverage"]["complete"]
+      true = Session.info(bp).accounting["request_count"] == 0
+      :ok = Session.close_confirmed(bp)
+
       rp = start(research, root, "research")
       supplied = Map.delete(source_args("provided:release"), "expected_revision")
 
@@ -171,12 +346,17 @@ defmodule IpseKnowledgeExample.Proof do
       unloaded!()
 
       %{
-        "checks" => 11,
+        "checks" => 16,
         "disabled_catalogs_empty" => true,
         "independent_catalogs" => true,
         "corpus" => "lexical/current/forget/recovery",
         "graph" => "explicit/current",
         "research" => "provided-only",
+        "policy_exclusions_retained" => true,
+        "incomplete_empty_is_partial" => true,
+        "fused_graph_bound_is_partial" => true,
+        "direct_graph_scope_matches" => true,
+        "expired_facts_excluded" => true,
         "model_requests" => 0,
         "host_loaded_domain_modules" => false
       }
@@ -189,9 +369,9 @@ defmodule IpseKnowledgeExample.Proof do
     end
   end
 
-  defp prepare(artifacts, package, root, enabled \\ true) do
+  defp prepare(artifacts, package, root, enabled \\ true, overrides \\ []) do
     artifact = Path.join(artifacts, package)
-    home = Path.join(root, "home-" <> package)
+    home = Keyword.get(overrides, :home, Path.join(root, "home-" <> package))
     {:ok, imported} = Store.import(artifact, Path.join(home, "extensions/artifacts"))
     manifest = Jason.decode!(File.read!(Path.join(artifact, "extension.json")))
     "ipse-knowledge/" <> ^package = manifest["id"]
@@ -205,6 +385,11 @@ defmodule IpseKnowledgeExample.Proof do
       end
 
     options = Jason.decode!(File.read!(Path.join(options_path, file)))
+
+    options =
+      if overrides[:retrieval],
+        do: put_in(options, ["retrieval", "bounded"], overrides[:retrieval]),
+        else: options
 
     trust = %{
       "artifact" => imported.digest,
@@ -328,8 +513,16 @@ defmodule IpseKnowledgeExample.Proof do
   defp domain_id(tag, parts),
     do: sha(IO.iodata_to_binary(JSON.encode!(["ipse-knowledge", 1, tag, parts])))
 
-  defp explicit_fact(raw, chunk_id) do
-    quote = "Release requires quiescence."
+  defp explicit_fact(
+         raw,
+         chunk_id,
+         subject \\ "Release",
+         object \\ "quiescence",
+         first \\ 0,
+         last \\ byte_size("Release requires quiescence."),
+         valid_to \\ nil
+       ) do
+    quote = binary_part(raw["text"], first, last - first)
 
     citation =
       Map.take(raw, ~w(source_id generation uri observed_at_ms event_at_ms))
@@ -338,8 +531,8 @@ defmodule IpseKnowledgeExample.Proof do
         "source_key" => sha(raw["source_id"]),
         "content_sha256" => sha(raw["text"]),
         "chunk_id" => chunk_id,
-        "start_byte" => 0,
-        "end_byte" => byte_size(quote),
+        "start_byte" => first,
+        "end_byte" => last,
         "quote" => quote,
         "quote_sha256" => sha(quote),
         "origin" => %{
@@ -361,25 +554,25 @@ defmodule IpseKnowledgeExample.Proof do
       "version" => 1,
       "fact_id" =>
         domain_id("fact", [
-          "Release",
+          subject,
           "requires",
-          "quiescence",
+          object,
           "positive",
           false,
           nil,
-          nil,
+          valid_to,
           "explicit",
           nil,
           1,
           [identity]
         ]),
-      "subject" => "Release",
+      "subject" => subject,
       "predicate" => "requires",
-      "object" => "quiescence",
+      "object" => object,
       "polarity" => "positive",
       "inferred" => false,
       "valid_from_ms" => nil,
-      "valid_to_ms" => nil,
+      "valid_to_ms" => valid_to,
       "extraction" => %{"kind" => "explicit", "profile" => nil, "version" => 1},
       "citations" => [citation]
     }

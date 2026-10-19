@@ -219,7 +219,13 @@ defmodule IpseKnowledge.Graph do
 
   defp advance({:done, {:ok, checked}}, %{phase: :query_revalidate} = state) do
     if checked["valid"] == true do
-      rank = state.ctx.rank
+      rank =
+        Evidence.query_scope(
+          state.ctx.rank,
+          state.ctx.snapshot["sources"],
+          state.ctx.snapshot["gaps"],
+          state.ctx.as_of_ms
+        )
 
       coverage =
         Map.merge(rank["coverage"], %{
@@ -228,16 +234,10 @@ defmodule IpseKnowledge.Graph do
           "revalidated" => true
         })
 
-      gaps = rank["gaps"] ++ state.ctx.snapshot["gaps"]
-
-      status =
-        cond do
-          rank["evidence"] == [] -> "abstain"
-          gaps != [] -> "partial"
-          true -> "ok"
-        end
-
-      finish(state, output(status, rank["evidence"], rank["claims"], gaps, coverage, nil))
+      finish(
+        state,
+        output(rank["status"], rank["evidence"], rank["claims"], rank["gaps"], coverage, nil)
+      )
     else
       finish(state, output("conflict", [], [], [%{"code" => "snapshot_changed"}], %{}, nil))
     end

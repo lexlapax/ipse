@@ -183,20 +183,19 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
 
         assert Enum.all?(
                  rows,
-                 &(&1["status"] in if(scenario == :current, do: ~w(ok), else: ~w(ok partial)))
+                 &(&1["status"] == "ok")
                ),
                inspect(diagnostics, limit: :infinity)
 
         assert Enum.all?(
                  Enum.filter(rows, &(&1["query_id"] == "Q1")),
-                 &(&1["evidence"] != [] and
-                     (&1["status"] == "partial" or
-                        (&1["response_kind"] == "answer" and &1["context_evidence"] != [])))
+                 &(&1["evidence"] != [] and &1["response_kind"] == "answer" and
+                     &1["context_evidence"] != [])
                )
 
         assert Enum.all?(
                  Enum.filter(rows, &(&1["query_id"] == "Q2")),
-                 &(&1["status"] == "partial" or &1["response_kind"] == "abstention")
+                 &(&1["response_kind"] == "abstention")
                )
 
         requests = drain(tag, [])

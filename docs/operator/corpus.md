@@ -68,12 +68,27 @@ Review each proposed State write before approving it. A `put` may propose severa
 writes because it publishes the source after its immutable pages exist. Expect
 a final `ok` result. The query returns a real passage with source identity,
 generation, content hash and byte offsets. Coverage reports the selected time
-and final revalidation. No usable match returns `abstain`.
+and final revalidation. A complete search with no usable match returns `abstain`.
 
 `as_of_ms` is a Unix time in milliseconds. Use `null` to choose current time and
 record it in coverage. Expired sources and sources observed after the selected
 time do not become current evidence. Exact quotation establishes recorded bytes;
 check whether they support your question before relying on an answer.
+
+Read `status` together with `coverage.complete`. Deliberately forgotten, expired,
+future-dated and historical sources stay excluded. Their diagnostics remain in
+`gaps` and `coverage.exclusions`; they do not make an otherwise complete search
+partial. A search can therefore return `ok` evidence while reporting exclusions.
+Graph retrieval also excludes facts outside their validity interval, reporting
+`excluded_fact`. A fact with missing or replaced source provenance remains a
+`stale_fact` failure and leaves the query partial.
+
+An unpublished source, missing vectors under an explicit fallback policy, or a
+cut-off graph traversal leaves `coverage.complete: false` and `status: "partial"`.
+That also applies when no passage is returned: an incomplete search cannot claim
+that no usable evidence exists. Inspect the gap before publishing an answer or
+deciding on further work. Combined retrieval exposes each algorithm's coverage
+under `coverage.components`; fusion does not remove a component's limits.
 
 ## Inspect, replace and forget a source
 

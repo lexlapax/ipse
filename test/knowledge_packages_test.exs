@@ -101,7 +101,7 @@ defmodule IpseKnowledge.PackagesIsolationTest do
       resolved=%{"options"=>%{"rerank"=>%{"ordered"=>%{"kind"=>"model_complete","profile"=>"host_rank","max_candidates"=>16,"quote_bytes"=>128}}}}
       {:call,_,cont}=Adapters.start(resolved,:rerank,%{"profile"=>"ordered","query"=>"release","candidates"=>rank["evidence"]})
       outcome=%{"status"=>"ok","value"=>%{"profile"=>"host_rank","text"=>JSON.encode!(%{"order"=>ids}),"usage"=>%{}}}
-      snapshot=%{"tokens"=>[],"coverage"=>%{"fixture"=>"captured snapshot"},"gaps"=>[]}
+      snapshot=%{"tokens"=>[],"coverage"=>%{"fixture"=>"captured snapshot"},"gaps"=>[],"sources"=>sources}
       ctx=%{args: %{"store"=>"notes","query"=>"release"},store_profile: %{"kind"=>"state","scope"=>"project","partition"=>"notes"},snapshot: snapshot,rank: rank,as_of_ms: 20}
       state=%{resolved: resolved,phase: :query_rerank,pending: :adapter,cont: cont,ctx: ctx}
       assert {:ok,%{"kind"=>"result","value"=>result},_}=Corpus.handle("host.actions",%{"outcome"=>outcome},state)

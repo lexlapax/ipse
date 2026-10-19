@@ -73,8 +73,13 @@ defmodule IpseKnowledgeExample.PackageProof do
       report = output |> String.split("\n", trim: true) |> List.last() |> :json.decode()
 
       true =
-        report["checks"] == 11 and report["disabled_catalogs_empty"] == true and
+        report["checks"] == 16 and report["disabled_catalogs_empty"] == true and
           report["independent_catalogs"] == true and report["model_requests"] == 0 and
+          report["policy_exclusions_retained"] == true and
+          report["expired_facts_excluded"] == true and
+          report["incomplete_empty_is_partial"] == true and
+          report["fused_graph_bound_is_partial"] == true and
+          report["direct_graph_scope_matches"] == true and
           report["host_loaded_domain_modules"] == false
 
       true = inventory(release) == frozen and digest(archive) == original

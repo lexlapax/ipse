@@ -191,9 +191,13 @@ Follow `run_variant/9`, `prepare/4`, `invoke/4` and `approve/1` in the runner:
 6. Prediction failures retain their declared rows. Cleanup attempts cover the
    Session, gateway and sampler, with errors preserved in the output directory.
 
-Compare the current-source and suppressed-source fixtures. A suppression warning
-can produce a partial retrieval, which stays partial in saved predictions. It
-does not become a successful measurement because a retained passage looks useful.
+Compare the current-source and suppressed-source fixtures. Intentional exclusions
+remain visible while complete retrieval of eligible sources can succeed. The
+package owns that classification; the runner preserves its returned status.
+An unpublished source, missing-vector fallback or bounded incomplete traversal
+must remain partial. The [query completeness exercise](knowledge-extensions.md#trace-a-source-and-a-query)
+tests those distinctions through public workers. The scorer still gives partial
+results zero successful retrieval utility; it does not upgrade a useful-looking passage.
 The model fixture also proves that forgotten and expired text never enters its
 requests. Worker, model and whole-system RSS remain unmeasured; the sampler's
 start, end and sampled maximum describe only the harness BEAM.
