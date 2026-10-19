@@ -375,15 +375,23 @@ defmodule IpseKnowledge.Evidence do
 
   def fuse(_, _, _), do: {:error, :invalid_ranks}
 
+  def candidate_id(%{"citation" => citation}),
+    do:
+      citation["chunk_id"] <>
+        ":" <>
+        Integer.to_string(citation["start_byte"]) <>
+        ":" <>
+        Integer.to_string(citation["end_byte"])
+
   def apply_rerank(candidates, ids) do
     if is_list(candidates) and length(candidates) <= 1024 and Enum.all?(candidates, &candidate?/1) and
          is_list(ids) and length(ids) <= 16 and length(Enum.uniq(ids)) == length(ids) do
-      by_id = Map.new(candidates, &{&1["citation"]["chunk_id"], &1})
+      by_id = Map.new(candidates, &{candidate_id(&1), &1})
 
       if Enum.all?(ids, &Map.has_key?(by_id, &1)) and map_size(by_id) == length(candidates) do
         {:ok,
          Enum.map(ids, &by_id[&1]) ++
-           Enum.reject(candidates, &(&1["citation"]["chunk_id"] in ids))}
+           Enum.reject(candidates, &(candidate_id(&1) in ids))}
       else
         {:error, :invalid_rerank}
       end

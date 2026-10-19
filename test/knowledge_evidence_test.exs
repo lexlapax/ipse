@@ -131,10 +131,29 @@ defmodule Ipse.KnowledgeEvidenceTest do
     cb=%{"citation"=>cite.(b,"beta"),"score"=>1.0,"method"=>"bm25"}
     {:ok,r}=E.fuse([[ca,cb],[cb]],5,60)
     assert hd(r["evidence"])["citation"]==cb["citation"]
-    assert {:ok,[^cb,^ca]}=E.apply_rerank([ca,cb],[cb["citation"]["chunk_id"]])
+    assert {:ok,[^cb,^ca]}=E.apply_rerank([ca,cb],[E.candidate_id(cb)])
     assert {:error,:invalid_rerank}=E.apply_rerank([ca,cb],["invented"])
-    assert {:error,:invalid_rerank}=E.apply_rerank([ca,cb],[ca["citation"]["chunk_id"],ca["citation"]["chunk_id"]])
+    assert {:error,:invalid_rerank}=E.apply_rerank([ca,cb],[E.candidate_id(ca),E.candidate_id(ca)])
     assert {:error,:invalid_ranks}=E.fuse([[Map.put(ca,"destination","attacker")]],5,60)
+    ''')
+  end
+
+  test "fusion retains different spans in one chunk and reranks both without dropping evidence" do
+    pure(~S'''
+    s=source.("alpha beta gamma",%{})
+    a=%{"citation"=>cite.(s,"alpha"),"score"=>2.0,"method"=>"bm25"}
+    b=%{"citation"=>cite.(s,"beta"),"score"=>1.0,"method"=>"cosine"}
+    {:ok,r}=E.fuse([[a],[b]],10,60)
+    assert length(r["evidence"])==2
+    assert length(Enum.uniq_by(r["evidence"],& &1["citation"]["chunk_id"]))==1
+    ids=Enum.map(r["evidence"],fn c ->
+      citation=c["citation"]
+      citation["chunk_id"]<>":"<>Integer.to_string(citation["start_byte"])<>":"<>Integer.to_string(citation["end_byte"])
+    end)
+    assert length(Enum.uniq(ids))==2
+    assert ids==Enum.map(r["evidence"],&E.candidate_id/1)
+    assert {:ok,ordered}=E.apply_rerank(r["evidence"],Enum.reverse(ids))
+    assert ordered==Enum.reverse(r["evidence"])
     ''')
   end
 
@@ -238,7 +257,7 @@ defmodule Ipse.KnowledgeEvidenceTest do
     assert r["coverage"]==%{"method"=>"mcp_query","score_provenance"=>"server_asserted","as_of_ms"=>20,"sources"=>1,"chunks"=>1,"complete"=>true}
     {:ok,fused}=E.fuse([r["evidence"]],5,60)
     assert hd(fused["evidence"])["citation"]==hit["citation"]
-    assert {:ok,[^hit]}=E.apply_rerank(r["evidence"],[selected["chunk_id"]])
+    assert {:ok,[^hit]}=E.apply_rerank(r["evidence"],[E.candidate_id(hit)])
     ''')
   end
 

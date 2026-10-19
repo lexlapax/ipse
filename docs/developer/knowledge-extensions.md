@@ -247,7 +247,22 @@ checks. Follow the valid and over-limit response controls in
 
 The reranker requires a complete candidate-ID permutation inside exactly one
 `order` object. A bare array, omitted candidate, duplicate or foreign ID refuses;
-none becomes an implicit successful lexical fallback. Its named quote ceiling
+none becomes an implicit successful lexical fallback. A candidate ID is the
+chunk digest followed by its absolute `start_byte` and `end_byte`, separated by
+colons. Chunk identity already binds source, generation and content; offsets
+distinguish lexical, dense or graph excerpts from that same chunk. Fusion keeps
+those distinct spans. Reranking changes their order without dropping either
+quote or its provenance.
+
+For example, reverse two candidates with `Evidence.apply_rerank([a, b],
+[Evidence.candidate_id(b), Evidence.candidate_id(a)])`. Read the same-chunk
+regression in `test/knowledge_evidence_test.exs`, then the real Session rerank
+fixture in `test/knowledge_evaluation_runner_test.exs`. The evaluation approval
+validator independently parses canonical IDs, checks the exact current chunk and
+span bounds, and recomputes the shown prefix. It loads no production domain
+module into the host. A quote occurring elsewhere in the chunk is insufficient.
+
+The named quote ceiling
 counts UTF8 bytes. Prefix selection preserves a code-point boundary, including
 for a single grapheme with many combining characters. Exercise that byte-bound
 case before replacing it with a character-slicing function.

@@ -932,6 +932,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
       model: "no-main",
       provider_module: NoMain,
       compact: false,
+      max_steps: budget["max_requests"] + 1,
       profiles: plan["profiles"],
       embedding_profiles: plan["embedding_profiles"],
       budget: budget
@@ -1556,7 +1557,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
       "status" => status,
       "top_k" => 10,
       "predicted_class" => nil,
-      "response_kind" => "retrieval_only",
+      "response_kind" => if(plan["answer"], do: "answer", else: "retrieval_only"),
       "answer" => nil,
       "claims" => [],
       "evidence" => [],
@@ -1752,15 +1753,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
               )
 
             true =
-              Enum.all?(input["candidates"], fn candidate ->
-                exact?(candidate, ~w(id quote)) and is_binary(candidate["quote"]) and
-                  byte_size(candidate["quote"]) <= 128 and
-                  Enum.any?(
-                    chunks,
-                    &(&1["chunk_id"] == candidate["id"] and
-                        String.contains?(&1["text"], candidate["quote"]))
-                  )
-              end)
+              Enum.all?(input["candidates"], &rerank_candidate?(&1, chunks))
         end
 
       "extension:mcp.call" ->
@@ -2304,6 +2297,33 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
         do: {key, div(value, projects)},
         else: {key, value}
     end)
+  end
+
+  defp rerank_candidate?(candidate, chunks) do
+    with true <- exact?(candidate, ~w(id quote)),
+         true <- is_binary(candidate["id"]) and byte_size(candidate["id"]) <= 128,
+         true <- is_binary(candidate["quote"]) and byte_size(candidate["quote"]) in 1..128,
+         [chunk_id, first, last] <- String.split(candidate["id"], ":"),
+         true <- hash?(chunk_id),
+         {first, ""} <- Integer.parse(first),
+         {last, ""} <- Integer.parse(last),
+         true <- last > first and last - first <= 1024,
+         true <- candidate["id"] == "#{chunk_id}:#{first}:#{last}",
+         chunk when is_map(chunk) <- Enum.find(chunks, &(&1["chunk_id"] == chunk_id)),
+         true <- first >= chunk["start_byte"] and last <= chunk["end_byte"] do
+      quote = binary_part(chunk["text"], first - chunk["start_byte"], last - first)
+      size = min(byte_size(quote), 128)
+
+      prefix =
+        Enum.find_value(size..max(size - 3, 0)//-1, fn count ->
+          bytes = binary_part(quote, 0, count)
+          if String.valid?(bytes), do: bytes
+        end)
+
+      String.valid?(quote) and candidate["quote"] == prefix
+    else
+      _ -> false
+    end
   end
 
   defp timestamp!(text) do

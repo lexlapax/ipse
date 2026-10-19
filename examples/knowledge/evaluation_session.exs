@@ -59,6 +59,7 @@ defmodule IpseKnowledgeExample.EvaluationSession do
        %{
          "catalog" => prepared.catalog,
          "initialization" => initialized,
+         "inference_step_limit" => Map.get(prepared.config, :max_steps, 30),
          "host_actions" => 0,
          "model_requests" => 0
        }}

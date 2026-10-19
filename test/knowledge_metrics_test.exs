@@ -270,6 +270,24 @@ defmodule Ipse.KnowledgeMetricsTest do
     assert is_nil(empty["support"]["accuracy"])
   end
 
+  test "an empty failed answer counts as zero with independent review; retrieval-only stays unmeasured" do
+    failed = prediction("failed", %{"status" => "failed", "citations" => []})
+    judged = review("failed", %{"verdict" => "unsupported", "citations" => []})
+    assert {:ok, result} = M.semantic([failed], [judged])
+    assert result["support"]["total_n"] == 1
+    assert result["support"]["measured_n"] == 1
+    assert result["support"]["correct_n"] == 0
+    assert result["support"]["accuracy"] == 0.0
+    refute result["citation"]["complete"]
+
+    retrieval = %{failed | "response_kind" => "retrieval_only"}
+    review = %{judged | "verdict" => "unmeasured"}
+    assert {:ok, result} = M.semantic([retrieval], [review])
+    assert result["support"]["retrieval_only_n"] == 1
+    assert result["support"]["measured_n"] == 0
+    assert result["support"]["accuracy"] == nil
+  end
+
   test "separate claim-span pairs are not collapsed when they cite the same passage" do
     p =
       prediction("a", %{

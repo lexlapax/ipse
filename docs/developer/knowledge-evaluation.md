@@ -89,7 +89,12 @@ request cap times the declared reservation. These are finite admission limits,
 not predicted consumption or cost. The runner divides each budget equally
 among projects. The baseline caps cover fifty answers even for an uneven
 project split; unused shares are not transferred or renewed. Review preparation
-capacity separately. Research requests up to ten sources within the existing
+capacity separately. Each evaluation Session explicitly sets its inference-step
+limit to that project's allocated request cap plus one. This lets the next request
+reach canonical budget-refusal accounting; the budget still prevents dispatch.
+Preflight reports the selected `inference_step_limit`. Embedding and text calls
+consume the same step allowance. Ordinary Session defaults are unchanged.
+Research requests up to ten sources within the existing
 body, time and result bounds; a result that cannot fit remains a failed row.
 
 The explicit `storage_policy: "forget_all_then_collect_v1"` selects the final
@@ -557,6 +562,13 @@ Cross-project evidence is invalid even if a supplied integrity review calls it
 valid. Missing or non-independent review stays unmeasured. A retrieval-only row
 has no supported-answer measurement.
 
+When the plan selects answers, an execution failure keeps `response_kind: "answer"`
+with its failed status, empty claims and null answer. It remains an answer-policy
+attempt, so an independent unsupported verdict counts it as zero in the support
+denominator. Intentional retrieval-only plans still produce `retrieval_only` rows
+whose answer metrics remain unmeasured. Neither case invents a successful answer
+or a semantic review.
+
 The scorer's support and citation thresholds are 0.90 and 0.95. Its aggregate
 `semantic`, `gates` and `quality_gates_passed` fields cover the complete frozen
 variant/query grid, including missing rows. `quality_gate_scope` identifies that
@@ -617,9 +629,10 @@ Run the local scripted-provider exercises:
 mix test test/knowledge_evaluation_resources_test.exs test/knowledge_evaluation_runner_test.exs
 ```
 
-Follow the seventeen-request case in the runner test. Compare the seventeen
+Follow the thirty-one-request case in the runner test. Compare the thirty-one
 scripted HTTP calls, restored journal records, exported requests and booked
-requests. Each exported request must retain its query ID. Then follow the
+requests. This crosses the ordinary thirty-step default and the sixteen-request
+UI snapshot. Each exported request must retain its query ID. Then follow the
 one-request-budget case: two queries produce two canonical attempts, one admitted
 request, one refusal and one dispatch intent. Both query rows remain present.
 

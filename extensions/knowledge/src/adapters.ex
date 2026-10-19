@@ -332,7 +332,7 @@ defmodule IpseKnowledge.Adapters do
         {:done,
          {:ok,
           %{
-            "order" => Enum.map(args["candidates"], & &1["citation"]["chunk_id"]),
+            "order" => Enum.map(args["candidates"], &Evidence.candidate_id/1),
             "coverage" => %{"kind" => "coverage", "complete" => true},
             "usage" => nil
           }}},
@@ -350,7 +350,7 @@ defmodule IpseKnowledge.Adapters do
          excerpts =
            Enum.map(args["candidates"], fn c ->
              %{
-               "id" => c["citation"]["chunk_id"],
+               "id" => Evidence.candidate_id(c),
                "quote" => quote_prefix(c["citation"]["quote"], quote_bytes)
              }
            end),
@@ -607,7 +607,7 @@ defmodule IpseKnowledge.Adapters do
     do: is_binary(value) and Regex.match?(~r/\A[A-Za-z0-9_.-]{1,64}\z/, value)
 
   defp map_rerank(s, parsed, value) do
-    ids = Enum.map(s.args["candidates"], & &1["citation"]["chunk_id"])
+    ids = Enum.map(s.args["candidates"], &Evidence.candidate_id/1)
     proposed = if is_map(parsed), do: parsed["order"], else: nil
 
     if is_map(parsed) and exact?(parsed, ["order"]) and is_list(proposed) and
@@ -724,6 +724,10 @@ defmodule IpseKnowledge.Adapters do
         Enum.all?(
           xs,
           &(is_map(&1) and is_map(&1["citation"]) and hash?(&1["citation"]["chunk_id"]) and
+              safe_uint?(&1["citation"]["start_byte"]) and
+              safe_uint?(&1["citation"]["end_byte"]) and
+              &1["citation"]["end_byte"] > &1["citation"]["start_byte"] and
+              &1["citation"]["end_byte"] - &1["citation"]["start_byte"] <= 1024 and
               text?(&1["citation"]["quote"], 1024))
         )
 

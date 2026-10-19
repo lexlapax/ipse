@@ -151,6 +151,11 @@ support from literal quotation or transport success.
 
 ## Paused continuation
 
+The later [resumption record](resumption.md) follows P26 acceptance and preserves
+the interrupted-session audit, verified private evidence and current repair order.
+The [result transport proposal](result-transport-design.md) records the selected
+design family and outstanding proof gates; the new transport is not implemented.
+
 The [2026-10-19 continuation](continuation.md) records the later source state,
 interrupted actual comparison, retained failures, private local backup and open
 tasks. P27 was paused at the user's request before assessment of newly reported

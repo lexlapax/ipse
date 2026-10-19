@@ -157,7 +157,11 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
               "query_id" => id,
               "project" => "alpha",
               "split" => "fixture",
-              "query" => text,
+              "query" =>
+                if(scenario == :suppressed and ctx.selected_variant == "rerank" and id == "Q1",
+                  do: "quiescence",
+                  else: text
+                ),
               "expected_answer" => "NEVER_PROVIDER_INPUT"
             }
           )
@@ -257,6 +261,9 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
         assert Enum.map(preflight["variants"], & &1["variant"]) ==
                  Enum.map(plan["variants"], & &1["id"])
 
+        assert Enum.map(preflight["variants"], & &1["value"]["inference_step_limit"]) ==
+                 Enum.map(plan["variants"], &(&1["budget"]["max_requests"] + 1))
+
         initialized = Enum.flat_map(preflight["variants"], & &1["value"]["initialization"])
         assert length(initialized) == ctx.initialized
         assert Enum.all?(initialized, &(&1["initialized"] and &1["cleanup"] == "confirmed"))
@@ -271,6 +278,14 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
                  &(&1["status"] == "ok")
                ),
                inspect(diagnostics, limit: :infinity)
+
+        if scenario == :suppressed and ctx.selected_variant == "rerank" do
+          ranked = Enum.find(events, &(&1["verb"] == "query" and &1["query_id"] == "Q1"))
+          candidates = ranked["value"]["evidence"]
+          assert length(candidates) == 2
+          assert length(Enum.uniq_by(candidates, & &1["citation"]["chunk_id"])) == 1
+          assert length(Enum.uniq_by(candidates, & &1["citation"]["start_byte"])) == 2
+        end
 
         assert Enum.all?(
                  Enum.filter(rows, &(&1["query_id"] == "Q1")),
@@ -919,15 +934,17 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
     assert {:error, %{"code" => "option_shape"}} = Runner.run(:verify, unknown: "must-not-open")
   end
 
-  test "usage export preserves canonical requests beyond the sixteen-request UI snapshot", ctx do
+  test "usage export crosses the thirty-request default and the sixteen-request UI snapshot",
+       ctx do
     {server, origin, tag} = model_fixture()
     {paths, root} = cli_inputs(ctx, false)
     matrix = matrix_plan(ctx, origin)
-    declared = %{matrix | "variants" => [hd(matrix["variants"])]}
-    declared = put_in(declared, ["data", "expected_queries"], 17)
+    variant = hd(matrix["variants"]) |> put_in(["budget", "max_requests"], 31)
+    declared = %{matrix | "variants" => [variant]}
+    declared = put_in(declared, ["data", "expected_queries"], 31)
 
     queries =
-      for index <- 1..17,
+      for index <- 1..31,
           do: %{
             "query_id" => "Q#{index}",
             "project" => "alpha",
@@ -956,13 +973,13 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
                 end)}
              )
 
-      assert report["rows"] == 17
+      assert report["rows"] == 31
       requests = drain(tag, [])
-      assert length(requests) == 17
+      assert length(requests) == 31
       assert Enum.all?(requests, &(&1["fixture_operation"] == "answer"))
       usage = jsonl(Path.join(output, "usage.jsonl"))
       [saved] = Enum.filter(usage, &Map.has_key?(&1, "budget"))
-      assert saved["budget"]["request_count"] == 17
+      assert saved["budget"]["request_count"] == 31
 
       {:ok, events} =
         Ipse.Journal.load(
@@ -973,7 +990,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
       {:ok, ledger} = Ipse.Usage.restore(events, saved["session_id"])
       assert Ipse.Usage.snapshot(ledger)["shown_request_count"] == 16
       records = Enum.filter(usage, &Map.has_key?(&1, "request_id"))
-      assert length(records) == 17
+      assert length(records) == 31
       assert Enum.map(records, & &1["request_id"]) == Ipse.Usage.order(ledger)
       assert Enum.all?(records, &Ipse.Usage.valid_request_record?/1)
 
@@ -983,7 +1000,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
              )
 
       resource_records = jsonl(Path.join(output, "request-resources.jsonl"))
-      assert length(resource_records) == 17
+      assert length(resource_records) == 31
       assert Enum.map(resource_records, & &1["query_id"]) == Enum.map(queries, & &1["query_id"])
 
       assert Enum.all?(
@@ -995,20 +1012,20 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
       resources = JSON.decode!(File.read!(Path.join(output, "resource-summary.json")))
       assert resources["complete"]
       [variant] = resources["variants"]
-      assert variant["queries"]["observed"] == 17
+      assert variant["queries"]["observed"] == 31
       assert variant["queries"]["missing"] == 0
       assert variant["accounting_verified"]
-      assert variant["requests"]["attempted"] == 17
+      assert variant["requests"]["attempted"] == 31
       [answer] = variant["requests"]["groups"]
-      assert answer["role"] == "answer" and answer["count"] == 17
-      assert answer["latency_ms"]["observed"] == 17
+      assert answer["role"] == "answer" and answer["count"] == 31
+      assert answer["latency_ms"]["observed"] == 31
       assert resources["storage_reachability_complete"]
       prepared = Enum.find(variant["storage_snapshots"], &(&1["phase"] == "after_preparation"))
       assert prepared["inventory"]["status"] == "verified"
       assert prepared["inventory"]["inventory"]["selected_pages"]["records"] > 0
       assert prepared["inventory"]["state_file_bytes"] > 0
       query_storage = Enum.filter(variant["storage_snapshots"], &(&1["phase"] == "after_query"))
-      assert length(query_storage) == 17
+      assert length(query_storage) == 31
       assert Enum.map(query_storage, & &1["query_id"]) == Enum.map(queries, & &1["query_id"])
       assert Enum.all?(query_storage, &(&1["inventory"] == prepared["inventory"]))
       forgotten = Enum.find(variant["storage_snapshots"], &(&1["phase"] == "after_forget"))
@@ -1069,6 +1086,10 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
 
       assert report["rows"] == 2 and report["failed_rows"] == 1
       assert length(drain(tag, [])) == 1
+      rows = jsonl(Path.join(output, "predictions.jsonl"))
+      [failed] = Enum.filter(rows, &(&1["status"] == "failed"))
+      assert failed["response_kind"] == "answer"
+      assert failed["answer"] == nil and failed["claims"] == [] and failed["citations"] == []
 
       [resource] =
         JSON.decode!(File.read!(Path.join(output, "resource-summary.json")))["variants"]
