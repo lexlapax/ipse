@@ -50,11 +50,27 @@ falls back to another profile, provider, or billing mode. Host routing facts in
 child results precede the explicitly untrusted child answer; self-description in
 an answer is not routing evidence.
 
-Reasoning effort is separate from the model name. The current dispatcher accepts
-`low`, `medium`, `high`, `xhigh`, and `max` only for exact model `gpt-6.1-sol` on
-the OpenAI/ChatGPT paths. It maps effort into Responses `reasoning.effort` and
-retains native continuation. Do not infer analogous Anthropic or Ollama settings.
-Both validation and dispatch reject unsupported combinations.
+Reasoning effort is separate from the model name. The dispatcher accepts `low`,
+`medium`, `high`, `xhigh`, and `max` for exact model `gpt-6.1-sol` on the
+OpenAI/ChatGPT paths. It maps effort into Responses `reasoning.effort` and
+retains native continuation. Ollama accepts the explicit value `none`, mapped
+to native `think: false`. An omitted value leaves the model's default unchanged.
+Other combinations, including Anthropic thinking settings, remain unsupported.
+
+Trace the Ollama selection through profile validation, execution manifests,
+`ModelCall.prepare/2` and `Provider.Ollama.complete/4`. The existing execution
+field carries the selection into approval and saved-request validation; no new
+worker-controlled provider override is introduced. The Session fixture named
+"explicit Ollama none is approved, sent on the wire and retained through idle
+resume" checks the actual HTTP body, execution fact and saved journal. The
+standalone model proof runs with both omitted and explicit `none` selections.
+Its default run sends no `think` field; its `none` run sends native `false` and
+restores that selection from the journal. Keep both controls when editing this path.
+
+The operator must check the selected model's advertised `/api/show` thinking
+values. Ipse requests a supported backend control; its execution record is not
+proof of the model's internal computation. See the
+[native API contract](https://docs.ollama.com/capabilities/thinking).
 
 ## Preserve inherited ceilings
 

@@ -43,6 +43,7 @@ jobs:
         run: |
           elixir examples/model-calls/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-model-calls"
           elixir examples/model-calls/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-model-calls"
+          elixir examples/model-calls/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-model-calls" none
       - name: Independent source and installed MCP-call proof
         run: |
           elixir examples/mcp-actions/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-mcp-actions"
@@ -67,9 +68,11 @@ jobs:
           mix run examples/knowledge/verify-evaluation.exs "$RUNNER_TEMP/ipse-knowledge/corpus"
           mix run examples/knowledge/verify-mcp.exs "$RUNNER_TEMP/ipse-knowledge/corpus-mcp"
           mix run examples/knowledge/verify-research.exs "$RUNNER_TEMP/ipse-knowledge/research-mcp"
+          mix run examples/knowledge/verify-recovery.exs "$RUNNER_TEMP/ipse-knowledge-presets/graph-state-model"
           elixir examples/knowledge/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-knowledge"
           elixir examples/knowledge/verify-mcp-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-knowledge/corpus-mcp"
           elixir examples/knowledge/verify-mcp-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-knowledge/research-mcp" research
+          elixir examples/knowledge/verify-recovery-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-knowledge-presets/graph-state-model"
       - name: Experimental macOS App Sandbox enforcement
         if: runner.os == 'macOS'
         run: |

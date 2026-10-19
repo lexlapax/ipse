@@ -33,6 +33,89 @@ defmodule IpseKnowledge.PackagesIsolationTest do
         IpseKnowledge.Corpus.handle("invoke.command", %{"id" => "source", "arguments" => args}, state)
     end
 
+    test "extraction gives the model its fact bound and enforces that bound on returned proposals" do
+      alias IpseKnowledge.{Adapters, Evidence}
+      {:ok, source} = Evidence.source(%{"source_id"=>"dev:release", "partition"=>"notes", "generation"=>1,
+        "title"=>"Release", "text"=>"Release requires quiescence.", "uri"=>"local:release", "observed_at_ms"=>1,
+        "event_at_ms"=>nil, "expires_at_ms"=>nil, "origin"=>%{"kind"=>"provided", "store_profile"=>"notes",
+        "partition_or_scope"=>"notes", "receipt"=>nil, "historical"=>false}})
+      {:ok, [chunk]}=Evidence.chunks(source)
+      resolved=%{"options"=>%{"extraction"=>%{"assisted"=>%{"kind"=>"model_complete","profile"=>"host_extract","version"=>1}}}}
+      args=%{"profile"=>"assisted","source"=>source,"chunks"=>[chunk],"max_edges"=>1,"as_of_ms"=>20}
+      {:call, request, continuation}=Adapters.start(resolved,:extract,args)
+      input=JSON.decode!(request["input"])
+      assert input["max_facts"]==1
+      assert Enum.sort(Map.keys(input))==~w(chunks max_facts)
+      assert request["instruction"] =~ "max_facts"
+      assert request["instruction"] =~ "UTF-8 byte offsets"
+      assert request["profile"]=="host_extract"
+      proposal=%{"subject"=>"Release","predicate"=>"requires","object"=>"quiescence",
+        "chunk_id"=>chunk["chunk_id"],"start_byte"=>0,"end_byte"=>byte_size(source["text"])}
+      good=%{"profile"=>"host_extract","text"=>JSON.encode!(%{"facts"=>[proposal]}),"usage"=>%{}}
+      assert {:done,{:ok,%{"facts"=>[_]}}}=Adapters.resume(continuation,%{"status"=>"ok","value"=>good})
+      excessive=Map.put(good,"text",JSON.encode!(%{"facts"=>[proposal,proposal]}))
+      assert {:done,{:error,:invalid_model_output,%{}}}=Adapters.resume(continuation,%{"status"=>"ok","value"=>excessive})
+      assert {:done,{:error,:invalid_model_output,%{}}}=Adapters.resume(continuation,%{"status"=>"ok","value"=>Map.put(good,"profile","other")})
+    end
+
+    test "model rerank requires the declared object and all candidate IDs exactly once" do
+      alias IpseKnowledge.{Adapters, Evidence}
+      ids=Enum.map(~w(one two),&Evidence.sha256/1)
+      candidates=Enum.map(ids, &%{"citation"=>%{"chunk_id"=>&1,"quote"=>"Synthetic candidate text."}})
+      resolved=%{"options"=>%{"rerank"=>%{"ordered"=>%{"kind"=>"model_complete","profile"=>"host_rank","max_candidates"=>16,"quote_bytes"=>128}}}}
+      {:call,request,continuation}=Adapters.start(resolved,:rerank,%{"profile"=>"ordered","query"=>"query","candidates"=>candidates})
+      assert request["instruction"] =~ ~s({"order":[)
+      assert JSON.decode!(request["input"])["required_count"]==2
+      assert request["instruction"] =~ "do not filter or omit"
+      good=%{"profile"=>"host_rank","text"=>JSON.encode!(%{"order"=>Enum.reverse(ids)}),"usage"=>%{}}
+      assert {:done,{:ok,%{"order"=>order}}}=Adapters.resume(continuation,%{"status"=>"ok","value"=>good})
+      assert order==Enum.reverse(ids)
+      for bad <- [ids,%{"order"=>[]},%{"order"=>Enum.take(ids,1)},%{"order"=>[hd(ids),hd(ids)]},%{"order"=>[Evidence.sha256("foreign"),hd(ids)]}] do
+        value=Map.put(good,"text",JSON.encode!(bad))
+        assert {:done,{:error,:invalid_model_output,%{}}}=Adapters.resume(continuation,%{"status"=>"ok","value"=>value})
+      end
+    end
+
+    test "rerank quote_bytes bounds UTF8 bytes even for a single large combining grapheme" do
+      alias IpseKnowledge.{Adapters, Evidence}
+      quote="a"<>String.duplicate(<<0x0301::utf8>>,300)
+      assert String.length(quote)==1 and byte_size(quote)>128
+      resolved=%{"options"=>%{"rerank"=>%{"ordered"=>%{"kind"=>"model_complete","profile"=>"host_rank","max_candidates"=>16,"quote_bytes"=>128}}}}
+      {:call,request,_}=Adapters.start(resolved,:rerank,%{"profile"=>"ordered","query"=>"query","candidates"=>[%{"citation"=>%{"chunk_id"=>Evidence.sha256("one"),"quote"=>quote}}]})
+      [candidate]=JSON.decode!(request["input"])["candidates"]
+      assert byte_size(candidate["quote"])<=128
+      assert String.valid?(candidate["quote"]) and String.starts_with?(quote,candidate["quote"])
+    end
+
+    test "successful model rerank preserves Corpus and Research contexts through completion" do
+      alias IpseKnowledge.{Adapters, Corpus, Evidence, Research}
+      sources=Enum.map(~w(one two),fn id ->
+        {:ok,source}=Evidence.source(%{"source_id"=>id,"partition"=>"notes","generation"=>1,
+          "title"=>id,"text"=>"Release requires quiescence.","uri"=>"local:"<>id,"observed_at_ms"=>1,
+          "event_at_ms"=>nil,"expires_at_ms"=>nil,"origin"=>%{"kind"=>"provided","store_profile"=>"notes",
+          "partition_or_scope"=>"notes","receipt"=>nil,"historical"=>false}})
+        source
+      end)
+      {:ok,rank}=Evidence.rank_lexical(sources,"release",10,20)
+      ids=Enum.map(rank["evidence"], & &1["citation"]["chunk_id"]) |> Enum.reverse()
+      resolved=%{"options"=>%{"rerank"=>%{"ordered"=>%{"kind"=>"model_complete","profile"=>"host_rank","max_candidates"=>16,"quote_bytes"=>128}}}}
+      {:call,_,cont}=Adapters.start(resolved,:rerank,%{"profile"=>"ordered","query"=>"release","candidates"=>rank["evidence"]})
+      outcome=%{"status"=>"ok","value"=>%{"profile"=>"host_rank","text"=>JSON.encode!(%{"order"=>ids}),"usage"=>%{}}}
+      snapshot=%{"tokens"=>[],"coverage"=>%{"fixture"=>"captured snapshot"},"gaps"=>[]}
+      ctx=%{args: %{"store"=>"notes","query"=>"release"},store_profile: %{"kind"=>"state","scope"=>"project","partition"=>"notes"},snapshot: snapshot,rank: rank,as_of_ms: 20}
+      state=%{resolved: resolved,phase: :query_rerank,pending: :adapter,cont: cont,ctx: ctx}
+      assert {:ok,%{"kind"=>"result","value"=>result},_}=Corpus.handle("host.actions",%{"outcome"=>outcome},state)
+      assert result["status"]=="ok" and result["coverage"]["revalidated"]
+      assert result["coverage"]["store"]==snapshot["coverage"]
+      assert Enum.map(result["evidence"], & &1["citation"]["chunk_id"])==ids
+      research_ctx=%{args: %{"query"=>"release"},ranked: rank,at: 20,sources: sources,bytes: 56,profile: %{"kind"=>"mcp"}}
+      state=%{resolved: resolved,phase: :rerank,cont: cont,ctx: research_ctx}
+      assert {:ok,%{"kind"=>"result","value"=>result},_}=Research.handle("host.actions",%{"outcome"=>outcome},state)
+      assert result["status"]=="ok" and result["coverage"]["source_count"]==2
+      assert result["coverage"]["as_of_ms"]==20 and result["coverage"]["bytes"]==56
+      assert Enum.map(result["evidence"], & &1["citation"]["chunk_id"])==ids
+    end
+
     test "offline research returns cited provided evidence with no host action" do
       {:ok, state} = IpseKnowledge.Research.init(offline_options())
       source = %{"source_id" => "dev:locks", "generation" => 1, "title" => "Locks",

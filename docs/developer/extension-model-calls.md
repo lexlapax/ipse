@@ -78,6 +78,14 @@ reference inside the admitted provider task. The call inherits no main API key,
 injected provider module, conversation, tools, SDK handles, or native continuation.
 Reasoning settings follow provider-specific allowlists.
 
+An Ollama helper profile can explicitly select `reasoning_effort: "none"` to
+request native `think: false`. That value remains in the full approval and
+`extension_model_request` execution facts. Omitting it sends no thinking control.
+Use a model whose advertised controls permit `false`; the selected backend owns
+whether it honors the request. Token, wire, text and native-receipt limits still
+apply, and usage stays accounted. Work through the
+[profile training chapter](model-profiles.md) for wire and recovery controls.
+
 Children may use separately trusted helper profiles through host configuration
 references, without receiving auth paths or arbitrary credential lookup authority
 in SDK values. They retain their MCP and recursive-delegation restrictions.
@@ -159,11 +167,14 @@ Build and run the local HTTP proof after building Ipse:
 ```sh
 elixir examples/model-calls/build.exs --sdk _build/dev/lib/ipse/ebin --output /tmp/ipse-model-artifact
 mix run examples/model-calls/verify.exs /tmp/ipse-model-artifact
+mix run examples/model-calls/verify.exs /tmp/ipse-model-artifact none
 mix test test/extensions_model_call_test.exs test/extensions_model_jobs_test.exs
 ```
 
-The proof checks actual loopback routing, complete approval, private response,
-canonical usage, budgets, and unchanged idle-resume state. Tests add limits,
+The two runs check omitted and explicit Ollama thinking selection on the wire
+and in the restored execution record. Both check actual loopback routing,
+complete approval, private response, canonical usage, budgets, and unchanged
+idle-resume state. Tests add limits,
 parallel children, cancellation, worker death, and corruption. Use the package
 procedure in [the example README](../../examples/model-calls/README.md) for an
 unchanged installed release. These are credential-free fixtures; actual billing

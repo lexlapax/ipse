@@ -114,6 +114,22 @@ defmodule Ipse.ProfilesTest do
     assert {:error, _} = Profiles.validate(profiles(), %{"invented-role" => "local"})
   end
 
+  test "Ollama thinking suppression is an explicit profile selection" do
+    assert :ok =
+             Profiles.validate_profile(%{
+               "provider" => "ollama",
+               "model" => "fixture",
+               "reasoning_effort" => "none"
+             })
+
+    assert {:error, _} =
+             Profiles.validate_profile(%{
+               "provider" => "ollama",
+               "model" => "fixture",
+               "reasoning_effort" => false
+             })
+  end
+
   test "reasoning and credential references reject unsupported combinations and unsafe endpoints" do
     for provider <- ~w(chatgpt openai), effort <- ~w(low medium high xhigh max) do
       assert :ok =

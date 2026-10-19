@@ -719,6 +719,41 @@ defmodule Ipse.Extensions.InvocationTest do
     assert {:ok, _} = Session.restore_context(events)
   end
 
+  test "explicit Ollama none is approved, sent on the wire and retained through idle resume",
+       ctx do
+    {base, server} = model_fixture(self())
+
+    config =
+      model_config(ctx.config, base) |> put_in([:profiles, "extract", "reasoning_effort"], "none")
+
+    pid = start(%{ctx | config: config})
+    :ok = host_command(pid, model_request())
+    assert_receive {:ipse, ^pid, {:approval, ref, "extension:model.complete", proposed}}, 3000
+    assert proposed["execution"]["reasoning_effort"] == "none"
+    assert :ok = Session.approve(pid, ref, true)
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+    assert :ok = Task.await(server)
+    assert_receive {:model_http, _headers, wire}, 1000
+    assert wire["think"] === false
+    assert wire["options"] == %{"num_predict" => 32}
+    assert host_outcome(pid)["status"] == "ok"
+    id = Session.info(pid).id
+    {:ok, events} = Journal.load(ctx.dir, id)
+
+    assert Enum.any?(
+             events,
+             &(&1["type"] == "extension_model_request" and
+                 &1["execution"]["reasoning_effort"] == "none")
+           )
+
+    assert {:ok, []} = Session.restore_context(events)
+    assert :ok = Session.close(pid)
+    resumed = start(%{ctx | config: config}, id)
+    assert Session.info(resumed).phase == :idle
+    assert Session.info(resumed).accounting["request_count"] == 1
+    refute_receive {:model_http, _, _}, 20
+  end
+
   test "extension and main model work share admission and retain refusal accounting", ctx do
     {base, server} = model_fixture(self())
 

@@ -24,5 +24,10 @@ defmodule Ipse.ModelCallProofTest do
     report = IpseModelExample.Proof.run(root)
     assert map_size(report["checks"]) == 9
     assert Enum.all?(report["checks"], fn {_, passed} -> passed end)
+    assert report["thinking_selection"] == "default"
+    quiet = IpseModelExample.Proof.run(root, "none")
+    assert quiet["thinking_selection"] == "none"
+    assert map_size(quiet["checks"]) == 9
+    assert Enum.all?(quiet["checks"], fn {_, passed} -> passed end)
   end
 end

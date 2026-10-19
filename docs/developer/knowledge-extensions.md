@@ -117,6 +117,20 @@ returns selected chunks, an opaque token and a capacity plan. The entrypoint
 checks the remaining effect/read allowance before inference and passes validated
 results back with that token. Store owns page packing and final publication.
 
+The extraction adapter sends `max_facts` alongside the selected chunks. Its fixed
+instruction specifies the closed fact fields and absolute half-open UTF8 byte
+offsets. The decoder separately enforces the requested fact count, selected
+profile, chunk identity and exact spans. A prompt is not a substitute for those
+checks. Follow the valid and over-limit response controls in
+`test/knowledge_packages_test.exs` before changing the request or decoder.
+
+The reranker requires a complete candidate-ID permutation inside exactly one
+`order` object. A bare array, omitted candidate, duplicate or foreign ID refuses;
+none becomes an implicit successful lexical fallback. Its named quote ceiling
+counts UTF8 bytes. Prefix selection preserves a code-point boundary, including
+for a single grapheme with many combining characters. Exercise that byte-bound
+case before replacing it with a character-slicing function.
+
 Two 4096-coordinate vectors require 12 coordinate pages, one manifest and one
 final CAS. With one draft claim and one embedding call, that is 16 effects.
 Result reads use their separate allowance. MCP counts every call as an effect,
@@ -149,6 +163,27 @@ not recover the 256-record allowance. The 1 MiB ceiling includes old generations
 drafts, orphan pages and tombstones. Selected exports are paged. Foreign copies
 become historical assertions and need explicit reindexing or extraction.
 Suppression cannot erase journals, backups, prior transfers or independent stores.
+
+An explicitly aborted draft also invalidates delayed publication. `Store.abort`
+requires the inspected root revision and exact draft ID for source, fact or vector
+work. `source_draft_current/1` adds the source-kind restriction for append/publish;
+clearing a fact draft cannot turn it into publishable source content. Work through
+`test/knowledge_store_test.exs` for State and MCP controls: wrong ID/revision,
+source publication against a projection, stale completion, a newer draft and
+permanent suppression.
+
+Then run the public Graph-only recovery exercise with a fresh `state-model`
+artifact. It denies model egress, inspects the retained draft and approves its
+exact abort without selecting Corpus or a model service:
+
+```sh
+mix run examples/knowledge/verify-recovery.exs /path/to/graph-state-model
+elixir examples/knowledge/verify-recovery-package.exs /path/to/ipse.tar.gz /path/to/graph-state-model
+```
+
+Expect eight successful checks, zero model requests and confirmed cleanup. The
+installed exercise hides development tools and checks unchanged host/archive
+files. Neither exercise measures semantic extraction quality.
 
 The MCP store relies on the server's partition access and atomic CAS. Exact
 receipts establish what that selected server asserted. They do not verify its

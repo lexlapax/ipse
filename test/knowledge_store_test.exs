@@ -157,6 +157,41 @@ defmodule Ipse.KnowledgeStoreTest do
     ''')
   end
 
+  test "explicit source abort clears only the inspected projection draft and fences delayed work" do
+    isolated(~S'''
+    for profile <- [state,remote], kind <- ["facts","vectors"] do
+      {r,db}=invoke.(F.new(),profile,:put,put.("Release requires quiescence.",%{})); success.(r)
+      {snap,db}=snapshot.(db,profile); {:ok,[chunk]}=E.chunks(hd(snap["sources"]))
+      selected=if kind=="facts",do: %{"kind"=>"model_complete","profile"=>"extractor","version"=>1},else: %{"kind"=>"embedding","profile"=>"encoder"}
+      args=%{"source_id"=>"manual:one","generation"=>1,"projection_kind"=>kind,"profile"=>selected,"chunks"=>[chunk["chunk_id"]],"max_items"=>1}
+      args=if kind=="vectors",do: Map.delete(args,"max_items"),else: args
+      {r,db}=invoke.(db,profile,:projection_open,args); opened=success.(r)
+      {r,db}=invoke.(db,profile,:inspect,%{"source_id"=>"manual:one"}); inspected=success.(r)
+      abort=%{"source_id"=>"manual:one","draft_id"=>inspected["draft"]["id"],"expected_revision"=>inspected["revision"]}
+      assert inspected["draft"]["kind"]==kind
+      for bad <- [Map.put(abort,"expected_revision",0),Map.put(abort,"draft_id",String.duplicate("0",32))] do
+        {r,unchanged}=invoke.(db,profile,:abort,bad); assert {:done,{:error,:stale_draft,%{}}}=r
+        assert unchanged.records==db.records
+      end
+      {r,unchanged}=invoke.(db,profile,:publish,abort); assert {:done,{:error,:stale_draft,%{}}}=r
+      assert unchanged.records==db.records
+      {r,db}=invoke.(db,profile,:abort,abort); assert success.(r)["status"]=="aborted"
+      {r,db}=invoke.(db,profile,:inspect,%{"source_id"=>"manual:one"}); inspected=success.(r)
+      assert inspected["draft"]==nil and inspected["generation"]==1
+      {r,db}=invoke.(db,profile,:projection_open,args); next=success.(r)
+      {r,unchanged}=invoke.(db,profile,:abort,abort); assert {:done,{:error,:stale_draft,%{}}}=r
+      assert unchanged.records==db.records
+      commit=%{"draft"=>opened["draft"],kind=>[]}
+      {r,unchanged}=invoke.(db,profile,:projection_commit,commit); assert {:done,{:error,:stale_draft,%{}}}=r
+      assert unchanged.records==db.records
+      {r,db}=invoke.(db,profile,:forget,%{"source_id"=>"manual:one","expected_revision"=>next["draft"]["revision"]}); success.(r)
+      current_abort=%{"source_id"=>"manual:one","draft_id"=>next["draft"]["draft_id"],"expected_revision"=>next["draft"]["revision"]+1}
+      {r,unchanged}=invoke.(db,profile,:abort,current_abort); assert {:done,{:error,:stale_draft,%{}}}=r
+      assert unchanged.records==db.records
+    end
+    ''')
+  end
+
   test "exports preserve historical provenance and large fragments require explicit paged migration" do
     isolated(~S'''
     {r,db}=invoke.(F.new(),state,:put,put.("exact migration bytes é",%{})); success.(r)

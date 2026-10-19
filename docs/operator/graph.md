@@ -225,10 +225,26 @@ Foreign imports preserve historical provenance and need explicit re-extraction
 before becoming current evidence. Keep complete generation-consistent exports;
 a partial export is not a complete restorable source.
 
-For conflict, inspect again. For an unknown write/extraction, inspect source,
-draft, and projection state before explicitly deciding what to finish or abort.
-Resume never replays extraction or completes a draft. Keep locks and original
-state intact. Artifact/options/configuration changes can prevent resume; use
+For conflict, inspect again. After a denied, failed or interrupted extraction,
+inspect its source before deciding whether to discard the unpublished draft:
+
+```text
+/ext ext__graph__source {"store":"notes","action":"inspect","args":{"source_id":"manual:model-release"}}
+/ext ext__graph__source {"store":"notes","action":"abort","args":{"source_id":"manual:model-release","draft_id":"DRAFT_ID_FROM_INSPECT","expected_revision":CURRENT_REVISION}}
+```
+
+Wait for inspection, then replace `DRAFT_ID_FROM_INSPECT` with `coverage.draft.id`
+and `CURRENT_REVISION` with `coverage.revision`. Use the actual source ID of your
+failed extraction. Approve the exact State write. Abort requires the current
+draft ID and root revision; a stale ID or revision refuses without clearing a
+newer draft. It preserves the source and already published projections. A late
+result from the aborted draft cannot publish. Abort also works for an unfinished
+source-ingestion draft. It does not cancel or undo work at a remote model service.
+
+For an unknown model outcome, inspect the service and retained journal before
+explicitly deciding whether to request new work. Resume never replays extraction
+or completes a draft. Keep locks and original state intact.
+Artifact/options/configuration changes can prevent resume; use
 [Recovery](recovery.md) with reviewed context rather than editing saved receipts.
 
 ## Add optional model extraction or an MCP store
@@ -250,14 +266,17 @@ such as:
 Save them as `$IPSE_GRAPH_ARTIFACTS/graph-model-options.json`. Supply a separate
 inference file with the exact
 referenced host profile. This complete example expects an already available
-local tool-capable model; it downloads nothing:
+local tool-capable model; it downloads nothing. This profile explicitly requests
+disabled thinking. Check that the model's `/api/show` response permits `false`,
+or select a supported model/profile before using it:
 
 ```json
 {
   "profiles": {
     "extractor": {
       "provider": "ollama", "model": "qwen3:8b", "credential": "none",
-      "timeout_ms": 120000, "max_output_tokens": 1024
+      "reasoning_effort": "none",
+      "timeout_ms": 120000, "max_output_tokens": 4096
     }
   }
 }
@@ -303,6 +322,9 @@ separate full model-egress approval and the State writes that publish its result
 Its proposed span must match a selected source chunk; malformed
 JSON, invented chunk IDs, or invalid spans refuse. This establishes byte
 attribution, not that the relationship accurately interprets the quotation.
+The model receives the explicit `max_facts` bound and must return only the closed
+fact schema. The decoder validates that bound and the cited byte spans independently
+of the instruction.
 Rendered extraction input is at most 4096 bytes and model output at most 8192
 bytes. Two full 2048-byte chunks plus JSON framing can exceed the input allowance;
 select a smaller batch when that happens. No source text is silently shortened.

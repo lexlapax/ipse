@@ -275,7 +275,8 @@ defmodule IpseKnowledge.Research do
   defp advance({:done, {:ok, reranked}}, %{phase: :rerank} = state) do
     case Evidence.apply_rerank(state.ctx.ranked["evidence"], reranked["order"]) do
       {:ok, candidates} ->
-        publish(%{state | ctx: put_in(state.ctx.ranked["evidence"], candidates)})
+        ctx = %{state.ctx | ranked: Map.put(state.ctx.ranked, "evidence", candidates)}
+        publish(%{state | ctx: ctx})
 
       _ ->
         finish(state, refused(:invalid_model_output))

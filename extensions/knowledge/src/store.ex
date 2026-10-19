@@ -757,7 +757,7 @@ defmodule IpseKnowledge.Store do
   end
 
   defp perform(%{operation: :abort} = state) do
-    with {:ok, record, _} <- source_draft_current(state),
+    with {:ok, record, _} <- draft_current(state),
          do: cas(state, record, Map.put(record["value"], "draft", nil), :committed),
          else: (error -> error_result(error))
   end
@@ -1588,11 +1588,18 @@ defmodule IpseKnowledge.Store do
   end
 
   defp source_draft_current(state) do
+    case draft_current(state) do
+      {:ok, record, %{"kind" => "source"} = draft} -> {:ok, record, draft}
+      _ -> {:error, :stale_draft}
+    end
+  end
+
+  defp draft_current(state) do
     record = find_root(state, state.args["source_id"])
 
     if record != nil and record["revision"] == state.args["expected_revision"] and
          record["value"]["state"] != "suppressed" and
-         record["value"]["draft"] != nil and record["value"]["draft"]["kind"] == "source" and
+         record["value"]["draft"] != nil and
          record["value"]["draft"]["id"] == state.args["draft_id"],
        do: {:ok, record, record["value"]["draft"]},
        else: {:error, :stale_draft}

@@ -36,6 +36,7 @@ defmodule Ipse.Provider.Ollama do
 
     limit = Ipse.Provider.Limits.output_tokens(config)
     body = if limit, do: Map.put(body, "options", %{"num_predict" => limit}), else: body
+    body = if config[:reasoning_effort] == "none", do: Map.put(body, "think", false), else: body
 
     body =
       if is_map(config[:summary_schema]) do

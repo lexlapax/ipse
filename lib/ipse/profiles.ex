@@ -39,7 +39,10 @@ defmodule Ipse.Profiles do
         Map.merge(Map.take(Ipse.Config.settings_schema()["properties"], @settings), %{
           "credential" => %{"type" => "string", "enum" => Map.values(@credentials) |> Enum.uniq()},
           "base_url" => %{"type" => "string", "minLength" => 1, "maxLength" => 512},
-          "reasoning_effort" => %{"type" => "string", "enum" => ~w(low medium high xhigh max)}
+          "reasoning_effort" => %{
+            "type" => "string",
+            "enum" => ~w(none low medium high xhigh max)
+          }
         }),
       "required" => ["provider", "model"],
       "additionalProperties" => false
@@ -65,13 +68,15 @@ defmodule Ipse.Profiles do
 
   def reasoning(_provider, _model, nil), do: :ok
 
+  def reasoning("ollama", _model, "none"), do: :ok
+
   def reasoning(provider, "gpt-6.1-sol", effort)
       when provider in ["chatgpt", "openai"] and effort in ~w(low medium high xhigh max) do
     :ok
   end
 
   def reasoning(_, _, _),
-    do: {:error, "Reasoning effort is supported only for documented gpt-6.1-sol profiles."}
+    do: {:error, "Unsupported reasoning setting for the selected provider/model profile."}
 
   def select(profiles, roles, requested) do
     id = requested || roles["main"]

@@ -3,7 +3,7 @@ defmodule IpseModelExample.Proof do
   alias Ipse.{Session, Journal, Usage, Budget}
   alias Ipse.Extensions.{Store, Config, Registry, Manifest}
 
-  def run(artifact) do
+  def run(artifact, thinking \\ nil) when thinking in [nil, "none"] do
     {:ok, _} = Application.ensure_all_started(:ipse)
     root = Path.join(System.tmp_dir!(), "ipse-model-proof-#{Usage.id()}")
     File.mkdir_p!(root)
@@ -80,6 +80,11 @@ defmodule IpseModelExample.Proof do
         }
       }
 
+      config =
+        if thinking == "none",
+          do: put_in(config, [:profiles, "extract", "reasoning_effort"], "none"),
+          else: config
+
       request = %{
         "op" => "model.complete",
         "version" => 1,
@@ -125,6 +130,13 @@ defmodule IpseModelExample.Proof do
 
       true = wire["model"] == "fixture-extract" and wire["tools"] == []
       true = wire["options"] == %{"num_predict" => 32}
+
+      if thinking == "none" do
+        true = wire["think"] === false
+      else
+        false = Map.has_key?(wire, "think")
+      end
+
       false = String.contains?(String.downcase(headers), "authorization")
       result = Session.info(pid).extension_result["value"]
       true = result["status"] == "ok" and result["value"]["text"] == "entities"
@@ -169,6 +181,8 @@ defmodule IpseModelExample.Proof do
       true = length(ledger.order) == 3
       {:ok, _} = Session.restore_context(events)
       native = Enum.find(events, &(&1["type"] == "extension_model_response"))
+      source = Enum.find(events, &(&1["type"] == "extension_model_request"))
+      true = source["execution"]["reasoning_effort"] == thinking
 
       true =
         get_in(native, ["assistant", "provider_data", "message", "thinking"]) == "private-fixture"
@@ -184,6 +198,7 @@ defmodule IpseModelExample.Proof do
 
       %{
         "version" => 1,
+        "thinking_selection" => thinking || "default",
         "checks" =>
           Map.new(
             ~w(independent_artifact full_approval explicit_profile private_native_receipt bounded_text canonical_usage accounted_report shared_refusal inert_resume),

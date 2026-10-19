@@ -92,6 +92,9 @@ The later [evaluation preparation record](evaluation-preparation.md) retains
 synthetic helper verification and actual tuning-only embedding/text outcomes.
 The later [model wire investigation](model-wire.md) identifies the response-body
 limit in a captured diagnostic and separates streaming framing from returned text.
+The later [model workflow investigation](model-workflows.md) records exact draft
+abort recovery, rerank continuation repairs, explicit Ollama thinking selection
+and separately accounted tuning successes and failures.
 
 Exact-source hosted checks still need their final receipts. Actual domain
 embedding, extraction, hybrid and rerank

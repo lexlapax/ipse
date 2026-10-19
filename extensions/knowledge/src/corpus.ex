@@ -285,7 +285,8 @@ defmodule IpseKnowledge.Corpus do
   defp advance({:done, {:ok, ranked}}, %{phase: :query_rerank} = state) do
     case Evidence.apply_rerank(state.ctx.rank["evidence"], ranked["order"]) do
       {:ok, candidates} ->
-        revalidate(%{state | ctx: put_in(state.ctx.rank["evidence"], candidates)})
+        ctx = %{state.ctx | rank: Map.put(state.ctx.rank, "evidence", candidates)}
+        revalidate(%{state | ctx: ctx})
 
       _ ->
         finish(state, refused(:invalid_model_output))

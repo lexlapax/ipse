@@ -22,6 +22,12 @@ provider directly. Its caller supplies the approved configuration and validates
 each complete proposed action. A selected profile is a route, not permission
 to approve every request on that route.
 
+Use the driver's `abort` verb only after inspecting a retained draft. Supply the
+selected store, source ID, exact 32-character draft ID and current root revision.
+It calls the public source-abort command with its ordinary State/MCP approval;
+it neither invents a replacement draft nor retries inference. See the
+[Graph recovery procedure](../operator/graph.md#replace-suppress-and-recover-a-source).
+
 Before running predictions, record the source/artifact identities, algorithms,
 prompts, profile destinations, budgets, query order and time policy. Keep labels
 and expected answers out of the driver, extension options and model inputs.

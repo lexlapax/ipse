@@ -150,7 +150,7 @@ Attach return tracing only to synthetic fixtures:
 
 ```sh
 IPSE_TEST_STDIO_PROBE=1 mix test test/stdio_probe_test.exs test/extensions_feeds_test.exs test/mcp/session_test.exs
-IPSE_TEST_STDIO_PROBE=1 mix test test/extensions_invocation_test.exs:1489 --repeat-until-failure 100
+IPSE_TEST_STDIO_PROBE=1 mix test test/extensions_invocation_test.exs:1547 --repeat-until-failure 100
 ```
 
 The second command selects the diagnostic-question recovery test; verify its

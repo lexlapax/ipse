@@ -3,7 +3,7 @@ defmodule IpseKnowledgeExample.EvaluationSession do
   alias Ipse.{Journal, Session, Usage}
   alias Ipse.Extensions.{Catalog, Config, Registry, Store}
 
-  @verbs ~w(ingest inspect index extract query research answer forget export import collect)
+  @verbs ~w(ingest inspect index extract query research answer abort forget export import collect)
   @command_ids %{
     "ingest" => "source",
     "inspect" => "source",
@@ -12,6 +12,7 @@ defmodule IpseKnowledgeExample.EvaluationSession do
     "query" => "query",
     "research" => "investigate",
     "answer" => "complete",
+    "abort" => "source",
     "forget" => "source",
     "export" => "source",
     "import" => "source",
@@ -162,6 +163,24 @@ defmodule IpseKnowledgeExample.EvaluationSession do
     else
       {:error, :invalid_answer, run}
     end
+  end
+
+  def invoke(run, "abort", params) do
+    if exact?(params, ~w(store source_id draft_id expected_revision)) and
+         profile_name?(params["store"]) and text?(params["source_id"], 256) and
+         is_binary(params["draft_id"]) and Regex.match?(~r/\A[0-9a-f]{32}\z/, params["draft_id"]) and
+         uint?(params["expected_revision"]),
+       do:
+         one(
+           run,
+           "abort",
+           source(
+             params["store"],
+             "abort",
+             Map.take(params, ~w(source_id draft_id expected_revision))
+           )
+         ),
+       else: {:error, :invalid_abort, run}
   end
 
   def invoke(run, "forget", params) do

@@ -29,7 +29,8 @@ model must already be installed and served by Ollama.
       "provider": "ollama",
       "model": "qwen3:8b",
       "max_steps": 4,
-      "max_output_tokens": 1024,
+      "max_output_tokens": 4096,
+      "reasoning_effort": "none",
       "timeout_ms": 120000
     }
   },
@@ -79,10 +80,24 @@ Credential references are fixed for each provider:
 
 References are lookups, never inline secrets or arbitrary environment names.
 Profiles may omit the reference to use their provider's fixed behavior.
-`reasoning_effort` accepts `low`, `medium`, `high`, `xhigh`, and `max` only for exact
-`gpt-6.1-sol` ChatGPT/OpenAI profiles. Other model/provider combinations reject
-that field. Ollama thinking and Anthropic extended-thinking controls are not
-translated from this setting.
+`reasoning_effort` accepts `low`, `medium`, `high`, `xhigh`, and `max` for exact
+`gpt-6.1-sol` ChatGPT/OpenAI profiles. For Ollama, the explicit value `none` sends
+`think: false`. Use it only when your selected server/model advertises `false`
+in its `/api/show` thinking controls. The local example selects that setting
+deliberately; omit it to retain the model's default behavior. See
+[Ollama's thinking controls](https://docs.ollama.com/capabilities/thinking).
+
+Inspect the effective profile before submitting work:
+
+```sh
+ipse config --config /private/path/models.json --no-project-config --profile local
+ipse chat --config /private/path/models.json --no-project-config --profile local --cwd /path/to/project
+```
+
+Thinking selection appears in execution facts and helper approvals. It requests
+backend behavior; it does not establish that the model did no internal work or
+that requests cost nothing. Unsupported settings for other provider/model
+combinations reject. Anthropic extended-thinking controls remain unavailable.
 
 Trusted project files may add profiles using default endpoints and assign roles.
 They cannot replace operator-owned IDs or set `base_url`. Review project files
