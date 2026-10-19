@@ -83,7 +83,15 @@ after the 970-case baseline; the additional cases extend its fixture coverage.
 | Signed macOS file/network enforcement probe | Passed; outside credential/symlink read, write/chmod and network denied; workspace/private-temp operations and inherited policy checked |
 | Extracted independent-artifact proof | 12 checks passed; archive/host unchanged, system development tools hidden |
 | Standard extracted-package baseline | Passed under the bounded native process-group supervisor; help/demo, workspace paths, helpers/locks, MCP/delegation/extensions, text and explicit-memory fixtures |
-| Hosted Linux/macOS checks | Pending |
+| Hosted Linux/macOS checks | Passed at `1f901785e44d5b7745e47047dd46ca56a0dba6f5`, including independent source and installed MCP proofs on both platforms |
+
+[Hosted run 39194721714](https://github.com/lexlapax/ipse/actions/runs/39194721714)
+verified runtime implementation `2fe35831eaba035a4894bb79af7305f01d2fa7bd`
+with the additional explicit CI proof step at `1f90178`. Both jobs passed their
+source baseline, package baseline and independent artifact checks. The macOS job
+also passed its native and experimental App Sandbox enforcement steps. These
+receipts close H1/H2 within the MCP text contract; they do not establish embedding
+or domain-package acceptance.
 
 The local independent-artifact proof used archive SHA-256
 `60fd07f2d92eec695af910bb82901a7461e65ee4f9e7a21262da3b41e00f5417`.
