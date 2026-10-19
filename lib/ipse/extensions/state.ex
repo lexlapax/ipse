@@ -421,13 +421,14 @@ defmodule Ipse.Extensions.State do
          %{"op" => "state.put", "write_before_ms" => deadline} = request,
          "failed",
          value,
-         _
+         operation_id
        ) do
     validate(request) == :ok and keys?(value, ~w(code checked_at_ms generation record)) and
       value["code"] == "write_deadline_elapsed" and revision?(value["checked_at_ms"]) and
       value["checked_at_ms"] >= deadline and revision?(value["generation"]) and
       summary?(value["record"], value["generation"]) and
       value["record"]["key"] == request["key"] and
+      value["record"]["operation_id"] != operation_id and
       value["record"]["revision"] == request["expected_revision"]
   end
 

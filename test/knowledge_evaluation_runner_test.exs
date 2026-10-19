@@ -87,9 +87,22 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
     }
   end
 
-  for scenario <- [:current, :suppressed] do
-    @tag scenario: scenario
-    test "all seven variants preserve #{scenario} source selection and canonical model accounting",
+  for {scenario, selected, initialized, model_kinds} <-
+        [
+          {:current, "all seven variants", 16, ~w(embedding extraction rerank answer)},
+          {:suppressed, "lexical", 2, ~w(answer)},
+          {:suppressed, "graph_explicit", 3, ~w(answer)},
+          {:suppressed, "graph_model", 3, ~w(extraction answer)},
+          {:suppressed, "dense", 2, ~w(embedding answer)},
+          {:suppressed, "hybrid", 2, ~w(embedding answer)},
+          {:suppressed, "rerank", 2, ~w(embedding rerank answer)},
+          {:suppressed, "research", 2, ~w(answer)}
+        ] do
+    @tag scenario: scenario,
+         selected_variant: selected,
+         initialized: initialized,
+         model_kinds: model_kinds
+    test "#{selected} preserves #{scenario} source selection and canonical model accounting",
          ctx do
       scenario = ctx.scenario
       {server, origin, tag} = model_fixture()
@@ -150,7 +163,15 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
           )
       }
 
-      plan = matrix_plan(ctx, origin)
+      plan =
+        matrix_plan(ctx, origin)
+        |> Map.update!("variants", fn variants ->
+          if scenario == :current,
+            do: variants,
+            else: Enum.filter(variants, &(&1["id"] == ctx.selected_variant))
+        end)
+
+      variant_count = if scenario == :current, do: 7, else: 1
 
       for {name, value} <- [
             {"plan", plan},
@@ -176,7 +197,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
                  )
 
         assert report["execution_complete"], inspect(report)
-        assert report["rows"] == 14
+        assert report["rows"] == 2 * variant_count
         snapshots = jsonl(Path.join(output, "resources.jsonl"))
 
         for variant <- plan["variants"] do
@@ -214,15 +235,20 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
           end
         end
 
-        gateway_calls = JSON.decode!(File.read!(Path.join(output, "gateway-calls.json")))
-        gateway_summary = JSON.decode!(File.read!(Path.join(output, "gateway-summary.json")))
+        if scenario == :current or ctx.selected_variant == "research" do
+          gateway_calls = JSON.decode!(File.read!(Path.join(output, "gateway-calls.json")))
+          gateway_summary = JSON.decode!(File.read!(Path.join(output, "gateway-summary.json")))
 
-        assert gateway_summary == %{
-                 "call_limit" => 22,
-                 "recorded_calls" => length(gateway_calls),
-                 "rejected_over_limit" => 0,
-                 "request_count" => length(gateway_calls)
-               }
+          assert gateway_summary == %{
+                   "call_limit" => 22,
+                   "recorded_calls" => length(gateway_calls),
+                   "rejected_over_limit" => 0,
+                   "request_count" => length(gateway_calls)
+                 }
+        else
+          refute File.exists?(Path.join(output, "gateway-calls.json"))
+          refute File.exists?(Path.join(output, "gateway-summary.json"))
+        end
 
         preflight = JSON.decode!(File.read!(Path.join(output, "preflight.json")))
         assert preflight["status"] == "ok"
@@ -232,7 +258,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
                  Enum.map(plan["variants"], & &1["id"])
 
         initialized = Enum.flat_map(preflight["variants"], & &1["value"]["initialization"])
-        assert length(initialized) == 16
+        assert length(initialized) == ctx.initialized
         assert Enum.all?(initialized, &(&1["initialized"] and &1["cleanup"] == "confirmed"))
         assert Enum.all?(initialized, &(&1["options_validated"] in [true, nil]))
         assert Path.wildcard(Path.join(output, "preflight/**/extension-state-v1/**")) == []
@@ -264,19 +290,21 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
         for secret <- ~w(PRIVATE_FORGOTTEN PRIVATE_EXPIRED NEVER_PROVIDER_INPUT),
             do: refute(encoded =~ secret)
 
-        for kind <- ~w(embedding extraction rerank answer),
+        for kind <- ctx.model_kinds,
             do: assert(Enum.any?(requests, &(&1["fixture_operation"] == kind)), kind)
 
         usage = jsonl(Path.join(output, "usage.jsonl"))
-        assert Enum.count(usage, &Map.has_key?(&1, "budget")) == 7
+        assert Enum.count(usage, &Map.has_key?(&1, "budget")) == variant_count
 
         assert Enum.sum(for row <- usage, row["budget"], do: row["budget"]["request_count"]) ==
                  length(requests)
 
         events = jsonl(Path.join(output, "execution.jsonl"))
-        assert Enum.count(events, &(&1["phase"] == "close" and &1["status"] == "ok")) == 7
 
-        if scenario == :suppressed,
+        assert Enum.count(events, &(&1["phase"] == "close" and &1["status"] == "ok")) ==
+                 variant_count
+
+        if scenario == :suppressed and ctx.selected_variant != "research",
           do:
             assert(
               Enum.any?(
@@ -1156,70 +1184,9 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
     end
   end
 
-  test "CLI freezes copied selections and enforces frozen execution and hash-before-label phases",
+  test "CLI freezes copied selections, verifies execution and creates an unmeasured blind review",
        ctx do
-    {paths, root} = cli_inputs(ctx, false)
-    label_input = JSON.decode!(File.read!(paths["queries"]))
-
-    label_input =
-      Map.update!(label_input, "queries", fn rows ->
-        Enum.map(rows, fn row ->
-          row
-          |> Map.put("expected_class", if(row["query_id"] == "Q1", do: "open", else: "abstain"))
-          |> Map.put(
-            "expected_answer",
-            if(row["query_id"] == "Q1", do: "Release requires quiescence.")
-          )
-          |> Map.put("relevance", [])
-        end)
-      end)
-
-    File.write!(paths["queries"], JSON.encode!(label_input))
-    repository = Path.join(root, "repository")
-    File.mkdir!(repository)
-    File.write!(Path.join(repository, "README.md"), "Synthetic CLI identity fixture.\n")
-
-    for args <- [
-          ["init", "-q"],
-          ["add", "README.md"],
-          [
-            "-c",
-            "user.name=Fixture",
-            "-c",
-            "user.email=fixture@example.invalid",
-            "commit",
-            "-qm",
-            "Synthetic fixture"
-          ]
-        ] do
-      {message, status} = System.cmd("git", ["-C", repository | args], stderr_to_stdout: true)
-      assert status == 0, message
-    end
-
-    members =
-      for name <- ~w(corpus queries),
-          do: %{
-            "path" => name <> ".json",
-            "sha256" => Ipse.Extensions.Manifest.sha256(File.read!(paths[name]))
-          }
-
-    bytes = JSON.encode!(%{"files" => members})
-    manifest = Path.join(root, "manifest.json")
-    File.write!(manifest, bytes)
-
-    declared =
-      put_in(plan(ctx), ["data", "manifest_sha256"], Ipse.Extensions.Manifest.sha256(bytes))
-
-    File.write!(paths["plan"], JSON.encode!(declared))
-
-    {sealed, 0} =
-      cli(
-        ["--phase", "freeze", "--plan", paths["plan"], "--output", Path.join(root, "seal")],
-        repository
-      )
-
-    assert sealed["status"] == "ok"
-    frozen = ["--freeze", sealed["result"]["path"], "--freeze-sha256", sealed["result"]["sha256"]]
+    {paths, root, manifest, sealed, frozen} = cli_frozen_inputs(ctx)
     output = Path.join(root, "frozen-results")
 
     {summary, 0} =
@@ -1297,6 +1264,13 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
 
     assert unmeasured["result"]["gates"]["support"]["status"] == "unmeasured"
     assert File.regular?(Path.join(root, "unmeasured-scores/scores.json"))
+  end
+
+  test "CLI refuses mode changes and verifies prediction hashes before labels or review inputs",
+       ctx do
+    {paths, root, _manifest, _sealed, frozen} = cli_frozen_inputs(ctx)
+    prediction_path = Path.join(root, "unparsed-predictions.jsonl")
+    File.write!(prediction_path, "not parsed before the hash check\n")
 
     {rejected, 1} =
       cli(
@@ -1332,7 +1306,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
             "--data-manifest",
             "must-not-open",
             "--predictions",
-            Path.join(output, "predictions.jsonl"),
+            prediction_path,
             "--prediction-sha256",
             String.duplicate("0", 64),
             "--labels",
@@ -1361,6 +1335,72 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
       ])
 
     assert rejected["reason"]["code"] == "execution_mode"
+  end
+
+  defp cli_frozen_inputs(ctx) do
+    {paths, root} = cli_inputs(ctx, false)
+    label_input = JSON.decode!(File.read!(paths["queries"]))
+
+    label_input =
+      Map.update!(label_input, "queries", fn rows ->
+        Enum.map(rows, fn row ->
+          row
+          |> Map.put("expected_class", if(row["query_id"] == "Q1", do: "open", else: "abstain"))
+          |> Map.put(
+            "expected_answer",
+            if(row["query_id"] == "Q1", do: "Release requires quiescence.")
+          )
+          |> Map.put("relevance", [])
+        end)
+      end)
+
+    File.write!(paths["queries"], JSON.encode!(label_input))
+    repository = Path.join(root, "repository")
+    File.mkdir!(repository)
+    File.write!(Path.join(repository, "README.md"), "Synthetic CLI identity fixture.\n")
+
+    for args <- [
+          ["init", "-q"],
+          ["add", "README.md"],
+          [
+            "-c",
+            "user.name=Fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "commit",
+            "-qm",
+            "Synthetic fixture"
+          ]
+        ] do
+      {message, status} = System.cmd("git", ["-C", repository | args], stderr_to_stdout: true)
+      assert status == 0, message
+    end
+
+    members =
+      for name <- ~w(corpus queries),
+          do: %{
+            "path" => name <> ".json",
+            "sha256" => Ipse.Extensions.Manifest.sha256(File.read!(paths[name]))
+          }
+
+    bytes = JSON.encode!(%{"files" => members})
+    manifest = Path.join(root, "manifest.json")
+    File.write!(manifest, bytes)
+
+    declared =
+      put_in(plan(ctx), ["data", "manifest_sha256"], Ipse.Extensions.Manifest.sha256(bytes))
+
+    File.write!(paths["plan"], JSON.encode!(declared))
+
+    {sealed, 0} =
+      cli(
+        ["--phase", "freeze", "--plan", paths["plan"], "--output", Path.join(root, "seal")],
+        repository
+      )
+
+    assert sealed["status"] == "ok"
+    frozen = ["--freeze", sealed["result"]["path"], "--freeze-sha256", sealed["result"]["sha256"]]
+    {paths, root, manifest, sealed, frozen}
   end
 
   defp cli_inputs(ctx, failed) do

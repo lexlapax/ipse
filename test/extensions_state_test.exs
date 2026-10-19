@@ -110,6 +110,7 @@ defmodule Ipse.Extensions.StateTest do
           Map.put(failure, "checked_at_ms", -1),
           put_in(failure, ["record", "key"], "other"),
           put_in(failure, ["record", "revision"], 0),
+          put_in(failure, ["record", "operation_id"], operation_id),
           put_in(failure, ["record", "operation_id"], "invalid")
         ] do
       refute State.valid_outcome?(request, "failed", invalid, operation_id)

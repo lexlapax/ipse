@@ -283,7 +283,16 @@ reviews report no further findings. Local source, macOS native, corpus, installe
 and exact-candidate Linux native-enabled checks pass. External acceptance remains
 pending in the [remediation record](archive/2026-10-19-p26-remediation/index.md).
 The automatically triggered GitHub run adds Elixir 1.18 / OTP 27 compatibility
-evidence and does not block external review while pending.
+evidence and did not block external review while pending. The
+[second external review](archive/2026-10-19-p26-remediation/review-2.md) accepts the
+P26 code scope, identifies one low-severity failed-receipt validation gap, and
+confirms that the run failed in inherited P27 60-second fixtures. The receipt
+correction and all 60 focused tests pass with an explicit 60,000-ms deadline.
+After measuring the accumulated work, the independent suppression Session cases
+and CLI refusal checks now have separate fixture units; the full seven-variant
+current-source integration case remains. A fresh three-reviewer adversarial
+review of the entire P26 milestone found no actionable defect. Refreshed full,
+native, installed and hosted verification remain open; no waiver has been granted.
 
 Implementation `108aa86` and diagnostic-worker cleanup repair `fb4627e` retain
 their applicable source/native/package and exact-source hosted evidence. Local causal reproduction and controlled

@@ -196,7 +196,12 @@ Import each exported `{key,value}` with
 Import suppression before active notes and preserve it. Older active backups
 cannot override existing suppression. Import preserves the original expiry,
 including an expiry already in the past. An expired restored note stays hidden
-and cannot be renewed under that source. Stale source generations, excessive
+and cannot be renewed under that source. A newer-generation expired import may
+also replace a live note and immediately hide it. Review the imported expiry
+before approving. A valid version-one import may replace a live version-two note;
+the imported note then stays hidden until you explicitly migrate it. Both
+replacements still need the current target revision and a strictly greater
+source generation. Stale source generations, excessive
 retention, malformed records, and unsupported schemas refuse explicitly.
 You may restore version-one active records unchanged, but they and their declared
 dependents stay hidden until you explicitly migrate the restored records. For

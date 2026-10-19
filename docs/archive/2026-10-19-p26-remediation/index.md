@@ -127,6 +127,41 @@ The [external re-review request](external-review-prompt.md) pins corrected candi
 `b1dc82094afdae8708cdb45dea16beb6c948f88b`. It follows the completed internal
 review/repair and local platform checks. External acceptance remains open.
 
+## Second external review and follow-up
+
+The user supplied the [second external report](review-2.md) from
+`serenity:/tmp/ipse-p26-review-r2.md`. It accepts the candidate's P26 code scope
+subject to one low-severity receipt correction and the unresolved hosted gate.
+Its independent Linux full suite passed 1,177 tests with 15 exclusions, and its
+Linux package build and extracted-package checks passed. These are the reviewer's
+receipts, distinct from the root's earlier source-only Linux run.
+
+The failed-deadline validator accepted a receipt naming the failing operation as
+the previous writer. Adding that tamper case to the existing State test reproduced
+the defect: zero of one selected tests passed. The validator now requires a
+different previous operation ID, and all seven State tests pass. Refreshed full
+verification remains required. The manuals also explain that an approved
+newer-generation import may replace a live note with an expired record or a
+version-one record, making it hidden immediately or until migration respectively.
+The developer test instructions now include the generic State receipt tests.
+
+Hosted run `39295194794` is terminal and failed `mix test` on both jobs.
+Ubuntu timed out in the seven-variant suppressed-source fixture; macOS also timed
+out in the CLI freeze fixture. Later steps were skipped. The reviewer observed
+the same seven-variant timeout at pre-repair revisions `a3007ee` and `8183920`.
+That establishes an inherited failure, not a passing gate. No waiver has been
+granted. Investigation retains the existing 60-second test deadline, assertions,
+cleanup and runtime authority boundaries.
+
+The [follow-up investigation and internal review](review-2-follow-up.md) records
+the before/after receipt check, measured fixture work, assertion-preserving test
+separation and the initial focused review. At the user's clarification, a fresh
+three-reviewer panel then challenged the entire P26 milestone, including unchanged
+implementation; all returned PASS with no actionable findings. The explicit
+60,000-ms focused run passed 60 tests in 207.0 seconds. Build, both formatter
+versions and strict compilation pass. Full baseline, refreshed native/package
+checks and a new hosted candidate remain pending.
+
 ## Prior hosted evidence audit
 
 During remediation, the final step metadata for prior P27 source

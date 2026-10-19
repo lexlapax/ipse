@@ -129,7 +129,10 @@ or old backup cannot establish that a source was never forgotten.
 An explicit import may restore an already-expired active record with its original
 expiry. This preserves the backup without renewing visibility. A previously
 expired or suppressed target cannot be renewed by remember or another active
-import. Export is an operator command and may retain text hidden from model tools;
+import. A newer-generation expired import may replace a still-live target;
+the replacement becomes hidden immediately. The write deadline still comes from
+the live target, not the imported expiry. Export is an operator command and may
+retain text hidden from model tools;
 collection, backup retention and earlier journal disclosure remain distinct.
 Trace the complete-export regression through a missing-parent child, a forgotten
 ancestor, an expired record and a fresh target. Compare visibility after the
@@ -137,6 +140,9 @@ parent arrives and after an approved dependency-removing update in both stores.
 
 Import may restore valid version-one active values unchanged. They and their
 declared derivatives remain hidden until explicit approved migration to version 2.
+A newer-generation version-one import may also replace a live version-two target,
+making it legacy and hidden until migration. Import preserves the approved schema
+and expiry rather than silently upgrading either.
 Remember also refuses updates to an unmigrated target. Migration preserves expiry,
 provenance, and source generation, and cannot make an expired record visible.
 Active import cannot replace an unmigrated target either. Incoming suppression
@@ -159,7 +165,7 @@ automatic policy needs a reviewed generic host invalidation contract.
 
 ```sh
 mix test test/extensions_memory_test.exs test/extensions_memory_session_test.exs
-mix test test/extensions_state_binding_test.exs test/extensions_state_scan_test.exs
+mix test test/extensions_state_test.exs test/extensions_state_binding_test.exs test/extensions_state_scan_test.exs
 ```
 
 Domain fixtures teach source versions, expiry, ranking, derivatives, migration, and
