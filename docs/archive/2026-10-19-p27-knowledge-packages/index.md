@@ -148,3 +148,10 @@ embedding or text-model inference ran for this checkpoint. Held-out corpus,
 qrels and expected answers remain sealed. The preregistered quality thresholds
 are decisions, not measurements. Preserve failed rows and do not infer semantic
 support from literal quotation or transport success.
+
+## Paused continuation
+
+The [2026-10-19 continuation](continuation.md) records the later source state,
+interrupted actual comparison, retained failures, private local backup and open
+tasks. P27 was paused at the user's request before assessment of newly reported
+external P26 findings. Earlier checkpoint claims above retain their original scope.

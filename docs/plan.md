@@ -67,7 +67,8 @@ The research subject is optional working/long-term memory, research, graph and
 RAG, including the operator's Zero-Mem inspiration. P26A/P26B's explicit-note
 baseline is complete: implementation `108aa86`, with the diagnosed worker cleanup
 repair and local/hosted gates at `fb4627e`. P27 research, graph and RAG development
-is active; media remains deferred to P28. External services remain configurable; no third-party
+is paused at the user's request, with implementation and verification incomplete;
+media remains deferred to P28. External services remain configurable; no third-party
 engine, database or mandatory backend is selected.
 
 | Milestone or gate | Current state | Next result |
@@ -76,13 +77,13 @@ engine, database or mandatory backend is selected.
 | [P24: architecture/security readiness](#p24-independent-architecture-validation-and-baseline-security) | Complete for supervised P25 at `375e607`; accepted limits recorded | Refresh affected validation after trial changes |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Complete within declared supervision/assistance at `3307563`; security findings triaged and corrected scopes verified | Preserve frozen evidence; select a later production increment separately |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Complete within P26A/P26B scope; cleanup repair and platform gates pass at `fb4627e` | Preserve suppression, explicit retention and affected-session recovery |
-| [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Active; architecture, implementation and validation incomplete | Configurable independent packages, reviewed host contracts and matched held-out evaluation |
+| [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Paused at user request; architecture, implementation and validation incomplete | Assess reported P26 findings, then resume from the saved P27 continuation |
 | [P28: voice and media](#p28-voice-and-realtime-media) | Deferred; unimplemented | Explicit media contracts and later device/service validation |
 | [Apache-2.0 transition](#license-transition) | Complete; local and hosted `7bb642b` checks pass | Preserve bundled identity/recovery and third-party license boundaries |
 
 The requested P22–P25 campaign and separate Apache-2.0 transition are complete
 within their documented scopes. P26A/P26B are complete after the cleanup repair;
-P27 is active and P28 remains deferred. Preserve P25's frozen
+P27 is paused and P28 remains deferred. Preserve P25's frozen
 inputs, runners, source/review/scan identities, scores and failed attempts; newer
 documentation does not rescan code or expand an earlier verdict. P27 follows the
 researched proposal; further memory automation remains separately scoped. Keep P28
@@ -316,7 +317,14 @@ the [extension contract](developer/memory.md) owns suppression and measurement l
 
 ## P27: optional research, graph and RAG
 
-**Active; implementation and verification incomplete.** Independently built Corpus,
+**Paused at user request; implementation and verification incomplete.** The
+[continuation record](archive/2026-10-19-p27-knowledge-packages/continuation.md)
+preserves the stopped comparison, evidence identities, protocol defects, CI
+failures and remaining tasks. External P26 gaps have been reported but not yet
+assessed here. Resume only after the user's request and reconciliation of any
+affected shared-host verification.
+
+Independently built Corpus,
 Graph and Research packages now have source and extracted-runtime protocol proofs;
 the domain inference, lifecycle and held-out quality gates remain open. Build independently useful
 research orchestration, graph augmentation and corpus retrieval packages on

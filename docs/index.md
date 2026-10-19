@@ -41,6 +41,9 @@ The [plan](plan.md) records priorities, selected scopes and acceptance decisions
 records and superseded documents with their provenance. Neither replaces current
 operating instructions. [Naming](naming.md) explains the project name.
 
+The [P27 continuation](archive/2026-10-19-p27-knowledge-packages/continuation.md)
+records its user-requested pause, preserved evidence and remaining tasks.
+
 The [license](../LICENSE), [third-party notices](../THIRD_PARTY_NOTICES.md),
 [contribution guide](../CONTRIBUTING.md), [agent rules](../AGENTS.md) and
 [security/reporting policy](../SECURITY.md) apply to repository work.
