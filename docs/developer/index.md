@@ -112,8 +112,9 @@ synthetic check. Then choose the host interaction you need:
 | Combine these contracts into a complete feature | [Worked scenarios](extension-scenarios.md) |
 
 [Explicit memory](memory.md) is a worked domain implementation using generic
-state/actions. [Knowledge extensions](knowledge-extensions.md) teaches how to
-extend that approach without silently adopting a database or service.
+state/actions. [Knowledge extensions](knowledge-extensions.md) traces the
+independent Corpus, Research and Graph workers, source-root publication, exact
+citations and projection preflight, with a ranker change exercise.
 [Capability placement](runtime-capabilities.md) helps decide when a new generic
 host contract is necessary.
 

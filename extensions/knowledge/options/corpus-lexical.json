@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "stores": {"notes": {"kind": "state", "scope": "project", "partition": "manual"}},
+  "search": {},
+  "fetch": {},
+  "retrieval": {"words": {"kind": "bm25", "version": 1}},
+  "embedding": {},
+  "rerank": {},
+  "extraction": {}
+}

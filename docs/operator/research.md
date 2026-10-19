@@ -4,6 +4,10 @@ Use `$research` for a bounded question that needs sources, comparison, and a cit
 answer. Ipse has no built-in search service. Configure a compatible MCP server
 explicitly, or provide local sources and ask for a local-only assessment.
 
+For explicit source ranking through an independently selected extension, use the
+[Research extension](research-extensions.md). Its provided ledger is separate
+from the native evidence ledger explained here.
+
 ## Prepare a retrieval service
 
 Choose a service and review its exact tools, schemas, credentials, terms, and

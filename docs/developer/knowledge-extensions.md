@@ -1,126 +1,186 @@
-# Designing a knowledge capability as an extension
+# Build and change the knowledge extensions
 
-A knowledge feature combines evidence, retrieval, storage, and sometimes inference.
-Choose each part explicitly. Ipse currently supplies explicit note extensions,
-configured MCP retrieval, a research evidence ledger, and generic extension
-contracts. It does not supply a production graph, embedding index, RAG engine,
-or automatic cross-session memory policy.
+The knowledge packages keep retrieval, investigation and attributed graphs
+outside the host agent loop. Follow one source from an explicit command to a
+current citation, then change an algorithm without bypassing source identity,
+approvals or recovery.
 
-Use this chapter to place a new feature in the existing architecture. The
-[extension SDK](extensions.md) owns protocol details;
-[memory](memory.md) teaches the implemented note domain, and
-[research](research.md) teaches evidence provenance. Historical candidate studies
-belong in the archive, not in the current runtime contract.
+Start with the [user procedure](../operator/corpus.md) and build the
+[independent artifacts](../../extensions/knowledge/README.md). Workers use the
+[SDK](extensions.md), [MCP actions](extension-mcp-actions.md),
+[embedding actions](extension-embedding-actions.md), state actions and accounted
+text requests. They do not open files, sockets or executables or load domain
+modules into Session.
 
-## Start with the user operation
+## Follow the owners
 
-Suppose a user wants to recall project facts. First implement an explicit bounded
-query over a selected store. A model tool or operator command is sufficient if
-recall happens on request. Automatic recall adds a different requirement: a
-selected before-request job must finish and publish attributed context before
-request admission. Background indexing cannot change an already frozen request.
+Read these files in order:
 
-| Requirement | Existing mechanism to inspect |
-| --- | --- |
-| Explicit remember/recall/forget/export | Memory invocation and generic state actions |
-| Retrieval from an external service | Explicit MCP selection and an operator-bound [extension call](extension-mcp-actions.md) |
-| Source-supported claims | Research source/claim ledger |
-| Read earlier recorded views | Granted fixed-range history action |
-| Run deterministic extraction at a prompt boundary | Source-bound event job |
-| Add same-request recalled evidence | Awaited before-request job and context publication |
-| Optional one-shot model extraction | Separately approved/accounted `host.model` operation |
+| Owner | Source under `extensions/knowledge/src/` | Responsibility |
+| --- | --- | --- |
+| Corpus | `corpus.ex` | Explicit source, query and indexing journeys |
+| Profiles | `profiles.ex` | Closed named algorithms and compiled capability checks |
+| Store | `store.ex` | Root CAS, immutable pages, selected generations, suppression and migration |
+| State and MCPCAS | `store/` | Approved storage requests and exact response mapping |
+| Evidence | `evidence.ex` | Source/chunk/span validation, ranking, facts and traversal |
+| Adapters | `adapters.ex` | Complete selected search, fetch, embedding and text-helper interactions |
+| Graph and Research | `graph.ex`, `research.ex` | Independent source/extract/query and investigate/ledger journeys |
 
-Read `lib/ipse/extensions/memory.ex` and its state continuation alongside
-`test/extensions_memory_session_test.exs`. Observe that the extension returns
-host proposals instead of directly writing files. This pattern preserves intent,
-approval, CAS, cancellation, and saved receipts without adding domain branches to
-Session.
+Each entrypoint implements `Ipse.Extension.describe/0`, `init/1` and `handle/3`
+directly. Shared modules own data and transport rules. They do not select another
+package for the caller or introduce a workflow interpreter.
 
-A skill can teach a method using existing tools. It cannot silently install a
-backend, enable an endpoint, create a background job, or grant private history.
-Use a core change only for a missing generic invariant or reviewed API gap.
+A compiled preset fixes authority. `state-lexical` includes State actions and
+omits MCP, embeddings and text-model grants. Its options cannot promote it to
+`state-semantic`. The builder changes one known `@preset` literal and compiles
+against the public SDK. Import, operator trust and activation remain separate.
 
-## Define identity before ranking
+## Trace a source and a query
 
-A useful retrieval record needs an exact source identity, source version, extractor
-or index version, scope, and provenance. Derived chunks need stable chunk/span
-mapping back to source text. A URL or filename alone does not identify which
-version was indexed. Keep original evidence separate from a model-written summary
-and distinguish a retrieval score from support for an answer.
+Follow `Corpus.source/2` through a small `put`. The entrypoint selects a named
+store and validates one exact lifecycle variant before any host request. Extra
+fields cannot inject another binding, provider, partition or host operation.
 
-Work through an update/forget race before choosing an algorithm:
+Store reads a bounded snapshot and validates the selected partition. A root CAS
+registers a source draft before immutable content and chunk pages are written.
+A final CAS selects those pages. Unselected pages are inert; a conflict or
+unknown effect never retries publication.
+
+Storage revision and source generation have different meanings. Every root
+mutation advances its revision. A source generation identifies one complete
+source version. Drafts, pages and citations bind that generation and its raw
+content hash. A source ID alone does not identify the indexed bytes.
+
+Now follow `Corpus.query/2` with BM25. Store returns validated selected sources,
+projections, revision tokens and coverage. Evidence ranks this captured data at
+the selected time. Corpus revalidates the captured roots immediately before
+returning. A mismatch produces a conflict instead of stale success. That final
+check cannot revoke an answer already returned elsewhere.
+
+Large inputs use explicit `open`, contiguous `append` and `publish` commands.
+Each append binds its draft, expected revision and byte offset. Publish verifies
+the declared whole-body length and SHA256. An incomplete draft stays inert, and
+resume never completes it automatically.
+
+## Separate byte identity from semantic support
+
+Evidence uses raw SHA256 for source text and vector bytes. Domain IDs hash
+ordered JSON arrays with a version and tag. Use Elixir's built-in `JSON.encode!/1`
+and `JSON.decode!/1`. They preserve Elixir `nil` as JSON `null` and provide a
+binary for byte limits. Erlang's raw `:json.encode/1` returns iodata and encodes
+the atom `nil` differently, changing persisted values and IDs.
+
+A source contains at most 64 KiB of UTF8 text. Chunking creates at most 32
+contiguous chunks of at most 2048 bytes without splitting UTF8 sequences.
+Citation offsets are bytes in the complete source. Validation binds the exact
+source generation, content hash, chunk ID, quote, quote hash, URI, times and origin.
+
+An exact quote proves which bytes were recorded. It does not prove that a claim
+follows from them. Facts retain every support citation and extraction identity.
+Conflicting assertions remain separate. Lexical results without assessed facts
+remain open for semantic support. Research's provided ledger normalizes supplied
+provenance and cannot manufacture the native [research ledger](research.md)'s
+receipt authority.
+
+Research chooses its ranking time after capturing the bounded source set. A
+gateway can stamp a fetch at completion, so using the invocation's earlier time
+would wrongly exclude that newly captured source. Follow `Research.rank/1` and
+`publish/1`: the fixed capture time drives ranking and coverage, while each
+citation retains its own observation time. Provided and fetched routes both
+report the accumulated raw text bytes. Future-dated observations remain excluded.
+
+## Read a continuation at the host boundary
+
+Store and Adapters return these private values:
+
+```elixir
+{:done, {:ok, value}}
+{:done, {:error, fixed_code, bounded_details}}
+{:call, exact_host_request, private_continuation}
+{:stop, :unknown_effect}
+```
+
+The entrypoint converts `:call` to an SDK host proposal. Its next `host.actions`
+callback resumes that exact owner. Initialize every key used by a map update;
+`%{state | key: value}` raises if `key` was absent. Private state can contain
+complete bounded text and vectors. Public results remain closed JSON objects of
+at most 12,000 encoded bytes.
+
+Unknown effects terminate the chain. They cannot become empty successful search,
+a retry or permission to switch profiles. Session owns journaling, approvals,
+accounting, cancellation and cleanup. Domain code preserves those outcomes.
+
+## Plan projections before inference
+
+Indexing and extraction first claim a source-bound projection draft. Store
+returns selected chunks, an opaque token and a capacity plan. The entrypoint
+checks the remaining effect/read allowance before inference and passes validated
+results back with that token. Store owns page packing and final publication.
+
+Two 4096-coordinate vectors require 12 coordinate pages, one manifest and one
+final CAS. With one draft claim and one embedding call, that is 16 effects.
+Result reads use their separate allowance. MCP counts every call as an effect,
+including reads. It may require one chunk or a refusal. Metadata-heavy facts may
+also need smaller explicit batches. Do not dispatch inference if its result
+cannot fit the preflight plan.
+
+Host embedding input hashes are opaque. Bind result indices to their original
+inputs and require stable host hashes across pages. Keep raw input hashes
+separately. Verify descriptor identity, offsets, full dimensions, canonical
+Base64, float32 encoding and vector SHA256. Never shorten a vector to fit a text
+response.
+
+## Preserve suppression and migration
+
+Work through this race before changing publication:
 
 ```text
-read source generation 4 → prepare extraction
-forget source generation 4 → commit suppression
-resume delayed extraction → refuse stale CAS or suppressed source
+claim source generation 4 → start extraction
+forget source generation 4 → publish permanent suppression
+finish delayed extraction → refuse stale or suppressed commit
 ```
 
-`test/extensions_memory_test.exs` exercises this race, including reread, import,
-and transitive derivatives. An implementation that checks suppression only once
-before a long computation can resurrect forgotten content at commit. Preserve
-both source-domain suppression and host storage revisions.
+Suppression roots retain hashes, generation and partition without source text,
+title or URI. Old imports and delayed drafts cannot restore them. Graph traversal
+validates every supporting source. Queries do not rebuild missing projections.
 
-Define session/project/operator sharing as an operator ceiling. Persistent memory's
-logical binding deliberately separates storage identity from exact code identity;
-it does not transfer arbitrary scope or permit changed-code session resume.
-A new backend needs equivalent ownership, finite records/bytes, stale-write
-handling, and explicit migration/export behavior. Evaluate existing Elixir/OTP
-facilities and maintained packages before adding custom protocol/storage machinery;
-record any dependency in the inventory and obtain required approvals.
+Collection removes unreachable bodies while retaining State tombstones. It does
+not recover the 256-record allowance. The 1 MiB ceiling includes old generations,
+drafts, orphan pages and tombstones. Selected exports are paged. Foreign copies
+become historical assertions and need explicit reindexing or extraction.
+Suppression cannot erase journals, backups, prior transfers or independent stores.
 
-## Specify the retrieval boundary
+The MCP store relies on the server's partition access and atomic CAS. Exact
+receipts establish what that selected server asserted. They do not verify its
+internal transactions or enforce a remote ACL.
 
-For a lexical query, document tokenization, tie-breaking, top-k, excerpt bytes, and
-no-match behavior. For a graph, also bound traversal depth, visited nodes, edges,
-and cycles. For an index, bind source/index versions and decide whether stale
-indexes refuse or require explicit rebuilding. Do not silently add embeddings,
-download weights, contact a model, or switch providers when local retrieval fails.
+## Change the lexical ranker as an exercise
 
-Use [embedding actions](extension-embedding-actions.md) for approved native vector
-generation with operation-aware usage and shared budgets. Keep the selected
-profile, reported model, dimensions and encoding bound to each index generation.
-A model alias alone does not establish unchanged weights. A service exposed
-through MCP still needs explicit endpoint, credential, selection, egress and
-unknown-remote-effect policy. Executable code making out-of-band calls is not
-automatically budgeted by Ipse.
-
-When inference is needed, select a permitted helper profile and use its approved
-accounted action. Keep extraction input, generated candidates, and accepted facts
-separate. A returned action proposal is not proof the write ran; an acknowledgment
-is not a commit receipt. See [runtime capabilities](runtime-capabilities.md).
-
-## Make gaps and retention visible
-
-Catch-up reads use authorized fixed source ranges and original event identity.
-Missing history, oversized private views, interrupted jobs, and denied writes must
-remain gaps or unknown outcomes. Explicit catch-up is new bounded work, never
-replay of old tools. Deduplicate by source, consumer identity, and operation,
-while retaining distinct identical prompts as separate occurrences.
-
-Deleting a retrieval entry does not erase original journal evidence, cached
-context, backups, or earlier provider transfers. The implemented note policy
-requires fresh affected sessions after forget. Automatic invalidation needs a
-generic host contract; a domain package must not promise it on its own.
-
-## Build a contributor proof
-
-Choose a small synthetic corpus containing an update, contradiction, expired
-record, forgotten ancestor, unanswerable query, and cross-project secret. Write
-expected source/span and abstention results before running retrieval. Measure
-recall quality separately from deterministic authority/isolation tests. If a
-candidate uses encoders or models, include their requests, resources, and known or
-unknown costs under matched budgets. A corpus score cannot prove production
-semantic quality or absence of leakage.
+1. Read `Evidence.rank_lexical/4`, tokenization and tie ordering. Record the current
+   BM25 parameters and no-match behavior.
+2. Add a development case with two sources containing the same terms at different
+   frequencies. State the expected order independently of rank output.
+3. Run the pure suite. Domain modules load only in isolated VMs.
+4. Build a fresh lexical artifact and run the independent Session proof. Check
+   exact generations/spans, revalidation and zero model requests. A direct module
+   test alone does not prove SDK behavior.
 
 ```sh
-mix test test/extensions_memory_test.exs test/extensions_memory_session_test.exs
-mix test test/research_test.exs test/research_session_test.exs
+mix test test/knowledge_evidence_test.exs test/knowledge_profiles_test.exs
+mix test test/knowledge_store_test.exs test/knowledge_packages_test.exs
+mix test test/knowledge_build_spec_test.exs
 ```
 
-Use these existing implementations as source-reading exercises, then add focused
-fixtures for the new package. Prove default-off empty effects, explicit scope,
-approval refusal, stale commit rejection, bounded output, cancellation, and inert
-resume before adding automatic lifecycle behavior. The [installed extension
-example](extension-proof.md) illustrates independent packaging; its synthetic graph
-is a teaching example, not a production engine selected by configuration.
+Use the [artifact procedure](../../extensions/knowledge/README.md#verify-independent-artifacts)
+for source execution. Run `examples/knowledge/verify-package.exs` with a bundled
+runtime and independently built artifacts for installed execution with development
+tools hidden. Both proofs assert that domain modules remain unloaded in the host.
+Build a separate Research `mcp` artifact and run
+`mix run examples/knowledge/verify-research.exs ARTIFACT` to follow the complete
+search, paged fetch and citation path. Inspect the exact approval bindings,
+captured-body hash, completion-time observation and the negative-result cases.
+The [Research procedure](../operator/research-extensions.md) documents the closed
+gateway contract; a tool with a similar name need not implement it.
+Keep protocol checks separate from held-out retrieval, semantic support, citation
+and resource measurements. The [plan](../plan.md#p27-optional-research-graph-and-rag)
+owns their acceptance status; a passing fixture does not establish model quality.

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "stores": {},
+  "search": {"given": {"kind": "provided", "version": 1}},
+  "fetch": {"given": {"kind": "provided", "version": 1}},
+  "retrieval": {"words": {"kind": "bm25", "version": 1}},
+  "embedding": {},
+  "rerank": {},
+  "extraction": {}
+}

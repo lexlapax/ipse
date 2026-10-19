@@ -53,7 +53,7 @@ and its own license/dependency inventory.
 
 | Dependency | Version/source | Scope and purpose | License |
 | --- | --- | --- | --- |
-| Elixir and Mix | Elixir 1.18+; `mix.exs` requires `~> 1.18` | Core implementation, build, release, ExUnit tests, scripts | Apache-2.0 |
+| Elixir and Mix | Elixir 1.18+; `mix.exs` requires `~> 1.18` | Core implementation, build, release, ExUnit tests, scripts; knowledge workers use standard-library `JSON` for binary encoding and Elixir null handling | Apache-2.0 |
 | Erlang/OTP and ERTS | OTP 27+; system toolchain or bundled release | VM, OTP supervision, crypto, public-key/TLS, HTTP, filesystem and process APIs | Apache-2.0 with component notices |
 | Jason | Git tag `v1.4.4`, commit `926d2ac6cc0271b9a7079b2ec16ae0cf802f7963` in `mix.lock`; direct override for shared package requirements | JSON for HTTP, native protocol, and journals | Apache-2.0 |
 | MCP Elixir SDK | Hex `mcp_elixir_sdk` 1.1.0, pinned in `mix.exs` and `mix.lock` | MCP 2025-11-25 client handshake, request matching, and protocol types; Ipse supplies bounded stdio/HTTP transports and reuses the SDK's SSE parser | MIT |

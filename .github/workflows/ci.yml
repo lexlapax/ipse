@@ -53,6 +53,23 @@ jobs:
           elixir examples/embedding-actions/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-embedding-actions"
           mix run examples/embedding-actions/verify.exs "$RUNNER_TEMP/ipse-embedding-actions"
           elixir examples/embedding-actions/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-embedding-actions"
+      - name: Independent knowledge preset admission
+        run: |
+          mix run examples/knowledge/verify-builds.exs _build/dev/lib/ipse/ebin "$RUNNER_TEMP/ipse-knowledge-presets"
+      - name: Independent source and installed knowledge proof
+        run: |
+          elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-knowledge/corpus" --package corpus --preset state-lexical
+          elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-knowledge/graph" --package graph --preset state-explicit
+          elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-knowledge/research" --package research --preset offline
+          elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-knowledge/corpus-mcp" --package corpus --preset mcp-lexical
+          elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-knowledge/research-mcp" --package research --preset mcp
+          mix run examples/knowledge/verify.exs "$RUNNER_TEMP/ipse-knowledge"
+          mix run examples/knowledge/verify-evaluation.exs "$RUNNER_TEMP/ipse-knowledge/corpus"
+          mix run examples/knowledge/verify-mcp.exs "$RUNNER_TEMP/ipse-knowledge/corpus-mcp"
+          mix run examples/knowledge/verify-research.exs "$RUNNER_TEMP/ipse-knowledge/research-mcp"
+          elixir examples/knowledge/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-knowledge"
+          elixir examples/knowledge/verify-mcp-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-knowledge/corpus-mcp"
+          elixir examples/knowledge/verify-mcp-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-knowledge/research-mcp" research
       - name: Experimental macOS App Sandbox enforcement
         if: runner.os == 'macOS'
         run: |

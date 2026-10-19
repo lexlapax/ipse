@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "stores": {"notes": {"kind": "state", "scope": "project", "partition": "manual"}},
+  "search": {},
+  "fetch": {},
+  "retrieval": {},
+  "embedding": {},
+  "rerank": {},
+  "extraction": {"asserted": {"kind": "explicit", "version": 1}}
+}

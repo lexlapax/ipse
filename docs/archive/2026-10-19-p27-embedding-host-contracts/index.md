@@ -114,8 +114,8 @@ contract has passed its scoped local and hosted gates.
 
 The [quality preregistration](quality-preregistration.md) records thresholds before
 held-out exposure; it is not a measured result. The [decision trail](decisions.tsv)
-preserves failures and corrections. Its initial placeholder timestamp and one
-short integration row remain historical entries with explicit later corrections.
+preserves failures and corrections. Its initial placeholder timestamp and short
+integration rows remain historical entries with explicit later corrections.
 Temporary paths identify local working receipts; committed fixtures and verifiers
 provide rerunnable checks. No credentials, private transcript or generated release
 is preserved here.

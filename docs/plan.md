@@ -316,7 +316,9 @@ the [extension contract](developer/memory.md) owns suppression and measurement l
 
 ## P27: optional research, graph and RAG
 
-**Active; implementation and verification incomplete.** Build independently useful
+**Active; implementation and verification incomplete.** Independently built Corpus,
+Graph and Research packages now have source and extracted-runtime protocol proofs;
+the domain inference, lifecycle and held-out quality gates remain open. Build independently useful
 research orchestration, graph augmentation and corpus retrieval packages on
 P14/P22/P23 and selected shared knowledge contracts. Prefer explicit tools and
 existing MCP adapters before hooks or services. Memory, research, graph and RAG
@@ -344,8 +346,8 @@ the milestone. Preserve current SDK bounds and existing operation authority.
 | P27H1 | Source-bound bounded result pages and explicit mixed read/effect allowance where necessary; unchanged legacy grants and pure saved-source validation | Complete for the MCP text contract at `2fe3583`; local source/native/installed and hosted Linux/macOS gates pass at `1f90178` |
 | P27H2 | Approved configured MCP actions from extensions; pinned descriptors, child denial, owned cancellation and unknown-outcome recovery | Complete at `2fe3583`; real stdio/HTTP, denial, cancellation and inert recovery pass; source/installed proofs pass on hosted Linux/macOS at `1f90178` |
 | P27H3 | Versioned embedding operation with selected profiles, bounded ordinary vectors, exact egress, operation-aware accounting/costs/shared budgets and no text-envelope substitution | Complete at `3e32051`; local source/macOS/installed gates and exact-source hosted Linux/macOS source/package/installed proofs pass with 768/4096-coordinate native fixtures |
-| P27A | Independent research and lexical corpus packages with named interchangeable profiles, cited evidence, explicit limits, partial failures, stale-index handling and suppression | Open |
-| P27B | Independent attributable graph, optional extraction, embedding/hybrid and rerank adapters; matched quality/resource comparisons before engine selection | Open |
+| P27A | Independent research and lexical corpus packages with named interchangeable profiles, cited evidence, explicit limits, partial failures, stale-index handling and suppression | Implementation present; final lifecycle/authority/platform and quality validation open |
+| P27B | Independent attributable graph, optional extraction, embedding/hybrid and rerank adapters; matched quality/resource comparisons before engine selection | Implementation present; actual domain inference and matched comparisons open |
 | P27 verification | Frozen held-out workload, zero authority/isolation/replay/resurrection failures, measured retrieval/support/citation/resources, source/native/installed checks, coherent user and contributor manuals | Open |
 
 The [first host-contract record](archive/2026-10-19-p27-mcp-host-contracts/index.md)
@@ -356,6 +358,11 @@ retains typed native embeddings, selected profiles and operation-aware usage,
 prices and shared budget coverage. Its local protocol proofs do not establish
 actual model quality. Hosted H3 checks pass at `3e32051`; the domain and held-out
 gates remain open.
+
+The [independent package record](archive/2026-10-19-p27-knowledge-packages/index.md)
+retains source/installed protocol evidence and controlled Research repairs. It
+does not establish model quality or select an optional engine. The full frozen
+held-out evaluation remains required before completion.
 
 ## P28: voice and realtime media
 

@@ -38,10 +38,14 @@ conversation. For an Arch source installation, use [Install on Arch Linux](arch-
   invocation, and upgrades.
 - [Memory](memory.md) stores and recalls explicit notes, including retention,
   deletion, and cross-session sharing.
+- [Source retrieval](corpus.md) builds a lexical corpus and retrieves exact passages.
+- [Graph](graph.md) records attributed facts and follows bounded relationships.
+- [Research extension](research-extensions.md) investigates supplied sources or
+  explicitly selected search/fetch tools independently of the main agent.
 - [Embeddings](embeddings.md) selects a separate model profile and explicitly
   submits text through a reviewed extension.
-- [Research](research.md) runs a bounded source-gathering task and exports its
-  evidence ledger.
+- [Native research](research.md) runs a main-agent source-gathering task and
+  exports its evidence ledger.
 - [Extension lab](extension-lab.md) tries independently built examples with
   synthetic data and no model service.
 - [Feature requests](feature-requests.md) helps you specify a skill, integration,
