@@ -171,7 +171,10 @@ defmodule Ipse.Extensions.Host do
 
   defp execute_export(entry, intent, stage, payload, owner, job_ref, prior_actions) do
     entry =
-      if Enum.any?(~w(host.usage.scan host.state.scan), &(&1 in entry.identity["capabilities"])) do
+      if Enum.any?(
+           ~w(host.usage.scan host.state.scan host.results host.actions.mixed),
+           &(&1 in entry.identity["capabilities"])
+         ) do
         Map.put(entry, :read_deadline, System.monotonic_time(:millisecond) + 120_000)
       else
         entry
@@ -227,7 +230,7 @@ defmodule Ipse.Extensions.Host do
 
   defp continue(worker, %{"kind" => "host_call"} = response, entry, owner, job_ref, actions) do
     with {:ok, request} <- Actions.proposal(response, entry.identity),
-         true <- length(actions) < Actions.limit(entry.identity, request),
+         true <- Actions.allowed?(entry.identity, request, actions),
          true <-
            not Map.has_key?(entry, :read_deadline) or
              System.monotonic_time(:millisecond) < entry.read_deadline do
@@ -254,7 +257,8 @@ defmodule Ipse.Extensions.Host do
   end
 
   defp run_action(owner, job_ref, worker, request) do
-    with :ok <- tool_context(owner, job_ref, request) do
+    with :ok <- tool_context(owner, job_ref, request),
+         :ok <- mcp_context(owner, job_ref, request) do
       run_admitted_action(owner, job_ref, worker, request)
     end
   end
@@ -282,6 +286,12 @@ defmodule Ipse.Extensions.Host do
 
   defp execute_action(context, intent, %{"op" => "model.complete"}),
     do: Ipse.Extensions.ModelCall.execute(context, intent)
+
+  defp execute_action(context, intent, %{"op" => "mcp.call"}),
+    do: Ipse.Extensions.MCPCall.execute(context, intent)
+
+  defp execute_action(context, intent, %{"op" => "effect.result.read"}),
+    do: Ipse.Extensions.EffectResult.execute(context, intent)
 
   defp execute_action(context, _intent, %{"op" => "tool.call"} = request),
     do: Ipse.Extensions.ToolAction.execute(request, context)
@@ -330,6 +340,17 @@ defmodule Ipse.Extensions.Host do
   end
 
   defp tool_context(_, _, _), do: :ok
+
+  defp mcp_context(owner, ref, %{"op" => "mcp.call"} = request) do
+    with {:ok, server, tool_id, cwd, resource} <-
+           GenServer.call(owner, {:extension_mcp_prepare, ref, request}),
+         {:ok, descriptor, binding} <-
+           Ipse.Extensions.MCPCall.discover(server, tool_id, request, cwd, resource) do
+      GenServer.call(owner, {:extension_mcp_bound, ref, request, descriptor, binding})
+    end
+  end
+
+  defp mcp_context(_, _, _), do: :ok
 
   defp nested_context(snapshot, %{"name" => "shell"}), do: {:ok, snapshot}
 

@@ -62,6 +62,7 @@ original form.
 | A sequence of host operations and private scoped records | [Host calls and state](extension-host-calls.md) |
 | Clarification that can survive process exit | [Questions](extension-questions.md) |
 | Approved file or shell work | [Workflow tool actions](extension-tool-actions.md) |
+| Approved selected external calls and complete bounded result reads | [MCP actions](extension-mcp-actions.md) |
 | Calls between explicitly routed extensions | [Service composition](extension-services.md) |
 | Bounded reference text with recorded provenance | [Context and evidence](extension-context.md) |
 | Read-only prompt or completed-answer delivery | [Boundary notifications](extension-events.md) |

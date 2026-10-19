@@ -193,6 +193,13 @@ defmodule Ipse.Extensions.Registry do
             do: Map.put(identity, "state_binding", Map.delete(binding, "instance")),
             else: identity
 
+        mcp_bindings = Ipse.Extensions.MCPCall.bindings(ceiling, instance["instance"])
+
+        identity =
+          if mcp_bindings == [],
+            do: identity,
+            else: Map.put(identity, "mcp_bindings", mcp_bindings)
+
         {:cont,
          {:ok,
           entries ++
@@ -339,6 +346,14 @@ defmodule Ipse.Extensions.Registry do
       Ipse.Extensions.Contributions,
       Ipse.Extensions.ToolAction,
       Ipse.Extensions.ModelCall,
+      Ipse.Extensions.MCPCall,
+      Ipse.Extensions.EffectResult,
+      Ipse.MCP,
+      Ipse.MCP.Client,
+      Ipse.MCP.Config,
+      Ipse.MCP.Catalog,
+      Ipse.MCP.Transport,
+      Ipse.MCP.HTTPTransport,
       Ipse.Profiles,
       Ipse.Provider.Request,
       Ipse.Provider,

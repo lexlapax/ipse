@@ -128,6 +128,8 @@ Use these distinctions when reading an artifact's requested grants:
 | `invoke.tool`, `invoke.command`, `invoke.service` | Manifest-declared typed invocation exports |
 | `host.state.read`, `.write`, `.scan`, `.bound` | Scoped state reads, separately approved writes, extended read scans, or required logical bindings |
 | `host.question`, `host.tools`, `host.model`, `host.services`, `host.context` | Explicit questions, bounded built-in tools, approved profile inference, bound value-service calls, or context publications |
+| `host.mcp`, `host.results` | Separately approved operator-bound MCP calls and bounded reads of their same-invocation saved results |
+| `host.actions.mixed` | Up to 512 reads and 16 other calls under existing per-operation grants and approvals |
 | `host.history` and `host.history.*` | This session's metadata and separately selected historical private views |
 | `host.usage`, `.scan`, `.children` | Accounting reads, extended scans, or registered direct-child accounting |
 | `stream.text`, `stream.text.events` | Private visible text and optional explicit frame identity |
@@ -162,9 +164,10 @@ standalone services are admitted only while idle. Approving an enclosing tool
 or invoking a command does not approve a later proposed write or model request.
 
 Each callback returns schema-checked values. Ordinary invocations allow 16 host
-operations, with separately granted state/accounting read scans extending only
-those families. An SDK object is at most 16 KiB; ordinary callback text input is
-at most 8 KiB. Up to 10000 invocations fit one session. Intent is saved before
+operations, with separately granted state/accounting/result reads extending only
+those families. Explicit mixed authority permits reads followed by approved
+actions within its separate counters. An SDK object is at most 16 KiB; ordinary
+callback text input is at most 8 KiB. Up to 10000 invocations fit one session. Intent is saved before
 startup, and a result commits only after validation and confirmed cleanup.
 Crash, timeout, invalid output, or interruption can leave an unknown effect;
 there is no automatic retry.
@@ -204,9 +207,10 @@ the callback. An answer starts a saved continuation but grants no effect approva
 Headless and child sessions cannot choose an answer silently. Interrupted
 post-answer work stays unknown and never replays automatically.
 
-Workflow tool access supports bounded read/write/edit/shell calls, not MCP or
-delegation. Ordinary path, `.git`, workspace instructions, shell sandbox, and
-approval rules apply. New nested guidance stops before execution; review
+Workflow tool access supports bounded read/write/edit/shell calls. MCP uses the
+separate [selected-item binding procedure](mcp.md#allow-a-reviewed-extension-to-use-a-selected-item).
+Delegation is unavailable through host calls. Ordinary path, `.git`, workspace
+instructions, shell sandbox, and approval rules apply. New nested guidance stops before execution; review
 `/context` before another explicit invocation. Calls declare 1..30000 ms deadlines;
 results must fit 4 KiB text and the full escaped envelope. Oversized reads return
 a known failure without partial data. Incomplete shell work can be unknown.

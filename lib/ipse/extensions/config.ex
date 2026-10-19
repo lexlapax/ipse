@@ -81,6 +81,16 @@ defmodule Ipse.Extensions.Config do
         "allow_project" => %{"type" => "boolean"},
         "allow_children" => %{"type" => "boolean"},
         "text_required" => %{"type" => "boolean"},
+        "mcp_bindings" => %{
+          "type" => "array",
+          "maxItems" => 64,
+          "items" => %{
+            "type" => "object",
+            "additionalProperties" => false,
+            "required" => ~w(instance alias tool),
+            "properties" => Map.new(~w(instance alias tool), &{&1, @identifier})
+          }
+        },
         "state_bindings" => %{
           "type" => "array",
           "maxItems" => 8,
@@ -169,6 +179,10 @@ defmodule Ipse.Extensions.Config do
              not Enum.any?(
                Map.get(ceiling, "state_bindings", []),
                &(&1["instance"] == instance["instance"])
+             ) and
+             not Enum.any?(
+               Map.get(ceiling, "mcp_bindings", []),
+               &(&1["instance"] == instance["instance"])
              ))
     end
   end
@@ -183,6 +197,7 @@ defmodule Ipse.Extensions.Config do
     artifact?(trust["artifact"]) and unique?(trust["capabilities"]) and
       (trust["text_required"] != true or "stream.text" in trust["capabilities"]) and
       valid_state_bindings?(Map.get(trust, "state_bindings", [])) and
+      Ipse.Extensions.MCPCall.trust_bindings?(Map.get(trust, "mcp_bindings", [])) and
       Ipse.Extensions.Services.validate_bindings(Map.get(trust, "service_bindings", [])) and
       Enum.all?(trust["capabilities"], &Regex.match?(~r/\A[a-z][a-z0-9_.-]{0,127}\z/, &1)) and
       (not Map.has_key?(trust, "expires_at") or is_integer(trust["expires_at"]))

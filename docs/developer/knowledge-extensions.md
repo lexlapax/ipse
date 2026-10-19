@@ -23,7 +23,7 @@ request admission. Background indexing cannot change an already frozen request.
 | Requirement | Existing mechanism to inspect |
 | --- | --- |
 | Explicit remember/recall/forget/export | Memory invocation and generic state actions |
-| Retrieval from an external service | Explicit MCP tool/resource selection |
+| Retrieval from an external service | Explicit MCP selection and an operator-bound [extension call](extension-mcp-actions.md) |
 | Source-supported claims | Research source/claim ledger |
 | Read earlier recorded views | Granted fixed-range history action |
 | Run deterministic extraction at a prompt boundary | Source-bound event job |

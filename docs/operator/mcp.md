@@ -65,6 +65,72 @@ system instructions. Resources expose bounded text. Invalid/non-text
 resource/prompt results stop as unknown; ordinary tool results identify omitted
 unsupported blocks. Returned content grants no permissions.
 
+## Allow a reviewed extension to use a selected item
+
+An extension can call one explicitly bound MCP item when it declares
+`host.actions` and `host.mcp`. Import and review the artifact using the
+[extension procedure](extensions.md#import-an-independently-built-artifact).
+Its author must supply its options, capabilities, export schema and binding
+aliases. Binding an item does not approve its execution.
+
+For the independently built [MCP reader example](../../examples/mcp-actions/README.md),
+save this complete operator configuration. Replace `DIGEST` in both places with
+the imported artifact's printed digest. The selected MCP server must have ID
+`fixture` and an allowlisted `fetch` tool accepting the example's `text` field.
+Use the example verifier for a credential-free temporary fixture; this template
+does not install or start a document service.
+
+```json
+{
+  "version": 1,
+  "extension_trust": [{
+    "artifact": "DIGEST",
+    "capabilities": ["invoke.command", "host.actions", "host.mcp", "host.results",
+      "host.actions.mixed", "host.state.read", "host.question"],
+    "allow_project": false,
+    "allow_children": false,
+    "mcp_bindings": [{"instance":"reader","alias":"documents","tool":"mcp__fixture__fetch"}]
+  }],
+  "extensions": [{
+    "instance": "reader", "artifact": "DIGEST", "enabled": true,
+    "options": {}, "order": 10, "lifetime": "persistent"
+  }]
+}
+```
+
+Launch with both selected configurations:
+
+```sh
+ipse chat --provider chatgpt --config /private/path/extensions.json \
+  --no-project-config --mcp-config /private/path/mcp.json --cwd /path/to/workspace
+```
+
+The explicit command below uses no conversation-model inference. Its MCP service
+still has its own execution permissions and possible service costs:
+
+```text
+/ext ext__reader__read {"request":{"op":"mcp.call","version":1,"binding":"documents","arguments":{"text":"Public synthetic request"},"timeout_ms":5000},"read":true}
+```
+
+Approval displays the extension identity, complete request, alias, descriptor
+schema, manifest and redacted server configuration. Check those fields before
+allowing the call. Startup/discovery can happen before that decision; denial
+prevents call dispatch. Changed descriptors refuse before dispatch. Project
+configuration cannot supply bindings. Children cannot use them, even if an
+extension otherwise permits child use.
+
+Successful text is saved privately before the command receives its descriptor.
+The reader consumes UTF-8 windows of at most 4096 bytes and displays only the
+complete byte count and hash. The complete source is bounded to 65536 bytes.
+It remains in the journal; a short displayed answer is not a privacy erasure.
+`host.results` reads only earlier successful sources in the same invocation.
+
+`host.actions.mixed` is a separate explicit grant for workflows that need many
+reads before taking an approved action. It permits up to 512 reads and 16 other
+calls, with a two-minute admission deadline. Each operation still needs its own
+capability and approval policy. Existing scan grants keep their original limits.
+Interrupted work remains unknown and idle resume never dispatches it again.
+
 ## Set a local server's permissions
 
 `sandbox: "off"` runs a trusted server with your user permissions, separately

@@ -6,7 +6,8 @@ defmodule Ipse.MCP.HTTPTransport do
   @body_limit 262_144
   @traffic_limit 1_048_576
 
-  def start_link(opts), do: GenServer.start_link(__MODULE__, opts)
+  # SDK ownership uses a monitor so its exit cannot interrupt asynchronous pool cleanup.
+  def start_link(opts), do: GenServer.start(__MODULE__, opts)
   def send_message(pid, message), do: GenServer.call(pid, {:send, message})
   def close(pid), do: Transport.close(pid)
 

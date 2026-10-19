@@ -82,7 +82,7 @@ defmodule Ipse.Extensions.History do
   end
 
   defp anchor?(record, snapshot, identity_sha256) do
-    record["type"] == "extension_action_intent" and record["version"] === 1 and
+    record["type"] == "extension_action_intent" and record["version"] in [1, 2] and
       record["operation_id"] == snapshot["operation_id"] and
       record["namespace"] == snapshot["session_id"] and
       record["identity_sha256"] == identity_sha256 and

@@ -2,6 +2,12 @@ defmodule Ipse.Extensions.Operation do
   @moduledoc "Closed host-operation contracts; proposals are not permission grants."
   alias Ipse.Extensions.State
 
+  def validate(%{"op" => "mcp.call"} = request),
+    do: Ipse.Extensions.MCPCall.validate(request)
+
+  def validate(%{"op" => "effect.result.read"} = request),
+    do: Ipse.Extensions.EffectResult.validate(request)
+
   def validate(%{"op" => "model.complete"} = request),
     do: Ipse.Extensions.ModelCall.validate(request)
 
@@ -38,6 +44,8 @@ defmodule Ipse.Extensions.Operation do
   def tool?(request), do: is_map(request) and request["op"] == "tool.call"
   def service?(request), do: is_map(request) and request["op"] == "service.call"
   def model?(request), do: Ipse.Extensions.ModelCall.operation?(request)
+  def mcp?(request), do: Ipse.Extensions.MCPCall.operation?(request)
+  def result_read?(request), do: Ipse.Extensions.EffectResult.operation?(request)
   def history?(request), do: Ipse.Extensions.History.operation?(request)
 
   def usage?(request),
@@ -58,13 +66,18 @@ defmodule Ipse.Extensions.Operation do
   def capability(%{"op" => "tool.call"}), do: "host.tools"
   def capability(%{"op" => "operator.question"}), do: "host.question"
   def capability(%{"op" => "model.complete"}), do: "host.model"
+  def capability(%{"op" => "mcp.call"}), do: "host.mcp"
+  def capability(%{"op" => "effect.result.read"}), do: "host.results"
   def capability(request), do: State.capability(request)
   def mutating?(%{"op" => "tool.call", "name" => name}), do: Ipse.Tools.mutating?(name)
   def mutating?(%{"op" => "model.complete"}), do: true
+  def mutating?(%{"op" => "mcp.call"}), do: true
   def mutating?(request), do: State.mutating?(request)
 
   def namespace(_identity, %{"op" => "operator.question"}, _cwd, _id), do: {:ok, nil}
   def namespace(_identity, %{"op" => "model.complete"}, _cwd, id), do: {:ok, id}
+  def namespace(_identity, %{"op" => "mcp.call"}, _cwd, _id), do: {:ok, nil}
+  def namespace(_identity, %{"op" => "effect.result.read"}, _cwd, id), do: {:ok, id}
   def namespace(_identity, %{"op" => "tool.call"}, _cwd, _id), do: {:ok, nil}
   def namespace(_identity, %{"op" => "service.call"}, _cwd, _id), do: {:ok, nil}
   def namespace(_identity, %{"op" => "context.publish"}, _cwd, _id), do: {:ok, nil}
@@ -90,6 +103,12 @@ defmodule Ipse.Extensions.Operation do
 
   def valid_outcome?(%{"op" => "model.complete"} = request, status, value, id),
     do: Ipse.Extensions.ModelCall.valid_outcome?(request, status, value, id)
+
+  def valid_outcome?(%{"op" => "mcp.call"} = request, status, value, id),
+    do: Ipse.Extensions.MCPCall.valid_outcome?(request, status, value, id)
+
+  def valid_outcome?(%{"op" => "effect.result.read"} = request, status, value, id),
+    do: Ipse.Extensions.EffectResult.valid_outcome?(request, status, value, id)
 
   def valid_outcome?(%{"op" => "history.read"} = request, status, value, id),
     do: Ipse.Extensions.History.valid_outcome?(request, status, value, id)

@@ -20,6 +20,8 @@ set. Transform, notification, and feed replies do not enter this protocol.
 | `host.state.bound` | Requires an operator logical binding; also requires `host.state.read`, grants no operation itself |
 | `host.question` | [Structured questions](extension-questions.md) |
 | `host.tools` | [File and shell tools](extension-tool-actions.md) |
+| `host.mcp`, `host.results` | [Operator-bound MCP calls and saved result windows](extension-mcp-actions.md) |
+| `host.actions.mixed` | Separate read/action counters; requires every operation's own grant |
 | `host.model` | [Profile-bound inference](extension-model-calls.md) |
 | `host.services` | [Routed typed services](extension-services.md) |
 | `host.context` | [Context publications](extension-context.md) |
@@ -160,6 +162,12 @@ five seconds. Explicit `host.state.scan` permits only get/list/scan through step
 still refuse after step 16, so a long scan cannot end in a late write.
 `host.usage.scan` separately permits accounting reads through step 10,000 with the
 same deadline. Combining grants does not extend either family's limit.
+
+`host.results` separately extends same-invocation result reads through step 512.
+Explicit `host.actions.mixed` replaces the cumulative-step allowance with at most
+512 reads and 16 other calls, 528 total. This permits a long read followed by an
+approved effect without widening legacy grants. See [MCP actions](extension-mcp-actions.md#separate-long-reads-from-action-authority)
+for the closed read set and durable counter checks.
 
 State is private data. It does not enter inference unless explicitly published.
 Deletion removes the current value, not journal history or prior provider

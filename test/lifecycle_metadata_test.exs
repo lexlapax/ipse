@@ -2,6 +2,30 @@ defmodule Ipse.LifecycleMetadataTest do
   use ExUnit.Case, async: true
   alias Ipse.Lifecycle.{Event, Source}
 
+  test "version-two action metadata omits private bindings and keeps the closed vocabulary" do
+    for {type, event_type} <- [
+          {"extension_action_intent", "extension.action_admitted"},
+          {"extension_action_result", "extension.action_recorded"}
+        ] do
+      record = %{
+        "type" => type,
+        "version" => 2,
+        "parent_invocation_id" => Ipse.Usage.id(),
+        "operation_id" => Ipse.Usage.id(),
+        "effect_binding" => %{"alias" => "secret-route", "server" => "secret-server"},
+        "request" => %{"arguments" => %{"query" => "secret-argument"}},
+        "outcome" => %{"status" => "ok", "value" => %{"text" => "secret-result"}}
+      }
+
+      assert {:ok, event} = Event.project(source(record, Ipse.Usage.id()), record, "metadata")
+      assert event["type"] == event_type
+      assert event["correlations"]["operation_id"] == record["operation_id"]
+      refute Jason.encode!(event) =~ "secret-"
+      invalid = Map.put(record, "type", "extension_question")
+      assert {:error, _} = Event.project(source(invalid, Ipse.Usage.id()), invalid, "metadata")
+    end
+  end
+
   test "request metadata keeps durable identity and causal links while excluding provider payloads" do
     session = Ipse.Usage.id()
     parent_session = Ipse.Usage.id()

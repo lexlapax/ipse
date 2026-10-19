@@ -66,8 +66,8 @@ transition follows this completed campaign as a separate verified change.
 The research subject is optional working/long-term memory, research, graph and
 RAG, including the operator's Zero-Mem inspiration. P26A/P26B's explicit-note
 baseline is complete: implementation `108aa86`, with the diagnosed worker cleanup
-repair and local/hosted gates at `fb4627e`. Advanced research/graph/RAG engines
-remain deferred to P27, and media to P28. External services remain configurable; no third-party
+repair and local/hosted gates at `fb4627e`. P27 research, graph and RAG development
+is active; media remains deferred to P28. External services remain configurable; no third-party
 engine, database or mandatory backend is selected.
 
 | Milestone or gate | Current state | Next result |
@@ -75,17 +75,17 @@ engine, database or mandatory backend is selected.
 | [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within selected scope | Preserve accounting through the trial |
 | [P24: architecture/security readiness](#p24-independent-architecture-validation-and-baseline-security) | Complete for supervised P25 at `375e607`; accepted limits recorded | Refresh affected validation after trial changes |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Complete within declared supervision/assistance at `3307563`; security findings triaged and corrected scopes verified | Preserve frozen evidence; select a later production increment separately |
-| [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Complete within P26A/P26B scope; cleanup repair and platform gates pass at `fb4627e` | Preserve suppression, explicit retention and affected-session recovery; select P27 separately |
-| [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
+| [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Complete within P26A/P26B scope; cleanup repair and platform gates pass at `fb4627e` | Preserve suppression, explicit retention and affected-session recovery |
+| [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Active; architecture, implementation and validation incomplete | Configurable independent packages, reviewed host contracts and matched held-out evaluation |
 | [P28: voice and media](#p28-voice-and-realtime-media) | Deferred; unimplemented | Explicit media contracts and later device/service validation |
 | [Apache-2.0 transition](#license-transition) | Complete; local and hosted `7bb642b` checks pass | Preserve bundled identity/recovery and third-party license boundaries |
 
 The requested P22–P25 campaign and separate Apache-2.0 transition are complete
 within their documented scopes. P26A/P26B are complete after the cleanup repair;
-P27/P28 remain deferred. Preserve P25's frozen
+P27 is active and P28 remains deferred. Preserve P25's frozen
 inputs, runners, source/review/scan identities, scores and failed attempts; newer
-documentation does not rescan code or expand an earlier verdict. Select P27 or
-further memory automation/backends separately from their evidence-backed proposals. Keep P28
+documentation does not rescan code or expand an earlier verdict. P27 follows the
+researched proposal; further memory automation remains separately scoped. Keep P28
 deferred. No further broad architecture-review loop or Cloud scan is scheduled.
 
 The [register](archive/2026-10-18-before-manual-rewrite/docs/developer/architecture-review-dispositions.md) owns dispositions,
@@ -316,7 +316,7 @@ the [extension contract](developer/memory.md) owns suppression and measurement l
 
 ## P27: optional research, graph and RAG
 
-**Deferred; proposed scope after P25 selection.** Build independently useful
+**Active; implementation and verification incomplete.** Build independently useful
 research orchestration, graph augmentation and corpus retrieval packages on
 P14/P22/P23 and selected shared knowledge contracts. Prefer explicit tools and
 existing MCP adapters before hooks or services. Memory, research, graph and RAG
@@ -334,6 +334,26 @@ budgets and no automatic replay. Evaluate algorithm quality on held-out workload
 then separate opt-in live evidence from credential-free source/package fixtures.
 No framework, database or provider is mandated. P25's findings determine delivery
 order and any justified generic host enhancement before implementation selection.
+
+Delivery keeps the complete acceptance above. Generic API work must precede the
+domain operations that need it; a successful lexical fixture alone cannot close
+the milestone. Preserve current SDK bounds and existing operation authority.
+
+| Increment | Deliverable and direct verification | State |
+| --- | --- | --- |
+| P27H1 | Source-bound bounded result pages and explicit mixed read/effect allowance where necessary; unchanged legacy grants and pure saved-source validation | Implemented; source, actual macOS and extracted-artifact gates pass; hosted checks pending |
+| P27H2 | Approved configured MCP actions from extensions; pinned descriptors, child denial, owned cancellation and unknown-outcome recovery | Implemented; real stdio/HTTP, denial, cancellation and inert recovery pass locally; hosted checks pending |
+| P27H3 | Versioned embedding operation with selected profiles, bounded ordinary vectors, exact egress, operation-aware accounting/costs/shared budgets and no text-envelope substitution | Open |
+| P27A | Independent research and lexical corpus packages with named interchangeable profiles, cited evidence, explicit limits, partial failures, stale-index handling and suppression | Open |
+| P27B | Independent attributable graph, optional extraction, embedding/hybrid and rerank adapters; matched quality/resource comparisons before engine selection | Open |
+| P27 verification | Frozen held-out workload, zero authority/isolation/replay/resurrection failures, measured retrieval/support/citation/resources, source/native/installed checks, coherent user and contributor manuals | Open |
+
+The [first host-contract record](archive/2026-10-19-p27-mcp-host-contracts/index.md)
+retains causal regressions, independent review corrections and local verification.
+It establishes approved MCP transport and result paging, not research/graph/RAG
+quality or an embedding inference/accounting contract. Those requirements remain
+open. The next host increment adds real typed embeddings with selected profiles
+and operation-aware usage, prices and shared budget coverage.
 
 ## P28: voice and realtime media
 

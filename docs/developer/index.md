@@ -98,6 +98,7 @@ synthetic check. Then choose the host interaction you need:
 | Use scoped CAS storage and durable continuations | [Host calls](extension-host-calls.md) |
 | Pause for an explicit structured answer | [Extension questions](extension-questions.md) |
 | Request approved file and shell work | [Workflow tools](extension-tool-actions.md) |
+| Call a selected MCP item and read complete source windows | [MCP actions](extension-mcp-actions.md) |
 | Compose declared value services | [Services](extension-services.md) |
 | Publish bounded asserted or receipt-backed context | [Context](extension-context.md) |
 | Request a profile-bound accounted text inference | [Model calls](extension-model-calls.md) |

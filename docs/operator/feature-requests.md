@@ -46,8 +46,10 @@ available contracts.
 
 A skill supplies instructions; it does not enable a service or execute its
 scripts on load. An extension may expose tools, but main-agent MCP access does
-not make MCP callable from extension callbacks. The current extension workflow
-tool bridge supports bounded built-in file/shell calls, not MCP or delegation.
+not grant callback access. A reviewed extension needs `host.mcp` and an explicit
+operator [MCP binding](mcp.md#allow-a-reviewed-extension-to-use-a-selected-item).
+The separate workflow tool bridge supports bounded built-in file/shell calls.
+Host calls cannot delegate recursively.
 
 ## Require the proposal to show its boundaries
 

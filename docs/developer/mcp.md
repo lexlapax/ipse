@@ -39,6 +39,10 @@ may have happened, timeout, connection loss, malformed reply, or RPC error yield
 unknown and stops the batch; later calls are not started. Resume never replays.
 Remote effects are not undone by closing local IO.
 
+Extensions use the separate [MCP host-call contract](extension-mcp-actions.md).
+Their action intent replaces the model tool's `tool_started` record; routing,
+descriptor rediscovery, transport ownership and unknown-outcome rules are shared.
+
 Follow this in `test/mcp/session_test.exs`, then read the catalog Session fixture
 for a selected resource. Both should reach the same approval/intent boundary.
 Resource text and prompt messages remain data, with returned roles preserved;
@@ -106,6 +110,12 @@ owned by an `HTTPProfile` guardian. IO runs outside the transport GenServer; the
 guardian lease remains through cancellation and pool cleanup. Closure attempts a
 bounded authenticated DELETE for an assigned session, without claiming remote
 work stopped.
+
+The HTTP transport monitors the SDK owner and registers with the task cleanup
+scope. It starts without a process link because owner-exit system termination
+would interrupt its asynchronous pool closure. Owner loss enters the same
+bounded close path as cancellation. `test/mcp/http_owner_cleanup_test.exs`
+checks the actual receipt and normal transport exit after abnormal owner death.
 
 A single deadline covers handshake/catalog/call. Initialization alone may set the
 session header; later changes refuse. Requests need matching responses and

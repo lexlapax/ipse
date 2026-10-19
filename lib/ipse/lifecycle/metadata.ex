@@ -120,8 +120,10 @@ defmodule Ipse.Lifecycle.Metadata do
 
   def describe(%{"type" => "cancelled"}), do: result("turn.cancelled", %{}, %{})
 
-  def describe(%{"type" => type, "version" => 1} = record)
-      when is_map_key(@extensions, type) do
+  def describe(%{"type" => type, "version" => version} = record)
+      when is_map_key(@extensions, type) and
+             (version === 1 or
+                (version === 2 and type in ~w(extension_action_intent extension_action_result))) do
     {event, ids} = @extensions[type]
 
     with {:ok, _, _, _, _, correlations} <- fields(event, record, [], ids),

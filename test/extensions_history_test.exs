@@ -181,16 +181,18 @@ defmodule Ipse.Extensions.HistoryTest do
     {context, id}
   end
 
-  defp capture(context, request) do
+  defp capture(context, request, version \\ 1) do
     intent = %{
       "type" => "extension_action_intent",
-      "version" => 1,
+      "version" => version,
       "operation_id" => Ipse.Usage.id(),
       "namespace" => context.history_session,
       "identity_sha256" => Ipse.Compaction.digest([context.identity]),
       "approval" => "not_required",
       "request" => request
     }
+
+    intent = if version == 2, do: Map.put(intent, "effect_binding", nil), else: intent
 
     {:ok, source} =
       Journal.append_with_source(context.history_dir, context.history_session, intent)
@@ -462,6 +464,14 @@ defmodule Ipse.Extensions.HistoryTest do
              Map.put(value, "raw", "private"),
              intent["operation_id"]
            )
+  end
+
+  test "a mixed invocation uses its version-two history anchor", c do
+    {context, _} = journal(c)
+    {context, intent} = capture(context, request(), 2)
+    assert {:ok, page} = History.execute(context, intent)
+    assert page["snapshot"] == context.history_snapshot
+    assert page["records"] != []
   end
 
   test "snapshot is bound to session, identity, view and a real initial-read anchor", c do

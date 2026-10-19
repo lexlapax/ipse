@@ -13,14 +13,22 @@ defmodule Ipse.Extensions.Actions do
 
   def limit(identity) do
     cond do
+      "host.actions.mixed" in identity["capabilities"] -> 528
       "host.usage.scan" in identity["capabilities"] -> @read_limit
       "host.state.scan" in identity["capabilities"] -> 512
+      "host.results" in identity["capabilities"] -> 512
       true -> @limit
     end
   end
 
   def limit(identity, request) do
     cond do
+      "host.actions.mixed" in identity["capabilities"] ->
+        528
+
+      Operation.result_read?(request) and "host.results" in identity["capabilities"] ->
+        512
+
       Operation.usage?(request) and "host.usage.scan" in identity["capabilities"] ->
         @read_limit
 
@@ -32,6 +40,28 @@ defmodule Ipse.Extensions.Actions do
         @limit
     end
   end
+
+  def allowed?(identity, request, results) when is_list(results) do
+    if "host.actions.mixed" in identity["capabilities"] do
+      reads = Enum.count(results, &read?(&1["request"]))
+      others = length(results) - reads
+
+      length(results) < 528 and
+        if(read?(request), do: reads < 512, else: others < 16)
+    else
+      length(results) < limit(identity, request)
+    end
+  rescue
+    _ -> false
+  end
+
+  def allowed?(_, _, _), do: false
+
+  defp read?(%{"op" => op}),
+    do:
+      op in ~w(state.get state.list state.scan history.read usage.read usage.children usage.child.read effect.result.read)
+
+  defp read?(_), do: false
 
   def proposal(response, identity) do
     with :ok <- Ipse.Extension.validate(response),
@@ -52,7 +82,16 @@ defmodule Ipse.Extensions.Actions do
     _ -> @error
   end
 
-  def intent(parent, request, step, approval, cwd, context_sha256 \\ nil, service \\ nil) do
+  def intent(
+        parent,
+        request,
+        step,
+        approval,
+        cwd,
+        context_sha256 \\ nil,
+        service \\ nil,
+        effect_binding \\ nil
+      ) do
     with {:ok, namespace} <-
            Operation.namespace(
              parent["identity"],
@@ -74,6 +113,11 @@ defmodule Ipse.Extensions.Actions do
         "request_sha256" => Ipse.Compaction.digest([request]),
         "approval" => approval
       }
+
+      event =
+        if version_two?(parent["identity"], request),
+          do: event |> Map.put("version", 2) |> Map.put("effect_binding", effect_binding),
+          else: event
 
       if valid_intent?(event, parent, cwd), do: {:ok, event}, else: @error
     end
@@ -113,7 +157,7 @@ defmodule Ipse.Extensions.Actions do
   def valid_result?(event) do
     outcome = event["outcome"]
 
-    keys?(event, @keys ++ ~w(outcome outcome_sha256)) and
+    keys?(event, intent_keys(event) ++ ~w(outcome outcome_sha256)) and
       event["type"] == "extension_action_result" and
       event["outcome_sha256"] == Ipse.Compaction.digest([outcome]) and
       keys?(outcome, ~w(status value)) and
@@ -133,8 +177,11 @@ defmodule Ipse.Extensions.Actions do
   end
 
   def valid_intent?(event, parent, cwd) do
-    with true <- keys?(event, @keys),
-         true <- event["type"] == "extension_action_intent" and event["version"] === 1,
+    with true <- keys?(event, intent_keys(event)),
+         true <- event["type"] == "extension_action_intent",
+         true <-
+           event["version"] ===
+             if(version_two?(parent["identity"], event["request"]), do: 2, else: 1),
          true <- event["parent_invocation_id"] == parent["invocation_id"],
          true <-
            id?(event["operation_id"]) and is_integer(event["step"]) and
@@ -146,6 +193,7 @@ defmodule Ipse.Extensions.Actions do
              parent["identity"]
            ),
          true <- event["request_sha256"] == Ipse.Compaction.digest([request]),
+         true <- effect_binding?(event, parent["identity"]),
          {:ok, namespace} <-
            Operation.namespace(
              parent["identity"],
@@ -215,7 +263,9 @@ defmodule Ipse.Extensions.Actions do
       contributions: %{},
       context_request: nil,
       identities: Map.new(Map.get(metadata, "extensions", []), &{&1["instance"], &1}),
-      catalog: catalog
+      catalog: catalog,
+      metadata: metadata,
+      effect_sources: %{}
     }
 
     Enum.reduce_while(events, {:ok, initial}, fn event, {:ok, state} ->
@@ -301,6 +351,7 @@ defmodule Ipse.Extensions.Actions do
              step: 0,
              unknown: false,
              results_rev: [],
+             effect_sources: %{},
              question: nil,
              resume_needed: nil
          }},
@@ -322,9 +373,12 @@ defmodule Ipse.Extensions.Actions do
          is_nil(state.resume_needed) and is_nil(state.question) and
          event["step"] == state.step + 1 and
          not MapSet.member?(state.seen, event["operation_id"]) and
-         valid_intent?(event, state.parent, cwd) do
+         valid_intent?(event, state.parent, cwd) and
+         allowed?(state.parent["identity"], event["request"], state.results_rev) do
       if (not Operation.tool?(event["request"]) or event["context_sha256"] == state.context_sha256) and
-           service_source?(event, state) do
+           service_source?(event, state) and
+           effect_binding?(event, state.parent["identity"], state.metadata) and
+           readable?(event["request"], state.effect_sources, state.results_rev) do
         {:ok,
          %{
            state
@@ -345,6 +399,7 @@ defmodule Ipse.Extensions.Actions do
 
     with true <-
            state.action != nil and result_intent(event) == state.action and valid_result?(event),
+         true <- bound_effect?(event, state.effect_sources, state.results_rev),
          true <- not question or not is_nil(state.question),
          {:ok, contributions} <-
            Ipse.Extensions.Contributions.apply_result(
@@ -368,6 +423,18 @@ defmodule Ipse.Extensions.Actions do
        }}
     else
       _ -> @error
+    end
+  end
+
+  defp validate_event(%{"type" => "extension_effect_result"} = event, state, _) do
+    id = event["operation_id"]
+
+    if state.parent != nil and state.action != nil and
+         not Map.has_key?(state.effect_sources, id) and
+         Ipse.Extensions.EffectResult.valid_source?(event, state.action) do
+      {:ok, %{state | effect_sources: Map.put(state.effect_sources, id, event)}}
+    else
+      @error
     end
   end
 
@@ -479,6 +546,75 @@ defmodule Ipse.Extensions.Actions do
       true
     end
   end
+
+  def readable?(request, sources, results) do
+    not Operation.result_read?(request) or
+      match?({:ok, _}, effect_source(request, sources, results))
+  end
+
+  def effect_source(request, sources, results) do
+    id = request["operation_id"]
+    source = sources[id]
+
+    if is_map(source) and source["source_sha256"] == request["source_sha256"] and
+         Enum.any?(results, fn result ->
+           result["operation_id"] == id and result["outcome"]["status"] == "ok" and
+             result["outcome"]["value"] == Ipse.Extensions.EffectResult.descriptor(source)
+         end),
+       do: {:ok, source},
+       else: @error
+  rescue
+    _ -> @error
+  end
+
+  def bound_effect?(event, sources, results) do
+    request = event["request"]
+    outcome = event["outcome"]
+
+    cond do
+      Operation.mcp?(request) and outcome["status"] == "ok" ->
+        source = sources[event["operation_id"]]
+        is_map(source) and outcome["value"] == Ipse.Extensions.EffectResult.descriptor(source)
+
+      Operation.result_read?(request) ->
+        with {:ok, source} <- effect_source(request, sources, results) do
+          Ipse.Extensions.EffectResult.bound_outcome?(source, request, outcome)
+        else
+          _ -> false
+        end
+
+      true ->
+        true
+    end
+  rescue
+    _ -> false
+  end
+
+  defp effect_binding?(event, identity, metadata \\ nil) do
+    cond do
+      Operation.mcp?(event["request"]) ->
+        Ipse.Extensions.MCPCall.valid_binding?(
+          event["effect_binding"],
+          event["request"],
+          identity,
+          metadata
+        )
+
+      Operation.result_read?(event["request"]) ->
+        event["effect_binding"] == Ipse.Extensions.EffectResult.binding(event["request"])
+
+      true ->
+        is_nil(event["effect_binding"])
+    end
+  end
+
+  defp version_two?(identity, request),
+    do:
+      "host.actions.mixed" in identity["capabilities"] or Operation.mcp?(request) or
+        Operation.result_read?(request)
+
+  defp intent_keys(%{"version" => 2}), do: @keys ++ ["effect_binding"]
+  defp intent_keys(_), do: @keys
 
   defp id?(id), do: is_binary(id) and Regex.match?(~r/\A[a-f0-9]{32}\z/, id)
   defp hash?(hash), do: is_binary(hash) and Regex.match?(~r/\A[a-f0-9]{64}\z/, hash)

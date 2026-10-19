@@ -1,7 +1,7 @@
 defmodule Ipse.Extensions.Identity do
   @moduledoc "Closed activation identity shared by transforms, catalogs and owned invocations."
   @keys ~w(instance artifact artifact_sha256 options_sha256 exports_sha256 requires_sha256 subscriptions_sha256 services scope source_sha256 sdk protocol capabilities order lifetime expires_at runtime host_sha256 generation allow_children)
-  @optional ~w(text_required state_binding)
+  @optional ~w(text_required state_binding mcp_bindings)
 
   def valid?(identity) when is_map(identity) do
     Enum.sort(Map.keys(Map.drop(identity, @optional))) == Enum.sort(@keys) and
@@ -10,6 +10,9 @@ defmodule Ipse.Extensions.Identity do
       (not Map.has_key?(identity, "state_binding") or
          (identity["scope"] == "operator" and
             Ipse.Extensions.State.valid_binding?(identity["state_binding"]))) and
+      (not Map.has_key?(identity, "mcp_bindings") or
+         (identity["scope"] == "operator" and "host.mcp" in identity["capabilities"] and
+            Ipse.Extensions.MCPCall.public_bindings?(identity["mcp_bindings"]))) and
       Ipse.Extension.validate(identity) == :ok and
       is_binary(identity["instance"]) and
       Regex.match?(~r/\A[a-z][a-z0-9_-]{0,63}\z/, identity["instance"]) and

@@ -4,6 +4,8 @@ Use `tool.call` when a workflow needs Ipse's existing `read`, `write`, `edit`, o
 `shell` tool. Session retains schema validation, workspace instructions,
 approval, sandbox selection, and durable outcomes. A worker's ordinary value or
 question answer cannot execute a tool.
+Use the separate [MCP action contract](extension-mcp-actions.md) for a selected
+external service; `tool.call` does not route MCP names.
 
 Read the `workflow` export and answered continuation in
 `examples/extension-lab/src/memory.ex`. It turns a selected note into this typed
@@ -31,6 +33,8 @@ schema and SDK JSON bounds. `timeout_ms` is required and ranges from 1 through
 30,000. A shell argument's optional inner timeout cannot exceed the outer one;
 when omitted, shell uses the explicit outer deadline. The call consumes one of
 the ordinary 16 host-action steps, including across question continuations.
+An explicit `host.actions.mixed` grant permits reads before those approved
+actions under its separate counters; it does not add tool authority.
 
 Write, edit, and shell require full separate mutation approval unless the session
 explicitly enables execution. Read uses ordinary read policy but still requires
