@@ -22,6 +22,8 @@ mod ipse_macos_sandbox;
 mod ipse_stdio;
 #[path = "ipse-process-group.rs"]
 mod process_group;
+#[path = "ipse-measure.rs"]
+mod ipse_measure;
 use process_group::{signal_group, GroupGuard};
 
 extern "C" {
@@ -81,6 +83,8 @@ fn lock_file(path: &str) -> Result<(), String> {
 }
 fn run() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
+    if args.len() == 2 && args[1] == "--measure-anchor" { return ipse_measure::anchor(); }
+    if args.get(1).is_some_and(|arg| arg == "--measure-cgroup") { return ipse_measure::run(&args); }
     if args.len() == 2 && args[1] == "--group-anchor" {
         return process_group::run_anchor().map_err(|_| "process-group owner failed".into());
     }

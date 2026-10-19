@@ -7,6 +7,8 @@ in the earlier [memory investigation](resource-memory-grounding.md).
 The [plan](../../plan.md#p27-optional-research-graph-and-rag) owns acceptance and
 the [evaluation training manual](../../developer/knowledge-evaluation.md) owns
 current implemented procedures. Commands and signatures below are proposed.
+The later [native collector record](aggregate-memory-native.md) covers the first
+implemented backend and its verification; this page retains the original design.
 
 ## Choose complete fresh cells inside one measured run
 

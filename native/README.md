@@ -67,6 +67,66 @@ unreaped ownership after command exit, refused late signals and EOF-confirmed
 ordinary-child exit after abrupt owner death. They do not force PID wraparound
 or certify stronger descendant containment.
 
+## Optional exact aggregate memory scopes
+
+The Linux-only `--measure-cgroup root|cell TOKEN TIMEOUT_MS OUTPUT -- ABSOLUTE_COMMAND ARGS`
+mode measures a fresh owned cgroup with `clone3(CLONE_INTO_CGROUP)`. It is an
+explicit benchmark interface, separate from shell, stdio and sandbox protocols.
+It records `linux_memcg_charged_peak_bytes_v1`, the kernel's aggregate charged
+memory high water, not sampled RSS, summed process RSS or GPU/device memory.
+macOS and missing Linux capabilities fail closed.
+
+The root collector must be the sole process in a new delegated user service named
+`ipse-measure-TOKEN.service`. `TOKEN` is 32 lowercase hexadecimal characters.
+It moves only itself into a collector leaf, enables memory accounting in that
+new service and creates a fresh measured root with an application leaf. The
+application is born in its leaf before exec. No existing user manager, service,
+model daemon or application process is moved into measurement.
+
+A nested cell collector must already be inside the parent identified by inherited
+`IPSE_MEASURE_ROOT`. Its fresh sibling cell scope owns its command descendants.
+An independent parent peak FD resets only that cell's whole-population interval;
+the outer lifetime counter remains untouched. These are different subjects:
+never add peaks, subtract a baseline or infer that retained cache charges vanished.
+
+Each collector establishes a separate `--measure-anchor` process before command
+admission. This internal role inherits a retained cgroup-kill descriptor and a
+private stdin lease. Collector death closes the lease; the anchor kills that
+owned scope even while an outer application remains alive. A command closes its
+inherited lease before exec. Signaling uses the retained cgroup descriptor, not
+a discovered or reusable workload PID. Owner EOF or `C`, timeout and residual
+descendants also trigger owned-scope cleanup. Owner closure is checked before
+admission and again before launch. SIGCHLD normalization preserves child reaping.
+
+The caller keeps stdin open and accepts a terminal `M` frame only with the
+corresponding private `receipt.json` and normal helper exit. A normal helper exit
+can carry a failed/interrupted command: inspect `complete`, `reason`, `exit_code`
+and `cleanup_confirmed`. In this explicit mode an `E` frame is a diagnostic,
+not proof that no application effect occurred. Missing or failed completion must
+not cause automatic replay. Killing a collector can leave `started.json` without
+a final receipt; that is incomplete evidence.
+
+`OUTPUT` must be a fresh absolute directory. It has mode 0700 and immutable
+started/final JSON files have mode 0600. Child stdout/stderr goes only to a private
+16-MiB bounded log with an explicit truncation flag, never the metric channel.
+Receipts retain scope identity and separate numeric peak, command outcome and
+cleanup. Empty owned scope directories are removed after receipt persistence.
+The collector's own native apparatus is outside its measured root; nested
+collectors and anchors contribute to the enclosing whole-run population.
+
+Run the real no-model controls on a Linux host with the approved systemd
+user-service tools, delegated memory controller and clone-into-cgroup support:
+
+```sh
+./scripts/build.sh
+elixir scripts/verify-memory-scope.exs "$PWD/priv/ipse-runner"
+```
+
+The result reports ten controls and a private evidence directory. Follow the
+[training exercise](../docs/developer/knowledge-evaluation.md#exercise-the-native-aggregate-collector)
+to interpret their subjects and failure records. This collector is not yet
+connected to the knowledge evaluator's full comparison or isolated model service.
+
 ## Session locks
 
 `ipse-runner --lock PATH` opens a persistent file with mode 0600 and takes a
@@ -202,9 +262,10 @@ and [aarch64/generic syscalls](https://github.com/torvalds/linux/blob/v6.12/incl
 
 ### Native enforcement tests
 
-The default `mix test` excludes `:native_sandbox`, `:macos_sandbox` and
-`:macos_filesystem` tests. Its untagged
-capability test distinguishes successful explicit execution from fail-closed
+The default `mix test` excludes `:native_sandbox`, `:macos_sandbox`,
+`:macos_filesystem` and `:memory_scope` tests. The last tag runs the optional
+[aggregate-memory exercise](#optional-exact-aggregate-memory-scopes). An untagged
+sandbox capability test distinguishes successful explicit execution from fail-closed
 unavailability; that test alone is not evidence that enforcement was exercised.
 Run actual adversarial OS tests on a suitable Linux host with:
 

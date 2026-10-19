@@ -697,6 +697,53 @@ input tokens and later seven. Removing the sixty-token observation from the
 budget must fail reconciliation even though its final counters still match.
 Removing a refusal or concealing usage behind a refused admission must also fail.
 
+### Exercise the native aggregate collector
+
+Use a Linux host with cgroup v2 memory accounting, `clone3(CLONE_INTO_CGROUP)`,
+a delegated systemd user manager and the existing Rust/Elixir toolchains.
+The [dependency inventory](dependencies.md) records approval for this optional
+benchmark tooling. Ordinary source tests and macOS operation do not require it.
+
+```sh
+./scripts/build.sh
+elixir scripts/verify-memory-scope.exs "$PWD/priv/ipse-runner"
+```
+
+Expect one JSON summary with `checks: 10`, zero inference requests and a private
+`evidence` directory. The verifier starts only uniquely named transient user
+services and stops its own services on exit. It retains synthetic receipts for
+inspection. To run the same exercise through ExUnit, include its explicit tag:
+
+```sh
+mix test test/memory_scope_test.exs --include memory_scope
+```
+
+Follow `native/ipse-measure.rs` from scope admission to clone, first reap and final
+counter read. Each root command is born inside a fresh cgroup before exec.
+The serial/overlap control distinguishes the simultaneous total from individual
+maxima. The Erlang control captures a brief 256-MiB Port child after it exits.
+Unequal nested allocations check that a parent interval resets independently of
+the whole-run counter, including when the launcher ignored SIGCHLD.
+
+Then follow the owner and collector loss cases. A preclosed lease must refuse
+before command execution. A cancellation following ignored control bytes must
+still be observed while the owner remains open. The scope's private native anchor
+kills descendants after a nested collector dies, even while the application is
+alive. Root collector loss remains a separate incomplete case: its started record
+survives without a completion receipt. It does not prove that no work occurred.
+
+Compare `peak_bytes` with `parent_interval_peak_bytes` as separate subjects.
+Both are kernel charged-memory high waters. Page cache, shared-page ownership
+and kernel charges make them different from summed process RSS. They do not
+establish GPU/device-memory coverage or an exact macOS aggregate. Do not sum peaks
+or subtract a starting baseline. See the [native protocol](../../native/README.md#optional-exact-aggregate-memory-scopes)
+for lease, output and receipt rules.
+
+These controls verify the native collector only. The current evaluation runner
+still reports its sampled BEAM memory and incomplete resource evaluation. Its
+complete-cell execution, owned model service, model/cache identities and frozen
+aggregate receipt integration remain to be implemented and verified.
+
 ### Interpret latency and measurement limits
 
 Phase clocks use monotonic microseconds. The summary reports nearest-rank p50

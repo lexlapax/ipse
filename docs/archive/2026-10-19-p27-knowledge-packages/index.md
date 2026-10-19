@@ -23,6 +23,9 @@ The [requirement audit](requirement-audit.md) checks all fourteen acceptance are
 and identifies the exact-memory, held-out quality and selection work still open.
 The later [aggregate-memory design](aggregate-memory-design.md) records the user's
 combined-population choice, competing architectures and synthetic Linux evidence.
+The [native collector record](aggregate-memory-native.md) follows its first
+implementation, adversarial repairs and synthetic lifecycle checks. Complete
+evaluator/model integration and the actual comparison remain open.
 
 ## Implementation and corrections
 

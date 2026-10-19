@@ -460,9 +460,12 @@ reproduces a completed Port child's missing high water in an outer Elixir receip
 on macOS and Linux. An outer-only wrapper cannot establish complete coverage.
 The user selected exact simultaneous combined memory across all Ipse and model
 processes. The [aggregate design](archive/2026-10-19-p27-knowledge-packages/aggregate-memory-design.md)
-selects fresh complete cells under a whole-run scope. A Linux kernel charged-memory
-probe passes; production admission, complete coverage and instrumentation remain
-unimplemented. Charged memory, summed RSS and device memory must not be conflated.
+selects fresh complete cells under a whole-run scope. The first
+[native collector](archive/2026-10-19-p27-knowledge-packages/aggregate-memory-native.md)
+implements owned admission, birth-before-exec and lifetime/interval counters;
+ten synthetic Linux controls and local source/native/installed checks pass.
+Complete evaluator/model integration and comparison coverage remain open.
+Charged memory, summed RSS and device memory must not be conflated.
 The inherited combined-fixture timeout is repaired with independent
 test units and unchanged deadlines/assertions; the exact-source `25f1d8e`
 [hosted matrix](https://github.com/lexlapax/ipse/actions/runs/39309132023)
