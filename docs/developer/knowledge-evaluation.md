@@ -35,6 +35,41 @@ Finalize raw prediction files and their hashes before opening labels. A scorer
 can enforce the order of its own callbacks, but cannot prove that another caller
 has never opened those files.
 
+## Exercise failed paging and lost completion
+
+Run the public-Session failure cases before changing the driver:
+
+```sh
+mix test test/knowledge_evaluation_session_test.exs
+```
+
+The suite compiles a synthetic SDK worker in a separate process. Its source
+command returns malformed paging responses or holds an invocation. Temporary
+files expose the exact dispatched action and worker-start barrier. It starts no
+model service and grants no host actions. These fixture file operations do not
+establish an OS sandbox boundary.
+
+Follow the two paging cases into `ingest_paged/4` and `append_parts/6`:
+
+1. An open response starts at offset one. The driver requires zero, retains the
+   completed open receipt and submits no append or publish.
+2. A valid open is followed by an append with the wrong next offset. The driver
+   retains both receipts and submits no publish. A later explicit inspection is
+   still allowed because both commands have confirmed completion.
+
+Then compare the held-invocation cases. A timeout with confirmed cancellation
+retains its receipt and permits a later read in the same Session. Killing the
+Session after the worker-start barrier produces no completion acknowledgment.
+The driver reads the original journal using its pinned Session ID, retains the
+intent without a result, and marks the run `unsettled`. Another invocation must
+return `:completion_unconfirmed` without changing the journal or dispatch log.
+`close/1` must report cleanup as unconfirmed.
+
+The worker-exit observation prevents fixture leaks. Process absence does not
+replace the missing Session cleanup acknowledgment. Keep those assertions
+separate when adding owner-loss or cancellation controls. Never clear `unsettled`
+to continue an interrupted evaluation or open a replacement budget root silently.
+
 ## Trace an answer's evidence
 
 `IpseKnowledgeExample.EvaluationAnswer.prepare/3` takes the query, an as-of time

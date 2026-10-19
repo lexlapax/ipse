@@ -95,6 +95,8 @@ limit in a captured diagnostic and separates streaming framing from returned tex
 The later [model workflow investigation](model-workflows.md) records exact draft
 abort recovery, rerank continuation repairs, explicit Ollama thinking selection
 and separately accounted tuning successes and failures.
+The later [evaluation failure-path record](evaluation-failures.md) verifies
+malformed paging, confirmed timeout and poisoned Session-loss behavior.
 
 Exact-source hosted checks still need their final receipts. Actual domain
 embedding, extraction, hybrid and rerank
