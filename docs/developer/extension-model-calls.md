@@ -36,6 +36,10 @@ nonempty and at most 4,096 characters. The complete encoded request is at most
 1,000–120,000. Direct provider/model/endpoint/key overrides, tools, embeddings,
 audio, and continuation are unavailable.
 
+For native vector generation, use [embedding actions](extension-embedding-actions.md)
+with its distinct profile, typed result and accounting operation. A text response
+containing numbers does not satisfy that contract.
+
 The model grant authorizes the supplied input's egress, not history, prompt,
 answer, memory, or tool-view reads. Those sources need separate capabilities.
 The host sends a fixed core-owned system instruction and a labelled user-role
@@ -86,6 +90,11 @@ death, expiry, or cancellation stops the linked provider task and closes its own
 HTTP profile. Delivered usage remains recorded. Remote work cannot be undone by
 local cancellation. Text deltas do not enter the main visible stream; helper output
 is not a main assistant/native continuation.
+
+`Ipse.Extensions.Inference` owns the shared task/monitor/deadline mechanics for
+text and embedding calls. `ModelCall` retains text-specific request, response and
+receipt validation. Keep its v1 wire and journal semantics unchanged when editing
+the common coordinator.
 
 ## Receipts, bounds and accounting
 

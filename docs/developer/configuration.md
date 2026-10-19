@@ -49,6 +49,7 @@ Several fields need stricter rules than ordinary last-writer precedence:
 | Project `sandbox` | Can tighten to `native`; cannot replace an earlier `native` with `off` |
 | Operator environment or CLI sandbox | May explicitly select either supported mode |
 | Profile `base_url` and operator profile IDs | Project scopes cannot introduce endpoints or replace operator IDs |
+| `embedding_profiles` | Operator-only separate registry; text profile roles never select it |
 | `budget`, `journal`, extension trust, capture policy | Operator-only policy; project declarations refuse |
 | Extension selection/options | Require independent artifact/trust admission before callbacks |
 
@@ -80,6 +81,13 @@ not a dump of the operator's process environment.
 selects the configured provider's default in `@models`; consult that table when
 updating defaults. [Profiles](model-profiles.md), [budgets](budgets.md), and
 [persistence](persistence.md) own their nested schemas.
+
+`EmbeddingProfiles` owns its separate registry and selected execution snapshot.
+The CLI explicitly carries that registry into host runtime; delegation and routed
+child allowlists preserve the private operator reference. Worker SDK values get
+only the bounded selected facts. Follow `test/embedding_config_test.exs` to check
+project refusal and fingerprint inclusion, then the
+[embedding walkthrough](extension-embedding-actions.md) for destination pinning.
 
 ## Preserve resume identity when adding a field
 

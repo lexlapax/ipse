@@ -1129,6 +1129,7 @@ defmodule Ipse.CLI do
                operator_home: Ipse.Skills.operator_home(),
                configuration: Ipse.Config.manifest(effective),
                extensions: extensions,
+               embedding_profiles: effective.embedding_profiles,
                observability: effective.observability.policy,
                timeout_ms: opts[:timeout_ms],
                max_output_tokens: opts[:max_output_tokens],

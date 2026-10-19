@@ -129,6 +129,7 @@ Use these distinctions when reading an artifact's requested grants:
 | `host.state.read`, `.write`, `.scan`, `.bound` | Scoped state reads, separately approved writes, extended read scans, or required logical bindings |
 | `host.question`, `host.tools`, `host.model`, `host.services`, `host.context` | Explicit questions, bounded built-in tools, approved profile inference, bound value-service calls, or context publications |
 | `host.mcp`, `host.results` | Separately approved operator-bound MCP calls and bounded reads of their same-invocation saved results |
+| `host.embedding` | Separately approved vector generation through an operator embedding profile; `host.results` reads its saved coordinate pages |
 | `host.actions.mixed` | Up to 512 reads and 16 other calls under existing per-operation grants and approvals |
 | `host.history` and `host.history.*` | This session's metadata and separately selected historical private views |
 | `host.usage`, `.scan`, `.children` | Accounting reads, extended scans, or registered direct-child accounting |
@@ -232,7 +233,8 @@ Calls consume model steps and optional shared [tree reservations](budgets.md),
 including explicitly permitted child calls. Unsupported output caps refuse
 without fallback. Interrupted requests may consume resources. Idle resume
 restores receipts without inference; changed profiles can refuse resume.
-Embeddings/audio need separate supported contracts. The
+Use the separate [embedding procedure](embeddings.md) for vector generation.
+Audio remains outside this text contract. The
 [synthetic model-call example](../../examples/model-calls/README.md) exercises this
 without a paid service.
 

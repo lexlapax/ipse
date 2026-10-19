@@ -4,7 +4,7 @@ defmodule Ipse.Extensions.CostSummary do
   alias Ipse.Usage
   alias Ipse.Usage.Normalizer
 
-  @fields ~w(provider billing_mode model reported_model endpoint_sha256 admitted_at_ms outcome finality usage)
+  @fields ~w(operation provider billing_mode model reported_model endpoint_sha256 admitted_at_ms outcome finality usage)
   @safe 9_007_199_254_740_991
   @limit 10_000
 
@@ -28,7 +28,9 @@ defmodule Ipse.Extensions.CostSummary do
          {:ok, quote} <- Costs.estimate(state.card, Map.take(request, @fields)) do
       contribution = %{
         admission: admission,
-        group: {request["provider"], request["billing_mode"], quote["basis"]},
+        group:
+          {request["provider"], request["billing_mode"], quote["basis"],
+           request["operation"] || "text"},
         amount: quote["amount_nanos"],
         known: quote["known_amount_nanos"],
         overflow: "amount_overflow" in quote["missing"],
@@ -113,12 +115,12 @@ defmodule Ipse.Extensions.CostSummary do
       |> Map.values()
       |> Enum.group_by(& &1.group)
       |> Enum.sort_by(fn {key, _} -> key end)
-      |> Enum.map(fn {{provider, billing, basis}, rows} ->
+      |> Enum.map(fn {{provider, billing, basis, operation}, rows} ->
         known = sum(Enum.map(rows, & &1.known))
         amounts = Enum.map(rows, & &1.amount)
         overflow = known.overflow or Enum.any?(rows, & &1.overflow)
 
-        %{
+        group = %{
           "provider" => provider,
           "billing_mode" => billing,
           "basis" => basis,
@@ -136,15 +138,23 @@ defmodule Ipse.Extensions.CostSummary do
               subtotal = sum(values)
               complete = Enum.all?(rows, & &1.final) and Enum.all?(values, &is_integer/1)
 
-              {field,
-               %{
-                 "total" => if(complete, do: subtotal.value),
-                 "known_subtotal" => subtotal.value,
-                 "unknown_count" => Enum.count(values, &is_nil/1),
-                 "overflow" => subtotal.overflow
-               }}
+              counters = %{
+                "total" => if(complete, do: subtotal.value),
+                "known_subtotal" => subtotal.value,
+                "unknown_count" => Enum.count(values, &is_nil/1),
+                "overflow" => subtotal.overflow
+              }
+
+              counters =
+                if operation == "embedding" and field == "output_tokens",
+                  do: counters |> Map.put("unknown_count", 0) |> Map.put("not_applicable", true),
+                  else: counters
+
+              {field, counters}
             end)
         }
+
+        if operation == "embedding", do: Map.put(group, "operation", operation), else: group
       end)
 
     complete =

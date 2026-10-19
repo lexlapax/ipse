@@ -4,6 +4,10 @@ Use profiles when you repeatedly choose the same provider, model, and limits, or
 want a child review to use a separately chosen model. A profile names an existing
 service. It does not install a model, sign you in, or permit effects.
 
+These profiles route text generation. Configure vector generation through the
+separate operator [embedding profiles](embeddings.md); text roles never select
+an embedding model automatically.
+
 ## Configure a main model and a local routine model
 
 Save this complete version-1 example in an operator file such as

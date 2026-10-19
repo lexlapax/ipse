@@ -343,7 +343,7 @@ the milestone. Preserve current SDK bounds and existing operation authority.
 | --- | --- | --- |
 | P27H1 | Source-bound bounded result pages and explicit mixed read/effect allowance where necessary; unchanged legacy grants and pure saved-source validation | Complete for the MCP text contract at `2fe3583`; local source/native/installed and hosted Linux/macOS gates pass at `1f90178` |
 | P27H2 | Approved configured MCP actions from extensions; pinned descriptors, child denial, owned cancellation and unknown-outcome recovery | Complete at `2fe3583`; real stdio/HTTP, denial, cancellation and inert recovery pass; source/installed proofs pass on hosted Linux/macOS at `1f90178` |
-| P27H3 | Versioned embedding operation with selected profiles, bounded ordinary vectors, exact egress, operation-aware accounting/costs/shared budgets and no text-envelope substitution | Open |
+| P27H3 | Versioned embedding operation with selected profiles, bounded ordinary vectors, exact egress, operation-aware accounting/costs/shared budgets and no text-envelope substitution | Implemented; local source/macOS/installed gates pass with 768/4096-coordinate native fixtures; hosted checks pending |
 | P27A | Independent research and lexical corpus packages with named interchangeable profiles, cited evidence, explicit limits, partial failures, stale-index handling and suppression | Open |
 | P27B | Independent attributable graph, optional extraction, embedding/hybrid and rerank adapters; matched quality/resource comparisons before engine selection | Open |
 | P27 verification | Frozen held-out workload, zero authority/isolation/replay/resurrection failures, measured retrieval/support/citation/resources, source/native/installed checks, coherent user and contributor manuals | Open |
@@ -351,9 +351,10 @@ the milestone. Preserve current SDK bounds and existing operation authority.
 The [first host-contract record](archive/2026-10-19-p27-mcp-host-contracts/index.md)
 retains causal regressions, independent review corrections and local verification.
 It establishes approved MCP transport and result paging, not research/graph/RAG
-quality or an embedding inference/accounting contract. Those requirements remain
-open. The next host increment adds real typed embeddings with selected profiles
-and operation-aware usage, prices and shared budget coverage.
+quality. The [embedding host-contract record](archive/2026-10-19-p27-embedding-host-contracts/index.md)
+retains typed native embeddings, selected profiles and operation-aware usage,
+prices and shared budget coverage. Its local protocol proofs do not establish
+actual model quality; its hosted checks and the domain/held-out gates remain open.
 
 ## P28: voice and realtime media
 

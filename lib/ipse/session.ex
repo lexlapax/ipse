@@ -12,6 +12,7 @@ defmodule Ipse.Session do
     Invocation,
     Actions,
     ModelCall,
+    EmbeddingCall,
     Subscriptions,
     EventJob,
     Feeds,
@@ -134,6 +135,7 @@ defmodule Ipse.Session do
          :ok <- Ipse.Observability.Config.runtime(config),
          :ok <- Ipse.Usage.configuration(config),
          :ok <- ModelCall.configuration(config),
+         :ok <- Ipse.EmbeddingProfiles.configuration(config),
          :ok <- Ipse.Provider.Limits.validate(config),
          :ok <- provider_configuration(config),
          :ok <- Ipse.Budget.Policy.runtime(config),
@@ -1109,8 +1111,8 @@ defmodule Ipse.Session do
           }
 
           proposed =
-            if ModelCall.operation?(request) do
-              {:ok, runtime, execution} = ModelCall.prepare(s.config, request)
+            if Ipse.Extensions.Operation.inference?(request) do
+              {:ok, runtime, execution} = prepare_inference(s.config, request)
               {:ok, destination} = Ipse.Provider.destination(runtime)
               proposed |> Map.put("execution", execution) |> Map.put("destination", destination)
             else
@@ -1202,7 +1204,7 @@ defmodule Ipse.Session do
     do: {:reply, {:error, :extension_effect_source_refused}, s}
 
   def handle_call(
-        {:extension_model_begin, ref, intent},
+        {message, ref, intent},
         {caller, _},
         %{
           job_ref: ref,
@@ -1212,19 +1214,29 @@ defmodule Ipse.Session do
           phase: phase
         } = s
       )
-      when ref != nil and
+      when message in [:extension_model_begin, :extension_embedding_begin] and ref != nil and
              phase in [:tool, :extension_command, :extension_service, :extension_events] do
-    with true <- ModelCall.operation?(intent["request"]),
+    with true <- inference_begin?(message, intent["request"]),
          true <- intent["approval"] in ~w(approved session_allow),
          true <- Ipse.Extensions.Registry.live?(s.extension_invocation["identity"]),
          true <- s.steps < Map.get(s.config, :max_steps, 30),
          true <- Ipse.Usage.capacity?(s.accounting),
-         {:ok, config, execution} <- ModelCall.prepare(s.config, intent["request"]) do
+         {:ok, config, execution} <- prepare_inference(s.config, intent["request"]),
+         true <-
+           not EmbeddingCall.operation?(intent["request"]) or
+             (intent["effect_binding"]["execution"] === execution and
+                Ipse.Provider.destination(config) ==
+                  {:ok, intent["effect_binding"]["destination"]}) do
       admission =
         Ipse.Usage.admission(s.id, config, "extension", s.turn_id)
         |> Map.put("request_id", intent["operation_id"])
 
-      s = account(s, ModelCall.source(intent, admission, execution))
+      source =
+        if message == :extension_embedding_begin,
+          do: EmbeddingCall.source(intent, admission, execution),
+          else: ModelCall.source(intent, admission, execution)
+
+      s = account(s, source)
       s = account(s, admission)
       active = %{admission: admission, started: System.monotonic_time(:millisecond)}
       {:reply, {:ok, config, admission}, %{s | extension_model: active, steps: s.steps + 1}}
@@ -1236,8 +1248,11 @@ defmodule Ipse.Session do
   def handle_call({:extension_model_begin, _, _}, _, s),
     do: {:reply, {:error, :extension_model_refused}, s}
 
+  def handle_call({:extension_embedding_begin, _, _}, _, s),
+    do: {:reply, {:error, :extension_embedding_refused}, s}
+
   def handle_call(
-        {:extension_model_usage, ref, id, usage},
+        {message, ref, id, usage},
         {caller, _},
         %{
           job_ref: ref,
@@ -1245,20 +1260,27 @@ defmodule Ipse.Session do
           extension_model: %{admission: %{"request_id" => id} = admission}
         } = s
       )
-      when ref != nil do
+      when message in [:extension_model_usage, :extension_embedding_usage] and ref != nil do
     entry = s.accounting.requests[id]
 
-    if Ipse.Usage.Normalizer.valid?(usage) do
+    if inference_usage?(message, admission) and
+         Ipse.Usage.Normalizer.valid?(usage, Ipse.Usage.operation(admission)) and
+         (entry.sequence < 64 or entry.observation == usage or message == :extension_model_usage) do
       s =
         if entry.sequence < 64 and entry.observation != usage do
           event = %{
             "type" => "request_usage_observed",
-            "version" => 1,
+            "version" => admission["version"],
             "request_id" => id,
             "attempt_id" => admission["attempt_id"],
             "sequence" => entry.sequence + 1,
             "usage" => usage
           }
+
+          event =
+            if Ipse.Usage.operation(admission) == "embedding",
+              do: Map.put(event, "operation", "embedding"),
+              else: event
 
           account(s, event)
         else
@@ -1274,8 +1296,11 @@ defmodule Ipse.Session do
   def handle_call({:extension_model_usage, _, _, _}, _, s),
     do: {:reply, {:error, :extension_model_refused}, s}
 
+  def handle_call({:extension_embedding_usage, _, _, _}, _, s),
+    do: {:reply, {:error, :extension_embedding_refused}, s}
+
   def handle_call(
-        {:extension_model_finish, ref, intent, result, assistant, reason},
+        {:extension_model_finish, ref, intent, result, capture, reason},
         {caller, _},
         %{
           job_ref: ref,
@@ -1285,6 +1310,8 @@ defmodule Ipse.Session do
         } = s
       )
       when ref != nil do
+    assistant = if is_map(capture), do: capture.value
+
     {s, retained} =
       case ModelCall.response(admission, assistant) do
         {:ok, event} -> {account(s, event), true}
@@ -1311,6 +1338,77 @@ defmodule Ipse.Session do
 
   def handle_call({:extension_model_finish, _, _, _, _, _}, _, s),
     do: {:reply, {:error, :extension_model_refused}, s}
+
+  def handle_call(
+        {:extension_embedding_finish, ref, intent, result, capture, reason},
+        {caller, _},
+        %{
+          job_ref: ref,
+          task: %{pid: caller},
+          extension_action: %{intent: intent},
+          extension_model: %{admission: admission, started: started}
+        } = s
+      )
+      when ref != nil do
+    if EmbeddingCall.operation?(intent["request"]) and
+         Ipse.Usage.operation(admission) == "embedding" do
+      valid_capture = embedding_capture?(capture, intent)
+      s = if valid_capture, do: observe_embedding_capture(s, admission, capture.usage), else: s
+      observed = s.accounting.requests[admission["request_id"]].observation
+
+      completion =
+        Ipse.Usage.completion(
+          admission,
+          result,
+          max(System.monotonic_time(:millisecond) - started, 0),
+          observed
+        )
+
+      source =
+        with true <- valid_capture,
+             {:ok, payload, raw} <- result,
+             true <-
+               payload === capture.value and
+                 Ipse.Usage.observation(admission, raw, 1)["usage"] === capture.usage,
+             {:ok, source} <- EmbeddingCall.response(intent, admission, completion, payload),
+             do: source
+
+      {s, source} =
+        if is_map(source) do
+          s = account(s, source)
+
+          {%{
+             s
+             | extension_effect_sources:
+                 Map.put(s.extension_effect_sources, intent["operation_id"], source)
+           }, source}
+        else
+          {s, nil}
+        end
+
+      s = account(s, completion)
+      s = %{s | extension_model: nil}
+
+      outcome =
+        cond do
+          reason in ~w(embedding_cancelled embedding_timeout) ->
+            {:failed, %{"code" => reason}}
+
+          match?({:ok, _, _}, result) and is_nil(source) ->
+            {:failed, %{"code" => "embedding_response"}}
+
+          true ->
+            EmbeddingCall.value_from_completion(intent["request"], admission, completion, source)
+        end
+
+      {:reply, outcome, s}
+    else
+      {:reply, {:error, :extension_embedding_refused}, s}
+    end
+  end
+
+  def handle_call({:extension_embedding_finish, _, _, _, _, _}, _, s),
+    do: {:reply, {:error, :extension_embedding_refused}, s}
 
   def handle_call(
         {:extension_action_commit, ref, event},
@@ -3245,7 +3343,7 @@ defmodule Ipse.Session do
   defp next_delegated_approval(s) do
     index =
       Enum.find_index(s.delegation_queue, fn {_, _, _, name, args} ->
-        s.delegation_effect == nil or ModelCall.delegated_approval?(name, args)
+        s.delegation_effect == nil or inference_approval?(name, args)
       end)
 
     if index == nil do
@@ -3362,14 +3460,14 @@ defmodule Ipse.Session do
   defp delegated_conflict?(s, child, name, args) do
     target = delegated_target(s, name, args)
 
-    not ModelCall.delegated_approval?(name, args) and
+    not inference_approval?(name, args) and
       Enum.any?(s.delegation_claims, fn {claimed, owner} ->
         owner != child and (target == "*" or claimed == "*" or target == claimed)
       end)
   end
 
   defp claim_delegated_effect(s, child, name, args) do
-    if ModelCall.delegated_approval?(name, args) do
+    if inference_approval?(name, args) do
       s
     else
       %{
@@ -3808,7 +3906,7 @@ defmodule Ipse.Session do
   end
 
   defp record_extension_action(s, event) do
-    if ModelCall.operation?(event["request"]) do
+    if Ipse.Extensions.Operation.inference?(event["request"]) do
       account(s, event)
     else
       record(s, event)
@@ -3873,7 +3971,8 @@ defmodule Ipse.Session do
              dir,
              %{
                "cwd" => cwd,
-               "usage_version" => 1,
+               "usage_version" => if(Ipse.EmbeddingProfiles.enabled?(config), do: 2, else: 1),
+               "embedding_profiles" => Ipse.EmbeddingProfiles.snapshot(config),
                "max_output_tokens" => config[:max_output_tokens],
                "model_profiles" => ModelCall.snapshot(config),
                "budget" => config[:budget],
@@ -3907,6 +4006,7 @@ defmodule Ipse.Session do
              meta["model"] == config.model and
              meta["max_output_tokens"] === config[:max_output_tokens] and
              meta["model_profiles"] === ModelCall.snapshot(config) and
+             meta["embedding_profiles"] === Ipse.EmbeddingProfiles.snapshot(config) and
              meta["budget"] === config[:budget] and meta["budget_root"] === config[:budget_root] and
              Map.get(meta, "sandbox", "off") == to_string(Map.get(config, :sandbox, :off)) and
              Map.get(meta, "mcp_servers", []) == Ipse.MCP.fingerprints(config) and
@@ -4302,6 +4402,9 @@ defmodule Ipse.Session do
 
   defp extension_effect_binding(s, request) do
     cond do
+      EmbeddingCall.operation?(request) ->
+        EmbeddingCall.binding(s.config, request)
+
       Ipse.Extensions.Operation.mcp?(request) ->
         gate = s.extension_mcp_context
 
@@ -4366,7 +4469,7 @@ defmodule Ipse.Session do
     }
 
     context =
-      if ModelCall.operation?(intent["request"]),
+      if Ipse.Extensions.Operation.inference?(intent["request"]),
         do: Map.merge(context, %{owner: self(), job_ref: s.job_ref}),
         else: context
 
@@ -4443,9 +4546,62 @@ defmodule Ipse.Session do
     end
   end
 
+  defp inference_approval?(name, args),
+    do: ModelCall.delegated_approval?(name, args) or EmbeddingCall.delegated_approval?(name, args)
+
+  defp inference_begin?(:extension_model_begin, request), do: ModelCall.operation?(request)
+
+  defp inference_begin?(:extension_embedding_begin, request),
+    do: EmbeddingCall.operation?(request)
+
+  defp inference_usage?(:extension_model_usage, admission),
+    do: Ipse.Usage.operation(admission) == "text"
+
+  defp inference_usage?(:extension_embedding_usage, admission),
+    do: Ipse.Usage.operation(admission) == "embedding"
+
+  defp embedding_capture?(%{value: value, usage: usage}, intent) do
+    Ipse.Provider.Embedding.valid_result?(
+      value,
+      intent["effect_binding"]["execution"],
+      intent["request"]["inputs"]
+    ) and
+      Ipse.Usage.Normalizer.valid?(usage, "embedding")
+  end
+
+  defp embedding_capture?(_, _), do: false
+
+  defp observe_embedding_capture(s, admission, usage) do
+    entry = s.accounting.requests[admission["request_id"]]
+
+    cond do
+      entry.observation === usage ->
+        s
+
+      entry.sequence < 64 ->
+        account(s, %{
+          "type" => "request_usage_observed",
+          "version" => 2,
+          "operation" => "embedding",
+          "request_id" => admission["request_id"],
+          "attempt_id" => admission["attempt_id"],
+          "sequence" => entry.sequence + 1,
+          "usage" => usage
+        })
+
+      true ->
+        raise "Embedding observation allowance exhausted"
+    end
+  end
+
+  defp prepare_inference(config, %{"op" => "embedding.create"} = request),
+    do: Ipse.EmbeddingProfiles.prepare(config, request)
+
+  defp prepare_inference(config, request), do: ModelCall.prepare(config, request)
+
   defp extension_model_configuration(config, request) do
-    if ModelCall.operation?(request) do
-      case ModelCall.prepare(config, request) do
+    if Ipse.Extensions.Operation.inference?(request) do
+      case prepare_inference(config, request) do
         {:ok, _, _} -> :ok
         _ -> {:error, :invalid_extension_model_configuration}
       end

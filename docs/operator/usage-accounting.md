@@ -22,6 +22,12 @@ configured profile, billing mode, main/summary/extension kind, and nullable
 normalized counters. Accounted extension inference records its actual selected
 profile/provider. Text and native payloads are excluded from accounting views.
 
+Embedding records explicitly identify their operation and selected embedding
+profile. Their output-token count is null with output marked inapplicable.
+Input/total/duration counters still distinguish reported zero from unavailable
+metering. A failed result can retain genuine final counters and conservative
+budget liability.
+
 Parent displays cover parent requests. Children keep their own journals; a
 separately granted tree report can combine registered direct children. Unknown
 or absent counters remain unknown. Failed or cancelled work can still consume
@@ -124,6 +130,15 @@ second. Flat input uses `input`; cache-split modes need their distinct component
 rates. Do not invent missing dimensions or apply an unrelated model's rate.
 See [the rate reference](../developer/costs.md) for cache variants and exact
 selection rules.
+
+Version-1 cards cover text requests. To price embeddings, use card `version: 2`
+and put `operation: "text"` or `"embedding"` on every row. An embedding row has
+`input_mode: "flat"`, an `input` rate and optionally `duration_second`. It has no
+output/cache/search/fetch rates. A text row never prices an embedding by matching
+model names alone. Positive reported duration needs its configured rate for a
+complete estimate. Without one, the total stays partial and a budget retains
+its unknown money allowance. Keep synthetic examples separate from reviewed
+prices for the actual selected route.
 
 Currency has three uppercase letters. `api_estimate`, `api_equivalent`, and
 `local_estimate` remain separate bases. Subscription equivalence is not API spend;

@@ -30,6 +30,33 @@ defmodule Ipse.Lifecycle.Metadata do
       when type in ~w(lifecycle_epoch_started lifecycle_epoch_closed lifecycle_wait_started lifecycle_wait_finished lifecycle_recording_stopped),
       do: Ipse.Lifecycle.Runtime.describe(record)
 
+  def describe(
+        %{"type" => "request_admitted", "version" => 2, "operation" => "embedding"} = record
+      ),
+      do:
+        fields(
+          "embedding.admitted",
+          record,
+          [],
+          ~w(request_id attempt_id session_id turn_id),
+          ~w(parent_session_id parent_request_id),
+          %{"kind" => ["extension"]}
+        )
+
+  def describe(
+        %{"type" => "request_usage_observed", "version" => 2, "operation" => "embedding"} = record
+      ),
+      do: fields("embedding.usage_observed", record, ~w(sequence), ~w(request_id attempt_id))
+
+  def describe(
+        %{"type" => "request_finished", "version" => 2, "operation" => "embedding"} = record
+      ),
+      do:
+        fields("embedding.finished", record, ~w(duration_ms), ~w(request_id attempt_id), [], %{
+          "outcome" => ~w(completed failed cancelled),
+          "finality" => ~w(final partial)
+        })
+
   def describe(%{"type" => "request_admitted", "version" => 1} = record),
     do:
       fields(

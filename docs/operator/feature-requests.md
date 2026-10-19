@@ -64,8 +64,9 @@ erase earlier recall, journals, exports, or provider transfers. For automation,
 ask how cancellation, owner death, timeout, incomplete cleanup, and unknown
 outcomes are handled. Interrupted effects must not replay automatically.
 
-For inference, require named profiles and the supported accounted model path.
-One-shot text inference is not an embeddings or audio API. Host budgets do not
+For inference, require named profiles and the supported accounted text or
+[embedding action](embeddings.md). A text response containing numbers does not
+satisfy the embedding contract. Host budgets do not
 cover arbitrary worker network calls, external-service costs, or device access.
 Executable extensions run with trusted operator OS permissions; their separate
 VM does not turn them into an OS sandbox.

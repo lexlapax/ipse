@@ -147,6 +147,8 @@ The operator file can also contain these documented top-level objects:
 
 - `profiles` and `roles` select [named models](model-profiles.md). Projects can
   add default-endpoint profiles but cannot replace operator IDs or set endpoints.
+- `embedding_profiles` selects [embedding services](embeddings.md) through a
+  separate operator-only registry. It supplies no automatic text/model routing.
 - `budget` reserves covered work for [one session tree](budgets.md).
 - `extensions` selects instances; operator-only `extension_trust` grants their
   reviewed ceilings and optional storage/service bindings. See [Extensions](extensions.md).

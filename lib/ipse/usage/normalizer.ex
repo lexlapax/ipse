@@ -44,6 +44,53 @@ defmodule Ipse.Usage.Normalizer do
 
   def normalize(_, _), do: record(empty(), [], "invalid", ["unsupported_provider"])
 
+  def normalize(provider, operation, raw) when operation in [:text, "text"],
+    do: normalize(provider, raw)
+
+  def normalize(provider, operation, raw) when operation in [:embedding, "embedding"] do
+    raw = if is_nil(raw), do: %{}, else: raw
+
+    with true <- provider in [:openai, :ollama],
+         true <- is_map(raw),
+         {:ok, counts} <- embedding_counts(provider, raw),
+         true <- embedding_consistent?(counts) do
+      {counts, derived} =
+        if is_integer(counts["input_tokens"]) and is_nil(counts["total_tokens"]),
+          do: {Map.put(counts, "total_tokens", counts["input_tokens"]), ["total_tokens"]},
+          else: {counts, []}
+
+      quality =
+        cond do
+          is_integer(counts["input_tokens"]) and is_integer(counts["total_tokens"]) ->
+            "totals_known"
+
+          Enum.any?(Map.values(counts), &is_integer/1) ->
+            "partial"
+
+          true ->
+            "unavailable"
+        end
+
+      embedding_record(counts, derived, quality, [])
+    else
+      _ ->
+        issue =
+          if provider in [:openai, :ollama],
+            do: "invalid_or_inconsistent_provider_counters",
+            else: "unsupported_provider"
+
+        embedding_record(empty(), [], "invalid", [issue])
+    end
+  rescue
+    _ -> embedding_record(empty(), [], "invalid", ["invalid_or_inconsistent_provider_counters"])
+  end
+
+  def normalize(_, _, _), do: record(empty(), [], "invalid", ["unsupported_provider"])
+
+  def valid?(usage, "text"), do: is_map(usage) and usage["version"] === 1 and valid?(usage)
+  def valid?(usage, "embedding"), do: is_map(usage) and usage["version"] === 2 and valid?(usage)
+  def valid?(_, _), do: false
+
   @doc "Validate stored normalized counters without accessing provider data or credentials."
   def valid?(
         %{
@@ -73,7 +120,91 @@ defmodule Ipse.Usage.Normalizer do
     _ -> false
   end
 
+  def valid?(%{"version" => 2, "operation" => "embedding"} = record) do
+    counts = record["counts"]
+    derived = record["derived_fields"]
+    quality = record["quality"]
+    issues = record["issues"]
+
+    Ipse.MCP.Schema.validate_object(record) == :ok and
+      Enum.sort(Map.keys(record)) ==
+        ~w(counts derived_fields issues not_applicable_fields operation quality version) and
+      record["not_applicable_fields"] == ["output_tokens"] and
+      is_map(counts) and Enum.sort(Map.keys(counts)) == Enum.sort(@fields) and
+      Enum.all?(Map.values(counts), &(is_nil(&1) or counter?(&1))) and
+      Enum.all?(
+        @fields -- ~w(input_tokens total_tokens provider_duration_ns),
+        &is_nil(counts[&1])
+      ) and
+      derived in [[], ["total_tokens"]] and
+      (derived == [] or
+         (is_integer(counts["input_tokens"]) and is_integer(counts["total_tokens"]))) and
+      embedding_consistent?(counts) and
+      is_list(issues) and
+      Enum.all?(
+        issues,
+        &(&1 in ~w(invalid_or_inconsistent_provider_counters unsupported_provider))
+      ) and
+      ((quality == "invalid" and issues != []) or (quality != "invalid" and issues == [])) and
+      embedding_quality?(counts, quality)
+  rescue
+    _ -> false
+  end
+
   def valid?(_), do: false
+
+  defp embedding_counts(provider, raw) do
+    paths =
+      case provider do
+        :openai ->
+          %{"input_tokens" => ["prompt_tokens"], "total_tokens" => ["total_tokens"]}
+
+        :ollama ->
+          %{"input_tokens" => ["prompt_eval_count"], "provider_duration_ns" => ["total_duration"]}
+      end
+
+    Enum.reduce_while(paths, {:ok, empty()}, fn {field, path}, {:ok, counts} ->
+      case read(raw, path) do
+        nil ->
+          {:cont, {:ok, counts}}
+
+        value when is_integer(value) and value >= 0 and value <= @limit ->
+          {:cont, {:ok, Map.put(counts, field, value)}}
+
+        _ ->
+          {:halt, :error}
+      end
+    end)
+  end
+
+  defp embedding_consistent?(counts),
+    do:
+      is_nil(counts["input_tokens"]) or is_nil(counts["total_tokens"]) or
+        counts["input_tokens"] == counts["total_tokens"]
+
+  defp embedding_quality?(counts, "totals_known"),
+    do: is_integer(counts["input_tokens"]) and is_integer(counts["total_tokens"])
+
+  defp embedding_quality?(counts, quality) when quality in ~w(unavailable invalid),
+    do: Enum.all?(Map.values(counts), &is_nil/1)
+
+  defp embedding_quality?(counts, "partial"),
+    do:
+      Enum.any?(Map.values(counts), &is_integer/1) and
+        not embedding_quality?(counts, "totals_known")
+
+  defp embedding_quality?(_, _), do: false
+
+  defp embedding_record(counts, derived, quality, issues),
+    do: %{
+      "version" => 2,
+      "operation" => "embedding",
+      "counts" => counts,
+      "derived_fields" => derived,
+      "quality" => quality,
+      "issues" => issues,
+      "not_applicable_fields" => ["output_tokens"]
+    }
 
   defp extract(provider, raw) do
     paths =

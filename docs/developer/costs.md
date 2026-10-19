@@ -55,6 +55,14 @@ Unknown input cannot select a finite token band.
 Subscription equivalents are not API charges. Missing local prices do not imply
 free computation. A card cannot price another billing mode by fallback.
 
+Version-1 cards cover text only. A version-2 card requires `operation: "text"` or
+`"embedding"` on every row. Operation joins the exact match and overlap identity,
+so an embedding cannot consume a text rate with the same model/endpoint. An
+embedding row permits only flat input and optional `duration_second` rates for
+OpenAI or Ollama. It requires no fabricated output count. Positive reported
+duration without a rate leaves a partial estimate; absent duration is not a
+measured zero. Read `test/embedding_costs_test.exs` alongside the text fixtures.
+
 | Input mode | Required rates |
 | --- | --- |
 | `flat` | `input`, `output` |
@@ -72,7 +80,14 @@ without a rate keep the total unknown.
 `estimate/2` accepts exactly `provider`, `billing_mode`, `model`, `reported_model`,
 `endpoint_sha256`, `admitted_at_ms`, `outcome`, `finality`, and normalized `usage`.
 It validates those values but does not authenticate their provenance. Host
-[accounting reads](usage-accounting.md) provide authenticated session projections.
+[accounting reads](usage-accounting.md) provide validated source-bound session projections.
+
+Operation-bearing request projections additionally require `operation`; their
+normalized usage must match it. New estimates use version 2 and preserve operation.
+Legacy text projections/estimates keep their exact v1 shape. Preserve the field
+when projecting records into `Costs.estimate/2`; dropping it would misclassify
+embedding metering as text. Summaries separate operation groups and mark embedding
+output tokens inapplicable rather than counting them as missing measurements.
 
 A result retains card digest/revision, row, rated/requested/reported model,
 source/date, basis, currency/scale, components, and rounding rule.

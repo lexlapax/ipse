@@ -3,7 +3,7 @@ defmodule Ipse.Extensions.Examples.CostReport do
   @behaviour Ipse.Extension
   alias Ipse.Extensions.Costs
 
-  @fields ~w(provider billing_mode model reported_model endpoint_sha256 admitted_at_ms outcome finality usage)
+  @fields ~w(operation provider billing_mode model reported_model endpoint_sha256 admitted_at_ms outcome finality usage)
   @safe 9_007_199_254_740_991
 
   def exports do
@@ -104,9 +104,11 @@ defmodule Ipse.Extensions.Examples.CostReport do
 
       groups =
         priced
-        |> Enum.group_by(fn {r, q} -> {r["provider"], r["billing_mode"], q["basis"]} end)
+        |> Enum.group_by(fn {r, q} ->
+          {r["provider"], r["billing_mode"], q["basis"], r["operation"] || "text"}
+        end)
         |> Enum.sort_by(fn {key, _} -> key end)
-        |> Enum.map(fn {{provider, billing, basis}, rows} ->
+        |> Enum.map(fn {{provider, billing, basis, operation}, rows} ->
           amounts = Enum.map(rows, fn {_, q} -> q["amount_nanos"] end)
 
           known =
@@ -118,7 +120,7 @@ defmodule Ipse.Extensions.Examples.CostReport do
           overflow = sum > @safe
           total = if Enum.all?(amounts, &is_integer/1) and not overflow, do: Enum.sum(amounts)
 
-          %{
+          group = %{
             "provider" => provider,
             "billing_mode" => billing,
             "basis" => basis,
@@ -128,13 +130,15 @@ defmodule Ipse.Extensions.Examples.CostReport do
             "known_amount_nanos" => if(known != [] and not overflow, do: sum),
             "overflow" => overflow
           }
+
+          if operation == "embedding", do: Map.put(group, "operation", operation), else: group
         end)
 
       rows =
         Enum.map(priced, fn {r, q} ->
           Map.take(
             r,
-            ~w(request_id attempt_id parent_session_id parent_request_id selected_profile kind)
+            ~w(operation request_id attempt_id parent_session_id parent_request_id selected_profile kind)
           )
           |> Map.put(
             "estimate",

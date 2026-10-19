@@ -438,8 +438,10 @@ defmodule Ipse.Extensions.Actions do
     end
   end
 
-  defp validate_event(%{"type" => "extension_model_request"} = event, state, _) do
-    if state.action != nil and Operation.model?(state.action["request"]) and
+  defp validate_event(%{"type" => type} = event, state, _)
+       when type in ~w(extension_model_request extension_embedding_request) do
+    if state.action != nil and Operation.inference?(state.action["request"]) and
+         type == "extension_embedding_request" == Operation.embedding?(state.action["request"]) and
          event["operation_id"] == state.action["operation_id"] and
          event["parent_invocation_id"] == state.parent["invocation_id"] and
          event["admission"]["session_id"] == state.parent["payload"]["session_id"] and
@@ -559,7 +561,10 @@ defmodule Ipse.Extensions.Actions do
     if is_map(source) and source["source_sha256"] == request["source_sha256"] and
          Enum.any?(results, fn result ->
            result["operation_id"] == id and result["outcome"]["status"] == "ok" and
-             result["outcome"]["value"] == Ipse.Extensions.EffectResult.descriptor(source)
+             (result["outcome"]["value"] == Ipse.Extensions.EffectResult.descriptor(source) or
+                (Operation.embedding?(result["request"]) and
+                   result["outcome"]["value"]["result"] ==
+                     Ipse.Extensions.EffectResult.descriptor(source)))
          end),
        do: {:ok, source},
        else: @error
@@ -575,6 +580,12 @@ defmodule Ipse.Extensions.Actions do
       Operation.mcp?(request) and outcome["status"] == "ok" ->
         source = sources[event["operation_id"]]
         is_map(source) and outcome["value"] == Ipse.Extensions.EffectResult.descriptor(source)
+
+      Operation.embedding?(request) and outcome["status"] == "ok" ->
+        source = sources[event["operation_id"]]
+
+        is_map(source) and
+          outcome["value"]["result"] == Ipse.Extensions.EffectResult.descriptor(source)
 
       Operation.result_read?(request) ->
         with {:ok, source} <- effect_source(request, sources, results) do
@@ -592,6 +603,13 @@ defmodule Ipse.Extensions.Actions do
 
   defp effect_binding?(event, identity, metadata \\ nil) do
     cond do
+      Operation.embedding?(event["request"]) ->
+        Ipse.Extensions.EmbeddingCall.valid_binding?(
+          event["effect_binding"],
+          event["request"],
+          metadata
+        )
+
       Operation.mcp?(event["request"]) ->
         Ipse.Extensions.MCPCall.valid_binding?(
           event["effect_binding"],
@@ -611,7 +629,7 @@ defmodule Ipse.Extensions.Actions do
   defp version_two?(identity, request),
     do:
       "host.actions.mixed" in identity["capabilities"] or Operation.mcp?(request) or
-        Operation.result_read?(request)
+        Operation.result_read?(request) or Operation.embedding?(request)
 
   defp intent_keys(%{"version" => 2}), do: @keys ++ ["effect_binding"]
   defp intent_keys(_), do: @keys

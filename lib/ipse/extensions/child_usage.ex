@@ -70,7 +70,7 @@ defmodule Ipse.Extensions.ChildUsage do
         do: ~w(child_count),
         else: ~w(child_id request_count legacy_unmetered bytes sha256)
 
-    keys?(s, @snapshot ++ extra) and s["version"] in [2, 3] and
+    keys?(s, @snapshot ++ extra) and is_integer(s["version"]) and s["version"] in [2, 3, 4] and
       Source.valid_metadata?(s["source"]) and id?(s["operation_id"]) and
       hash?(s["identity_sha256"]) and
       if(s["version"] == 2,
@@ -102,7 +102,7 @@ defmodule Ipse.Extensions.ChildUsage do
                read_child(c.directory, c.intent["namespace"], child, snapshot),
              snapshot =
                snapshot ||
-                 Map.merge(base(c, 3), %{
+                 Map.merge(base(c, if(Usage.snapshot(ledger)["version"] == 2, do: 4, else: 3)), %{
                    "child_id" => r["child_id"],
                    "request_count" => length(Usage.order(ledger)),
                    "legacy_unmetered" => ledger.legacy_unmetered,
@@ -140,14 +140,23 @@ defmodule Ipse.Extensions.ChildUsage do
   defp admitted_snapshot(c) do
     r = c.intent["request"]
     s = r["snapshot"]
-    version = if r["op"] == "usage.children", do: 2, else: 3
+    versions = if r["op"] == "usage.children", do: [2], else: [3, 4]
 
     cond do
-      s == nil -> {:ok, nil}
-      s["version"] != version or not bound?(s, c.intent) -> failed("usage_child_snapshot")
-      c.state.reads[s["operation_id"]] != s -> failed("usage_child_snapshot")
-      version == 3 and s["child_id"] != r["child_id"] -> failed("usage_child_snapshot")
-      true -> {:ok, s}
+      s == nil ->
+        {:ok, nil}
+
+      s["version"] not in versions or not bound?(s, c.intent) ->
+        failed("usage_child_snapshot")
+
+      c.state.reads[s["operation_id"]] != s ->
+        failed("usage_child_snapshot")
+
+      r["op"] == "usage.child.read" and s["child_id"] != r["child_id"] ->
+        failed("usage_child_snapshot")
+
+      true ->
+        {:ok, s}
     end
   end
 
@@ -184,7 +193,7 @@ defmodule Ipse.Extensions.ChildUsage do
       child = r["op"] == "usage.child.read"
 
       value = %{
-        "version" => 1,
+        "version" => if(child and snapshot["version"] == 4, do: 2, else: 1),
         "scope" => if(child, do: "child", else: "children"),
         "coverage" => if(child, do: "canonical_requests", else: "registered_children"),
         "snapshot" => snapshot,
@@ -211,9 +220,10 @@ defmodule Ipse.Extensions.ChildUsage do
     count = snapshot[if(child, do: "request_count", else: "child_count")]
 
     validate(r) == :ok and keys?(value, ~w(version scope coverage snapshot cursor next) ++ [key]) and
-      value["version"] === 1 and value["scope"] == if(child, do: "child", else: "children") and
+      value["version"] === if(child and snapshot["version"] == 4, do: 2, else: 1) and
+      value["scope"] == if(child, do: "child", else: "children") and
       value["coverage"] == if(child, do: "canonical_requests", else: "registered_children") and
-      snapshot?(snapshot) and snapshot["version"] == if(child, do: 3, else: 2) and
+      snapshot?(snapshot) and snapshot["version"] in if(child, do: [3, 4], else: [2]) and
       (snapshot == r["snapshot"] or
          (r["snapshot"] == nil and snapshot["operation_id"] == operation)) and
       (not child or snapshot["child_id"] == r["child_id"]) and
@@ -223,7 +233,8 @@ defmodule Ipse.Extensions.ChildUsage do
       Enum.all?(rows, fn row ->
         if child do
           Usage.valid_request_record?(row) and row["session_id"] == r["child_id"] and
-            row["parent_session_id"] == snapshot["source"]["session_id"]
+            row["parent_session_id"] == snapshot["source"]["session_id"] and
+            (value["version"] == 2 or row["version"] === 1)
         else
           keys?(
             row,
@@ -338,7 +349,7 @@ defmodule Ipse.Extensions.ChildUsage do
                  Journal.source_page(directory, session, source["byte_offset"], 1),
                {:ok, metadata} <- Source.metadata(actual),
                true <- metadata == source and record == intents[operation] do
-            if snapshot["version"] == 3 do
+            if snapshot["version"] in [3, 4] do
               with {:ok, ledger, _, _} <-
                      read_child(directory, session, state.index[snapshot["child_id"]], snapshot) do
                 rows = Enum.map(Usage.order(ledger), &Usage.request_record(ledger.requests[&1]))
@@ -473,9 +484,13 @@ defmodule Ipse.Extensions.ChildUsage do
   defp private_file(path), do: private(path, :regular)
 
   defp validate_model_actions(events) do
-    if Enum.any?(events, &Ipse.Extensions.ModelCall.operation?(&1["request"])),
-      do: Ipse.Extensions.Actions.validate_events(events),
-      else: :ok
+    if Enum.any?(
+         events,
+         &(Ipse.Extensions.ModelCall.operation?(&1["request"]) or
+             Ipse.Extensions.EmbeddingCall.operation?(&1["request"]))
+       ),
+       do: Ipse.Extensions.Actions.validate_events(events),
+       else: :ok
   end
 
   defp private(path, type) do

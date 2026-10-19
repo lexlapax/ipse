@@ -31,6 +31,9 @@ defmodule Ipse.Provider do
   end
 
   @doc "Non-secret egress origin and full wire-target digest, using the actual adapter route."
+  def destination(%{operation: :embedding} = config),
+    do: Ipse.Provider.Embedding.destination(config)
+
   def destination(config) do
     with module when not is_nil(module) <- adapter(config[:provider]),
          target = module.endpoint(config),

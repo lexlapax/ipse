@@ -287,6 +287,9 @@ defmodule Ipse.Extensions.Host do
   defp execute_action(context, intent, %{"op" => "model.complete"}),
     do: Ipse.Extensions.ModelCall.execute(context, intent)
 
+  defp execute_action(context, intent, %{"op" => "embedding.create"}),
+    do: Ipse.Extensions.EmbeddingCall.execute(context, intent)
+
   defp execute_action(context, intent, %{"op" => "mcp.call"}),
     do: Ipse.Extensions.MCPCall.execute(context, intent)
 

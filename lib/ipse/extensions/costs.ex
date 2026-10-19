@@ -33,21 +33,33 @@ defmodule Ipse.Extensions.Costs do
         "rates" => Map.put(object(rates), "required", [])
       })
 
-    object(%{
-      "version" => %{"type" => "integer", "enum" => [1]},
-      "id" => text,
-      "revision" => text,
-      "currency" => %{"type" => "string", "minLength" => 3, "maxLength" => 3},
-      "source" => text,
-      "published_on" => text,
-      "rows" => %{"type" => "array", "maxItems" => 32, "items" => row}
-    })
+    row =
+      put_in(row, ["properties", "operation"], %{"type" => "string", "enum" => ~w(text embedding)})
+
+    card =
+      object(%{
+        "version" => %{"type" => "integer", "enum" => [1, 2]},
+        "id" => text,
+        "revision" => text,
+        "currency" => %{"type" => "string", "minLength" => 3, "maxLength" => 3},
+        "source" => text,
+        "published_on" => text,
+        "rows" => %{"type" => "array", "maxItems" => 32, "items" => row}
+      })
+
+    card
   end
 
   @doc "Validate closed data and nonoverlapping model/endpoint/date/token bands without fetching its source."
   def validate(card) do
     with :ok <- Schema.validate_arguments(schema(), card),
-         true <- card["version"] === 1,
+         true <- card["version"] in [1, 2] and is_integer(card["version"]),
+         true <-
+           Enum.all?(card["rows"], fn row ->
+             if card["version"] === 1,
+               do: not Map.has_key?(row, "operation"),
+               else: row["operation"] in ~w(text embedding)
+           end),
          true <- Regex.match?(~r/\A[A-Z]{3}\z/, card["currency"]),
          true <- date?(card["published_on"]),
          true <- source?(card["source"]),
@@ -95,6 +107,20 @@ defmodule Ipse.Extensions.Costs do
         "components" => []
       }
 
+      base =
+        if Map.has_key?(request, "operation"),
+          do:
+            Map.merge(base, %{
+              "version" => 2,
+              "operation" => request["operation"],
+              "scope" =>
+                if(request["operation"] == "embedding",
+                  do: "embedding_tokens_and_reported_duration",
+                  else: base["scope"]
+                )
+            }),
+          else: base
+
       counts = request["usage"]["counts"]
       model = request["reported_model"] || request["model"]
       date = time |> DateTime.to_date() |> Date.to_iso8601()
@@ -102,6 +128,7 @@ defmodule Ipse.Extensions.Costs do
       rows =
         Enum.filter(card["rows"], fn row ->
           row["provider"] == request["provider"] and
+            Map.get(row, "operation", "text") == Map.get(request, "operation", "text") and
             row["billing_mode"] == request["billing_mode"] and
             row["model"] == model and row["endpoint_sha256"] == request["endpoint_sha256"] and
             row["from"] <= date and (is_nil(row["until"]) or date < row["until"])
@@ -124,6 +151,9 @@ defmodule Ipse.Extensions.Costs do
       request["billing_mode"] == "none" ->
         %{base | "status" => "not_applicable", "missing" => ["scripted_usage"]}
 
+      request["operation"] == "embedding" and base["version"] == 2 and rows == [] ->
+        %{base | "missing" => ["operation_rate_unavailable"]}
+
       rows != [] and is_nil(counts["input_tokens"]) ->
         %{base | "missing" => ["input_band_unknown"]}
 
@@ -141,13 +171,16 @@ defmodule Ipse.Extensions.Costs do
   defp price(base, row, request) do
     counts = request["usage"]["counts"]
     {units, missing} = input_units(row["input_mode"], counts)
-    units = Map.put(units, "output", counts["output_tokens"])
+    embedding = request["operation"] == "embedding"
+    units = if embedding, do: units, else: Map.put(units, "output", counts["output_tokens"])
 
     extras = %{
       "web_search" => counts["provider_web_search_requests"],
       "web_fetch" => counts["provider_web_fetch_requests"],
       "duration_second" => counts["provider_duration_ns"]
     }
+
+    extras = if embedding, do: Map.take(extras, ["duration_second"]), else: extras
 
     units =
       Enum.reduce(extras, units, fn {key, count}, acc ->
@@ -243,7 +276,14 @@ defmodule Ipse.Extensions.Costs do
   end
 
   defp request?(r) do
-    Schema.validate_object(r) == :ok and Enum.sort(Map.keys(r)) == Enum.sort(@request_keys) and
+    operation = Map.get(r, "operation", "text")
+
+    keys =
+      if Map.has_key?(r, "operation"), do: @request_keys ++ ["operation"], else: @request_keys
+
+    Schema.validate_object(r) == :ok and Enum.sort(Map.keys(r)) == Enum.sort(keys) and
+      operation in ~w(text embedding) and
+      (operation == "text" or r["provider"] in ~w(openai ollama)) and
       r["provider"] in ~w(openai chatgpt anthropic ollama demo) and
       r["billing_mode"] == Normalizer.billing_mode(provider(r["provider"])) and
       is_binary(r["model"]) and byte_size(r["model"]) in 1..256 and
@@ -252,7 +292,7 @@ defmodule Ipse.Extensions.Costs do
       hash_or_nil?(r["endpoint_sha256"]) and is_integer(r["admitted_at_ms"]) and
       r["admitted_at_ms"] in 0..253_402_300_799_999 and
       r["outcome"] in ~w(completed failed cancelled unknown) and
-      r["finality"] in ~w(final partial) and Normalizer.valid?(r["usage"])
+      r["finality"] in ~w(final partial) and Normalizer.valid?(r["usage"], operation)
   end
 
   defp provider("openai"), do: :openai
@@ -262,21 +302,31 @@ defmodule Ipse.Extensions.Costs do
   defp provider("demo"), do: :demo
 
   defp row?(r) do
+    embedding = r["operation"] == "embedding"
+
     expected =
-      case r["input_mode"] do
-        "flat" ->
+      case {embedding, r["input_mode"]} do
+        {true, "flat"} ->
+          ["input"]
+
+        {false, "flat"} ->
           ~w(input output)
 
-        "cache_split" ->
+        {false, "cache_split"} ->
           ~w(input_uncached input_cached input_cache_write output)
 
-        "cache_ttl_split" ->
+        {false, "cache_ttl_split"} ->
           ~w(input_uncached input_cached input_cache_write_5m input_cache_write_1h output)
+
+        _ ->
+          []
       end
 
     until_valid = is_nil(r["until"]) or date?(r["until"])
 
-    r["billing_mode"] == Normalizer.billing_mode(provider(r["provider"])) and
+    expected != [] and (not embedding or r["provider"] in ~w(openai ollama)) and
+      (not embedding or Enum.all?(Map.keys(r["rates"]), &(&1 in ~w(input duration_second)))) and
+      r["billing_mode"] == Normalizer.billing_mode(provider(r["provider"])) and
       r["basis"] ==
         %{
           "api" => "api_estimate",
@@ -303,8 +353,8 @@ defmodule Ipse.Extensions.Costs do
       for({a, i} <- Enum.with_index(rows), {b, j} <- Enum.with_index(rows), i < j, do: {a, b}),
       fn {a, b} ->
         same =
-          Map.take(a, ~w(provider billing_mode model endpoint_sha256)) ==
-            Map.take(b, ~w(provider billing_mode model endpoint_sha256))
+          Map.take(a, ~w(provider billing_mode model endpoint_sha256 operation)) ==
+            Map.take(b, ~w(provider billing_mode model endpoint_sha256 operation))
 
         same and overlap?(a["from"], a["until"], b["from"], b["until"]) and
           overlap?(a["input_min"], a["input_max"], b["input_min"], b["input_max"])

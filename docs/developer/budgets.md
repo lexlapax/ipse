@@ -6,8 +6,9 @@ without treating interrupted work as free. `Ipse.Budget` wraps the existing prov
 path; it is independent of optional diagnostics and cost reports.
 
 The implementation covers main, summary, local-child, and explicitly
-[accounted extension model](extension-model-calls.md) requests. It does not meter
-embeddings, audio, arbitrary MCP/tool charges, out-of-band executable calls, or
+[accounted extension text](extension-model-calls.md) and
+[embedding](extension-embedding-actions.md) requests. It does not meter
+audio, arbitrary MCP/tool charges, out-of-band executable calls, or
 operator-wide account usage. A new independent root session is a new quota.
 
 ## Read the three layers
@@ -48,9 +49,22 @@ local estimates never offset one another.
 Read the "full known usage releases unused bookings" fixture in
 `test/budget_test.exs`. Follow its second failed request into `Ledger.liability/2`.
 Then read "usage reaches the canonical consumer only after the ledger covers it".
-The ordering prevents the journal from advertising measurements unsupported by
-durable liability. If an observation write fails, its measurement is unavailable;
-it must not become a zero balance.
+This text fixture's ordering forwards measurements only after durable liability
+covers them. A failed observation write leaves its measurement unavailable to
+that consumer; it must not become a zero balance.
+
+Embedding captures its nonstreaming final metering before guarded publication.
+If the guarded write or settlement fails, Session can retain these genuine
+counters while refusing a readable vector result. The ledger is not repaired or
+refunded. Resume refuses any counter liability it cannot prove covered. The
+ordinary text streaming path retains its existing write-before-forward ordering.
+
+Embedding admissions fix generated-output tokens as inapplicable before dispatch.
+Their output reservation and measured budget liability are semantic zero while
+canonical `output_tokens` stays null. Applicable request/input/money dimensions
+still share the exact ledger. `Policy.request_config/1` never turns a text output
+reservation into an embedding wire cap. Missing applicable counters or unpriced
+money retain their booking/peak.
 
 Final-only overdraw records covered actual counters and refuses assistant/tool
 admission. Another concurrent request's overdraw can also refuse this request's

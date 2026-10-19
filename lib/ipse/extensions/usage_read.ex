@@ -24,7 +24,7 @@ defmodule Ipse.Extensions.UsageRead do
   end
 
   def snapshot?(s) do
-    keys?(s, @snapshot_keys) and s["version"] === 1 and
+    keys?(s, @snapshot_keys) and is_integer(s["version"]) and s["version"] in [1, 2] and
       Source.valid_metadata?(s["source"]) and id?(s["operation_id"]) and
       hash?(s["identity_sha256"]) and uint?(s["request_count"]) and s["request_count"] <= @limit and
       is_boolean(s["legacy_unmetered"])
@@ -69,7 +69,7 @@ defmodule Ipse.Extensions.UsageRead do
 
   defp fresh(ledger, intent, source) do
     %{
-      "version" => 1,
+      "version" => Usage.snapshot(ledger)["version"],
       "source" => source,
       "operation_id" => intent["operation_id"],
       "identity_sha256" => intent["identity_sha256"],
@@ -88,7 +88,7 @@ defmodule Ipse.Extensions.UsageRead do
       |> Enum.map(&Usage.request_record(ledger.requests[&1]))
 
     value = %{
-      "version" => 1,
+      "version" => snapshot["version"],
       "scope" => "session",
       "coverage" => "canonical_requests",
       "snapshot" => snapshot,
@@ -116,7 +116,7 @@ defmodule Ipse.Extensions.UsageRead do
 
     validate(request) == :ok and
       keys?(value, ~w(version scope coverage snapshot cursor next requests)) and
-      value["version"] === 1 and value["scope"] == "session" and
+      value["version"] === s["version"] and value["scope"] == "session" and
       value["coverage"] == "canonical_requests" and snapshot?(s) and
       (request["snapshot"] == s or (request["snapshot"] == nil and s["operation_id"] == operation)) and
       value["cursor"] === request["cursor"] and value["cursor"] <= s["request_count"] and
@@ -124,7 +124,8 @@ defmodule Ipse.Extensions.UsageRead do
       length(rows) == min(request["limit"], s["request_count"] - value["cursor"]) and
       Enum.all?(
         rows,
-        &(Usage.valid_request_record?(&1) and &1["session_id"] == s["source"]["session_id"])
+        &(Usage.valid_request_record?(&1) and &1["session_id"] == s["source"]["session_id"] and
+            (value["version"] == 2 or &1["version"] === 1))
       ) and
       value["next"] === next and fits?(value)
   rescue

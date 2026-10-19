@@ -132,7 +132,7 @@ defmodule Ipse.Budget.Ledger do
          %{dispatch: true, completion: nil} = entry <- state.requests[id],
          true <- entry.admission["attempt_id"] == attempt,
          true <- entry.observations < 64,
-         true <- Ipse.Usage.Normalizer.valid?(usage) do
+         true <- Ipse.Usage.Normalizer.valid?(usage, Ipse.Usage.operation(entry.admission)) do
       known = Policy.observed(state.policy, entry.admission, usage)
       peak = Map.new(entry.peak, fn {key, value} -> {key, max(value, known[key] || 0)} end)
 
@@ -243,9 +243,17 @@ defmodule Ipse.Budget.Ledger do
   end
 
   defp valid_completion?(entry, completion) do
+    fields =
+      ~w(attempt_id duration_ms finality outcome reported_model request_id type usage version)
+
+    fields = if entry.admission["version"] === 2, do: fields ++ ["operation"], else: fields
+
     Enum.sort(Map.keys(completion)) ==
-      ~w(attempt_id duration_ms finality outcome reported_model request_id type usage version) and
-      completion["version"] === 1 and completion["type"] == "request_finished" and
+      Enum.sort(fields) and
+      completion["version"] === entry.admission["version"] and
+      completion["type"] == "request_finished" and
+      completion["operation"] === entry.admission["operation"] and
+      Ipse.Usage.Normalizer.valid?(completion["usage"], Ipse.Usage.operation(entry.admission)) and
       Ipse.Usage.valid_request_record?(
         Ipse.Usage.request_record(%{entry | completion: completion})
       )

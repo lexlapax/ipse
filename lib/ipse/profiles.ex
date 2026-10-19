@@ -180,6 +180,7 @@ defmodule Ipse.Profiles do
             :budget_root,
             :budget_checkpoint,
             :model_profiles,
+            :embedding_profiles,
             :model_auth_dir,
             :approval,
             :delegation_origin

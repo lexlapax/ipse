@@ -20,6 +20,7 @@ quick start. Try the demo before configuring a model account.
 | Set an endpoint, profile or project policy | [Configure Ipse](operator/configuration.md) |
 | Connect tools from another service | [Configure MCP](operator/mcp.md) |
 | Remember an explicit project note | [Use memory](operator/memory.md) |
+| Configure explicit vector generation | [Use embeddings](operator/embeddings.md) |
 | Inspect or recover interrupted work | [Recover a session](operator/recovery.md) |
 | Find why a command failed | [Troubleshoot](operator/troubleshooting.md) |
 | Understand which process owns an operation | [Follow a turn](developer/architecture.md) |

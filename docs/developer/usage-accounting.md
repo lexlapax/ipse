@@ -9,8 +9,9 @@ They do not reconstruct usage from visible text.
 ## Trace admission, observations, and completion
 
 Read `admission/4`, `observation/3`, `completion/4`, and `apply_event/2` in
-`lib/ipse/usage.ex`. Session syncs version-1 `request_admitted` before starting the
-owned model, summary, or approved extension task. The record contains fresh
+`lib/ipse/usage.ex`. Session syncs `request_admitted` before starting the
+owned model, summary, or approved extension task. Text retains version 1;
+embedding uses version 2 with `operation: "embedding"`. The record contains fresh
 128-bit hexadecimal request/attempt/turn IDs, session, kind, provider, requested
 model, selected profile, billing mode, admission time, and optional explicit
 endpoint SHA-256. Raw URLs, credentials, prompts, and reasoning are excluded.
@@ -30,10 +31,12 @@ double count", then follow the interrupted version. Cancellation/failure keeps
 the last observation with `finality: partial`; abrupt owner loss leaves an unknown
 outcome. Failed work may still have consumed resources.
 
-[Budgeted requests](budgets.md) add a write-ahead step: their shared ledger must
-cover an observation before Session publishes it. Failed observation or settlement
-writes cannot publish unsupported final counters. Earlier committed observations
-survive, and unavailable measurements retain unknown liability.
+[Budgeted text requests](budgets.md) cover an observation in the shared ledger
+before forwarding it to Session. Embeddings capture genuine nonstreaming final
+metering before the guarded observation and settlement. Failed writes prevent
+readable vector publication; Session can still retain the actual final counters.
+Resume refuses unproven ledger coverage. Neither path repairs a ledger or treats
+missing measurements as a zero balance.
 
 ## Normalize units without inventing measurements
 
@@ -48,6 +51,14 @@ The closed normalized record separates counts, derived fields, quality, and issu
 | Anthropic | Input is uncached + cache reads + cache creation only when all are known; TTL creation subsets remain separate; output includes thinking |
 | Ollama | Prompt/generated evaluation counts, optional cached prompt, nanosecond total duration |
 | Demo | `not_applicable` |
+
+Embedding normalization has a closed v2 form with `operation: "embedding"` and
+`not_applicable_fields: ["output_tokens"]`. Output stays null rather than a
+reported zero. OpenAI maps `prompt_tokens` and `total_tokens`; both must agree
+when present. Ollama maps `prompt_eval_count` and nanosecond `total_duration`.
+Known input can explicitly derive total=input. Missing input stays missing;
+duration-only metering is partial. `Normalizer.valid?/2` checks the admitted
+operation so an embedding measurement cannot satisfy a text admission.
 
 If input/output are known and total is absent, their sum is explicitly derived.
 Billing modes are subscription, API, local, or none according to route. These are
@@ -66,10 +77,12 @@ It requires `host.actions` and `host.usage`, independently of transcript access:
 A first successful read captures the admitted request count and registers a
 version-1 snapshot containing source, operation ID, identity digest, request count,
 and legacy flag. Later pages must echo that exact registered snapshot and caller.
-New admissions fall outside the cut. Cursor is 0–10,000; limit is 1–4. Pages use
+New admissions fall outside the cut. A cut containing embedding rows uses
+snapshot/page version 2 and retains each row's operation. Old text-only cuts
+retain their exact version-1 shape. Cursor is 0–10,000; limit is 1–4. Pages use
 `scope: "session"`, `coverage: "canonical_requests"`, cursor/next cursor and
-latest cumulative request rows. They contain no directory selector, prompts,
-provider operation, or mutation authority.
+latest cumulative request rows. They expose no directory selector or prompts
+and grant no provider or mutation operation.
 
 Pages are prepared from the validated in-memory reducer, not a filesystem scan
 inside Session. Each page is at most 12 KiB within the SDK's 16 KiB object bound.
@@ -95,6 +108,11 @@ origin availability. They omit tasks/results/raw call IDs. A version-2 discovery
 snapshot pins source, operation, identity, and child count. A version-3 child
 snapshot also pins child ID, request count, legacy flag, byte prefix, and SHA-256
 of accounting projections. The digest is not a private transcript hash.
+
+A child cut containing embedding rows uses snapshot version 4 and page version 2.
+Discovery keeps its existing version 2. Frozen text-only child cuts retain
+snapshot version 3 and page version 1. Recovery rejects operation-bearing rows
+presented under legacy page semantics.
 
 The host derives a protected child path, acquires its native lock, reads at most
 16 MiB within five seconds, and verifies exact parent/request/call origin. The

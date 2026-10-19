@@ -3,7 +3,7 @@
 Configure a budget when you want Ipse to reserve a finite allowance before
 covered model requests. One root session and its local children share a ledger.
 The budget covers main requests, summaries, child requests, and accounted
-extension model calls. It does not create an operator-wide account or guarantee
+extension text and embedding calls. It does not create an operator-wide account or guarantee
 a provider invoice ceiling.
 
 ## Start with request and token reservations
@@ -70,6 +70,12 @@ a resulting cap of at least 16. ChatGPT subscription does not support that publi
 cap and refuses an output-token budget. For subscription use, omit both output
 fields and use request/input or separately configured equivalent-money policy.
 Ipse never drops an unsupported cap or changes billing mode to proceed.
+
+An [embedding request](embeddings.md) has no generated-output-token dimension.
+It uses zero output liability under this policy, with a null, explicitly
+inapplicable canonical output count. Output reservations never become embedding
+wire caps. Its request/input/money allowances still share the same tree, and
+missing applicable counters or unknown prices retain reservations.
 
 Routed children inherit the tree policy. Their provider must support the effective
 cap before delegation starts. With no budget configured, no budget worker,
@@ -154,12 +160,14 @@ to be refused. Already streamed text cannot be retracted; refused final/native
 content has no saved quarantine export. Future admission refuses while a limit
 is exhausted or the tree is overdrawn.
 
-The ledger must durably accept usage before canonical accounting publishes it.
-A busy/unwritable ledger can leave the reservation held and counters unavailable.
-Unavailable does not mean zero. Budget request counts count durable reservations;
-accounting may also include attempts refused before dispatch, so counts can differ.
+The text path durably covers usage before forwarding it to canonical accounting.
+Embedding can retain genuine final counters after a guarded write fails, while
+refusing readable vectors. Resume refuses unproven ledger coverage. A busy or
+unwritable ledger can leave a reservation held; unavailable metering never means
+zero. Budget request counts count durable reservations; accounting may also
+include attempts refused before dispatch, so counts can differ.
 
-Tool/MCP effects, embeddings, audio, external-service costs, and out-of-band
+Tool/MCP effects, audio, external-service costs, and out-of-band
 inference from trusted code are not covered. A new root gets a new quota. Fixed
 reservations cannot bound actual unmetered consumption.
 

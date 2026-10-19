@@ -1,5 +1,13 @@
 defmodule Ipse.Provider.Request do
   @moduledoc "Shared credential resolution for owned provider tasks; callers own admission and history."
+  def embed(%{operation: :embedding, provider: provider} = config, inputs, emit)
+      when provider in [:openai, :ollama] do
+    key = if provider == :openai, do: System.get_env("OPENAI_API_KEY")
+    Ipse.Provider.Embedding.embed(Map.put(config, :api_key, key), inputs, emit)
+  end
+
+  def embed(_, _, _), do: {:error, "Unsupported embedding request."}
+
   def complete(config, messages, tools, emit) do
     provider =
       Map.get(

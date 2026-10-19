@@ -102,6 +102,7 @@ synthetic check. Then choose the host interaction you need:
 | Compose declared value services | [Services](extension-services.md) |
 | Publish bounded asserted or receipt-backed context | [Context](extension-context.md) |
 | Request a profile-bound accounted text inference | [Model calls](extension-model-calls.md) |
+| Create accounted vectors and reconstruct bounded coordinate pages | [Embedding actions](extension-embedding-actions.md) |
 | Observe original/effective prompt and completed-answer views | [Notifications](extension-events.md) |
 | Run separately admitted before/after-turn jobs | [Event jobs](extension-event-jobs.md) |
 | Consume finite, acknowledged live deliveries | [Feeds](extension-feeds.md) |

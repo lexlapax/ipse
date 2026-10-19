@@ -64,6 +64,7 @@ defmodule Ipse.Config do
         end)
 
       with {:ok, extensions} <- Ipse.Extensions.Config.resolve(loaded, opts),
+           {:ok, embedding_profiles} <- Ipse.EmbeddingProfiles.resolve(loaded),
            {:ok, budget} <- Ipse.Budget.Policy.resolve(loaded),
            {:ok, journal} <- Ipse.Journal.Limits.resolve(loaded),
            {:ok, observation} <- Ipse.Observability.Config.resolve(loaded, opts, environment),
@@ -129,12 +130,19 @@ defmodule Ipse.Config do
               else: Map.put(identity, "extensions", extensions)
 
           identity = if budget, do: Map.put(identity, "budget", budget), else: identity
+
+          identity =
+            if embedding_profiles == %{},
+              do: identity,
+              else: Map.put(identity, "embedding_profiles", embedding_profiles)
+
           fingerprint = Compaction.digest([identity])
 
           {:ok,
            %{effective | settings: settings, provenance: provenance}
            |> Map.put(:fingerprint, fingerprint)
            |> Map.put(:extensions, extensions)
+           |> Map.put(:embedding_profiles, embedding_profiles)
            |> Map.put(:budget, budget)
            |> Map.put(:journal, journal)
            |> Map.put(:observability, observation)
@@ -172,6 +180,12 @@ defmodule Ipse.Config do
       |> Map.put(:observability, effective.observability)
       |> Map.put(:budget, effective.budget)
       |> Map.put(:journal, effective.journal)
+      |> Map.merge(
+        if(effective.embedding_profiles == %{},
+          do: %{},
+          else: %{embedding_profiles: effective.embedding_profiles}
+        )
+      )
 
   def legacy_compatible?(effective), do: effective.sources == []
 
@@ -203,6 +217,7 @@ defmodule Ipse.Config do
             "version" => %{"type" => "integer", "enum" => [1]},
             "settings" => settings_schema(),
             "profiles" => %{"type" => "object"},
+            "embedding_profiles" => %{"type" => "object"},
             "roles" => %{"type" => "object"},
             "observability" => Ipse.Observability.Config.schema(),
             "budget" => Ipse.Budget.Policy.schema(),
@@ -274,6 +289,7 @@ defmodule Ipse.Config do
            {:ok, data} <- Ipse.Extensions.Manifest.decode_json(raw),
            :ok <- Schema.validate_arguments(schema(), data),
            :ok <- Ipse.Profiles.validate(data["profiles"] || %{}, %{}),
+           :ok <- Ipse.EmbeddingProfiles.validate(data["embedding_profiles"] || %{}),
            :ok <- Ipse.Extensions.Config.validate(data),
            :ok <- validate_settings(data["settings"] || %{}) do
         {:ok,

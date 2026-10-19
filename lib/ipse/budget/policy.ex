@@ -104,6 +104,8 @@ defmodule Ipse.Budget.Policy do
     end
   end
 
+  def request_config(%{operation: :embedding} = config), do: {:ok, config}
+
   def request_config(config) do
     case config[:budget] do
       %{"reserve_output_tokens" => reserve} ->
@@ -150,7 +152,9 @@ defmodule Ipse.Budget.Policy do
             policy["reserve_input_tokens"]
 
           "output_tokens" ->
-            policy["reserve_output_tokens"]
+            if Ipse.Usage.operation(admission) == "embedding",
+              do: 0,
+              else: policy["reserve_output_tokens"]
 
           "money:" <> selected ->
             if selected == basis,
@@ -188,7 +192,9 @@ defmodule Ipse.Budget.Policy do
             record["usage"]["counts"]["input_tokens"]
 
           "output_tokens" ->
-            record["usage"]["counts"]["output_tokens"]
+            if Ipse.Usage.operation(admission) == "embedding",
+              do: 0,
+              else: record["usage"]["counts"]["output_tokens"]
 
           "money:" <> selected ->
             cond do
@@ -206,13 +212,12 @@ defmodule Ipse.Budget.Policy do
   end
 
   defp estimate(policy, record) do
-    case Ipse.Extensions.Costs.estimate(
-           policy["rate_card"],
-           Map.take(
-             record,
-             ~w(provider billing_mode model reported_model endpoint_sha256 admitted_at_ms outcome finality usage)
-           )
-         ) do
+    fields =
+      ~w(provider billing_mode model reported_model endpoint_sha256 admitted_at_ms outcome finality usage)
+
+    fields = if record["version"] == 2, do: fields ++ ["operation"], else: fields
+
+    case Ipse.Extensions.Costs.estimate(policy["rate_card"], Map.take(record, fields)) do
       {:ok, value} -> value
       _ -> nil
     end

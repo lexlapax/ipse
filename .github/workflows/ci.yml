@@ -48,6 +48,11 @@ jobs:
           elixir examples/mcp-actions/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-mcp-actions"
           mix run examples/mcp-actions/verify.exs "$RUNNER_TEMP/ipse-mcp-actions"
           elixir examples/mcp-actions/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-mcp-actions"
+      - name: Independent source and installed embedding proof
+        run: |
+          elixir examples/embedding-actions/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-embedding-actions"
+          mix run examples/embedding-actions/verify.exs "$RUNNER_TEMP/ipse-embedding-actions"
+          elixir examples/embedding-actions/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-embedding-actions"
       - name: Experimental macOS App Sandbox enforcement
         if: runner.os == 'macOS'
         run: |

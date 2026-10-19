@@ -77,10 +77,13 @@ and cycles. For an index, bind source/index versions and decide whether stale
 indexes refuse or require explicit rebuilding. Do not silently add embeddings,
 download weights, contact a model, or switch providers when local retrieval fails.
 
-Embeddings have no supported model-call/accounting operation today. The one-shot
-text helper is not an embedding API. A service exposed through MCP still needs
-explicit endpoint, credential, selection, egress, and unknown-remote-effect policy.
-Executable code making out-of-band calls is not automatically budgeted by Ipse.
+Use [embedding actions](extension-embedding-actions.md) for approved native vector
+generation with operation-aware usage and shared budgets. Keep the selected
+profile, reported model, dimensions and encoding bound to each index generation.
+A model alias alone does not establish unchanged weights. A service exposed
+through MCP still needs explicit endpoint, credential, selection, egress and
+unknown-remote-effect policy. Executable code making out-of-band calls is not
+automatically budgeted by Ipse.
 
 When inference is needed, select a permitted helper profile and use its approved
 accounted action. Keep extraction input, generated candidates, and accepted facts

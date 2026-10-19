@@ -57,6 +57,13 @@ admission where configured. The [one-shot extension model action](extension-mode
 supplies these for text helpers. It does not open a second conversation loop or
 receive private data without separate grants.
 
+[Embedding actions](extension-embedding-actions.md) supply the separate native
+vector contract. They use selected operator embedding profiles, exact egress,
+typed float32 result pages and operation-aware metering. Their generated-output
+token dimension is explicitly inapplicable; applicable input/money liabilities
+still share the same tree. Do not substitute text containing numbers for native
+vectors or perform unaccounted worker network calls.
+
 Counters describe measurements, not prices. OpenAI cache/reasoning values are
 subsets; Anthropic cache totals have separate semantics; Ollama missing counters
 stay unknown. Cost estimates identify rate-card digest/revision and keep API,
@@ -71,7 +78,7 @@ when adding a backend rather than inferring coverage from a shared worker proces
 
 ## Keep unsupported capabilities explicit
 
-Current runtime contracts do not provide embeddings, microphone/speaker IO,
+Current runtime contracts do not provide microphone/speaker IO,
 audio frames, STT/TTS, bidirectional realtime inference, playback acknowledgment,
 or stateful streaming rewriting. A completed-answer formatter changes display
 only after generation. It cannot promise live redaction, retract displayed text,

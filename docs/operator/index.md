@@ -38,6 +38,8 @@ conversation. For an Arch source installation, use [Install on Arch Linux](arch-
   invocation, and upgrades.
 - [Memory](memory.md) stores and recalls explicit notes, including retention,
   deletion, and cross-session sharing.
+- [Embeddings](embeddings.md) selects a separate model profile and explicitly
+  submits text through a reviewed extension.
 - [Research](research.md) runs a bounded source-gathering task and exports its
   evidence ledger.
 - [Extension lab](extension-lab.md) tries independently built examples with
