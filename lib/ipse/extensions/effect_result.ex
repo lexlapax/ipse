@@ -164,11 +164,12 @@ defmodule Ipse.Extensions.EffectResult do
          true <-
            source["operation_id"] == request["operation_id"] and
              source["source_sha256"] == request["source_sha256"],
-         vector when is_map(vector) <- Enum.at(source["data"]["vectors"], request["vector_index"]),
+         embedding_vector when is_map(embedding_vector) <-
+           Enum.at(source["data"]["vectors"], request["vector_index"]),
          dimensions = source["data"]["dimensions"],
          offset = request["offset"],
          true <- offset <= dimensions,
-         {:ok, bytes} <- Base.decode64(vector["values"]),
+         {:ok, bytes} <- Base.decode64(embedding_vector["values"]),
          count = min(request["limit"], dimensions - offset),
          next = offset + count do
       {:ok,
@@ -177,9 +178,9 @@ defmodule Ipse.Extensions.EffectResult do
          "operation_id" => source["operation_id"],
          "kind" => "embedding.f32le",
          "source_sha256" => source["source_sha256"],
-         "vector_index" => vector["index"],
-         "input_sha256" => vector["input_sha256"],
-         "vector_sha256" => vector["vector_sha256"],
+         "vector_index" => embedding_vector["index"],
+         "input_sha256" => embedding_vector["input_sha256"],
+         "vector_sha256" => embedding_vector["vector_sha256"],
          "dimensions" => dimensions,
          "encoding" => "float32le.base64",
          "offset" => offset,

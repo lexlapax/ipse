@@ -87,6 +87,18 @@ not relaxed.
 
 ## Remaining acceptance
 
+The first [hosted run](https://github.com/lexlapax/ipse/actions/runs/39197237697)
+at `2c77907` stopped at formatting on both platforms. Elixir 1.18 wraps one guarded
+binding differently from local Elixir 1.20. Naming that local binding
+`embedding_vector` makes its multiline layout consistent. A syntax-tree comparison
+after removing call metadata and this single local rename confirms alpha
+equivalence; 24 text/vector result regressions and warnings-as-errors compile
+pass. The initial comparison helper had omitted remote-call line metadata; the
+corrected comparison removes all call metadata. No runtime deadline, assertion,
+SDK bound or behavior was changed. The next exact-source hosted run remains
+required; the earlier package hash above still identifies the pre-correction
+local verification archive.
+
 No actual embedding or text model was called for these proofs. They establish
 transport, authority, typed storage, accounting and recovery, not retrieval,
 semantic support or model selection. Research/corpus/graph packages, source
