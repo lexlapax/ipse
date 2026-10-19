@@ -149,6 +149,43 @@ defmodule Ipse.KnowledgeEvaluationResourcesTest do
     assert Enum.all?(samples, &(&1["elapsed_us"] >= 0 and &1["query_id"] == "Q1"))
   end
 
+  test "storage coverage requires each phase and query and retains failed inventories" do
+    rows = [row("Q1", "ok"), row("Q2", "failed")]
+
+    snapshots =
+      Enum.map(
+        [
+          {"before_ingestion", nil},
+          {"after_preparation", nil},
+          {"after_query", "Q1"},
+          {"after_query", "Q2"}
+        ],
+        fn {phase, id} ->
+          %{
+            "project" => "alpha",
+            "variant" => "lexical",
+            "phase" => phase,
+            "query_id" => id,
+            "inventory" => %{"status" => "absent"}
+          }
+        end
+      )
+
+    report = Resources.summary(rows, [], [], [], snapshots)
+    assert report["storage_reachability_complete"]
+    refute "storage_reachability" in report["unmeasured"]
+    refute report["resource_evaluation_complete"]
+    refute Resources.summary(rows, [], [], [], tl(snapshots))["storage_reachability_complete"]
+
+    refute Resources.summary(rows, [], [], [], snapshots ++ [hd(snapshots)])[
+             "storage_reachability_complete"
+           ]
+
+    [first | rest] = snapshots
+    corrupt = put_in(first, ["inventory", "status"], "unavailable")
+    refute Resources.summary(rows, [], [], [], [corrupt | rest])["storage_reachability_complete"]
+  end
+
   defp row(id, status),
     do: %{"project" => "alpha", "variant" => "lexical", "query_id" => id, "status" => status}
 

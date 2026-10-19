@@ -84,3 +84,20 @@ SHA256 remained `d5d2517e87cf358cfe6b6d82060719e6be52ce0e5fcf7920fc4729df7d5c8a4
 No package was rebuilt or published.
 Held-out quality, storage lifecycle measurement, independent semantic review
 and the remaining full P27 acceptance audit stay open.
+
+## Retained hosted failure
+
+The [accounting revision matrix](https://github.com/lexlapax/ipse/actions/runs/39246740065)
+at `f5b91b0` failed its macOS source step. The `bad_append` evaluator-driver
+fixture expected a completed malformed continuation, but its second invocation
+reached the configured one-second deadline. The first open completed in 345 ms.
+The append receipt records 1054 ms, no confirmed invocation result, and
+`{:timeout, :ok, {:done, :cancelled}}`. No inference request was involved.
+This establishes the timeout boundary, not the component that consumed the time.
+The cause remains open pending diagnostic evidence. Passing local runs do not
+repair or explain it. macOS reported 1153 tests, one failure and 32 exclusions,
+seed 461915, with later verification steps skipped. Linux completed successfully
+with 1153 tests, zero failures and 32 exclusions, including its package and
+independent installed proofs. All 24 steps in each terminal job were inspected;
+only Linux's two macOS-specific steps were skipped there. The matrix's overall
+result remains failure.

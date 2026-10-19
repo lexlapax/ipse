@@ -379,8 +379,12 @@ these protocol checks do not replace held-out quality evaluation.
 The [evaluation preflight record](archive/2026-10-19-p27-knowledge-packages/evaluation-preflight.md)
 covers complete selection checks before dataset reads and matching CLI failure
 status, plus full canonical usage export. The [resource accounting record](archive/2026-10-19-p27-knowledge-packages/resource-accounting.md)
-adds query/phase clocks and request/budget reconciliation. Storage reachability,
-process-memory coverage and the held-out comparison remain open.
+adds query/phase clocks and request/budget reconciliation. The
+[storage inventory record](archive/2026-10-19-p27-knowledge-packages/storage-inventory.md)
+adds strict retained-page reachability and draft/orphan/tombstone measurements.
+The full resource comparison, process-memory coverage and held-out evaluation
+remain open. The accounting revision's hosted macOS driver timeout also remains
+under investigation; local passing evidence does not close that failure.
 Successful tuning and
 scripted provider responses do not establish quality. Held-out predictions,
 independent semantic review and the complete resource comparison remain unmeasured.

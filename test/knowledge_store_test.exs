@@ -133,6 +133,9 @@ defmodule Ipse.KnowledgeStoreTest do
     pages=Map.values(db.records) |> Enum.filter(&(get_in(&1,["value","page_kind"])=="vector"))
     assert length(pages)==12
     assert Enum.all?(pages,fn row -> body=row["value"]["body"]; byte_size(Base.decode64!(body["values"]))<=768*4 end)
+    assert {:ok,inventory}=S.inventory(%{"records"=>db.records,"generation"=>db.generation},"notes")
+    selected=MapSet.new(hd(inventory["roots"])["selected_refs"],& &1["key"])
+    assert Enum.all?(pages,&MapSet.member?(selected,&1["key"]))
     {snap,_}=snapshot.(db,state); actual=snap["projections"][source["source_key"]]["vectors"]
     assert Enum.sort_by(actual,& &1["chunk_id"])==Enum.sort_by(vectors,& &1["chunk_id"])
     ''')
@@ -242,6 +245,80 @@ defmodule Ipse.KnowledgeStoreTest do
     {r,full}=invoke.(full,state,:put,put.("cannot fit",%{})); assert {:done,{:error,:record_limit,%{}}}=r
     assert effects.(full)==0
     assert map_size(full.records)==256
+    ''')
+  end
+
+  test "read-only inventory separates selected draft orphan and namespace tombstone storage" do
+    isolated(~S'''
+    cache=fn db -> %{"records"=>db.records,"generation"=>db.generation} end
+    inventory=fn db -> assert {:ok,report}=S.inventory(cache.(db),"notes"); report end
+    fresh_text="private first draft"
+    fresh_args=put.(fresh_text,%{}) |> Map.delete("text") |> Map.merge(%{"byte_count"=>byte_size(fresh_text),"content_sha256"=>E.sha256(fresh_text)})
+    {r,fresh}=invoke.(F.new(),state,:open,fresh_args); opened=success.(r)
+    {r,fresh}=invoke.(fresh,state,:append,%{"source_id"=>"manual:one","draft_id"=>opened["draft_id"],"expected_revision"=>opened["revision"],"offset"=>0,"text"=>fresh_text}); success.(r)
+    first_draft=inventory.(fresh)
+    assert first_draft["selected_pages"]["records"]==0
+    assert first_draft["draft_pages"]["records"]>0
+    assert hd(first_draft["roots"])["state"]=="staging"
+    {r,db}=invoke.(F.new(),state,:put,put.("first-generation-private",%{})); stored=success.(r)
+    initial=inventory.(db)
+    assert initial["selected_pages"]["records"]>0
+    assert initial["draft_pages"]["records"]==0
+    assert length(initial["roots"])==1
+    assert initial["root_records"]["encoded_value_bytes"]>0
+    refute JSON.encode!(initial)=~"first-generation-private"
+    refute JSON.encode!(initial)=~"manual:one"
+    before=db.records
+    assert inventory.(db)==initial
+    assert db.records==before
+    text="next-generation-private"
+    args=put.(text,%{"generation"=>2,"expected_revision"=>stored["revision"]}) |> Map.delete("text") |> Map.merge(%{"byte_count"=>byte_size(text),"content_sha256"=>E.sha256(text)})
+    {r,db}=invoke.(db,state,:open,args); opened=success.(r)
+    {r,db}=invoke.(db,state,:append,%{"source_id"=>"manual:one","draft_id"=>opened["draft_id"],"expected_revision"=>opened["revision"],"offset"=>0,"text"=>text}); appended=success.(r)
+    staged=inventory.(db)
+    assert staged["selected_pages"]==initial["selected_pages"]
+    assert staged["draft_pages"]["records"]>0
+    assert hd(staged["roots"])["value_sha256"]!=hd(initial["roots"])["value_sha256"]
+    {r,db}=invoke.(db,state,:abort,%{"source_id"=>"manual:one","draft_id"=>opened["draft_id"],"expected_revision"=>appended["revision"]}); success.(r)
+    abandoned=inventory.(db)
+    assert abandoned["draft_pages"]["records"]==0
+    assert abandoned["orphan_pages"]["records"]>=staged["draft_pages"]["records"]
+    {r,db}=invoke.(db,state,:inspect,%{"source_id"=>"manual:one"}); inspected=success.(r)
+    {r,db}=invoke.(db,state,:forget,%{"source_id"=>"manual:one","expected_revision"=>inspected["revision"]}); success.(r)
+    forgotten=inventory.(db)
+    assert forgotten["selected_pages"]["records"]==0
+    assert hd(forgotten["roots"])["state"]=="suppressed"
+    slots=forgotten["namespace_slots"]
+    {r,db}=invoke.(db,state,:collect,%{"limit"=>12}); success.(r)
+    collected=inventory.(db)
+    assert collected["namespace_slots"]==slots
+    assert collected["namespace_tombstones"]["records"]>0
+    assert collected["namespace_tombstones"]["encoded_value_bytes"]==0
+    assert collected["namespace_tombstones"]["encoded_record_bytes"]>0
+    assert collected["orphan_pages"]["records"]==0
+    ''')
+  end
+
+  test "inventory refuses missing deleted forged and foreign selected references" do
+    isolated(~S'''
+    {r,db}=invoke.(F.new(),state,:put,put.("private inventory source",%{})); success.(r)
+    key=S.root_key("notes",E.sha256("manual:one"))
+    root=db.records[key]["value"]
+    ref=root["content_ref"]
+    cache=fn records -> %{"records"=>records,"generation"=>db.generation} end
+    assert {:ok,_}=S.inventory(cache.(db.records),"notes")
+    forged=put_in(db.records[key]["value"]["content_ref"]["sha256"],String.duplicate("0",64)).records
+    deleted=put_in(db.records[ref["key"]]["deleted"],true).records
+    missing=Map.delete(db.records,ref["key"])
+    conflicting=put_in(db.records[key]["value"]["chunks_ref"],root["chunks_ref"]++[Map.put(hd(root["chunks_ref"]),"sha256",String.duplicate("0",64))]).records
+    for records <- [forged,deleted,missing,conflicting] do
+      assert {:error,:inventory_unavailable}=S.inventory(cache.(records),"notes")
+    end
+    {r,other}=invoke.(F.new(),Map.put(state,"partition","foreign"),:put,put.("private inventory source",%{})); success.(r)
+    other_key=S.root_key("foreign",E.sha256("manual:one"))
+    foreign_ref=other.records[other_key]["value"]["content_ref"]
+    foreign=Map.merge(db.records,other.records) |> put_in([key,"value","content_ref"],foreign_ref)
+    assert {:error,:inventory_unavailable}=S.inventory(cache.(foreign),"notes")
     ''')
   end
 

@@ -429,9 +429,63 @@ not proof that interrupted work finished. Canonical request duration comes from
 the journal and remains unknown when unavailable.
 
 The summary's `complete` field covers the declared clock and accounting scope.
-Check `measurement_scope`, `unmeasured` and `resource_evaluation_complete` before
-using it for an engine comparison. Storage reachability and OS/model process
-memory remain unmeasured by this summary. The separate sampler describes the
-harness BEAM only, and the file counter measures bytes under each run directory.
-Neither establishes model memory, OS peak memory or complete storage lifecycle
-cost. A complete clock/accounting report cannot close those evaluation gates.
+Read `storage_reachability_complete` separately. Check `measurement_scope`,
+`unmeasured` and `resource_evaluation_complete` before comparing engines. The
+separate sampler describes the harness BEAM only. OS process peak memory and
+model process memory remain unknown. File counts under a run directory also
+exclude authoring and preflight copies outside that directory. These observations
+cannot establish complete storage lifecycle cost or whole-system memory.
+
+### Verify retained storage without querying through the audit
+
+Follow `EvaluationInventory.snapshot/5` and the pure `Store.inventory/2` in the
+independent knowledge artifact. The host validates the bounded, owner-only State
+file and every record envelope through `State.valid_outcome?/4`. It checks the
+namespace, version and generation sum. A separate Elixir VM loads the verified
+artifact, public SDK and existing Jason runtime, then computes counts and opaque
+hashes. The SDK validator needs Jason even when the audit itself uses Elixir JSON.
+The host rechecks file bytes
+and artifact identity afterward. Domain modules remain unloaded in the host.
+
+Selected root references identify retained content and projections. The audit
+verifies each referenced page's hash, partition, source and generation. It also
+checks a repeated reference's hash before skipping traversal. Missing, deleted
+or substituted pages refuse the inventory. Draft pages stay separate from
+selected pages; abandoned pages become orphans. For source drafts,
+`source_generation` is the old-source precondition and `target.generation` owns
+the new pages. Projection drafts retain the current source generation.
+
+Read tombstone and slot counts at namespace scope. A tombstone retains no value
+from which to recover partition ownership. Collection can remove page values
+while retaining their record slots and revisions. Encoded value/record bytes
+use Elixir JSON; actual State file bytes are reported separately. The audit
+returns no source text and must never supply retrieval or model inputs.
+
+The runner records snapshots before ingestion, after preparation and after each
+query. Its cache key includes the exact State file hash, path, artifact digest
+and partition. Unchanged query reads reuse the verified inventory file. Missing
+storage is explicit absence; unavailable or corrupt storage remains incomplete.
+Research has no retained State store and reports that distinction explicitly.
+
+`execution-overview.json` records elapsed time from runner entry through first
+prediction finalization, including preflight, input handling, cleanup and the
+primary reports. CLI startup, module loading and the overview's own inspection
+and receipt stay outside that clock. The overview counts regular file lengths
+under the complete output directory, including authoring and preflight copies,
+and separately under declared frozen inputs. Read its exclusions before adding
+those counts to a storage comparison. File lengths do not measure allocated
+blocks, compression, shared extents or an exact transient peak.
+
+Run the isolated validation exercises:
+
+```sh
+mix test test/knowledge_store_test.exs test/knowledge_evaluation_inventory_test.exs
+```
+
+Follow a first ingestion and a replacement draft through append, abort, forget
+and collection. Check that selected pages stay unchanged during replacement,
+draft pages become orphans after abort, and collection creates tombstones
+without recovering slots. Then corrupt a reference hash or substitute a foreign
+page. Expect inventory refusal. In the raw-file exercise, an inconsistent
+generation sum, a floating-point generation or group/world-readable State file
+must fail before it can become trusted metadata.

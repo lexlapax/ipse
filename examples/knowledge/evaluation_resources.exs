@@ -104,7 +104,7 @@ defmodule IpseKnowledgeExample.EvaluationResources do
     if valid, do: :ok, else: {:error, :evaluation_budget_source_mismatch}
   end
 
-  def summary(rows, timings, requests, budgets) do
+  def summary(rows, timings, requests, budgets, storage \\ []) do
     variants = rows |> Enum.map(& &1["variant"]) |> Enum.uniq() |> Enum.sort()
 
     reports =
@@ -113,6 +113,7 @@ defmodule IpseKnowledgeExample.EvaluationResources do
         selected_timings = Enum.filter(timings, &(&1["variant"] == variant))
         selected_requests = Enum.filter(requests, &(&1["variant"] == variant))
         selected_budgets = Enum.filter(budgets, &(&1["variant"] == variant))
+        selected_storage = Enum.filter(storage, &(&1["variant"] == variant))
         projects = MapSet.new(selected_rows, & &1["project"])
         budget_projects = MapSet.new(selected_budgets, & &1["project"])
 
@@ -127,9 +128,26 @@ defmodule IpseKnowledgeExample.EvaluationResources do
         unexpected = MapSet.difference(observed, query_keys) |> MapSet.size()
         duplicate = length(query_timings) - MapSet.size(observed)
         unattributed = Enum.count(selected_requests, &(&1["attribution"] != "confirmed"))
+        storage_queries = Enum.filter(selected_storage, &(&1["phase"] == "after_query"))
+        storage_keys = MapSet.new(storage_queries, &{&1["project"], &1["query_id"]})
+
+        storage_complete =
+          query_keys == storage_keys and length(storage_queries) == MapSet.size(query_keys) and
+            Enum.all?(
+              selected_storage,
+              &(get_in(&1, ["inventory", "status"]) in ~w(verified absent not_applicable))
+            ) and
+            Enum.all?(projects, fn project ->
+              Enum.all?(~w(before_ingestion after_preparation), fn phase ->
+                Enum.count(selected_storage, &(&1["project"] == project and &1["phase"] == phase)) ==
+                  1
+              end)
+            end)
 
         %{
           "variant" => variant,
+          "storage_reachability_complete" => storage_complete,
+          "storage_snapshots" => selected_storage,
           "complete" =>
             missing == 0 and unexpected == 0 and duplicate == 0 and unattributed == 0 and
               budgets_complete,
@@ -197,7 +215,14 @@ defmodule IpseKnowledgeExample.EvaluationResources do
       "version" => 1,
       "measurement_scope" => "query_and_phase_clocks_canonical_requests_and_budget_liability",
       "resource_evaluation_complete" => false,
-      "unmeasured" => ~w(storage_reachability os_process_peak_memory model_process_memory),
+      "unmeasured" =>
+        if(Enum.all?(reports, & &1["storage_reachability_complete"]),
+          do: [],
+          else: ["storage_reachability"]
+        ) ++
+          ~w(os_process_peak_memory model_process_memory),
+      "storage_reachability_complete" =>
+        Enum.all?(reports, & &1["storage_reachability_complete"]),
       "complete" =>
         Enum.all?(reports, & &1["complete"]) and
           Enum.sum(Enum.map(reports, & &1["requests"]["attempted"])) == length(requests) and
@@ -299,12 +324,15 @@ defmodule IpseKnowledgeExample.EvaluationResources do
     |> Path.wildcard(match_dot: true)
     |> Enum.reduce(%{}, fn path, counts ->
       relative = Path.relative_to(path, root)
+      components = "/" <> relative
 
       category =
         cond do
-          String.starts_with?(relative, "home/extension-state-v1/") -> "store"
-          String.starts_with?(relative, "home/extensions/artifacts/") -> "artifacts"
-          String.starts_with?(relative, "sessions/") -> "journals_and_budgets"
+          String.starts_with?(relative, "preflight/") -> "preflight"
+          String.starts_with?(relative, "author-") -> "source_authoring"
+          String.contains?(components, "/home/extension-state-v1/") -> "store"
+          String.contains?(components, "/home/extensions/artifacts/") -> "artifacts"
+          String.contains?(components, "/sessions/") -> "journals_and_budgets"
           true -> "other"
         end
 

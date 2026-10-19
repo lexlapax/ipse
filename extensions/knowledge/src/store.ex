@@ -83,6 +83,137 @@ defmodule IpseKnowledge.Store do
 
   def root_key(partition, source_key), do: Evidence.id("root", [partition, source_key])
 
+  @doc "Read-only counts and hashes for a validated adapter snapshot; returns no source text."
+  def inventory(cache, partition) do
+    with true <- name?(partition) and is_map(cache["records"]) and uint?(cache["generation"]),
+         true <- map_size(cache["records"]) <= 256,
+         :ok <- valid_partition(cache, partition) do
+      records = Map.values(cache["records"])
+      roots = roots(%{cache: cache, profile: %{"partition" => partition}})
+
+      {selected, drafts, root_rows} =
+        Enum.reduce(roots, {MapSet.new(), MapSet.new(), []}, fn record,
+                                                                {selected, drafts, rows} ->
+          root = record["value"]
+          selected_refs = references_in(Map.delete(root, "draft"))
+          own_selected = inventory_closure(cache, selected_refs, root, MapSet.new())
+          draft = root["draft"]
+
+          draft_pages =
+            if draft do
+              Enum.filter(records, fn page ->
+                not page["deleted"] and get_in(page, ["value", "kind"]) == "page" and
+                  get_in(page, ["value", "partition"]) == partition and
+                  get_in(page, ["value", "draft_id"]) == draft["id"]
+              end)
+            else
+              []
+            end
+
+          own_draft =
+            if draft do
+              generation =
+                if draft["kind"] == "source",
+                  do: draft["target"]["generation"],
+                  else: draft["source_generation"]
+
+              target = %{root | "generation" => generation}
+              refs = references_in(draft) ++ Enum.map(draft_pages, &reference/1)
+              inventory_closure(cache, refs, target, MapSet.new())
+            else
+              MapSet.new()
+            end
+
+          row = %{
+            "key" => record["key"],
+            "revision" => record["revision"],
+            "state" => root["state"],
+            "value_sha256" => Evidence.id("inventory-root", [ordered(root)]),
+            "selected_refs" => inventory_refs(cache, own_selected),
+            "draft_refs" => inventory_refs(cache, own_draft)
+          }
+
+          {MapSet.union(selected, own_selected), MapSet.union(drafts, own_draft), rows ++ [row]}
+        end)
+
+      pages =
+        Enum.filter(records, fn record ->
+          not record["deleted"] and get_in(record, ["value", "partition"]) == partition and
+            get_in(record, ["value", "kind"]) == "page"
+        end)
+
+      draft_only = MapSet.difference(drafts, selected)
+      protected = MapSet.union(selected, drafts)
+
+      {:ok,
+       %{
+         "version" => 1,
+         "partition" => partition,
+         "generation" => cache["generation"],
+         "namespace_slots" => length(records),
+         "namespace_unused_slots" => 256 - length(records),
+         "namespace_tombstones" => inventory_count(Enum.filter(records, & &1["deleted"])),
+         "other_live_records" =>
+           inventory_count(
+             Enum.filter(records, fn record ->
+               not record["deleted"] and get_in(record, ["value", "partition"]) != partition
+             end)
+           ),
+         "root_records" => inventory_count(roots),
+         "roots" => root_rows,
+         "selected_pages" =>
+           inventory_count(Enum.filter(pages, &MapSet.member?(selected, &1["key"]))),
+         "draft_pages" =>
+           inventory_count(Enum.filter(pages, &MapSet.member?(draft_only, &1["key"]))),
+         "orphan_pages" =>
+           inventory_count(Enum.reject(pages, &MapSet.member?(protected, &1["key"]))),
+         "byte_encoding" => "Elixir.JSON; actual file bytes measured separately"
+       }}
+    else
+      _ -> {:error, :inventory_unavailable}
+    end
+  rescue
+    _ -> {:error, :inventory_unavailable}
+  end
+
+  defp inventory_closure(cache, refs, root, seen) do
+    Enum.reduce(refs, seen, fn ref, seen ->
+      record = Map.fetch!(cache["records"], ref["key"])
+      value = record["value"]
+
+      true = ref?(ref) and not record["deleted"] and value["kind"] == "page"
+      true = reference(record) === ref
+      true = value["partition"] == root["partition"]
+      true = value["source_key"] == root["source_key"]
+      true = value["generation"] == root["generation"]
+
+      if MapSet.member?(seen, ref["key"]),
+        do: seen,
+        else:
+          inventory_closure(
+            cache,
+            references_in(value),
+            root,
+            MapSet.put(seen, ref["key"])
+          )
+    end)
+  end
+
+  defp inventory_refs(cache, keys),
+    do: keys |> Enum.sort() |> Enum.map(&reference(Map.fetch!(cache["records"], &1)))
+
+  defp inventory_count(records),
+    do: %{
+      "records" => length(records),
+      "encoded_record_bytes" => Enum.sum(Enum.map(records, &byte_size(json(&1)))),
+      "encoded_value_bytes" =>
+        Enum.sum(
+          Enum.map(records, fn record ->
+            if record["deleted"], do: 0, else: byte_size(json(record["value"]))
+          end)
+        )
+    }
+
   defp io(state, operation, args, stage) do
     bridge(adapter(state.profile).start(state.profile, operation, args), %{state | stage: stage})
   end

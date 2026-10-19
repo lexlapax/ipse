@@ -893,7 +893,14 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
                  output: output
                )
 
-      assert report["execution_complete"] and report["failed_rows"] == 0
+      assert report["execution_complete"] and report["failed_rows"] == 0,
+             inspect(
+               {report["errors"],
+                Enum.map(jsonl(Path.join(output, "resources.jsonl")), fn row ->
+                  {row["phase"], get_in(row, ["inventory", "status"])}
+                end)}
+             )
+
       assert report["rows"] == 17
       requests = drain(tag, [])
       assert length(requests) == 17
@@ -940,6 +947,22 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
       [answer] = variant["requests"]["groups"]
       assert answer["role"] == "answer" and answer["count"] == 17
       assert answer["latency_ms"]["observed"] == 17
+      assert resources["storage_reachability_complete"]
+      prepared = Enum.find(variant["storage_snapshots"], &(&1["phase"] == "after_preparation"))
+      assert prepared["inventory"]["status"] == "verified"
+      assert prepared["inventory"]["inventory"]["selected_pages"]["records"] > 0
+      assert prepared["inventory"]["state_file_bytes"] > 0
+      query_storage = Enum.filter(variant["storage_snapshots"], &(&1["phase"] == "after_query"))
+      assert length(query_storage) == 17
+      assert Enum.map(query_storage, & &1["query_id"]) == Enum.map(queries, & &1["query_id"])
+      assert Enum.all?(query_storage, &(&1["inventory"] == prepared["inventory"]))
+      assert length(Path.wildcard(Path.join(output, "storage-inventory-*.json"))) == 1
+      overview = JSON.decode!(File.read!(Path.join(output, "execution-overview.json")))
+      assert overview["elapsed_through_finalization_us"] > 0
+      assert overview["output_storage"]["source_authoring"]["bytes"] > 0
+      assert overview["output_storage"]["preflight"]["bytes"] > 0
+      assert overview["output_storage"]["store"]["bytes"] > 0
+      refute overview["resource_evaluation_complete"]
     after
       stop_model_fixture(server)
     end

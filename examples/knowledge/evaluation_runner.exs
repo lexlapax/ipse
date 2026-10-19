@@ -1,5 +1,5 @@
 for file <-
-      ~w(evaluation_input evaluation_freeze evaluation_session evaluation_answer evaluation_resources evaluation_gateway evaluation_score) do
+      ~w(evaluation_input evaluation_freeze evaluation_session evaluation_answer evaluation_resources evaluation_inventory evaluation_gateway evaluation_score) do
   Code.require_file(file <> ".exs", __DIR__)
 end
 
@@ -13,6 +13,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     EvaluationSession,
     EvaluationAnswer,
     EvaluationResources,
+    EvaluationInventory,
     EvaluationGateway
   }
 
@@ -28,6 +29,8 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
   end
 
   def run(phase, options) do
+    started = System.monotonic_time(:microsecond)
+
     try do
       expected = %{
         freeze: ~w(plan output)a,
@@ -51,7 +54,30 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
       )
 
       {:ok, _} = Application.ensure_all_started(:ipse)
-      dispatch(phase, options)
+      result = dispatch(phase, options)
+
+      if phase in [:predict, :verify_frozen, :tune, :verify] and match?({:ok, _}, result) do
+        elapsed = System.monotonic_time(:microsecond) - started
+
+        write!(options[:output], "execution-overview.json", %{
+          "version" => 1,
+          "phase" => Atom.to_string(phase),
+          "elapsed_through_finalization_us" => elapsed,
+          "timing_scope" =>
+            "runner_entry_through_prediction_finalization; includes_preflight_input_cleanup_and_primary_reports",
+          "timing_exclusions" => ~w(cli_startup module_loading overview_inspection_and_receipt),
+          "output_storage" => EvaluationResources.storage(options[:output]),
+          "frozen_input_storage" =>
+            if(options[:freeze], do: EvaluationResources.storage(Path.dirname(options[:freeze]))),
+          "storage_scope" =>
+            "regular_file_lengths_before_overview_receipt; allocation_compression_and_sharing_unmeasured",
+          "storage_exclusions" =>
+            ~w(original_input_builds runtime_source_checkout model_weights external_service_files),
+          "resource_evaluation_complete" => false
+        })
+      end
+
+      result
     rescue
       error ->
         {:error,
@@ -613,6 +639,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
 
     Process.put(:comparison_run, nil)
     Process.put(:comparison_gateway, nil)
+    Process.put(:comparison_inventory, %{})
 
     execution =
       EvaluationResources.measure(output, %{"phase" => "execution"}, fn ->
@@ -703,7 +730,8 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
         rows,
         jsonl!(output, "timings.jsonl"),
         jsonl!(output, "request-resources.jsonl"),
-        Enum.filter(jsonl!(output, "usage.jsonl"), &Map.has_key?(&1, "budget"))
+        Enum.filter(jsonl!(output, "usage.jsonl"), &Map.has_key?(&1, "budget")),
+        jsonl!(output, "resources.jsonl")
       )
 
     write!(output, "resource-summary.json", resources)
@@ -712,6 +740,11 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
       if resources["complete"],
         do: errors,
         else: errors ++ [%{"phase" => "resources", "code" => "measurement_incomplete"}]
+
+    errors =
+      if resources["storage_reachability_complete"],
+        do: errors,
+        else: errors ++ [%{"phase" => "storage", "code" => "inventory_incomplete"}]
 
     write!(output, "execution-outcomes.json", %{"errors" => errors})
 
@@ -728,7 +761,11 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
       "execution_complete" => errors == [],
       "errors" => errors,
       "semantic_support" => "unmeasured",
-      "cost" => "unpriced",
+      "cost" =>
+        if(Enum.all?(resources["variants"], &(&1["money"]["status"] == "unpriced")),
+          do: "unpriced",
+          else: "see_resource_summary"
+        ),
       "heldout_quality_complete" => false
     }
 
@@ -1957,20 +1994,65 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
       "budget" => budget,
       "accounting_verified" => true,
       "accounting_scope" => "single_session_admissions_and_conservative_liability",
-      "cost" => "unpriced"
+      "cost" => if(budget["currency"], do: "see_budget_dimensions", else: "unpriced")
     })
 
     require!(kind == :ok, :cleanup_unconfirmed)
   end
 
-  defp resource(output, run, phase),
-    do:
-      append!(output, "resources.jsonl", %{
-        "phase" => phase,
-        "project" => run.project,
-        "variant" => run.variant,
-        "storage" => EvaluationResources.storage(run.directory)
-      })
+  defp resource(output, run, phase) do
+    policy = Process.get(:comparison_policy)
+
+    inventory =
+      if policy.variant["prepare"] == "research" do
+        %{"status" => "not_applicable", "reason" => "research_has_no_retained_state_store"}
+      else
+        store = primary_store(policy.variant)
+        digest = policy.artifacts[policy.variant["bindings"]["ingest"]["instance"]]
+
+        path =
+          Path.join([run.directory, "home", "extension-state-v1", policy.namespace, "state.json"])
+
+        case EvaluationInventory.fingerprint(path) do
+          {:ok, fingerprint} ->
+            key = {path, fingerprint, digest, store["partition"]}
+            cache = Process.get(:comparison_inventory)
+
+            case Map.fetch(cache, key) do
+              {:ok, report} ->
+                report
+
+              :error ->
+                report =
+                  case EvaluationInventory.snapshot(
+                         path,
+                         Path.join(run.directory, "home/extensions/artifacts"),
+                         digest,
+                         store["partition"],
+                         output
+                       ) do
+                    {:ok, report} -> report
+                    {:error, _} -> %{"status" => "unavailable"}
+                  end
+
+                Process.put(:comparison_inventory, Map.put(cache, key, report))
+                report
+            end
+
+          {:error, _} ->
+            %{"status" => "unavailable"}
+        end
+      end
+
+    append!(output, "resources.jsonl", %{
+      "phase" => phase,
+      "project" => run.project,
+      "variant" => run.variant,
+      "query_id" => if(phase == "after_query", do: get_in(policy.active || %{}, ["query_id"])),
+      "inventory" => inventory,
+      "storage" => EvaluationResources.storage(run.directory)
+    })
+  end
 
   defp jsonl!(output, name) do
     read!(Path.join(output, name), 33_554_432)
