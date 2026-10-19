@@ -123,10 +123,10 @@ Unix millisecond integer from 0 through 2^53-1. Explicit null, nonintegers, extr
 keys and this field on other operations refuse validation. Omitting it retains
 ordinary put behavior. The condition grants no authority or additional calls.
 
-State checks revision first. With matching CAS, it checks its clock under the
-existing namespace lock and again after syncing temporary output, immediately
-before rename. At or after the deadline, the write returns a known `failed`
-outcome without changing the stored value, revision, generation or last writer's
+Revision conflicts take precedence over deadline failures. State samples its clock
+under the existing namespace lock and again after syncing temporary output,
+immediately before rename. At or after the deadline, the write returns a known
+`failed` outcome without changing the stored value, revision, generation or last writer's
 operation ID. Temporary output is cleaned. Lock contention still refuses; it does
 not queue until a deadline passes. Other IO failures remain uncertain according
 to the existing outcome rules.

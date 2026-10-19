@@ -40,6 +40,14 @@ the CLI freeze workflow. Both used ExUnit's 60,000-ms default. Historical
 pre-repair failures remain in the external report; a green rerun cannot explain
 those earlier failures by itself.
 
+The lead independently reread failed hosted logs for pre-repair runs
+`39272939320` at `a3007ee` and `39275849251` at `8183920`. Both contain the same
+suppressed seven-variant timeout at 60,000 ms. One earlier Ubuntu stack was in
+artifact import; other stacks were waiting for a query. This confirms inheritance
+and is consistent with accumulated fixture work. It does not prove every
+historical timing failure had one cause. Sanitized fixture logs were saved as
+`/tmp/ipse-p26-r2-a300-failures.log` and `/tmp/ipse-p26-r2-818-failures.log`.
+
 Two temporary Elixir probes traced the suppressed-source fixture locally before
 reorganizing it. They retained function/stage counts and elapsed time, with no
 source or fixture changes during either run. Each run passed one selected test
@@ -151,7 +159,8 @@ admission, and challenged expiry, generation, dependency cycles, imports,
 suppression, quotas and publication/recovery boundaries. No additional reachable
 defect emerged. There are no act-on, consider, noted or dismissed findings from
 this full panel. This remains source review, not native/package/CI execution.
-No forced temporary-staging delay was tested.
+The source panel did not run fault injection; the later staging probe is recorded
+below.
 
 ## Refreshed candidate verification
 
@@ -170,5 +179,48 @@ and 14.457 seconds. Every case retained the explicit deadline; no timeout was
 waived. The log is `/tmp/ipse-p26-r2-focused.log`.
 
 Build, local Elixir 1.20.3 formatting, Elixir 1.18.5 formatting, strict compilation
-and CI action-pin policy checks also passed. Full baseline, refreshed native and
-package checks, and the new hosted candidate remain pending.
+and CI action-pin policy checks also passed. Refreshed checks on macOS arm64 at
+runtime candidate `25f1d8e115fe809857a8359c5420bc62126919c7` completed:
+
+| Check | Actual result |
+| --- | --- |
+| `IPSE_TEST_STDIO_PROBE=1 mix test --timeout 60000` | 1,167 passed, 32 platform exclusions, 682.7 seconds |
+| Standalone macOS Rust policy tests | 4 passed; existing unused `run_anchor` warning |
+| Explicit macOS sandbox/stdio/filesystem subset | 30 passed, 6 Linux exclusions, 25.2 seconds |
+| Scripted demo | Passed; no live model inference |
+| Source memory measurement | Passed; 100 records/100 queries, six sessions/two projects, zero model/encoder calls |
+| Fresh package build and bounded extracted-package verification | Passed, including isolated HOME/IPSE_HOME, utility-only PATH and installed memory corpus |
+| Current operator-manual walkthrough | Exact JSON and eight real CLI commands passed using the demo provider, isolated HOME/IPSE_HOME and explicit fixture `--yes` |
+
+The corpus SHA-256 remains
+`3f11a10a4364b2ba4ae652a82ba14111e3dc88bec2387291df445334b8cca77c`.
+Source Recall@5 and exact-span precision are 1.0; p50/p95 are
+243,612/248,784 microseconds, sampled VM bytes 82,149,367 and State bytes 71,704.
+Installed p50/p95 are 243,592/247,517 microseconds and sampled VM bytes
+78,354,119, with the same corpus and retrieval results. These remain synthetic
+lexical measurements, not semantic quality or peak-memory claims. nDCG@10 is
+unmeasured because the tool returns at most five results.
+
+The fresh macOS archive SHA-256 is
+`5ec202f79b5b87e0601ba62532773205e519e004c5424f28003d16ee1cbbdf6a`.
+It contains candidate runtime source and later documentation-only staging receipts;
+it is a local verification archive, not a published release. The previous tested
+archive was preserved owner-only under
+`.ipse/continuations/p26-before-receipt-follow-up/`, SHA-256
+`87a4d7196e31a12f083675c4f045416ab4736aae6874c44d8cb7e5cd01d50d26`.
+The new hosted run was pending when these local checks finished. It subsequently
+passed both platforms; the [acceptance record](index.md#scoped-acceptance) owns
+the exact-source results and platform exclusions.
+
+After this review, a [forced Linux staging-delay probe](staging-delay.md) exercised
+the previously untested final-check boundary at committed candidate
+`25f1d8e115fe809857a8359c5420bc62126919c7`. Actual State refused after the
+503-ms injected delay with unchanged bytes and a valid failed receipt. A scratch
+control removing only the final check wrote after expiry under the same delay.
+No production hook or dependency was added.
+
+The lead's final manual read also clarified the clock-order wording in the
+host-call chapter. Revision conflicts take precedence over elapsed deadlines;
+the initial clock sample is computed before the conditional selects the outcome.
+The manual now states that observable precedence without implying a different
+instruction order. No implementation behavior changed.

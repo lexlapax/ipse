@@ -182,6 +182,9 @@ and repair is a required completion check, not optional follow-up work.
 Maintain the audience structure and authoritative topic ownership in
 [docs/index.md](docs/index.md): operator procedures under `docs/operator/`,
 developer guidance under `docs/developer/`, and shared context under `docs/`.
+Write operator documents as user manuals with runnable usage examples. Write
+developer documents as training manuals that teach implementation, ownership and
+verification through concrete examples.
 Update the map and entry points when adding or moving documents. Verify file
 targets and heading anchors. Preserve superseded documents under `docs/archive/`
 with their date, provenance, historical-only status, and replacement links;

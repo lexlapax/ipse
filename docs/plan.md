@@ -64,12 +64,12 @@ owns exact source, failed attempts, checks and exclusions. The requested license
 transition follows this completed campaign as a separate verified change.
 
 The research subject is optional working/long-term memory, research, graph and
-RAG, including the operator's Zero-Mem inspiration. P26A/P26B's explicit-note
-baseline is reopened for external-review remediation. Implementation `108aa86`
-and cleanup repair `fb4627e` retain their recorded verification; the
-[new review](archive/2026-10-19-p26-remediation/index.md) identifies visibility,
-restore, missing-source and scope-admission gaps. P27 research, graph and RAG development
-is paused at the user's request, with implementation and verification incomplete;
+RAG, including the operator's Zero-Mem inspiration. P26's explicit-note baseline
+is complete at `25f1d8e` after external and whole-milestone internal review,
+reproduced repairs and passing local and exact-source hosted checks. The
+[remediation record](archive/2026-10-19-p26-remediation/index.md) preserves the
+findings, failures and scoped acceptance. P27 research, graph and RAG development
+is resuming from its preserved continuation, with implementation and verification incomplete;
 media remains deferred to P28. External services remain configurable; no third-party
 engine, database or mandatory backend is selected.
 
@@ -78,14 +78,14 @@ engine, database or mandatory backend is selected.
 | [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within selected scope | Preserve accounting through the trial |
 | [P24: architecture/security readiness](#p24-independent-architecture-validation-and-baseline-security) | Complete for supervised P25 at `375e607`; accepted limits recorded | Refresh affected validation after trial changes |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Complete within declared supervision/assistance at `3307563`; security findings triaged and corrected scopes verified | Preserve frozen evidence; select a later production increment separately |
-| [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Repairs internally reviewed; fresh local gates pass; external acceptance pending | Verify Linux/hosted gates and obtain external re-review |
-| [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Waiting for P26 remediation/review; architecture, implementation and validation incomplete | After P26 acceptance, resume from the saved P27 continuation and obtain similar review |
+| [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Complete within explicit-note scope at `25f1d8e`; review repairs and local/hosted gates pass | Preserve lifecycle, authority and documented retention limits |
+| [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Active; architecture, implementation and validation incomplete | Resume the saved continuation, repair reproduced gaps and obtain similar review |
 | [P28: voice and media](#p28-voice-and-realtime-media) | Deferred; unimplemented | Explicit media contracts and later device/service validation |
 | [Apache-2.0 transition](#license-transition) | Complete; local and hosted `7bb642b` checks pass | Preserve bundled identity/recovery and third-party license boundaries |
 
 The requested P22–P25 campaign and separate Apache-2.0 transition are complete
-within their documented scopes. P26A/P26B are reopened for the external findings;
-P27 waits for P26 acceptance and P28 remains deferred. Preserve P25's frozen
+within their documented scopes. P26 remediation is complete; P27 is active and
+P28 remains deferred. Preserve P25's frozen
 inputs, runners, source/review/scan identities, scores and failed attempts; newer
 documentation does not rescan code or expand an earlier verdict. P27 follows the
 researched proposal; further memory automation remains separately scoped. Keep P28
@@ -271,19 +271,12 @@ and [security execution constraints](archive/2026-10-18-before-manual-rewrite/do
 
 ## P26: optional working and long-term memory
 
-**Reopened for scoped remediation and external re-review.** The
+**Complete within the explicit-note scope at `25f1d8e`.** The
 [2026-10-19 review](archive/2026-10-19-p26-remediation/index.md) found model
 inspection outside expiry/dependency filtering, lossy backup/restore, a missing-source
-collection crash and an admission/test gap. Repair these without weakening
-suppression, approval or the original acceptance criteria. The user authorized
-further external review cycles before P26 completion and subsequent P27 work.
-The corrections and additional internal findings are repaired, including a generic
-locked write deadline for approvals crossing note expiry. Three fresh internal
-reviews report no further findings. Local source, macOS native, corpus, installed
-and exact-candidate Linux native-enabled checks pass. External acceptance remains
-pending in the [remediation record](archive/2026-10-19-p26-remediation/index.md).
-The automatically triggered GitHub run adds Elixir 1.18 / OTP 27 compatibility
-evidence and did not block external review while pending. The
+collection crash and an admission/test gap. These and the internal findings were
+reproduced and repaired without weakening suppression or approval. A generic locked
+write deadline refuses approvals crossing the existing note's expiry. The
 [second external review](archive/2026-10-19-p26-remediation/review-2.md) accepts the
 P26 code scope, identifies one low-severity failed-receipt validation gap, and
 confirms that the run failed in inherited P27 60-second fixtures. The receipt
@@ -292,7 +285,13 @@ After measuring the accumulated work, the independent suppression Session cases
 and CLI refusal checks now have separate fixture units; the full seven-variant
 current-source integration case remains. A fresh three-reviewer adversarial
 review of the entire P26 milestone found no actionable defect. Refreshed full,
-native, installed and hosted verification remain open; no waiver has been granted.
+native, installed and manual-example checks pass. Exact-source hosted
+[run 39309132023](https://github.com/lexlapax/ipse/actions/runs/39309132023)
+passes both Ubuntu and macOS with Elixir 1.18.5 / OTP 27, including package and
+installed proofs. A forced Linux staging delay also confirms refusal before
+publication. The user authorized this internal review and repair followed by P27;
+no further external dispatch or CI waiver was required. The remediation record
+owns the complete receipts and limits.
 
 Implementation `108aa86` and diagnostic-worker cleanup repair `fb4627e` retain
 their applicable source/native/package and exact-source hosted evidence. Local causal reproduction and controlled
@@ -327,10 +326,10 @@ preserve legacy identities and grants; they are reviewed and tested separately.
 | --- | --- | --- |
 | P26H1 | Operator-only, versioned logical state bindings across reviewed artifact/configuration versions; legacy namespace compatibility and scope ceilings | Complete; source/native/installed and exact-source hosted gates pass |
 | P26H2 | Bounded value scans and explicit read-work allowance for useful lexical recall, with strict receipt/recovery validation | Complete; byte pages, forged/ungranted/over-limit actions and extended real-worker receipt chain pass |
-| P26H3 | Generic optional State write deadline, selected by the extension and enforced under the existing CAS lock without interpreting note schemas | Implemented and internally reviewed; real delayed-approval remember/import, live controls and known-failure recovery pass; local macOS/Linux gates pass; external acceptance pending |
-| P26A | Separate default-off working and persistent memory, explicit remember/recall/forget/export, provenance, bounded lexical ranking and approvals | Admission/export repairs and fresh local gates pass; external acceptance pending |
-| P26B | Durable source suppression, TTL/conflicts, derivative inventory/collection, schema migration/import, stale-work and cached-context recovery policy | Visibility, exact backups, legacy migration and delayed-expiry repairs pass local checks; external acceptance pending; manual fresh-session recovery remains required |
-| P26 verification | Deterministic authority/concurrency/restart/import cases, measured retrieval/resources, source/native/installed/platform checks and coherent operator/developer guidance | 41 focused and 1,160 full tests pass on macOS; 1,177 pass on Serenity with Linux native cases enabled; macOS native and installed corpus pass; external acceptance pending; prior cleanup evidence retained |
+| P26H3 | Generic optional State write deadline, selected by the extension and enforced under the existing CAS lock without interpreting note schemas | Complete; delayed-approval remember/import, live controls, failed-receipt recovery and forced staging delay pass; hosted source/package gates pass |
+| P26A | Separate default-off working and persistent memory, explicit remember/recall/forget/export, provenance, bounded lexical ranking and approvals | Complete; admission, exact backups and real CLI examples pass; external findings repaired and full milestone internally reviewed |
+| P26B | Durable source suppression, TTL/conflicts, derivative inventory/collection, schema migration/import, stale-work and cached-context recovery policy | Complete; visibility, legacy migration and delayed-expiry checks pass; fresh-session recovery and retained-history limits remain part of the contract |
+| P26 verification | Deterministic authority/concurrency/restart/import cases, measured retrieval/resources, source/native/installed/platform checks and coherent operator/developer guidance | Complete; 60 focused and 1,167 full tests pass locally; exact-source hosted Ubuntu/macOS source and installed gates pass; prior Linux native-enabled evidence retained with its source identity |
 
 Stable logical storage is an explicit operator grant, never a namespace chosen by
 project text or extension code. Existing journals and provider-visible history are
@@ -342,11 +341,12 @@ the [extension contract](developer/memory.md) owns suppression and measurement l
 
 ## P27: optional research, graph and RAG
 
-**Waiting for P26 remediation and review; implementation and verification incomplete.** The
+**Active after P26 acceptance; implementation and verification incomplete.** The
 [continuation record](archive/2026-10-19-p27-knowledge-packages/continuation.md)
 preserves the stopped comparison, evidence identities, protocol defects, CI
-failures and remaining tasks. The user authorized resuming P27 after P26 is
-remediated and externally reviewed, with similar review before P27 completion.
+failures and remaining tasks. External P26 review and subsequent internal review,
+repairs and verification are complete; the user authorized proceeding to P27,
+with similar review before P27 completion.
 Reconcile affected shared-host verification first; never replay the interrupted
 comparison automatically.
 

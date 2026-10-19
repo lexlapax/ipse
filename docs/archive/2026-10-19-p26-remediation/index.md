@@ -1,7 +1,8 @@
 # P26 review and remediation, 2026-10-19
 
-Historical investigation and review record. Remediation is in progress; no new
-completion verdict is established. Current user guidance is in the
+Historical investigation and review record. P26 remediation is complete within
+the explicit-note scope at `25f1d8e`; the acceptance decision below combines
+review and execution evidence. Current user guidance is in the
 [memory manual](../../operator/memory.md), contributor guidance in the
 [memory training chapter](../../developer/memory.md), and acceptance status in the
 [plan](../../plan.md#p26-optional-working-and-long-term-memory).
@@ -25,7 +26,7 @@ tests in 12.3 seconds. The earlier full baseline passed 1,150 tests with 32
 exclusions in 681.9 seconds; it predates these additional repairs and cannot
 replace their refreshed verification.
 
-## Accepted issues under repair
+## Initial repair checkpoints
 
 | Finding | Required result | State |
 | --- | --- | --- |
@@ -58,11 +59,11 @@ memory/Session/binding/scan run passes 26 tests in 9.9 seconds. Real Session cas
 inspect expired, orphaned and transitively blocked notes from a fresh model
 conversation, verify a readable control, continue after missing-source collection,
 and restore a blocked child before its parent arrives. Full refreshed verification
-and external acceptance remain open.
+and external acceptance were still open at this initial checkpoint.
 
-## Corrected local verification
+## First corrected candidate: local verification
 
-The final runtime source is the third internal review's frozen tracked diff. The
+The `b1dc820` runtime source is the third internal review's frozen tracked diff. The
 following checks ran after its expiry and migration repairs on macOS arm64,
 Elixir 1.20.3 / OTP 29:
 
@@ -125,7 +126,8 @@ needs investigation.
 
 The [external re-review request](external-review-prompt.md) pins corrected candidate
 `b1dc82094afdae8708cdb45dea16beb6c948f88b`. It follows the completed internal
-review/repair and local platform checks. External acceptance remains open.
+review/repair and local platform checks. External acceptance was open at handoff;
+the second report and later acceptance follow below.
 
 ## Second external review and follow-up
 
@@ -140,7 +142,7 @@ The failed-deadline validator accepted a receipt naming the failing operation as
 the previous writer. Adding that tamper case to the existing State test reproduced
 the defect: zero of one selected tests passed. The validator now requires a
 different previous operation ID, and all seven State tests pass. Refreshed full
-verification remains required. The manuals also explain that an approved
+verification at the later candidate is recorded below. The manuals also explain that an approved
 newer-generation import may replace a live note with an expired record or a
 version-one record, making it hidden immediately or until migration respectively.
 The developer test instructions now include the generic State receipt tests.
@@ -159,8 +161,68 @@ separation and the initial focused review. At the user's clarification, a fresh
 three-reviewer panel then challenged the entire P26 milestone, including unchanged
 implementation; all returned PASS with no actionable findings. The explicit
 60,000-ms focused run passed 60 tests in 207.0 seconds. Build, both formatter
-versions and strict compilation pass. Full baseline, refreshed native/package
-checks and a new hosted candidate remain pending.
+versions and strict compilation pass. These focused checks preceded the full
+baseline, refreshed native/package checks and hosted candidate results below.
+
+Follow-up candidate `25f1d8e115fe809857a8359c5420bc62126919c7` is committed and
+pushed. Its [forced Linux staging-delay probe](staging-delay.md) now exercises the
+final check after a 503-ms synchronous-write stall. Actual State refuses with
+unchanged bytes, temporary cleanup and a valid failure receipt; a scratch module
+without that final check writes after expiry. This is separate from native
+sandbox enforcement. Refreshed local checks pass: 1,167 full tests with 32 platform
+exclusions, four Rust policy tests, 30 explicit macOS native cases, the demo,
+source corpus and fresh extracted package. The
+[follow-up record](review-2-follow-up.md#refreshed-candidate-verification) owns
+counts, hashes and measurement limits.
+
+## Scoped acceptance
+
+P26 is accepted at runtime/test candidate
+`25f1d8e115fe809857a8359c5420bc62126919c7`. The second external review accepted
+the code scope subject to its receipt correction and passing hosted gates. The
+correction is reproduced and verified, and a subsequent three-reviewer panel
+challenged the entire milestone, including unchanged code and host boundaries,
+with no actionable findings. This is the lead's acceptance using those reviews
+and execution receipts, not another external post-fix verdict.
+
+Exact-source hosted
+[run 39309132023](https://github.com/lexlapax/ipse/actions/runs/39309132023)
+completed successfully on both platforms on 2026-10-19:
+
+| Gate | Ubuntu | macOS |
+| --- | --- | --- |
+| Elixir 1.18.5 / OTP 27 build, format, strict compile, CI policy and docs | Passed | Passed |
+| Full suite | 1,167 passed, 32 excluded | 1,167 passed, 32 excluded |
+| Explicit macOS native subset | Inapplicable, skipped | 30 passed, 6 Linux exclusions; Rust policy tests passed |
+| Demo, package build and extracted-package verification | Passed | Passed |
+| Independent installed extension/model and source/installed MCP/embedding proofs | Passed | Passed |
+| Knowledge preset admission and source/installed protocol/lifecycle proofs | Passed | Passed |
+| Experimental macOS App Sandbox proof | Inapplicable, skipped | Passed |
+
+The macOS job completed at 19:42:35 UTC; Ubuntu at 19:38:20 UTC. Their archives
+have SHA-256 `31b91e6662ecae395f81da11524c0d9dc1611d48c931d87c5e19a1ebc5b17125`
+and `a3a5d160bcc98ac502ddd546c1d3335d19bdc799c90fc08474430296a4f1bd97`
+respectively. Full suite totals are 1,199 including exclusions, not 1,199 executed
+tests. The hosted default suite does not enable Linux native tags; the separately
+identified Serenity native-enabled runs above remain their own evidence. Logs
+were retained locally as `/tmp/ipse-p26-r2-hosted-complete.log`.
+
+The final requirement audit covers independent default-off selection, all nine
+unique memory operations, isolation/bindings, provenance, expiry/conflicts,
+transitive visibility, exact backup/import, permanent suppression, migration,
+quotas, approval, cancellation and inert recovery. Operator and developer manuals
+were reviewed as whole documents; the literal operator walkthrough passed through
+the real CLI. A final envelope concern was rejected on source evidence:
+`Actions.resume/1` forwards the outcome once, without duplicating the request's
+stored value. No additional defect was found.
+
+Acceptance retains wall-clock/rename limits, explicit collection and fresh-session
+recovery, private-history/backup retention, synthetic lexical measurement scope and
+unverified live-provider combinations. No semantic-memory quality, secure erasure,
+production security certification or new Linux-native run at `25f1d8e` is claimed.
+The earlier red runs remain failures; no deadline was raised and no waiver was
+used. P27 resumes separately with its interrupted output preserved and its own
+architecture, lifecycle and quality gates still open.
 
 ## Prior hosted evidence audit
 
