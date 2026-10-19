@@ -13,6 +13,7 @@ defmodule Ipse.Extensions.Registry do
         Ipse.Extensions.Memory.Records
       ],
       capabilities: Ipse.Extensions.Memory.capabilities(),
+      state_scope_option: "scope",
       exports: Ipse.Extensions.Memory.exports(),
       schema: Ipse.Extensions.Memory.options_schema(["session"])
     },
@@ -20,6 +21,7 @@ defmodule Ipse.Extensions.Registry do
       module: Ipse.Extensions.Memory,
       modules: [Ipse.Extensions.Memory, Ipse.Extensions.Memory.Records],
       capabilities: ["host.state.bound" | Ipse.Extensions.Memory.capabilities()],
+      state_scope_option: "scope",
       exports: Ipse.Extensions.Memory.exports(),
       schema: Ipse.Extensions.Memory.options_schema(~w(project operator))
     },
@@ -143,6 +145,12 @@ defmodule Ipse.Extensions.Registry do
            {:ok, artifact} <- lookup(store, instance["artifact"]),
            true <- Manifest.compatible?(artifact.manifest),
            capabilities = artifact.manifest["capabilities"],
+           binding =
+             Enum.find(
+               Map.get(ceiling, "state_bindings", []),
+               &(&1["instance"] == instance["instance"])
+             ),
+           true <- selected_state_scope?(instance["artifact"], instance["options"], binding),
            true <-
              Enum.all?(
                capabilities,
@@ -181,12 +189,6 @@ defmodule Ipse.Extensions.Registry do
           if ceiling["text_required"] == true,
             do: Map.put(identity, "text_required", true),
             else: identity
-
-        binding =
-          Enum.find(
-            Map.get(ceiling, "state_bindings", []),
-            &(&1["instance"] == instance["instance"])
-          )
 
         identity =
           if binding,
@@ -267,6 +269,11 @@ defmodule Ipse.Extensions.Registry do
           Ipse.Extensions.Catalog.digest(entry.exports) == entry.identity["exports_sha256"] and
           entry.identity["runtime"] == runtime() and is_binary(entry.store) and
           Ipse.Extension.validate(entry.options) == :ok and
+          selected_state_scope?(
+            entry.identity["artifact"],
+            entry.options,
+            entry.identity["state_binding"]
+          ) and
           entry.identity["options_sha256"] == Ipse.Compaction.digest([entry.options]) and
           Ipse.Extensions.Subscriptions.validate(
             entry.subscriptions,
@@ -323,6 +330,14 @@ defmodule Ipse.Extensions.Registry do
 
   def live?(identity, now \\ System.system_time(:second)),
     do: is_nil(identity["expires_at"]) or identity["expires_at"] > now
+
+  defp selected_state_scope?(artifact, options, binding) do
+    case get_in(@builtins, [artifact, :state_scope_option]) do
+      nil -> true
+      _option when is_nil(binding) -> true
+      option -> is_map(binding) and options[option] in binding["scopes"]
+    end
+  end
 
   defp runtime do
     %{

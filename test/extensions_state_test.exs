@@ -72,6 +72,80 @@ defmodule Ipse.Extensions.StateTest do
     assert {:conflict, _} = execute(ctx, list(page["next"], page["generation"]))
   end
 
+  test "optional write deadlines are closed bounded put preconditions" do
+    for deadline <- [0, 9_007_199_254_740_991] do
+      assert :ok = State.validate(Map.put(put("note", 0, %{}), "write_before_ms", deadline))
+    end
+
+    for deadline <- [nil, true, "1000", 1000.0, -1, 9_007_199_254_740_992] do
+      assert {:error, :invalid_extension_state_request} =
+               State.validate(Map.put(put("note", 0, %{}), "write_before_ms", deadline))
+    end
+
+    for request <- [get("note"), delete("note", 0), list()] do
+      assert {:error, :invalid_extension_state_request} =
+               State.validate(Map.put(request, "write_before_ms", 0))
+    end
+  end
+
+  test "elapsed write deadlines preserve state and produce exact known failed receipts", ctx do
+    assert {:ok, original} = execute(ctx, put("note", 0, %{"text" => "original"}))
+    file = Path.join([ctx.root, ctx.namespace, "state.json"])
+    bytes = File.read!(file)
+    request = Map.put(put("note", 1, %{"text" => "replacement"}), "write_before_ms", 0)
+    operation_id = Ipse.Usage.id()
+
+    assert {:failed, failure} = State.execute(ctx.root, ctx.namespace, request, operation_id)
+    assert failure["code"] == "write_deadline_elapsed"
+    assert failure["checked_at_ms"] >= request["write_before_ms"]
+    assert failure["generation"] == original["generation"]
+    assert failure["record"] == Map.drop(original["record"], ["value"])
+    assert State.valid_outcome?(request, "failed", failure, operation_id)
+    assert File.read!(file) == bytes
+    assert Path.wildcard(Path.join([ctx.root, ctx.namespace, ".pending-*"])) == []
+
+    for invalid <- [
+          Map.put(failure, "code", "other"),
+          Map.put(failure, "extra", true),
+          Map.put(failure, "checked_at_ms", -1),
+          put_in(failure, ["record", "key"], "other"),
+          put_in(failure, ["record", "revision"], 0),
+          put_in(failure, ["record", "operation_id"], "invalid")
+        ] do
+      refute State.valid_outcome?(request, "failed", invalid, operation_id)
+    end
+
+    refute State.valid_outcome?(
+             Map.delete(request, "write_before_ms"),
+             "failed",
+             failure,
+             operation_id
+           )
+
+    refute State.valid_outcome?(
+             Map.put(request, "write_before_ms", failure["checked_at_ms"] + 1),
+             "failed",
+             failure,
+             operation_id
+           )
+
+    stale = Map.put(request, "expected_revision", 0)
+    assert {:conflict, conflict} = State.execute(ctx.root, ctx.namespace, stale, operation_id)
+    assert State.valid_outcome?(stale, "conflict", conflict, operation_id)
+
+    missing = Map.put(request, "key", "missing") |> Map.put("expected_revision", 0)
+    assert {:failed, absent} = State.execute(ctx.root, ctx.namespace, missing, operation_id)
+    assert absent["record"]["revision"] == 0
+    assert State.valid_outcome?(missing, "failed", absent, operation_id)
+    assert File.read!(file) == bytes
+
+    live = Map.put(request, "write_before_ms", System.system_time(:millisecond) + 60_000)
+    assert {:ok, updated} = State.execute(ctx.root, ctx.namespace, live, operation_id)
+    assert updated["record"]["revision"] == 2
+    assert State.valid_outcome?(live, "ok", updated, operation_id)
+    assert Enum.sort(Map.keys(updated)) == ~w(generation record)
+  end
+
   test "advisory contention never overwrites and preserves lock inode", ctx do
     assert {:ok, _} = execute(ctx, put("a", 0, %{}))
     lock_path = Path.join([ctx.root, ctx.namespace, ".lock"])

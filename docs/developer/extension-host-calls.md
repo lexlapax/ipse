@@ -80,8 +80,8 @@ Do not reread and automatically overwrite a tombstone on behalf of stale work.
 
 ## Closed state requests
 
-Every request has `op`, `scope`, and exactly the operation's fields. Scope is
-`operator`, `project`, or `session`.
+Every request has `op`, `scope`, and exactly the operation's fields, with one
+optional deadline field for `state.put`. Scope is `operator`, `project`, or `session`.
 
 | Operation | Required fields | Successful value |
 | --- | --- | --- |
@@ -103,6 +103,49 @@ revealing the current private value. Delete increments revision even for a missi
 key, so an old captured revision cannot recreate it. An explicit write using the
 current deletion revision is allowed. Domain suppression policy must distinguish
 that deliberate write from a stale extraction result.
+
+## Bound a prepared write by time
+
+If a prepared put must expire while it waits for approval, include
+`write_before_ms` in the exact request:
+
+```elixir
+request = %{
+  "op" => "state.put", "scope" => "project", "key" => "note",
+  "expected_revision" => observed_revision, "value" => replacement,
+  "write_before_ms" => observed_expiry_ms
+}
+```
+
+The extension owns the deadline policy and derives these observed values from its
+read. State treats `value` as opaque JSON. The optional deadline is an absolute
+Unix millisecond integer from 0 through 2^53-1. Explicit null, nonintegers, extra
+keys and this field on other operations refuse validation. Omitting it retains
+ordinary put behavior. The condition grants no authority or additional calls.
+
+State checks revision first. With matching CAS, it checks its clock under the
+existing namespace lock and again after syncing temporary output, immediately
+before rename. At or after the deadline, the write returns a known `failed`
+outcome without changing the stored value, revision, generation or last writer's
+operation ID. Temporary output is cleaned. Lock contention still refuses; it does
+not queue until a deadline passes. Other IO failures remain uncertain according
+to the existing outcome rules.
+
+The failed value has exactly `code: "write_deadline_elapsed"`, `checked_at_ms`,
+`generation`, and the unchanged `record` summary without its value. The summary
+must match the request key and expected revision. Its operation ID belongs to the
+previous successful write. Receipt validation requires a deadline-bearing put and
+a recorded checked time at or after its deadline. It compares recorded timestamps,
+not the current clock, so idle recovery never reinterprets or retries the failure.
+Successful receipts keep their ordinary shape. Interrupted writes without a
+durable receipt remain unknown.
+
+The deadline's decision point is the final clock check under the lock before
+publication. It is not a hard real-time promise about syscall completion or a
+defense against wall-clock rollback. Never remove a refused deadline to retry
+automatically. Start a deliberate domain operation after inspecting the outcome.
+
+## Read a stable page
 
 List and scan can pin a generation; concurrent writes then conflict on later pages.
 Scan returns at most 16 records and 12,000 encoded array bytes. A byte-limited page

@@ -165,6 +165,12 @@ Changed code/options/configuration can require a fresh session. State writes,
 questions, and model calls retain separate approval semantics. See
 [extension recovery](extensions.md#recovery-and-execution-boundaries).
 
+If persistent memory refuses activation with `extension_admission_refused`,
+compare `options.scope` with the selected instance's operator `state_bindings`
+entry. For example, `scope: "operator"` cannot use a binding limited to
+`["project"]`. Select project scope or deliberately review an operator-scope
+grant in your private configuration. See the [memory configuration example](memory.md#configure-project-notes).
+
 ## Collect a useful bug report
 
 Record the command with secrets removed, Ipse version from `/info` or launcher

@@ -1,0 +1,115 @@
+# P26 review and remediation, 2026-10-19
+
+Historical investigation and review record. Remediation is in progress; no new
+completion verdict is established. Current user guidance is in the
+[memory manual](../../operator/memory.md), contributor guidance in the
+[memory training chapter](../../developer/memory.md), and acceptance status in the
+[plan](../../plan.md#p26-optional-working-and-long-term-memory).
+
+The [first external review](review-1.md) targets
+`10b9dd66d06ef28718b58530a7e5b01c7c50397a`. The original report was supplied as
+`/tmp/ipse-p26-review.md`; its body is preserved unchanged with an archive preface.
+The reviewer removed their scratch probes and detached worktree. Their package,
+native and hosted-log verification limits remain part of the record.
+
+The user authorized P26 remediation and repeated external review as needed,
+followed by P27 remediation/completion with similar review. P27's interrupted
+comparison stays preserved in its [continuation record](../2026-10-19-p27-knowledge-packages/continuation.md).
+
+Before requesting external re-review, the user required an internal adversarial
+review and repair. Its [frozen scope, findings and lead judgment](internal-review.md)
+are recorded separately. Three source-reachable edges and one root-observed
+missing-target outcome reproduced as five failing regressions, including actual
+fixture-model disclosure. Repairs pass 29 focused memory/Session/binding/scan
+tests in 12.3 seconds. The earlier full baseline passed 1,150 tests with 32
+exclusions in 681.9 seconds; it predates these additional repairs and cannot
+replace their refreshed verification.
+
+## Accepted issues under repair
+
+| Finding | Required result | State |
+| --- | --- | --- |
+| Model inspection exposes expired/dependency-blocked text | Metadata-only inspection outside the same visibility policy as recall, with stable generation and no hidden writes | Failing-before regressions reproduced; first focused repair checks pass |
+| Export changes recoverable blocked notes into permanent suppression | Faithful current-record backup/restore with explicit expiry behavior and unchanged suppression priority | Export mismatch and expired-import refusal reproduced; handler and real Session restore checks pass |
+| Collecting a missing source crashes the worker | Bounded `not_found`, no write or suppression, and a usable Session afterward | Handler regression reproduced; handler and real Session continuation checks pass |
+| Scope ceiling mismatch is admitted; test name overclaims | Refuse incompatible selected built-in scope at admission, cover the actual mismatch and valid configuration | Failing-before regression reproduced; first focused repair checks pass |
+
+The observation that forgetting an absent ID creates permanent suppression is
+existing intentional behavior. Its quota and typo consequences need an explicit
+operator explanation. No finding is closed by documentation alone.
+
+Initial local verification used macOS arm64, Elixir 1.20.3 and OTP 29. The first
+four regressions failed before repair; an additional direct expired-text assertion
+also failed. The first inspection/collection/admission repairs passed the four
+focused memory/Session/binding/scan files, 23 tests in 5.7 seconds. This is not a
+full baseline, installed proof, platform matrix or external acceptance.
+
+The user explicitly selected exact record preservation for backups, including
+expired notes. Export no longer converts active records into suppression. An
+approved import may restore an expired record without changing its expiry; model
+reads still hide it and later writes cannot renew an expired target. Existing
+suppression remains permanent and has priority on import.
+
+The restore-fidelity regression first failed because export rewrote record values.
+After removing that conversion, it failed at the expired-import boundary with
+`source_expired`. Both boundaries now pass, including exact re-export and matched
+later visibility/update behavior in live and restored stores. The final focused
+memory/Session/binding/scan run passes 26 tests in 9.9 seconds. Real Session cases
+inspect expired, orphaned and transitively blocked notes from a fresh model
+conversation, verify a readable control, continue after missing-source collection,
+and restore a blocked child before its parent arrives. Full refreshed verification
+and external acceptance remain open.
+
+## Corrected local verification
+
+The final runtime source is the third internal review's frozen tracked diff. The
+following checks ran after its expiry and migration repairs on macOS arm64,
+Elixir 1.20.3 / OTP 29:
+
+| Gate | Actual result |
+| --- | --- |
+| `./scripts/build.sh` | Passed |
+| `mix format --check-formatted` | Passed with local 1.20.3 and CI-floor 1.18.5 formatters |
+| `mix compile --warnings-as-errors` | Passed |
+| Five focused State/memory/Session/binding/scan files | 41 passed, 19.6 seconds |
+| `IPSE_TEST_STDIO_PROBE=1 mix test` | 1,160 passed, 32 platform exclusions, 676.3 seconds |
+| Standalone macOS Rust policy tests | 4 passed; one existing unused-function compiler warning |
+| Explicit macOS sandbox, stdio and filesystem subset | 30 passed, 6 Linux exclusions, 24.3 seconds |
+| `mix run scripts/measure-memory.exs` | Passed, 100 records/100 queries, six sessions/two projects, zero encoder/model calls |
+| `./bin/ipse demo` | Scripted demo passed; no live model-service verification claimed |
+| Fresh `scripts/package.sh` and bounded `scripts/verify-package.exs` | Passed, including installed memory corpus, isolated HOME/IPSE_HOME and utility-only PATH |
+| Literal operator-manual example proof | Exact JSON configuration and eight CLI commands passed in isolated HOME/IPSE_HOME with the demo provider and explicit fixture `--yes`; remember, recall, inventory, forget, collection and suppression export checked |
+| CI policy and documentation checks | Passed; final document/link totals are refreshed with the handoff |
+
+Source and installed lexical corpus SHA-256:
+`3f11a10a4364b2ba4ae652a82ba14111e3dc88bec2387291df445334b8cca77c`.
+Both report Recall@5 and exact-span precision 1.0, no model dispatch and no model
+cost. Source p50/p95 were 244,102/247,626 microseconds and observed VM bytes
+82,143,643. Installed values were 248,155/260,812 microseconds and 77,869,459 bytes.
+These are synthetic lexical measurements and VM samples, not semantic quality or
+peak-memory claims. nDCG@10 is unmeasured because this tool returns at most five.
+
+The tested fresh macOS archive SHA-256 is
+`87a4d7196e31a12f083675c4f045416ab4736aae6874c44d8cb7e5cd01d50d26`.
+It was built from the reviewed runtime source before this final receipt update;
+the later documentation commit does not change those runtime sources. The old
+local archive was preserved as an ignored owner-only copy at
+`.ipse/continuations/p26-pre-remediation-package/ipse-0.1.0-darwin-arm64.tar.gz`,
+SHA-256 `d5d2517e87cf358cfe6b6d82060719e6be52ce0e5fcf7920fc4729df7d5c8a4f`.
+Neither archive is a published release or committed private payload.
+
+The user authorized Linux exclusions on `lexlapax@serenity` at
+`~/projects/lexlapax/ipse`. Its main checkout was clean at `d300b68` with Arch
+Elixir 1.20.4 / OTP 29 and Rust 1.99.0. Existing processes and unrelated worktrees
+are left untouched; an isolated exact-candidate worktree will own verification.
+Linux, fresh hosted status and external acceptance are still pending here.
+
+## Prior hosted evidence audit
+
+During remediation, the final step metadata for prior P27 source
+`8183920ebdce0d8fcc03abdcb8f41d57849163cb`, run `39275849251`, was read again.
+Both jobs are terminal. Ubuntu failed at `mix test` and skipped subsequent gates.
+macOS completed every applicable build, test, native, package and independent
+proof step successfully, including the previously pending knowledge and sandbox
+steps. This closes that old metadata-observation gap. It does not verify the P26
+repairs or explain the Ubuntu test timeout saved in the P27 continuation.

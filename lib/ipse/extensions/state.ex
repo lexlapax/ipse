@@ -112,7 +112,9 @@ defmodule Ipse.Extensions.State do
   end
 
   defp valid_operation?(%{"op" => "state.put"} = request) do
-    keys?(request, ~w(op scope key expected_revision value)) and key?(request["key"]) and
+    keys?(Map.delete(request, "write_before_ms"), ~w(op scope key expected_revision value)) and
+      (not Map.has_key?(request, "write_before_ms") or revision?(request["write_before_ms"])) and
+      key?(request["key"]) and
       revision?(request["expected_revision"]) and is_map(request["value"]) and
       value?(request["value"])
   end
@@ -167,10 +169,15 @@ defmodule Ipse.Extensions.State do
 
   defp apply_operation(path, state, request, operation_id) do
     old = record(state, request["key"])
+    deadline_check = check_write_deadline(request)
 
     cond do
       request["expected_revision"] != old["revision"] ->
         {:conflict, %{"record" => Map.drop(old, ["value"]), "generation" => state["generation"]}}
+
+      match?({:elapsed, _}, deadline_check) ->
+        {:elapsed, checked_at} = deadline_check
+        deadline_failure(state, old, checked_at)
 
       state["generation"] >= @max_revision or old["revision"] >= @max_revision ->
         {:error, :extension_state_quota}
@@ -193,8 +200,11 @@ defmodule Ipse.Extensions.State do
             "records" => Map.put(state["records"], request["key"], record)
         }
 
-        with :ok <- write(path, next) do
+        with :ok <- write(path, next, request) do
           {:ok, %{"generation" => next["generation"], "record" => record}}
+        else
+          {:elapsed, checked_at} -> deadline_failure(state, old, checked_at)
+          error -> error
         end
     end
   end
@@ -260,7 +270,24 @@ defmodule Ipse.Extensions.State do
     _ -> false
   end
 
-  defp write(path, state) do
+  defp check_write_deadline(%{"write_before_ms" => deadline}) do
+    now = System.system_time(:millisecond)
+    if now < deadline, do: :ok, else: {:elapsed, now}
+  end
+
+  defp check_write_deadline(_), do: :ok
+
+  defp deadline_failure(state, old, checked_at),
+    do:
+      {:failed,
+       %{
+         "code" => "write_deadline_elapsed",
+         "checked_at_ms" => checked_at,
+         "generation" => state["generation"],
+         "record" => Map.drop(old, ["value"])
+       }}
+
+  defp write(path, state, request) do
     with {:ok, bytes} <- Jason.encode(state),
          true <- byte_size(bytes) <= @bytes do
       temporary = Path.join(path, ".pending-" <> Ipse.Usage.id())
@@ -268,9 +295,11 @@ defmodule Ipse.Extensions.State do
       try do
         with :ok <- File.write(temporary, bytes, [:exclusive, :binary, :sync]),
              :ok <- File.chmod(temporary, 0o600),
+             :ok <- check_write_deadline(request),
              :ok <- File.rename(temporary, Path.join(path, "state.json")) do
           :ok
         else
+          {:elapsed, _} = elapsed -> elapsed
           _ -> @error
         end
       after
@@ -386,6 +415,20 @@ defmodule Ipse.Extensions.State do
       summary?(value["record"], value["generation"]) and
       value["record"]["key"] == request["key"] and
       value["record"]["revision"] != request["expected_revision"]
+  end
+
+  defp outcome?(
+         %{"op" => "state.put", "write_before_ms" => deadline} = request,
+         "failed",
+         value,
+         _
+       ) do
+    validate(request) == :ok and keys?(value, ~w(code checked_at_ms generation record)) and
+      value["code"] == "write_deadline_elapsed" and revision?(value["checked_at_ms"]) and
+      value["checked_at_ms"] >= deadline and revision?(value["generation"]) and
+      summary?(value["record"], value["generation"]) and
+      value["record"]["key"] == request["key"] and
+      value["record"]["revision"] == request["expected_revision"]
   end
 
   defp outcome?(_, _, _, _), do: false

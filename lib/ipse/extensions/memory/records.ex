@@ -123,11 +123,8 @@ defmodule Ipse.Extensions.Memory.Records do
       incoming["state"] == "suppressed" ->
         {:ok, Map.put(incoming, "version", 2)}
 
-      incoming["version"] != 2 ->
+      previous && previous["version"] != 2 ->
         {:error, "migration_required"}
-
-      incoming["expires_at_ms"] <= now ->
-        {:error, "source_expired"}
 
       incoming["expires_at_ms"] > now + retention * 1000 ->
         {:error, "retention_exceeded"}

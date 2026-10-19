@@ -72,7 +72,7 @@ defmodule Ipse.Extensions.Memory do
       ),
       descriptor(
         "inspect",
-        "Read the current note or minimal suppression record.",
+        "Read an eligible note; hidden notes expose metadata only.",
         object(["source"], %{"source" => @source})
       )
     ]
@@ -202,16 +202,57 @@ defmodule Ipse.Extensions.Memory do
 
   def handle(
         "host.actions",
-        %{"outcome" => %{"status" => "ok", "value" => page}},
-        %{id: id} = state
+        %{
+          "outcome" => %{
+            "status" => "failed",
+            "value" => %{"code" => "write_deadline_elapsed"} = details
+          }
+        },
+        %{phase: :write, id: id} = state
       )
-      when id in ~w(recall export inventory) do
+      when id in ~w(remember import),
+      do: result(%{"status" => "source_expired", "details" => details}, state)
+
+  def handle(
+        "host.actions",
+        %{"outcome" => %{"status" => "ok", "value" => page}},
+        %{phase: :scan, id: id} = state
+      )
+      when id in ~w(recall export inventory inspect) do
     if Enum.all?(page["records"], &valid_record?/1) do
       records = state.records ++ page["records"]
+
+      state =
+        if page["next"] == nil,
+          do: %{state | now: System.system_time(:millisecond)},
+          else: state
 
       cond do
         page["next"] != nil ->
           scan(%{state | records: records}, page["next"], page["generation"])
+
+        id == "inspect" ->
+          record = state.inspect_record
+
+          visible =
+            Records.visible?(record["value"], state.now) and
+              Enum.any?(exclude_derivatives(records, state.now), &(&1["key"] == record["key"]))
+
+          record =
+            if visible,
+              do: record,
+              else: Map.update!(record, "value", &Map.drop(&1, ~w(text title provenance)))
+
+          result(
+            %{
+              "status" => "inspected",
+              "record" => record,
+              "visibility" => if(visible, do: "full", else: "metadata_only"),
+              "generation" => page["generation"],
+              "as_of_ms" => state.now
+            },
+            state
+          )
 
         id == "recall" ->
           visible = exclude_derivatives(records, state.now)
@@ -234,8 +275,6 @@ defmodule Ipse.Extensions.Memory do
           )
 
         id == "export" ->
-          records = export_records(records, state.now)
-
           records =
             if state.args["sources"],
               do:
@@ -310,18 +349,27 @@ defmodule Ipse.Extensions.Memory do
 
   def handle(
         "host.actions",
-        %{"outcome" => %{"status" => "ok", "value" => %{"record" => record}}},
+        %{"outcome" => %{"status" => "ok", "value" => %{"record" => record} = value}},
         state
       ) do
+    state = %{state | now: System.system_time(:millisecond)}
+
     cond do
       record["revision"] > 0 and not valid_record?(record) ->
         result(%{"status" => "invalid_or_deleted_memory_record"}, state)
 
       state.id == "inspect" ->
-        result(%{"status" => "inspected", "record" => record}, state)
+        if record["revision"] == 0 or record["value"]["state"] == "suppressed" do
+          result(%{"status" => "inspected", "record" => record}, state)
+        else
+          scan(Map.merge(state, %{records: [], inspect_record: record}), nil, value["generation"])
+        end
 
       record["revision"] != state.args["expected_revision"] ->
         result(%{"status" => "conflict", "revision" => record["revision"]}, state)
+
+      state.id == "collect" and record["revision"] == 0 ->
+        result(%{"status" => "not_found"}, state)
 
       true ->
         if state.id == "collect" and state.args["cause_source"] do
@@ -363,10 +411,9 @@ defmodule Ipse.Extensions.Memory do
            )}
 
         "collect" ->
-          if (previous && previous["state"] == "active") and
-               previous["expires_at_ms"] <= state.now,
-             do: {:ok, Records.suppress(record["key"], previous["source_generation"], state.now)},
-             else: {:error, "not_expired"}
+          if previous["state"] == "active" and previous["expires_at_ms"] <= state.now,
+            do: {:ok, Records.suppress(record["key"], previous["source_generation"], state.now)},
+            else: {:error, "not_expired"}
 
         "migrate" ->
           if previous && previous["version"] == 1,
@@ -403,18 +450,23 @@ defmodule Ipse.Extensions.Memory do
   defp previous_dependency?(note, source),
     do: is_map(note) and note["state"] == "active" and source in Map.get(note, "derived_from", [])
 
-  defp write(record, value, state),
-    do:
-      call(
-        %{
-          "op" => "state.put",
-          "scope" => state.options["scope"],
-          "key" => record["key"],
-          "expected_revision" => record["revision"],
-          "value" => value
-        },
-        %{state | phase: :write}
-      )
+  defp write(record, value, state) do
+    request = %{
+      "op" => "state.put",
+      "scope" => state.options["scope"],
+      "key" => record["key"],
+      "expected_revision" => record["revision"],
+      "value" => value
+    }
+
+    request =
+      if state.id in ~w(remember import) and record["value"] != nil and
+           record["value"]["state"] == "active" and value["state"] == "active",
+         do: Map.put(request, "write_before_ms", record["value"]["expires_at_ms"]),
+         else: request
+
+    call(request, %{state | phase: :write})
+  end
 
   defp valid_record?(record),
     do: record["deleted"] == false and Records.valid?(record["value"], record["key"])
@@ -424,9 +476,7 @@ defmodule Ipse.Extensions.Memory do
 
     blocked =
       records
-      |> Enum.filter(
-        &(&1["value"]["state"] == "suppressed" or &1["value"]["expires_at_ms"] <= now)
-      )
+      |> Enum.reject(&Records.visible?(&1["value"], now))
       |> MapSet.new(& &1["key"])
 
     blocked =
@@ -448,22 +498,6 @@ defmodule Ipse.Extensions.Memory do
       end)
 
     Enum.reject(records, &MapSet.member?(blocked, &1["key"]))
-  end
-
-  defp export_records(records, now) do
-    visible = exclude_derivatives(records, now) |> MapSet.new(& &1["key"])
-
-    Enum.map(records, fn record ->
-      if MapSet.member?(visible, record["key"]) or record["value"]["state"] == "suppressed" do
-        record
-      else
-        Map.put(
-          record,
-          "value",
-          Records.suppress(record["key"], record["value"]["source_generation"], now)
-        )
-      end
-    end)
   end
 
   defp page_records(records, args) do
@@ -491,7 +525,7 @@ defmodule Ipse.Extensions.Memory do
           "generation" => generation,
           "limit" => 16
         },
-        state
+        Map.put(state, :phase, :scan)
       )
 
   defp call(request, state),

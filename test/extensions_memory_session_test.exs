@@ -136,6 +136,13 @@ defmodule Ipse.Extensions.MemorySessionTest do
     assert_receive {:ipse, ^pid, {:done, :ok}}, 5000
   end
 
+  defp command(pid, name, arguments) do
+    assert :ok = Session.invoke_export(pid, :command, "ext__notes__" <> name, arguments)
+    await_done(pid)
+    assert_receive {:ipse, ^pid, {:extension_result, %{"value" => value}}}, 1000
+    value
+  end
+
   defp note,
     do: %{
       "source" => "operator:task",
@@ -146,6 +153,91 @@ defmodule Ipse.Extensions.MemorySessionTest do
       "provenance" => "operator statement",
       "expected_revision" => 0
     }
+
+  defp assert_renewal(ctx, operation, delayed) do
+    selected = entries(ctx)
+    writer = start(ctx, selected, %{approval: :ask})
+    seed = start(ctx, selected)
+    source = "approval-expiry:" <> operation
+
+    original_args =
+      Map.merge(note(), %{"source" => source, "ttl_seconds" => if(delayed, do: 3, else: 60)})
+
+    {:ok, original} = Records.build(original_args, nil, System.system_time(:millisecond), 3600)
+
+    assert command(seed, "import", %{
+             "key" => Records.key(source),
+             "value" => original,
+             "expected_revision" => 0
+           })["status"] == "stored"
+
+    assert :ok = Session.close_confirmed(seed)
+    [entry] = selected
+    info = Session.info(writer)
+    {:ok, namespace} = State.namespace(entry.identity, "project", info.cwd, info.id)
+    state_root = Path.join(ctx.home, "extension-state-v1")
+    read = %{"op" => "state.get", "scope" => "project", "key" => Records.key(source)}
+    {:ok, before} = State.execute(state_root, namespace, read, Ipse.Usage.id())
+
+    arguments =
+      Map.merge(note(), %{"source" => source, "source_generation" => 2, "expected_revision" => 1})
+
+    arguments =
+      case operation do
+        "remember" ->
+          arguments
+
+        "import" ->
+          {:ok, replacement} =
+            Records.build(arguments, nil, System.system_time(:millisecond), 3600)
+
+          %{"key" => Records.key(source), "value" => replacement, "expected_revision" => 1}
+      end
+
+    assert :ok = Session.invoke_export(writer, :command, "ext__notes__" <> operation, arguments)
+    assert_receive {:ipse, ^writer, {:approval, ref, "extension:state.put", proposed}}, 3000
+    assert proposed["request"]["value"]["expires_at_ms"] > original["expires_at_ms"]
+    assert System.system_time(:millisecond) < original["expires_at_ms"]
+
+    if delayed do
+      # Wait for this record's real expiry, not a guessed scheduling delay.
+      Process.sleep(max(original["expires_at_ms"] - System.system_time(:millisecond), 0))
+      assert System.system_time(:millisecond) >= original["expires_at_ms"]
+    end
+
+    assert :ok = Session.approve(writer, ref, true)
+    await_done(writer)
+    assert_receive {:ipse, ^writer, {:extension_result, %{"value" => result}}}, 1000
+    assert result["status"] == if(delayed, do: "source_expired", else: "stored")
+    assert proposed["request"]["write_before_ms"] == original["expires_at_ms"]
+
+    if delayed do
+      assert {:ok, ^before} = State.execute(state_root, namespace, read, Ipse.Usage.id())
+      journal = events(ctx, writer)
+
+      assert Enum.any?(journal, fn event ->
+               event["type"] == "extension_action_result" and
+                 get_in(event, ["outcome", "status"]) == "failed" and
+                 get_in(event, ["outcome", "value", "code"]) == "write_deadline_elapsed"
+             end)
+
+      assert command(writer, "recall", %{"query" => "owner monitors"})["matches"] == []
+      id = Session.info(writer).id
+      assert :ok = Session.close_confirmed(writer)
+      journal_path = Path.join(ctx.dir, id <> ".jsonl")
+      bytes = File.read!(journal_path)
+      resumed = start(ctx, selected, %{approval: :ask}, id)
+      assert Session.info(resumed).phase == :idle
+      assert File.read!(journal_path) == bytes
+      assert {:ok, ^before} = State.execute(state_root, namespace, read, Ipse.Usage.id())
+      assert :ok = Session.close_confirmed(resumed)
+    else
+      assert {:ok, updated} = State.execute(state_root, namespace, read, Ipse.Usage.id())
+      assert updated["record"]["revision"] == 2
+      assert updated["record"]["value"]["expires_at_ms"] > original["expires_at_ms"]
+      assert :ok = Session.close_confirmed(writer)
+    end
+  end
 
   defp events(ctx, pid) do
     assert {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
@@ -239,7 +331,7 @@ defmodule Ipse.Extensions.MemorySessionTest do
     refute File.exists?(fresh.home)
   end
 
-  test "persistent memory refuses missing operator binding or narrowed scope mismatch", ctx do
+  test "persistent memory refuses missing operator binding", ctx do
     missing =
       data() |> update_in(["extension_trust", Access.at(0)], &Map.delete(&1, "state_bindings"))
 
@@ -247,6 +339,226 @@ defmodule Ipse.Extensions.MemorySessionTest do
       Config.resolve([%{scope: "operator", path: "/fixture/operator.json", data: missing}], [])
 
     assert {:error, _} = Registry.prepare(catalog, ctx.home)
+  end
+
+  test "remember approved while the target is live can renew it", ctx do
+    assert_renewal(ctx, "remember", false)
+  end
+
+  test "active import approved while the target is live can renew it", ctx do
+    assert_renewal(ctx, "import", false)
+  end
+
+  test "remember approved after target expiry cannot renew it", ctx do
+    assert_renewal(ctx, "remember", true)
+  end
+
+  test "active import approved after target expiry cannot renew it", ctx do
+    assert_renewal(ctx, "import", true)
+  end
+
+  test "persistent memory refuses a selected scope outside its operator binding", ctx do
+    mismatched = data() |> put_in(["extensions", Access.at(0), "options", "scope"], "operator")
+    source = %{scope: "operator", path: "/fixture/operator.json", data: mismatched}
+    assert {:ok, catalog} = Config.resolve([source], [])
+    assert {:error, :extension_admission_refused} = Registry.prepare(catalog, ctx.home)
+
+    allowed =
+      put_in(
+        mismatched,
+        ["extension_trust", Access.at(0), "state_bindings", Access.at(0), "scopes"],
+        ["operator"]
+      )
+
+    assert {:ok, catalog} = Config.resolve([%{source | data: allowed}], [])
+    assert {:ok, [entry]} = Registry.prepare(catalog, ctx.home)
+    assert :ok = Registry.revalidate(%{extensions: [entry]})
+
+    narrowed = put_in(entry.identity["state_binding"]["scopes"], ["project"])
+    refute Registry.valid_entries?(%{extensions: [narrowed]})
+
+    assert {:error, :extension_admission_refused} =
+             Registry.revalidate(%{extensions: [narrowed]})
+  end
+
+  test "working memory validates optional binding scope while retaining unbound activation",
+       ctx do
+    [binding] = hd(data()["extension_trust"])["state_bindings"]
+
+    mismatched =
+      put_in(data(true), ["extension_trust", Access.at(0), "state_bindings"], [binding])
+
+    source = %{scope: "operator", path: "/fixture/working.json", data: mismatched}
+    assert {:ok, catalog} = Config.resolve([source], [])
+    assert {:error, :extension_admission_refused} = Registry.prepare(catalog, ctx.home)
+
+    allowed =
+      put_in(
+        mismatched,
+        ["extension_trust", Access.at(0), "state_bindings", Access.at(0), "scopes"],
+        ["session"]
+      )
+
+    assert {:ok, catalog} = Config.resolve([%{source | data: allowed}], [])
+    assert {:ok, [entry]} = Registry.prepare(catalog, ctx.home)
+    assert :ok = Registry.revalidate(%{extensions: [entry]})
+    narrowed = put_in(entry.identity["state_binding"]["scopes"], ["project"])
+    refute Registry.valid_entries?(%{extensions: [narrowed]})
+    assert {:error, :extension_admission_refused} = Registry.revalidate(%{extensions: [narrowed]})
+
+    assert {:ok, catalog} = Config.resolve([%{source | data: data(true)}], [])
+    assert {:ok, [_]} = Registry.prepare(catalog, ctx.home)
+  end
+
+  test "fresh model inspection hides blocked and expired text and missing collection leaves Session usable",
+       ctx do
+    selected = entries(ctx)
+    seed = start(ctx, selected)
+    hidden = "P26_hidden_body"
+
+    for {source, parents} <- [
+          {"parent", []},
+          {"child", ["parent"]},
+          {"grandchild", ["child"]},
+          {"orphan", ["absent"]},
+          {"legacy-child", ["legacy-parent"]},
+          {"legacy-grandchild", ["legacy-child"]}
+        ] do
+      arguments =
+        Map.merge(note(), %{
+          "source" => source,
+          "text" => hidden,
+          "title" => "P26_hidden_title",
+          "provenance" => "P26_hidden_provenance",
+          "derived_from" => parents
+        })
+
+      assert command(seed, "remember", arguments)["status"] == "stored"
+    end
+
+    {:ok, parent} =
+      Records.build(
+        Map.merge(note(), %{"source" => "legacy-parent", "text" => hidden}),
+        nil,
+        System.system_time(:millisecond),
+        3600
+      )
+
+    legacy = parent |> Map.put("version", 1) |> Map.delete("derived_from")
+    [entry] = selected
+    info = Session.info(seed)
+    {:ok, namespace} = State.namespace(entry.identity, "project", info.cwd, info.id)
+
+    assert {:ok, _} =
+             State.execute(
+               Path.join(ctx.home, "extension-state-v1"),
+               namespace,
+               %{
+                 "op" => "state.put",
+                 "scope" => "project",
+                 "key" => Records.key("legacy-parent"),
+                 "expected_revision" => 0,
+                 "value" => legacy
+               },
+               Ipse.Usage.id()
+             )
+
+    {:ok, expired} =
+      Records.build(Map.merge(note(), %{"source" => "expired", "text" => hidden}), nil, 1000, 60)
+
+    assert command(seed, "import", %{
+             "key" => Records.key("expired"),
+             "value" => expired,
+             "expected_revision" => 0
+           })["status"] == "stored"
+
+    assert command(seed, "forget", %{"source" => "parent", "expected_revision" => 1})["status"] ==
+             "stored"
+
+    assert command(seed, "collect", %{"source" => "never-written", "expected_revision" => 0})[
+             "status"
+           ] == "not_found"
+
+    assert command(seed, "remember", Map.put(note(), "source", "never-written"))["status"] ==
+             "stored"
+
+    assert :ok = Session.close_confirmed(seed)
+
+    fresh = start(ctx, selected)
+
+    for source <- ~w(child grandchild orphan expired legacy-parent legacy-child legacy-grandchild) do
+      tool(ctx, fresh, "inspect", %{"source" => source})
+      await_done(fresh)
+      assert_receive {:memory_model, _initial_messages, _tools}, 1000
+      assert_receive {:memory_model, messages, _tools}, 1000
+      assert List.last(messages)["role"] == "tool"
+
+      for secret <- [hidden, "P26_hidden_title", "P26_hidden_provenance"],
+          do: refute(Jason.encode!(messages) =~ secret)
+
+      result =
+        events(ctx, fresh)
+        |> Enum.filter(&(&1["type"] == "extension_invocation_result"))
+        |> List.last()
+
+      assert result["value"]["visibility"] == "metadata_only"
+    end
+
+    tool(ctx, fresh, "inspect", %{"source" => "never-written"})
+    await_done(fresh)
+    assert_receive {:memory_model, _, _}, 1000
+    assert_receive {:memory_model, messages, _}, 1000
+    assert List.last(messages)["content"] =~ "Keep owner monitors active"
+
+    assert command(fresh, "migrate", %{"source" => "legacy-parent", "expected_revision" => 1})[
+             "status"
+           ] == "stored"
+
+    tool(ctx, fresh, "inspect", %{"source" => "legacy-grandchild"})
+    await_done(fresh)
+    assert_receive {:memory_model, _, _}, 1000
+    assert_receive {:memory_model, messages, _}, 1000
+    assert List.last(messages)["content"] =~ hidden
+    assert :ok = Session.close_confirmed(fresh)
+  end
+
+  test "public export and import preserve a blocked child's later visibility", ctx do
+    original = start(ctx, entries(ctx))
+    child = Map.merge(note(), %{"source" => "child", "derived_from" => ["parent"]})
+    assert command(original, "remember", child)["status"] == "stored"
+    exported = command(original, "export", %{"limit" => 16})
+    assert [record] = exported["records"]
+    assert record["value"]["state"] == "active"
+    assert record["value"]["derived_from"] == ["parent"]
+
+    restored_ctx = %{
+      ctx
+      | root: Path.join(ctx.root, "restored"),
+        home: Path.join(ctx.root, "restored/home"),
+        dir: Path.join(ctx.root, "restored/sessions")
+    }
+
+    File.mkdir_p!(restored_ctx.home)
+    restored = start(restored_ctx, entries(restored_ctx))
+
+    assert command(restored, "import", Map.put(record, "expected_revision", 0))["status"] ==
+             "stored"
+
+    for {context, pid} <- [{ctx, original}, {restored_ctx, restored}] do
+      assert command(pid, "remember", Map.put(note(), "source", "parent"))["status"] == "stored"
+      tool(context, pid, "recall", %{"query" => "owner monitors"})
+      await_done(pid)
+
+      result =
+        events(context, pid)
+        |> Enum.filter(&(&1["type"] == "extension_invocation_result"))
+        |> List.last()
+
+      assert result["value"]["matches"] |> Enum.map(& &1["source"]) |> Enum.sort() ==
+               ~w(child parent)
+
+      assert :ok = Session.close_confirmed(pid)
+    end
   end
 
   test "working and persistent packages can be independently selected together", ctx do
