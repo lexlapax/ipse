@@ -79,7 +79,7 @@ Elixir 1.20.3 / OTP 29:
 | `./bin/ipse demo` | Scripted demo passed; no live model-service verification claimed |
 | Fresh `scripts/package.sh` and bounded `scripts/verify-package.exs` | Passed, including installed memory corpus, isolated HOME/IPSE_HOME and utility-only PATH |
 | Literal operator-manual example proof | Exact JSON configuration and eight CLI commands passed in isolated HOME/IPSE_HOME with the demo provider and explicit fixture `--yes`; remember, recall, inventory, forget, collection and suppression export checked |
-| CI policy and documentation checks | Passed; final document/link totals are refreshed with the handoff |
+| CI policy and documentation checks | Passed; handoff checks cover 241 Markdown files and 2,632 local links with zero errors |
 
 Source and installed lexical corpus SHA-256:
 `3f11a10a4364b2ba4ae652a82ba14111e3dc88bec2387291df445334b8cca77c`.
@@ -98,11 +98,34 @@ local archive was preserved as an ignored owner-only copy at
 SHA-256 `d5d2517e87cf358cfe6b6d82060719e6be52ce0e5fcf7920fc4729df7d5c8a4f`.
 Neither archive is a published release or committed private payload.
 
+## Linux verification and review handoff
+
 The user authorized Linux exclusions on `lexlapax@serenity` at
-`~/projects/lexlapax/ipse`. Its main checkout was clean at `d300b68` with Arch
-Elixir 1.20.4 / OTP 29 and Rust 1.99.0. Existing processes and unrelated worktrees
-are left untouched; an isolated exact-candidate worktree will own verification.
-Linux, fresh hosted status and external acceptance are still pending here.
+`~/projects/lexlapax/ipse`. Verification ran in the isolated detached worktree
+`/tmp/ipse-p26-b1dc820-Xiuxg2/source` at exactly
+`b1dc82094afdae8708cdb45dea16beb6c948f88b`. The main checkout remained at
+`d300b68`; existing processes and unrelated worktrees were left untouched.
+The host used Arch Linux, Elixir 1.20.4 / OTP 29 and Rust 1.99.0.
+
+Build, format, strict compilation, documentation checks, the full suite and the
+scripted demo all passed. The suite included `native_sandbox` and excluded only
+the `macos_sandbox` and `macos_filesystem` tags: 1,177 passed, 15 excluded in
+617.4 seconds. Documentation at the candidate checked 240 Markdown files and
+2,626 local links with zero errors. Logs remain outside the source worktree in
+`/tmp/ipse-p26-b1dc820-Xiuxg2/`, named `build.log`, `format.log`, `compile.log`,
+`docs.log`, `test.log` and `demo.log`. This run did not build or verify a Linux
+package.
+
+The automatically triggered [candidate GitHub run](https://github.com/lexlapax/ipse/actions/runs/39295194794)
+was still running when the local and Serenity checks finished. It adds supported
+Elixir 1.18 / OTP 27 compatibility coverage; both local hosts used 1.20 / OTP 29.
+Its completion is not required before handing the candidate to the external
+reviewer. A pending run is not a passing result, and any later failure still
+needs investigation.
+
+The [external re-review request](external-review-prompt.md) pins corrected candidate
+`b1dc82094afdae8708cdb45dea16beb6c948f88b`. It follows the completed internal
+review/repair and local platform checks. External acceptance remains open.
 
 ## Prior hosted evidence audit
 

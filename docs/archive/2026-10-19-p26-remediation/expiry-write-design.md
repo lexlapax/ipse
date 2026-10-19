@@ -19,11 +19,11 @@ fields or adding a core memory branch.
 - [x] Compare at least two distinct designs and cross-judge their contracts.
 - [x] Select a bounded contract without an additional human checkpoint.
 - [x] Reproduce the delayed-approval failure and implement the selected design.
-- [ ] Verify public remember/import, host receipts, unchanged legacy requests,
+- [x] Verify public remember/import, host receipts, unchanged legacy requests,
   recovery and actual expiry boundaries; redesign if evidence contradicts the sketch.
 
-The current full suite predates this planned change. No source, runtime, test or
-fixture-data edits occur until that live operation ends.
+At design time, the live full suite preceded this planned change. Source,
+runtime, test and fixture-data edits waited until that operation ended.
 
 ## Grounded ownership and flow
 
@@ -149,7 +149,8 @@ machinery must prove it carries the request and failure unchanged through actual
 Sessions and idle resume. Focused tests cover invalid fields, CAS precedence,
 unchanged stored bytes, receipt tampering, live renewal controls, delayed approval
 for remember and active import, fresh expired backups, and explicit legacy
-migration. The full baseline currently running predates this contract.
+migration. The full baseline running at design time preceded this contract;
+the refreshed results below cover its implementation.
 
 ## Local implementation evidence
 
@@ -174,5 +175,9 @@ No forced delay inside temporary staging was exercised. Source inspection checks
 the second deadline test occurs after sync/chmod and before rename, with explicit
 elapsed propagation and temporary cleanup. The public approval-boundary and
 generic State tests are executed evidence; they are not a claim of a forced slow
-filesystem experiment. Full refreshed gates and another internal review remain
-open before external review.
+filesystem experiment. The refreshed macOS baseline passed 1,160 tests with
+32 exclusions, and the exact-candidate Linux run passed 1,177 with 15 exclusions
+and native sandbox cases enabled. macOS native and extracted-package checks
+passed. Three fresh internal source reviews reported no further findings.
+The [remediation record](index.md) owns these receipts and the still-open
+external acceptance decision.

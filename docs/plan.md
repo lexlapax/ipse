@@ -279,9 +279,11 @@ suppression, approval or the original acceptance criteria. The user authorized
 further external review cycles before P26 completion and subsequent P27 work.
 The corrections and additional internal findings are repaired, including a generic
 locked write deadline for approvals crossing note expiry. Three fresh internal
-reviews report no further findings. Local source, macOS native, corpus and
-installed gates pass; exact-candidate Linux/hosted checks and external acceptance
-remain pending in the [remediation record](archive/2026-10-19-p26-remediation/index.md).
+reviews report no further findings. Local source, macOS native, corpus, installed
+and exact-candidate Linux native-enabled checks pass. External acceptance remains
+pending in the [remediation record](archive/2026-10-19-p26-remediation/index.md).
+The automatically triggered GitHub run adds Elixir 1.18 / OTP 27 compatibility
+evidence and does not block external review while pending.
 
 Implementation `108aa86` and diagnostic-worker cleanup repair `fb4627e` retain
 their applicable source/native/package and exact-source hosted evidence. Local causal reproduction and controlled
@@ -316,10 +318,10 @@ preserve legacy identities and grants; they are reviewed and tested separately.
 | --- | --- | --- |
 | P26H1 | Operator-only, versioned logical state bindings across reviewed artifact/configuration versions; legacy namespace compatibility and scope ceilings | Complete; source/native/installed and exact-source hosted gates pass |
 | P26H2 | Bounded value scans and explicit read-work allowance for useful lexical recall, with strict receipt/recovery validation | Complete; byte pages, forged/ungranted/over-limit actions and extended real-worker receipt chain pass |
-| P26H3 | Generic optional State write deadline, selected by the extension and enforced under the existing CAS lock without interpreting note schemas | Implemented and internally reviewed; real delayed-approval remember/import, live controls and known-failure recovery pass; Linux/hosted gates and external acceptance pending |
+| P26H3 | Generic optional State write deadline, selected by the extension and enforced under the existing CAS lock without interpreting note schemas | Implemented and internally reviewed; real delayed-approval remember/import, live controls and known-failure recovery pass; local macOS/Linux gates pass; external acceptance pending |
 | P26A | Separate default-off working and persistent memory, explicit remember/recall/forget/export, provenance, bounded lexical ranking and approvals | Admission/export repairs and fresh local gates pass; external acceptance pending |
 | P26B | Durable source suppression, TTL/conflicts, derivative inventory/collection, schema migration/import, stale-work and cached-context recovery policy | Visibility, exact backups, legacy migration and delayed-expiry repairs pass local checks; external acceptance pending; manual fresh-session recovery remains required |
-| P26 verification | Deterministic authority/concurrency/restart/import cases, measured retrieval/resources, source/native/installed/platform checks and coherent operator/developer guidance | 41 focused and 1,160 full tests pass locally, plus macOS native and installed corpus; Linux/hosted gates and external acceptance pending; prior cleanup evidence retained |
+| P26 verification | Deterministic authority/concurrency/restart/import cases, measured retrieval/resources, source/native/installed/platform checks and coherent operator/developer guidance | 41 focused and 1,160 full tests pass on macOS; 1,177 pass on Serenity with Linux native cases enabled; macOS native and installed corpus pass; external acceptance pending; prior cleanup evidence retained |
 
 Stable logical storage is an explicit operator grant, never a namespace chosen by
 project text or extension code. Existing journals and provider-visible history are
