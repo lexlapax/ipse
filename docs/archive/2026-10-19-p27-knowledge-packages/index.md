@@ -99,6 +99,10 @@ idle-resume checks for independent Graph and Corpus workers.
 The [query completeness record](query-completeness.md) distinguishes eligible
 source and fact exclusions from incomplete inputs and traversal limits, including
 direct Graph queries and Corpus fusion.
+The [executable preflight record](evaluation-preflight.md) covers all-selection
+admission before dataset access, deferred configuration refusal and real CLI
+outcomes across freeze, prediction and scoring boundaries. It also retains the
+controlled repair for complete usage export beyond the UI's sixteen-request list.
 The later [model wire investigation](model-wire.md) identifies the response-body
 limit in a captured diagnostic and separates streaming framing from returned text.
 The later [model workflow investigation](model-workflows.md) records exact draft

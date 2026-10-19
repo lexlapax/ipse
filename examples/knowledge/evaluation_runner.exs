@@ -423,6 +423,23 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
           is_map(variant["bindings"]["answer"]) and Map.has_key?(plan["profiles"], "p27_answer"),
           :answer_binding
         )
+
+    require!(
+      Enum.sort(Map.keys(variant["bindings"])) == Enum.sort(required_verbs(variant, plan)),
+      :command_bindings
+    )
+  end
+
+  defp required_verbs(variant, plan) do
+    base =
+      case variant["prepare"] do
+        "research" -> ~w(research)
+        "embedding" -> ~w(ingest inspect forget query index)
+        kind when kind in ~w(explicit extract) -> ~w(ingest inspect forget query extract)
+        "none" -> ~w(ingest inspect forget query)
+      end
+
+    if plan["answer"], do: base ++ ["answer"], else: base
   end
 
   defp selection!(variant, verb) do
@@ -440,7 +457,14 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     plan = decode!(bytes)
     :ok = checked(validate(plan))
     require!(plan["mode"] in ~w(heldout fixture), :freeze_mode)
-    EvaluationFreeze.create(File.cwd!(), bytes, plan["artifacts"], options[:output])
+
+    with {:ok, seal} <-
+           EvaluationFreeze.create(File.cwd!(), bytes, plan["artifacts"], options[:output]),
+         {:ok, verified} <- EvaluationFreeze.verify(seal["path"], seal["sha256"]) do
+      preflight!(plan, verified["artifact_paths"], Path.dirname(seal["path"]))
+      {:ok, _} = EvaluationFreeze.verify(seal["path"], seal["sha256"])
+      {:ok, seal}
+    end
   end
 
   defp dispatch(phase, options) when phase in [:tune, :verify] do
@@ -454,9 +478,10 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     )
 
     prepare_output!(options[:output])
+    paths = Map.new(plan["artifacts"], fn {id, path} -> {id, Path.expand(path)} end)
+    preflight!(plan, paths, options[:output])
     {:ok, corpus} = EvaluationInput.corpus(read!(options[:corpus]))
     queries = project_queries(options[:queries], plan["data"]["split"], options[:output])
-    paths = Map.new(plan["artifacts"], fn {id, path} -> {id, Path.expand(path)} end)
     execute(plan, paths, corpus["documents"], queries, options[:output], nil)
   end
 
@@ -472,6 +497,9 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     )
 
     if phase == :verify_frozen, do: require!(plan["data"]["split"] == "fixture", :execution_split)
+    prepare_output!(options[:output])
+    preflight!(plan, verified["artifact_paths"], options[:output])
+    {:ok, _} = EvaluationFreeze.verify(options[:freeze], options[:freeze_sha256])
     manifest = verify_dataset!(options[:data_manifest], plan["data"])
 
     plan =
@@ -479,7 +507,6 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
         do: Map.put(plan, "as_of_ms", manifest["as_of_ms"] || fail!(:manifest_time)),
         else: plan
 
-    prepare_output!(options[:output])
     directory = Path.dirname(Path.expand(options[:data_manifest]))
     {:ok, corpus} = EvaluationInput.corpus(read!(Path.join(directory, plan["data"]["corpus"])))
 
@@ -700,17 +727,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     :exit, _ -> {:error, %{"code" => "owned_process_exit"}}
   end
 
-  defp run_variant(
-         plan,
-         variant,
-         paths,
-         project,
-         documents,
-         queries,
-         project_count,
-         output,
-         gateway
-       ) do
+  defp selection(plan, variant, paths, project_count) do
     artifacts =
       Enum.with_index(variant["artifacts"])
       |> Enum.map(fn {entry, index} ->
@@ -778,6 +795,86 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
       embedding_profiles: plan["embedding_profiles"],
       budget: budget
     }
+
+    {artifacts, runtime}
+  end
+
+  defp preflight!(plan, paths, output) do
+    root = Path.join(output, "preflight")
+    File.mkdir!(root)
+
+    {status, records} =
+      Enum.reduce_while(plan["variants"], {:ok, []}, fn variant, {_, records} ->
+        outcome =
+          capture(fn ->
+            {artifacts, runtime} = selection(plan, variant, paths, 1)
+
+            EvaluationSession.preflight(%{
+              root: root,
+              project: "catalogs",
+              variant: variant["id"],
+              artifacts: artifacts,
+              runtime: runtime,
+              bindings: variant["bindings"],
+              required_verbs: required_verbs(variant, plan),
+              approval_validator: fn _ -> :deny end,
+              timeout_ms: 5000
+            })
+          end)
+
+        {kind, details} =
+          case outcome do
+            {:ok, {kind, details}} when kind in [:ok, :error] and is_map(details) ->
+              {kind, details}
+
+            {:ok, {:error, _}} ->
+              {:error, %{"code" => "admission_failed"}}
+
+            {:error, details} ->
+              {:error, details}
+          end
+
+        record = %{
+          "variant" => variant["id"],
+          "status" => if(kind == :ok, do: "ok", else: "failed"),
+          "value" => details
+        }
+
+        next = records ++ [record]
+        if kind == :ok, do: {:cont, {:ok, next}}, else: {:halt, {:error, next}}
+      end)
+
+    inventory = if status == :ok, do: capture(fn -> inventory!(plan) end), else: nil
+    status = if status == :ok and not match?({:ok, _}, inventory), do: :error, else: status
+
+    write!(output, "preflight.json", %{
+      "status" => if(status == :ok, do: "ok", else: "failed"),
+      "variants" => records,
+      "inventory" =>
+        case inventory do
+          {:ok, value} -> %{"status" => "ok", "value" => value}
+          {:error, reason} -> %{"status" => "failed", "reason" => reason}
+          nil -> nil
+        end,
+      "host_actions" => 0,
+      "model_requests" => 0
+    })
+
+    require!(status == :ok, :preflight_failed)
+  end
+
+  defp run_variant(
+         plan,
+         variant,
+         paths,
+         project,
+         documents,
+         queries,
+         project_count,
+         output,
+         gateway
+       ) do
+    {artifacts, runtime} = selection(plan, variant, paths, project_count)
 
     runtime =
       if variant["prepare"] == "research",
@@ -1690,7 +1787,11 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
 
     {:ok, events} = Ipse.Journal.load(run.state_dir, run.session_id)
     {:ok, ledger} = Ipse.Usage.restore(events, run.session_id)
-    Enum.each(Ipse.Usage.snapshot(ledger)["requests"], &append!(output, "usage.jsonl", &1))
+
+    Enum.each(Ipse.Usage.order(ledger), fn id ->
+      append!(output, "usage.jsonl", Ipse.Usage.request_record(ledger.requests[id]))
+    end)
+
     {:ok, budget} = Ipse.Budget.saved(run.state_dir, run.session_id)
 
     append!(output, "usage.jsonl", %{

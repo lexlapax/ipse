@@ -49,15 +49,19 @@ case result do
         do:
           Map.take(
             report,
-            ~w(path sha256 source_commit mode prediction_sha256 rows failed_rows heldout_quality_complete)
+            ~w(path sha256 source_commit mode prediction_sha256 rows failed_rows execution_complete heldout_quality_complete)
           ),
         else: %{}
 
-    IO.puts(JSON.encode!(%{"status" => "ok", "result" => summary}))
+    failed =
+      is_map(report) and
+        ((report["failed_rows"] || 0) > 0 or report["execution_complete"] == false)
 
-    if is_map(report) and
-         ((report["failed_rows"] || 0) > 0 or report["execution_complete"] == false),
-       do: System.halt(1)
+    IO.puts(
+      JSON.encode!(%{"status" => if(failed, do: "failed", else: "ok"), "result" => summary})
+    )
+
+    if failed, do: System.halt(1)
 
   {:error, reason} ->
     IO.puts(JSON.encode!(%{"status" => "failed", "reason" => reason}))

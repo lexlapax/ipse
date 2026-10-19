@@ -1,7 +1,7 @@
 defmodule IpseKnowledgeExample.EvaluationSession do
   @moduledoc "One owned, catalog-bound Session for a declared knowledge evaluation variant."
   alias Ipse.{Journal, Session, Usage}
-  alias Ipse.Extensions.{Catalog, Config, Registry, Store}
+  alias Ipse.Extensions.{Catalog, Config, Registry, Store, Worker, WorkerLease}
 
   @verbs ~w(ingest inspect index extract query research answer abort forget export import collect)
   @command_ids %{
@@ -22,6 +22,117 @@ defmodule IpseKnowledgeExample.EvaluationSession do
   @safe 9_007_199_254_740_991
 
   def open(spec) do
+    with {:ok, prepared} <- prepare(spec),
+         {:ok, pid} <-
+           start_owned(prepared.config, prepared.cwd, prepared.state_dir, prepared.catalog) do
+      {:ok,
+       %{
+         pid: pid,
+         directory: prepared.directory,
+         state_dir: prepared.state_dir,
+         catalog: prepared.catalog,
+         bindings: spec.bindings,
+         session_id: Session.info(pid).id,
+         approval_validator: spec.approval_validator,
+         timeout_ms: spec.timeout_ms,
+         max_requests: spec.runtime.budget["max_requests"],
+         project: spec.project,
+         variant: spec.variant,
+         unsettled: false,
+         receipts: []
+       }}
+    end
+  rescue
+    _ -> {:error, :invalid_session_spec}
+  end
+
+  def preflight(spec) do
+    with {:ok, prepared} <- prepare(spec) do
+      {status, initialized} =
+        Enum.reduce_while(prepared.config.extensions, {:ok, []}, fn entry, {_, receipts} ->
+          receipt = initialize(entry)
+          next = receipts ++ [receipt]
+          if receipt["status"] == "ok", do: {:cont, {:ok, next}}, else: {:halt, {:error, next}}
+        end)
+
+      {status,
+       %{
+         "catalog" => prepared.catalog,
+         "initialization" => initialized,
+         "host_actions" => 0,
+         "model_requests" => 0
+       }}
+    end
+  end
+
+  defp initialize(entry) do
+    lease = :atomics.new(9, [])
+    {:ok, artifact} = Registry.lookup(entry.store, entry.identity["artifact"])
+
+    knowledge? =
+      artifact.manifest["id"] in ~w(ipse-knowledge/corpus ipse-knowledge/graph ipse-knowledge/research)
+
+    identity =
+      Map.take(entry.identity, ~w(instance artifact_sha256 options_sha256 exports_sha256))
+
+    case Worker.start(
+           owner: self(),
+           store: entry.store,
+           digest: entry.identity["artifact"],
+           trusted: entry.identity["artifact"],
+           artifact_sha256: entry.identity["artifact_sha256"],
+           options: entry.options,
+           cleanup_lease: lease
+         ) do
+      {:ok, worker} ->
+        try do
+          initialized = Worker.call(worker, "initialize", entry.options)
+
+          options_validated =
+            if knowledge? and match?({:ok, %{"sdk" => 1}}, initialized) do
+              match?(
+                {:ok,
+                 %{
+                   "api_version" => 1,
+                   "kind" => "result",
+                   "value" => %{
+                     "status" => "refused",
+                     "gaps" => [%{"code" => "invalid_invocation"}]
+                   }
+                 }},
+                Worker.call(worker, "invoke.command", %{})
+              )
+            else
+              not knowledge?
+            end
+
+          cleanup = WorkerLease.close(worker, lease)
+
+          Map.merge(identity, %{
+            "status" =>
+              if(
+                match?({:ok, %{"sdk" => 1}}, initialized) and options_validated and cleanup == :ok,
+                do: "ok",
+                else: "failed"
+              ),
+            "initialized" => match?({:ok, %{"sdk" => 1}}, initialized),
+            "options_validated" => if(knowledge?, do: options_validated),
+            "cleanup" => if(cleanup == :ok, do: "confirmed", else: "unconfirmed")
+          })
+        after
+          if Process.alive?(worker), do: WorkerLease.close(worker, lease)
+        end
+
+      {:error, _} ->
+        Map.merge(identity, %{
+          "status" => "failed",
+          "initialized" => false,
+          "cleanup" => "not_started"
+        })
+    end
+  end
+
+  defp prepare(spec) do
     with :ok <- validate_spec(spec),
          {:ok, _} <- Application.ensure_all_started(:ipse),
          :ok <- ensure_domain_unloaded(),
@@ -49,23 +160,14 @@ defmodule IpseKnowledgeExample.EvaluationSession do
          :ok <- validate_bindings(spec.bindings, spec.required_verbs, catalog),
          cwd = Path.join(directory, "workspace"),
          :ok <- File.mkdir_p(cwd),
-         state_dir = Path.join(directory, "sessions"),
-         {:ok, pid} <- start_owned(config, cwd, state_dir, catalog) do
+         state_dir = Path.join(directory, "sessions") do
       {:ok,
        %{
-         pid: pid,
          directory: directory,
          state_dir: state_dir,
          catalog: catalog,
-         bindings: spec.bindings,
-         session_id: Session.info(pid).id,
-         approval_validator: spec.approval_validator,
-         timeout_ms: spec.timeout_ms,
-         max_requests: spec.runtime.budget["max_requests"],
-         project: spec.project,
-         variant: spec.variant,
-         unsettled: false,
-         receipts: []
+         config: config,
+         cwd: cwd
        }}
     else
       {:error, reason} -> {:error, reason}

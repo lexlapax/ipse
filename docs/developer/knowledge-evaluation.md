@@ -86,6 +86,61 @@ They distinguish changed plan bytes, a changed manifest, copied-artifact tamperi
 dirty source, a different clean commit and a new code-path file. The valid control
 also verifies that a dataset path in a plan is never opened during sealing.
 
+## Check every selection before opening the dataset
+
+The runner's `freeze` phase adds executable preflight after the identity seal.
+Follow `preflight!/3`, `selection/4` and `EvaluationSession.preflight/1`. Tuning,
+fixture execution and frozen prediction also perform this check before opening
+any dataset member, including its manifest. The direct `EvaluationFreeze.create/4`
+exercise above remains an inert identity operation.
+Frozen phases recheck the source, runtime, plan and copied-artifact seal after
+preflight. Successful worker checks cannot authorize execution against identities
+that changed during initialization.
+
+Preflight imports the declared artifacts, resolves their exact operator options,
+checks their schemas and derives every command catalog. Required verbs depend on
+the preparation strategy. Embedding needs `index`, graph preparation needs
+`extract`, and answer generation needs `answer`, alongside each strategy's
+retrieval and source commands. An existing command with the wrong ID or owner
+cannot satisfy a binding merely because its argument shape looks usable.
+
+The check then starts an owned worker for each selection and initializes it.
+Knowledge entrypoints can initialize into an invalid-configuration state, so
+readiness alone cannot establish valid profiles. Preflight sends an empty
+`invoke.command` diagnostic directly to that worker. A valid configuration must
+return `invalid_invocation`; a deferred profile error fails the check. This is
+a protocol diagnostic, not an admitted user command. No returned host action
+is executed, and no inference request is dispatched. The answer helper has no
+knowledge profile registry and uses its ordinary schema and initialization
+checks instead.
+
+Every worker requires a confirmed native cleanup receipt. The report records
+artifact, option and export hashes, the catalogs and each initialization outcome.
+After all selections pass, model inventory must match the declared profiles.
+`preflight.json` retains success or the first failed variant. Failed preflight
+opens no corpus or queries and starts no search gateway. Its partial directory
+and any existing identity seal remain available for diagnosis. A seal file's
+existence does not establish successful executable preflight.
+
+Run the complete synthetic exercise:
+
+```sh
+mix test test/knowledge_evaluation_runner_test.exs
+```
+
+Inspect the two negative declarations in the preflight test. One changes the last
+Research command binding, after earlier variants have passed. The other adds an
+unused invalid retrieval profile. Both must fail while their corpus and query
+paths still name nonexistent files. Confirm that the latter worker reports
+initialized readiness, failed option validation and confirmed cleanup.
+
+The CLI exercises run the actual script with compiled dependency paths. They
+verify successful and failed prediction rows, copied-artifact freezing, frozen
+fixture execution, mode refusal and hash rejection before label access. Failed
+rows or incomplete execution produce both exit status 1 and `status: "failed"`.
+Read `failed_rows` and `execution_complete` separately. A completed execution
+with refused retrieval still retains its failed prediction rows.
+
 ## Project query inputs without labels
 
 After a complete execution freeze is verified, its input adapter may open the
@@ -319,3 +374,12 @@ the retained reservation. Do not report zero tokens or zero cost. No configured
 rate card means unpriced work. Read-only inspection after inference quota
 exhaustion remains useful; do not put a blanket request-count guard around every
 driver operation. The host's real admission policy owns inference quotas.
+
+Use `Usage.order/1` and `Usage.request_record/1` to export the complete restored
+ledger. `Usage.snapshot/1` is a UI projection that shows only the latest sixteen
+requests, even though its total count includes earlier work. Follow
+`persist_close/2`: it writes every canonical request in admission order, then
+the separately saved shared budget. The seventeen-request runner exercise
+compares the complete export with the restored journal and scripted HTTP count.
+The UI remains bounded. An export must not discard earlier inference merely
+because those records no longer appear in that snapshot.

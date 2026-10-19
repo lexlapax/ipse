@@ -75,6 +75,15 @@ zero errors. Earlier Corpus-only checks remain distinct from this final
 shared Graph/Evidence repair. Hosted exact-source verification is a separate
 gate after commit and push.
 
+The exact-source [hosted matrix](https://github.com/lexlapax/ipse/actions/runs/39236420160)
+at `e77331d22e53714c48ff7c1b93440598e8042a76` subsequently completed successfully
+on Ubuntu and macOS. Every one of the 24 steps per job was inspected. All 24
+succeeded on macOS; Ubuntu had 22 successes and only the two macOS enforcement
+steps skipped. This closes that revision's hosted platform gate, including its
+source and installed knowledge proofs. It does not cover later evaluator changes
+or supply held-out quality evidence. Older unexplained MCP discovery failures
+remain retained separately.
+
 The seven-variant fixtures strengthen the suppression case to require `ok`
 retrieval, actual answer preparation for the matching question and abstention
 for the no-match question. They continue to reject forgotten and expired text

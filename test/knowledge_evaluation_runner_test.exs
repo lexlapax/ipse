@@ -177,6 +177,18 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
 
         assert report["execution_complete"], inspect(report)
         assert report["rows"] == 14
+        preflight = JSON.decode!(File.read!(Path.join(output, "preflight.json")))
+        assert preflight["status"] == "ok"
+        assert preflight["inventory"]["status"] == "ok"
+
+        assert Enum.map(preflight["variants"], & &1["variant"]) ==
+                 Enum.map(plan["variants"], & &1["id"])
+
+        initialized = Enum.flat_map(preflight["variants"], & &1["value"]["initialization"])
+        assert length(initialized) == 16
+        assert Enum.all?(initialized, &(&1["initialized"] and &1["cleanup"] == "confirmed"))
+        assert Enum.all?(initialized, &(&1["options_validated"] in [true, nil]))
+        assert Path.wildcard(Path.join(output, "preflight/**/extension-state-v1/**")) == []
         rows = jsonl(Path.join(output, "predictions.jsonl"))
         events = jsonl(Path.join(output, "execution.jsonl"))
         diagnostics = Enum.map(events, &Map.take(&1, ~w(phase verb status value class frames)))
@@ -850,6 +862,330 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
              Runner.run(:predict, labels: "must-not-open")
 
     assert {:error, %{"code" => "option_shape"}} = Runner.run(:verify, unknown: "must-not-open")
+  end
+
+  test "usage export preserves canonical requests beyond the sixteen-request UI snapshot", ctx do
+    {server, origin, tag} = model_fixture()
+    {paths, root} = cli_inputs(ctx, false)
+    matrix = matrix_plan(ctx, origin)
+    declared = %{matrix | "variants" => [hd(matrix["variants"])]}
+    declared = put_in(declared, ["data", "expected_queries"], 17)
+
+    queries =
+      for index <- 1..17,
+          do: %{
+            "query_id" => "Q#{index}",
+            "project" => "alpha",
+            "split" => "fixture",
+            "query" => "Release"
+          }
+
+    File.write!(paths["plan"], JSON.encode!(declared))
+    File.write!(paths["queries"], JSON.encode!(%{"schema_version" => 1, "queries" => queries}))
+    output = Path.join(root, "results")
+
+    try do
+      assert {:ok, report} =
+               Runner.run(:verify,
+                 plan: paths["plan"],
+                 corpus: paths["corpus"],
+                 queries: paths["queries"],
+                 output: output
+               )
+
+      assert report["execution_complete"] and report["failed_rows"] == 0
+      assert report["rows"] == 17
+      requests = drain(tag, [])
+      assert length(requests) == 17
+      assert Enum.all?(requests, &(&1["fixture_operation"] == "answer"))
+      usage = jsonl(Path.join(output, "usage.jsonl"))
+      [saved] = Enum.filter(usage, &Map.has_key?(&1, "budget"))
+      assert saved["budget"]["request_count"] == 17
+
+      {:ok, events} =
+        Ipse.Journal.load(
+          Path.join([output, "alpha", "lexical", "sessions"]),
+          saved["session_id"]
+        )
+
+      {:ok, ledger} = Ipse.Usage.restore(events, saved["session_id"])
+      assert Ipse.Usage.snapshot(ledger)["shown_request_count"] == 16
+      records = Enum.filter(usage, &Map.has_key?(&1, "request_id"))
+      assert length(records) == 17
+      assert Enum.map(records, & &1["request_id"]) == Ipse.Usage.order(ledger)
+      assert Enum.all?(records, &Ipse.Usage.valid_request_record?/1)
+
+      assert Enum.all?(
+               records,
+               &(&1["selected_profile"] == "p27_answer" and &1["outcome"] == "completed")
+             )
+    after
+      stop_model_fixture(server)
+    end
+  end
+
+  test "CLI status agrees with retained failed rows and refuses unsupported phases", ctx do
+    for failed <- [false, true] do
+      {paths, root} = cli_inputs(ctx, failed)
+      output = Path.join(root, "results")
+
+      {summary, exit_status} =
+        cli([
+          "--phase",
+          "verify",
+          "--plan",
+          paths["plan"],
+          "--corpus",
+          paths["corpus"],
+          "--queries",
+          paths["queries"],
+          "--output",
+          output
+        ])
+
+      assert exit_status == if(failed, do: 1, else: 0), inspect(summary)
+      assert summary["status"] == if(failed, do: "failed", else: "ok")
+      assert summary["result"]["failed_rows"] == if(failed, do: 2, else: 0)
+      assert summary["result"]["execution_complete"]
+      rows = jsonl(Path.join(output, "predictions.jsonl"))
+      assert length(rows) == 2
+      assert Enum.all?(rows, &(&1["attempt"] == 1))
+      assert Enum.all?(rows, &(&1["status"] == if(failed, do: "partial", else: "ok")))
+    end
+
+    {summary, status} = cli(["--phase", "unsupported"])
+    assert status == 1
+    assert summary == %{"status" => "failed", "reason" => %{"code" => "invalid_options"}}
+
+    {summary, status} = cli(["--phase", "predict", "--labels", "must-not-open"])
+    assert status == 1
+    assert summary["reason"]["code"] == "labels_forbidden"
+  end
+
+  test "all catalogs and initialized options pass preflight before any dataset opens", ctx do
+    matrix = matrix_plan(ctx, "http://127.0.0.1:19999")
+
+    invalid_binding =
+      update_in(matrix, ["variants"], fn variants ->
+        Enum.map(variants, fn variant ->
+          if variant["id"] == "research",
+            do: put_in(variant, ["bindings", "research", "id"], "query"),
+            else: variant
+        end)
+      end)
+
+    invalid_options =
+      update_in(
+        plan(ctx),
+        ["variants", Access.at(0), "artifacts", Access.at(0), "options", "retrieval"],
+        fn profiles ->
+          Map.put(profiles, "unused", %{"kind" => "unknown", "version" => 1})
+        end
+      )
+
+    for {name, declared, variant} <- [
+          {"binding", invalid_binding, "research"},
+          {"options", invalid_options, "lexical"}
+        ] do
+      root = Path.join(ctx.root, "preflight-" <> name)
+      File.mkdir!(root)
+      path = Path.join(root, "plan.json")
+      File.write!(path, JSON.encode!(declared))
+      assert :ok = Runner.validate(declared)
+      output = Path.join(root, "result")
+
+      outcome =
+        Runner.run(:verify,
+          plan: path,
+          corpus: "must-not-open",
+          queries: "must-not-open",
+          output: output
+        )
+
+      assert {:error, %{"code" => "preflight_failed"}} = outcome
+
+      report = JSON.decode!(File.read!(Path.join(output, "preflight.json")))
+      assert report["status"] == "failed"
+      assert List.last(report["variants"])["variant"] == variant
+      assert report["inventory"] == nil
+
+      if name == "options" do
+        [receipt] = hd(report["variants"])["value"]["initialization"]
+        assert receipt["initialized"]
+        refute receipt["options_validated"]
+        assert receipt["cleanup"] == "confirmed"
+      end
+
+      refute File.exists?(Path.join(output, "predictions.jsonl"))
+      refute File.exists?(Path.join(output, "inventory-before.json"))
+      assert Path.wildcard(Path.join(output, "**/extension-state-v1/**")) == []
+    end
+  end
+
+  test "CLI freezes copied selections and enforces frozen execution and hash-before-label phases",
+       ctx do
+    {paths, root} = cli_inputs(ctx, false)
+    repository = Path.join(root, "repository")
+    File.mkdir!(repository)
+    File.write!(Path.join(repository, "README.md"), "Synthetic CLI identity fixture.\n")
+
+    for args <- [
+          ["init", "-q"],
+          ["add", "README.md"],
+          [
+            "-c",
+            "user.name=Fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "commit",
+            "-qm",
+            "Synthetic fixture"
+          ]
+        ] do
+      {message, status} = System.cmd("git", ["-C", repository | args], stderr_to_stdout: true)
+      assert status == 0, message
+    end
+
+    members =
+      for name <- ~w(corpus queries),
+          do: %{
+            "path" => name <> ".json",
+            "sha256" => Ipse.Extensions.Manifest.sha256(File.read!(paths[name]))
+          }
+
+    bytes = JSON.encode!(%{"files" => members})
+    manifest = Path.join(root, "manifest.json")
+    File.write!(manifest, bytes)
+
+    declared =
+      put_in(plan(ctx), ["data", "manifest_sha256"], Ipse.Extensions.Manifest.sha256(bytes))
+
+    File.write!(paths["plan"], JSON.encode!(declared))
+
+    {sealed, 0} =
+      cli(
+        ["--phase", "freeze", "--plan", paths["plan"], "--output", Path.join(root, "seal")],
+        repository
+      )
+
+    assert sealed["status"] == "ok"
+    frozen = ["--freeze", sealed["result"]["path"], "--freeze-sha256", sealed["result"]["sha256"]]
+    output = Path.join(root, "frozen-results")
+
+    {summary, 0} =
+      cli(
+        ["--phase", "verify-frozen"] ++
+          frozen ++ ["--data-manifest", manifest, "--output", output]
+      )
+
+    assert summary["result"]["rows"] == 2
+    assert summary["result"]["failed_rows"] == 0
+    assert summary["result"]["execution_complete"]
+
+    {rejected, 1} =
+      cli(
+        ["--phase", "predict"] ++
+          frozen ++ ["--data-manifest", "must-not-open", "--output", Path.join(root, "forbidden")]
+      )
+
+    assert rejected["reason"]["code"] == "execution_mode"
+
+    {rejected, 1} =
+      cli(
+        ["--phase", "score"] ++
+          frozen ++
+          [
+            "--data-manifest",
+            "must-not-open",
+            "--predictions",
+            Path.join(output, "predictions.jsonl"),
+            "--prediction-sha256",
+            String.duplicate("0", 64),
+            "--labels",
+            "must-not-open",
+            "--reviews",
+            "must-not-open",
+            "--output",
+            Path.join(root, "scores")
+          ]
+      )
+
+    assert rejected["reason"]["code"] == "prediction_hash_mismatch"
+
+    {rejected, 1} =
+      cli([
+        "--phase",
+        "tune",
+        "--plan",
+        paths["plan"],
+        "--corpus",
+        "must-not-open",
+        "--queries",
+        "must-not-open",
+        "--output",
+        Path.join(root, "tuning")
+      ])
+
+    assert rejected["reason"]["code"] == "execution_mode"
+  end
+
+  defp cli_inputs(ctx, failed) do
+    root = Path.join(ctx.root, "cli-" <> Ipse.Usage.id())
+    File.mkdir!(root)
+    text = "Release requires quiescence."
+
+    doc = %{
+      "document_id" => "d1",
+      "project" => "alpha",
+      "source_id" => "fixture:release",
+      "generation" => 1,
+      "version" => 1,
+      "title" => "Release",
+      "text" => text,
+      "created_at" => "2026-01-01T00:00:00Z",
+      "observed_at" => "2026-03-01T00:00:00Z",
+      "state" => "current",
+      "sha256" => Ipse.Extensions.Manifest.sha256(text),
+      "byte_length" => byte_size(text),
+      "media_type" => "text/plain"
+    }
+
+    docs = if failed, do: [doc, %{doc | "document_id" => "d2", "version" => 2}], else: [doc]
+
+    queries =
+      for {id, query} <- [{"Q1", "Release"}, {"Q2", "absent mineral"}],
+          do: %{"query_id" => id, "project" => "alpha", "split" => "fixture", "query" => query}
+
+    paths =
+      Map.new(
+        [
+          {"plan", plan(ctx)},
+          {"corpus", %{"schema_version" => 1, "documents" => docs}},
+          {"queries", %{"schema_version" => 1, "queries" => queries}}
+        ],
+        fn {name, value} ->
+          path = Path.join(root, name <> ".json")
+          File.write!(path, JSON.encode!(value))
+          {name, path}
+        end
+      )
+
+    {paths, root}
+  end
+
+  defp cli(arguments, cwd \\ File.cwd!()) do
+    paths = Path.wildcard(Path.join([Path.dirname(Application.app_dir(:ipse)), "*", "ebin"]))
+    code_paths = Enum.flat_map(paths, &["-pa", &1])
+
+    {output, status} =
+      System.cmd(
+        System.find_executable("elixir"),
+        code_paths ++ [Path.expand("scripts/evaluate-knowledge.exs") | arguments],
+        stderr_to_stdout: true,
+        cd: cwd
+      )
+
+    {output |> String.split("\n", trim: true) |> List.last() |> JSON.decode!(), status}
   end
 
   test "variant declarations reject hidden fallback, mismatched stores and unselected model routes",

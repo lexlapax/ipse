@@ -376,6 +376,10 @@ malformed/unavailable responses and idle resume in source and installed executio
 The [query completeness record](archive/2026-10-19-p27-knowledge-packages/query-completeness.md)
 retains controlled exclusion, unfinished-ingestion and traversal-limit regressions;
 these protocol checks do not replace held-out quality evaluation.
+The [evaluation preflight record](archive/2026-10-19-p27-knowledge-packages/evaluation-preflight.md)
+covers complete selection checks before dataset reads and matching CLI failure
+status, plus full canonical usage export. Resource reporting and the held-out
+comparison remain open.
 Successful tuning and
 scripted provider responses do not establish quality. Held-out predictions,
 independent semantic review and the complete resource comparison remain unmeasured.
