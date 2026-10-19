@@ -4,6 +4,54 @@ defmodule IpseKnowledgeExample.EvaluationInventory do
   alias Ipse.Extensions.{Manifest, Registry, State}
   @bytes 1_048_576
 
+  @doc "Exact project-scope deletions after all roots in a verified partition are suppressed."
+  def collection_requests(path, expected_sha256, partition) do
+    with {:ok, ^expected_sha256} <- fingerprint(path) do
+      if expected_sha256 == nil do
+        {:ok, []}
+      else
+        bytes = File.read!(path)
+        true = Manifest.sha256(bytes) == expected_sha256
+        :ok = validate_namespace!(bytes, path)
+        state = JSON.decode!(bytes)
+
+        records =
+          state["records"]
+          |> Map.values()
+          |> Enum.filter(&(not &1["deleted"] and get_in(&1, ["value", "partition"]) == partition))
+
+        true =
+          Enum.all?(records, fn row ->
+            value = row["value"]
+
+            value["kind"] == "page" or
+              (value["kind"] == "root" and value["state"] == "suppressed" and
+                 value["draft"] == nil)
+          end)
+
+        requests =
+          records
+          |> Enum.filter(&(get_in(&1, ["value", "kind"]) == "page"))
+          |> Enum.sort_by(& &1["key"])
+          |> Enum.map(fn row ->
+            %{
+              "op" => "state.delete",
+              "scope" => "project",
+              "key" => row["key"],
+              "expected_revision" => row["revision"]
+            }
+          end)
+
+        {:ok, ^expected_sha256} = fingerprint(path)
+        {:ok, requests}
+      end
+    else
+      _ -> {:error, :collection_unavailable}
+    end
+  rescue
+    _ -> {:error, :collection_unavailable}
+  end
+
   def fingerprint(path) do
     case File.lstat(path) do
       {:error, :enoent} ->

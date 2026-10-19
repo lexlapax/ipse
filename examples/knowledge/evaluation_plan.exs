@@ -5,7 +5,7 @@ defmodule IpseKnowledgeExample.EvaluationPlan do
   alias IpseKnowledgeExample.EvaluationRunner
   @variants ~w(lexical graph_explicit graph_model dense hybrid rerank research)
   @artifacts ~w(answer dense explicit lexical model research semantic)
-  @fields ~w(version mode data as_of_ms artifacts profiles embedding_profiles models interval_ms search_port blind_seed budgets)
+  @fields ~w(version mode data as_of_ms artifacts profiles embedding_profiles models interval_ms search_port blind_seed budgets storage_policy)
 
   def build(spec) do
     with true <- exact?(spec, @fields),
@@ -170,7 +170,7 @@ defmodule IpseKnowledgeExample.EvaluationPlan do
 
   defp bindings,
     do:
-      Map.new(~w(ingest inspect forget query), fn verb ->
+      Map.new(~w(ingest inspect forget collect query), fn verb ->
         {verb,
          %{"instance" => "corpus", "id" => if(verb == "query", do: "query", else: "source")}}
       end)

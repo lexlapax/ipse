@@ -91,6 +91,13 @@ project split; unused shares are not transferred or renewed. Review preparation
 capacity separately. Research requests up to ten sources within the existing
 body, time and result bounds; a result that cannot fit remains a failed row.
 
+The explicit `storage_policy: "forget_all_then_collect_v1"` selects the final
+storage exercise. After saving every query prediction for a project/variant,
+the runner suppresses its isolated source copies and collects their unreferenced
+pages. Review that policy before freezing. The original input corpus and saved
+predictions remain available for scoring; these operations use the same Session
+and do not renew its inference budget. Research has no retained source store.
+
 Run the declaration exercises before changing this format:
 
 ```sh
@@ -329,7 +336,10 @@ Follow `run_variant/9`, `prepare/4`, `invoke/4` and `approve/1` in the runner:
    Research fetches only URIs returned by that query's controlled search result.
 5. All variants receive the plan's fixed `as_of_ms`. Research's optional argument
    selects that same time; omitting it preserves current-time behavior after capture.
-6. Prediction failures retain their declared rows. Cleanup attempts cover the
+6. After saving that variant's predictions, explicit source inspection and forget
+   commands suppress its source copies. Collection requires exact namespace,
+   key and revision approvals derived from a verified suppressed store.
+7. Prediction failures retain their declared rows. Cleanup attempts cover the
    Session, gateway and sampler, with errors preserved in the output directory.
 
 The controlled gateway uses one finite allowance across all projects. The runner
@@ -547,6 +557,9 @@ Removing a refusal or concealing usage behind a refused admission must also fail
 Phase clocks use monotonic microseconds. The summary reports nearest-rank p50
 and p95 in milliseconds with sample and unknown counts. Query IDs distinguish
 repeated question text. Failed queries stay in the grid and in observed clocks.
+The enclosing projection phase includes its required storage audits. Use
+`invoke_index` and `invoke_extract` timings to inspect public command durations
+before those audits; execution time includes the complete measurement workload.
 Invocation timings separately count unconfirmed completion; an elapsed wait is
 not proof that interrupted work finished. Canonical request duration comes from
 the journal and remains unknown when unavailable.
@@ -556,8 +569,9 @@ Read `storage_reachability_complete` separately. Check `measurement_scope`,
 `unmeasured` and `resource_evaluation_complete` before comparing engines. The
 separate sampler describes the harness BEAM only. OS process peak memory and
 model process memory remain unknown. File counts under a run directory also
-exclude authoring and preflight copies outside that directory. These observations
-cannot establish complete storage lifecycle cost or whole-system memory.
+exclude authoring and preflight copies outside that directory; the output-wide
+overview counts those copies separately. Lifecycle file lengths and sampled
+harness memory do not measure whole-system memory or every storage allocation.
 
 ### Verify retained storage without querying through the audit
 
@@ -584,11 +598,30 @@ while retaining their record slots and revisions. Encoded value/record bytes
 use Elixir JSON; actual State file bytes are reported separately. The audit
 returns no source text and must never supply retrieval or model inputs.
 
-The runner records snapshots before ingestion, after preparation and after each
-query. Its cache key includes the exact State file hash, path, artifact digest
+The runner records snapshots before ingestion, after each index/extraction
+projection, after preparation, after each query, after source suppression and
+after collection. Projection snapshots retain source generation and chunk ID;
+their count must match public projection invocation timings. Its cache key
+includes the exact State file hash, path, artifact digest
 and partition. Unchanged query reads reuse the verified inventory file. Missing
 storage is explicit absence; unavailable or corrupt storage remains incomplete.
 Research has no retained State store and reports that distinction explicitly.
+
+Follow `storage_lifecycle/4` after the prediction loop. It inspects each source
+once, skips roots already suppressed and explicitly forgets the rest. The
+post-forget inventory must be available before collection. Follow
+`EvaluationInventory.collection_requests/3`: it binds owner-only namespace bytes
+to their verified hash, requires every root in the selected partition to be
+suppressed with no draft, and returns only exact project-scope page deletions.
+The approval policy matches each request and permits each key once. Collection
+uses batches of at most twelve, with at most twenty-two batches for the existing
+256-slot namespace. Final inventory requires no orphan pages and unchanged slot
+count. Missing lifecycle snapshots keep storage coverage incomplete.
+
+No further quality query runs against those suppressed copies. A failed
+suppression or collection keeps earlier prediction rows and reports incomplete
+execution. Earlier journal text and original dataset bytes remain retained;
+collection is not transcript erasure or slot recovery.
 
 `execution-overview.json` records elapsed time from runner entry through first
 prediction finalization, including preflight, input handling, cleanup and the
@@ -612,3 +645,7 @@ without recovering slots. Then corrupt a reference hash or substitute a foreign
 page. Expect inventory refusal. In the raw-file exercise, an inconsistent
 generation sum, a floating-point generation or group/world-readable State file
 must fail before it can become trusted metadata.
+The collection-allowance exercise separately rejects an active root, a retained
+draft, changed bytes and a stale revision snapshot. Only the selected partition's
+page keys can enter its approval list; roots, foreign pages and source text stay
+out of that list.

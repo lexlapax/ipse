@@ -157,6 +157,8 @@ defmodule Ipse.KnowledgeEvaluationResourcesTest do
         [
           {"before_ingestion", nil},
           {"after_preparation", nil},
+          {"after_forget", nil},
+          {"after_collection", nil},
           {"after_query", "Q1"},
           {"after_query", "Q2"}
         ],
@@ -173,6 +175,12 @@ defmodule Ipse.KnowledgeEvaluationResourcesTest do
 
     report = Resources.summary(rows, [], [], [], snapshots)
     assert report["storage_reachability_complete"]
+
+    for phase <- ~w(after_forget after_collection) do
+      without_phase = Enum.reject(snapshots, &(&1["phase"] == phase))
+      refute Resources.summary(rows, [], [], [], without_phase)["storage_reachability_complete"]
+    end
+
     refute "storage_reachability" in report["unmeasured"]
     refute report["resource_evaluation_complete"]
     refute Resources.summary(rows, [], [], [], tl(snapshots))["storage_reachability_complete"]
@@ -184,6 +192,28 @@ defmodule Ipse.KnowledgeEvaluationResourcesTest do
     [first | rest] = snapshots
     corrupt = put_in(first, ["inventory", "status"], "unavailable")
     refute Resources.summary(rows, [], [], [], [corrupt | rest])["storage_reachability_complete"]
+
+    projection = first |> Map.put("phase", "after_projection")
+
+    timings = [
+      %{
+        "variant" => "lexical",
+        "project" => "alpha",
+        "phase" => "invoke_index",
+        "elapsed_us" => 1,
+        "outcome" => "returned"
+      }
+    ]
+
+    refute Resources.summary(rows, timings, [], [], snapshots)["storage_reachability_complete"]
+
+    assert Resources.summary(rows, timings, [], [], snapshots ++ [projection])[
+             "storage_reachability_complete"
+           ]
+
+    refute Resources.summary(rows, timings, [], [], snapshots ++ [projection, projection])[
+             "storage_reachability_complete"
+           ]
   end
 
   defp row(id, status),

@@ -96,7 +96,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
       require!(
         exact?(
           plan,
-          ~w(version mode data as_of_ms artifacts profiles embedding_profiles models variants answer interval_ms search_port blind_seed)
+          ~w(version mode data as_of_ms artifacts profiles embedding_profiles models variants answer interval_ms search_port blind_seed storage_policy)
         ),
         :plan_shape
       )
@@ -105,6 +105,8 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
         plan["version"] === 1 and plan["mode"] in ~w(fixture tuning heldout),
         :plan_version
       )
+
+      require!(plan["storage_policy"] == "forget_all_then_collect_v1", :storage_policy)
 
       require!(
         exact?(plan["data"], ~w(corpus queries split expected_queries manifest_sha256)),
@@ -470,9 +472,9 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     base =
       case variant["prepare"] do
         "research" -> ~w(research)
-        "embedding" -> ~w(ingest inspect forget query index)
-        kind when kind in ~w(explicit extract) -> ~w(ingest inspect forget query extract)
-        "none" -> ~w(ingest inspect forget query)
+        "embedding" -> ~w(ingest inspect forget collect query index)
+        kind when kind in ~w(explicit extract) -> ~w(ingest inspect forget collect query extract)
+        "none" -> ~w(ingest inspect forget collect query)
       end
 
     if plan["answer"], do: base ++ ["answer"], else: base
@@ -980,6 +982,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
       answer: nil,
       gateway: gateway,
       effects: %{},
+      collection: %{},
       output: output
     }
 
@@ -1063,6 +1066,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
             next
           end)
 
+        run = storage_lifecycle(run, variant, prepared, output)
         Process.delete(:comparison_run)
         persist_close(output, run)
 
@@ -1076,6 +1080,107 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
           )
         )
     end
+  end
+
+  defp storage_lifecycle(run, %{"prepare" => "research"}, _prepared, output) do
+    resource(output, run, "after_forget")
+    resource(output, run, "after_collection")
+    run
+  end
+
+  defp storage_lifecycle(run, variant, prepared, output) do
+    store = variant["prepare_options"]["store"]
+
+    run =
+      EvaluationResources.measure(output, scope(run, "storage_forget"), fn ->
+        prepared
+        |> Enum.uniq_by(& &1["source"]["source_id"])
+        |> Enum.reduce(run, fn doc, current ->
+          policy = Process.get(:comparison_policy)
+          Process.put(:comparison_policy, %{policy | active: doc})
+          source_id = doc["source"]["source_id"]
+
+          {current, inspected} =
+            invoke(current, "inspect", %{"store" => store, "source_id" => source_id}, output)
+
+          require!(inspected != nil and inspected["status"] == "ok", :storage_inspection_failed)
+          coverage = get_in(inspected, ["value", "coverage"])
+
+          if coverage["state"] == "suppressed" do
+            current
+          else
+            {current, result} =
+              invoke(
+                current,
+                "forget",
+                %{
+                  "store" => store,
+                  "source_id" => source_id,
+                  "expected_revision" => coverage["revision"] || 0
+                },
+                output
+              )
+
+            require!(result != nil and result["status"] == "ok", :storage_forget_failed)
+            current
+          end
+        end)
+      end)
+
+    inventory = resource(output, run, "after_forget")
+    require!(inventory["status"] in ~w(verified absent), :storage_inventory_failed)
+    policy = Process.get(:comparison_policy)
+
+    path =
+      Path.join([run.directory, "home", "extension-state-v1", policy.namespace, "state.json"])
+
+    {:ok, allowed} =
+      EvaluationInventory.collection_requests(
+        path,
+        inventory["state_sha256"],
+        primary_store(variant)["partition"]
+      )
+
+    Process.put(:comparison_policy, %{
+      policy
+      | active: nil,
+        effects: %{},
+        collection: Map.new(allowed, &{&1["key"], &1})
+    })
+
+    run =
+      EvaluationResources.measure(output, scope(run, "storage_collection"), fn ->
+        Enum.reduce_while(1..22, run, fn _, current ->
+          {current, result} =
+            invoke(current, "collect", %{"store" => store, "limit" => 12}, output)
+
+          require!(result != nil and result["status"] == "ok", :storage_collection_failed)
+          value = result["value"]["coverage"]
+
+          require!(
+            value["status"] == "collected" and value["record_slots_recovered"] == 0 and
+              value["count"] in 0..12,
+            :storage_collection_failed
+          )
+
+          if value["count"] < 12, do: {:halt, current}, else: {:cont, current}
+        end)
+      end)
+
+    final = resource(output, run, "after_collection")
+
+    require!(
+      final["status"] == "absent" or get_in(final, ["inventory", "orphan_pages", "records"]) == 0,
+      :storage_collection_incomplete
+    )
+
+    require!(
+      get_in(final, ["inventory", "namespace_slots"]) ==
+        get_in(inventory, ["inventory", "namespace_slots"]),
+      :storage_slot_accounting
+    )
+
+    run
   end
 
   defp prepare(run, %{"prepare" => "research"}, _prepared, _output), do: {run, true}
@@ -1201,6 +1306,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
         end
 
       {current, result} = invoke(current, verb, args, output)
+      resource(output, current, "after_projection")
       {current, ok and result != nil and result["status"] == "ok"}
     end)
   end
@@ -1467,6 +1573,15 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
         true = request["scope"] == "project" and request["op"] == "state.put"
         true = request["value"]["source_key"] == sha(policy.active["source"]["source_id"])
         true = request["value"]["partition"] == primary_store(policy.variant)["partition"]
+
+      "extension:state.delete" ->
+        :ok = State.validate(request)
+        true = review.verb == "collect" and request === policy.collection[request["key"]]
+
+        Process.put(:comparison_policy, %{
+          policy
+          | collection: Map.delete(policy.collection, request["key"])
+        })
 
       "extension:embedding.create" ->
         true = policy.variant["prepare"] == "embedding" and review.verb in ~w(index query)
@@ -2089,9 +2204,19 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
       "project" => run.project,
       "variant" => run.variant,
       "query_id" => if(phase == "after_query", do: get_in(policy.active || %{}, ["query_id"])),
+      "source_id" =>
+        if(phase == "after_projection", do: get_in(policy.active, ["source", "source_id"])),
+      "generation" =>
+        if(phase == "after_projection", do: get_in(policy.active, ["source", "generation"])),
+      "chunk_id" =>
+        if(phase == "after_projection",
+          do: get_in(policy.active, ["selected_chunks", Access.at(0), "chunk_id"])
+        ),
       "inventory" => inventory,
       "storage" => EvaluationResources.storage(run.directory)
     })
+
+    inventory
   end
 
   defp jsonl!(output, name) do

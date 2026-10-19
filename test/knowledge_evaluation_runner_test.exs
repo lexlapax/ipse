@@ -177,6 +177,43 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
 
         assert report["execution_complete"], inspect(report)
         assert report["rows"] == 14
+        snapshots = jsonl(Path.join(output, "resources.jsonl"))
+
+        for variant <- plan["variants"] do
+          records = Enum.filter(snapshots, &(&1["variant"] == variant["id"]))
+          forgotten = Enum.find(records, &(&1["phase"] == "after_forget"))["inventory"]
+          collected = Enum.find(records, &(&1["phase"] == "after_collection"))["inventory"]
+
+          if variant["prepare"] == "research" do
+            assert forgotten["status"] == "not_applicable" and collected == forgotten
+          else
+            before = forgotten["inventory"]
+            after_collection = collected["inventory"]
+            assert before["selected_pages"]["records"] == 0
+            assert before["draft_pages"]["records"] == 0
+            assert Enum.all?(before["roots"], &(&1["state"] == "suppressed"))
+            assert after_collection["orphan_pages"]["records"] == 0
+            assert before["namespace_slots"] == after_collection["namespace_slots"]
+
+            assert after_collection["namespace_tombstones"]["records"] ==
+                     before["namespace_tombstones"]["records"] + before["orphan_pages"]["records"]
+          end
+
+          projections = Enum.filter(records, &(&1["phase"] == "after_projection"))
+
+          if variant["prepare"] in ~w(embedding explicit extract) do
+            assert length(projections) == 1
+
+            assert Enum.all?(
+                     projections,
+                     &(&1["source_id"] == doc["source_id"] and &1["generation"] == 1 and
+                         is_binary(&1["chunk_id"]))
+                   )
+          else
+            assert projections == []
+          end
+        end
+
         gateway_calls = JSON.decode!(File.read!(Path.join(output, "gateway-calls.json")))
         gateway_summary = JSON.decode!(File.read!(Path.join(output, "gateway-summary.json")))
 
@@ -618,6 +655,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
       "interval_ms" => 10,
       "search_port" => nil,
       "blind_seed" => String.duplicate("b", 64),
+      "storage_policy" => "forget_all_then_collect_v1",
       "variants" => [
         %{
           "id" => "lexical",
@@ -632,7 +670,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
           ],
           "bindings" =>
             Map.new(
-              ~w(ingest inspect forget query),
+              ~w(ingest inspect forget collect query),
               &{&1,
                %{"instance" => "corpus", "id" => if(&1 == "query", do: "query", else: "source")}}
             ),
@@ -945,7 +983,11 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
       assert length(query_storage) == 17
       assert Enum.map(query_storage, & &1["query_id"]) == Enum.map(queries, & &1["query_id"])
       assert Enum.all?(query_storage, &(&1["inventory"] == prepared["inventory"]))
-      assert length(Path.wildcard(Path.join(output, "storage-inventory-*.json"))) == 1
+      forgotten = Enum.find(variant["storage_snapshots"], &(&1["phase"] == "after_forget"))
+      collected = Enum.find(variant["storage_snapshots"], &(&1["phase"] == "after_collection"))
+      assert forgotten["inventory"]["inventory"]["selected_pages"]["records"] == 0
+      assert collected["inventory"]["inventory"]["namespace_tombstones"]["records"] > 0
+      assert length(Path.wildcard(Path.join(output, "storage-inventory-*.json"))) == 3
       overview = JSON.decode!(File.read!(Path.join(output, "execution-overview.json")))
       assert overview["elapsed_through_finalization_us"] > 0
       assert overview["output_storage"]["source_authoring"]["bytes"] > 0
@@ -955,6 +997,28 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
     after
       stop_model_fixture(server)
     end
+  end
+
+  test "an empty corpus keeps lifecycle absence explicit without creating stored data", ctx do
+    {paths, root} = cli_inputs(ctx, false)
+    File.write!(paths["corpus"], JSON.encode!(%{"schema_version" => 1, "documents" => []}))
+    output = Path.join(root, "empty-results")
+
+    assert {:ok, report} =
+             Runner.run(:verify,
+               plan: paths["plan"],
+               corpus: paths["corpus"],
+               queries: paths["queries"],
+               output: output
+             )
+
+    assert report["execution_complete"] and report["rows"] == 2 and report["failed_rows"] == 0
+    snapshots = jsonl(Path.join(output, "resources.jsonl"))
+    assert Enum.all?(snapshots, &(&1["inventory"]["status"] == "absent"))
+    assert Enum.count(snapshots, &(&1["phase"] in ~w(after_forget after_collection))) == 2
+    resources = JSON.decode!(File.read!(Path.join(output, "resource-summary.json")))
+    assert resources["storage_reachability_complete"]
+    assert jsonl(Path.join(output, "request-resources.jsonl")) == []
   end
 
   test "resource reporting separates a budget refusal from dispatch and retains both queries",

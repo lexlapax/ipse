@@ -378,6 +378,10 @@ The [memory/knowledge selection proof](archive/2026-10-19-p27-knowledge-packages
 checks nine real Session combinations, zero idle/resume dispatch, separate note
 and evidence stores, independent forget and refusal at the combined catalog
 bound. Those protocol checks do not measure semantic quality.
+The [storage lifecycle exercise](archive/2026-10-19-p27-knowledge-packages/storage-lifecycle.md)
+adds explicit post-prediction suppression/collection, exact page approvals and
+per-projection inventories. Its controlled fixtures remain separate from the
+required held-out resource comparison.
 The [evaluation preparation record](archive/2026-10-19-p27-knowledge-packages/evaluation-preparation.md)
 separates synthetic scorer checks from the initial tuning outcomes. The later
 [model workflow record](archive/2026-10-19-p27-knowledge-packages/model-workflows.md)

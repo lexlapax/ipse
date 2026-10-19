@@ -138,10 +138,29 @@ defmodule IpseKnowledgeExample.EvaluationResources do
               &(get_in(&1, ["inventory", "status"]) in ~w(verified absent not_applicable))
             ) and
             Enum.all?(projects, fn project ->
-              Enum.all?(~w(before_ingestion after_preparation), fn phase ->
-                Enum.count(selected_storage, &(&1["project"] == project and &1["phase"] == phase)) ==
-                  1
-              end)
+              projection_count =
+                Enum.count(
+                  selected_timings,
+                  &(&1["project"] == project and &1["phase"] in ~w(invoke_index invoke_extract))
+                )
+
+              measured_projections =
+                Enum.count(
+                  selected_storage,
+                  &(&1["project"] == project and &1["phase"] == "after_projection")
+                )
+
+              projection_count == measured_projections and
+                Enum.all?(
+                  ~w(before_ingestion after_preparation after_forget after_collection),
+                  fn phase ->
+                    Enum.count(
+                      selected_storage,
+                      &(&1["project"] == project and &1["phase"] == phase)
+                    ) ==
+                      1
+                  end
+                )
             end)
 
         %{

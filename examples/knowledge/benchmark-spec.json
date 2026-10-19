@@ -1,4 +1,5 @@
 {
+  "storage_policy": "forget_all_then_collect_v1",
   "artifacts": {
     "answer": "artifacts/answer",
     "dense": "artifacts/dense",

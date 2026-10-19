@@ -120,6 +120,9 @@ it keeps storage reachability and process-memory coverage explicitly open.
 The later [storage inventory record](storage-inventory.md) covers strict retained
 page reachability, draft/orphan/tombstone counts and metadata-only audit children,
 including the source-generation and child SDK dependency corrections.
+The [post-prediction lifecycle record](storage-lifecycle.md) adds explicit frozen
+suppression/collection policy, bounded exact page approvals and per-projection
+storage measurements without rerunning quality queries.
 The later [model wire investigation](model-wire.md) identifies the response-body
 limit in a captured diagnostic and separates streaming framing from returned text.
 The later [model workflow investigation](model-workflows.md) records exact draft

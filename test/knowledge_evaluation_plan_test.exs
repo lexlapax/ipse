@@ -18,6 +18,8 @@ defmodule Ipse.KnowledgeEvaluationPlanTest do
     assert plan["data"] == declared["data"] and plan["models"] == declared["models"]
     assert Enum.all?(plan["variants"], &(&1["budget"] == declared["budgets"][&1["id"]]))
     assert Enum.all?(plan["variants"], &Map.has_key?(&1["bindings"], "answer"))
+    assert plan["storage_policy"] == "forget_all_then_collect_v1"
+    assert Enum.all?(Enum.drop(plan["variants"], -1), &Map.has_key?(&1["bindings"], "collect"))
     research = List.last(plan["variants"])
     assert research["query_options"]["limits"]["max_sources"] == 10
     assert :code.is_loaded(IpseKnowledge.Corpus) == false
@@ -25,6 +27,8 @@ defmodule Ipse.KnowledgeEvaluationPlanTest do
     for mutated <- [
           Map.put(declared, "labels", "PRIVATE_LABELS"),
           Map.delete(declared, "budgets"),
+          Map.delete(declared, "storage_policy"),
+          Map.put(declared, "storage_policy", "unreviewed_cleanup"),
           update_in(declared, ["artifacts"], &Map.delete(&1, "answer")),
           put_in(declared, ["profiles", "p27_answer", "credential"], "unreviewed")
         ] do
