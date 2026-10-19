@@ -1,6 +1,11 @@
 defmodule Ipse.Test.StdioProbe do
   @moduledoc false
   @calls [
+    {Ipse.Observability.Resources, :close, 2},
+    {Ipse.Observability.Channel, :close, 1},
+    {Ipse.Extensions.WorkerLease, :close, 3},
+    {Ipse.Extensions.WorkerLease, :await, 2},
+    {Ipse.TaskResources, :close_task, 1},
     {Ipse.Extensions.Worker, :call, 4},
     {Ipse.Extensions.Worker, :close, 2},
     {Ipse.Runner, :open_owned_stdio, 8},
@@ -21,6 +26,26 @@ defmodule Ipse.Test.StdioProbe do
     after
       1000 -> raise "synthetic stdio probe did not stop"
     end
+  end
+
+  def trace_files(directory) do
+    paths = [".", "trace-ring-v1", "trace-ring-v1/catalog.json", "trace-ring-v1/.catalog.next"]
+
+    files =
+      Map.new(paths, fn path ->
+        value =
+          case File.lstat(Path.join(directory, path)) do
+            {:ok, stat} ->
+              %{type: stat.type, mode: Bitwise.band(stat.mode, 0o777), bytes: stat.size}
+
+            {:error, reason} ->
+              %{error: reason}
+          end
+
+        {path, value}
+      end)
+
+    IO.puts(:stderr, Jason.encode!(%{synthetic_trace_files: files}))
   end
 
   def init(owner, target, label) do
@@ -89,6 +114,10 @@ defmodule Ipse.Test.StdioProbe do
   defp category({:ok, _, _}), do: "ok"
   defp category({:error, reason}) when is_atom(reason), do: Atom.to_string(reason)
   defp category({:error, _}), do: "error"
+
+  defp category(results) when is_list(results),
+    do: if(Enum.all?(results, &(&1 == :ok)), do: "all_ok", else: "cleanup_error")
+
   defp category(_), do: "other"
 
   defp report(samples, label, reason, pending) do

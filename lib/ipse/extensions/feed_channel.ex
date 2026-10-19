@@ -100,6 +100,7 @@ defmodule Ipse.Extensions.FeedChannel do
              digest: s.entry.identity["artifact"],
              trusted: s.entry.identity["artifact"],
              artifact_sha256: s.entry.identity["artifact_sha256"],
+             cleanup_lease: s.counters,
              options: s.entry.options
            ) do
       next = %{s | worker: worker}

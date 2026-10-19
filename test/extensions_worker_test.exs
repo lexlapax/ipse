@@ -1,6 +1,6 @@
 defmodule Ipse.Extensions.WorkerTest do
   use ExUnit.Case, async: false
-  alias Ipse.Extensions.{Manifest, Store, Worker}
+  alias Ipse.Extensions.{Manifest, Store, Worker, WorkerLease}
 
   setup_all do
     root = Path.join(System.tmp_dir!(), "ipse-worker-#{System.unique_integer([:positive])}")
@@ -205,6 +205,47 @@ defmodule Ipse.Extensions.WorkerTest do
     assert {:error, :extension_busy} = Worker.call(pid, "fixture.echo", %{})
     assert {:error, :extension_timeout} = Task.await(task, 3_000)
     assert_receive {:DOWN, ^ref, :process, ^pid, :normal}, 3_000
+  end
+
+  test "lease retains native confirmation after worker self-termination", c do
+    for stage <- ["fixture.crash", "fixture.hang"] do
+      counters = :atomics.new(9, signed: false)
+
+      assert {:ok, pid} =
+               Worker.start(
+                 owner: self(),
+                 store: c.store,
+                 digest: c.digest,
+                 trusted: c.digest,
+                 cleanup_lease: counters
+               )
+
+      assert {:ok, _} = Worker.call(pid, "initialize", %{})
+      ref = Process.monitor(pid)
+      assert {:error, _} = Worker.call(pid, stage, %{}, 100)
+      assert_receive {:DOWN, ^ref, :process, ^pid, :normal}, 3_000
+      assert :ok = WorkerLease.close(pid, counters)
+      assert :ok = WorkerLease.close(pid, counters)
+    end
+  end
+
+  test "worker death without a native receipt cannot confirm its lease", c do
+    counters = :atomics.new(9, signed: false)
+
+    assert {:ok, pid} =
+             Worker.start(
+               owner: self(),
+               store: c.store,
+               digest: c.digest,
+               trusted: c.digest,
+               cleanup_lease: counters
+             )
+
+    assert {:ok, _} = Worker.call(pid, "initialize", %{})
+    ref = Process.monitor(pid)
+    Process.exit(pid, :kill)
+    assert_receive {:DOWN, ^ref, :process, ^pid, :killed}, 3_000
+    assert {:error, :cleanup_unconfirmed} = WorkerLease.close(pid, counters)
   end
 
   test "owner death stops idle and active workers", c do

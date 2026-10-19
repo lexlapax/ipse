@@ -101,11 +101,18 @@ logs. Choose a fresh directory when changing limits. Earlier root-level
 aggregate bound, use a fresh directory or review and remove/move legacy files
 separately. Unrelated operator files are never scanned or deleted.
 
+An interruption during the first catalog write can leave an incomplete ring,
+including a missing `catalog.json`. Later capture refuses that state without
+repairing or deleting files. Review the old files and select a fresh private
+directory in a new invocation. Resume does not repair the ring.
+
 At most four sinks coexist. Overload drops samples with visible counters; it never
 drops mandatory recovery/usage facts or waits for a sink before inference.
 Invalid replies, expiry, crashes and timeouts stop that sink with a fixed notice.
 Inspect cleanup status: VM exit alone does not confirm complete descendant cleanup,
-and explicit close reports uncertainty when appropriate. An idle active capture
+and explicit close reports uncertainty when appropriate. A failed callback can
+still have confirmed cleanup when its native helper supplied the receipt.
+An idle active capture
 gets up to 500 ms to settle during orderly shutdown; remaining samples are dropped.
 The CLI uses this close path and reports cleanup failures separately from turn success.
 Its final logical close fact is durable after sink cleanup, so delivery of that

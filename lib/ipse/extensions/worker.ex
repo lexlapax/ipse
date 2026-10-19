@@ -52,6 +52,7 @@ defmodule Ipse.Extensions.Worker do
          owner_ref: Process.monitor(owner),
          port: port,
          cleanup_ticket: cleanup_ticket,
+         cleanup_lease: opts[:cleanup_lease],
          options: options,
          manifest: artifact.manifest,
          pending: nil,
@@ -105,7 +106,7 @@ defmodule Ipse.Extensions.Worker do
   def handle_call(:close, _from, state) do
     state = fail_pending(state, :extension_closed)
     result = close_helper(state)
-    Ipse.TaskResources.closed(state.cleanup_ticket, result)
+    record_cleanup(state, result)
     {:stop, :normal, result, %{state | port: nil}}
   end
 
@@ -124,8 +125,8 @@ defmodule Ipse.Extensions.Worker do
     do: stop(state, :extension_timeout)
 
   def handle_info({port, {:exit_status, status}}, %{port: port} = state) do
-    Ipse.TaskResources.closed(
-      state.cleanup_ticket,
+    record_cleanup(
+      state,
       if(status in [0, 1], do: :ok, else: {:error, :cleanup_unconfirmed})
     )
 
@@ -144,7 +145,7 @@ defmodule Ipse.Extensions.Worker do
     fail_pending(state, :extension_closed)
 
     if is_port(state.port),
-      do: Ipse.TaskResources.closed(state.cleanup_ticket, close_helper(state))
+      do: record_cleanup(state, close_helper(state))
 
     :ok
   end
@@ -164,6 +165,11 @@ defmodule Ipse.Extensions.Worker do
 
   defp close_helper(state),
     do: Ipse.Runner.close_stdio(state.port, if(state.finished, do: :completed, else: :cancel))
+
+  defp record_cleanup(state, result) do
+    Ipse.TaskResources.closed(state.cleanup_ticket, result)
+    Ipse.Extensions.WorkerLease.confirm(state.cleanup_lease, result)
+  end
 
   defp fail_pending(%{pending: nil} = state, _reason), do: state
 

@@ -7,7 +7,11 @@ source versions, suppression and lexical ranking. `WorkingMemory` restricts
 initialization to session scope. Registry supplies inert built-in metadata and
 binds each helper BEAM into artifact identity. No Session memory branch, automatic
 capture, model call, database or service is added. P26A/P26B's source, installed
-and hosted gates pass at `108aa86`, with the limitations below retained.
+and hosted rerun gates pass at `108aa86`, with the limitations below retained.
+P26 completion remains reopened pending repaired-source platform verification.
+Local macOS reproduction traced the cleanup failure to a lost native cleanup
+receipt after an interrupted diagnostic-ring write; the unchanged hosted rerun
+alone was insufficient. See the [current evidence](testing.md#current-evidence-and-next-checks).
 
 Use [operator memory](../operator/memory.md) for selection, commands, sharing,
 retention, collection and recovery. This document owns implementation invariants;
@@ -151,10 +155,11 @@ substitutes for live model/algorithm evaluation.
 | Cancellation, denial and unchanged recovery | Real tool/write approval and cancel/denial tests; inert resume and [recorded controlled probes](testing.md#current-evidence-and-next-checks) with backend forget, retained cached messages and no resume inference |
 | Quality/resources and platform delivery | Frozen source/installed corpus below, local full native suite, both real formatter floors, package/unchanged-artifact proofs and exact-source Linux/macOS gates at `108aa86` |
 
-These boundaries complete the explicit P26A/P26B baseline. They do not close
+These boundaries define the explicit P26A/P26B baseline. Completion remains
+subject to the cleanup investigation in [testing](testing.md#current-evidence-and-next-checks). They do not close
 future automatic capture, cross-store deletion synchronization, live context
-revocation or semantic-engine evaluation. The retained first Mac cleanup failure
-and its unknown cause remain part of the verification record.
+revocation or semantic-engine evaluation. The retained first Mac cleanup failure,
+local causal reproduction and receipt repair remain part of the verification record.
 
 `mix run scripts/measure-memory.exs` uses the frozen
 [`examples/memory/corpus.json`](../../examples/memory/corpus.json) across six

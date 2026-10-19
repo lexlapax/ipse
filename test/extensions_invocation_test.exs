@@ -1,3 +1,5 @@
+Code.require_file("support/stdio_probe.exs", __DIR__)
+
 defmodule Ipse.Extensions.InvocationTest do
   use ExUnit.Case, async: false
   alias Ipse.{Session, Journal}
@@ -1517,6 +1519,14 @@ defmodule Ipse.Extensions.InvocationTest do
       |> Map.put(:observability, Map.put(Ipse.Observability.Config.defaults(), "mode", "local"))
 
     ctx = %{ctx | config: config}
+
+    if System.get_env("IPSE_TEST_STDIO_PROBE") == "1" do
+      probe =
+        Ipse.Test.StdioProbe.start(Process.whereis(Ipse.Sessions), "diagnostic-question-recovery")
+
+      on_exit(fn -> Ipse.Test.StdioProbe.stop(probe) end)
+    end
+
     pid = start(ctx)
     :ok = host_command(pid, question_request())
     assert_receive {:ipse, ^pid, {:question, question, _}}, 3000
@@ -1553,7 +1563,13 @@ defmodule Ipse.Extensions.InvocationTest do
 
     :ok = Session.answer(resumed, question, answers())
     assert_receive {:ipse, ^resumed, {:done, :ok}}, 3000
-    :ok = Session.close(resumed)
+    close_result = Session.close(resumed)
+
+    if close_result != :ok and System.get_env("IPSE_TEST_STDIO_PROBE") == "1" do
+      Ipse.Test.StdioProbe.trace_files(Path.join(ctx.root, "trace"))
+    end
+
+    :ok = close_result
     again = start(ctx, id)
     assert Session.info(again).phase == :idle
     assert {:ok, _} = Ipse.Diagnostics.saved(ctx.dir, id)

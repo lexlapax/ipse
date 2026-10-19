@@ -111,7 +111,10 @@ work. An in-flight callback may finish; existing transfers cannot be retracted.
 Channel then closes its worker. Explicit close gives an idle active capture up to
 500 ms to settle, then performs bounded parallel worker cleanup. This grace never
 gates inference or action admission. Concurrent close paths share one cleanup result;
-owner/channel death uses existing monitor/native ownership. No
+the worker publishes its actual native cleanup result into that lease before
+exiting, including after callback failure or timeout. A later close can reuse that
+confirmation; process death without a receipt remains unconfirmed.
+Owner/channel death uses existing monitor/native ownership. No
 diagnostic acknowledgment gates approvals, usage, effects or private subscriptions.
 
 ## Local ring retention
@@ -139,6 +142,12 @@ number of zero-byte slot locks plus one directory lock. Reads, path types,
 permissions, hardlinks, schema and policy are validated. Corruption/mismatch
 refuses without repair or automatic limit migration. Reuse is retention, not an
 age/TTL policy or a durable trace archive.
+
+Abrupt owner death can interrupt the first catalog publication after directory or
+scratch-file creation. An existing ring without a valid catalog refuses subsequent
+capture just like other incomplete state; resume does not reconstruct or erase it.
+This delivery failure is independent of whether the failed worker's OS cleanup
+was confirmed. Select a fresh directory after reviewing the interrupted files.
 
 Legacy root-level lease logs and unrelated files are neither adopted nor deleted;
 quota covers this managed format. Select a fresh directory for changed limits or
@@ -266,8 +275,10 @@ its domain workers receive no host PID or private state. The
 private/causal seams; [P22 status](../plan.md#p22-extension-scaffold-and-lifecycle-hooks)
 records passed hosted verification and the supported scope.
 
-Twenty diagnostic fixtures cover off parity, privacy/source identity, stop, export scope,
+Diagnostic fixtures cover off parity, privacy/source identity, stop, export scope,
 blocked/invalid sinks, owner-death VM/slot cleanup, rotation/aggregate bounds,
 active-writer protection, mismatched limits, unsafe paths, legacy preservation,
-filtering, historical resume and corruption. [Testing](testing.md#current-evidence-and-next-checks)
+filtering, historical resume and corruption. Cleanup regressions preserve native
+receipts after callback failure and reproduce interrupted first-catalog state
+without repairing it. [Testing](testing.md#current-evidence-and-next-checks)
 distinguishes source, hosted and extracted evidence.

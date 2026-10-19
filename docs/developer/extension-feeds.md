@@ -138,7 +138,9 @@ finished without a committed host acknowledgment remains unacknowledged. Close
 does not promise to drain callbacks or deliver later cancellation/final close facts.
 The feed stays stopped for this process; a new invocation can enroll on new work.
 Completed delivery acknowledgment establishes receipt, not business success or
-worker cleanup. VM disappearance alone does not confirm descendant cleanup.
+worker cleanup. Workers retain actual native cleanup receipts across callback
+failure and deadline shutdown, independently of incomplete delivery coverage.
+VM disappearance alone does not confirm descendant cleanup.
 
 ## Recovery and verification
 

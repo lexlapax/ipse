@@ -1,5 +1,13 @@
 defmodule Ipse.Extensions.WorkerLease do
   @moduledoc "One bounded cleanup result shared by a worker resource's concurrent closing paths."
+  @doc "Retain the worker's native cleanup receipt even when it stops before an explicit close."
+  def confirm(nil, _result), do: :ok
+
+  def confirm(counters, result) do
+    :atomics.put(counters, 9, if(result == :ok, do: 2, else: 3))
+    :ok
+  end
+
   def close(worker, counters, slot \\ 9) do
     case :atomics.compare_exchange(counters, slot, 0, 1) do
       :ok ->
@@ -20,6 +28,7 @@ defmodule Ipse.Extensions.WorkerLease do
 
   defp close_claimed(worker, counters, slot) do
     result = Ipse.Extensions.Worker.close(worker)
+    result = if :atomics.get(counters, slot) == 2, do: :ok, else: result
     :atomics.put(counters, slot, if(result == :ok, do: 2, else: 3))
     result
   rescue

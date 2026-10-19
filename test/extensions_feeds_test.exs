@@ -730,7 +730,7 @@ defmodule Ipse.Extensions.FeedsTest do
     assert {:ok, _} = Session.restore_context(rows(c, id))
   end
 
-  test "callback deadline retains unconfirmed cleanup without failing successful inference", c do
+  test "callback deadline retains incomplete coverage and confirmed native cleanup", c do
     {:ok, pid} = start(c, config(c, :single, gate: true, mode: "hang"))
     id = Session.info(pid).id
     :ok = Session.prompt(pid, "private prompt")
@@ -739,14 +739,14 @@ defmodule Ipse.Extensions.FeedsTest do
     worker = File.read!(c.pid_file)
     eventually(fn -> match?([%{"closed" => true}], status(pid)["feeds"]) end)
     [feed] = status(pid)["feeds"]
-    assert feed["reason"] == "callback_failed" and feed["cleanup_confirmed"] == false
+    assert feed["reason"] == "callback_failed" and feed["cleanup_confirmed"] == true
     eventually(fn -> not alive?(worker) end)
     assert Process.alive?(model)
     send(model, :release)
     done(pid)
-    assert {:error, :cleanup_unconfirmed} = Session.close(pid)
+    assert :ok = Session.close(pid)
     assert {:ok, saved} = Ipse.Diagnostics.saved(c.dir, id)
-    assert saved["event_feeds"]["unconfirmed_cleanup"] == 1
+    assert saved["event_feeds"]["unconfirmed_cleanup"] == 0
     assert saved["event_feeds"]["unacknowledged"] == 1
   end
 

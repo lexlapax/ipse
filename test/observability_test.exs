@@ -28,6 +28,7 @@ defmodule Ipse.ObservabilityTest do
       def describe, do: %{"sdk" => 1, "capabilities" => ["observe.export"]}
       def init(options), do: (File.write!((options["pid"]) <> ".ready-" <> System.pid(), System.pid()); File.rename!((options["pid"]) <> ".ready-" <> System.pid(), options["pid"]); {:ok, options})
       def handle("observe.export", payload, state) do
+        if state["mode"] == "crash", do: raise("synthetic callback failure")
         if state["mode"] == "hang" do
           File.write!(state["gate"], "entered")
           Process.sleep(:infinity)
@@ -464,6 +465,45 @@ defmodule Ipse.ObservabilityTest do
         &(&1["ready"] and not &1["closed"] and &1["pending"] == 0 and &1["delivered"] > 0)
       )
     end)
+  end
+
+  test "a failed callback with confirmed worker cleanup still closes the session", c do
+    pid = start(c, config(c, :export, "export", "crash"))
+    :ok = Session.prompt(pid, "synthetic-private-prompt")
+    done(pid)
+    eventually(fn -> Enum.any?(sinks(pid), & &1["closed"]) end)
+    [sink] = sinks(pid)
+    assert sink["failures"] == 1
+    id = Session.info(pid).id
+    assert :ok = Session.close(pid)
+    {:ok, events} = Journal.load(c.dir, id)
+
+    assert Enum.any?(
+             events,
+             &(&1["type"] == "diagnostic_sink_closed" and &1["cleanup_confirmed"])
+           )
+  end
+
+  test "an interrupted first catalog publish refuses capture but confirms cleanup", c do
+    File.mkdir_p!(ring(c))
+    File.chmod!(Path.dirname(ring(c)), 0o700)
+    File.chmod!(ring(c), 0o700)
+    temporary = Path.join(ring(c), ".catalog.next")
+    File.write!(temporary, "")
+    File.chmod!(temporary, 0o644)
+
+    pid = start(c, config(c))
+    :ok = Session.prompt(pid, "synthetic-private-prompt")
+    done(pid)
+    eventually(fn -> Enum.any?(sinks(pid), & &1["closed"]) end)
+    [sink] = sinks(pid)
+    assert sink["ready"]
+    assert sink["failures"] == 1
+    assert sink["delivered"] == 0
+    assert :ok = Session.close(pid)
+    refute File.exists?(Path.join(ring(c), "catalog.json"))
+    assert File.read!(temporary) == ""
+    assert Bitwise.band(File.stat!(temporary).mode, 0o777) == 0o644
   end
 
   test "a fixed lease ring bounds files and bytes across repeated sessions", c do

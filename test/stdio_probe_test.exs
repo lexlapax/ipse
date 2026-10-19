@@ -67,4 +67,18 @@ defmodule Ipse.StdioProbeTest do
     assert Jason.decode!(String.trim(output))["reason"] == "owner_down"
     assert MapSet.new(:trace.session_info(:all)) == before
   end
+
+  test "trace file snapshots contain only bounded path metadata" do
+    root = Path.join(System.tmp_dir!(), "ipse-probe-#{Ipse.Usage.id()}")
+    File.mkdir_p!(Path.join(root, "trace-ring-v1"))
+    File.write!(Path.join(root, "trace-ring-v1/catalog.json"), "PRIVATE_CATALOG_SENTINEL")
+    File.write!(Path.join(root, "UNRELATED_NAME_SENTINEL"), "PRIVATE_CONTENT_SENTINEL")
+    on_exit(fn -> File.rm_rf!(root) end)
+    output = capture_io(:stderr, fn -> Ipse.Test.StdioProbe.trace_files(root) end)
+    refute output =~ "SENTINEL"
+    files = Jason.decode!(String.trim(output))["synthetic_trace_files"]
+    assert map_size(files) == 4
+    assert files["trace-ring-v1/catalog.json"]["type"] == "regular"
+    assert files["trace-ring-v1/.catalog.next"]["error"] == "enoent"
+  end
 end

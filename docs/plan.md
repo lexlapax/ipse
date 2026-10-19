@@ -63,7 +63,9 @@ transition follows this completed campaign as a separate verified change.
 
 The research subject is optional working/long-term memory, research, graph and
 RAG, including the operator's Zero-Mem inspiration. P26's explicit-note baseline
-is complete at `108aa86`; advanced research/graph/RAG engines remain deferred to
+is implemented at `108aa86`, but completion is reopened pending repaired-source
+platform checks for the diagnosed macOS diagnostic-sink cleanup failure.
+Advanced research/graph/RAG engines remain deferred to
 P27, and media to P28. External services remain configurable; no third-party
 engine, database or mandatory backend is selected.
 
@@ -72,13 +74,13 @@ engine, database or mandatory backend is selected.
 | [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within selected scope | Preserve accounting through the trial |
 | [P24: architecture/security readiness](#p24-independent-architecture-validation-and-baseline-security) | Complete for supervised P25 at `375e607`; accepted limits recorded | Refresh affected validation after trial changes |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Complete within declared supervision/assistance at `3307563`; security findings triaged and corrected scopes verified | Preserve frozen evidence; select a later production increment separately |
-| [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Complete: P26A/P26B at `108aa86`, local/installed/hosted gates pass | Preserve suppression, explicit retention and affected-session recovery; select P27 separately |
+| [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Implemented; cleanup diagnosed and repaired locally | Complete repaired-source verification before closing the reopened milestone |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
 | [P28: voice and media](#p28-voice-and-realtime-media) | Deferred; unimplemented | Explicit media contracts and later device/service validation |
 | [Apache-2.0 transition](#license-transition) | Complete; local and hosted `7bb642b` checks pass | Preserve bundled identity/recovery and third-party license boundaries |
 
 The requested P22–P25 campaign and separate Apache-2.0 transition are complete
-within their documented scopes. P26A/P26B are complete; P27/P28
+within their documented scopes. P26A/P26B completion is reopened; P27/P28
 remain deferred. Preserve P25's frozen
 inputs, runners, source/review/scan identities, scores and failed attempts; newer
 documentation does not rescan code or expand an earlier verdict. Select P27 or
@@ -262,7 +264,11 @@ and [security execution constraints](developer/self-hosting-evaluation.md#securi
 
 ## P26: optional working and long-term memory
 
-**Complete: P26A and P26B at `108aa86`.** Independently selectable default-off
+**Implemented at `108aa86`; completion reopened.** Local macOS reproduction
+identified lost native cleanup confirmation after interrupted diagnostic-ring
+initialization. The receipt repair must pass applicable source/package/platform
+checks before closing P26. The unchanged hosted rerun alone was insufficient.
+Independently selectable default-off
 session/task and persistent project/operator memory ship as bundled extensions.
 Explicit recall/remember/forget/export tools and commands provide bounded task
 cards/facts and lexical recall. Source suppression, TTL/conflicts, derivative
@@ -293,7 +299,7 @@ preserve legacy identities and grants; they are reviewed and tested separately.
 | P26H2 | Bounded value scans and explicit read-work allowance for useful lexical recall, with strict receipt/recovery validation | Complete; byte pages, forged/ungranted/over-limit actions and extended real-worker receipt chain pass |
 | P26A | Separate default-off working and persistent memory, explicit remember/recall/forget/export, provenance, bounded lexical ranking and approvals | Complete; scope, sharing, approval, denial/cancel, selected export and inert-resume cases pass |
 | P26B | Durable source suppression, TTL/conflicts, derivative inventory/collection, schema migration/import, stale-work and cached-context recovery policy | Complete explicit baseline; affected sessions require manual reviewed fresh-session recovery, not automatic history redaction |
-| P26 verification | Deterministic authority/concurrency/restart/import cases, measured retrieval/resources, source/native/installed/platform checks and coherent operator/developer guidance | Complete: 933 local native-inclusive passes/15 Mac exclusions, 23 focused cases, package and unchanged precompiled 41+9 assertions. Both hosted platforms pass 948/0/32, installed 100-record/100-query corpus and 41+9 assertions; enabled Mac 36/0/6, four Rust checks and signed enforcement pass. Initial Mac cleanup failure remains recorded with unconfirmed cause; unchanged rerun passes |
+| P26 verification | Deterministic authority/concurrency/restart/import cases, measured retrieval/resources, source/native/installed/platform checks and coherent operator/developer guidance | Reopened pending repaired-source gates; strict macOS failure reproduced, native receipt loss diagnosed and controlled regressions added. See testing for original and repaired-source evidence |
 
 Stable logical storage is an explicit operator grant, never a namespace chosen by
 project text or extension code. Existing journals and provider-visible history are

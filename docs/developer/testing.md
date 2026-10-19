@@ -96,12 +96,13 @@ See [production gates and container lifecycle](sandbox.md#signing-and-integratio
 
 ### Stdio cleanup load diagnostic
 
-Two diagnostics address different boundaries. For the selected synthetic MCP/feed
-Session cases that have shown intermittent Mac failures, capture host worker-call
-and cleanup timing:
+Two diagnostics address different boundaries. For selected synthetic MCP/feed
+Sessions and diagnostic-question recovery cases, capture host worker-call and
+cleanup timing:
 
 ```sh
 IPSE_TEST_STDIO_PROBE=1 mix test test/stdio_probe_test.exs test/extensions_feeds_test.exs test/mcp/session_test.exs
+IPSE_TEST_STDIO_PROBE=1 mix test test/extensions_invocation_test.exs:1489 --repeat-until-failure 100
 ```
 
 CI enables this test-only switch for its ordinary suite. The probe uses an
@@ -115,6 +116,11 @@ The diagnostic preserves operation deadlines and success assertions. Staged MCP
 checks distinguish dispatch, the observed effect and final completion instead of
 assuming the entire turn fits inside a shorter receive timeout. A green run does
 not identify the cause of an earlier failure.
+
+The recovery probe enrolls before Session startup to include channel/worker
+creation. On its strict close failure it also reports type, permission bits and
+size for four fixed trace paths, without reading contents or listing other files.
+This isolated synthetic fixture is the only caller of that filesystem snapshot.
 
 For the native helper's frame/drain boundary, use the separate Elixir load diagnostic:
 
@@ -235,19 +241,89 @@ and [runtime identity](#p1-runtime-identity-2026-10-15).
 ## Current evidence and next checks
 
 The [plan](../plan.md#current-priorities-and-status) owns current milestone scopes.
-P26's explicit working/persistent memory baseline is complete at `108aa86` within
-its documented retention/recovery limits. The corrected source passes 933 Linux/native tests with
+P26's explicit working/persistent memory baseline is implemented at `108aa86`.
+Completion remains reopened pending repaired-source platform checks. Local macOS
+reproduction now explains the strict cleanup failure: interrupted initial trace
+catalog publication leaves an incomplete ring, the resumed sink refuses it, and
+the self-stopping Worker loses its successful native cleanup result before the
+channel closes it. The repair retains that receipt in the shared worker lease;
+incomplete capture and unconfirmed cleanup remain distinct.
+The earlier source passes 933 Linux/native tests with
 15 macOS-only exclusions, both actual formatter versions and strict compilation.
 Package verification, the installed memory corpus and unchanged independently
 compiled extension/model proofs pass. Exact-source hosted Linux and macOS gates
 pass, including their installed corpora and independent proofs. Attempt 1's Mac
-diagnostic-question cleanup failure is retained; the unchanged targeted rerun
-passes and does not establish the original cause.
+diagnostic-question cleanup failure and unchanged passing rerun are retained as
+historical evidence. The local reproduction and controlled regressions below
+establish the repair; the old hosted logs alone cannot identify its cause.
 The [memory contract](memory.md#verification-and-measurements) separates protocol
 regressions from the frozen synthetic lexical corpus and its measurement limits.
 This new work does not expand earlier security scans or constitute architectural
 certification. P25 has [scoped supervised acceptance](p25-evaluation.md#scoped-acceptance-decision);
 P27/P28 remain deferred.
+
+### macOS diagnostic cleanup repair, 2026-10-18
+
+The original strict recovery assertion reproduced locally before production
+changes. Early-start tracing failed on its sixth execution. A second capture
+failed on execution 59 and retained only fixed-path filesystem metadata: the
+trace leaf and ring were `0700`, `catalog.json` was missing, and `.catalog.next`
+was an empty regular file with mode `0644`. This matches interruption between
+scratch creation and catalog publication in the killed Session. Initialization
+of the resumed sink succeeded; its first callback then refused the incomplete
+catalog. Bootstrap halted on that callback error. The Worker received a native
+terminal frame and `Runner.close_stdio` returned `:ok`, but a subsequent
+`Worker.close` on that exited process returned `cleanup_unconfirmed` and the
+channel recorded a false cleanup receipt. Final close propagated that receipt.
+
+Workers now retain their native cleanup result in the channel's shared lease
+before self-termination. Explicit close reuses confirmed evidence even when its
+call races with Worker exit. Both diagnostic and feed workers use that path.
+Untrappable Worker death without a receipt remains unconfirmed; native deadlines,
+approval rules and the strict recovery assertion are unchanged. The local sink
+still refuses incomplete catalogs without repair or deletion. Operator recovery
+uses a [reviewed fresh directory](../operator/observability.md#files-failures-and-export).
+The original hosted attempt lacks this earlier trace/filesystem evidence, so its
+logs alone cannot prove that exact interrupted-file state occurred there.
+The later documentation-only `e169ee9` [hosted run](https://github.com/lexlapax/ipse/actions/runs/39174051727)
+also failed that strict recovery-close assertion on Ubuntu: 948 tests, one
+failure, 32 exclusions, with later Ubuntu steps skipped. Its Mac job passed.
+This newer negative evidence rules out treating the reported symptom as Mac-only;
+it does not supply the missing callback/filesystem trace for that hosted attempt.
+
+Two controlled Session regressions failed against the old production code at
+the same strict close assertion, then passed with the repair: an independent
+crashing sink and the exact incomplete-ring state above. Worker regressions cover
+retained crash/timeout receipts and refusal after receipt-free death. The original
+recovery test passed 101 executions with the repair; four reports still contained
+callback failure, with zero native or lease cleanup errors. This supplements the
+controlled regressions rather than substituting repeated success for diagnosis.
+
+Local runtime is macOS 26.7.2 arm64, Darwin 25.6.0, Elixir 1.20.3,
+OTP 29/ERTS 17.0.5 and Rust 1.97.1. Final focused checks passed 35 cases,
+with 23 nonselected cases. Native enforcement passed 30 cases with six platform
+exclusions; four Rust policy checks and the default signed App Sandbox probe
+also passed. The default probe emitted its existing unused optional-module
+warning; the stronger detached-process diagnostic was not run.
+Build, strict compile, formatting, CI action pins and isolated demo passed.
+The initial full-suite run overlapped another compile and helper rebuild and
+reported ten extension-admission failures, 910 passes and 32 exclusions. It is
+retained as a failed run, not baseline evidence; frozen-source checks follow.
+The isolated frozen-source suite then passed 921 executed tests with zero
+failures and 32 platform exclusions in 317.7 seconds. The final probe/privacy
+fixture is included. Documentation checks cover 132 Markdown files and 1,712
+local file/heading links with zero errors.
+
+The local verification archive SHA-256 is
+`eedeb5880f3f7ef62ef496f7d57f6521e6d27354ff71195caf11757d56c2c622`.
+Its isolated extracted verifier passed help/demo, workspace selection, helper and
+native lifecycle checks, plus the 100-record/100-query installed memory corpus
+with exact spans and zero model/encoder calls. Independent installed artifacts
+passed all 41 extension and nine model-call assertions with unchanged archive and
+host bytes and no system development toolchain on the runtime PATH. The separate
+deliberate service-crash check remains unconfirmed. This is a local verification
+archive, not a published release or live-account check. Repaired-source hosted
+Linux/macOS checks remain pending.
 
 ### Earlier architecture and security provenance
 
@@ -412,7 +488,7 @@ weakened to obtain the passing result below.
 
 | Checkpoint | Evidence | Scope and remaining limits |
 | --- | --- | --- |
-| P26 source `108aa86`, hosted completion, 2026-10-18 | [Completed run, attempt 2](https://github.com/lexlapax/ipse/actions/runs/39172215236/attempts/2): Linux passes on attempt 1; the unchanged Mac rerun passes every applicable step. Both hosts report 948 tests/zero failures/32 exclusions. Enabled Mac 36/0/6, four Rust policy tests, signed App Sandbox/codesign, packages and all four parsed independent receipts (41 legacy/nine model assertions per host) pass. Both installed 100-record/100-query corpora pass exact-source/span/retrieval checks with zero model/encoder calls. Archive hashes: Linux `0f1630c8295f5e9eac598085b539aa39385f4dee83757ac25787c3d75051f0a1`, Mac `8f14b9723e070b725c0ac7b3c63fac11c599f2e2b0570bab866450700baa455c` | Exact full source, terminal jobs/steps, full logs, corpus hash and all four receipts inspected. Hosted artifacts are independently compiled in each job; the separate local proof uses unchanged previously compiled artifacts. Original failure is retained below with unconfirmed cause; nothing changes source/assertions/deadlines between attempts. P26A/P26B's explicit-note scope is complete. No new security scan, whole-design certification, semantic benchmark or history-erasure claim |
+| P26 source `108aa86`, hosted unchanged rerun, 2026-10-18 | [Completed run, attempt 2](https://github.com/lexlapax/ipse/actions/runs/39172215236/attempts/2): Linux passes on attempt 1; the unchanged Mac rerun passes every applicable step. Both hosts report 948 tests/zero failures/32 exclusions. Enabled Mac 36/0/6, four Rust policy tests, signed App Sandbox/codesign, packages and all four parsed independent receipts (41 legacy/nine model assertions per host) pass. Both installed 100-record/100-query corpora pass exact-source/span/retrieval checks with zero model/encoder calls. Archive hashes: Linux `0f1630c8295f5e9eac598085b539aa39385f4dee83757ac25787c3d75051f0a1`, Mac `8f14b9723e070b725c0ac7b3c63fac11c599f2e2b0570bab866450700baa455c` | Exact full source, terminal jobs/steps, full logs, corpus hash and all four receipts inspected. Hosted artifacts are independently compiled in each job; the separate local proof uses unchanged previously compiled artifacts. Original failure is retained below; neither attempt established its cause and no source/assertion/deadline changed between them. The completion claim was reopened for diagnosis; local repair evidence is recorded separately. No new security scan, whole-design certification, semantic benchmark or history-erasure claim |
 | P26 source `108aa86`, hosted attempt 1, 2026-10-18 | [Attempt 1](https://github.com/lexlapax/ipse/actions/runs/39172215236/attempts/1): Linux passes every stage, 948 tests/zero failures/32 exclusions, installed memory corpus and both independent proofs. Mac reports 948 tests/one failure/32 exclusions: diagnostic sink/pending-question recovery receives `cleanup_unconfirmed` at the strict final `Session.close(resumed)` assertion (`extensions_invocation_test.exs:1556`); later Mac enforcement/package stages are skipped | Full logs and exact source inspected. Session, observability/channel, worker/lease, local-trace, Runner, native code and this regression are byte-identical to `7bb642b`; the logs establish the failure, not its cause or independence from workload timing. No assertion/outcome/deadline is widened. Only the failed Mac job is rerun unchanged; it subsequently passes every step in attempt 2 above, without establishing the original cause. Earlier intermittent causes and deliberate service-crash cleanup remain unconfirmed |
 | P26 explicit-memory candidate, Linux Serenity, 2026-10-18 | Final build, actual Elixir 1.18.4/1.20.4 formatters, strict compile, CI pin policy, isolated demo and full native-inclusive suite pass: 933 passed/15 Mac exclusions, 289.9 seconds. All 23 focused binding/scan/memory/registry cases pass. The exact documented disabled-by-default configuration and real CLI validate both packages/24 exports within 15,909 catalog bytes. Package verification and unchanged precompiled artifacts pass all 41 legacy/nine model assertions; archive `e7ba8623582b072ae163e3be70b6024eeda356004bbf1644c07c0525d869b16b` | Internal authority/bounds/cancellation/recovery review adds no Session/native change or dependency. Legacy suppression import is reproduced as refused in the preserved pre-correction package, then explicitly upgrades by digest without content in the corrected test. No timers/assertions or accepted cleanup outcomes are widened. Deliberate legacy service-crash cleanup remains unconfirmed/`safe_to_continue: false`. Exact-source hosted Linux/macOS verification subsequently passes at `108aa86`, recorded above; earlier scans do not certify this code |
 | P26 installed lexical fixture, 2026-10-18 | Frozen corpus `3f11a10a4364b2ba4ae652a82ba14111e3dc88bec2387291df445334b8cca77c`: 100 records/100 queries, two projects/six real sessions; updates, expired/forgotten and absent answers, exact sources/spans and saved-journal restore pass. Retrieval/abstention, recall@5 and exact-span precision are 1.0 with zero model/encoder calls. Installed p50/p95: 216,498/274,705 µs, current state 71,704 bytes, observed VM sample 64,486,384 bytes (Elixir 1.20.4/OTP 29, Linux x86_64, 20 schedulers). Utility-only runtime PATH; no system development toolchain | Synthetic exact-token retrieval, not semantic answer/citation quality, a peak-memory bound, nDCG@10, or Zero-Mem reproduction. A controlled 256-record reverse-dependency callback suppresses the whole chain in 52,755 µs locally; this is a callback probe, not an end-to-end latency promise. The exact committed source corpus rerun also passes: p50/p95 233,105/289,985 µs and observed VM sample 68,389,704 bytes on the same local runtime; installed numbers identify the distinct packaged candidate. Controlled real-session probes also refuse over-retention and unknown-version imports without writes, then prove backend forget excludes new recall while idle resume preserves the old journal/messages with zero new provider calls |

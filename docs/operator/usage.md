@@ -670,7 +670,7 @@ Current delivery and remaining work follow this sequence:
 | P23 | Complete within selected scope | Own-session/child reports, optional [shared reservations](budgets.md) and explicit [extension text calls](extensions.md#accounted-model-calls); source/package/platform gates passed. Context bytes are not tokens or an invoice |
 | P24 | Independent architecture validation and baseline security | See the [review checkpoint](architecture-review.md) and [dispositions](../developer/architecture-review-dispositions.md) for current evidence and remaining gates |
 | P25 | Larger supervised comparative research/self-development trial | Complete within the [recorded supervised scope](../developer/p25-evaluation.md); this is not blanket architecture or security certification |
-| P26 | Optional working/long-term memory | P26A/P26B complete within the [explicit-note scope and recovery limits](memory.md); source, installed and hosted gates pass |
+| P26 | Optional working/long-term memory | P26A/P26B implemented within the [explicit-note scope and recovery limits](memory.md); cleanup diagnosed and repaired locally, completion awaiting repaired-source platform checks |
 | P27 | Research engine, graph and RAG | Deferred; independently configurable and default-off when delivered |
 | P28 | STT/text-agent/TTS and realtime media | Deferred former-P24 scope, with explicit device/provider/billing selection; text authentication does not imply audio access |
 
