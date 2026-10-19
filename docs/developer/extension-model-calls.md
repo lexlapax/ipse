@@ -105,8 +105,10 @@ and original child/parent origin. Shared reservations, dispatch intent, usage
 peaks, conservative settlement, and refusals follow main/summary accounting.
 Attempted-request facts include refusals; budget bookings exclude them.
 
-The accepted successful response body is at most 64 KiB. This bounds decoding,
-not every HTTP buffer or process heap. Private `extension_model_response` retains
+The provider wire body is at most 1 MiB, including streaming JSON and event
+framing. Keep this separate from the returned text ceiling of at most 8 KiB.
+A stream can carry many framing bytes for a small final answer. This wire bound
+does not bound every HTTP buffer or process heap. Private `extension_model_response` retains
 the original assistant/native data with exact IDs/digest, up to 256 KiB encoded.
 The worker sees only bounded text and own-call normalized usage:
 
@@ -133,6 +135,12 @@ Other closed failure codes are `model_limit` before admission,
 `model_request_failed`, `model_timeout`, and `model_cancelled`. Transport failure
 may consume resources; absent usage remains unknown. No retry, refund, or final
 charge is inferred from an interrupted response.
+
+When changing these limits, run the streaming-framing and response-byte cases in
+`test/extensions_invocation_test.exs`. The first sends more than 64 KiB of valid
+framing with a small final text result; the second refuses a wire body above
+1 MiB. Keep the separate rejected-text case: it retains completed inference and
+usage when the returned text exceeds the extension's requested ceiling.
 
 ## Recovery and verification
 

@@ -1,6 +1,7 @@
 defmodule Ipse.Extensions.ModelCall do
   @moduledoc "Explicit one-shot text inference with profile-bound canonical accounting."
   alias Ipse.{Usage, Profiles}
+  @wire_bytes 1_048_576
 
   @providers %{
     "chatgpt" => :chatgpt,
@@ -142,7 +143,7 @@ defmodule Ipse.Extensions.ModelCall do
           execution: selected,
           reasoning_effort: profile["reasoning_effort"],
           max_output_tokens: execution["max_output_tokens"],
-          max_response_bytes: 65_536,
+          max_response_bytes: @wire_bytes,
           timeout_ms: execution["timeout_ms"]
         })
 

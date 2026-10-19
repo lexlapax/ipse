@@ -75,7 +75,7 @@ defmodule Ipse.Extensions.ModelCallTest do
     assert runtime.model == "local"
     assert runtime.max_output_tokens == 16
     assert runtime.timeout_ms == 2000
-    assert runtime.max_response_bytes == 65_536
+    assert runtime.max_response_bytes == 1_048_576
     assert facts["billing_mode"] == "local"
     assert facts["max_output_tokens"] == 16
     refute Map.has_key?(facts, "base_url")

@@ -42,3 +42,13 @@ It confirmed unchanged archive and host files with development tools absent from
 the runtime path. These focused checks do not establish a new published release
 or corrected-source hosted Linux/macOS acceptance. The fixture retains complete
 traffic comparisons, bounded waits and confirmed fixture-process shutdown.
+
+The [hosted correction run at `9a8a3a8`](https://github.com/lexlapax/ipse/actions/runs/39205576999)
+passed every Linux step. macOS passed source tests, native enforcement, package
+verification and the installed extension/model/MCP/embedding proofs. It reached
+knowledge preset admission before the enclosing 20-minute job deadline cancelled
+it. The source test phase took 708.5 seconds. The remaining knowledge and final
+sandbox steps therefore remain unverified by this run. The later correction
+raises only the expanded CI job budget to 30 minutes; runtime, test and cleanup
+deadlines remain unchanged. The cancelled run is retained instead of reported
+as successful platform acceptance.

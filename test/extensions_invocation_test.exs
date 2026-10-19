@@ -886,8 +886,32 @@ defmodule Ipse.Extensions.InvocationTest do
     assert File.read!(ctx.called) == calls
   end
 
+  test "extension streaming framing can exceed64KiB while returned text remains bounded", ctx do
+    prefix =
+      String.duplicate(
+        Jason.encode!(%{"done" => false, "message" => %{"content" => ""}}) <> "\n",
+        2000
+      )
+
+    assert byte_size(prefix) > 65_536 and byte_size(prefix) < 1_048_576
+    {base, server} = model_fixture(self(), prefix: prefix)
+    config = model_config(ctx.config, base) |> Map.put(:approval, :allow)
+    pid = start(%{ctx | config: config})
+    :ok = host_command(pid, model_request())
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+    assert :ok = Task.await(server)
+    assert host_outcome(pid)["status"] == "ok"
+    assert host_outcome(pid)["value"]["text"] == "entities"
+    refute Jason.encode!(host_outcome(pid)) =~ "private-thinking"
+    [record] = Session.info(pid).accounting["requests"]
+    assert record["outcome"] == "completed"
+    assert record["usage"]["counts"]["total_tokens"] == 10
+    {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+    assert {:ok, []} = Session.restore_context(events)
+  end
+
   test "extension response-byte refusal remains a failed accounted attempt", ctx do
-    {base, server} = model_fixture(self(), text: String.duplicate("x", 70_000))
+    {base, server} = model_fixture(self(), text: String.duplicate("x", 1_048_577))
     config = model_config(ctx.config, base) |> Map.put(:approval, :allow)
     pid = start(%{ctx | config: config})
     :ok = host_command(pid, model_request())
@@ -1035,16 +1059,17 @@ defmodule Ipse.Extensions.InvocationTest do
             end
 
             body =
-              Jason.encode!(%{
-                "model" => "helper-reported",
-                "done" => true,
-                "prompt_eval_count" => 7,
-                "eval_count" => 3,
-                "message" => %{
-                  "content" => opts[:text] || "entities",
-                  "thinking" => "private-thinking"
-                }
-              }) <> "\n"
+              (opts[:prefix] || "") <>
+                Jason.encode!(%{
+                  "model" => "helper-reported",
+                  "done" => true,
+                  "prompt_eval_count" => 7,
+                  "eval_count" => 3,
+                  "message" => %{
+                    "content" => opts[:text] || "entities",
+                    "thinking" => "private-thinking"
+                  }
+                }) <> "\n"
 
             :gen_tcp.send(
               socket,

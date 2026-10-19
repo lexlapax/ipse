@@ -290,7 +290,7 @@ It does not remove suppression. For a new unsuppressed demonstration source:
 ```text
 /ext ext__graph__source {"store":"notes","action":"put","args":{"source_id":"manual:model-release","generation":1,"expected_revision":0,"title":"Release policy","text":"Release requires quiescence.","uri":"local:release-policy","observed_at_ms":1700000000000,"event_at_ms":null,"expires_at_ms":null}}
 /ext ext__graph__source {"store":"notes","action":"inspect","args":{"source_id":"manual:model-release"}}
-/ext ext__graph__extract {"store":"notes","extraction":"assisted","source_id":"manual:model-release","generation":1,"max_edges":4,"chunks":["CHUNK_ID_FROM_INSPECT"],"facts":[]}
+/ext ext__graph__extract {"store":"notes","extraction":"assisted","source_id":"manual:model-release","generation":1,"max_edges":1,"chunks":["CHUNK_ID_FROM_INSPECT"],"facts":[]}
 ```
 
 Wait for each command to finish and replace `CHUNK_ID_FROM_INSPECT` with its actual
@@ -298,13 +298,18 @@ Wait for each command to finish and replace `CHUNK_ID_FROM_INSPECT` with its act
 `facts: []`; it does not accept a blend of supplied and generated facts. Model
 profiles and billing remain explicit. See [profile configuration](model-profiles.md).
 
-Model extraction has a separate full egress approval, followed by ordinary State
-write approvals. Its proposed span must match a selected source chunk; malformed
+First review the State writes that claim the extraction draft. Then review the
+separate full model-egress approval and the State writes that publish its result.
+Its proposed span must match a selected source chunk; malformed
 JSON, invented chunk IDs, or invalid spans refuse. This establishes byte
 attribution, not that the relationship accurately interprets the quotation.
 Rendered extraction input is at most 4096 bytes and model output at most 8192
 bytes. Two full 2048-byte chunks plus JSON framing can exceed the input allowance;
 select a smaller batch when that happens. No source text is silently shortened.
+Start with the one-fact batch above. Before inference, the store reserves space
+for the maximum requested facts and their citations within the 16-effect limit.
+A larger `max_edges` can refuse with `effect_limit` even for a short source;
+it is an upper bound to reserve, not a promise that every batch size fits.
 Live optional model-extraction quality has not been measured. Do not infer that
 an accepted response is a validated knowledge graph.
 

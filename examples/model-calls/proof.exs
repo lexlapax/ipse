@@ -264,14 +264,23 @@ defmodule IpseModelExample.Proof do
       {headers, body} = read_request(socket, "")
       send(owner, :model_fixture_dispatched)
 
+      framing =
+        String.duplicate(
+          Jason.encode!(%{"done" => false, "message" => %{"content" => ""}}) <> "\n",
+          2000
+        )
+
+      true = byte_size(framing) > 65_536
+
       response =
-        Jason.encode!(%{
-          "done" => true,
-          "message" => %{"content" => "entities", "thinking" => "private-fixture"},
-          "model" => "fixture-reported",
-          "prompt_eval_count" => 7,
-          "eval_count" => 3
-        }) <> "\n"
+        framing <>
+          Jason.encode!(%{
+            "done" => true,
+            "message" => %{"content" => "entities", "thinking" => "private-fixture"},
+            "model" => "fixture-reported",
+            "prompt_eval_count" => 7,
+            "eval_count" => 3
+          }) <> "\n"
 
       :ok =
         :gen_tcp.send(
