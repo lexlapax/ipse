@@ -1,0 +1,127 @@
+{
+  "artifacts": {
+    "answer": "artifacts/answer",
+    "dense": "artifacts/dense",
+    "explicit": "artifacts/explicit",
+    "lexical": "artifacts/lexical",
+    "model": "artifacts/model",
+    "research": "artifacts/research",
+    "semantic": "artifacts/semantic"
+  },
+  "as_of_ms": "manifest",
+  "blind_seed": null,
+  "budgets": {
+    "dense": {
+      "max_input_tokens": 134217728,
+      "max_output_tokens": 33554432,
+      "max_requests": 8192,
+      "reserve_input_tokens": 16384,
+      "reserve_output_tokens": 4096,
+      "version": 1
+    },
+    "graph_explicit": {
+      "max_input_tokens": 16777216,
+      "max_output_tokens": 4194304,
+      "max_requests": 1024,
+      "reserve_input_tokens": 16384,
+      "reserve_output_tokens": 4096,
+      "version": 1
+    },
+    "graph_model": {
+      "max_input_tokens": 134217728,
+      "max_output_tokens": 33554432,
+      "max_requests": 8192,
+      "reserve_input_tokens": 16384,
+      "reserve_output_tokens": 4096,
+      "version": 1
+    },
+    "hybrid": {
+      "max_input_tokens": 134217728,
+      "max_output_tokens": 33554432,
+      "max_requests": 8192,
+      "reserve_input_tokens": 16384,
+      "reserve_output_tokens": 4096,
+      "version": 1
+    },
+    "lexical": {
+      "max_input_tokens": 16777216,
+      "max_output_tokens": 4194304,
+      "max_requests": 1024,
+      "reserve_input_tokens": 16384,
+      "reserve_output_tokens": 4096,
+      "version": 1
+    },
+    "rerank": {
+      "max_input_tokens": 134217728,
+      "max_output_tokens": 33554432,
+      "max_requests": 8192,
+      "reserve_input_tokens": 16384,
+      "reserve_output_tokens": 4096,
+      "version": 1
+    },
+    "research": {
+      "max_input_tokens": 16777216,
+      "max_output_tokens": 4194304,
+      "max_requests": 1024,
+      "reserve_input_tokens": 16384,
+      "reserve_output_tokens": 4096,
+      "version": 1
+    }
+  },
+  "data": {
+    "corpus": "corpus.json",
+    "expected_queries": 50,
+    "manifest_sha256": "2759aebcd62f1d6368ce41dfd038ead0d4948f78ab5db4ba41ae92d7e9336063",
+    "queries": "heldout.json",
+    "split": "heldout"
+  },
+  "embedding_profiles": {
+    "p27_embedding": {
+      "base_url": "http://127.0.0.1:11434",
+      "credential": "none",
+      "dimension_mode": "native",
+      "dimensions": 768,
+      "model": "embeddinggemma:latest",
+      "operation": "embedding",
+      "provider": "ollama",
+      "timeout_ms": 120000
+    }
+  },
+  "interval_ms": 100,
+  "mode": "heldout",
+  "models": {
+    "embeddinggemma:latest": "85462619ee721b466c5927d109d4cb765861907d5417b9109caebc4e614679f1",
+    "qwen3.5:9b": "6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7"
+  },
+  "profiles": {
+    "p27_answer": {
+      "base_url": "http://127.0.0.1:11434",
+      "credential": "none",
+      "max_output_tokens": 4096,
+      "model": "qwen3.5:9b",
+      "provider": "ollama",
+      "reasoning_effort": "none",
+      "timeout_ms": 120000
+    },
+    "p27_extract": {
+      "base_url": "http://127.0.0.1:11434",
+      "credential": "none",
+      "max_output_tokens": 4096,
+      "model": "qwen3.5:9b",
+      "provider": "ollama",
+      "reasoning_effort": "none",
+      "timeout_ms": 120000
+    },
+    "p27_rerank": {
+      "base_url": "http://127.0.0.1:11434",
+      "credential": "none",
+      "max_output_tokens": 4096,
+      "model": "qwen3.5:9b",
+      "provider": "ollama",
+      "reasoning_effort": "none",
+      "timeout_ms": 120000
+    }
+  },
+  "search_port": 47627,
+  "version": 1
+}

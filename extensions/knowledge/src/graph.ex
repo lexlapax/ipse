@@ -381,7 +381,7 @@ defmodule IpseKnowledge.Graph do
       "version" => 1,
       "status" => status,
       "evidence" => evidence,
-      "claims" => claims,
+      "claims" => Evidence.public_claims(evidence, claims),
       "gaps" => gaps,
       "coverage" => coverage,
       "continuation" => continuation

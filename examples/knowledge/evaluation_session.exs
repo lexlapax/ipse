@@ -252,7 +252,7 @@ defmodule IpseKnowledgeExample.EvaluationSession do
          Enum.all?(~w(search fetch retrieval), &profile_name?(params[&1])) and
          (is_nil(params["rerank"]) or profile_name?(params["rerank"])) and
          text?(params["query"], 1024) and is_map(params["limits"]) and
-         is_list(params["sources"]) and length(params["sources"]) <= 3,
+         is_list(params["sources"]) and length(params["sources"]) <= 10,
        do: one(run, "research", params),
        else: {:error, :invalid_research, run}
   end

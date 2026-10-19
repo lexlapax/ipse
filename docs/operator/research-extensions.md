@@ -110,7 +110,11 @@ equal to the selected time is eligible; expiry equal to it is excluded.
 
 A word match does not establish semantic support. With no attributed graph facts,
 the extension leaves the question's claim open with
-`semantic_support_unassessed`. No usable match returns `status: "abstain"`.
+`semantic_support_unassessed`. Its `evidence_indexes` are zero-based positions
+in the same result's `evidence` array. For one returned passage, expect
+`"evidence_indexes": [0]`; inspect that passage's complete citation. These
+references avoid repeating quotation text and do not assess semantic support.
+No usable match returns `status: "abstain"`.
 Inspect source text and gaps before asking a model or writing a conclusion.
 
 ## Bound the question and inspect caller-provided claims
@@ -125,15 +129,19 @@ exactly the eight fields in the example; do not add arbitrary metadata.
 | Input | Bound |
 | --- | --- |
 | Query | 1..1024 UTF-8 bytes |
-| `max_sources` | 1..3 |
+| `max_sources` | 1..10 |
 | `max_body_bytes` | 1..49152 accumulated source-text bytes |
 | `timeout_ms` | 1000..30000 ms requested investigation allowance |
-| Supplied sources | At most three, within `max_sources` and the body allowance |
+| Supplied sources | At most ten, within `max_sources` and the body allowance |
 | Each source | ID 256 bytes, title 128 bytes, URI 512 bytes, text at most 65536 bytes |
 | Returned result | At most 12000 encoded JSON bytes |
 
 The complete SDK input still has its 16 KiB object bound; these field maxima
 are not additive. Smaller source batches can be needed for escaped text.
+Ten sources are a count ceiling, not a guarantee that their citations fit the
+result allowance. A result exceeding 12000 encoded bytes returns
+`result_too_large`; no passages or provenance are silently removed. Review a
+smaller explicit investigation if needed, retaining the original refusal.
 Later fetch/rerank work refuses when less than 1000 ms of its allowance remains;
 individual host requests and cleanup retain their own deadlines. A larger body
 limit does not grant longer execution or wider authority.

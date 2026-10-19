@@ -86,6 +86,10 @@ corrected-source hosted verification is still required.
 
 ## Remaining full-milestone gates
 
+The [complete declaration record](benchmark-declaration.md) retains the public
+seven-strategy builder, the Research source-count mismatch and the duplicate
+open-claim citation capacity failure. Its preparation examples do not constitute
+a held-out execution freeze or measured model quality.
 The later [HTTP fixture lifetime correction](http-lifetime.md) retains the
 corrected-format run's Linux failure and the controlled ordering proof and repair.
 The later [evaluation preparation record](evaluation-preparation.md) retains

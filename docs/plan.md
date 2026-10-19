@@ -363,6 +363,14 @@ The [independent package record](archive/2026-10-19-p27-knowledge-packages/index
 retains source/installed protocol evidence and controlled Research repairs. It
 does not establish model quality or select an optional engine. The full frozen
 held-out evaluation remains required before completion.
+
+The [complete comparison declaration](developer/knowledge-evaluation.md#declare-the-complete-comparison)
+generates all seven strategies and explicit budgets without opening inputs.
+Its [capacity record](archive/2026-10-19-p27-knowledge-packages/benchmark-declaration.md)
+retains the Research count mismatch and duplicate-citation output failure.
+Research now accepts up to ten sources under the existing body/time/output
+bounds; a legal count can still refuse an oversized result. Declaration and
+synthetic fixtures do not close the clean freeze, held-out or selection gates.
 The [evaluation preparation record](archive/2026-10-19-p27-knowledge-packages/evaluation-preparation.md)
 separates synthetic scorer checks from the initial tuning outcomes. The later
 [model workflow record](archive/2026-10-19-p27-knowledge-packages/model-workflows.md)

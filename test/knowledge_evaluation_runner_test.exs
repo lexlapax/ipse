@@ -1,4 +1,4 @@
-Code.require_file("../examples/knowledge/evaluation_runner.exs", __DIR__)
+Code.require_file("../examples/knowledge/evaluation_plan.exs", __DIR__)
 
 defmodule Ipse.KnowledgeEvaluationRunnerTest do
   use ExUnit.Case, async: false
@@ -251,174 +251,13 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
   end
 
   defp matrix_plan(ctx, origin) do
-    base = plan(ctx)
-    lexical = hd(base["variants"])
-    common = hd(lexical["artifacts"])["options"]
-
-    vector =
-      Map.merge(common, %{
-        "embedding" => %{"native" => %{"kind" => "embedding", "profile" => "p27_embedding"}},
-        "retrieval" =>
-          Map.merge(common["retrieval"], %{
-            "dense" => %{"kind" => "dense", "version" => 1, "embedding" => "native"},
-            "combined" => %{
-              "kind" => "hybrid",
-              "version" => 1,
-              "lexical" => "words",
-              "embedding" => "native",
-              "graph" => nil,
-              "rrf_k" => 60,
-              "missing_embedding" => "refuse"
-            }
-          })
-      })
-
-    answer = %{
-      "alias" => "answer",
-      "instance" => "answer",
-      "options" => %{},
-      "state_binding" => nil
-    }
-
-    variants =
-      for id <- ~w(lexical graph_explicit graph_model dense hybrid rerank research) do
-        {prepare, artifact, options, prepare_options, query_options, bindings, extra} =
-          case id do
-            "lexical" ->
-              {"none", "lexical", common, lexical["prepare_options"], lexical["query_options"],
-               lexical["bindings"], []}
-
-            graph when graph in ~w(graph_explicit graph_model) ->
-              kind = if graph == "graph_explicit", do: "explicit", else: "model"
-
-              extraction =
-                if kind == "explicit",
-                  do: %{"kind" => "explicit", "version" => 1},
-                  else: %{"kind" => "model_complete", "profile" => "p27_extract", "version" => 1}
-
-              graph_options =
-                JSON.decode!(File.read!("extensions/knowledge/options/graph-explicit.json"))
-                |> Map.put("extraction", %{"chosen" => extraction})
-
-              corpus_options =
-                put_in(common, ["retrieval", "graph"], %{
-                  "kind" => "graph",
-                  "version" => 1,
-                  "lexical" => "words",
-                  "depth" => 2,
-                  "max_nodes" => 16,
-                  "max_edges" => 16
-                })
-
-              bindings =
-                Map.put(lexical["bindings"], "extract", %{
-                  "instance" => "graph",
-                  "id" => "extract"
-                })
-
-              {if(kind == "explicit", do: "explicit", else: "extract"), "lexical", corpus_options,
-               %{"store" => "notes", "extraction" => "chosen"},
-               %{lexical["query_options"] | "retrieval" => "graph"}, bindings,
-               [
-                 %{
-                   "alias" => kind,
-                   "instance" => "graph",
-                   "options" => graph_options,
-                   "state_binding" => "evaluation"
-                 }
-               ]}
-
-            dense when dense in ~w(dense hybrid rerank) ->
-              opts =
-                if dense == "rerank",
-                  do:
-                    Map.put(vector, "rerank", %{
-                      "chosen" => %{
-                        "kind" => "model_complete",
-                        "profile" => "p27_rerank",
-                        "max_candidates" => 16,
-                        "quote_bytes" => 128
-                      }
-                    }),
-                  else: vector
-
-              query = %{
-                lexical["query_options"]
-                | "retrieval" => if(dense == "dense", do: "dense", else: "combined"),
-                  "rerank" => if(dense == "rerank", do: "chosen")
-              }
-
-              {"embedding", if(dense == "rerank", do: "semantic", else: "dense"), opts,
-               %{"store" => "notes", "embedding" => "native"}, query,
-               Map.put(lexical["bindings"], "index", %{"instance" => "corpus", "id" => "index"}),
-               []}
-
-            "research" ->
-              opts = %{
-                common
-                | "stores" => %{},
-                  "search" => %{
-                    "web" => %{
-                      "kind" => "mcp",
-                      "binding" => "search_web",
-                      "contract" => "search-v1"
-                    }
-                  },
-                  "fetch" => %{
-                    "web" => %{
-                      "kind" => "mcp",
-                      "binding" => "fetch_web",
-                      "contract" => "fetch-v1"
-                    }
-                  }
-              }
-
-              {"research", "research", opts, %{},
-               %{
-                 "search" => "web",
-                 "fetch" => "web",
-                 "retrieval" => "words",
-                 "rerank" => nil,
-                 "limits" => %{
-                   "max_sources" => 3,
-                   "max_body_bytes" => 49_152,
-                   "timeout_ms" => 30_000
-                 },
-                 "sources" => []
-               }, %{"research" => %{"instance" => "research", "id" => "investigate"}}, []}
-          end
-
-        instance = if id == "research", do: "research", else: "corpus"
-
-        %{
-          lexical
-          | "id" => id,
-            "prepare" => prepare,
-            "artifacts" =>
-              [
-                %{
-                  "alias" => artifact,
-                  "instance" => instance,
-                  "options" => options,
-                  "state_binding" => if(id != "research", do: "evaluation")
-                }
-              ] ++ extra ++ [answer],
-            "prepare_options" => prepare_options,
-            "query_options" => query_options,
-            "bindings" =>
-              Map.put(bindings, "answer", %{"instance" => "answer", "id" => "complete"}),
-            "budget" => %{"version" => 1, "max_requests" => 20}
-        }
-      end
-
     {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}])
     {:ok, {_, search_port}} = :inet.sockname(listener)
     :gen_tcp.close(listener)
 
     profiles =
-      Map.new(
-        ~w(p27_extract p27_rerank p27_answer),
-        &{&1,
+      Map.new(~w(p27_extract p27_rerank p27_answer), fn name ->
+        {name,
          %{
            "provider" => "ollama",
            "model" => "fixture-text",
@@ -428,13 +267,13 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
            "reasoning_effort" => "none",
            "timeout_ms" => 120_000
          }}
-      )
+      end)
 
-    %{
-      base
-      | "artifacts" => ctx.artifacts,
-        "variants" => variants,
-        "answer" => true,
+    spec =
+      plan(ctx)
+      |> Map.drop(~w(answer variants))
+      |> Map.merge(%{
+        "artifacts" => ctx.artifacts,
         "profiles" => profiles,
         "embedding_profiles" => %{
           "p27_embedding" => %{
@@ -448,8 +287,16 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
             "timeout_ms" => 120_000
           }
         },
-        "search_port" => search_port
-    }
+        "search_port" => search_port,
+        "budgets" =>
+          Map.new(
+            ~w(lexical graph_explicit graph_model dense hybrid rerank research),
+            &{&1, %{"version" => 1, "max_requests" => 20}}
+          )
+      })
+
+    {:ok, declared} = IpseKnowledgeExample.EvaluationPlan.build(spec)
+    declared
   end
 
   defp model_fixture do

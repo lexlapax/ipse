@@ -14,6 +14,7 @@ The evaluation helpers have separate owners. Keep their inputs separate:
 
 | Owner | Implementation | Input and result |
 | --- | --- | --- |
+| Declaration | `examples/knowledge/evaluation_plan.exs` | Explicit artifacts, local profiles and seven budgets become the complete strategy matrix without opening inputs |
 | Freeze | `examples/knowledge/evaluation_freeze.exs` | A clean source tree, public plan and inert artifacts become a pinned manifest and copied artifacts |
 | Dataset projection | `examples/knowledge/evaluation_input.exs` | Dataset bytes become separately validated corpus, label-free queries or scoring labels |
 | Orchestration | `examples/knowledge/evaluation_runner.exs` | A validated variant plan becomes public Session calls, first predictions and retained execution failures |
@@ -39,6 +40,68 @@ and expected answers out of the driver, extension options and model inputs.
 Finalize raw prediction files and their hashes before opening labels. A scorer
 can enforce the order of its own callbacks, but cannot prove that another caller
 has never opened those files.
+
+## Declare the complete comparison
+
+Build the seven independent artifacts into a fresh private directory. These
+commands compile artifacts without importing them or contacting a model:
+
+```sh
+IPSE_BENCHMARK=$(mktemp -d)
+elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$IPSE_BENCHMARK/artifacts/lexical" --package corpus --preset state-lexical
+elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$IPSE_BENCHMARK/artifacts/dense" --package corpus --preset state-dense
+elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$IPSE_BENCHMARK/artifacts/semantic" --package corpus --preset state-semantic
+elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$IPSE_BENCHMARK/artifacts/explicit" --package graph --preset state-explicit
+elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$IPSE_BENCHMARK/artifacts/model" --package graph --preset state-model
+elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$IPSE_BENCHMARK/artifacts/research" --package research --preset mcp
+elixir examples/model-calls/build.exs --sdk _build/dev/lib/ipse/ebin --output "$IPSE_BENCHMARK/artifacts/answer"
+cp examples/knowledge/benchmark-spec.json "$IPSE_BENCHMARK/spec.json"
+```
+
+Review `spec.json` before generating a plan. It declares a fifty-query held-out
+comparison with lexical, explicit graph, model graph, dense, hybrid, rerank and
+Research variants. Every variant selects the same answer helper. Its example
+local profiles name Qwen and embeddinggemma with exact expected inventory
+digests; review the endpoint, installed model identities and budgets for your
+authorized run. There is no provider fallback or model download. The declared
+`corpus.json` and `heldout.json` are relative dataset member names. Confirm the
+actual member names from independently supplied metadata before freezing;
+generating a plan does not verify them or open the dataset manifest.
+
+Generate one private declaration:
+
+```sh
+mix run scripts/prepare-knowledge-evaluation.exs -- --spec "$IPSE_BENCHMARK/spec.json" --output "$IPSE_BENCHMARK/plan.json" --new-blind-seed
+```
+
+Expect `status: "ok"`, the output path, its SHA256 and `variants: 7`. The script
+resolves artifact paths relative to the specification, validates every variant
+and writes an owner-only file. It starts no artifact worker, dataset read or
+model request. Existing output paths refuse. `--new-blind-seed` requires a null
+seed in the input and creates a fresh value in the private plan; it does not
+print that value or make inference deterministic. Keep the plan private when
+preparing independent blind review.
+
+The example budgets explicitly cap each variant at 1024 baseline requests or
+8192 requests for inference-heavy preparation. Their token caps equal their
+request cap times the declared reservation. These are finite admission limits,
+not predicted consumption or cost. The runner divides each budget equally
+among projects. The baseline caps cover fifty answers even for an uneven
+project split; unused shares are not transferred or renewed. Review preparation
+capacity separately. Research requests up to ten sources within the existing
+body, time and result bounds; a result that cannot fit remains a failed row.
+
+Run the declaration exercises before changing this format:
+
+```sh
+mix test test/knowledge_evaluation_plan_test.exs test/knowledge_evaluation_runner_test.exs
+```
+
+The CLI control generates two independent seeds, checks permissions, refuses an
+overwrite and verifies that nonexistent dataset/artifact paths stay unopened.
+The public-Session matrix uses this same builder with scripted profiles. A
+valid declaration is preparation. The executable preflight and complete clean
+freeze below are still required before opening held-out inputs.
 
 ## Seal identities before opening inputs
 
@@ -241,7 +304,7 @@ Run the orchestration fixture:
 mix test test/knowledge_evaluation_runner_test.exs
 ```
 
-Open its `matrix_plan/2` helper. It selects independently built Corpus, Graph,
+Open its `matrix_plan/2` helper and follow `EvaluationPlan.build/1`. They select independently built Corpus, Graph,
 Research and text-helper artifacts, with explicit command bindings and named
 profiles. Its seven variants cover lexical retrieval, explicit and model
 extraction, dense retrieval, hybrid retrieval, reranking and Research. The

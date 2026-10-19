@@ -31,6 +31,24 @@ defmodule Ipse.KnowledgeEvidenceTest do
     assert status == 0, output
   end
 
+  test "public open claims resolve against final order and retain unreturned provenance" do
+    pure(~S'''
+    one=source.("first passage",%{}); two=source.("second passage",%{"source_id"=>"second"})
+    c1=cite.(one,"first passage"); c2=cite.(two,"second passage")
+    evidence=Enum.map([c1,c2], &%{"citation"=>&1,"score"=>1.0,"method"=>"bm25"})
+    {:ok,[claim]}=E.classify(evidence,[],"passage")
+    [public]=E.public_claims(Enum.reverse(evidence),[claim])
+    assert public["evidence_indexes"]==[1,0]
+    refute Map.has_key?(public,"basis")
+    assert Enum.map(public["evidence_indexes"], &Enum.at(Enum.reverse(evidence),&1)["citation"])==claim["basis"]
+    assert E.public_claims(Enum.take(evidence,1),[claim])==[claim]
+    attributed=%{"label"=>"supported","basis"=>[c1]}
+    assert E.public_claims(evidence,[attributed])==[attributed]
+    {:ok,[empty]}=E.classify([],[],"passage")
+    assert hd(E.public_claims([],[empty]))["evidence_indexes"]==[]
+    ''')
+  end
+
   test "source identity and exact byte citations refuse forged attribution and boundary splits" do
     pure(~S'''
     s=source.("Le café reste ouvert. The café closes at 17:00 UTC.",%{})

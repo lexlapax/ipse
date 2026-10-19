@@ -134,6 +134,49 @@ defmodule IpseKnowledge.PackagesIsolationTest do
       end)
     end
 
+    test "research returns ten cited sources and refuses an eleventh" do
+      sources = Enum.map(1..11, fn n ->
+        %{"source_id" => "s#{n}", "generation" => 1, "title" => "Locks",
+          "text" => "Lock files preserve inode identity.", "uri" => "local:s#{n}",
+          "observed_at_ms" => 1, "event_at_ms" => nil, "expires_at_ms" => nil}
+      end)
+      descriptor = IpseKnowledge.Research.describe()
+      schema = hd(descriptor["exports"]["commands"])["arguments_schema"]
+      assert schema["properties"]["limits"]["properties"]["max_sources"]["maximum"] == 10
+      assert schema["properties"]["sources"]["maxItems"] == 10
+      for {count, expected} <- [{10, "ok"}, {11, "refused"}] do
+        {:ok, state} = IpseKnowledge.Research.init(offline_options())
+        args = investigation(Enum.take(sources, count))
+          |> put_in(["limits", "max_sources"], count)
+        assert {:ok, %{"kind" => "result", "value" => result}, _} =
+          IpseKnowledge.Research.handle("invoke.command", %{"id" => "investigate", "arguments" => args}, state)
+        assert result["status"] == expected, inspect(Map.take(result, ~w(status gaps coverage)))
+        if count == 10 do
+          assert length(result["evidence"]) == 10
+          assert Enum.sort(Enum.map(result["evidence"], & &1["citation"]["source_id"])) ==
+            Enum.sort(Enum.map(Enum.take(sources, 10), & &1["source_id"]))
+          assert byte_size(JSON.encode!(result)) <= 12_000
+          assert result["claims"] == [%{"label" => "open",
+            "evidence_indexes" => Enum.to_list(0..9),
+            "uncertainty" => "semantic_support_unassessed"}]
+        end
+      end
+    end
+
+    test "ten-source allowance does not widen the result byte ceiling" do
+      sources = Enum.map(1..10, fn n ->
+        %{"source_id" => "s#{n}", "generation" => 1, "title" => "Locks",
+          "text" => "Lock " <> String.duplicate("files ", 170), "uri" => "local:s#{n}",
+          "observed_at_ms" => 1, "event_at_ms" => nil, "expires_at_ms" => nil}
+      end)
+      {:ok, state} = IpseKnowledge.Research.init(offline_options())
+      args = investigation(sources) |> put_in(["limits", "max_sources"], 10)
+      assert {:ok, %{"kind" => "result", "value" => result}, _} =
+        IpseKnowledge.Research.handle("invoke.command", %{"id" => "investigate", "arguments" => args}, state)
+      assert result["status"] == "refused"
+      assert result["gaps"] == [%{"code" => "result_too_large"}]
+    end
+
     test "explicit research time applies observation and expiry while invalid times refuse" do
       source = %{"source_id" => "dev:locks", "generation" => 1, "title" => "Locks",
         "text" => "Session lock files preserve inode identity.", "uri" => "local:locks",

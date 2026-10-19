@@ -548,6 +548,24 @@ defmodule IpseKnowledge.Evidence do
     end
   end
 
+  def public_claims(evidence, claims) do
+    Enum.map(claims, fn
+      %{"label" => "open", "uncertainty" => "semantic_support_unassessed", "basis" => basis} =
+          claim ->
+        indexes =
+          Enum.map(basis, fn citation ->
+            Enum.find_index(evidence, &(&1["citation"] == citation))
+          end)
+
+        if Enum.all?(indexes, &is_integer/1),
+          do: claim |> Map.delete("basis") |> Map.put("evidence_indexes", indexes),
+          else: claim
+
+      claim ->
+        claim
+    end)
+  end
+
   defp walk(_, _, nodes, selected, 0, _), do: {selected, nodes, false}
   defp walk(_, [], nodes, selected, _, _), do: {selected, nodes, false}
 

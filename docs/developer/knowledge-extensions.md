@@ -120,6 +120,24 @@ remain open for semantic support. Research's provided ledger normalizes supplied
 provenance and cannot manufacture the native [research ledger](research.md)'s
 receipt authority.
 
+For a result without attributed facts, `Evidence.classify/3` keeps an open
+claim with `semantic_support_unassessed` and complete citation basis internally.
+At publication, `Evidence.public_claims/2` resolves that basis against the final
+rank order. When every citation is present, it emits `evidence_indexes`. Each index is a
+zero-based position in that result's complete `evidence` array. Follow the
+reference to read its full citation; do not interpret it as assessed support.
+Attributed graph claims retain their own citation `basis`. An open claim whose
+basis includes an unreturned citation also keeps its full basis, so fusion or
+truncation cannot erase provenance or produce a dangling reference. The conversion avoids duplicating
+every quotation for the synthetic open claim while preserving source identity.
+It does not raise the 12000-byte public result ceiling. Research accepts up to
+ten sources, but a legal source count can still produce `result_too_large`.
+
+Run `mix test test/knowledge_packages_test.exs` before changing these bounds.
+Its ten-source control checks every returned source and index. The eleventh
+source refuses, and ten longer quotations still refuse at the original output
+ceiling. The suite runs domain modules in a separate VM.
+
 By default, Research chooses its ranking time after capturing the bounded source set. A
 gateway can stamp a fetch at completion, so using the invocation's earlier time
 would wrongly exclude that newly captured source. Follow `Research.rank/1` and

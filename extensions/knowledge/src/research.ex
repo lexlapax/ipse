@@ -2,6 +2,7 @@ defmodule IpseKnowledge.Research do
   @behaviour Ipse.Extension
   alias IpseKnowledge.{Adapters, Evidence, Profiles}
   @preset "offline"
+  @max_sources 10
 
   def describe do
     %{
@@ -55,7 +56,7 @@ defmodule IpseKnowledge.Research do
          {:ok, retrieval} <- Profiles.lookup(state.resolved, "retrieval", args["retrieval"]),
          {:ok, _} <- Profiles.lookup(state.resolved, "rerank", args["rerank"]),
          true <- text?(args["query"], 1024) and limits?(args["limits"]),
-         true <- is_list(args["sources"]) and length(args["sources"]) <= 3,
+         true <- is_list(args["sources"]) and length(args["sources"]) <= @max_sources,
          true <- search_profile["kind"] == fetch_profile["kind"],
          true <- search_profile["kind"] == "provided" or args["sources"] == [],
          true <- retrieval["kind"] == "bm25" do
@@ -391,12 +392,16 @@ defmodule IpseKnowledge.Research do
           "additionalProperties" => false,
           "required" => ~w(max_sources max_body_bytes timeout_ms),
           "properties" => %{
-            "max_sources" => integer(1, 3),
+            "max_sources" => integer(1, @max_sources),
             "max_body_bytes" => integer(1, 49_152),
             "timeout_ms" => integer(1000, 30_000)
           }
         },
-        "sources" => %{"type" => "array", "items" => %{"type" => "object"}, "maxItems" => 3}
+        "sources" => %{
+          "type" => "array",
+          "items" => %{"type" => "object"},
+          "maxItems" => @max_sources
+        }
       }
     }
   end
@@ -435,7 +440,7 @@ defmodule IpseKnowledge.Research do
   defp limits?(limits),
     do:
       exact?(limits, ~w(max_sources max_body_bytes timeout_ms)) and
-        num?(limits["max_sources"], 1, 3) and num?(limits["max_body_bytes"], 1, 49_152) and
+        num?(limits["max_sources"], 1, @max_sources) and num?(limits["max_body_bytes"], 1, 49_152) and
         num?(limits["timeout_ms"], 1000, 30_000)
 
   defp remaining_ms(ctx),
@@ -474,7 +479,7 @@ defmodule IpseKnowledge.Research do
       "version" => 1,
       "status" => status,
       "evidence" => evidence,
-      "claims" => claims,
+      "claims" => Evidence.public_claims(evidence, claims),
       "gaps" => gaps,
       "coverage" => coverage,
       "continuation" => continuation
