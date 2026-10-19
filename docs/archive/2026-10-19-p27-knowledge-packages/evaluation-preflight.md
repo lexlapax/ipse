@@ -94,3 +94,19 @@ leave its identity seal and partial directory for inspection, but that existence
 does not establish successful preparation. These checks do not provide the
 complete resource inventory, public benchmark declaration, held-out predictions,
 independent semantic review or engine selection required to complete P27.
+
+## Hosted formatter follow-up
+
+The first [hosted matrix](https://github.com/lexlapax/ipse/actions/runs/39241763381)
+at `b336e29693039bb4bcb965cc6cf4aa1406c43e15` failed formatting on both Ubuntu
+and macOS before tests. Hosted Elixir 1.18 wraps one long readiness condition
+differently from local Elixir 1.20. The follow-up stores the repeated pure
+readiness match in a boolean to remove the long condition. Inlining that single
+definition at its three uses and stripping syntax metadata reproduces the
+complete original file's syntax tree. Initialization,
+configuration probes, cleanup acknowledgments and deadlines retain their behavior.
+All thirteen affected runner and Session controls passed in 129.1 seconds after
+this correction. Local formatting, warnings-as-errors compilation, documentation
+and pinned CI action checks also pass. Corrected-source hosted verification is
+still required and remains distinct from the earlier full-suite and installed
+receipts above.

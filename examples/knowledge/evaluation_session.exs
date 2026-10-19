@@ -87,9 +87,10 @@ defmodule IpseKnowledgeExample.EvaluationSession do
       {:ok, worker} ->
         try do
           initialized = Worker.call(worker, "initialize", entry.options)
+          ready = match?({:ok, %{"sdk" => 1}}, initialized)
 
           options_validated =
-            if knowledge? and match?({:ok, %{"sdk" => 1}}, initialized) do
+            if knowledge? and ready do
               match?(
                 {:ok,
                  %{
@@ -110,12 +111,11 @@ defmodule IpseKnowledgeExample.EvaluationSession do
 
           Map.merge(identity, %{
             "status" =>
-              if(
-                match?({:ok, %{"sdk" => 1}}, initialized) and options_validated and cleanup == :ok,
+              if(ready and options_validated and cleanup == :ok,
                 do: "ok",
                 else: "failed"
               ),
-            "initialized" => match?({:ok, %{"sdk" => 1}}, initialized),
+            "initialized" => ready,
             "options_validated" => if(knowledge?, do: options_validated),
             "cleanup" => if(cleanup == :ok, do: "confirmed", else: "unconfirmed")
           })
