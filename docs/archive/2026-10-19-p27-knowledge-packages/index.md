@@ -21,6 +21,8 @@ The [final integration platform record](platform-verification.md) binds passing
 local, native-enabled Serenity and hosted Ubuntu/macOS gates to `fb980a0`.
 The [requirement audit](requirement-audit.md) checks all fourteen acceptance areas
 and identifies the exact-memory, held-out quality and selection work still open.
+The later [aggregate-memory design](aggregate-memory-design.md) records the user's
+combined-population choice, competing architectures and synthetic Linux evidence.
 
 ## Implementation and corrections
 
