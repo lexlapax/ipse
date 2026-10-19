@@ -59,7 +59,7 @@ statement found in the final whole-manual search.
 | Independent MCP artifact, same extracted runtime | 12 checks passed; archive/host unchanged and development tools hidden |
 | Unchanged text model-call artifact, source and extracted runtime | 9 checks passed in each; archive/host unchanged and development tools hidden for installed execution |
 | Operator embedding configuration example | Actual CLI inspection passed without inference |
-| Hosted Linux/macOS embedding gates | Pending |
+| Hosted Linux/macOS embedding gates | Passed at `3e32051`, run `39198125930`; source, package and independent source/installed proofs |
 
 The local archive SHA-256 is
 `96ca1aaebab676d87cff09f31f138aa37d942960582335b26d222c30e8c5817f`.
@@ -85,7 +85,7 @@ genuine final metering while exposing no vectors, retaining reservation and
 refusing unproven resume coverage. Strict cleanup and production deadlines were
 not relaxed.
 
-## Remaining acceptance
+## Hosted verification and remaining acceptance
 
 The first [hosted run](https://github.com/lexlapax/ipse/actions/runs/39197237697)
 at `2c77907` stopped at formatting on both platforms. Elixir 1.18 wraps one guarded
@@ -95,16 +95,22 @@ after removing call metadata and this single local rename confirms alpha
 equivalence; 24 text/vector result regressions and warnings-as-errors compile
 pass. The initial comparison helper had omitted remote-call line metadata; the
 corrected comparison removes all call metadata. No runtime deadline, assertion,
-SDK bound or behavior was changed. The next exact-source hosted run remains
-required; the earlier package hash above still identifies the pre-correction
-local verification archive.
+SDK bound or behavior was changed. The earlier package hash above still identifies
+the pre-correction local verification archive.
+
+The corrected-source [hosted run](https://github.com/lexlapax/ipse/actions/runs/39198125930)
+at `3e320513fc0c8de30a77ad476aacff73888bcbf1` completed successfully on both
+`ubuntu-latest` and `macos-14`. Each job passed formatting, compilation, the full
+source suite, packaging, package verification and the independent source and
+installed embedding proof. The existing MCP and text-model artifact proofs also
+passed. These hosted packages are separate from the earlier local archive.
 
 No actual embedding or text model was called for these proofs. They establish
 transport, authority, typed storage, accounting and recovery, not retrieval,
 semantic support or model selection. Research/corpus/graph packages, source
 suppression and stale-index lifecycle, matched held-out comparisons and actual
-selected-model quality remain open in the full P27 plan. Hosted H3 checks also
-remain open until the source containing this increment is pushed and passes.
+selected-model quality remain open in the full P27 plan. The generic H3 host
+contract has passed its scoped local and hosted gates.
 
 The [quality preregistration](quality-preregistration.md) records thresholds before
 held-out exposure; it is not a measured result. The [decision trail](decisions.tsv)
