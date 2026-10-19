@@ -30,6 +30,7 @@ quick start. Try the demo before configuring a model account.
 | Understand which process owns an operation | [Follow a turn](developer/architecture.md) |
 | Add a domain tool without changing the host | [Build an extension](developer/extensions.md) |
 | Change source retrieval, graph or investigation behavior | [Study knowledge packages](developer/knowledge-extensions.md) |
+| Measure retrieval and cited answers without exposing labels | [Work through knowledge evaluation](developer/knowledge-evaluation.md) |
 | Change a durable record or recovery validator | [Study persistence](developer/persistence.md) |
 | Prove that a repair works | [Verify a change](developer/testing.md) |
 

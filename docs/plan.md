@@ -347,7 +347,7 @@ the milestone. Preserve current SDK bounds and existing operation authority.
 | P27H2 | Approved configured MCP actions from extensions; pinned descriptors, child denial, owned cancellation and unknown-outcome recovery | Complete at `2fe3583`; real stdio/HTTP, denial, cancellation and inert recovery pass; source/installed proofs pass on hosted Linux/macOS at `1f90178` |
 | P27H3 | Versioned embedding operation with selected profiles, bounded ordinary vectors, exact egress, operation-aware accounting/costs/shared budgets and no text-envelope substitution | Complete at `3e32051`; local source/macOS/installed gates and exact-source hosted Linux/macOS source/package/installed proofs pass with 768/4096-coordinate native fixtures |
 | P27A | Independent research and lexical corpus packages with named interchangeable profiles, cited evidence, explicit limits, partial failures, stale-index handling and suppression | Implementation present; final lifecycle/authority/platform and quality validation open |
-| P27B | Independent attributable graph, optional extraction, embedding/hybrid and rerank adapters; matched quality/resource comparisons before engine selection | Implementation present; actual domain inference and matched comparisons open |
+| P27B | Independent attributable graph, optional extraction, embedding/hybrid and rerank adapters; matched quality/resource comparisons before engine selection | Implementation present; tuning embedding integration passes, text extraction/rerank failures and matched comparisons remain open |
 | P27 verification | Frozen held-out workload, zero authority/isolation/replay/resurrection failures, measured retrieval/support/citation/resources, source/native/installed checks, coherent user and contributor manuals | Open |
 
 The [first host-contract record](archive/2026-10-19-p27-mcp-host-contracts/index.md)
@@ -363,6 +363,11 @@ The [independent package record](archive/2026-10-19-p27-knowledge-packages/index
 retains source/installed protocol evidence and controlled Research repairs. It
 does not establish model quality or select an optional engine. The full frozen
 held-out evaluation remains required before completion.
+The [evaluation preparation record](archive/2026-10-19-p27-knowledge-packages/evaluation-preparation.md)
+separates synthetic scorer checks from actual tuning outcomes. Three embedding
+requests and one cited-answer request completed; three text helper requests
+failed. Those failures and unknown usage remain retained. Held-out predictions
+and independent semantic review are still unmeasured.
 
 ## P28: voice and realtime media
 

@@ -181,6 +181,8 @@ search, paged fetch and citation path. Inspect the exact approval bindings,
 captured-body hash, completion-time observation and the negative-result cases.
 The [Research procedure](../operator/research-extensions.md) documents the closed
 gateway contract; a tool with a similar name need not implement it.
+For measurement work, follow the [knowledge evaluation exercises](knowledge-evaluation.md)
+through saved predictions, bounded answer context, independent review and scoring.
 Keep protocol checks separate from held-out retrieval, semantic support, citation
 and resource measurements. The [plan](../plan.md#p27-optional-research-graph-and-rag)
 owns their acceptance status; a passing fixture does not establish model quality.
