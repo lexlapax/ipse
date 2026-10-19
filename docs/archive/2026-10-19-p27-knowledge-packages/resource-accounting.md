@@ -101,3 +101,22 @@ with 1153 tests, zero failures and 32 exclusions, including its package and
 independent installed proofs. All 24 steps in each terminal job were inspected;
 only Linux's two macOS-specific steps were skipped there. The matrix's overall
 result remains failure.
+
+The unchanged local paging tests completed 21 iterations with the hosted seed,
+two passing cases per iteration. Local Elixir 1.20/OTP 29 differs from hosted
+1.18/27; those passes do not explain the timeout. The diagnostic-only follow-up
+keeps every original assertion and the one-second deadline. It follows both
+Session and task supervisors, because the first Session-only trace captured no
+invocation worker calls. The multi-root privacy control starts a task outside
+the caller's existing descendant tree and requires its call to appear without
+retaining private arguments or results. Eight focused Session/probe controls
+pass in 14.3 seconds. Positive paging traces now include four worker calls for
+bad-open and six for bad-append, with no pending calls. The probe and fixed-field
+failure receipt remain bounded, partial diagnostics, not a causal repair.
+
+The instrumented hosted-seed repetition also completed 21 iterations, with 42
+passing paging cases. Its 42 trace reports were checked: each bad-open case
+captured four worker calls, each bad-append case captured six, pending calls were
+zero, and argument/result retention flags remained false. No original success
+assertion or selected deadline changed. The hosted component delay remains
+unexplained; these repetitions establish diagnostic coverage, not resolution.

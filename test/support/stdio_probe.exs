@@ -57,8 +57,10 @@ defmodule Ipse.Test.StdioProbe do
       1 = :trace.function(session, point, [{:_, [], [{:return_trace}]}], [:local])
     end
 
-    1 =
-      :trace.process(session, target, true, [:call, :arity, :monotonic_timestamp, :set_on_spawn])
+    Enum.each(List.wrap(target), fn root ->
+      1 =
+        :trace.process(session, root, true, [:call, :arity, :monotonic_timestamp, :set_on_spawn])
+    end)
 
     :proc_lib.init_ack({:ok, self()})
 

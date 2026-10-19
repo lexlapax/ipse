@@ -21,7 +21,8 @@ defmodule Ipse.StdioProbeTest do
     output =
       capture_io(:stderr, fn ->
         {:ok, responder} = GenServer.start_link(Responder, nil)
-        probe = Ipse.Test.StdioProbe.start(self(), "synthetic")
+        {:ok, supervisor} = Task.Supervisor.start_link()
+        probe = Ipse.Test.StdioProbe.start([self(), supervisor], "synthetic")
 
         assert {:ok, _} =
                  Ipse.Extensions.Worker.call(responder, "initialize", %{
@@ -29,13 +30,14 @@ defmodule Ipse.StdioProbeTest do
                  })
 
         task =
-          Task.async(fn ->
+          Task.Supervisor.async_nolink(supervisor, fn ->
             Ipse.Extensions.Worker.call(responder, "event.feed", %{"secret" => "ARG_SENTINEL"})
           end)
 
         assert {:error, :extension_timeout} = Task.await(task)
         assert :ok = Ipse.Test.StdioProbe.stop(probe)
         GenServer.stop(responder)
+        Supervisor.stop(supervisor)
       end)
 
     refute output =~ "ARG_SENTINEL"

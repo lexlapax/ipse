@@ -213,6 +213,26 @@ replace the missing Session cleanup acknowledgment. Keep those assertions
 separate when adding owner-loss or cancellation controls. Never clear `unsettled`
 to continue an interrupted evaluation or open a replacement budget root silently.
 
+For an unexpected paging result, enable the bounded synthetic probe:
+
+```sh
+IPSE_TEST_STDIO_PROBE=1 mix test test/knowledge_evaluation_session_test.exs test/stdio_probe_test.exs
+```
+
+The probe follows both the Session and task supervisors. Invocation workers run
+under the task supervisor; tracing only the Session tree misses their startup and
+callback calls. It records function arities, elapsed times and classified returns,
+with at most 64 samples over 20 seconds. It retains no arguments or returned
+payloads. The separate failure diagnostic reports only recognized action names
+and closed receipt fields. Its privacy exercise supplies private arguments,
+results, reasons and an unexpected status, then verifies that none is printed.
+
+Compare the actions reached with worker initialization, callback and close
+observations. A timeout receipt establishes that the selected deadline expired;
+it does not identify which component delayed completion. Keep unexpected timeout
+evidence separate from the intended malformed-response case. Passing repetitions
+or a later green run cannot establish the original failure's cause.
+
 ## Follow a matched public-Session comparison
 
 Run the orchestration fixture:

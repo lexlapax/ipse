@@ -1,4 +1,5 @@
 Code.require_file("../examples/knowledge/evaluation_session.exs", __DIR__)
+Code.require_file("support/stdio_probe.exs", __DIR__)
 
 defmodule Ipse.KnowledgeEvaluationSessionTest do
   use ExUnit.Case, async: false
@@ -116,12 +117,17 @@ defmodule Ipse.KnowledgeEvaluationSessionTest do
       {run, paths} = open(ctx, unquote(mode))
       source = source(String.duplicate("é", 4500))
 
-      assert {:error, :invalid_draft_continuation, next} =
-               Evaluation.invoke(run, "ingest", %{
-                 "store" => "notes",
-                 "source" => source,
-                 "expected_revision" => 0
-               })
+      result =
+        Evaluation.invoke(run, "ingest", %{
+          "store" => "notes",
+          "source" => source,
+          "expected_revision" => 0
+        })
+
+      unless match?({:error, :invalid_draft_continuation, _}, result),
+        do: diagnose_fault(result, paths, unquote(mode))
+
+      assert {:error, :invalid_draft_continuation, next} = result
 
       assert actions(paths.log) == unquote(expected_actions)
       refute next.unsettled
@@ -217,10 +223,55 @@ defmodule Ipse.KnowledgeEvaluationSessionTest do
     await_worker_exit(paths.ready)
   end
 
+  test "unexpected paging diagnostics exclude arguments and unrecognized receipt strings" do
+    root = Path.join(System.tmp_dir!(), "ipse-evaluation-diagnostic-" <> Ipse.Usage.id())
+    File.mkdir!(root)
+    on_exit(fn -> File.rm_rf!(root) end)
+    path = Path.join(root, "actions")
+    File.write!(path, "open\nappend\n")
+
+    receipt = %{
+      "elapsed_ms" => 1040,
+      "completion_confirmed" => false,
+      "observation_outcome" => "timeout",
+      "status" => "PRIVATE_STATUS",
+      "arguments" => %{"secret" => "PRIVATE_ARGUMENT"},
+      "value" => "PRIVATE_RESULT"
+    }
+
+    result = {:error, "PRIVATE_REASON", %{receipts: [receipt]}}
+
+    output =
+      ExUnit.CaptureIO.capture_io(:stderr, fn ->
+        diagnose_fault(result, %{log: path}, "bad_append")
+      end)
+
+    refute output =~ "PRIVATE"
+    report = JSON.decode!(String.trim(output))
+    assert report["actions_reached"] == ["open", "append"]
+
+    assert report["receipts"] == [
+             %{
+               "elapsed_ms" => 1040,
+               "completion_confirmed" => false,
+               "observation_outcome" => "timeout",
+               "status" => "other"
+             }
+           ]
+
+    assert report["arguments_captured"] == false and report["result_payloads_retained"] == false
+  end
+
   defp open(ctx, mode) do
     root = Path.join(System.tmp_dir!(), "ipse-evaluation-driver-fault-" <> Ipse.Usage.id())
     File.mkdir_p!(root)
     paths = %{log: Path.join(root, "actions"), ready: Path.join(root, "worker-pid")}
+
+    if mode in ~w(bad_open bad_append) and System.get_env("IPSE_TEST_STDIO_PROBE") == "1" do
+      roots = [Process.whereis(Ipse.Sessions), Process.whereis(Ipse.Tasks)]
+      probe = Ipse.Test.StdioProbe.start(roots, "evaluation-" <> mode)
+      on_exit(fn -> Ipse.Test.StdioProbe.stop(probe) end)
+    end
 
     spec = %{
       root: root,
@@ -274,6 +325,63 @@ defmodule Ipse.KnowledgeEvaluationSessionTest do
       "event_at_ms" => nil,
       "expires_at_ms" => nil
     }
+
+  defp diagnose_fault(result, paths, mode) do
+    receipts =
+      case result do
+        {:error, _, %{receipts: receipts}} ->
+          Enum.map(
+            receipts,
+            fn receipt ->
+              elapsed = receipt["elapsed_ms"]
+              outcome = receipt["observation_outcome"]
+              status = receipt["status"]
+
+              %{
+                "elapsed_ms" => if(is_integer(elapsed) and elapsed >= 0, do: elapsed),
+                "completion_confirmed" => receipt["completion_confirmed"] == true,
+                "observation_outcome" =>
+                  if(
+                    outcome in ~w(completed timeout wait_failed submission_unconfirmed not_completed),
+                    do: outcome,
+                    else: "other"
+                  ),
+                "status" =>
+                  if(status in ~w(ok draft failed refused partial abstain),
+                    do: status,
+                    else: "other"
+                  )
+              }
+            end
+          )
+
+        _ ->
+          []
+      end
+
+    actions =
+      with {:ok, %{type: :regular, size: size}} when size <= 128 <- File.lstat(paths.log),
+           {:ok, bytes} <- File.read(paths.log),
+           rows = String.split(bytes, "\n", trim: true),
+           true <-
+             length(rows) <= 16 and Enum.all?(rows, &(&1 in ~w(open append publish put inspect))) do
+        rows
+      else
+        _ -> "unavailable"
+      end
+
+    IO.puts(
+      :stderr,
+      JSON.encode!(%{
+        "synthetic_evaluation_failure" =>
+          if(mode in ~w(bad_open bad_append), do: mode, else: "other"),
+        "actions_reached" => actions,
+        "receipts" => receipts,
+        "arguments_captured" => false,
+        "result_payloads_retained" => false
+      })
+    )
+  end
 
   defp actions(path), do: File.read!(path) |> String.split("\n", trim: true)
   defp sha(bytes), do: Base.encode16(:crypto.hash(:sha256, bytes), case: :lower)
