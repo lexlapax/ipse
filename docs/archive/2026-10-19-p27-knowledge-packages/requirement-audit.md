@@ -1,0 +1,43 @@
+# P27 requirement audit, 2026-10-19
+
+Historical continuation audit, not a completion verdict. Runtime source is
+`fb980a0abee17bf9dcdf0d197ff261fcad12035b`. The evidence-only follow-up is
+`ce74712`. Both are pushed. The [plan](../../plan.md#p27-optional-research-graph-and-rag)
+owns acceptance; the [evaluation training manual](../../developer/knowledge-evaluation.md)
+owns current procedures. The [platform record](platform-verification.md) binds
+the terminal passing source/native/installed receipts. Local source
+baseline: 1,248 passed, 32 excluded, 724.9 seconds, strict stdio probe and unchanged
+60,000-ms deadline. Build, both formatters, strict compile, policy and demo pass.
+The whole-milestone review has no remaining actionable finding within its stated
+coverage; final source, proof and manual anchors are retained separately.
+
+| Requirement | Direct evidence and its scope | Remaining acceptance |
+| --- | --- | --- |
+| P27-01 Independent default-off selections | Current full suite includes `knowledge_independence_test.exs`, which freshly builds three artifacts and runs ten real-Session checks across nine memory/package pairs. It asserts disabled/idle/resume counters zero, separate nonempty stores, independent forget, catalog refusal and confirmed cleanup. | Exact-source hosted installed independence proof passes on both platforms. This closes the protocol check, not model quality. |
+| P27-02 Named interchangeable profiles | `knowledge_profiles_test.exs` checks closed profile/reference families and capability ceilings. All fifteen compiled presets pass manifest/catalog/hash/exclusion checks. Actual CLI imports/configurations for Corpus, Graph and Research pass. State and MCP CAS adapters are independently exercised; model profiles are explicit operator routes. | Matched actual extraction, dense/hybrid and rerank comparison is open. Service-side ACL/atomicity remains an explicitly disclosed server assertion. |
+| P27-03 Source/chunk/version/citation identity | `knowledge_evidence_test.exs`, Store controls, query-completeness controls, exact same-chunk rerank regression and five-case real source/installed complete-result proof. Exact byte spans, generations, hashes, original claim bases and historical result bytes are checked. | Semantic entailment/citation precision requires independent judgments on finalized actual predictions. |
+| P27-04 Bounded ingestion/traversal/results | Explicit 64-KiB source/UTF8 chunks, source publication and worst-case vector/effect plans in Store/package tests; positive-only bounded walk and counterassertion context in Evidence; real complete-result proof preserves ten full quotes and Graph bases outside top-k. Generic host proves exact 4 MiB/1,024 fragments with unchanged ordinary SDK bounds. | Exact-candidate platform proofs pass. No worst-case aggregate is silently cropped; over-bound values explicitly refuse. Actual workload quality remains separate. |
+| P27-05 Lexical without mandatory embeddings | Offline/lexical capability tests, real lexical independent-artifact/base proofs and public runner fixtures require zero model calls for retrieval. | Actual workload retrieval and matched answer usefulness remain unmeasured. |
+| P27-06 Deletion/stale projection/import recovery | State/MCP Store controls cover source versions, delayed work, suppression, import and collection. Actual Graph/Corpus seven-case lifecycle proofs race accepted inference with forget. Abort generation repair has State/MCP callback controls and source/installed public recovery checks. Historical imports remain excluded until a fresh explicit source replacement. | Exact-source platform checks pass. Prior transcript/backup retention and unconfirmed owner-loss cleanup remain disclosed, not claimed erased or confirmed. The final comparison must exercise its own frozen lifecycle policy. |
+| P27-07 Contradictory/stale/weak evidence | Four whole-milestone defects repaired. Eighteen Evidence tests and independent probes check both polarities, case-consistent entities, expired/unrelated counterassertions, unchanged attributed bytes, unranked bases and traversal budgets. Open lexical claims remain semantically unassessed. | Frozen actual supported/conflict/open/abstain workload and independent semantic review remain open. |
+| P27-08 Failure/denial/cancellation/budgets/replay | Current full suite includes real MCP/embedding Session tests and fresh Graph/Corpus lifecycle tests for cancellation, owner loss, selected timeout, quota, malformed/unavailable provider responses and inert resume. Lost complete-source first receipts remain failed with no retry. Canonical usage/unknown liability reconciliation is exercised in runner/resources tests. | Actual comparison must preserve every first failed/unknown row and original booked liability; no budget renewal or hidden rerun. |
+| P27-09 Approved MCP bridge | Generic H1/H2 accepted earlier at `2fe3583`, hosted at `1f90178`; current full suite rechecks selected descriptors/arguments, child denial, real stdio/HTTP, cancellation, authority and source recovery. | Current exact-source hosted source/installed proofs pass. Actual operator services remain optional and configurable. |
+| P27-10 Native embedding/accounting | H3 accepted at `3e32051`, with source/installed native vector fixtures. Current full suite rechecks embedding operation/profile/destination/input identity, float32 dimensions/pages, source validation, operation-aware usage and retained unknown accounting. | Actual selected model resource/quality comparison remains open; unavailable price/token measurements cannot become zero. |
+| P27-11 Compare optional engines | Builder/plan/runner support all seven declared strategies with matched answer policy, explicit model inventory and budgets. Synthetic complete-grid fixtures establish orchestration only. | Fresh complete seven-strategy, fifty-query, two-project prediction grid, finalized hashes before labels, independent review and engine selection are still required. Old 280/350 partial run remains immutable/unscored. |
+| P27-12 Separate quality/resource measurements | Existing clocks, request/budget reconciliation and strict storage inventory/lifecycle controls pass. Native `wait4` controls pass on macOS/Linux without sampling, but a completed 256-MiB Port child is missing from an outer Elixir receipt on both platforms. The [memory investigation](resource-memory-grounding.md) preserves rerunnable evidence. An outer-only wrapper is insufficient. | Exact memory scope question is pending. No production peak instrumentation or actual quality/resource comparison exists yet. Largest-process lifetime RSS and simultaneous aggregate are different metrics. No sampled maximum is accepted as exact. |
+| P27-13 Source/native/installed/platform | Exact fb980a0 passes local source, Serenity native-enabled source and fresh installed proofs, and hosted Ubuntu/macOS source/package/installed proofs. Local source executes 1,248 passing tests; Serenity executes 1,265 with native sandbox tests enabled. | These candidate platform gates are complete. Later measurement runtime changes need their own applicable source/native/installed/platform gates. |
+| P27-14 User/contributor manuals and source-backed status | Whole chapters reviewed and rewritten for their audience; real CLI examples verified; historical-import and case-identity guidance corrected; AGENTS has the summarized manual rule. The evidence-only follow-up checks 251 Markdown files and 2,718 local links with zero errors. Focused implementation and evidence are committed and pushed. | New measurement implementation will need its own training/procedures/checks. Final audit/status and comparison/selection report must reflect actual remaining evidence. |
+
+## Next actions
+
+1. Resolve the pending memory scope question. Then implement/review the exact
+   owned-lifetime measurements with explicit coverage, units, fresh service/cache
+   ownership and no changes to the existing model service.
+2. Freeze all required code/artifact/model/profile/measurement identities before
+   a fresh complete comparison. Preserve first attempts, finite budgets, failures
+   and unknown accounting. Do not resume the old partial run.
+3. Finalize every prediction hash before references. Prepare the concrete blinded
+   packet before requesting authorization to dispatch independent semantic review.
+4. Apply the unchanged quality thresholds, compare actual resource/quality results,
+   select or reject optional engines from that evidence, review whole manuals and
+   record the final acceptance audit. Do not claim completion from protocol tests.

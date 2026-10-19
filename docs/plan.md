@@ -415,6 +415,9 @@ journal capacity still refuse. The [domain-result record](archive/2026-10-19-p27
 separates these checks from the remaining quality gates.
 Its [platform record](archive/2026-10-19-p27-knowledge-packages/platform-verification.md)
 binds local, native-enabled Serenity and hosted Ubuntu/macOS checks to `fb980a0`.
+The [fourteen-area audit](archive/2026-10-19-p27-knowledge-packages/requirement-audit.md)
+maps protocol evidence and remaining acceptance without treating fixtures as
+quality measurements.
 Declaration and synthetic fixtures do not close the clean freeze, held-out or
 selection gates.
 The [memory/knowledge selection proof](archive/2026-10-19-p27-knowledge-packages/selection-independence.md)

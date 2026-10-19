@@ -19,6 +19,8 @@ rerunnable native controls and an Elixir Port accounting counterexample. It
 constrains the next measurement design without selecting its metric scope.
 The [final integration platform record](platform-verification.md) binds passing
 local, native-enabled Serenity and hosted Ubuntu/macOS gates to `fb980a0`.
+The [requirement audit](requirement-audit.md) checks all fourteen acceptance areas
+and identifies the exact-memory, held-out quality and selection work still open.
 
 ## Implementation and corrections
 
