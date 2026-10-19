@@ -602,7 +602,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     })
 
     for name <-
-          ~w(execution.jsonl predictions.jsonl usage.jsonl resources.jsonl memory-samples.jsonl),
+          ~w(execution.jsonl predictions.jsonl usage.jsonl request-resources.jsonl resources.jsonl memory-samples.jsonl),
         do: private_file!(Path.join(output, name), "")
 
     inventory = inventory!(plan)
@@ -615,37 +615,39 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     Process.put(:comparison_gateway, nil)
 
     execution =
-      capture(fn ->
-        gateway =
-          if Enum.any?(plan["variants"], &(&1["prepare"] == "research")),
-            do: start_gateway!(plan),
-            else: nil
+      EvaluationResources.measure(output, %{"phase" => "execution"}, fn ->
+        capture(fn ->
+          gateway =
+            if Enum.any?(plan["variants"], &(&1["prepare"] == "research")),
+              do: start_gateway!(plan),
+              else: nil
 
-        Process.put(:comparison_gateway, gateway)
+          Process.put(:comparison_gateway, gateway)
 
-        Enum.each(projects, fn project ->
-          docs =
-            Enum.filter(documents, &(&1["project"] == project))
-            |> Enum.sort_by(&{&1["source_id"], &1["generation"], to_string(&1["version"])})
+          Enum.each(projects, fn project ->
+            docs =
+              Enum.filter(documents, &(&1["project"] == project))
+              |> Enum.sort_by(&{&1["source_id"], &1["generation"], to_string(&1["version"])})
 
-          selected_queries = Enum.filter(queries, &(&1["project"] == project))
+            selected_queries = Enum.filter(queries, &(&1["project"] == project))
 
-          Enum.each(plan["variants"], fn variant ->
-            run_variant(
-              plan,
-              variant,
-              paths,
-              project,
-              docs,
-              selected_queries,
-              length(projects),
-              output,
-              gateway
-            )
+            Enum.each(plan["variants"], fn variant ->
+              run_variant(
+                plan,
+                variant,
+                paths,
+                project,
+                docs,
+                selected_queries,
+                length(projects),
+                output,
+                gateway
+              )
+            end)
           end)
-        end)
 
-        write!(output, "inventory-after.json", inventory!(plan))
+          write!(output, "inventory-after.json", inventory!(plan))
+        end)
       end)
 
     session_cleanup =
@@ -678,7 +680,6 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     }
 
     errors = for {phase, {:error, error}} <- outcomes, do: Map.put(error, "phase", phase)
-    write!(output, "execution-outcomes.json", %{"errors" => errors})
 
     existing =
       File.read!(Path.join(output, "predictions.jsonl"))
@@ -696,6 +697,23 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     bytes = File.read!(Path.join(output, "predictions.jsonl"))
     rows = bytes |> String.split("\n", trim: true) |> Enum.map(&JSON.decode!/1)
     require!(length(rows) == length(queries) * length(plan["variants"]), :missing_prediction)
+
+    resources =
+      EvaluationResources.summary(
+        rows,
+        jsonl!(output, "timings.jsonl"),
+        jsonl!(output, "request-resources.jsonl"),
+        Enum.filter(jsonl!(output, "usage.jsonl"), &Map.has_key?(&1, "budget"))
+      )
+
+    write!(output, "resource-summary.json", resources)
+
+    errors =
+      if resources["complete"],
+        do: errors,
+        else: errors ++ [%{"phase" => "resources", "code" => "measurement_incomplete"}]
+
+    write!(output, "execution-outcomes.json", %{"errors" => errors})
 
     final = %{
       "version" => 1,
@@ -806,21 +824,27 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     {status, records} =
       Enum.reduce_while(plan["variants"], {:ok, []}, fn variant, {_, records} ->
         outcome =
-          capture(fn ->
-            {artifacts, runtime} = selection(plan, variant, paths, 1)
+          EvaluationResources.measure(
+            output,
+            %{"phase" => "preflight", "variant" => variant["id"]},
+            fn ->
+              capture(fn ->
+                {artifacts, runtime} = selection(plan, variant, paths, 1)
 
-            EvaluationSession.preflight(%{
-              root: root,
-              project: "catalogs",
-              variant: variant["id"],
-              artifacts: artifacts,
-              runtime: runtime,
-              bindings: variant["bindings"],
-              required_verbs: required_verbs(variant, plan),
-              approval_validator: fn _ -> :deny end,
-              timeout_ms: 5000
-            })
-          end)
+                EvaluationSession.preflight(%{
+                  root: root,
+                  project: "catalogs",
+                  variant: variant["id"],
+                  artifacts: artifacts,
+                  runtime: runtime,
+                  bindings: variant["bindings"],
+                  required_verbs: required_verbs(variant, plan),
+                  approval_validator: fn _ -> :deny end,
+                  timeout_ms: 5000
+                })
+              end)
+            end
+          )
 
         {kind, details} =
           case outcome do
@@ -882,7 +906,12 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
           Map.put(runtime, :mcp_servers, gateway_servers!(plan, output, project, variant["id"])),
         else: runtime
 
-    prepared = author!(documents, variant, plan["as_of_ms"], output, project)
+    prepared =
+      EvaluationResources.measure(
+        output,
+        %{"phase" => "source_authoring", "project" => project, "variant" => variant["id"]},
+        fn -> author!(documents, variant, plan["as_of_ms"], output, project) end
+      )
 
     scope_runtime =
       Map.put(
@@ -920,7 +949,11 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
       timeout_ms: 180_000
     }
 
-    case EvaluationSession.open(spec) do
+    case EvaluationResources.measure(
+           output,
+           %{"phase" => "session_open", "project" => project, "variant" => variant["id"]},
+           fn -> EvaluationSession.open(spec) end
+         ) do
       {:ok, run} ->
         Process.put(:comparison_run, run)
         {:ok, cwd} = Ipse.WorkspaceContext.canonical_path(Path.join(run.directory, "workspace"))
@@ -953,7 +986,16 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
           Enum.reduce(queries, run, fn query, current ->
             {next, row} =
               try do
-                predict(current, query, variant, plan, preparation_ok, output)
+                EvaluationResources.measure(
+                  output,
+                  %{
+                    "phase" => "query",
+                    "project" => project,
+                    "variant" => variant["id"],
+                    "query_id" => query["query_id"]
+                  },
+                  fn -> predict(current, query, variant, plan, preparation_ok, output) end
+                )
               rescue
                 error ->
                   append!(output, "execution.jsonl", %{
@@ -992,61 +1034,63 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
 
   defp prepare(run, variant, prepared, output) do
     {run, sources_ok} =
-      Enum.reduce(prepared, {run, true}, fn doc, {current, ok} ->
-        policy = Process.get(:comparison_policy)
-        Process.put(:comparison_policy, %{policy | active: doc})
-        store = variant["prepare_options"]["store"]
+      EvaluationResources.measure(output, scope(run, "ingestion"), fn ->
+        Enum.reduce(prepared, {run, true}, fn doc, {current, ok} ->
+          policy = Process.get(:comparison_policy)
+          Process.put(:comparison_policy, %{policy | active: doc})
+          store = variant["prepare_options"]["store"]
 
-        {current, inspected} =
-          invoke(
-            current,
-            "inspect",
-            %{"store" => store, "source_id" => doc["source"]["source_id"]},
-            output
-          )
+          {current, inspected} =
+            invoke(
+              current,
+              "inspect",
+              %{"store" => store, "source_id" => doc["source"]["source_id"]},
+              output
+            )
 
-        revision = get_in(inspected || %{}, ["value", "coverage", "revision"]) || 0
+          revision = get_in(inspected || %{}, ["value", "coverage", "revision"]) || 0
 
-        {current, result} =
-          invoke(
-            current,
-            "ingest",
-            %{"store" => store, "source" => doc["source"], "expected_revision" => revision},
-            output
-          )
+          {current, result} =
+            invoke(
+              current,
+              "ingest",
+              %{"store" => store, "source" => doc["source"], "expected_revision" => revision},
+              output
+            )
 
-        stored = result != nil and result["status"] == "ok"
+          stored = result != nil and result["status"] == "ok"
 
-        {current, forgotten} =
-          if stored and doc["state"] in ~w(forgotten deleted suppressed) do
-            {current, inspected} =
-              invoke(
-                current,
-                "inspect",
-                %{"store" => store, "source_id" => doc["source"]["source_id"]},
-                output
-              )
+          {current, forgotten} =
+            if stored and doc["state"] in ~w(forgotten deleted suppressed) do
+              {current, inspected} =
+                invoke(
+                  current,
+                  "inspect",
+                  %{"store" => store, "source_id" => doc["source"]["source_id"]},
+                  output
+                )
 
-            revision = get_in(inspected || %{}, ["value", "coverage", "revision"])
+              revision = get_in(inspected || %{}, ["value", "coverage", "revision"])
 
-            {current, result} =
-              invoke(
-                current,
-                "forget",
-                %{
-                  "store" => store,
-                  "source_id" => doc["source"]["source_id"],
-                  "expected_revision" => revision
-                },
-                output
-              )
+              {current, result} =
+                invoke(
+                  current,
+                  "forget",
+                  %{
+                    "store" => store,
+                    "source_id" => doc["source"]["source_id"],
+                    "expected_revision" => revision
+                  },
+                  output
+                )
 
-            {current, result != nil and result["status"] == "ok"}
-          else
-            {current, true}
-          end
+              {current, result != nil and result["status"] == "ok"}
+            else
+              {current, true}
+            end
 
-        {current, ok and stored and forgotten}
+          {current, ok and stored and forgotten}
+        end)
       end)
 
     eligible = current_documents(prepared, Process.get(:comparison_policy).plan["as_of_ms"])
@@ -1064,9 +1108,11 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     end)
 
     if sources_ok do
-      Enum.reduce(eligible, {run, true}, fn doc, {current, ok} ->
-        {next, projected} = projections(current, variant, doc, output)
-        {next, ok and projected}
+      EvaluationResources.measure(output, scope(run, "projection"), fn ->
+        Enum.reduce(eligible, {run, true}, fn doc, {current, ok} ->
+          {next, projected} = projections(current, variant, doc, output)
+          {next, ok and projected}
+        end)
       end)
     else
       {run, false}
@@ -1299,19 +1345,12 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
 
     case EvaluationSession.invoke(run, verb, args) do
       {:ok, receipt, next} ->
-        Process.put(:comparison_run, next)
-
-        Enum.each(
-          Enum.drop(next.receipts, length(run.receipts)),
-          &append!(output, "execution.jsonl", &1)
-        )
+        {next, _} = record_receipts(output, run, next)
 
         {next, receipt}
 
       {:error, reason, next} ->
-        Process.put(:comparison_run, next)
-        receipts = Enum.drop(next.receipts, length(run.receipts))
-        Enum.each(receipts, &append!(output, "execution.jsonl", &1))
+        {next, receipts} = record_receipts(output, run, next)
 
         append!(output, "execution.jsonl", %{
           "verb" => verb,
@@ -1322,6 +1361,39 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
 
         {next, List.last(receipts)}
     end
+  end
+
+  defp scope(run, phase),
+    do: %{"project" => run.project, "variant" => run.variant, "phase" => phase}
+
+  defp record_receipts(output, before, next) do
+    policy = Process.get(:comparison_policy)
+    active = policy.active || %{}
+
+    context = %{
+      "project" => next.project,
+      "variant" => next.variant,
+      "query_id" => active["query_id"],
+      "source_id" => get_in(active, ["source", "source_id"])
+    }
+
+    added = Enum.drop(next.receipts, length(before.receipts)) |> Enum.map(&Map.merge(&1, context))
+    next = %{next | receipts: before.receipts ++ added}
+    Process.put(:comparison_run, next)
+
+    Enum.each(added, fn receipt ->
+      append!(output, "execution.jsonl", receipt)
+
+      EvaluationResources.record(
+        output,
+        Map.put(context, "phase", "invoke_" <> receipt["verb"]),
+        receipt["elapsed_ms"] * 1000,
+        receipt["observation_outcome"],
+        not receipt["completion_confirmed"]
+      )
+    end)
+
+    {next, added}
   end
 
   defp approve(review) do
@@ -1774,7 +1846,11 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
   end
 
   defp persist_close(output, run) do
-    closure = EvaluationSession.close(run)
+    closure =
+      EvaluationResources.measure(output, scope(run, "cleanup"), fn ->
+        EvaluationSession.close(run)
+      end)
+
     {kind, report} = closure
 
     append!(output, "execution.jsonl", %{
@@ -1792,13 +1868,95 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
       append!(output, "usage.jsonl", Ipse.Usage.request_record(ledger.requests[id]))
     end)
 
-    {:ok, budget} = Ipse.Budget.saved(run.state_dir, run.session_id)
+    metadata = hd(events)["metadata"]
+
+    config = %{
+      provider:
+        %{
+          "chatgpt" => :chatgpt,
+          "openai" => :openai,
+          "ollama" => :ollama,
+          "anthropic" => :anthropic,
+          "demo" => :demo
+        }[metadata["provider"]],
+      max_output_tokens: metadata["max_output_tokens"],
+      budget: metadata["budget"],
+      budget_root: metadata["budget_root"],
+      delegation_origin: metadata["delegation_origin"]
+    }
+
+    {:ok, config} =
+      Ipse.Budget.Store.attach(config, run.state_dir, run.session_id, false, :inspect)
+
+    {:ok, {budget, dispositions}} =
+      Ipse.Budget.Store.transaction(
+        config.budget_root,
+        config.budget,
+        fn state ->
+          :ok = EvaluationResources.reconcile_budget(state, ledger, events, run.session_id)
+
+          admitted =
+            Map.new(state.requests, fn {id, entry} ->
+              {id,
+               %{
+                 "budget_admitted" => true,
+                 "dispatch_intent" => entry.dispatch,
+                 "budget_settled" => entry.completion != nil
+               }}
+            end)
+
+          refused =
+            Map.new(state.refusals, fn {id, _} ->
+              {id,
+               %{"budget_admitted" => false, "dispatch_intent" => false, "budget_settled" => nil}}
+            end)
+
+          {:read, {Ipse.Budget.Ledger.snapshot(state), Map.merge(admitted, refused)}}
+        end,
+        false,
+        config[:budget_checkpoint]
+      )
+
+    admissions =
+      events
+      |> Enum.with_index()
+      |> Enum.filter(fn {event, _} -> event["type"] == "request_admitted" end)
+      |> Map.new(fn {event, index} -> {event["request_id"], index} end)
+
+    Enum.each(Ipse.Usage.order(ledger), fn id ->
+      request = Ipse.Usage.request_record(ledger.requests[id])
+      index = Map.fetch!(admissions, id)
+
+      receipt =
+        Enum.find(run.receipts, fn receipt ->
+          [first, last] = receipt["journal_event_range"]
+          index >= first and index < last
+        end)
+
+      context =
+        if receipt, do: Map.take(receipt, ~w(query_id source_id verb invocation_id)), else: %{}
+
+      append!(
+        output,
+        "request-resources.jsonl",
+        Map.merge(context, Map.fetch!(dispositions, id))
+        |> Map.merge(%{
+          "project" => run.project,
+          "variant" => run.variant,
+          "session_id" => run.session_id,
+          "attribution" => if(receipt, do: "confirmed", else: "unavailable"),
+          "request" => request
+        })
+      )
+    end)
 
     append!(output, "usage.jsonl", %{
       "session_id" => run.session_id,
       "project" => run.project,
       "variant" => run.variant,
       "budget" => budget,
+      "accounting_verified" => true,
+      "accounting_scope" => "single_session_admissions_and_conservative_liability",
       "cost" => "unpriced"
     })
 
@@ -1813,6 +1971,12 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
         "variant" => run.variant,
         "storage" => EvaluationResources.storage(run.directory)
       })
+
+  defp jsonl!(output, name) do
+    read!(Path.join(output, name), 33_554_432)
+    |> String.split("\n", trim: true)
+    |> Enum.map(&decode!/1)
+  end
 
   defp allocate(budget, projects) do
     Map.new(budget, fn {key, value} ->

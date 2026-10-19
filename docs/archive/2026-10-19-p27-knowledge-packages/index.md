@@ -103,6 +103,9 @@ The [executable preflight record](evaluation-preflight.md) covers all-selection
 admission before dataset access, deferred configuration refusal and real CLI
 outcomes across freeze, prediction and scoring boundaries. It also retains the
 controlled repair for complete usage export beyond the UI's sixteen-request list.
+The [resource accounting record](resource-accounting.md) adds query/phase clocks,
+complete request attribution and single-root budget-liability reconciliation;
+it keeps storage reachability and process-memory coverage explicitly open.
 The later [model wire investigation](model-wire.md) identifies the response-body
 limit in a captured diagnostic and separates streaming framing from returned text.
 The later [model workflow investigation](model-workflows.md) records exact draft

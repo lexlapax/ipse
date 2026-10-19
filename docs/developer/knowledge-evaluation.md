@@ -362,24 +362,76 @@ behavior, not held-out quality or a selected retrieval engine.
 
 ## Reconcile model work with durable accounting
 
-Read the saved journal through `Ipse.Journal.load/2`, validate recovery with
-`Ipse.Session.restore_context/1`, and reconstruct usage through
-`Ipse.Usage.restore/2`. Compare it with `Ipse.Budget.saved/2`. An attempt record
-does not itself prove provider dispatch or a budget reservation. A refused
-attempt can remain in accounting while the shared budget books no request.
+Follow `persist_close/2` in the runner. It confirms owner cleanup, loads the
+journal through `Ipse.Journal.load/2`, and restores canonical usage through
+`Ipse.Usage.restore/2`. The session driver separately checks recoverable context
+through `Ipse.Session.restore_context/1`. Use `Usage.order/1` and
+`Usage.request_record/1` to export every request in admission order.
+`Usage.snapshot/1` shows only the latest sixteen requests for the UI.
 
-For each actual request, preserve completed, failed and unknown outcomes.
-If a failed stream has no durable token observation, report unknown usage and
-the retained reservation. Do not report zero tokens or zero cost. No configured
-rate card means unpriced work. Read-only inspection after inference quota
-exhaustion remains useful; do not put a blanket request-count guard around every
-driver operation. The host's real admission policy owns inference quotas.
+The runner attaches the saved budget in inspection mode and reads it under its
+existing lock. `EvaluationResources.reconcile_budget/4` checks the exact request
+IDs and admissions against canonical usage, including refusals. It also checks
+that retained liability covers every known canonical observation, including
+earlier peaks followed by smaller counters. This comparison requires one root
+session and rejects additional child admissions. It does not grant authority,
+change reservations, or continue the session. The live
+`Ipse.Budget.validate_sources/3` requires a live checkpoint and is not a saved-ledger
+inspection API.
 
-Use `Usage.order/1` and `Usage.request_record/1` to export the complete restored
-ledger. `Usage.snapshot/1` is a UI projection that shows only the latest sixteen
-requests, even though its total count includes earlier work. Follow
-`persist_close/2`: it writes every canonical request in admission order, then
-the separately saved shared budget. The seventeen-request runner exercise
-compares the complete export with the restored journal and scripted HTTP count.
-The UI remains bounded. An export must not discard earlier inference merely
-because those records no longer appear in that snapshot.
+Read the resulting files together:
+
+| File | How to use it |
+| --- | --- |
+| `usage.jsonl` | Inspect every canonical request and each session's validated budget snapshot |
+| `request-resources.jsonl` | Match requests to project, variant, source or query, invocation, admission/refusal, dispatch intent and settlement |
+| `timings.jsonl` | Inspect individual phase and invocation clocks, outcomes and unconfirmed completion |
+| `resource-summary.json` | Compare per-variant phase percentiles, query coverage, request roles, token availability and retained budget dimensions |
+
+A canonical attempt does not prove admission or provider dispatch. A refused
+attempt remains in usage while booking no request. A recorded dispatch intent
+does not prove that the remote provider accepted work. Preserve completed,
+failed and unknown outcomes independently from budget settlement. Missing token
+counts remain unknown; embedding output tokens are not applicable. Without a
+rate card, work remains unpriced. Budget dimensions report conservative booked
+liability, not an invoice.
+
+Read-only inspection remains available after inference quota exhaustion. Do not
+put a blanket request-count guard around driver operations. The host admission
+policy owns inference quotas.
+
+### Verify coverage and failure accounting
+
+Run the local scripted-provider exercises:
+
+```sh
+mix test test/knowledge_evaluation_resources_test.exs test/knowledge_evaluation_runner_test.exs
+```
+
+Follow the seventeen-request case in the runner test. Compare the seventeen
+scripted HTTP calls, restored journal records, exported requests and booked
+requests. Each exported request must retain its query ID. Then follow the
+one-request-budget case: two queries produce two canonical attempts, one admitted
+request, one refusal and one dispatch intent. Both query rows remain present.
+
+In the resource test, follow the historical-peak case. A request observes sixty
+input tokens and later seven. Removing the sixty-token observation from the
+budget must fail reconciliation even though its final counters still match.
+Removing a refusal or concealing usage behind a refused admission must also fail.
+
+### Interpret latency and measurement limits
+
+Phase clocks use monotonic microseconds. The summary reports nearest-rank p50
+and p95 in milliseconds with sample and unknown counts. Query IDs distinguish
+repeated question text. Failed queries stay in the grid and in observed clocks.
+Invocation timings separately count unconfirmed completion; an elapsed wait is
+not proof that interrupted work finished. Canonical request duration comes from
+the journal and remains unknown when unavailable.
+
+The summary's `complete` field covers the declared clock and accounting scope.
+Check `measurement_scope`, `unmeasured` and `resource_evaluation_complete` before
+using it for an engine comparison. Storage reachability and OS/model process
+memory remain unmeasured by this summary. The separate sampler describes the
+harness BEAM only, and the file counter measures bytes under each run directory.
+Neither establishes model memory, OS peak memory or complete storage lifecycle
+cost. A complete clock/accounting report cannot close those evaluation gates.

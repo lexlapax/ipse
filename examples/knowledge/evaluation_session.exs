@@ -530,6 +530,9 @@ defmodule IpseKnowledgeExample.EvaluationSession do
       "action_count" => Enum.count(delta, &(&1["type"] == "extension_action_intent")),
       "approvals" => Enum.reverse(approvals),
       "elapsed_ms" => System.monotonic_time(:millisecond) - started,
+      "completion_confirmed" =>
+        result != nil and intent != nil and result["invocation_id"] == intent["invocation_id"],
+      "observation_outcome" => observation_outcome(outcome),
       "accounting" => if(info, do: info.accounting, else: nil)
     }
 
@@ -546,6 +549,12 @@ defmodule IpseKnowledgeExample.EvaluationSession do
        do: {:ok, receipt, next},
        else: {:error, {:command_failed, status}, next}
   end
+
+  defp observation_outcome(:ok), do: "completed"
+  defp observation_outcome({:timeout, _, _}), do: "timeout"
+  defp observation_outcome({:wait_failed, _}), do: "wait_failed"
+  defp observation_outcome({:submission_unconfirmed, _}), do: "submission_unconfirmed"
+  defp observation_outcome(_), do: "not_completed"
 
   defp live_info(pid) do
     if Process.alive?(pid), do: Session.info(pid), else: nil

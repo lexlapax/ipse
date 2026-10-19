@@ -107,6 +107,15 @@ complete original file's syntax tree. Initialization,
 configuration probes, cleanup acknowledgments and deadlines retain their behavior.
 All thirteen affected runner and Session controls passed in 129.1 seconds after
 this correction. Local formatting, warnings-as-errors compilation, documentation
-and pinned CI action checks also pass. Corrected-source hosted verification is
-still required and remains distinct from the earlier full-suite and installed
-receipts above.
+and pinned CI action checks also pass.
+
+The corrected-source [hosted matrix](https://github.com/lexlapax/ipse/actions/runs/39242490910)
+at `48bb1764efc455a93d1a02b105b3b543905e48ae` completed successfully on both
+platforms. All 24 steps in each terminal job were inspected: macOS passed every
+step, and Linux passed 22 with only the two macOS-only enforcement steps skipped.
+This includes source tests, native enforcement where applicable, package checks,
+independent source/installed MCP, embedding and knowledge proofs, and both
+installed extension/model-call proofs. This closes the preflight/export unit's
+corrected-source platform gate. It does not cover later resource changes or
+explain the older MCP discovery failures retained in the
+[identity/input record](evaluation-seal.md#exact-source-platform-receipts-and-retained-failure).

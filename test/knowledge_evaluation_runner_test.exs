@@ -919,6 +919,64 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
                records,
                &(&1["selected_profile"] == "p27_answer" and &1["outcome"] == "completed")
              )
+
+      resource_records = jsonl(Path.join(output, "request-resources.jsonl"))
+      assert length(resource_records) == 17
+      assert Enum.map(resource_records, & &1["query_id"]) == Enum.map(queries, & &1["query_id"])
+
+      assert Enum.all?(
+               resource_records,
+               &(&1["attribution"] == "confirmed" and &1["budget_admitted"] and
+                   &1["dispatch_intent"] and &1["budget_settled"])
+             )
+
+      resources = JSON.decode!(File.read!(Path.join(output, "resource-summary.json")))
+      assert resources["complete"]
+      [variant] = resources["variants"]
+      assert variant["queries"]["observed"] == 17
+      assert variant["queries"]["missing"] == 0
+      assert variant["accounting_verified"]
+      assert variant["requests"]["attempted"] == 17
+      [answer] = variant["requests"]["groups"]
+      assert answer["role"] == "answer" and answer["count"] == 17
+      assert answer["latency_ms"]["observed"] == 17
+    after
+      stop_model_fixture(server)
+    end
+  end
+
+  test "resource reporting separates a budget refusal from dispatch and retains both queries",
+       ctx do
+    {server, origin, tag} = model_fixture()
+    {paths, root} = cli_inputs(ctx, false)
+    matrix = matrix_plan(ctx, origin)
+    variant = hd(matrix["variants"]) |> put_in(["budget", "max_requests"], 1)
+    File.write!(paths["plan"], JSON.encode!(%{matrix | "variants" => [variant]}))
+    output = Path.join(root, "results")
+
+    try do
+      assert {:ok, report} =
+               Runner.run(:verify,
+                 plan: paths["plan"],
+                 corpus: paths["corpus"],
+                 queries: paths["queries"],
+                 output: output
+               )
+
+      assert report["rows"] == 2 and report["failed_rows"] == 1
+      assert length(drain(tag, [])) == 1
+
+      [resource] =
+        JSON.decode!(File.read!(Path.join(output, "resource-summary.json")))["variants"]
+
+      assert resource["accounting_verified"]
+      assert resource["queries"]["observed"] == 2
+      assert resource["queries"]["statuses"] == %{"ok" => 1, "failed" => 1}
+      assert resource["requests"]["attempted"] == 2
+      assert resource["requests"]["budget_admitted"] == 1
+      assert resource["requests"]["budget_refused"] == 1
+      assert resource["requests"]["dispatch_intents"] == 1
+      assert length(jsonl(Path.join(output, "predictions.jsonl"))) == 2
     after
       stop_model_fixture(server)
     end
