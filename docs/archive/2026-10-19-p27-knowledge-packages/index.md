@@ -93,6 +93,9 @@ synthetic helper verification and actual tuning-only embedding/text outcomes.
 The later [public-Session orchestration record](evaluation-orchestration.md)
 retains matched synthetic variants, source suppression, frozen fixture execution
 and separate ranked/context citation measurements.
+The [domain lifecycle record](domain-lifecycle.md) adds controlled delayed
+projection/forget races, interrupted provider IO, retained reservations and
+idle-resume checks for independent Graph and Corpus workers.
 The later [model wire investigation](model-wire.md) identifies the response-body
 limit in a captured diagnostic and separates streaming framing from returned text.
 The later [model workflow investigation](model-workflows.md) records exact draft

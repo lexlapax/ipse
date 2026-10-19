@@ -192,6 +192,74 @@ The MCP store relies on the server's partition access and atomic CAS. Exact
 receipts establish what that selected server asserted. They do not verify its
 internal transactions or enforce a remote ACL.
 
+## Exercise delayed publication and interrupted inference
+
+Run the domain lifecycle controls before changing projection publication:
+
+```sh
+mix test test/knowledge_lifecycle_proof_test.exs
+```
+
+Open `examples/knowledge/lifecycle-proof.exs`. Each package runs seven cases through
+real public Sessions and its independently built worker. An owned loopback server
+returns scripted text or two-coordinate vectors. No model weights or external
+service are used, and these responses measure no retrieval quality.
+
+Follow the `forget` case through `interrupted/5`. The first Session registers a
+projection draft, obtains egress approval and dispatches its provider request.
+The fixture reports that accepted request before returning a response. A second
+Session uses the same operator selection, home and workspace, inspects the live
+draft and publishes suppression. Only then does the fixture release the first
+response. Its delayed publication must refuse. A public inspection still reports
+suppression, and a query returns no evidence. Separate Session journals retain
+their own operations even though the logical State store is shared.
+
+Compare the other cases:
+
+| Trigger | Required observation |
+| --- | --- |
+| Cancellation after dispatch | Session cancellation finishes, the provider socket closes, unconfirmed inference retains reservations, and idle resume adds no action intent |
+| Session death after dispatch | The socket and Session lock close; no Session cleanup acknowledgment is invented; saved uncertainty remains and idle resume does not replay |
+| Selected profile deadline expires | The held request times out, the socket closes, no projection is published and uncertainty remains accounted |
+| One-request budget exhausted | The first projection completes; a second attempt is refused before another HTTP request and preserves the selected projection |
+| Malformed provider output | No projection is published; the domain retains the failed result and its ordinary accounting |
+| Provider unavailable | No successful projection or fallback appears; the actual request remains in canonical accounting |
+
+Unknown embedding work retains its input reservation and no text-output liability.
+Unknown extraction retains both input and output reservations. Read
+`uncertainty/2`, `Budget.saved/2` and the canonical journal together; a request
+attempt alone does not prove dispatch or settlement. Every case closes or accounts
+for its Session and checks an idle resume before asserting zero further requests.
+
+Build the same independent artifacts for a standalone source exercise:
+
+```sh
+IPSE_LIFECYCLE_ARTIFACTS=$(mktemp -d)
+elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$IPSE_LIFECYCLE_ARTIFACTS/graph" --package graph --preset state-model
+elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$IPSE_LIFECYCLE_ARTIFACTS/corpus" --package corpus --preset state-dense
+mix run examples/knowledge/verify-lifecycle.exs "$IPSE_LIFECYCLE_ARTIFACTS/graph" graph
+mix run examples/knowledge/verify-lifecycle.exs "$IPSE_LIFECYCLE_ARTIFACTS/corpus" corpus
+```
+
+Expect seven checks and seven synthetic provider requests per package, with
+`actual_model_inference: false`. For installed execution, replace
+`/path/to/ipse.tar.gz` with one matching archive built through the
+[extracted-package procedure](testing.md#verify-the-extracted-package):
+
+```sh
+elixir examples/knowledge/verify-recovery-package.exs /path/to/ipse.tar.gz "$IPSE_LIFECYCLE_ARTIFACTS/graph" graph
+elixir examples/knowledge/verify-recovery-package.exs /path/to/ipse.tar.gz "$IPSE_LIFECYCLE_ARTIFACTS/corpus" corpus
+```
+
+The optional third argument selects the lifecycle cases. Omitting it preserves
+the earlier eight-check Graph abort exercise. Both installed routes hide the
+development toolchain and check unchanged archive and host bytes.
+
+For a change exercise, use an older `expected_revision` in the forget command.
+The public command must refuse and the control must fail at its expected-success
+assertion. Restore the inspected revision and rerun. This distinguishes a real
+suppression race from a fixture that never performed the competing mutation.
+
 ## Change the lexical ranker as an exercise
 
 1. Read `Evidence.rank_lexical/4`, tokenization and tie ordering. Record the current
