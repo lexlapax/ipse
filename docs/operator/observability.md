@@ -103,8 +103,8 @@ separately. Unrelated operator files are never scanned or deleted.
 
 An interruption during the first catalog write can leave an incomplete ring,
 including a missing `catalog.json`. Later capture refuses that state without
-repairing or deleting files. Review the old files and select a fresh private
-directory in a new invocation. Resume does not repair the ring.
+repairing or deleting files. Review the old files, configure a fresh private
+directory and start a new session. Resume does not repair the ring.
 
 At most four sinks coexist. Overload drops samples with visible counters; it never
 drops mandatory recovery/usage facts or waits for a sink before inference.

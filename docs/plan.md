@@ -62,11 +62,10 @@ owns exact source, failed attempts, checks and exclusions. The requested license
 transition follows this completed campaign as a separate verified change.
 
 The research subject is optional working/long-term memory, research, graph and
-RAG, including the operator's Zero-Mem inspiration. P26's explicit-note baseline
-is implemented at `108aa86`, but completion is reopened pending repaired-source
-platform checks for the diagnosed macOS diagnostic-sink cleanup failure.
-Advanced research/graph/RAG engines remain deferred to
-P27, and media to P28. External services remain configurable; no third-party
+RAG, including the operator's Zero-Mem inspiration. P26A/P26B's explicit-note
+baseline is complete: implementation `108aa86`, with the diagnosed worker cleanup
+repair and local/hosted gates at `fb4627e`. Advanced research/graph/RAG engines
+remain deferred to P27, and media to P28. External services remain configurable; no third-party
 engine, database or mandatory backend is selected.
 
 | Milestone or gate | Current state | Next result |
@@ -74,14 +73,14 @@ engine, database or mandatory backend is selected.
 | [P23: accounting and budgets](#p23-usage-cost-reporting-and-budget-controls) | Complete within selected scope | Preserve accounting through the trial |
 | [P24: architecture/security readiness](#p24-independent-architecture-validation-and-baseline-security) | Complete for supervised P25 at `375e607`; accepted limits recorded | Refresh affected validation after trial changes |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Complete within declared supervision/assistance at `3307563`; security findings triaged and corrected scopes verified | Preserve frozen evidence; select a later production increment separately |
-| [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Implemented; cleanup diagnosed and repaired locally | Complete repaired-source verification before closing the reopened milestone |
+| [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Complete within P26A/P26B scope; cleanup repair and platform gates pass at `fb4627e` | Preserve suppression, explicit retention and affected-session recovery; select P27 separately |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Deferred; subject to P25 decisions | Configurable research/retrieval packages, graph augmentation and RAG |
 | [P28: voice and media](#p28-voice-and-realtime-media) | Deferred; unimplemented | Explicit media contracts and later device/service validation |
 | [Apache-2.0 transition](#license-transition) | Complete; local and hosted `7bb642b` checks pass | Preserve bundled identity/recovery and third-party license boundaries |
 
 The requested P22–P25 campaign and separate Apache-2.0 transition are complete
-within their documented scopes. P26A/P26B completion is reopened; P27/P28
-remain deferred. Preserve P25's frozen
+within their documented scopes. P26A/P26B are complete after the cleanup repair;
+P27/P28 remain deferred. Preserve P25's frozen
 inputs, runners, source/review/scan identities, scores and failed attempts; newer
 documentation does not rescan code or expand an earlier verdict. Select P27 or
 further memory automation/backends separately from their evidence-backed proposals. Keep P28
@@ -264,12 +263,13 @@ and [security execution constraints](developer/self-hosting-evaluation.md#securi
 
 ## P26: optional working and long-term memory
 
-**Implemented at `108aa86`; completion reopened.** Local macOS reproduction
-identified lost native cleanup confirmation after interrupted diagnostic-ring
-initialization. The receipt repair must pass applicable source/package/platform
-checks before closing P26. The unchanged hosted rerun alone was insufficient.
-Independently selectable default-off
-session/task and persistent project/operator memory ship as bundled extensions.
+**Complete within the explicit P26A/P26B scope.** Implementation `108aa86` and
+diagnostic-worker cleanup repair `fb4627e` pass applicable source/native/package
+and exact-source hosted gates. Local causal reproduction and controlled
+before/after regressions explain the strict cleanup failure; the original failed
+attempts and unchanged rerun remain in the [verification record](developer/testing.md#macos-diagnostic-cleanup-repair-2026-10-18).
+Independently selectable default-off session/task and persistent project/operator
+memory ship as bundled extensions.
 Explicit recall/remember/forget/export tools and commands provide bounded task
 cards/facts and lexical recall. Source suppression, TTL/conflicts, derivative
 inventory/collection and approved migration/import preserve lifecycle integrity.
@@ -299,7 +299,7 @@ preserve legacy identities and grants; they are reviewed and tested separately.
 | P26H2 | Bounded value scans and explicit read-work allowance for useful lexical recall, with strict receipt/recovery validation | Complete; byte pages, forged/ungranted/over-limit actions and extended real-worker receipt chain pass |
 | P26A | Separate default-off working and persistent memory, explicit remember/recall/forget/export, provenance, bounded lexical ranking and approvals | Complete; scope, sharing, approval, denial/cancel, selected export and inert-resume cases pass |
 | P26B | Durable source suppression, TTL/conflicts, derivative inventory/collection, schema migration/import, stale-work and cached-context recovery policy | Complete explicit baseline; affected sessions require manual reviewed fresh-session recovery, not automatic history redaction |
-| P26 verification | Deterministic authority/concurrency/restart/import cases, measured retrieval/resources, source/native/installed/platform checks and coherent operator/developer guidance | Reopened pending repaired-source gates; strict macOS failure reproduced, native receipt loss diagnosed and controlled regressions added. See testing for original and repaired-source evidence |
+| P26 verification | Deterministic authority/concurrency/restart/import cases, measured retrieval/resources, source/native/installed/platform checks and coherent operator/developer guidance | Complete at `fb4627e`: strict failure reproduced, native receipt loss repaired, controlled regressions and repaired-source Linux/macOS gates pass. Original negative evidence remains retained |
 
 Stable logical storage is an explicit operator grant, never a namespace chosen by
 project text or extension code. Existing journals and provider-visible history are

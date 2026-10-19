@@ -120,7 +120,7 @@ not identify the cause of an earlier failure.
 The recovery probe enrolls before Session startup to include channel/worker
 creation. On its strict close failure it also reports type, permission bits and
 size for four fixed trace paths, without reading contents or listing other files.
-This isolated synthetic fixture is the only caller of that filesystem snapshot.
+Only the synthetic recovery and privacy fixtures call that filesystem snapshot.
 
 For the native helper's frame/drain boundary, use the separate Elixir load diagnostic:
 
@@ -241,21 +241,15 @@ and [runtime identity](#p1-runtime-identity-2026-10-15).
 ## Current evidence and next checks
 
 The [plan](../plan.md#current-priorities-and-status) owns current milestone scopes.
-P26's explicit working/persistent memory baseline is implemented at `108aa86`.
-Completion remains reopened pending repaired-source platform checks. Local macOS
-reproduction now explains the strict cleanup failure: interrupted initial trace
-catalog publication leaves an incomplete ring, the resumed sink refuses it, and
-the self-stopping Worker loses its successful native cleanup result before the
-channel closes it. The repair retains that receipt in the shared worker lease;
-incomplete capture and unconfirmed cleanup remain distinct.
-The earlier source passes 933 Linux/native tests with
-15 macOS-only exclusions, both actual formatter versions and strict compilation.
-Package verification, the installed memory corpus and unchanged independently
-compiled extension/model proofs pass. Exact-source hosted Linux and macOS gates
-pass, including their installed corpora and independent proofs. Attempt 1's Mac
-diagnostic-question cleanup failure and unchanged passing rerun are retained as
-historical evidence. The local reproduction and controlled regressions below
-establish the repair; the old hosted logs alone cannot identify its cause.
+P26's explicit working/persistent memory baseline is complete within its recorded
+retention/recovery limits: implementation `108aa86`, with diagnostic-worker cleanup
+repair `fb4627e`. Local causal reproduction and controlled before/after regressions
+explain the strict close failure. The repaired source passes frozen source,
+macOS native, installed-package and exact-source hosted Linux/macOS gates below,
+including both installed memory corpora and all four independent proof receipts.
+The original Mac and later Ubuntu failures and unchanged passing rerun remain
+historical evidence. Those old logs alone cannot establish the interrupted-file
+state captured by the local investigation.
 The [memory contract](memory.md#verification-and-measurements) separates protocol
 regressions from the frozen synthetic lexical corpus and its measurement limits.
 This new work does not expand earlier security scans or constitute architectural
@@ -308,11 +302,13 @@ warning; the stronger detached-process diagnostic was not run.
 Build, strict compile, formatting, CI action pins and isolated demo passed.
 The initial full-suite run overlapped another compile and helper rebuild and
 reported ten extension-admission failures, 910 passes and 32 exclusions. It is
-retained as a failed run, not baseline evidence; frozen-source checks follow.
-The isolated frozen-source suite then passed 921 executed tests with zero
-failures and 32 platform exclusions in 317.7 seconds. The final probe/privacy
-fixture is included. Documentation checks cover 132 Markdown files and 1,712
-local file/heading links with zero errors.
+retained as a failed run, not baseline evidence. With source and build outputs
+held fixed, the full suite passed 921 executed tests with zero failures and 32
+platform exclusions in 317.7 seconds, seed 131442. A second isolated run replayed
+the failed run's seed 953372 and also passed 921/0/32 in 318.6 seconds, without
+another production change. The final probe/privacy fixture is included.
+Documentation checks cover 132 Markdown files and 1,713 local file/heading links
+with zero errors.
 
 The local verification archive SHA-256 is
 `eedeb5880f3f7ef62ef496f7d57f6521e6d27354ff71195caf11757d56c2c622`.
@@ -322,8 +318,25 @@ with exact spans and zero model/encoder calls. Independent installed artifacts
 passed all 41 extension and nine model-call assertions with unchanged archive and
 host bytes and no system development toolchain on the runtime PATH. The separate
 deliberate service-crash check remains unconfirmed. This is a local verification
-archive, not a published release or live-account check. Repaired-source hosted
-Linux/macOS checks remain pending.
+archive, not a published release or live-account check.
+
+The repaired-source [hosted matrix](https://github.com/lexlapax/ipse/actions/runs/39185644151)
+at exact commit `fb4627e5722f29d9bb62f1f51e781f9087d9be18` passed every applicable
+step on Ubuntu x86_64 and macOS-14 arm64, Elixir 1.18.5/OTP 27. Both ordinary
+suites reported 953 tests, zero failures and 32 exclusions. The separately enabled
+Mac subset reported 36 tests, zero failures and six exclusions; all four Rust
+policy tests and the signed App Sandbox/codesign probe passed. Both packages,
+installed 100-record/100-query memory corpora and all four parsed independent
+receipts passed, 41 extension and nine model assertions per host. Archive/host
+bytes stayed unchanged and no system development toolchain was on runtime PATH.
+The corpus hash remains `3f11a10a4364b2ba4ae652a82ba14111e3dc88bec2387291df445334b8cca77c`,
+with exact spans/retrieval and zero model/encoder calls on both hosts.
+Hosted archive hashes are Linux
+`37f368cd8c31dfa25df7087f7cc7079a5640c1e22acac0b8c8d9951b55f3cf58`
+and Mac `234003f4acaa0afcd4d31e03b8919d7e305ebef68cd5f61d04811be1355da21d`.
+Terminal job/step conclusions, full logs, corpus reports and all receipts were
+inspected. This closes the reopened P26A/P26B verification gate; it adds no paid
+provider, release publication, semantic benchmark or broader security verdict.
 
 ### Earlier architecture and security provenance
 

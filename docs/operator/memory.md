@@ -5,9 +5,8 @@ and persistent project/operator notes. They store only what you explicitly ask
 them to remember. Recall is local lexical retrieval with source excerpts; there
 is no automatic transcript capture, model extraction, embedding, database
 installation or external memory service. Ordinary conversation and recovery work
-without either extension. The earlier implementation's source and installed
-checks pass; milestone completion is reopened pending platform checks for the
-diagnostic cleanup repair. See the
+without either extension. Source, installed and hosted Linux/macOS gates pass,
+including the diagnosed diagnostic-worker cleanup repair. See the
 [recorded scope and limits](../developer/testing.md#current-evidence-and-next-checks).
 
 ## Choose scope and retention

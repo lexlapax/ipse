@@ -147,7 +147,8 @@ Abrupt owner death can interrupt the first catalog publication after directory o
 scratch-file creation. An existing ring without a valid catalog refuses subsequent
 capture just like other incomplete state; resume does not reconstruct or erase it.
 This delivery failure is independent of whether the failed worker's OS cleanup
-was confirmed. Select a fresh directory after reviewing the interrupted files.
+was confirmed. After reviewing the interrupted files, select a fresh directory
+for a new session. Existing session identities remain pinned.
 
 Legacy root-level lease logs and unrelated files are neither adopted nor deleted;
 quota covers this managed format. Select a fresh directory for changed limits or
