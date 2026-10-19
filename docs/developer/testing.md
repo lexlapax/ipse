@@ -46,6 +46,29 @@ Confirm each named test exists before using a copied command. A subsystem can
 span several files; inspect the source and adjacent fixtures rather than treating
 this table as a fixed test matrix.
 
+### Distinguish presentation from completion
+
+Trace `Session`'s `:extension_presentation` result into `finish/2`. Presentation
+is sent before the final `turn_finished` journal append and `done` notification.
+Receiving display text does not establish durable completion or a latency bound.
+
+For the prompt/presentation-only fixture in `extensions_session_test.exs`, the
+public `Session.info/1` read queues behind that same callback:
+
+```elixir
+assert_receive {:ipse, ^pid, {:presentation, "<answer>visible</answer>"}}, 5_000
+info = Session.info(pid)
+assert info.phase == :idle
+assert_receive {:ipse, ^pid, {:done, :ok}}
+```
+
+Keep the journal, original-content, native-continuation and cleanup assertions
+afterward. The state assertion does not replace the completion notification.
+If a fixture configures after-turn subscriptions, `finish/2` can start another
+owned job. Await that job's actual completion instead of applying this
+single-callback assumption. Do not add sleeps or turn an observation deadline
+into an undocumented product latency guarantee.
+
 ## Run the source baseline
 
 After a runtime change, run the following sequence:

@@ -1,11 +1,19 @@
 defmodule IpseKnowledgeExample.EvaluationGateway do
   @moduledoc "Controlled loopback search/fetch provider for the frozen corpus comparison."
   use GenServer
-  @limit 512
+  @max_calls 1024 * 11
 
-  def start(port), do: GenServer.start(__MODULE__, {self(), port})
+  def start(port, max_calls \\ 512)
+
+  def start(port, max_calls)
+      when is_integer(port) and port in 0..65535 and is_integer(max_calls) and
+             max_calls in 1..@max_calls,
+      do: GenServer.start(__MODULE__, {self(), port, max_calls})
+
+  def start(_, _), do: {:error, :invalid_gateway_limit}
   def select(pid, documents), do: GenServer.call(pid, {:select, documents})
   def calls(pid), do: GenServer.call(pid, :calls)
+  def summary(pid), do: GenServer.call(pid, :summary)
   def port(pid), do: GenServer.call(pid, :port)
   def selected_uris(pid), do: GenServer.call(pid, :selected_uris)
   def begin_query(pid), do: GenServer.call(pid, :begin_query)
@@ -22,7 +30,7 @@ defmodule IpseKnowledgeExample.EvaluationGateway do
     end
   end
 
-  def init({owner, port}) do
+  def init({owner, port, max_calls}) do
     {:ok, listener} =
       :gen_tcp.listen(port, [
         :binary,
@@ -43,6 +51,9 @@ defmodule IpseKnowledgeExample.EvaluationGateway do
        owner: Process.monitor(owner),
        docs: [],
        calls: [],
+       call_limit: max_calls,
+       call_count: 0,
+       over_limit: 0,
        selected: []
      }}
   end
@@ -52,6 +63,17 @@ defmodule IpseKnowledgeExample.EvaluationGateway do
   end
 
   def handle_call(:calls, _from, state), do: {:reply, Enum.reverse(state.calls), state}
+
+  def handle_call(:summary, _from, state) do
+    {:reply,
+     %{
+       "call_limit" => state.call_limit,
+       "recorded_calls" => state.call_count,
+       "rejected_over_limit" => state.over_limit,
+       "request_count" => state.call_count + state.over_limit
+     }, state}
+  end
+
   def handle_call(:acceptor, _from, state), do: {:reply, state.acceptor, state}
 
   def handle_call(:port, _from, state) do
@@ -63,6 +85,8 @@ defmodule IpseKnowledgeExample.EvaluationGateway do
   def handle_call(:begin_query, _from, state), do: {:reply, :ok, %{state | selected: []}}
 
   def handle_call({:request, request}, _from, state) do
+    within_limit = state.call_count < state.call_limit
+
     {reply, selected} =
       try do
         true =
@@ -72,7 +96,7 @@ defmodule IpseKnowledgeExample.EvaluationGateway do
         tool = request["tool"]
         true = request["version"] == 1 and request["partition"] == "evaluation"
         true = tool in ~w(search fetch) and is_map(args)
-        true = length(state.calls) < @limit
+        true = within_limit
         if tool == "fetch", do: true = args["uri"] in state.selected
         reply = if tool == "search", do: search(state.docs, args), else: fetch(state.docs, args)
         true = byte_size(JSON.encode!(reply)) <= 60_000
@@ -88,13 +112,25 @@ defmodule IpseKnowledgeExample.EvaluationGateway do
     encoded = JSON.encode!(reply)
 
     call = %{
-      "tool" => if(is_map(request), do: request["tool"]),
+      "tool" =>
+        if(is_map(request) and request["tool"] in ~w(search fetch),
+          do: request["tool"],
+          else: "other"
+        ),
       "response_sha256" => sha(encoded),
       "status" => reply["status"]
     }
 
-    calls = if length(state.calls) < @limit, do: [call | state.calls], else: state.calls
-    {:reply, encoded, %{state | calls: calls, selected: selected}}
+    calls = if within_limit, do: [call | state.calls], else: state.calls
+
+    {:reply, encoded,
+     %{
+       state
+       | calls: calls,
+         selected: selected,
+         call_count: state.call_count + if(within_limit, do: 1, else: 0),
+         over_limit: state.over_limit + if(within_limit, do: 0, else: 1)
+     }}
   end
 
   def handle_info({:DOWN, ref, :process, _, _}, %{owner: ref} = state),

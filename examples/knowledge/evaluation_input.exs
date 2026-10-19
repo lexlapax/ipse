@@ -68,7 +68,7 @@ defmodule IpseKnowledgeExample.EvaluationInput do
         end)
 
       require!(
-        unique?(documents, &Map.take(&1, ~w(project source_id generation version))),
+        unique?(documents, &Map.take(&1, ~w(project source_id generation))),
         :duplicate_source_generation
       )
 

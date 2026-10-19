@@ -90,6 +90,10 @@ The [complete declaration record](benchmark-declaration.md) retains the public
 seven-strategy builder, the Research source-count mismatch and the duplicate
 open-claim citation capacity failure. Its preparation examples do not constitute
 a held-out execution freeze or measured model quality.
+The [whole-run capacity and identity record](comparison-capacity.md) retains
+the 550-call workload, separate approval-count refusal, identical-body/version
+mapping ambiguity and duplicate-generation input controls. It also preserves
+the declaration revision's hosted presentation/completion observation failure.
 The later [HTTP fixture lifetime correction](http-lifetime.md) retains the
 corrected-format run's Linux failure and the controlled ordering proof and repair.
 The later [evaluation preparation record](evaluation-preparation.md) retains

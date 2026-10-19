@@ -102,6 +102,16 @@ defmodule Ipse.KnowledgeEvaluationInputTest do
     assert List.last(result["documents"])["state"] == "forgotten"
     assert result["excluded_fields"] == ["curation_note"]
     assert {:error, :duplicate_source_generation} = Input.corpus(corpus([document(), document()]))
+
+    for version <- ["1", 2, "other"] do
+      duplicate =
+        document() |> Map.put("document_id", "another-id") |> Map.put("version", version)
+
+      assert {:error, :duplicate_source_generation} =
+               Input.corpus(corpus([document(), duplicate]))
+    end
+
+    assert {:ok, _} = Input.corpus(corpus([document(), Map.put(document(), "project", "beta")]))
   end
 
   test "source byte length, hash, observation and field bounds are checked independently" do

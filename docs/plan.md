@@ -366,11 +366,14 @@ held-out evaluation remains required before completion.
 
 The [complete comparison declaration](developer/knowledge-evaluation.md#declare-the-complete-comparison)
 generates all seven strategies and explicit budgets without opening inputs.
-Its [capacity record](archive/2026-10-19-p27-knowledge-packages/benchmark-declaration.md)
-retains the Research count mismatch and duplicate-citation output failure.
-Research now accepts up to ten sources under the existing body/time/output
-bounds; a legal count can still refuse an oversized result. Declaration and
-synthetic fixtures do not close the clean freeze, held-out or selection gates.
+Its [initial capacity record](archive/2026-10-19-p27-knowledge-packages/benchmark-declaration.md)
+and [whole-run/identity controls](archive/2026-10-19-p27-knowledge-packages/comparison-capacity.md)
+retain count, output, approval and source-mapping failures. The controlled gateway
+and approval policy now use declared finite bounds. Dataset URIs bind complete
+typed source identity; duplicate source generations refuse. Research still obeys
+its body/time/output bounds, and a legal count can refuse an oversized result.
+Declaration and synthetic fixtures do not close the clean freeze, held-out or
+selection gates.
 The [evaluation preparation record](archive/2026-10-19-p27-knowledge-packages/evaluation-preparation.md)
 separates synthetic scorer checks from the initial tuning outcomes. The later
 [model workflow record](archive/2026-10-19-p27-knowledge-packages/model-workflows.md)

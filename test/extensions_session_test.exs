@@ -289,8 +289,9 @@ defmodule Ipse.Extensions.SessionTest do
     assert_receive {:ipse, ^pid, {:text, "vis"}}
     assert_receive {:ipse, ^pid, {:text, "ible"}}
     assert_receive {:ipse, ^pid, {:presentation, "<answer>visible</answer>"}}, 5_000
-    assert_receive {:ipse, ^pid, {:done, :ok}}
     info = Session.info(pid)
+    assert info.phase == :idle
+    assert_receive {:ipse, ^pid, {:done, :ok}}
     assert info.final == "<answer>visible</answer>"
     status = inspect(:sys.get_status(pid), limit: :infinity, printable_limit: :infinity)
     refute status =~ "synthetic-private-continuation"

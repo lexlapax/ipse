@@ -57,6 +57,13 @@ defmodule Ipse.KnowledgeEvaluationServicesTest do
       assert :ok = EvaluationGateway.select(gateway, [%{"source" => source}])
       assert request(port, "search", search)["status"] == "refused"
       assert length(EvaluationGateway.calls(gateway)) == 512
+
+      assert EvaluationGateway.summary(gateway) == %{
+               "call_limit" => 512,
+               "recorded_calls" => 512,
+               "rejected_over_limit" => 5,
+               "request_count" => 517
+             }
     after
       assert :ok = EvaluationGateway.stop(gateway)
     end
@@ -88,12 +95,87 @@ defmodule Ipse.KnowledgeEvaluationServicesTest do
     assert {:error, :closed} = :gen_tcp.recv(socket, 0, 1000)
     :gen_tcp.close(socket)
     assert request(port, "invalid", %{})["status"] == "refused"
+    assert hd(EvaluationGateway.calls(gateway))["tool"] == "other"
     Process.exit(owner, :kill)
     assert_receive {:DOWN, ^gateway_monitor, :process, ^gateway, :normal}, 1000
     assert_receive {:DOWN, ^acceptor_monitor, :process, ^acceptor, _}, 1000
 
     assert {:error, :econnrefused} =
              :gen_tcp.connect({127, 0, 0, 1}, port, [:binary, active: false], 1000)
+  end
+
+  test "gateway completes fifty ten-source questions and refuses work beyond its allowance" do
+    {:ok, gateway} = EvaluationGateway.start(0, 50 * 11)
+    port = EvaluationGateway.port(gateway)
+
+    docs =
+      Enum.map(1..10, fn n ->
+        %{
+          "source" => %{
+            "source_id" => "s#{n}",
+            "uri" => "local:s#{n}",
+            "title" => "Release",
+            "text" => "Release requires quiescence.",
+            "observed_at_ms" => 1
+          }
+        }
+      end)
+
+    search = %{"version" => 1, "contract" => "search-v1", "query" => "Release", "limit" => 10}
+
+    try do
+      assert :ok = EvaluationGateway.select(gateway, docs)
+
+      for question <- 1..50 do
+        assert :ok = EvaluationGateway.begin_query(gateway)
+        result = request(port, "search", search)
+        assert result["status"] == "ok", "search failed at question #{question}"
+        assert length(result["hits"]) == 10
+
+        for hit <- result["hits"] do
+          args = %{"version" => 1, "contract" => "fetch-v1", "uri" => hit["uri"]}
+
+          assert request(port, "fetch", args)["status"] == "ok",
+                 "fetch failed at question #{question}"
+        end
+      end
+
+      assert length(EvaluationGateway.calls(gateway)) == 550
+      assert :ok = EvaluationGateway.select(gateway, docs)
+      assert :ok = EvaluationGateway.begin_query(gateway)
+      assert request(port, "search", search)["status"] == "refused"
+      assert length(EvaluationGateway.calls(gateway)) == 550
+
+      assert EvaluationGateway.summary(gateway) == %{
+               "call_limit" => 550,
+               "recorded_calls" => 550,
+               "rejected_over_limit" => 1,
+               "request_count" => 551
+             }
+    after
+      assert :ok = EvaluationGateway.stop(gateway)
+    end
+  end
+
+  test "gateway refuses invalid finite allowances before starting a listener" do
+    for limit <- [0, -1, 11_265, 1.0, "550", nil] do
+      assert {:error, :invalid_gateway_limit} = EvaluationGateway.start(0, limit)
+    end
+
+    for limit <- [1, 11_264] do
+      assert {:ok, gateway} = EvaluationGateway.start(0, limit)
+
+      try do
+        assert EvaluationGateway.summary(gateway) == %{
+                 "call_limit" => limit,
+                 "recorded_calls" => 0,
+                 "rejected_over_limit" => 0,
+                 "request_count" => 0
+               }
+      after
+        assert :ok = EvaluationGateway.stop(gateway)
+      end
+    end
   end
 
   test "sampler reports its measurement scope and stops with its owner" do

@@ -222,7 +222,10 @@ source lifecycle metadata becomes public ingestion/update/forget commands.
 
 Each member is at most 1 MiB. The adapter reuses the host's duplicate-key-rejecting
 JSON decoder. It refuses an oversized member, duplicate query ID, duplicate source
-generation, malformed row or mismatched split as a complete input error. It never
+generation, malformed row or mismatched split as a complete input error. A project,
+source ID and generation identify one source version. Another document ID or
+version label cannot make a duplicate generation valid. A different project is
+a separate identity. The adapter never
 drops rows to make a comparison fit. Resolve any required capacity gap before
 freezing the implementation intended to cover the workload.
 
@@ -328,6 +331,43 @@ Follow `run_variant/9`, `prepare/4`, `invoke/4` and `approve/1` in the runner:
    selects that same time; omitting it preserves current-time behavior after capture.
 6. Prediction failures retain their declared rows. Cleanup attempts cover the
    Session, gateway and sampler, with errors preserved in the output directory.
+
+The controlled gateway uses one finite allowance across all projects. The runner
+derives it from `expected_queries * (1 + max_sources)`: one search and at most
+the declared number of fetches per question. Fifty ten-source questions allow
+550 calls. Changing documents or beginning another question does not renew the
+allowance. Direct gateway callers retain a 512-call default and can select an
+explicit integer allowance from one through 11264. Invalid limits refuse before
+starting a listener. Research limits are validated before any dataset access.
+
+Inspect `gateway-calls.json` with `gateway-summary.json`. The first contains
+bounded per-call metadata. The summary reports `call_limit`, `recorded_calls`,
+`rejected_over_limit` and total decoded `request_count`. Requests beyond the
+allowance refuse and increment the aggregate counter without growing the log.
+Malformed frames rejected before JSON dispatch do not enter these counters.
+Unknown tool values are recorded as `other`, never copied into the report.
+
+Run `mix test test/knowledge_evaluation_services_test.exs` for the complete
+550-call loopback control and post-exhaustion refusal. The runner's four-source
+Research case verifies the declared fetch count through actual approvals.
+Search approval binds the complete version, contract, query and source limit.
+Fetch approval permits each selected URI once, up to that same declared limit.
+The case supplies two generations with identical text and reused version labels,
+including integer `1` and string `"1"`. The raw fetch citation identifies its
+captured generation one; its URI and body hash map the saved prediction to the
+dataset's current generation and typed version. Retain that distinction rather than treating a matching body hash alone
+as a unique source identity. The control makes no model request.
+
+Source authoring generates `dataset:PROJECT:DIGEST` URIs. The digest hashes this
+ordered JSON array with raw SHA256:
+
+```elixir
+["dataset-source", 1, project, document_id, source_id, generation, version, body_sha256]
+```
+
+Generation and the version's JSON type remain part of the identity even when
+body bytes or display labels match. Keep this policy in the implementation
+freeze; changing it changes citation provenance and answer inputs.
 
 Compare the current-source and suppressed-source fixtures. Intentional exclusions
 remain visible while complete retrieval of eligible sources can succeed. The

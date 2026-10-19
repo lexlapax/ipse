@@ -177,6 +177,16 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
 
         assert report["execution_complete"], inspect(report)
         assert report["rows"] == 14
+        gateway_calls = JSON.decode!(File.read!(Path.join(output, "gateway-calls.json")))
+        gateway_summary = JSON.decode!(File.read!(Path.join(output, "gateway-summary.json")))
+
+        assert gateway_summary == %{
+                 "call_limit" => 22,
+                 "recorded_calls" => length(gateway_calls),
+                 "rejected_over_limit" => 0,
+                 "request_count" => length(gateway_calls)
+               }
+
         preflight = JSON.decode!(File.read!(Path.join(output, "preflight.json")))
         assert preflight["status"] == "ok"
         assert preflight["inventory"]["status"] == "ok"
@@ -247,6 +257,138 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
       after
         stop_model_fixture(server)
       end
+    end
+  end
+
+  test "Research approves four fetches and distinguishes reused typed versions with identical replacement bytes",
+       ctx do
+    {server, origin, tag} = model_fixture()
+    root = Path.join(ctx.root, Ipse.Usage.id())
+    File.mkdir!(root)
+    text = "Release requires quiescence."
+
+    docs =
+      for n <- 1..4, generation <- 1..2 do
+        %{
+          "document_id" => "d#{n}",
+          "project" => "alpha",
+          "source_id" => "s#{n}",
+          "generation" => generation,
+          "version" => if(rem(n, 2) == 0 and generation == 2, do: "1", else: 1),
+          "title" => "Release",
+          "text" => text,
+          "created_at" => "2026-01-01T00:00:00Z",
+          "observed_at" => "2026-03-01T00:00:00Z",
+          "state" => "current",
+          "sha256" => Ipse.Extensions.Manifest.sha256(text),
+          "byte_length" => byte_size(text),
+          "media_type" => "text/plain"
+        }
+      end
+
+    plan =
+      matrix_plan(ctx, origin)
+      |> Map.put("answer", false)
+      |> Map.update!("variants", fn variants ->
+        [research] = Enum.filter(variants, &(&1["id"] == "research"))
+
+        research =
+          research
+          |> Map.update!("bindings", &Map.delete(&1, "answer"))
+          |> Map.update!(
+            "artifacts",
+            &Enum.reject(&1, fn entry -> entry["instance"] == "answer" end)
+          )
+          |> put_in(["query_options", "limits", "max_sources"], 4)
+
+        [research]
+      end)
+      |> put_in(["data", "expected_queries"], 1)
+
+    queries = %{
+      "schema_version" => 1,
+      "queries" => [
+        %{
+          "query_id" => "Q1",
+          "project" => "alpha",
+          "split" => "fixture",
+          "query" => "Release",
+          "expected_answer" => "NEVER_PROVIDER_INPUT"
+        }
+      ]
+    }
+
+    for {name, value} <- [
+          {"plan", plan},
+          {"corpus", %{"schema_version" => 1, "documents" => docs}},
+          {"queries", queries}
+        ] do
+      File.write!(Path.join(root, name <> ".json"), JSON.encode!(value))
+    end
+
+    output = Path.join(root, "results")
+
+    try do
+      assert :ok = Runner.validate(plan)
+
+      assert {:ok, report} =
+               Runner.run(:verify,
+                 plan: Path.join(root, "plan.json"),
+                 corpus: Path.join(root, "corpus.json"),
+                 queries: Path.join(root, "queries.json"),
+                 output: output
+               )
+
+      events = jsonl(Path.join(output, "execution.jsonl"))
+      calls = JSON.decode!(File.read!(Path.join(output, "gateway-calls.json")))
+
+      assert report["failed_rows"] == 0,
+             inspect(%{
+               failed_rows: report["failed_rows"],
+               approval_refusals: Enum.count(events, &(&1["phase"] == "approval_refused")),
+               gateway_calls: length(calls)
+             })
+
+      assert report["execution_complete"]
+      [row] = jsonl(Path.join(output, "predictions.jsonl"))
+      assert row["status"] == "ok" and length(row["evidence"]) == 4
+      assert Enum.sort(Enum.map(row["evidence"], & &1["source"]["source_id"])) == ~w(s1 s2 s3 s4)
+
+      assert Enum.all?(row["evidence"], fn span ->
+               expected_version = if span["source"]["source_id"] in ~w(s2 s4), do: "1", else: 1
+
+               span["source"]["generation"] == 2 and
+                 span["source"]["version"] === expected_version and
+                 span["source"]["sha256"] == Ipse.Extensions.Manifest.sha256(text) and
+                 span["quote"] == text
+             end)
+
+      receipt = Enum.find(events, &(&1["verb"] == "research" and is_map(&1["value"])))
+
+      assert Enum.all?(receipt["value"]["evidence"], fn candidate ->
+               candidate["citation"]["generation"] == 1 and
+                 String.starts_with?(candidate["citation"]["uri"], "dataset:alpha:")
+             end)
+
+      assert receipt["value"]["evidence"]
+             |> Enum.map(& &1["citation"]["uri"])
+             |> Enum.uniq()
+             |> length() == 4
+
+      assert Enum.count(calls, &(&1["tool"] == "fetch")) == 4
+
+      assert JSON.decode!(File.read!(Path.join(output, "gateway-summary.json"))) ==
+               %{
+                 "call_limit" => 5,
+                 "recorded_calls" => 5,
+                 "rejected_over_limit" => 0,
+                 "request_count" => 5
+               }
+
+      assert drain(tag, []) == []
+      assert :code.is_loaded(IpseKnowledge.Research) == false
+    after
+      stop_model_fixture(server)
     end
   end
 
@@ -1078,7 +1220,13 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
       "media_type" => "text/plain"
     }
 
-    docs = if failed, do: [doc, %{doc | "document_id" => "d2", "version" => 2}], else: [doc]
+    docs =
+      if failed,
+        do: [
+          Map.put(doc, "state", "forgotten"),
+          %{doc | "document_id" => "d2", "generation" => 2, "version" => 2}
+        ],
+        else: [doc]
 
     queries =
       for {id, query} <- [{"Q1", "Release"}, {"Q2", "absent mineral"}],
@@ -1127,6 +1275,21 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
           if variant["id"] == id, do: update.(variant), else: variant
         end)
       end)
+    end
+
+    for limits <- [
+          %{"max_sources" => 11, "max_body_bytes" => 1024, "timeout_ms" => 1000},
+          %{"max_sources" => 1.0, "max_body_bytes" => 1024, "timeout_ms" => 1000},
+          %{"max_sources" => 1, "max_body_bytes" => 49_153, "timeout_ms" => 1000},
+          %{"max_sources" => 1, "max_body_bytes" => 1024, "timeout_ms" => 999},
+          %{"max_sources" => 1, "max_body_bytes" => 1024, "timeout_ms" => 1000, "renew" => true}
+        ] do
+      assert {:error, :research_limits} =
+               Runner.validate(
+                 changed.("research", fn variant ->
+                   put_in(variant, ["query_options", "limits"], limits)
+                 end)
+               )
     end
 
     assert {:error, :variant_algorithm} =

@@ -352,6 +352,16 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
           variant["query_options"]["sources"] == [],
         :query_arguments
       )
+
+      limits = variant["query_options"]["limits"]
+
+      require!(
+        exact?(limits, ~w(max_sources max_body_bytes timeout_ms)) and
+          is_integer(limits["max_sources"]) and limits["max_sources"] in 1..10 and
+          is_integer(limits["max_body_bytes"]) and limits["max_body_bytes"] in 1..49_152 and
+          is_integer(limits["timeout_ms"]) and limits["timeout_ms"] in 1000..30_000,
+        :research_limits
+      )
     else
       required =
         case preparation do
@@ -687,6 +697,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
         if gateway = Process.delete(:comparison_gateway) do
           try do
             write!(output, "gateway-calls.json", EvaluationGateway.calls(gateway))
+            write!(output, "gateway-summary.json", EvaluationGateway.summary(gateway))
           after
             :ok = EvaluationGateway.stop(gateway)
           end
@@ -1568,21 +1579,31 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
         :ok = MCPCall.validate(request)
         true = review.verb == "research" and request["binding"] in ~w(search_web fetch_web)
         tool = if request["binding"] == "search_web", do: "search", else: "fetch"
+        max_sources = policy.variant["query_options"]["limits"]["max_sources"]
 
         claim_effect!(
           if(tool == "search", do: :search, else: :fetch),
-          if(tool == "search", do: 1, else: 3)
+          if(tool == "search", do: 1, else: max_sources)
         )
 
         if tool == "fetch", do: claim_effect!({:fetch, request["arguments"]["uri"]}, 1)
         true = proposed["effect_binding"]["manifest"]["tool_id"] == "mcp__knowledge_cas__" <> tool
         true = request["arguments"]["contract"] == tool <> "-v1"
+        true = request["arguments"]["version"] === 1
 
         if tool == "search",
-          do: true = request["arguments"]["query"] == policy.active["query"],
+          do:
+            true =
+              request["arguments"] === %{
+                "version" => 1,
+                "contract" => "search-v1",
+                "query" => policy.active["query"],
+                "limit" => max_sources
+              },
           else:
             true =
-              request["arguments"]["uri"] in EvaluationGateway.selected_uris(policy.gateway)
+              exact?(request["arguments"], ~w(version contract uri)) and
+                request["arguments"]["uri"] in EvaluationGateway.selected_uris(policy.gateway)
 
       _ ->
         raise("Unselected effect")
@@ -1627,7 +1648,21 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
           "title" => doc["title"],
           "text" => doc["text"],
           "uri" =>
-            "dataset:" <> project <> ":" <> doc["document_id"] <> ":" <> to_string(doc["version"]),
+            "dataset:" <>
+              project <>
+              ":" <>
+              sha(
+                JSON.encode!([
+                  "dataset-source",
+                  1,
+                  project,
+                  doc["document_id"],
+                  doc["source_id"],
+                  doc["generation"],
+                  doc["version"],
+                  doc["sha256"]
+                ])
+              ),
           "observed_at_ms" => timestamp!(doc["observed_at"]),
           "event_at_ms" => nil,
           "expires_at_ms" => if(doc["state"] == "expired", do: max(at - 1, 0))
@@ -1864,7 +1899,12 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
   end
 
   defp start_gateway!(plan) do
-    {:ok, pid} = EvaluationGateway.start(plan["search_port"])
+    research = Enum.find(plan["variants"], &(&1["prepare"] == "research"))
+
+    limit =
+      plan["data"]["expected_queries"] * (1 + research["query_options"]["limits"]["max_sources"])
+
+    {:ok, pid} = EvaluationGateway.start(plan["search_port"], limit)
     pid
   end
 
