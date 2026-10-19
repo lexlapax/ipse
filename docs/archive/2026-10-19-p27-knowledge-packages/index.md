@@ -14,6 +14,11 @@ The later [complete-result review](result-transport-review.md) records the gener
 SDK-2 publication boundary and its remaining integration gates.
 The [complete domain-result record](complete-domain-results.md) follows the
 knowledge packages and evaluation consumers through that boundary.
+The later [peak-memory investigation](resource-memory-grounding.md) preserves
+rerunnable native controls and an Elixir Port accounting counterexample. It
+constrains the next measurement design without selecting its metric scope.
+The [final integration platform record](platform-verification.md) binds passing
+local, native-enabled Serenity and hosted Ubuntu/macOS gates to `fb980a0`.
 
 ## Implementation and corrections
 

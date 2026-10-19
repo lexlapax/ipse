@@ -7,6 +7,11 @@ owns acceptance. Use [knowledge training](../../developer/knowledge-extensions.m
 and the [evaluation manual](../../developer/knowledge-evaluation.md#materialize-before-interpreting-a-result)
 for current procedures. The [generic transport review](result-transport-review.md)
 owns its separate architecture, deadline and publication checks.
+The later [platform record](platform-verification.md) completes exact-source
+Serenity and hosted Ubuntu/macOS checks at `fb980a0`. The
+[memory investigation](resource-memory-grounding.md) separately constrains the
+still-unimplemented exact peak measurements. Earlier checkpoints below retain
+their original status and limits.
 
 ## Preserve the logical result
 

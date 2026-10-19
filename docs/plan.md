@@ -383,7 +383,7 @@ the milestone. Preserve current SDK bounds and existing operation authority.
 | P27H1 | Source-bound bounded result pages and explicit mixed read/effect allowance where necessary; unchanged legacy grants and pure saved-source validation | Complete for the MCP text contract at `2fe3583`; local source/native/installed and hosted Linux/macOS gates pass at `1f90178` |
 | P27H2 | Approved configured MCP actions from extensions; pinned descriptors, child denial, owned cancellation and unknown-outcome recovery | Complete at `2fe3583`; real stdio/HTTP, denial, cancellation and inert recovery pass; source/installed proofs pass on hosted Linux/macOS at `1f90178` |
 | P27H3 | Versioned embedding operation with selected profiles, bounded ordinary vectors, exact egress, operation-aware accounting/costs/shared budgets and no text-envelope substitution | Complete at `3e32051`; local source/macOS/installed gates and exact-source hosted Linux/macOS source/package/installed proofs pass with 768/4096-coordinate native fixtures |
-| P27H4 | Opt-in bounded complete-result publication for original top-level tools/commands, historical receipt reads, strict source closure and unchanged ordinary SDK bounds | Generic `11d067f` passes local source/macOS native and Serenity native-enabled checks, plus exact 4 MiB source/installed proofs. Its hosted run is red from a repaired Elixir 1.18 fixture setup. Knowledge SDK-2, whole-milestone review, 1,248-test local baseline and complete-value source/installed proofs pass; new-candidate platform gates remain open |
+| P27H4 | Opt-in bounded complete-result publication for original top-level tools/commands, historical receipt reads, strict source closure and unchanged ordinary SDK bounds | Complete at `fb980a0`; whole-milestone review, local 1,248-test baseline, Serenity 1,265-test native-enabled suite, exact 4 MiB and complete-domain source/installed proofs pass. Exact-source hosted Ubuntu/macOS matrix passes |
 | P27A | Independent research and lexical corpus packages with named interchangeable profiles, cited evidence, explicit limits, partial failures, stale-index handling and suppression | Implementation present; controlled Graph/Corpus provider lifecycle and installed checks pass; final authority/platform and quality validation open |
 | P27B | Independent attributable graph, optional extraction, embedding/hybrid and rerank adapters; matched quality/resource comparisons before engine selection | Implementation present; accounted tuning embedding, extraction and revalidated rerank paths exercised; retained failures, full lifecycle gates and matched quality/resource comparisons remain open |
 | P27 verification | Frozen held-out workload, zero authority/isolation/replay/resurrection failures, measured retrieval/support/citation/resources, source/native/installed checks, coherent user and contributor manuals | Open; seven-variant public-Session fixtures and saved-prediction controls pass; full lifecycle, held-out quality and resource/selection gates remain |
@@ -413,6 +413,8 @@ body/time/output bounds. Knowledge packages now preserve complete SDK-2 results
 and consumers materialize them before use; invalid aggregates or insufficient
 journal capacity still refuse. The [domain-result record](archive/2026-10-19-p27-knowledge-packages/complete-domain-results.md)
 separates these checks from the remaining quality gates.
+Its [platform record](archive/2026-10-19-p27-knowledge-packages/platform-verification.md)
+binds local, native-enabled Serenity and hosted Ubuntu/macOS checks to `fb980a0`.
 Declaration and synthetic fixtures do not close the clean freeze, held-out or
 selection gates.
 The [memory/knowledge selection proof](archive/2026-10-19-p27-knowledge-packages/selection-independence.md)
@@ -450,7 +452,10 @@ adds query/phase clocks and request/budget reconciliation. The
 adds strict retained-page reachability and draft/orphan/tombstone measurements.
 The full resource comparison, exact peak process-memory measurements and held-out
 evaluation remain open. The user requires exact peaks; periodic samples alone
-cannot satisfy that gate. Largest-process lifetime high water and simultaneous
+cannot satisfy that gate. The [native accounting investigation](archive/2026-10-19-p27-knowledge-packages/resource-memory-grounding.md)
+reproduces a completed Port child's missing high water in an outer Elixir receipt
+on macOS and Linux. An outer-only wrapper cannot establish complete coverage.
+Largest-process lifetime high water and simultaneous
 combined-process peak are distinct metrics, and the latter scope remains a pending
 clarification. The inherited combined-fixture timeout is repaired with independent
 test units and unchanged deadlines/assertions; the exact-source `25f1d8e`

@@ -5,6 +5,9 @@ completion verdict. The [plan](../../plan.md#p27-optional-research-graph-and-rag
 owns acceptance. Use the [invocation training manual](../../developer/extension-invocations.md)
 and [extension user manual](../../operator/extensions.md) for current procedures.
 The [design record](result-transport-design.md) explains the selected architecture.
+The later [platform record](platform-verification.md) closes the repaired
+candidate's source, native and installed gates at `fb980a0`; earlier receipts
+below retain their original scope and failures.
 
 ## Review the whole contract
 
