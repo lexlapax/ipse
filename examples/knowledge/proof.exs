@@ -369,6 +369,400 @@ defmodule IpseKnowledgeExample.Proof do
     end
   end
 
+  def independence(artifacts) do
+    {:ok, _} = Application.ensure_all_started(:ipse)
+    unloaded!()
+    root = Path.join(System.tmp_dir!(), "ipse-knowledge-independence-" <> Ipse.Usage.id())
+    File.mkdir_p!(root)
+    File.chmod!(root, 0o700)
+    Process.put(:knowledge_proof_sessions, [])
+
+    try do
+      cases =
+        for {kind, scope} <- [
+              {"working", "session"},
+              {"persistent", "project"},
+              {"persistent", "operator"}
+            ],
+            package <- ~w(corpus graph research) do
+          label = scope <> "-" <> package
+          home = Path.join(root, "home-" <> label)
+          config = prepare(artifacts, package, root, true, home: home)
+
+          paired = %{
+            config
+            | extensions: config.extensions ++ memory_entries(home, kind, scope, true)
+          }
+
+          disabled = prepare(artifacts, package, root, false, home: home)
+
+          disabled = %{
+            disabled
+            | extensions: disabled.extensions ++ memory_entries(home, kind, scope, false)
+          }
+
+          {_, disabled_calls} =
+            count_calls(fn ->
+              control = start(disabled, root, "disabled-" <> label)
+              [] = Session.exports(control)["entries"]
+
+              [] =
+                Enum.filter(
+                  events(control, root, "disabled-" <> label),
+                  &(&1["type"] == "extension_action_intent")
+                )
+
+              0 = Session.info(control).accounting["request_count"]
+              :ok = Session.close_confirmed(control)
+            end)
+
+          zero_calls!(disabled_calls)
+
+          {_, idle_calls} =
+            count_calls(fn ->
+              control = start(paired, root, "idle-" <> label)
+
+              instances =
+                Session.exports(control)["entries"]
+                |> Enum.map(& &1["instance"])
+                |> Enum.uniq()
+                |> Enum.sort()
+
+              true = instances == Enum.sort(["notes", package])
+
+              [] =
+                Enum.filter(
+                  events(control, root, "idle-" <> label),
+                  &(&1["type"] == "extension_action_intent")
+                )
+
+              0 = Session.info(control).accounting["request_count"]
+              :ok = Session.close_confirmed(control)
+            end)
+
+          zero_calls!(idle_calls)
+          %{} = empty = state_files(home)
+          true = map_size(empty) == 0
+
+          {saved, operation_calls} =
+            count_calls(fn ->
+              pid = start(paired, root, label)
+              prime_knowledge(pid, package)
+              [] = invoke(pid, "notes", "recall", %{"query" => "quiescence"})["matches"]
+              note = memory_note("manual:release")
+              stored = invoke(pid, "notes", "remember", note)
+              "stored" = stored["status"]
+              [match] = invoke(pid, "notes", "recall", %{"query" => "quiescence"})["matches"]
+              true = match["excerpt"] == note["text"]
+              knowledge_present!(pid, package)
+              0 = Session.info(pid).accounting["request_count"]
+              id = Session.info(pid).id
+              :ok = Session.close_confirmed(pid)
+              state = state_files(home)
+              true = map_size(state) == if(package == "research", do: 1, else: 2)
+
+              %{
+                id: id,
+                revision: stored["revision"],
+                state: state,
+                journal: File.read!(Path.join([root, "sessions-" <> label, id <> ".jsonl"]))
+              }
+            end)
+
+          true = operation_calls["extension_worker_starts"] > 0
+          true = operation_calls["state_operations"] > 0
+          no_inference!(operation_calls)
+
+          {resumed, resume_calls} =
+            count_calls(fn ->
+              pid = start(paired, root, label, saved.id)
+              :idle = Session.info(pid).phase
+              0 = Session.info(pid).accounting["request_count"]
+
+              true =
+                File.read!(Path.join([root, "sessions-" <> label, saved.id <> ".jsonl"])) ==
+                  saved.journal
+
+              true = state_files(home) == saved.state
+              events(pid, root, label)
+              pid
+            end)
+
+          zero_calls!(resume_calls)
+
+          {_, forget_calls} =
+            count_calls(fn ->
+              "stored" =
+                invoke(resumed, "notes", "forget", %{
+                  "source" => "manual:release",
+                  "expected_revision" => saved.revision
+                })["status"]
+
+              knowledge_present!(resumed, package)
+              other = memory_note("manual:other")
+              "stored" = invoke(resumed, "notes", "remember", other)["status"]
+
+              if package != "research" do
+                revision =
+                  invoke(
+                    resumed,
+                    package,
+                    "source",
+                    source("inspect", %{"source_id" => "manual:release"})
+                  )["coverage"]["revision"]
+
+                "ok" =
+                  invoke(
+                    resumed,
+                    package,
+                    "source",
+                    source("forget", %{
+                      "source_id" => "manual:release",
+                      "expected_revision" => revision
+                    })
+                  )["status"]
+
+                "abstain" = knowledge_result(resumed, package)["status"]
+              end
+
+              [match] = invoke(resumed, "notes", "recall", %{"query" => "quiescence"})["matches"]
+              true = match["source"] == "manual:other" and match["excerpt"] == other["text"]
+              0 = Session.info(resumed).accounting["request_count"]
+              :ok = Session.close_confirmed(resumed)
+            end)
+
+          no_inference!(forget_calls)
+
+          %{
+            "memory" => kind,
+            "scope" => scope,
+            "package" => package,
+            "disabled_calls" => disabled_calls,
+            "idle_calls" => idle_calls,
+            "operation_calls" => operation_calls,
+            "resume_calls" => resume_calls,
+            "forget_calls" => forget_calls,
+            "state_files" => map_size(saved.state),
+            "note_isolation" => true,
+            "forget_isolation" => true,
+            "retained_knowledge_store" => package != "research"
+          }
+        end
+
+      configs = for package <- ~w(corpus graph research), do: prepare(artifacts, package, root)
+      [first | _] = configs
+
+      oversized = %{
+        first
+        | extensions:
+            Enum.flat_map(configs, & &1.extensions) ++
+              memory_entries(first.home, "working", "session", true)
+      }
+
+      {_, refusal_calls} =
+        count_calls(fn ->
+          {:error, :invalid_extension_catalog} = Ipse.Extensions.Catalog.snapshot(oversized)
+
+          {:error, :invalid_extension_configuration} =
+            DynamicSupervisor.start_child(
+              Ipse.Sessions,
+              {Session, config: oversized, cwd: root, state_dir: Path.join(root, "oversized")}
+            )
+        end)
+
+      zero_calls!(refusal_calls)
+      unloaded!()
+
+      %{
+        "checks" => 10,
+        "cases" => cases,
+        "catalog_bound_refused" => true,
+        "catalog_refusal_calls" => refusal_calls,
+        "model_requests" => 0,
+        "payloads_traced" => false,
+        "host_loaded_domain_modules" => false,
+        "cleanup" => "confirmed"
+      }
+    after
+      for pid <- Process.get(:knowledge_proof_sessions, []),
+          Process.alive?(pid),
+          do: :ok = Session.close_confirmed(pid)
+
+      File.rm_rf!(root)
+    end
+  end
+
+  @counter_points %{
+    "extension_worker_starts" => {Ipse.Extensions.Worker, :start, 1},
+    "state_operations" => {Ipse.Extensions.State, :execute, 4},
+    "mcp_operations" => {Ipse.Extensions.MCPCall, :execute, 2},
+    "embedding_operations" => {Ipse.Extensions.EmbeddingCall, :execute, 2},
+    "text_operations" => {Ipse.Extensions.ModelCall, :execute, 2}
+  }
+
+  defp count_calls(fun) do
+    trace = :trace.session_create(:ipse_knowledge_independence, self(), [])
+
+    try do
+      for {_, {module, _, _} = point} <- @counter_points do
+        Code.ensure_loaded!(module)
+        1 = :trace.function(trace, point, true, [:call_count])
+      end
+
+      result = fun.()
+
+      counts =
+        Map.new(@counter_points, fn {key, point} ->
+          {:call_count, count} = :trace.info(trace, point, :call_count)
+          {key, count}
+        end)
+
+      {result, counts}
+    after
+      :trace.session_destroy(trace)
+    end
+  end
+
+  defp zero_calls!(counts), do: true = Enum.all?(Map.values(counts), &(&1 == 0))
+
+  defp no_inference!(counts),
+    do:
+      true =
+        Enum.all?(~w(mcp_operations embedding_operations text_operations), &(counts[&1] == 0))
+
+  defp state_files(home) do
+    Path.wildcard(Path.join(home, "extension-state-v1/*/state.json"), match_dot: true)
+    |> Enum.filter(&File.regular?/1)
+    |> Map.new(&{Path.relative_to(&1, home), sha(File.read!(&1))})
+  end
+
+  defp memory_entries(home, kind, scope, enabled) do
+    reference = "builtin:" <> kind <> "-memory:1"
+    descriptor = Enum.find(Registry.builtins(), &(&1["artifact"] == reference))
+
+    trust = %{
+      "artifact" => reference,
+      "capabilities" => descriptor["capabilities"],
+      "allow_project" => false,
+      "allow_children" => false
+    }
+
+    trust =
+      if kind == "persistent",
+        do:
+          Map.put(trust, "state_bindings", [
+            %{
+              "version" => 1,
+              "instance" => "notes",
+              "id" => "memory-proof",
+              "scopes" => [scope]
+            }
+          ]),
+        else: trust
+
+    data = %{
+      "extensions" => [
+        %{
+          "instance" => "notes",
+          "artifact" => reference,
+          "enabled" => enabled,
+          "options" => %{
+            "scope" => scope,
+            "retention_seconds" => 3600
+          },
+          "order" => 10,
+          "lifetime" => "persistent"
+        }
+      ],
+      "extension_trust" => [trust]
+    }
+
+    {:ok, selected} =
+      Config.resolve([%{scope: "operator", path: Path.join(home, "notes.json"), data: data}], [])
+
+    {:ok, entries} = Registry.prepare(selected, home)
+    entries
+  end
+
+  defp memory_note(id),
+    do: %{
+      "source" => id,
+      "source_generation" => 1,
+      "title" => "Note",
+      "text" => "MEMORY_ONLY quiescence.",
+      "kind" => "task_card",
+      "provenance" => "Synthetic operator note",
+      "expected_revision" => 0
+    }
+
+  defp prime_knowledge(_pid, "research"), do: :ok
+
+  defp prime_knowledge(pid, package) do
+    raw = source_args("manual:release")
+    "ok" = invoke(pid, package, "source", source("put", raw))["status"]
+
+    if package == "graph" do
+      [chunk] =
+        invoke(pid, package, "source", source("inspect", %{"source_id" => raw["source_id"]}))[
+          "coverage"
+        ]["chunks"]
+
+      "ok" =
+        invoke(pid, package, "extract", %{
+          "store" => "notes",
+          "extraction" => "asserted",
+          "source_id" => raw["source_id"],
+          "generation" => 1,
+          "max_edges" => 1,
+          "chunks" => [chunk["chunk_id"]],
+          "facts" => [explicit_fact(raw, chunk["chunk_id"])]
+        })["status"]
+    end
+  end
+
+  defp knowledge_present!(pid, package) do
+    result = knowledge_result(pid, package)
+    "ok" = result["status"]
+    [candidate] = result["evidence"]
+    citation!(candidate["citation"], "manual:release", @text)
+  end
+
+  defp knowledge_result(pid, "corpus"),
+    do:
+      invoke(pid, "corpus", "query", %{
+        "store" => "notes",
+        "retrieval" => "words",
+        "rerank" => nil,
+        "query" => "quiescence",
+        "top_k" => 5,
+        "as_of_ms" => @at
+      })
+
+  defp knowledge_result(pid, "graph"),
+    do:
+      invoke(pid, "graph", "query", %{
+        "store" => "notes",
+        "entity" => "Release",
+        "depth" => 2,
+        "max_nodes" => 8,
+        "max_edges" => 8,
+        "top_k" => 5,
+        "as_of_ms" => @at
+      })
+
+  defp knowledge_result(pid, "research"),
+    do:
+      invoke(pid, "research", "investigate", %{
+        "search" => "given",
+        "fetch" => "given",
+        "retrieval" => "words",
+        "rerank" => nil,
+        "query" => "quiescence",
+        "as_of_ms" => @at,
+        "limits" => %{"max_sources" => 1, "max_body_bytes" => 1024, "timeout_ms" => 5000},
+        "sources" => [Map.delete(source_args("manual:release"), "expected_revision")]
+      })
+
   defp prepare(artifacts, package, root, enabled \\ true, overrides \\ []) do
     artifact = Path.join(artifacts, package)
     home = Keyword.get(overrides, :home, Path.join(root, "home-" <> package))

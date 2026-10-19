@@ -35,6 +35,68 @@ omits MCP, embeddings and text-model grants. Its options cannot promote it to
 `state-semantic`. The builder changes one known `@preset` literal and compiles
 against the public SDK. Import, operator trust and activation remain separate.
 
+## Verify independent memory and knowledge selections
+
+Build three independent artifacts and exercise each with explicit memory:
+
+```sh
+IPSE_SELECTION_ARTIFACTS=$(mktemp -d)
+elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$IPSE_SELECTION_ARTIFACTS/corpus" --package corpus --preset state-lexical
+elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$IPSE_SELECTION_ARTIFACTS/graph" --package graph --preset state-explicit
+elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$IPSE_SELECTION_ARTIFACTS/research" --package research --preset offline
+mix run examples/knowledge/verify-independence.exs "$IPSE_SELECTION_ARTIFACTS"
+```
+
+Expect ten checks: nine package/scope combinations and one catalog-bound refusal.
+Working memory uses session scope; persistent memory uses project or explicitly
+shared operator scope. Each pairs with Corpus, Graph and provided-source Research.
+The proof uses private homes, distinct storage bindings and a conversation
+provider that rejects inference. It requires no model service.
+
+Follow `Proof.independence/1`, `memory_entries/4` and `count_calls/1` in
+`examples/knowledge/proof.exs`. Each case begins with disabled and enabled idle
+selections. Counters for extension-worker starts, State operations, MCP operations,
+embedding operations and text-model operations must remain zero. The proof then
+writes or investigates a source, remembers a note with the same source ID, and
+queries both. Actual worker/State calls provide a positive counter control.
+The note never becomes corpus evidence or a graph fact, and retaining source
+text never creates a memory note.
+
+Before forgetting, the proof closes and resumes the exact Session. Its journal
+and State file bytes stay unchanged, with zero new counted operations. The report
+requires one nested State file for Research with memory, and two for Corpus or
+Graph with memory. Match namespace-relative filenames as well as their hashes;
+an empty file inventory cannot verify this resume check. The proof then
+checks forget isolation: suppressing a note preserves the independent evidence;
+forgetting retained knowledge preserves a different explicit note. Research has
+no retained knowledge store. Earlier recall remains in the private journal, and
+no conversational model turn follows forget. Follow the
+[memory recovery policy](../operator/memory.md) for affected real conversations.
+
+The counters use OTP trace-session `call_count` instrumentation. They retain no
+arguments or result payloads and require every target function to be instrumented.
+They describe host entrypoints. Run the [OS enforcement checks](testing.md#test-actual-os-enforcement)
+separately when changing confinement. The selected logical bindings control store
+authority; deliberately sharing a binding changes that authority.
+
+All three knowledge packages plus memory exceed the current 16 KiB catalog
+bound. That selection must refuse before Session creation, workers or State
+operations. Select the packages needed for the task and preserve the existing
+32-entry/16 KiB ceiling. Individual pair compatibility does not grant capacity
+for every combined selection.
+
+Run the maintained test or the same proof in a matching extracted runtime:
+
+```sh
+mix test test/knowledge_independence_test.exs
+elixir examples/knowledge/verify-package.exs /path/to/ipse.tar.gz "$IPSE_SELECTION_ARTIFACTS" independence
+```
+
+The installed wrapper hides development tools and checks unchanged host/archive
+bytes. Omitting `independence` runs the base knowledge proof. These checks verify
+selection, isolation and lifecycle behavior; held-out quality remains a separate
+[evaluation task](knowledge-evaluation.md).
+
 ## Trace a source and a query
 
 Follow `Corpus.source/2` through a small `put`. The entrypoint selects a named

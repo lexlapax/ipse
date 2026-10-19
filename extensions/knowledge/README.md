@@ -109,6 +109,12 @@ requires domain modules to remain absent from the host VM. It uses synthetic
 source text and no model service. These checks establish protocol behavior;
 they do not measure semantic answer quality or choose an embedding model.
 
+Run `mix run examples/knowledge/verify-independence.exs "$IPSE_KNOWLEDGE_ARTIFACTS"`
+to pair each package with session-, project- and operator-scoped memory. It checks
+idle/resume dispatch counters, explicit note/evidence isolation and the combined
+catalog ceiling. Follow the [selection exercise](../../docs/developer/knowledge-extensions.md#verify-independent-memory-and-knowledge-selections)
+for its scope and expected output.
+
 Run `mix run examples/knowledge/verify-evaluation.exs CORPUS_ARTIFACT` to check
 the evaluation Session driver with synthetic paged ingestion, named profiles and
 durable invocation receipts. It makes no model calls and is separate from a
@@ -130,6 +136,7 @@ For an extracted runtime, run:
 
 ```sh
 elixir examples/knowledge/verify-package.exs dist/ipse-*.tar.gz "$IPSE_KNOWLEDGE_ARTIFACTS"
+elixir examples/knowledge/verify-package.exs dist/ipse-*.tar.gz "$IPSE_KNOWLEDGE_ARTIFACTS" independence
 elixir examples/knowledge/verify-mcp-package.exs dist/ipse-*.tar.gz /path/to/corpus-mcp
 elixir examples/knowledge/verify-mcp-package.exs dist/ipse-*.tar.gz /path/to/research-mcp research
 ```

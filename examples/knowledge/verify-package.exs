@@ -2,7 +2,9 @@ defmodule IpseKnowledgeExample.PackageProof do
   @moduledoc false
   @utilities ~w(dirname basename cut sed cat grep readlink sleep uname expr awk id tr head)
 
-  def run([archive, artifact]) do
+  def run([archive, artifact]), do: run([archive, artifact, "base"])
+
+  def run([archive, artifact, mode]) when mode in ~w(base independence) do
     archive = Path.expand(archive)
     artifact = Path.expand(artifact)
     original = digest(archive)
@@ -51,6 +53,7 @@ defmodule IpseKnowledgeExample.PackageProof do
         )
 
       frozen = inventory(release)
+      proof_function = if mode == "base", do: "run", else: "independence"
 
       expression = """
       canonical = fn path -> {:ok, resolved} = Ipse.WorkspaceContext.canonical_path(path); resolved end
@@ -59,7 +62,7 @@ defmodule IpseKnowledgeExample.PackageProof do
         not (name == "erl" and canonical.(path) in bundled), do: {name, path}
       unless found == [], do: raise("Unexpected system development toolchain")
       Code.require_file(#{inspect(Path.join(__DIR__, "proof.exs"))})
-      IO.puts(:json.encode(IpseKnowledgeExample.Proof.run(#{inspect(artifact)})))
+      IO.puts(:json.encode(IpseKnowledgeExample.Proof.#{proof_function}(#{inspect(artifact)})))
       """
 
       {output, status} =
@@ -72,15 +75,21 @@ defmodule IpseKnowledgeExample.PackageProof do
       unless status == 0, do: raise("Installed knowledge proof failed: " <> output)
       report = output |> String.split("\n", trim: true) |> List.last() |> :json.decode()
 
-      true =
-        report["checks"] == 16 and report["disabled_catalogs_empty"] == true and
-          report["independent_catalogs"] == true and report["model_requests"] == 0 and
-          report["policy_exclusions_retained"] == true and
-          report["expired_facts_excluded"] == true and
-          report["incomplete_empty_is_partial"] == true and
-          report["fused_graph_bound_is_partial"] == true and
-          report["direct_graph_scope_matches"] == true and
-          report["host_loaded_domain_modules"] == false
+      case mode do
+        "base" ->
+          true =
+            report["checks"] == 16 and report["disabled_catalogs_empty"] == true and
+              report["independent_catalogs"] == true and report["model_requests"] == 0 and
+              report["policy_exclusions_retained"] == true and
+              report["expired_facts_excluded"] == true and
+              report["incomplete_empty_is_partial"] == true and
+              report["fused_graph_bound_is_partial"] == true and
+              report["direct_graph_scope_matches"] == true and
+              report["host_loaded_domain_modules"] == false
+
+        "independence" ->
+          true = valid_independence?(report)
+      end
 
       true = inventory(release) == frozen and digest(archive) == original
 
@@ -97,6 +106,48 @@ defmodule IpseKnowledgeExample.PackageProof do
     after
       File.rm_rf!(root)
     end
+  end
+
+  @counter_fields ~w(embedding_operations extension_worker_starts mcp_operations state_operations text_operations)
+  defp zero_counts?(counts),
+    do:
+      is_map(counts) and Enum.sort(Map.keys(counts)) == @counter_fields and
+        Enum.all?(Map.values(counts), &(&1 === 0))
+
+  defp valid_independence?(report) do
+    expected =
+      for {memory, scope} <- [
+            {"working", "session"},
+            {"persistent", "project"},
+            {"persistent", "operator"}
+          ],
+          package <- ~w(corpus graph research),
+          do: {memory, scope, package}
+
+    rows = report["cases"]
+
+    report["checks"] === 10 and report["catalog_bound_refused"] === true and
+      report["model_requests"] === 0 and report["payloads_traced"] === false and
+      report["host_loaded_domain_modules"] === false and report["cleanup"] == "confirmed" and
+      zero_counts?(report["catalog_refusal_calls"]) and is_list(rows) and
+      Enum.sort(Enum.map(rows, &{&1["memory"], &1["scope"], &1["package"]})) ==
+        Enum.sort(expected) and
+      Enum.all?(rows, fn row ->
+        row["note_isolation"] === true and row["forget_isolation"] === true and
+          row["state_files"] === if(row["package"] == "research", do: 1, else: 2) and
+          row["retained_knowledge_store"] === (row["package"] != "research") and
+          Enum.all?(~w(disabled_calls idle_calls resume_calls), &zero_counts?(row[&1])) and
+          Enum.all?(~w(operation_calls forget_calls), fn phase ->
+            counts = row[phase]
+
+            is_map(counts) and Enum.sort(Map.keys(counts)) == @counter_fields and
+              counts["extension_worker_starts"] > 0 and counts["state_operations"] > 0 and
+              Enum.all?(
+                ~w(mcp_operations embedding_operations text_operations),
+                &(counts[&1] === 0)
+              )
+          end)
+      end)
   end
 
   defp inventory(root) do

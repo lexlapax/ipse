@@ -94,6 +94,9 @@ The [whole-run capacity and identity record](comparison-capacity.md) retains
 the 550-call workload, separate approval-count refusal, identical-body/version
 mapping ambiguity and duplicate-generation input controls. It also preserves
 the declaration revision's hosted presentation/completion observation failure.
+The [memory/knowledge selection record](selection-independence.md) adds nine
+real Session combinations, idle/resume dispatch counters, independent forget
+behavior and the unchanged combined-catalog refusal.
 The later [HTTP fixture lifetime correction](http-lifetime.md) retains the
 corrected-format run's Linux failure and the controlled ordering proof and repair.
 The later [evaluation preparation record](evaluation-preparation.md) retains

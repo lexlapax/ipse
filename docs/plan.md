@@ -374,6 +374,10 @@ typed source identity; duplicate source generations refuse. Research still obeys
 its body/time/output bounds, and a legal count can refuse an oversized result.
 Declaration and synthetic fixtures do not close the clean freeze, held-out or
 selection gates.
+The [memory/knowledge selection proof](archive/2026-10-19-p27-knowledge-packages/selection-independence.md)
+checks nine real Session combinations, zero idle/resume dispatch, separate note
+and evidence stores, independent forget and refusal at the combined catalog
+bound. Those protocol checks do not measure semantic quality.
 The [evaluation preparation record](archive/2026-10-19-p27-knowledge-packages/evaluation-preparation.md)
 separates synthetic scorer checks from the initial tuning outcomes. The later
 [model workflow record](archive/2026-10-19-p27-knowledge-packages/model-workflows.md)
