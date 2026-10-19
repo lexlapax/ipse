@@ -16,7 +16,9 @@ defmodule Ipse.Session do
     Subscriptions,
     EventJob,
     Feeds,
-    FeedChannel
+    FeedChannel,
+    ResultSource,
+    ResultReader
   }
 
   def start_link(opts) do
@@ -52,6 +54,8 @@ defmodule Ipse.Session do
   def approve(pid, ref, allowed), do: GenServer.call(pid, {:approve, ref, allowed})
   def answer(pid, id, answers), do: GenServer.call(pid, {:answer, id, answers})
   def cancel(pid), do: GenServer.call(pid, :cancel, 10_000)
+  def materialize_result(pid, delivery), do: ResultReader.materialize(pid, delivery)
+  def read_saved_result(pid, request), do: ResultReader.read(pid, request)
 
   def close(pid), do: close(pid, false)
 
@@ -157,6 +161,7 @@ defmodule Ipse.Session do
          {:ok, events} <- Journal.load(dir, id, config[:journal]),
          {:ok, accounting} <- Ipse.Usage.restore(events, id),
          {:ok, extension_state} <- Actions.restore(events),
+         {:ok, result_sources} <- ResultSource.restore(events),
          {:ok, messages} <- restore(events),
          {:ok, _research} <- Ipse.Research.restore(events),
          {:ok, question, messages} <- restore_question(events, messages),
@@ -252,6 +257,9 @@ defmodule Ipse.Session do
             else: Projection.presentation(events)
           ),
         extension_intent: nil,
+        extension_result_sources: result_sources,
+        extension_output: nil,
+        extension_output_clock: nil,
         extension_invocation: if(question && question[:kind] == :extension, do: question.parent),
         extension_action:
           if(question && question[:kind] == :extension, do: %{intent: question.action}),
@@ -912,12 +920,14 @@ defmodule Ipse.Session do
              approval
            ),
          :ok <- Invocation.validate_intent(intent) do
+      {clock, entry} = output_clock(entry, descriptor["stage"], ref)
       record(s, intent)
 
       {:reply, {:ok, intent, entry},
        %{
          s
          | extension_invocation: intent,
+           extension_output_clock: clock,
            extension_invocations: s.extension_invocations + 1,
            extension_actions: 0,
            extension_action_unknown: false,
@@ -932,6 +942,138 @@ defmodule Ipse.Session do
 
   def handle_call({:extension_invoke_begin, _, _, _, _}, _, s),
     do: {:reply, {:error, :cancelled}, s}
+
+  def handle_call(
+        {:extension_output_begin, ref, offer},
+        {caller, _},
+        %{job_ref: ref, task: %{pid: caller}, extension_output: nil, phase: phase} = s
+      )
+      when ref != nil and phase in [:tool, :extension_command] do
+    with true <- output_timely?(s) and s.extension_output_clock != nil,
+         true <- is_nil(s.extension_action) and not s.extension_action_unknown,
+         true <- Ipse.Extensions.Registry.live?(s.extension_invocation["identity"]),
+         {:ok, event, source, index} <-
+           ResultSource.index_open(
+             s.extension_result_sources,
+             s.extension_invocation,
+             offer,
+             output_elapsed(s)
+           ),
+         {:ok, final} <-
+           Invocation.build_saved_result(
+             s.extension_invocation,
+             ResultSource.descriptor(source),
+             s.extension_action_results,
+             120_000
+           ),
+         {:ok, capacity} <- ResultSource.reservation_size(source, final),
+         true <- ResultSource.fits_reservation?(s.extension_result_sources, capacity),
+         {:ok, limits} <- Ipse.Journal.Limits.normalize(s.config[:journal]),
+         true <- capacity.max_record_bytes <= limits["max_record_bytes"],
+         {:ok, token} <-
+           Writer.reserve(s.journal_writer, Map.take(capacity, [:bytes, :events])) do
+      if output_timely?(s) do
+        case Writer.append_reserved(s.journal_writer, token, event) do
+          :ok ->
+            next = %{
+              s
+              | extension_result_sources: index,
+                extension_output: %{token: token, id: event["output_id"], last_reply: nil}
+            }
+
+            reply = if output_timely?(next), do: {:ok, event}, else: {:error, :output_expired}
+            {:reply, reply, next}
+
+          {:error, reason} ->
+            journal_failed(s, reason)
+        end
+      else
+        release_output_token(s, token)
+        {:reply, {:error, :output_expired}, s}
+      end
+    else
+      _ -> {:reply, {:error, :output_admission_refused}, s}
+    end
+  end
+
+  def handle_call(
+        {:extension_output_chunk, ref, output_id, reply},
+        {caller, _},
+        %{job_ref: ref, task: %{pid: caller}, extension_output: %{id: output_id} = active} = s
+      )
+      when ref != nil do
+    with true <- output_timely?(s),
+         true <- Ipse.Extensions.Registry.live?(s.extension_invocation["identity"]) do
+      {:ok, current} = ResultSource.source(s.extension_result_sources, output_id)
+
+      if ResultSource.acknowledged?(current, reply) do
+        {:reply, :ok, s}
+      else
+        case ResultSource.index_push(s.extension_result_sources, output_id, reply) do
+          {:ok, event, _source, index} ->
+            record_output(s, event)
+
+            {:reply, :ok,
+             %{
+               s
+               | extension_result_sources: index,
+                 extension_output: %{active | last_reply: reply}
+             }}
+
+          _ ->
+            {:reply, {:error, :output_fragment_refused}, s}
+        end
+      end
+    else
+      _ -> {:reply, {:error, :output_fragment_refused}, s}
+    end
+  end
+
+  def handle_call(
+        {:extension_output_seal, ref, %ResultSource.Sealed{} = proof},
+        {caller, _},
+        %{job_ref: ref, task: %{pid: caller}, extension_output: active} = s
+      )
+      when ref != nil and active != nil do
+    with true <- output_timely?(s),
+         true <- Ipse.Extensions.Registry.live?(s.extension_invocation["identity"]),
+         {:ok, event, _source, index} <-
+           ResultSource.index_accept_verified(s.extension_result_sources, active.id, proof) do
+      record_output(s, event)
+      {:reply, :ok, %{s | extension_result_sources: index}}
+    else
+      _ -> {:reply, {:error, :output_seal_refused}, s}
+    end
+  end
+
+  def handle_call({:extension_output_begin, _, _}, _, s),
+    do: {:reply, {:error, :output_admission_refused}, s}
+
+  def handle_call({:extension_output_chunk, _, _, _}, _, s),
+    do: {:reply, {:error, :output_fragment_refused}, s}
+
+  def handle_call({:extension_output_seal, _, _}, _, s),
+    do: {:reply, {:error, :output_seal_refused}, s}
+
+  def handle_call({:saved_result_materialize, delivery}, _, s),
+    do: {:reply, ResultSource.readable_source(s.extension_result_sources, delivery), s}
+
+  def handle_call({:saved_result_read, request}, _, s),
+    do: {:reply, readable_output(s, request, false), s}
+
+  def handle_call(
+        {:saved_result_model_read, ref, request},
+        {caller, _},
+        %{job_ref: ref, task: %{pid: caller}, phase: :tool} = s
+      )
+      when ref != nil do
+    if get_in(hd(s.calls), ["function", "name"]) == "saved_result_read",
+      do: {:reply, readable_output(s, request, true), s},
+      else: {:reply, {:error, :saved_result_read_refused}, s}
+  end
+
+  def handle_call({:saved_result_model_read, _, _}, _, s),
+    do: {:reply, {:error, :saved_result_read_refused}, s}
 
   def handle_call(
         {:extension_tool_context, ref, request},
@@ -1065,6 +1207,7 @@ defmodule Ipse.Session do
         else: "not_required"
 
     with parent when is_map(parent) <- s.extension_invocation,
+         true <- output_timely?(s),
          true <- not s.extension_action_unknown,
          true <- Ipse.Extensions.Registry.live?(parent["identity"]),
          true <- Actions.allowed?(parent["identity"], request, s.extension_action_results),
@@ -1090,7 +1233,12 @@ defmodule Ipse.Session do
         Ipse.Extensions.Operation.question?(request) ->
           record(s, intent)
 
-          {:reply, {:question, intent},
+          reply =
+            if output_timely?(s),
+              do: {:question, intent},
+              else: {:error, :extension_action_expired}
+
+          {:reply, reply,
            %{s | extension_action: %{intent: intent}, extension_actions: s.extension_actions + 1}}
 
         mutation and mode == :ask ->
@@ -1149,11 +1297,13 @@ defmodule Ipse.Session do
           context = extension_execution_context(s, intent, source)
 
           reply =
-            if approval == "denied",
-              do: {:denied, intent},
-              else: {:ok, intent, context}
+            cond do
+              not output_timely?(s) -> {:error, :extension_action_expired}
+              approval == "denied" -> {:denied, intent}
+              true -> {:ok, intent, context}
+            end
 
-          if Ipse.Extensions.Operation.tool?(request) and approval != "denied",
+          if Ipse.Extensions.Operation.tool?(request) and match?({:ok, _, _}, reply),
             do: notify(s, {:tool, "extension:tool.call", request})
 
           {:reply, reply,
@@ -1217,6 +1367,7 @@ defmodule Ipse.Session do
       when message in [:extension_model_begin, :extension_embedding_begin] and ref != nil and
              phase in [:tool, :extension_command, :extension_service, :extension_events] do
     with true <- inference_begin?(message, intent["request"]),
+         true <- output_timely?(s),
          true <- intent["approval"] in ~w(approved session_allow),
          true <- Ipse.Extensions.Registry.live?(s.extension_invocation["identity"]),
          true <- s.steps < Map.get(s.config, :max_steps, 30),
@@ -1239,7 +1390,13 @@ defmodule Ipse.Session do
       s = account(s, source)
       s = account(s, admission)
       active = %{admission: admission, started: System.monotonic_time(:millisecond)}
-      {:reply, {:ok, config, admission}, %{s | extension_model: active, steps: s.steps + 1}}
+
+      reply =
+        if output_timely?(s),
+          do: {:ok, config, admission},
+          else: {:error, :extension_model_refused}
+
+      {:reply, reply, %{s | extension_model: active, steps: s.steps + 1}}
     else
       _ -> {:reply, {:error, :extension_model_refused}, s}
     end
@@ -1676,18 +1833,20 @@ defmodule Ipse.Session do
     intent =
       Map.put(action.intent, "approval", if(allowed == true, do: "approved", else: "denied"))
 
-    if Ipse.Extensions.Registry.live?(s.extension_invocation["identity"]) do
+    if output_timely?(s) and Ipse.Extensions.Registry.live?(s.extension_invocation["identity"]) do
       s = record_extension_action(s, intent)
       s = finish_wait(s, if(allowed == true, do: "approved", else: "denied"))
 
       reply =
-        if allowed == true,
-          do: {:ok, intent, extension_execution_context(s, intent)},
-          else: {:denied, intent}
+        cond do
+          not output_timely?(s) -> {:error, :extension_action_expired}
+          allowed == true -> {:ok, intent, extension_execution_context(s, intent)}
+          true -> {:denied, intent}
+        end
 
       GenServer.reply(action.from, reply)
 
-      if allowed == true and Ipse.Extensions.Operation.tool?(intent["request"]),
+      if match?({:ok, _, _}, reply) and Ipse.Extensions.Operation.tool?(intent["request"]),
         do: notify(s, {:tool, "extension:tool.call", intent["request"]})
 
       {:reply, :ok,
@@ -1838,6 +1997,7 @@ defmodule Ipse.Session do
          wait_outcome \\ "cancelled",
          feed_reason \\ "cancelled"
        ) do
+    s = release_output(s)
     s = finish_wait(s, wait_outcome)
     s = if s.task, do: measure_request(s, :cancelled), else: s
     s = close_question(s)
@@ -1959,6 +2119,27 @@ defmodule Ipse.Session do
 
   @impl true
   def handle_info(
+        {:extension_output_deadline, ref},
+        %{job_ref: ref, extension_output_clock: clock} = s
+      )
+      when ref != nil and clock != nil do
+    {cleanup, next} = stop_work(s, true, "interrupted")
+
+    notify(
+      s,
+      {:error, "Complete-result deadline exceeded. Inspect prior actions before retrying."}
+    )
+
+    notify(s, {:done, :error})
+
+    if Enum.all?(cleanup, &(&1 == :ok)),
+      do: {:noreply, next},
+      else: {:stop, :normal, close_epoch(next, "cleanup_failure", false)}
+  end
+
+  def handle_info({:extension_output_deadline, _}, s), do: {:noreply, s}
+
+  def handle_info(
         {:delegated_approval, ref, worker, child, child_ref, name, args},
         %{job_ref: ref, task: %{}, phase: phase} = s
       )
@@ -2044,8 +2225,10 @@ defmodule Ipse.Session do
       {invocation_phase, {:extension_question, action}}
       when invocation_phase in [:tool, :extension_command, :extension_service, :extension_events] ->
         with %{intent: ^action} <- s.extension_action,
+             true <- output_timely?(s),
              true <- questions_enabled?(s.config),
              true <- Ipse.Extensions.Registry.live?(s.extension_invocation["identity"]) do
+          s = release_output(s)
           parent = s.extension_invocation
 
           next =
@@ -2117,9 +2300,32 @@ defmodule Ipse.Session do
              )}
         end
 
+      {invocation_phase, {:extension_saved_result, delivery}}
+      when invocation_phase in [:tool, :extension_command] ->
+        with intent when is_map(intent) <- s.extension_invocation,
+             true <- s.extension_output != nil and s.extension_output_clock != nil,
+             true <- output_timely?(s) and is_nil(s.extension_action),
+             true <- not s.extension_action_unknown,
+             true <- Ipse.Extensions.Registry.live?(intent["identity"]),
+             {:ok, event} <-
+               Invocation.build_saved_result(
+                 intent,
+                 delivery,
+                 s.extension_action_results,
+                 output_elapsed(s)
+               ),
+             {:ok, index} <- ResultSource.publish(s.extension_result_sources, event) do
+          next = record_output(%{s | extension_result_sources: index}, event, true)
+          {:noreply, complete_invocation_result(next, event)}
+        else
+          _ ->
+            {:noreply, fail(s, "Saved result publication refused; inspect its source receipts.")}
+        end
+
       {invocation_phase, {:extension_invocation_result, event}}
       when invocation_phase in [:tool, :extension_command, :extension_service, :extension_events] ->
         with intent when is_map(intent) <- s.extension_invocation,
+             true <- output_timely?(s) and is_nil(s.extension_output),
              true <- is_nil(s.extension_action),
              true <- not s.extension_action_unknown,
              {:ok, expected} <-
@@ -2134,20 +2340,7 @@ defmodule Ipse.Session do
                ),
              true <- expected == event and Ipse.Extensions.Registry.live?(intent["identity"]) do
           record(s, event)
-          s = %{s | extension_invocation: nil, extension_request: nil}
-
-          if invocation_phase == :tool do
-            {:noreply, accept_tool_result(s, hd(s.calls), Invocation.tool_message(event))}
-          else
-            display = %{
-              "name" => event["descriptor"]["name"],
-              "stage" => event["descriptor"]["stage"],
-              "value" => event["value"]
-            }
-
-            notify(s, {:extension_result, display})
-            {:noreply, finish(%{s | extension_result: display}, :ok)}
-          end
+          {:noreply, complete_invocation_result(s, event)}
         else
           _ ->
             {:noreply,
@@ -2803,7 +2996,7 @@ defmodule Ipse.Session do
       s,
       s.config,
       messages,
-      definitions(s.config) ++ Ipse.MCP.definitions(s.mcp_tools),
+      definitions(s.config, s.extension_result_sources) ++ Ipse.MCP.definitions(s.mcp_tools),
       :model
     )
   end
@@ -3269,6 +3462,9 @@ defmodule Ipse.Session do
             name in ["research_source", "research_claim", "research_ledger"] ->
               Ipse.Research.call(s.dir, s.id, name, args)
 
+            name == "saved_result_read" ->
+              ResultReader.model(owner, job_ref, args)
+
             name in ["delegate", "delegate_parallel"] ->
               worker =
                 if name == "delegate", do: Ipse.Delegation.Worker, else: Ipse.Delegation.Group
@@ -3561,6 +3757,7 @@ defmodule Ipse.Session do
   end
 
   defp fail(s, error) do
+    s = release_output(s)
     s = finish_wait(s, "interrupted")
     s = settle_children(s, "worker_failed")
     notify(s, {:error, error})
@@ -3571,6 +3768,7 @@ defmodule Ipse.Session do
   end
 
   defp finish(s, status) do
+    s = release_output(s)
     after_plans = Subscriptions.declarations(s.config, "after_turn")
 
     if status == :ok and s.event_received != nil and s.event_turn == s.turn_id and
@@ -3794,6 +3992,101 @@ defmodule Ipse.Session do
       end
     end)
   end
+
+  defp output_clock(entry, stage, job_ref) do
+    identity = entry.identity
+
+    if Ipse.Extension.ResultPublication.eligible?(
+         identity["sdk"],
+         identity["capabilities"],
+         stage
+       ) do
+      started = System.monotonic_time(:millisecond)
+      timer = Process.send_after(self(), {:extension_output_deadline, job_ref}, 120_000)
+      {%{started_ms: started, timer: timer}, Map.put(entry, :output_started_ms, started)}
+    else
+      {nil, entry}
+    end
+  end
+
+  defp output_elapsed(%{extension_output_clock: %{started_ms: started}}),
+    do: System.monotonic_time(:millisecond) - started
+
+  defp output_timely?(%{extension_output_clock: nil}), do: true
+  defp output_timely?(s), do: output_elapsed(s) in 0..119_999
+
+  defp release_output_token(s, token) do
+    case Writer.release(s.journal_writer, token) do
+      :ok -> :ok
+      {:error, reason} -> journal_failed(s, reason)
+    end
+  end
+
+  defp release_output(s) do
+    if s.extension_output_clock, do: Process.cancel_timer(s.extension_output_clock.timer)
+    if s.extension_output, do: release_output_token(s, s.extension_output.token)
+    %{s | extension_output: nil, extension_output_clock: nil}
+  end
+
+  defp record_output(s, event, observed \\ false) do
+    token = s.extension_output.token
+
+    result =
+      if observed and
+           ((s.observation != nil and s.observation.policy["mode"] != "off") or
+              Feeds.active?(s.feeds)),
+         do: Writer.append_reserved_observed(s.journal_writer, token, event),
+         else: Writer.append_reserved(s.journal_writer, token, event)
+
+    case result do
+      :ok ->
+        if observed, do: release_output(s), else: s
+
+      {:ok, source} ->
+        next = release_output(s)
+        offer_record(next, source, event)
+        next
+
+      {:error, reason} ->
+        journal_failed(s, reason)
+    end
+  end
+
+  defp complete_invocation_result(s, event) do
+    s = release_output(s)
+    s = %{s | extension_invocation: nil, extension_request: nil}
+
+    if s.phase == :tool do
+      accept_tool_result(s, hd(s.calls), Invocation.tool_message(event))
+    else
+      display =
+        Map.merge(
+          %{"name" => event["descriptor"]["name"], "stage" => event["descriptor"]["stage"]},
+          Invocation.delivery(event)
+        )
+
+      notify(s, {:extension_result, display})
+      finish(%{s | extension_result: display}, :ok)
+    end
+  end
+
+  defp readable_output(s, request, model?) do
+    with {:ok, source} <-
+           ResultSource.source(s.extension_result_sources, ResultReader.request_id(request)),
+         true <- not model? or source.intent["descriptor"]["stage"] == "invoke.tool",
+         delivery = ResultSource.descriptor(source),
+         {:ok, source} <- ResultSource.readable_source(s.extension_result_sources, delivery) do
+      {:ok, source, delivery}
+    else
+      _ -> {:error, :saved_result_read_refused}
+    end
+  end
+
+  defp model_saved_results?(%ResultSource.Index{committed: sources}),
+    do:
+      Enum.any?(sources, fn {_, source} ->
+        source.intent["descriptor"]["stage"] == "invoke.tool"
+      end)
 
   defp record(s, event) do
     result =
@@ -4469,6 +4762,11 @@ defmodule Ipse.Session do
     }
 
     context =
+      if s.extension_output_clock,
+        do: Map.put(context, :output_deadline_ms, s.extension_output_clock.started_ms + 120_000),
+        else: context
+
+    context =
       if Ipse.Extensions.Operation.inference?(intent["request"]),
         do: Map.merge(context, %{owner: self(), job_ref: s.job_ref}),
         else: context
@@ -4826,8 +5124,9 @@ defmodule Ipse.Session do
     end
   end
 
-  defp definitions(config) do
+  defp definitions(config, result_sources) do
     Tools.definitions(Map.get(config, :sandbox, :off)) ++
+      if(model_saved_results?(result_sources), do: [ResultReader.definition()], else: []) ++
       Catalog.definitions(config) ++
       Ipse.Delegation.definitions(config) ++
       if(config[:delegation_origin], do: [], else: Ipse.Research.definitions()) ++

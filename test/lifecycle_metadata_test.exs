@@ -2,6 +2,36 @@ defmodule Ipse.LifecycleMetadataTest do
   use ExUnit.Case, async: true
   alias Ipse.Lifecycle.{Event, Source}
 
+  test "saved result finals expose completion metadata without source bodies or descriptors" do
+    record = %{
+      "type" => "extension_invocation_result",
+      "version" => 2,
+      "invocation_id" => Ipse.Usage.id(),
+      "action_count" => 2,
+      "delivery" => %{"output_id" => "private-output", "sha256" => "private-sha"},
+      "text" => "private-descriptor",
+      "payload" => %{"arguments" => %{"secret" => "private-input"}}
+    }
+
+    reference = source(record)
+    assert {:ok, event} = Event.project(reference, record, "metadata")
+    assert event["type"] == "extension.invocation_recorded"
+    assert event["data"] == %{"action_count" => 2}
+    assert event["correlations"] == %{"invocation_id" => record["invocation_id"]}
+    refute Jason.encode!(event) =~ "private-"
+    assert {:ok, observation} = Ipse.Observability.Event.build(reference, record, 1, 0)
+    assert observation["event"] == event
+
+    for type <- ~w(extension_output_begin extension_output_chunk extension_output_seal),
+        version <- [1, 2] do
+      hidden = Map.merge(record, %{"type" => type, "version" => version})
+      assert {:error, _} = Event.project(source(hidden), hidden, "metadata")
+    end
+
+    invalid = Map.put(record, "version", 3)
+    assert {:error, _} = Event.project(source(invalid), invalid, "metadata")
+  end
+
   test "version-two action metadata omits private bindings and keeps the closed vocabulary" do
     for {type, event_type} <- [
           {"extension_action_intent", "extension.action_admitted"},

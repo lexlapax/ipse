@@ -12,8 +12,17 @@ defmodule Ipse.Extensions.Catalog do
 
   def capabilities,
     do:
-      ~w(transform.prompt transform.presentation invoke.tool invoke.command invoke.service host.actions host.actions.mixed host.mcp host.results host.state.read host.state.scan host.state.bound host.state.write host.question host.tools host.services host.context host.usage host.usage.scan host.usage.children host.model host.embedding stream.text stream.text.events lifecycle.record lifecycle.tools event.notify event.job event.feed event.prompt.original event.prompt.effective event.answer.original event.answer.presented event.tool.input event.tool.result observe.local observe.export) ++
+      ~w(transform.prompt transform.presentation invoke.tool invoke.command invoke.service invoke.result.pages host.actions host.actions.mixed host.mcp host.results host.state.read host.state.scan host.state.bound host.state.write host.question host.tools host.services host.context host.usage host.usage.scan host.usage.children host.model host.embedding stream.text stream.text.events lifecycle.record lifecycle.tools event.notify event.job event.feed event.prompt.original event.prompt.effective event.answer.original event.answer.presented event.tool.input event.tool.result observe.local observe.export) ++
         Ipse.Extensions.History.capabilities()
+
+  @doc "The initial SDK-2 contract requires the paged-result grant, and SDK-1 excludes it."
+  def sdk_capabilities?(1, capabilities) when is_list(capabilities),
+    do: "invoke.result.pages" not in capabilities
+
+  def sdk_capabilities?(2, capabilities) when is_list(capabilities),
+    do: "invoke.result.pages" in capabilities
+
+  def sdk_capabilities?(_, _), do: false
 
   def empty,
     do: %{"version" => 1, "tools" => [], "commands" => [], "services" => []}
@@ -26,6 +35,9 @@ defmodule Ipse.Extensions.Catalog do
     exports = normalize(exports)
 
     with :ok <- Schema.validate_object(exports),
+         true <-
+           "invoke.result.pages" not in capabilities or
+             Enum.any?(~w(invoke.tool invoke.command), &(&1 in capabilities)),
          true <- "lifecycle.tools" not in capabilities or "lifecycle.record" in capabilities,
          true <- "stream.text.events" not in capabilities or "stream.text" in capabilities,
          true <- Enum.sort(Map.keys(exports)) == ~w(commands jobs services tools version),

@@ -368,6 +368,15 @@ defmodule Ipse.Extensions.Actions do
        else: @error
   end
 
+  defp validate_event(%{"type" => type} = event, state, _)
+       when type in ~w(extension_output_begin extension_output_chunk extension_output_seal) do
+    if state.parent != nil and event["invocation_id"] == state.parent["invocation_id"] and
+         is_nil(state.action) and not state.unknown and is_nil(state.resume_needed) and
+         is_nil(state.question),
+       do: {:ok, state},
+       else: @error
+  end
+
   defp validate_event(%{"type" => "extension_action_intent"} = event, state, cwd) do
     if state.parent != nil and is_nil(state.action) and not state.unknown and
          is_nil(state.resume_needed) and is_nil(state.question) and

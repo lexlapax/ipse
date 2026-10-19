@@ -13,7 +13,7 @@ defmodule Ipse.Extensions.Manifest do
       "format" => %{"type" => "integer", "enum" => [1]},
       "id" => @text,
       "version" => @text,
-      "sdk" => %{"type" => "integer", "enum" => [1]},
+      "sdk" => %{"type" => "integer", "enum" => [1, 2]},
       "protocol" => %{"type" => "integer", "enum" => [1]},
       "backend" => %{"type" => "string", "enum" => ["elixir_worker"]},
       "entrypoint" => @text,
@@ -60,7 +60,9 @@ defmodule Ipse.Extensions.Manifest do
   def decode(bytes) when is_binary(bytes) and byte_size(bytes) <= @limit do
     with {:ok, manifest} <- decode_json(bytes),
          :ok <- Schema.validate_arguments(@schema, manifest),
-         true <- Enum.all?(~w(format sdk protocol), &(manifest[&1] === 1)),
+         true <- Enum.all?(~w(format protocol), &(manifest[&1] === 1)),
+         true <-
+           Ipse.Extensions.Catalog.sdk_capabilities?(manifest["sdk"], manifest["capabilities"]),
          true <-
            Regex.match?(~r/\A[a-z][a-z0-9_-]{0,63}\/[a-z][a-z0-9_-]{0,63}\z/, manifest["id"]),
          {:ok, _} <- Version.parse(manifest["version"]),

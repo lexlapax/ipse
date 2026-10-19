@@ -1,9 +1,10 @@
 defmodule Ipse.Extensions.Invocation do
   @moduledoc "Pure intent/result receipts for owned tools, commands and typed services."
-  alias Ipse.Extensions.{Catalog, Identity, Manifest}
+  alias Ipse.Extensions.{Catalog, Identity, Manifest, ResultSource}
 
   @intent_keys ~w(type version invocation_id identity descriptor payload payload_sha256 parent_call_id parent_request_id approval)
   @result_keys ~w(value text text_sha256 action_count actions_sha256)
+  @saved_keys ~w(delivery elapsed_ms text text_sha256 action_count actions_sha256)
   @types ~w(extension_invocation_intent extension_invocation_result)
   @limit 10_000
   @error {:error, :invalid_extension_invocation}
@@ -73,6 +74,33 @@ defmodule Ipse.Extensions.Invocation do
     _ -> @error
   end
 
+  def build_saved_result(intent, delivery, actions, elapsed_ms) do
+    with true <- valid_intent?(intent),
+         true <- is_list(actions),
+         true <- length(actions) <= Ipse.Extensions.Actions.limit(intent["identity"]),
+         true <- Enum.all?(actions, &Ipse.Extensions.Actions.valid_result?/1),
+         text = Jason.encode!(delivery),
+         event =
+           intent
+           |> Map.merge(%{
+             "type" => "extension_invocation_result",
+             "version" => 2,
+             "delivery" => delivery,
+             "elapsed_ms" => elapsed_ms,
+             "action_count" => length(actions),
+             "actions_sha256" => Ipse.Compaction.digest(actions),
+             "text" => text,
+             "text_sha256" => Manifest.sha256(text)
+           }),
+         true <- valid_saved_result?(event) do
+      {:ok, event}
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  end
+
   def tool_message(result) do
     %{
       "role" => "tool",
@@ -92,7 +120,7 @@ defmodule Ipse.Extensions.Invocation do
     |> Enum.find_value(fn
       %{"type" => "extension_invocation_result", "descriptor" => %{"stage" => stage}} = event
       when stage in ~w(invoke.command invoke.service) ->
-        %{"name" => event["descriptor"]["name"], "stage" => stage, "value" => event["value"]}
+        Map.merge(%{"name" => event["descriptor"]["name"], "stage" => stage}, delivery(event))
 
       _ ->
         nil
@@ -115,9 +143,13 @@ defmodule Ipse.Extensions.Invocation do
 
   def source_call_valid?(_, _, _, _), do: false
 
+  def delivery(%{"version" => 2, "delivery" => delivery}), do: %{"delivery" => delivery}
+  def delivery(%{"version" => 1, "value" => value}), do: %{"value" => value}
+
   def validate_events(events) do
     with [%{"metadata" => metadata} | _] <- events,
-         {:ok, catalog} <- Catalog.from_metadata(metadata) do
+         {:ok, catalog} <- Catalog.from_metadata(metadata),
+         {:ok, sources} <- ResultSource.restore(events) do
       identities = Map.new(Map.get(metadata, "extensions", []), &{&1["instance"], &1})
 
       initial = %{
@@ -131,7 +163,8 @@ defmodule Ipse.Extensions.Invocation do
         claimed_calls: MapSet.new(),
         session_id: nil,
         delivery: nil,
-        requests: %{}
+        requests: %{},
+        sources: sources
       }
 
       Enum.reduce_while(events, {:ok, initial}, fn event, {:ok, state} ->
@@ -217,13 +250,22 @@ defmodule Ipse.Extensions.Invocation do
   defp validate_event(%{"type" => "extension_invocation_result"} = event, state, _, _) do
     id = event["invocation_id"]
 
-    with true <- valid_result?(event),
+    with true <-
+           if(event["version"] === 2,
+             do: valid_saved_result?(event) and ResultSource.published?(state.sources, event),
+             else: valid_result?(event)
+           ),
          true <- state.active == id and not Map.has_key?(state.results, id),
          true <- state.intents[id] == result_intent(event) do
       {:ok, %{state | active: nil, results: Map.put(state.results, id, event)}}
     else
       _ -> @error
     end
+  end
+
+  defp validate_event(%{"type" => type} = event, state, _, _)
+       when type in ~w(extension_output_begin extension_output_chunk extension_output_seal) do
+    if state.active == event["invocation_id"], do: {:ok, state}, else: @error
   end
 
   defp validate_event(
@@ -369,6 +411,7 @@ defmodule Ipse.Extensions.Invocation do
   defp valid_result?(event) do
     with true <- Enum.sort(Map.keys(event)) == Enum.sort(intent_keys(event) ++ @result_keys),
          true <- event["type"] == "extension_invocation_result",
+         true <- event["version"] === 1,
          true <- valid_intent?(result_intent(event)),
          true <-
            is_integer(event["action_count"]) and
@@ -395,8 +438,38 @@ defmodule Ipse.Extensions.Invocation do
     _ -> false
   end
 
+  defp valid_saved_result?(event) do
+    with true <- Enum.sort(Map.keys(event)) == Enum.sort(intent_keys(event) ++ @saved_keys),
+         true <- event["type"] == "extension_invocation_result" and event["version"] === 2,
+         true <- valid_intent?(result_intent(event)),
+         true <- event["identity"]["sdk"] === 2,
+         true <- "invoke.result.pages" in event["identity"]["capabilities"],
+         true <- event["descriptor"]["stage"] in ~w(invoke.tool invoke.command),
+         true <- ResultSource.valid_descriptor?(event["delivery"]),
+         true <- is_integer(event["elapsed_ms"]) and event["elapsed_ms"] in 0..120_000,
+         true <-
+           is_integer(event["action_count"]) and
+             event["action_count"] in 0..Ipse.Extensions.Actions.limit(event["identity"]),
+         true <-
+           is_binary(event["actions_sha256"]) and
+             Regex.match?(~r/\A[a-f0-9]{64}\z/, event["actions_sha256"]),
+         true <- event["text"] == Jason.encode!(event["delivery"]),
+         true <- Manifest.sha256(event["text"]) == event["text_sha256"],
+         true <- byte_size(Jason.encode!(event)) <= 131_072 do
+      true
+    else
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
   def result_intent(event),
-    do: event |> Map.drop(@result_keys) |> Map.put("type", "extension_invocation_intent")
+    do:
+      event
+      |> Map.drop(@result_keys ++ @saved_keys)
+      |> Map.put("type", "extension_invocation_intent")
+      |> Map.put("version", 1)
 
   defp intent_keys(event),
     do: @intent_keys ++ if(Map.has_key?(event, "event_trigger"), do: ["event_trigger"], else: [])

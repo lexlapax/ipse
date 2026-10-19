@@ -1,11 +1,14 @@
 # Proposed complete result transport, 2026-10-19
 
-Design and investigation record; the new transport is **not implemented**. The
+Historical design and investigation record. Generic publication and historical
+reads are now implemented with focused source tests; knowledge-package migration
+and wider verification remain open. The
 [resumption record](resumption.md) owns current repair work; the
 [plan](../../plan.md#p27-optional-research-graph-and-rag) owns acceptance. Existing
 [query behavior](../../developer/knowledge-extensions.md) still refuses oversized
 results. This document selects a design to implement and verify, not a passing
-runtime or security verdict.
+runtime or security verdict. Use the [invocation training manual](../../developer/extension-invocations.md)
+for the implemented API rather than treating the proposal sketches as a reference.
 
 ## Preserve the complete result
 

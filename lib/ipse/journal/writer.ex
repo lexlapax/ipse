@@ -28,7 +28,11 @@ defmodule Ipse.Journal.Writer do
   def reserve(writer, capacity), do: call(writer, {:reserve, capacity})
 
   @doc "Appends one plain record against an owner-only, writer-local reservation token."
-  def append_reserved(writer, token, event), do: call(writer, {:append_reserved, token, event})
+  def append_reserved(writer, token, event),
+    do: call(writer, {:append_reserved, token, :plain, event})
+
+  def append_reserved_observed(writer, token, event),
+    do: call(writer, {:append_reserved, token, :observed, event})
 
   @doc "Releases unused reserved capacity; already appended bytes and events remain charged."
   def release(writer, token), do: call(writer, {:release, token})
@@ -149,10 +153,10 @@ defmodule Ipse.Journal.Writer do
     end
   end
 
-  def handle_call({:append_reserved, token, event}, {owner, _}, %{owner: owner} = state)
-      when is_map(event) do
+  def handle_call({:append_reserved, token, mode, event}, {owner, _}, %{owner: owner} = state)
+      when is_map(event) and mode in [:plain, :observed] do
     case Map.fetch(state.reservations, token) do
-      {:ok, capacity} -> append_reserved_record(state, token, capacity, event)
+      {:ok, capacity} -> append_reserved_record(state, token, capacity, mode, event)
       :error -> {:reply, {:error, :journal_reservation_invalid}, state}
     end
   end
@@ -199,8 +203,8 @@ defmodule Ipse.Journal.Writer do
     end
   end
 
-  defp append_reserved_record(state, token, capacity, event) do
-    case encode(%{state | reserved_bytes: 0, reserved_events: 0}, :plain, event) do
+  defp append_reserved_record(state, token, capacity, mode, event) do
+    case encode(%{state | reserved_bytes: 0, reserved_events: 0}, mode, event) do
       {:ok, line, result} ->
         if capacity.events > 0 and byte_size(line) <= capacity.bytes do
           with :ok <- unchanged(state),

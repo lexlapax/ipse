@@ -32,7 +32,8 @@ Objects reject duplicate keys at every depth. The required fields are:
 
 | Field | Value |
 | --- | --- |
-| `format`, `sdk`, `protocol` | Integer 1 |
+| `format`, `protocol` | Integer 1 |
+| `sdk` | Integer 1, or 2 with `invoke.result.pages` |
 | `id`, `version` | Package identifier and display version |
 | `backend` | `elixir_worker` for imported artifacts |
 | `entrypoint` | Compiled Elixir module name, handled only in the worker |
@@ -93,11 +94,14 @@ The public callbacks in `lib/ipse/extension.ex` are:
 ```elixir
 @callback describe() :: object()
 @callback init(object()) :: {:ok, term()}
-@callback handle(String.t(), object(), term()) :: {:ok, object(), term()}
+@callback handle(String.t(), object(), term()) ::
+  {:ok, object() | Ipse.Extension.ResultPublication.Output.t(), term()}
 ```
 
 Public `object()` values use string-keyed JSON maps. PIDs, references, functions,
-structs, and arbitrary Erlang terms cannot cross the bridge. Private state can
+structs, and arbitrary Erlang terms cannot cross the bridge. SDK-2's private
+`Output` is consumed inside Bootstrap and never serialized as an Erlang term.
+Private state can
 contain ordinary runtime terms. `Ipse.Extension.validate/1` delegates to the shared
 bounded JSON adapter, with 16 KiB encoded-object, string, depth, and collection
 limits. A string is at most 8 KiB, nesting depth is at most 12, and a map or list
@@ -125,12 +129,38 @@ value = %{"items" => Enum.to_list(1..256)}
 {:error, :invalid_extension_value} = Ipse.Extension.validate(value)
 ```
 
-The aggregate adapter accepts this document; the worker SDK still rejects its
-256-member array. Aggregate validation neither publishes a saved result nor
-makes the value a valid callback response. The current worker protocol remains
-inline and bounded. Follow `test/extensions_result_document_test.exs` to check
-the exact 4-MiB boundary, escaped duplicate keys, overlong integer tokens and
-declared-schema failures before changing either adapter.
+The aggregate adapter accepts this document; the wire SDK rejects its 256-member
+array. To return the complete object from a tool or command, declare SDK 2 and
+`invoke.result.pages` in both the manifest and `describe/0`. The operator must
+grant that capability. Use the preparation helper in the worker:
+
+```elixir
+alias Ipse.Extension.ResultPublication
+{:ok, reply} = ResultPublication.prepare(%{"items" => Enum.to_list(1..256)})
+true = match?(%ResultPublication.Output{}, reply)
+```
+
+Return `{:ok, reply, state}` from the original tool or command callback, or its
+ordinary `host.actions` continuation. The helper returns an inline result when
+the complete wrapper fits SDK limits and 12,000 encoded bytes. Otherwise it
+freezes one aggregate JSON document in `Output`. Invalid or oversized values
+return `{:error, :invalid_result_document}`. Handle that error with an explicit
+domain refusal rather than dropping fields to force success.
+
+Bootstrap drops domain state after accepting `Output` and answers only
+`result.output` requests with fixed 4,096-byte fragments. Worker independently
+checks eligibility, offsets, fragment hashes, and the complete hash. The enclosing
+wire objects retain the ordinary SDK limits. Services, jobs, transforms, and
+recovered question continuations cannot return `Output`.
+
+The host validates the reconstructed object against the original declared result
+schema before Session can publish it. Follow [saved-result invocation flow](extension-invocations.md)
+for journal ownership and historical reads. Use
+`test/extensions_result_document_test.exs` for aggregate boundaries and
+`test/extensions_result_publication_test.exs` for Bootstrap and Worker negotiation,
+terminal paging, and malicious wire replies.
+Build the [saved-result example](../../examples/saved-results/README.md) to verify
+the same SDK-2 artifact through source and packaged runtimes.
 
 A raw developer call to `Worker.start/1` supplies `owner`, `store`, `digest`,
 `trusted`, and schema-valid `options`. `trusted` must equal the selected digest.

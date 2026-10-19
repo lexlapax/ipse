@@ -1,6 +1,6 @@
 defmodule Ipse.Extensions.Host do
   @moduledoc "Ordered bounded transform jobs, owned by Session's monitored task chain."
-  alias Ipse.Extensions.{Registry, Worker, Projection, Actions, State, Operation}
+  alias Ipse.Extensions.{Registry, Worker, Projection, Actions, State, Operation, ResultSource}
 
   def enabled?(config, stage),
     do: Enum.any?(Map.get(config, :extensions, []), &(stage in &1.identity["capabilities"]))
@@ -190,9 +190,26 @@ defmodule Ipse.Extensions.Host do
              options: entry.options
            ) do
       try do
-        with {:ok, _} <- Worker.call(worker, "initialize", entry.options),
-             {:ok, response} <- Worker.call(worker, stage, payload) do
+        with {:ok, _} <- export_call(worker, entry, "initialize", entry.options),
+             {:ok, response} <- export_call(worker, entry, stage, payload) do
           case continue(worker, response, entry, owner, job_ref, prior_actions) do
+            {:ok, %{"kind" => "result_producer"} = offer, _actions} ->
+              with true <- Map.has_key?(entry, :output_started_ms),
+                   {:ok, begin} <-
+                     GenServer.call(owner, {:extension_output_begin, job_ref, offer}),
+                   {:ok, ^begin, source} <-
+                     ResultSource.open(intent, offer, begin["elapsed_ms"]),
+                   {:ok, source} <- drain_output(worker, source, entry, owner, job_ref),
+                   {:ok, proof, _sealed} <-
+                     ResultSource.seal(source, output_elapsed(entry)),
+                   :ok <- GenServer.call(owner, {:extension_output_seal, job_ref, proof}),
+                   :ok <- Worker.close(worker),
+                   true <- output_timely?(entry) do
+                {:extension_saved_result, ResultSource.descriptor(source)}
+              else
+                _ -> invocation_unknown()
+              end
+
             {:ok, response, actions} ->
               with {:ok, event} <-
                      Ipse.Extensions.Invocation.build_result(intent, response, actions),
@@ -203,7 +220,7 @@ defmodule Ipse.Extensions.Host do
               end
 
             {:question, action} ->
-              if Worker.close(worker) == :ok,
+              if Worker.close(worker) == :ok and output_timely?(entry),
                 do: {:extension_question, action},
                 else: invocation_unknown()
 
@@ -223,6 +240,48 @@ defmodule Ipse.Extensions.Host do
     :exit, _ -> invocation_unknown()
   end
 
+  defp drain_output(worker, source, entry, owner, job_ref) do
+    if source.offset == source.begin["byte_count"] do
+      {:ok, source}
+    else
+      with {:ok, request} <- ResultSource.request(source),
+           {:ok, reply} <- export_call(worker, entry, "result.output", request),
+           {:ok, _event, next} <- ResultSource.push(source, reply),
+           :ok <-
+             GenServer.call(
+               owner,
+               {:extension_output_chunk, job_ref, source.begin["output_id"], reply}
+             ) do
+        drain_output(worker, next, entry, owner, job_ref)
+      else
+        _ -> {:error, :extension_output_refused}
+      end
+    end
+  end
+
+  defp output_elapsed(entry),
+    do: System.monotonic_time(:millisecond) - entry.output_started_ms
+
+  defp output_timely?(entry),
+    do:
+      not Map.has_key?(entry, :output_started_ms) or
+        output_elapsed(entry) in 0..119_999
+
+  defp export_call(worker, entry, stage, payload) do
+    remaining =
+      if Map.has_key?(entry, :output_started_ms),
+        do: 120_000 - output_elapsed(entry),
+        else: 5_000
+
+    with true <- remaining > 0,
+         {:ok, reply} <- Worker.call(worker, stage, payload, min(5_000, remaining)),
+         true <- output_timely?(entry) do
+      {:ok, reply}
+    else
+      _ -> {:error, :extension_deadline_or_callback_failed}
+    end
+  end
+
   defp invocation_unknown,
     do:
       {:unknown,
@@ -231,6 +290,7 @@ defmodule Ipse.Extensions.Host do
   defp continue(worker, %{"kind" => "host_call"} = response, entry, owner, job_ref, actions) do
     with {:ok, request} <- Actions.proposal(response, entry.identity),
          true <- Actions.allowed?(entry.identity, request, actions),
+         true <- output_timely?(entry),
          true <-
            not Map.has_key?(entry, :read_deadline) or
              System.monotonic_time(:millisecond) < entry.read_deadline do
@@ -249,7 +309,7 @@ defmodule Ipse.Extensions.Host do
          {:ok, event} <- Actions.result(intent, outcome),
          {:ok, payload} <- GenServer.call(owner, {:extension_action_commit, job_ref, event}),
          true <- payload["outcome"]["status"] != "unknown",
-         {:ok, response} <- Worker.call(worker, "host.actions", payload) do
+         {:ok, response} <- export_call(worker, entry, "host.actions", payload) do
       continue(worker, response, entry, owner, job_ref, actions ++ [event])
     else
       _ -> {:error, :extension_action_stopped}
@@ -267,7 +327,7 @@ defmodule Ipse.Extensions.Host do
     case GenServer.call(owner, {:extension_action_begin, job_ref, request}, :infinity) do
       {:ok, intent, context} ->
         outcome =
-          case execute_action(Map.put(context, :worker, worker), intent, request) do
+          case execute_admitted_action(context, worker, intent, request) do
             {:ok, value} -> %{"status" => "ok", "value" => value}
             {:conflict, value} -> %{"status" => "conflict", "value" => value}
             {:failed, value} -> %{"status" => "failed", "value" => value}
@@ -282,6 +342,13 @@ defmodule Ipse.Extensions.Host do
       _ ->
         {:error, :extension_action_refused}
     end
+  end
+
+  defp execute_admitted_action(context, worker, intent, request) do
+    if is_nil(context[:output_deadline_ms]) or
+         System.monotonic_time(:millisecond) < context.output_deadline_ms,
+       do: execute_action(Map.put(context, :worker, worker), intent, request),
+       else: :unknown
   end
 
   defp execute_action(context, intent, %{"op" => "model.complete"}),

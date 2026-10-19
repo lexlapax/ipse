@@ -90,8 +90,11 @@ Importing a package neither trusts nor activates it.
 `Registry` resolves inert metadata and admitted selections. `Session` owns the
 active conversation, approvals, journal, and action lane. `Host` runs slow callback
 and host-operation work outside the Session GenServer. `Worker` owns an independent
-VM and its native process group. The worker implements only JSON callback values;
-it receives no Session PID or complete host configuration.
+VM and its native process group. The bridge carries bounded JSON callback values.
+SDK-2 workers can privately freeze an aggregate tool or command result and serve
+it through bounded fragments. They receive no Session PID or complete host
+configuration. Follow [invocations](extension-invocations.md) for that publication
+and read contract.
 
 Before executable startup, Session commits an intent. Host verifies the artifact,
 initializes the worker, invokes its callback, validates its reply, and closes its

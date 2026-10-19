@@ -109,6 +109,22 @@ defmodule Ipse.JournalReservationsTest do
              Journal.load(c.root, id)
   end
 
+  test "a reserved final receipt can be observed at its actual physical offset", c do
+    {writer, _, path} = create(c)
+    private = %{"type" => "private_source_chunk", "data" => "unobserved"}
+    receipt = %{"type" => "public_receipt", "output_id" => "fixture"}
+    before = File.stat!(path).size
+
+    assert {:ok, token} =
+             Writer.reserve(writer, %{bytes: bytes(private) + bytes(receipt), events: 2})
+
+    assert :ok = Writer.append_reserved(writer, token, private)
+    assert {:ok, reference} = Writer.append_reserved_observed(writer, token, receipt)
+    assert reference["byte_offset"] == before + bytes(private)
+    assert :ok = Writer.release(writer, token)
+    assert :ok = Writer.close(writer)
+  end
+
   test "malformed and excessive reservations refuse without writing or sealing", c do
     {writer, _, path} = create(c, %{"max_bytes" => 1_024, "max_events" => 4})
     before = File.read!(path)

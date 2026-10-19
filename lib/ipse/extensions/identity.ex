@@ -27,7 +27,8 @@ defmodule Ipse.Extensions.Identity do
       ) and
       Ipse.Extensions.Services.public_bindings?(identity["services"]) and
       identity["scope"] in ~w(operator project) and
-      identity["sdk"] === 1 and identity["protocol"] === 1 and identity["generation"] === 1 and
+      Ipse.Extensions.Catalog.sdk_capabilities?(identity["sdk"], identity["capabilities"]) and
+      identity["protocol"] === 1 and identity["generation"] === 1 and
       is_list(identity["capabilities"]) and
       ("host.state.bound" not in identity["capabilities"] or
          Map.has_key?(identity, "state_binding")) and

@@ -107,8 +107,8 @@ First-round findings about stage eligibility, terminal dispatch, the original
 deadline, aggregate decoding, journal reservation, restore validation and bounded
 reader cursors were accepted and specified before implementation. A design pass
 does not establish runtime correctness. Generic aggregate validation and Writer
-reservations are the first implementation units; Session publication, source
-closure, readers, installed proofs and knowledge-package integration remain open.
+reservations were the first implementation units at `f342528`. The next section
+records publication and reader work separately from those prerequisite results.
 
 ## Complete-result prerequisites
 
@@ -117,7 +117,7 @@ Thirty focused aggregate/schema/registry/catalog tests and twenty-eight
 reservation/Writer/Limits tests pass. Three independent read-only implementation
 reviews report no actionable findings. The aggregate exercise in the contributor
 manual runs against the built runtime; ordinary SDK validation still rejects its
-256-member array. The current worker transport remains inline.
+256-member array. Worker transport was still inline at that prerequisite snapshot.
 
 The final prerequisite baseline passes build, formatting with Elixir 1.20.3 and
 1.18.5, warnings-as-errors compilation, the CI policy check and the credential-free
@@ -134,7 +134,68 @@ guard remains for other primitive tokens. Global codec configuration is unchange
 The proposal also clarifies explicit preparation failure and legal unsealed
 diagnostic prefixes. Complete malformed or schema-invalid producer bytes remain
 unreadable until a valid seal; failing such validation must not make a Session
-unrestorable. That source-state behavior is still an implementation/proof task.
+unrestorable.
+
+## Publication and historical reads
+
+The next generic unit implements SDK-2 negotiation and terminal worker paging,
+Session-owned capacity reservations and publication, strict source closure,
+complete historical materialization, and bounded structured reads. A final
+version-2 invocation receipt contains a saved descriptor, not a partial domain
+value. Source bytes do not enter observer/feed delivery or model context.
+Model reads authorize only tool-disclosed results in the same Session. Command
+outputs remain private from model tools even if the model knows their IDs.
+
+Forty-seven focused SDK/Source/View/reservation tests pass in 8.4 seconds. Ten
+real Session integration tests pass in 8.9 seconds, including exact 4-MiB transfer
+through 1,024 fragments and unchanged bytes after inert close/reopen. They also
+exercise CLI Unicode equivalence, human/model isolation, denial before load,
+schema-invalid diagnostic recovery, cancellation and aggregate-timer handling,
+capacity refusal before source begin, malformed-seal rejection before tail repair,
+and conformance assertions against the latest saved value. Existing invocation,
+Worker, Registry, catalog, manifest and CLI tests pass all 102 cases in 46.6 seconds.
+
+The Elixir 1.18 formatter found three layout differences in `ResultSource` before
+the full suite started. Applying its formatting resolves both formatter checks.
+Whole-transport review found two issues. An approval could admit an effect after
+the aggregate deadline, and version-2 final receipts were missing from shared
+metadata projections. Both findings were accepted. Session now checks time before
+and after relevant admission writes, and Host checks the original deadline before
+effect dispatch. The closed metadata vocabulary admits final completion metadata
+without adding source-body access. Each original reviewer independently verified
+its repair. A fresh third whole-implementation review reports no findings.
+The [implementation review record](result-transport-review.md) retains the
+reproductions, repairs, independent checks and verification limits.
+
+The repair group passes 70 tests in 34.3 seconds. The final Session suite adds
+both approved-action continuation and expired-approval refusal: twelve tests pass
+in 9.6 seconds. Contributor aggregate/preparation examples run successfully
+against the built runtime. Whole operator/developer chapters were reviewed and
+documentation checks report zero errors across 246 files and 2,670 links.
+
+The first full-suite attempt was deliberately terminated after the deadline
+finding. Its SIGTERM log has no completed suite result and is not a passing gate,
+even though the shell exited zero. The repaired candidate's replacement baseline
+requires an actual completed passing suite summary. It completes successfully:
+1,241 passed, 32 platform-tagged exclusions, 727.2 seconds, with the strict stdio
+probe and unchanged 60,000-ms timeout. Build, both formatters, strict compile,
+CI policy and demo pass. Four macOS Rust policy tests and 30 native integration
+tests pass with six exclusions. A fresh runtime archive and its base extracted-
+package verification pass with a utility-only runtime PATH. All 22 reviewed
+runtime hashes still match.
+
+The generic SDK-2 installed proof also passes. The independently built
+[saved-result example](../../../examples/saved-results/README.md) publishes exact
+4 MiB through 1,024 fragments, with one worker load and callback, no model calls,
+confirmed cleanup and exact inert recovery. The lead independently reran its
+source and installed verifiers. The installed runtime has only declared utilities
+and bundled `erl` on PATH; its archive, artifact, host and prebuilt harness remain
+unchanged. The [review record](result-transport-review.md) owns the hashes and
+verification boundary.
+
+Exact-source Linux/hosted gates and knowledge quality remain open. Knowledge
+packages still use their prior inline finish paths and must migrate to SDK 2
+before their result-capacity boundary is closed.
 
 ## Synthetic result and identity reproduction
 

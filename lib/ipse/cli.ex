@@ -21,6 +21,7 @@ defmodule Ipse.CLI do
   ipse extension list              List inert built-in extension descriptors
   ipse extension check --fixture PATH  Exercise selected extensions with synthetic inputs
   ipse research --resume ID        Export a saved session's evidence ledger locally
+  ipse result OUTPUT_ID --resume ID  Read a complete saved extension result locally
   ipse diagnose --resume ID        Inspect content-free saved context measurements
   ipse budget --resume ID          Inspect saved shared admission reservations
   ipse handoff --resume ID --note TEXT  Export an explicit recovery note locally
@@ -60,7 +61,7 @@ defmodule Ipse.CLI do
   Chat asks before writes, shell, MCP, and delegation. Headless run denies them without --yes.
   Shell execution uses your user permissions unless --sandbox native is selected.
   Native enforcement fails closed when unavailable; approvals remain required.
-  Chat commands: /help /skills /session /info /diagnostics /observability off /events off /context /context refresh /ext [NAME JSON] /cancel /exit.
+  Chat commands: /help /skills /session /info /diagnostics /observability off /events off /context /context refresh /ext [NAME JSON] /result JSON /cancel /exit.
   Invoke skills with $name.
   EOF finishes accepted work; errors and /cancel clear queued input.
   """
@@ -269,6 +270,19 @@ defmodule Ipse.CLI do
       _ ->
         report(
           {:error, "Invalid conformance fixture/configuration or unsupported check options."}
+        )
+    end
+  end
+
+  defp dispatch(["result", output_id], opts) do
+    case Ipse.Extensions.ResultReader.saved(state_dir(opts), opts[:resume], output_id) do
+      {:ok, %{bytes: bytes}} ->
+        Terminal.puts(bytes)
+        0
+
+      _ ->
+        report(
+          {:error, "Saved result unavailable or invalid; use its original session and output ID."}
         )
     end
   end
@@ -655,6 +669,16 @@ defmodule Ipse.CLI do
 
         client_loop(s)
 
+      {:input, "/result " <> json} ->
+        with {:ok, request} <- Ipse.Extensions.Manifest.decode_json(json),
+             {:ok, view} <- Ipse.Session.read_saved_result(s.pid, request) do
+          Terminal.puts(Jason.encode!(view))
+        else
+          _ -> Terminal.puts(:stderr, "Saved result view unavailable or invalid.")
+        end
+
+        client_loop(s)
+
       {:input, "/ext"} ->
         Terminal.puts(Jason.encode!(Ipse.Session.exports(s.pid), pretty: true))
         client_loop(s)
@@ -838,7 +862,8 @@ defmodule Ipse.CLI do
         client_loop(s)
 
       {:ipse, ^pid, {:extension_result, display}} ->
-        Terminal.puts("\nExtension #{display["name"]}: #{Jason.encode!(display["value"])}")
+        value = display["delivery"] || display["value"]
+        Terminal.puts("\nExtension #{display["name"]}: #{Jason.encode!(value)}")
         client_loop(s)
 
       {:ipse, ^pid, {:tool_output, delta}} ->

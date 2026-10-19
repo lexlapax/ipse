@@ -10,6 +10,8 @@ and [Research extension](../../operator/research-extensions.md) procedures to ru
 the packages. The [contributor training chapter](../../developer/knowledge-extensions.md)
 teaches their ownership and execution flow. The
 [plan](../../plan.md#p27-optional-research-graph-and-rag) owns acceptance status.
+The later [complete-result review](result-transport-review.md) records the generic
+SDK-2 publication boundary and its remaining integration gates.
 
 ## Implementation and corrections
 

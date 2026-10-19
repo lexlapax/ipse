@@ -95,6 +95,27 @@ restart. Reservation is capacity admission, not an atomic multi-record commit or
 a guarantee that later IO succeeds. A partial group retains its written prefix
 and the caller's existing unknown-outcome rules.
 
+Trace an SDK-2 saved result through this mechanism. Session reserves the begin,
+every fixed-size fragment, the seal, and the final invocation receipt before
+writing `extension_output_begin`. `ResultSource.reservation_size/2` computes
+their JSONL capacity from the declared byte count and the original final-receipt
+template. Written prefixes remain charged even when the invocation is abandoned.
+There is no rollback or automatic attempt to finish a partial producer.
+
+Only the final version-2 `extension_invocation_result` publishes the saved
+descriptor. A complete byte stream or a seal alone remains unreadable. Source
+records use plain reserved appends and are not offered as private content to
+observers or feeds. The bounded final descriptor can use
+`append_reserved_observed/3`; Session releases unused capacity before offering
+that receipt to consumers, whose own intents require ordinary capacity.
+
+During resume, `ResultSource.restore/1` checks identity, fragment order and hashes,
+complete schema validation at a seal, and the exact final descriptor. Session
+does this before tail repair. A legal unsealed prefix stays diagnostic even if
+its complete bytes contain invalid JSON. A malformed record or invalid sealed
+source refuses recovery unchanged. Follow [invocations](extension-invocations.md)
+for a worked publication and read example.
+
 Reader, restore, repair, and writer initialization decode incrementally with size,
 line, and event bounds. They retain decoded recovery history within those bounds;
 streamed reading is not a claim of constant RAM. Session listing and CLI resume

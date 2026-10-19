@@ -1,14 +1,12 @@
 # Use reviewed extensions
 
-Extensions add optional tools, commands, prompt annotations, answer formatting,
-and selected event consumers. They can also use explicitly granted host services
-for state, context, questions, tools, and model calls. Every bundled extension is
-optional. Imported executable code runs with trusted operator OS permissions;
-review it before granting access.
+Use extensions to add optional tools, commands, prompt annotations, answer
+formatting, and selected event consumers. Review an extension's code and requested
+grants before enabling it. Imported code runs with your OS permissions.
 
-The operating sequence is review, inert import, capability trust, instance
-selection, then invocation. None of these steps implies the next. A generated
-artifact, skill, or project file cannot grant itself permission.
+To use an extension, import its inert artifact, grant its declared capabilities,
+configure an instance, and select that instance. Each step is separate. Importing
+an artifact does not execute it or approve later effects.
 
 ## Try a bundled extension without a model service
 
@@ -52,7 +50,7 @@ Save this complete configuration as `/private/path/extensions.json`:
 }
 ```
 
-Inspect descriptors and the effective selection locally:
+Inspect the descriptors and effective selection, then run the demo:
 
 ```sh
 ipse extension list
@@ -63,24 +61,23 @@ ipse demo --config /private/path/extensions.json --no-project-config \
   --extension annotation --extension formatter
 ```
 
-No account or model service is used. The demo performs its normal temporary file
-and shell work. Expect the completed answer wrapped by the configured tags.
-The effective prompt and journal retain the attributed annotation; it is not
-printed as a separate terminal message. Original provider messages, tool outcomes,
-and continuation remain intact.
+The demo uses no account or model service. It performs its normal temporary file
+and shell work. Expect the completed answer inside the configured tags. The
+journal retains the attributed annotation and original provider data. The
+annotation does not print as a separate terminal message.
 
-Both instances remain disabled in the file. `--extension INSTANCE` activates an
-already configured instance for the durable session, including its explicit
-resume, without editing configuration. To enable future sessions persistently,
-review an edit to `enabled: true`. `--no-extensions` disables selections for a
-new invocation and cannot combine with `--extension`. These flags do not hot-load
-code or change an already pinned session.
+`--extension INSTANCE` activates an already configured instance for the durable
+session, including explicit resume, without editing the configuration. To enable
+future sessions persistently, set its reviewed configuration to `enabled: true`.
+`--no-extensions` disables selections for a new invocation and cannot combine
+with `--extension`. These flags do not hot-load code or change a pinned session.
 
 ## Import an independently built artifact
 
-Get the source, license, dependencies, manifest, schemas, and options from the
-author. Review its declared operations and any direct filesystem/network use.
-Use a compatible already-built artifact; import does not compile or install it.
+Get the source, license, dependency list, manifest, schemas, and options from the
+author. Review declared operations and direct filesystem or network access. Use
+an already-built artifact compatible with your runtime. Import does not compile
+or install dependencies.
 
 ```sh
 ipse extension import /path/to/reviewed-artifact
@@ -88,248 +85,330 @@ ipse extension inspect DIGEST
 ```
 
 Replace `DIGEST` with the printed 64-character artifact digest. Import verifies
-declared lengths/hashes and copies an inert snapshot under
+lengths and hashes, then copies an inert snapshot under
 `IPSE_HOME/extensions/artifacts`, normally `~/.ipse/extensions/artifacts`. Inspect
-verifies the installed snapshot without executing it. A digest establishes
-identity, not authenticity or safety. Incompatible artifacts may be stored but
-cannot activate. Source edits after import do not alter the snapshot.
+verifies that snapshot without executing it. The digest identifies bytes; it
+does not authenticate the author or certify safety. Editing the original source
+does not change the imported snapshot.
 
-For activation, use the digest in both an operator trust entry and an instance,
-following the complete example above with the artifact's actual capabilities and
-options. Do not add artifacts to Ipse's code path. A separately built example
-walkthrough is available in [Extension lab](extension-lab.md).
+Use the digest in both the operator trust entry and instance configuration. Use
+the artifact's actual capabilities and options in the complete configuration
+pattern above. Follow [Extension lab](extension-lab.md) for a separately built
+example. Do not add imported artifacts to Ipse's code path.
 
 ## Review trust and scope
 
-Trust entries belong only in operator configuration. Their capability ceiling
-must cover every declared capability. Instances can be configured at operator
-or trusted project scope. A project instance also needs operator trust with
-`allow_project: true`; `--trust-project-config` cannot replace that grant. A child
-inherits only instances permitted by `allow_children: true` and keeps its own
-approval limits. MCP and recursive delegation remain unavailable to children.
+Put trust entries in operator configuration. The capability ceiling must cover
+every capability declared by the artifact. Project instances also need
+`allow_project: true` in operator trust. `--trust-project-config` cannot replace
+that grant. Children inherit only instances permitted by `allow_children: true`
+and keep their own approval limits. Children cannot use MCP or delegate again.
 
-Instance definitions merge by `instance`; nearer definitions replace the whole
-instance. Execution order is ascending `order`, then ID. Limits are eight
-effective instances and sixteen trust declarations. Config inspection shows
-provenance and option digests rather than contents. Keep secrets out of options.
-`/session` shows pinned identities and `/ext` lists the active export catalog.
+Definitions merge by `instance`; a nearer definition replaces the whole instance.
+Execution order is ascending `order`, then instance ID. Limits are eight effective
+instances and sixteen trust declarations. Config inspection shows provenance and
+option digests. Keep secrets out of options. In chat, `/session` shows pinned
+identities and `/ext` lists the active export catalog.
 
-Optional `expires_at` is an absolute Unix timestamp in seconds on a trust entry
-or instance; the earlier deadline applies. Expiry is checked at startup and
-before callback intent/result admission. Already running work keeps its ordinary
-deadline. There is no live revocation timer, hot reload, or general live activation.
-Already committed context/history remains.
+An optional `expires_at` is an absolute Unix timestamp in seconds. The earlier
+trust or instance expiry applies. Ipse checks expiry at startup and callback
+intent and result admission. Already running work retains its execution deadline.
+Expiry does not erase committed results or prior context. There is no live
+revocation timer or hot reload.
 
-Use these distinctions when reading an artifact's requested grants:
+Use this table to review requested grants:
 
-| Capability family | What you are allowing |
+| Capability family | What you allow |
 | --- | --- |
 | `transform.prompt`, `transform.presentation` | Bounded prompt annotations or completed presentation |
-| `invoke.tool`, `invoke.command`, `invoke.service` | Manifest-declared typed invocation exports |
-| `host.state.read`, `.write`, `.scan`, `.bound` | Scoped state reads, separately approved writes, extended read scans, or required logical bindings |
-| `host.question`, `host.tools`, `host.model`, `host.services`, `host.context` | Explicit questions, bounded built-in tools, approved profile inference, bound value-service calls, or context publications |
-| `host.mcp`, `host.results` | Separately approved operator-bound MCP calls and bounded reads of their same-invocation saved results |
-| `host.embedding` | Separately approved vector generation through an operator embedding profile; `host.results` reads its saved coordinate pages |
-| `host.actions.mixed` | Up to 512 reads and 16 other calls under existing per-operation grants and approvals |
-| `host.history` and `host.history.*` | This session's metadata and separately selected historical private views |
-| `host.usage`, `.scan`, `.children` | Accounting reads, extended scans, or registered direct-child accounting |
-| `stream.text`, `stream.text.events` | Private visible text and optional explicit frame identity |
-| `lifecycle.record`, `lifecycle.tools` | Bounded runtime/wait facts and admitted-tool source recording |
+| `invoke.tool`, `invoke.command`, `invoke.service` | Manifest-declared typed exports |
+| `invoke.result.pages` | Complete saved results from SDK-2 tools and commands, within separate document and journal limits |
+| `host.state.read`, `.write`, `.scan`, `.bound` | Scoped state reads, separately approved writes, extended scans, or required logical bindings |
+| `host.question`, `host.tools`, `host.model`, `host.services`, `host.context` | Explicit questions, built-in tools, approved profile inference, bound services, or context publication |
+| `host.mcp`, `host.results` | Approved operator-bound MCP calls and bounded reads of their same-invocation saved results |
+| `host.embedding` | Approved vector generation; `host.results` reads saved coordinate pages |
+| `host.actions.mixed` | Up to 512 reads and 16 other calls under the existing operation grants and approvals |
+| `host.history` and `host.history.*` | session metadata and separately selected historical private views |
+| `host.usage`, `.scan`, `.children` | Accounting reads, extended scans, or direct-child accounting |
+| `stream.text`, `stream.text.events` | Private visible text and optional frame identity |
+| `lifecycle.record`, `lifecycle.tools` | Bounded runtime facts and admitted-tool source recording |
 | `observe.local`, `observe.export` | Diagnostic metadata sinks under separate capture policy |
-| `event.notify`, `event.feed`, `event.job` | Selected notifications, bounded live feeds, or finite effectful boundary jobs |
-| `event.prompt.*`, `event.answer.*`, `event.tool.input`, `event.tool.result` | Exact selected private views, in addition to the corresponding delivery prerequisites |
+| `event.notify`, `event.feed`, `event.job` | Selected notifications, live feeds, or finite boundary jobs |
+| `event.prompt.*`, `event.answer.*`, `event.tool.input`, `event.tool.result` | Exact private views, with the corresponding delivery prerequisites |
 
 Every `host.*` operation also requires `host.actions`. A read grant does not
-imply a write, model, or transfer grant. Live private views do not grant history
-reads. `lifecycle.record` alone starts no extension worker and gives no read or
-action permission. Unsupported capabilities fail explicitly.
+approve writes, inference, or transfers. A live private-view grant does not grant
+history access. `lifecycle.record` alone starts no worker and grants no read or
+action permission. Unsupported capabilities refuse explicitly.
 
 ## Invoke a tool or command
 
-An enabled artifact's model tools use names such as `ext__INSTANCE__ID`. They need
-full ordinary approval unless you explicitly used session-wide allowance.
+Enabled model tools have names such as `ext__INSTANCE__ID`. They require ordinary
+full-argument approval unless you explicitly enable session-wide execution.
 Headless effects are denied without `--yes`. Invalid arguments refuse before
-initializing code.
+code initializes.
 
-In interactive chat, `/ext` lists actual schemas and exports. To invoke a command
-without inference, use its exact name and a JSON object:
+To call a command without inference, enter its exact name and JSON object in
+interactive chat:
 
 ```text
 /ext
 /ext ext__project-notes__recall {"query":"release checklist","limit":5}
 ```
 
-The second command requires the [memory example](memory.md) to be configured.
-Command results display separately from the assistant answer. Commands and
-standalone services are admitted only while idle. Approving an enclosing tool
-or invoking a command does not approve a later proposed write or model request.
+The second command requires the [memory example](memory.md). `/ext` displays the
+actual available names and schemas. Commands and standalone services run only
+while the session is idle. A command result displays separately from the
+assistant answer and does not enter model context. Invoking a command or approving
+a tool does not approve a later write or model request.
 
-Each callback returns schema-checked values. Ordinary invocations allow 16 host
-operations, with separately granted state/accounting/result reads extending only
-those families. Explicit mixed authority permits reads followed by approved
-actions within its separate counters. An SDK object is at most 16 KiB; ordinary
-callback text input is at most 8 KiB. Up to 10000 invocations fit one session. Intent is saved before
-startup, and a result commits only after validation and confirmed cleanup.
-Crash, timeout, invalid output, or interruption can leave an unknown effect;
-there is no automatic retry.
+Ordinary replies contain a schema-checked inline value. An SDK-2 artifact with
+`invoke.result.pages` can instead return a `saved.result` descriptor with an
+`output_id`, `byte_count`, `sha256`, and `historical_receipt: true`. The descriptor
+means Ipse retained a complete result for explicit reading. It is not the domain
+answer itself. Services, event jobs, transforms, and recovered question
+continuations keep inline results.
+
+The SDK object limit remains 16 KiB. Saved documents allow at most 4 MiB, with
+8-KiB strings, depth 12, and 4,096 members per collection. Each session allows
+64 begun saved-output attempts and 64 MiB of encoded source records. Interrupted
+attempts consume those limits too. Your journal policy can impose a lower limit.
+Capacity refusal does not publish a partial successful result.
+
+Eligible SDK-2 tools and commands share a two-minute deadline starting at original
+invocation admission. Initialization, approvals, effects, output transfer,
+validation, and cleanup all consume that time. An approval wait can exhaust the
+deadline. An output page does not restart it. Ordinary callback deadlines still
+apply.
+
+Ipse saves intent before startup and publishes a result only after validation
+and confirmed worker cleanup. Crash, timeout, invalid output, or interruption can
+leave an unknown effect. There is no automatic retry.
+
+## Read a saved result
+
+Keep the output ID from the descriptor and the original session ID. Use the
+original state directory. If you did not set `--state-dir`, it is normally
+`~/.ipse/sessions`. Close the original chat before reading its stable saved
+journal from another process.
+
+To print the complete JSON result, replace these three values and run:
+
+```sh
+IPSE_OUTPUT_ID='COPY_THE_64_CHARACTER_OUTPUT_ID'
+IPSE_SESSION_ID='COPY_THE_SESSION_ID'
+IPSE_RESULT_STATE_DIR="$HOME/.ipse/sessions"
+ipse result "$IPSE_OUTPUT_ID" --resume "$IPSE_SESSION_ID" \
+  --state-dir "$IPSE_RESULT_STATE_DIR"
+```
+
+Expect the original full JSON document. The command checks its source records,
+byte count, digest, and schema. It starts no extension worker or model request.
+Terminal escaping and the trailing newline can change the printed bytes while
+preserving the complete JSON value. The descriptor's digest identifies the
+retained source bytes.
+To save that output locally, redirect it to a file you control. Treat the file as
+private when the original result contains private text.
+
+In the original interactive session, read a bounded root view with:
+
+```text
+/result {"output_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","path":[]}
+```
+
+Replace the example ID with the actual output ID. A view reports `kind`,
+`target_type`, `offset`, `complete`, and `next`. Containers report
+`total_children` and up to sixteen child summaries. Strings report `total_bytes`
+and up to 1,024 UTF8 bytes in `text`. Object children use decoded-key byte order;
+arrays retain their original order.
+
+To choose a known child, put object keys and array indices in `path`:
+
+```text
+/result {"output_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","path":["evidence",0,"citation","quote"]}
+```
+
+That path is useful for a result with the shown structure. Choose actual keys
+from the root view for another result. A large child has a `reference` instead
+of an inline `value`. A shortened key name has `name_reference`. Both are cursor
+objects that you can read in the same way as `next`.
+
+To continue, copy the complete returned cursor into a request containing only
+`cursor`. For example:
+
+```text
+/result {"cursor":{"output_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","source_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","path":[],"kind":"children","offset":16}}
+```
+
+The IDs and offset above illustrate the shape. Use the exact cursor from your
+response. Do not replace its digest or reconstruct its ordinal path. `next: null`
+and `complete: true` end the requested target. References inside that target
+remain separate explicit reads. An invalid cursor or an offset inside a UTF8
+code point refuses without starting a query.
+
+The model's `saved_result_read` tool can read only results already disclosed
+through model-visible tools in the same session. An output ID or cursor does not
+grant access. Reading a command result with `/result` does not disclose it to the
+model. Children and unrelated extensions gain no access to these saved results.
+
+Saved results are historical receipts. Forgetting or expiring a note, deleting a
+source, or replacing an index changes future retrieval. Those actions do not
+erase bytes retained by an earlier result or journal. A historical read does not
+prove that its source is still eligible or current.
+
+If a read reports unavailable or invalid, check the session ID, output ID, and
+state directory. A begin or seal record alone is not a published result. Retain
+interrupted records for diagnosis. Do not edit the journal, replay the producing
+command, or remove lock files to force recovery. Use [Recovery](recovery.md) to
+inspect unknown work before deciding whether to start a new invocation.
 
 ## Understand prompt and answer transforms
 
-Prompt annotations append visibly attributed untrusted reference context. They
-cannot change permissions. The original input and expanded message stay in the
-journal. Answer formatting changes completed presentation, while raw text can
-stream first and original assistant data stays intact.
+Prompt annotations append attributed untrusted reference context. They cannot
+change permissions. The journal retains the original input and expanded message.
+Answer formatting changes completed presentation; raw text can stream first,
+and original assistant data stays intact.
 
-Each annotation/prefix/suffix is at most 4096 characters within SDK byte limits;
-derived text is at most 16 KiB. Earlier transforms can exhaust later input limits.
-Overflow fails instead of truncating. Presentation failure retains the original
-completed answer. Fresh workers have five-second initialization/callback
-deadlines; their private VM state is not durable memory. Transform callbacks
-cannot request state writes or model calls.
+Each annotation, prefix, or suffix allows 4,096 characters within SDK byte limits.
+Derived text allows 16 KiB. Earlier transforms can consume later input capacity.
+Overflow refuses instead of truncating. A presentation failure retains the
+original completed answer. Fresh workers have five-second initialization and
+callback deadlines. Their private VM state is not durable memory. Transform
+callbacks cannot request writes or inference.
 
 ## Use state, questions, and workflows
 
-State grants permit bounded operator/project/session storage. Project-selected
-code cannot choose operator scope. Put/delete actions require a separate full
-approval and current revision. Each namespace has a 1 MiB/256-record quota,
-including tombstones; each value is at most 8 KiB. Deletion retains revision to
-prevent stale resurrection. Approved logical bindings deliberately share data
-across reviewed code/configuration versions; they neither migrate data nor grant
-operations. See [Memory](memory.md) for a complete binding and note workflow.
+State grants provide scoped operator, project, or session storage. Project code
+cannot choose operator scope. Put and delete actions require separate full
+approval and the current revision. Each namespace allows 1 MiB and 256 records,
+including tombstones. Each value allows 8 KiB. Deletion keeps revision identity to
+prevent a stale write from restoring old data. Follow [Memory](memory.md) for a
+complete note and logical-binding workflow.
 
-`host.state.scan` requires read access and extends state reads through step 512
-within two minutes. A page holds at most 16 records/12000 encoded record-array
-bytes. It widens no write or external-operation authority. Long reads can retain
-private values in journal receipts even when the returned answer is small.
+`host.state.scan` extends reads through step 512 within two minutes. A page has
+at most sixteen records and 12,000 encoded record-array bytes. It grants no
+writes or external operations. Read receipts can retain private values even when
+the returned answer is small.
 
-Structured extension questions use the normal `answer CODE VALUE` flow. The
-worker closes before the question appears; resume restores it without executing
-the callback. An answer starts a saved continuation but grants no effect approval.
-Headless and child sessions cannot choose an answer silently. Interrupted
-post-answer work stays unknown and never replays automatically.
+Structured questions use the normal `answer CODE VALUE` flow. The worker closes
+before the question appears. Resume restores the question without executing it.
+An answer starts a saved continuation and grants no effect approval. Headless
+and child sessions cannot choose answers silently. Interrupted continuation work
+remains unknown.
 
-Workflow tool access supports bounded read/write/edit/shell calls. MCP uses the
-separate [selected-item binding procedure](mcp.md#allow-a-reviewed-extension-to-use-a-selected-item).
-Delegation is unavailable through host calls. Ordinary path, `.git`, workspace
-instructions, shell sandbox, and approval rules apply. New nested guidance stops before execution; review
-`/context` before another explicit invocation. Calls declare 1..30000 ms deadlines;
-results must fit 4 KiB text and the full escaped envelope. Oversized reads return
-a known failure without partial data. Incomplete shell work can be unknown.
+Workflow tool access supports bounded file and shell calls under the ordinary
+path, workspace-instruction, sandbox, and approval rules. Delegation is not a
+host call. New nested guidance stops execution for review in `/context`. Calls
+use 1–30,000-ms deadlines and fit 4-KiB text plus the escaped envelope. Oversized
+reads return a known failure without partial data. Incomplete shell work can be
+unknown. Configure MCP through its separate
+[selected-item binding procedure](mcp.md#allow-a-reviewed-extension-to-use-a-selected-item).
 
 ## Accounted model calls
 
-A reviewed artifact with `host.actions` and `host.model` may request one-shot text
-inference through a named [profile](model-profiles.md). It supplies its complete
-instruction/input and bounded result/deadline. It cannot replace provider,
-endpoint, or credential through arguments.
+A reviewed artifact can request one-shot text inference through a named
+[model profile](model-profiles.md). It supplies its full instruction and input.
+It cannot choose new credentials, providers, or endpoints through arguments.
 
-The separate approval shows full input, profile/provider/model/billing, actual
-destination origin, and a digest of the wire target. Credentials and URL paths
-are omitted from the destination display. Parent history, credentials, and native
-continuation are not inherited. Only this request's text and normalized usage
-return to its caller; they do not automatically enter the main conversation.
+The separate approval shows the full input, profile, provider, model, billing,
+destination origin, and wire-target digest. Credentials and URL paths are omitted
+from that display. Parent history and native continuation are not inherited.
+Returned text and usage do not automatically enter the main conversation.
 
-Calls consume model steps and optional shared [tree reservations](budgets.md),
-including explicitly permitted child calls. Unsupported output caps refuse
-without fallback. Interrupted requests may consume resources. Idle resume
-restores receipts without inference; changed profiles can refuse resume.
-Use the separate [embedding procedure](embeddings.md) for vector generation.
-Audio remains outside this text contract. The
-[synthetic model-call example](../../examples/model-calls/README.md) exercises this
-without a paid service.
+Calls consume model steps and optional shared [tree reservations](budgets.md).
+Unsupported output caps refuse without fallback. Interrupted requests may consume
+resources. Idle resume restores receipts without inference. Changed profiles can
+refuse resume. Use [Embeddings](embeddings.md) for vector generation. Audio is
+outside this text contract. The
+[synthetic model-call example](../../examples/model-calls/README.md) needs no paid
+service.
 
 ## Compose services and publish context
 
-Bound services require explicit `service_bindings` in the caller's operator trust
-entry and `host.services`. The target must already be imported, trusted, and
-selected. Missing routes, incompatible schemas, or cycles refuse startup. No
-dependency is installed or enabled implicitly. Current value services return
-typed data plus provenance; they cannot return nested effects/questions. Ask the
-author for the exact binding names and follow the
-[service configuration reference](../developer/extension-services.md).
+A caller needs `host.services` and explicit operator `service_bindings`. The
+target must already be imported, trusted, and selected. Missing routes, schema
+mismatches, or cycles refuse startup. Ipse installs no dependency implicitly.
+Services return typed data and provenance; they cannot return nested effects,
+questions, or paged output. Follow the
+[service configuration reference](../developer/extension-services.md) for binding
+names.
 
-An explicit `host.context` publication replaces only that instance's current
-session set; an empty set clears it. Up to eight items per set and 16 KiB globally
-rendered context are allowed. Children and fresh sessions inherit none. Items are
-attributed untrusted references. Literal receipt-backed excerpts prove recorded
-text, not truth/freshness. Refusal preserves old context without eviction or
-truncation. Clearing does not erase old journals or prior model transfers.
-Idle resume restores committed context without fetching or callbacks.
+A `host.context` publication replaces that instance's current session set. An
+empty set clears it. Limits are eight items per set and 16 KiB globally rendered
+context. Children and fresh sessions inherit none. Items are attributed untrusted
+references. A receipt-backed excerpt proves recorded text, not truth or freshness.
+Refusal preserves the previous set. Clearing context does not erase journals or
+prior model transfers. Idle resume restores committed context without callbacks.
 
 ## Select event delivery deliberately
 
-Notifications observe chosen prompt/answer boundaries. Metadata-only
-`event.notify` adds no private text; exact `event.prompt.*`/`event.answer.*` grants
-select it. At most eight selected declarations use five-second callback deadlines.
-Required prompt failure stops before inference. Required answer failure marks
-settlement failed without retracting the answer. Optional known failure is
-reported and may continue. Idle resume never replays unfinished delivery.
+Notifications observe chosen prompt or answer boundaries. Metadata-only
+`event.notify` contains no private text. Exact private-view grants select that
+text separately. At most eight selected declarations use five-second callbacks.
+A required prompt failure stops before inference. A required answer failure
+marks settlement failed without retracting the answer. An optional known failure
+can report its failure and continue. Idle resume does not replay delivery.
 
-Live `event.feed` workers enroll on accepted new work, not idle resume. Each feed
-has 1..32 queued/in-flight events with exact acknowledgments. Overload, invalid
-reply, timeout, or lost resources closes coverage visibly while agent work
-continues. Tool/wait sources need their lifecycle prerequisites; private tool
-views need separate grants. `/diagnostics` shows coverage/closure/cleanup.
-`/events off` stops feeds for this process. New invocations can enroll on new
-work; incomplete catch-up needs an explicit workflow with deduplication.
+Live `event.feed` workers enroll on accepted new work. Each feed allows 1–32
+queued or in-flight events with exact acknowledgments. Overload, invalid replies,
+timeout, or resource loss closes coverage visibly while agent work continues.
+Use `/diagnostics` to inspect coverage and cleanup. `/events off` stops feeds for
+the current process. A new invocation can enroll new work; catch-up requires an
+explicit workflow with deduplication.
 
-Event jobs separately allow finite approved actions at supported prompt or
-completed-answer boundaries. `before_request` recall can publish context before
-the request snapshot. `after_turn` work cannot revise the saved answer and keeps
-the session busy until its serial lane settles. Current jobs do not imply
-concurrent background turns. Denied/conflicting actions fail delivery even if a
-callback claims success. Any unknown job stops the lane. Questions can resume
-saved continuations without repeating earlier effects. Jobs do not appear in
-`/ext` or the model tool catalog.
+Event jobs allow finite approved actions at selected prompt or completed-answer
+boundaries. `before_request` recall can publish context before the request
+snapshot. `after_turn` cannot change the saved answer and keeps the session busy
+until settlement. These jobs do not create concurrent background turns. A denied
+or conflicting action fails delivery even if the callback claims success. An
+unknown job stops the lane. Questions can resume saved continuations without
+repeating earlier effects. Jobs appear in neither `/ext` nor the model catalog.
 
-History/catch-up reads need `host.history` plus exact private-view grants. They
-are scoped to this session and a frozen paginated range. Older unrecorded views
-remain gaps; a completed scan does not prove complete conversation coverage.
-No scan starts merely on import, selection, or resume. Writes remain separate.
+History reads require `host.history` and exact private-view grants. Each scan
+uses this session's frozen range. Older unrecorded views remain gaps. A completed
+scan does not prove complete conversation coverage, and no scan starts on import
+or resume. Writes require separate approval.
 
 ## Deliver visible text to a selected client
 
-A trusted `stream.text` worker receives private visible provider text, excluding
-summaries, hidden reasoning, and completed formatting. Optional
-`stream.text.events` selects explicit frame/range identity. No separate CLI stream
-flag is needed. Read-only acknowledgments grant no tools, state writes, or model
-calls. At most four consumers share capacity.
+A trusted `stream.text` consumer receives visible provider text, excluding hidden
+reasoning, summaries, and completed formatting. `stream.text.events` adds explicit
+frame identity. No separate CLI flag is required. Read acknowledgments grant no
+tools, writes, or model calls. At most four consumers share capacity.
 
 Workers must be ready before dispatch. Optional consumers detach on failure or
-five-second backpressure while inference continues. A closing worker can miss a
-later turn with visible notice; a replacement starts only after confirmed cleanup.
-To require delivery, set operator trust `text_required: true` with `stream.text`.
-Every frame/completion must then be acknowledged before answer admission. Lost
-required delivery stops the request and retains usage. `/cancel` resets an
-extension-owned enrollment only after cleanup; later work reenrolls under the
-same policy. Independent embedded handles require their own explicit release.
+five-second backpressure while inference continues. Replacement waits for
+confirmed cleanup. To require delivery, set operator trust `text_required: true`
+with `stream.text`. Every frame and completion must then be acknowledged before
+answer admission. Lost required delivery stops the request and retains usage.
+`/cancel` resets enrollment after cleanup; later work enrolls under the same
+policy. Independent embedded handles need explicit release.
 
-Stream completion means text delivery, not durable answer acceptance. Another
+Stream completion is a delivery receipt, not durable answer acceptance. Another
 required consumer can still cause failure. Live subscriptions do not survive
-resume or replay old frames. `/diagnostics` reports resource/cleanup counts
-without private text.
+resume or replay old frames. `/diagnostics` reports counts without private text.
 
 ## Recovery and execution boundaries
 
-Use the original configuration and temporary-selection flags for resume. Exact
-artifact/options, catalog, source/scope, order/lifetime, VM, API, and generation
-pins prevent silently changing executable behavior. Missing, extra, tampered,
-expired, or incompatible code refuses recovery. Committed results/context restore
-without callbacks. Pending questions wait; other interrupted work stays idle
+Use the original configuration and temporary-selection flags to resume work.
+Artifact, options, catalog, scope, order, lifetime, VM, API, and generation pins
+prevent silent executable changes. Missing, extra, tampered, expired, or
+incompatible selections refuse recovery. Committed results and context restore
+without callbacks. Pending questions wait. Other interrupted work stays idle
 with unknown outcomes.
 
 Do not use `--no-extensions` to remove an existing session's pinned set. Restore
-its original code/configuration, retain a matching frozen runner, or export a
-reviewed [handoff](recovery.md). Built-in license changes also change identity;
-imported artifacts retain their own license/identity until rebuilt and imported.
+its original selection, retain a matching frozen runner, or create a reviewed
+[handoff](recovery.md). Builtin license changes also change identity. Imported
+artifacts retain their identity until rebuilt and imported.
 
-Import does not overwrite an invalid digest directory. A busy lock requires the
-other importer to finish; keep lock files for identity. Abandoned `.staging-*`
-directories are inert. Inspect/remove only abandoned staging when no importer
-runs. There is no automatic repair or garbage collector.
+Import does not overwrite an invalid digest directory. Let another importer
+finish before using its busy lock. Keep lock files in place. Abandoned
+`.staging-*` directories are inert; remove only confirmed abandoned staging.
+Ipse provides no automatic repair or garbage collection.
 
-Workers inherit no provider credential environment, but trusted code still has
-operator filesystem/OS access. SDK schemas, ownership, deadlines, and process-group
-cleanup are not an OS sandbox. Review direct code effects accordingly. Use
-[Diagnostic capture](observability.md), [Recovery](recovery.md), and the
-[developer extension manual](../developer/extensions.md) for the next investigation.
+Workers inherit no provider credential environment. Trusted code still has your
+filesystem and OS permissions. SDK schemas, ownership, deadlines, and process
+cleanup do not create an OS sandbox. Continue with
+[Diagnostic capture](observability.md), [Recovery](recovery.md), or the
+[developer extension manual](../developer/extensions.md) for an investigation.

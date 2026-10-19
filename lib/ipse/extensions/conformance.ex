@@ -446,13 +446,7 @@ defmodule Ipse.Extensions.Conformance do
       for %{"type" => "extension_action_result", "outcome" => outcome} <- events,
           do: outcome["status"]
 
-    value =
-      events
-      |> Enum.reverse()
-      |> Enum.find_value(fn
-        %{"type" => "extension_invocation_result", "value" => value} -> {:found, value}
-        _ -> nil
-      end)
+    value = result_value(events)
 
     checks = %{
       "status" => status == expected["status"],
@@ -538,6 +532,21 @@ defmodule Ipse.Extensions.Conformance do
           is_binary(scenario["name"]) and is_map(scenario["arguments"]) and
             not Map.has_key?(scenario, "script")
       )
+  end
+
+  defp result_value(events) do
+    case Enum.find(Enum.reverse(events), &(&1["type"] == "extension_invocation_result")) do
+      %{"version" => 1, "value" => value} ->
+        {:found, value}
+
+      %{"version" => 2, "delivery" => delivery} ->
+        with {:ok, index} <- Ipse.Extensions.ResultSource.restore(events),
+             {:ok, %{value: value}} <- Ipse.Extensions.ResultSource.materialize(index, delivery),
+             do: {:found, value}
+
+      _ ->
+        nil
+    end
   end
 
   defp options?(value),

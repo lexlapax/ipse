@@ -2,6 +2,7 @@ defmodule Ipse.Extensions.Worker do
   @moduledoc "Owner-monitored independent VM bridge; never loads an artifact in the host."
   use GenServer
   alias Ipse.Extensions.{Manifest, Registry}
+  alias Ipse.Extension.ResultPublication
   @limit 32_768
   @traffic_limit 67_108_864
 
@@ -34,6 +35,11 @@ defmodule Ipse.Extensions.Worker do
          {:ok, artifact} <- Registry.lookup(Keyword.fetch!(opts, :store), digest),
          true <- is_nil(opts[:artifact_sha256]) or opts[:artifact_sha256] == artifact.digest,
          true <- Manifest.compatible?(artifact.manifest),
+         true <-
+           Ipse.Extensions.Catalog.sdk_capabilities?(
+             artifact.manifest["sdk"],
+             artifact.manifest["capabilities"]
+           ),
          :ok <- Ipse.MCP.Schema.validate_arguments(artifact.manifest["options_schema"], options),
          {:ok, executable, args, environment} <- launch(artifact),
          {:ok, port, cleanup_ticket} <-
@@ -58,6 +64,9 @@ defmodule Ipse.Extensions.Worker do
          pending: nil,
          sequence: 0,
          ready: false,
+         origin: nil,
+         producer: nil,
+         awaiting_action: false,
          finished: false,
          buffer: <<>>,
          content: <<>>,
@@ -77,13 +86,9 @@ defmodule Ipse.Extensions.Worker do
   end
 
   def handle_call({:invoke, stage, payload, timeout}, from, state) do
-    permitted =
-      (stage == "initialize" and not state.ready and payload == state.options) or
-        (state.ready and stage in state.manifest["capabilities"])
-
     with true <- Process.alive?(state.owner),
          true <- is_integer(timeout) and timeout >= 1 and timeout <= 30_000,
-         true <- permitted,
+         true <- permitted?(state, stage, payload),
          :ok <- Ipse.Extension.validate(payload),
          id = state.sequence + 1,
          bytes =
@@ -96,8 +101,36 @@ defmodule Ipse.Extensions.Worker do
            ) do
       timer = Process.send_after(self(), {:timeout, id}, timeout)
 
+      origin =
+        if stage == "initialize",
+          do: nil,
+          else: state.origin || %{stage: stage, invocation_id: payload["invocation_id"]}
+
+      eligible =
+        not is_nil(origin) and
+          ResultPublication.eligible?(
+            state.manifest["sdk"],
+            state.manifest["capabilities"],
+            origin.stage
+          ) and
+          (is_nil(state.origin) or
+             (stage == "host.actions" and
+                payload["invocation_id"] === origin.invocation_id))
+
       {:noreply,
-       %{state | pending: %{id: id, from: from, timer: timer, stage: stage}, sequence: id}}
+       %{
+         state
+         | pending: %{
+             id: id,
+             from: from,
+             timer: timer,
+             stage: stage,
+             payload: payload,
+             eligible: eligible
+           },
+           sequence: id,
+           origin: origin
+       }}
     else
       _ -> {:reply, {:error, :invalid_extension_request}, state}
     end
@@ -109,6 +142,25 @@ defmodule Ipse.Extensions.Worker do
     record_cleanup(state, result)
     {:stop, :normal, result, %{state | port: nil}}
   end
+
+  defp permitted?(%{producer: producer}, "result.output", payload) when not is_nil(producer),
+    do: match?({:ok, _}, ResultPublication.request(producer, payload))
+
+  defp permitted?(%{producer: producer}, _, _) when not is_nil(producer), do: false
+  defp permitted?(_, "result.output", _), do: false
+
+  defp permitted?(state, stage, payload),
+    do:
+      (stage == "initialize" and not state.ready and payload == state.options) or
+        (state.ready and stage in state.manifest["capabilities"] and
+           ResultPublication.domain_request?(
+             state.manifest["sdk"],
+             state.manifest["capabilities"],
+             state.origin,
+             state.awaiting_action,
+             stage,
+             payload
+           ))
 
   @impl true
   def handle_info({port, {:data, bytes}}, %{port: port} = state) do
@@ -241,20 +293,44 @@ defmodule Ipse.Extensions.Worker do
          true <- is_map(message) and Enum.sort(Map.keys(message)) == ~w(id protocol result),
          true <- message["protocol"] === 1 and message["id"] === state.pending.id,
          :ok <- Ipse.Extension.validate(message["result"]),
-         true <- description_valid?(state, message["result"]) do
+         true <- description_valid?(state, message["result"]),
+         {:ok, next} <- producer_response(state, message["result"]) do
       Process.cancel_timer(state.pending.timer)
       GenServer.reply(state.pending.from, {:ok, message["result"]})
-      {:ok, %{state | ready: true, pending: nil}}
+      {:ok, %{next | ready: true, pending: nil}}
     else
       _ -> :error
     end
   end
 
+  defp producer_response(%{ready: false} = state, _result), do: {:ok, state}
+
+  defp producer_response(%{producer: producer} = state, result) when not is_nil(producer) do
+    with {:ok, next} <- ResultPublication.accept(producer, state.pending.payload, result),
+         do: {:ok, %{state | producer: next}}
+  end
+
+  defp producer_response(state, %{"kind" => "result_producer"} = result) do
+    with true <- state.pending.eligible,
+         {:ok, producer} <- ResultPublication.open(result, state.origin.invocation_id) do
+      {:ok, %{state | producer: producer}}
+    else
+      _ -> :error
+    end
+  end
+
+  defp producer_response(_state, %{"kind" => "result_chunk"}), do: :error
+
+  defp producer_response(state, result),
+    do: {:ok, %{state | awaiting_action: result["kind"] == "host_call"}}
+
   defp description_valid?(%{ready: true}, _result), do: true
 
   defp description_valid?(state, result),
     do:
-      result["sdk"] === 1 and result["capabilities"] === state.manifest["capabilities"] and
+      result["sdk"] === state.manifest["sdk"] and
+        Ipse.Extensions.Catalog.sdk_capabilities?(result["sdk"], result["capabilities"]) and
+        result["capabilities"] === state.manifest["capabilities"] and
         Ipse.Extensions.Catalog.normalize(result["exports"]) ==
           Ipse.Extensions.Catalog.normalize(state.manifest["exports"]) and
         (result["requires"] || Ipse.Extensions.Services.empty()) ==

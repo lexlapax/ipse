@@ -173,7 +173,7 @@ defmodule Ipse.Extensions.Registry do
           "services" => [],
           "scope" => instance["scope"],
           "source_sha256" => Manifest.sha256(instance["source"]),
-          "sdk" => 1,
+          "sdk" => artifact.manifest["sdk"],
           "protocol" => 1,
           "capabilities" => capabilities,
           "order" => instance["order"],
@@ -302,6 +302,7 @@ defmodule Ipse.Extensions.Registry do
                   true <- artifact.digest == entry.identity["artifact_sha256"],
                   true <- entry.identity["host_sha256"] == host,
                   true <- Manifest.compatible?(artifact.manifest),
+                  true <- artifact.manifest["sdk"] === entry.identity["sdk"],
                   true <- artifact.manifest["capabilities"] == entry.identity["capabilities"],
                   true <-
                     Ipse.Extensions.Catalog.digest(artifact.manifest["exports"]) ==
@@ -351,6 +352,15 @@ defmodule Ipse.Extensions.Registry do
   defp host_digest do
     [
       Ipse.Extension,
+      Ipse.Extension.ResultPublication,
+      Ipse.Extension.ResultPublication.Output,
+      Ipse.Extensions.ResultDocument,
+      Ipse.Extensions.ResultSource,
+      Ipse.Extensions.ResultSource.Index,
+      Ipse.Extensions.ResultSource.Sealed,
+      Ipse.Extensions.ResultReader,
+      Ipse.Extensions.ResultView,
+      Ipse.JSON,
       Ipse.Extensions.Identity,
       Ipse.Extensions.Catalog,
       Ipse.Extensions.Invocation,
