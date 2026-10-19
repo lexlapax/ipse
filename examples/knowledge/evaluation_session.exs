@@ -507,7 +507,11 @@ defmodule IpseKnowledgeExample.EvaluationSession do
     expected = %{name: review.name, proposed: proposed}
 
     if is_map(proposed) and is_map(proposed["request"]) and
-         validator.(review) == {:approve, expected}, do: :approve, else: :deny
+         validator.(review) == {:approve, expected} do
+      :approve
+    else
+      :deny
+    end
   rescue
     _ -> :deny
   end
@@ -566,7 +570,9 @@ defmodule IpseKnowledgeExample.EvaluationSession do
   end
 
   defp append_parts(run, _store, _source_id, text, continuation, receipts)
-       when byte_size(text) == 0, do: {:ok, receipts, run, continuation}
+       when byte_size(text) == 0 do
+    {:ok, receipts, run, continuation}
+  end
 
   defp append_parts(run, store, source_id, remaining, continuation, receipts) do
     case next_append(remaining, store, source_id, continuation, 4096) do
@@ -654,12 +660,13 @@ defmodule IpseKnowledgeExample.EvaluationSession do
 
   defp import_artifacts(artifacts, home) do
     Enum.reduce_while(artifacts, {:ok, [], []}, fn artifact, {:ok, instances, trusts} ->
-      with {:ok, imported} <- Store.import(artifact.path, Path.join(home, "extensions/artifacts")),
-           true <- imported.digest == artifact.digest,
+      with {:ok, imported_knowledge_artifact} <-
+             Store.import(artifact.path, Path.join(home, "extensions/artifacts")),
+           true <- imported_knowledge_artifact.digest == artifact.digest,
            true <- artifact.trust["artifact"] == artifact.digest do
         instance = %{
           "instance" => artifact.instance,
-          "artifact" => imported.digest,
+          "artifact" => imported_knowledge_artifact.digest,
           "enabled" => true,
           "options" => artifact.options,
           "order" => artifact.order,

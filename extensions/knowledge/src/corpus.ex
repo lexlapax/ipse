@@ -180,7 +180,11 @@ defmodule IpseKnowledge.Corpus do
   defp advance({:call, request, cont}, state) do
     pending =
       if String.starts_with?(Atom.to_string(state.phase), "index_embed") or
-           state.phase in [:query_refs, :query_embed, :query_rerank], do: :adapter, else: :store
+           state.phase in [:query_refs, :query_embed, :query_rerank] do
+        :adapter
+      else
+        :store
+      end
 
     call(request, %{state | cont: cont, pending: pending})
   end

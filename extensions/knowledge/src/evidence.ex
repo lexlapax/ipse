@@ -627,7 +627,11 @@ defmodule IpseKnowledge.Evidence do
   defp inputs(sources, k, now) do
     if is_list(sources) and length(sources) <= 32 and Enum.all?(sources, &valid_source?/1) and
          length(Enum.uniq_by(sources, & &1["source_key"])) == length(sources) and top?(k) and
-         timestamp?(now), do: :ok, else: {:error, :invalid_sources}
+         timestamp?(now) do
+      :ok
+    else
+      {:error, :invalid_sources}
+    end
   end
 
   defp limits?(l),

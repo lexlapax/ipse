@@ -944,7 +944,11 @@ defmodule IpseKnowledge.Store do
                fact["citations"],
                &(Evidence.valid_span?(source, &1) and &1["chunk_id"] in token["chunks"])
              )
-         end), do: :ok, else: {:error, :invalid_facts}
+         end) do
+      :ok
+    else
+      {:error, :invalid_facts}
+    end
   end
 
   defp projection_pages(source, draft, "vectors", vectors) do
@@ -1769,7 +1773,11 @@ defmodule IpseKnowledge.Store do
                false
            end
          end
-       end), do: :ok, else: {:error, :store_corrupt}
+       end) do
+      :ok
+    else
+      {:error, :store_corrupt}
+    end
   end
 
   defp valid_root?(%{"state" => "suppressed"} = root, partition) do

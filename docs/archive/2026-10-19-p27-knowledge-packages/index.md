@@ -74,6 +74,16 @@ with sandbox `:eperm`; the authorized loopback-capable build passed. The first
 local model metadata preflight could not access OS CA certificates in the sandbox;
 the authorized repeat succeeded without changing TLS verification.
 
+The first [hosted package run](https://github.com/lexlapax/ipse/actions/runs/39203499682)
+at `bce86244cd1d8b0d6b3391b886c164ebf83e34ea` stopped at formatting on both
+platforms, before tests. Elixir 1.18 lays out several long keyword forms and
+guarded bindings differently from local 1.20. Explicit blocks and longer local
+binding names remove those ambiguous layouts. A complete syntax-tree comparison,
+after removing metadata and normalizing only the declared local renames, confirms
+equivalence for all five changed files. The 28 focused evidence/Store/package
+tests and the five-group evaluation-driver proof pass after correction. The negative run remains retained;
+corrected-source hosted verification is still required.
+
 ## Remaining full-milestone gates
 
 Exact-source hosted checks still need their final receipts. Actual domain

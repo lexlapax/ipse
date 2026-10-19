@@ -107,14 +107,17 @@ defmodule IpseKnowledge.Adapters do
 
   def resume(%{phase: :embedding_read} = state, %{"status" => "ok", "value" => page}) do
     with true <- vector_page?(page, state),
-         {:ok, raw} <- Base.decode64(page["values"]),
-         true <- Base.encode64(raw) == page["values"],
-         true <- rem(byte_size(raw), 4) == 0 and byte_size(raw) in 1..3072,
-         true <- page["complete"] == true or page["next"] == state.offset + div(byte_size(raw), 4),
+         {:ok, coordinate_bytes} <- Base.decode64(page["values"]),
+         true <- Base.encode64(coordinate_bytes) == page["values"],
+         true <-
+           rem(byte_size(coordinate_bytes), 4) == 0 and byte_size(coordinate_bytes) in 1..3072,
+         true <-
+           page["complete"] == true or
+             page["next"] == state.offset + div(byte_size(coordinate_bytes), 4),
          true <- state.reads < @max_pages,
          true <- state.input_hash == nil or state.input_hash == page["input_sha256"],
          true <- state.vector_hash == nil or state.vector_hash == page["vector_sha256"],
-         bytes = state.bytes <> raw,
+         bytes = state.bytes <> coordinate_bytes,
          true <- byte_size(bytes) <= state.descriptor["dimensions"] * 4 do
       next = %{
         state
@@ -632,9 +635,15 @@ defmodule IpseKnowledge.Adapters do
 
   defp proposal_fact(p, args) do
     with true <- exact?(p, ~w(subject predicate object chunk_id start_byte end_byte)),
-         chunk when is_map(chunk) <- Enum.find(args["chunks"], &(&1["chunk_id"] == p["chunk_id"])),
+         selected_source_chunk when is_map(selected_source_chunk) <-
+           Enum.find(args["chunks"], &(&1["chunk_id"] == p["chunk_id"])),
          {:ok, citation} <-
-           Evidence.citation(args["source"], chunk, p["start_byte"], p["end_byte"]),
+           Evidence.citation(
+             args["source"],
+             selected_source_chunk,
+             p["start_byte"],
+             p["end_byte"]
+           ),
          {:ok, fact} <-
            Evidence.fact(%{
              "subject" => p["subject"],
