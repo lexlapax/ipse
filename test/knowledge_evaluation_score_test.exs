@@ -204,6 +204,8 @@ defmodule Ipse.KnowledgeEvaluationScoreTest do
 
   test "literal coordinate coverage, classification and semantic support remain separate" do
     assert {:ok, report} = score()
+    assert report["quality_gates_passed"]
+    assert report["semantic"]["support"]["total_n"] == 1
     [variant] = report["variants"]
     [row] = variant["rows"]
     assert row["retrieval"]["recall_at_5"] == 1.0
@@ -222,6 +224,7 @@ defmodule Ipse.KnowledgeEvaluationScoreTest do
     assert hd(variant["rows"])["spans"]["contained_recall"] == 1.0
     assert variant["gates"]["support"]["status"] == "fail"
     assert variant["gates"]["citation"]["status"] == "fail"
+    refute unsupported["quality_gates_passed"]
     assert unsupported["outside_scoring"]["authority"] == "unmeasured"
   end
 
@@ -292,6 +295,8 @@ defmodule Ipse.KnowledgeEvaluationScoreTest do
              Score.score(freeze, blobs, fn -> {:ok, label} end, fn -> {:ok, reviews()} end)
 
     [base, other] = report["variants"]
+    assert report["semantic"]["support"]["total_n"] == 4
+    refute report["quality_gates_passed"]
     assert length(base["rows"]) == 2 and length(other["rows"]) == 2
     assert hd(other["rows"])["missing"]
     assert hd(other["rows"])["retrieval"]["recall_at_5"] == 0.0
@@ -300,6 +305,66 @@ defmodule Ipse.KnowledgeEvaluationScoreTest do
     assert other["classification"]["confusion"]["answer"]["execution_failure"] == 1
     refute other["gates"]["support"]["status"] == "pass"
     refute base["gates"]["support"]["status"] == "pass"
+  end
+
+  test "complete workload citation threshold is inclusive and per-variant negatives remain visible" do
+    queries = for i <- 1..10, do: %{"query_id" => "q#{i}", "project" => "p"}
+
+    rows =
+      for variant <- ~w(base other),
+          q <- queries,
+          do:
+            prediction(%{
+              "prediction_id" => variant <> q["query_id"],
+              "variant" => variant,
+              "query_id" => q["query_id"]
+            })
+
+    {freeze, blobs} = inputs(rows, queries, ~w(base other))
+
+    label = %{
+      labels()
+      | "queries" =>
+          Enum.map(queries, &Map.put(hd(labels()["queries"]), "query_id", &1["query_id"]))
+    }
+
+    review = fn negative_count ->
+      %{
+        "version" => 1,
+        "integrity" =>
+          Enum.map(rows, fn p ->
+            %{hd(reviews()["integrity"]) | "prediction_id" => p["prediction_id"]}
+          end),
+        "semantic" =>
+          rows
+          |> Enum.with_index()
+          |> Enum.map(fn {p, i} ->
+            verdict = if i >= 20 - negative_count, do: "unsupported", else: "supported"
+
+            %{
+              hd(reviews()["semantic"])
+              | "prediction_id" => p["prediction_id"],
+                "verdict" => verdict,
+                "citations" => [%{"citation_id" => "pair", "verdict" => verdict}]
+            }
+          end)
+      }
+    end
+
+    assert {:ok, passed} =
+             Score.score(freeze, blobs, fn -> {:ok, label} end, fn -> {:ok, review.(1)} end)
+
+    assert passed["quality_gate_scope"] == "complete_frozen_grid"
+    assert passed["quality_gates_passed"] and passed["semantic"]["support"]["total_n"] == 20
+    assert passed["gates"]["citation"]["value"] == 0.95
+    assert List.last(passed["variants"])["gates"]["citation"]["status"] == "fail"
+
+    assert {:ok, failed} =
+             Score.score(freeze, blobs, fn -> {:ok, label} end, fn -> {:ok, review.(2)} end)
+
+    refute failed["quality_gates_passed"]
+    assert failed["gates"]["support"]["status"] == "pass"
+    assert failed["gates"]["citation"]["status"] == "fail"
   end
 
   test "failed rankings keep observed metrics but primary utility and classification fail" do

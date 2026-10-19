@@ -382,6 +382,12 @@ The [storage lifecycle exercise](archive/2026-10-19-p27-knowledge-packages/stora
 adds explicit post-prediction suppression/collection, exact page approvals and
 per-projection inventories. Its controlled fixtures remain separate from the
 required held-out resource comparison.
+The [review preparation workflow](developer/knowledge-evaluation.md#prepare-independent-review-from-finalized-predictions)
+verifies the complete hashed grid before references, builds blinded review
+packets and separates literal integrity from independent semantic verdicts.
+Its [controlled verification](archive/2026-10-19-p27-knowledge-packages/review-preparation.md)
+also checks aggregate quality gate reporting. Actual held-out judgments and
+engine selection remain open.
 The [evaluation preparation record](archive/2026-10-19-p27-knowledge-packages/evaluation-preparation.md)
 separates synthetic scorer checks from the initial tuning outcomes. The later
 [model workflow record](archive/2026-10-19-p27-knowledge-packages/model-workflows.md)

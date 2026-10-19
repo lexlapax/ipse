@@ -1159,6 +1159,22 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
   test "CLI freezes copied selections and enforces frozen execution and hash-before-label phases",
        ctx do
     {paths, root} = cli_inputs(ctx, false)
+    label_input = JSON.decode!(File.read!(paths["queries"]))
+
+    label_input =
+      Map.update!(label_input, "queries", fn rows ->
+        Enum.map(rows, fn row ->
+          row
+          |> Map.put("expected_class", if(row["query_id"] == "Q1", do: "open", else: "abstain"))
+          |> Map.put(
+            "expected_answer",
+            if(row["query_id"] == "Q1", do: "Release requires quiescence.")
+          )
+          |> Map.put("relevance", [])
+        end)
+      end)
+
+    File.write!(paths["queries"], JSON.encode!(label_input))
     repository = Path.join(root, "repository")
     File.mkdir!(repository)
     File.write!(Path.join(repository, "README.md"), "Synthetic CLI identity fixture.\n")
@@ -1215,6 +1231,90 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
     assert summary["result"]["rows"] == 2
     assert summary["result"]["failed_rows"] == 0
     assert summary["result"]["execution_complete"]
+
+    packet_path = Path.join(root, "blind-review")
+    prediction_path = Path.join(output, "predictions.jsonl")
+    prediction_hash = summary["result"]["prediction_sha256"]
+
+    review_args =
+      ["--phase", "review"] ++
+        frozen ++
+        [
+          "--data-manifest",
+          manifest,
+          "--predictions",
+          prediction_path,
+          "--prediction-sha256",
+          prediction_hash,
+          "--output",
+          packet_path
+        ]
+
+    {packet, 0} = cli(review_args)
+    assert packet["result"]["rows"] == 2 and packet["result"]["reference_integrity_complete"]
+    manifest_bytes = File.read!(Path.join(packet_path, "manifest.json"))
+    assert packet["result"]["packet_sha256"] == Ipse.Extensions.Manifest.sha256(manifest_bytes)
+    assert JSON.decode!(manifest_bytes)["execution_freeze_sha256"] == sealed["result"]["sha256"]
+
+    assert Enum.all?(
+             jsonl(Path.join(packet_path, "cases.jsonl")),
+             &(not Map.has_key?(&1, "variant"))
+           )
+
+    assert Bitwise.band(File.stat!(packet_path).mode, 0o777) == 0o700
+
+    assert Enum.all?(
+             Path.wildcard(Path.join(packet_path, "*")),
+             &(Bitwise.band(File.stat!(&1).mode, 0o777) == 0o600)
+           )
+
+    {rejected, 1} = cli(review_args)
+    assert rejected["reason"]["code"] == "output_exists"
+    assert File.read!(Path.join(packet_path, "manifest.json")) == manifest_bytes
+
+    {unmeasured, 1} =
+      cli(
+        ["--phase", "score"] ++
+          frozen ++
+          [
+            "--data-manifest",
+            manifest,
+            "--predictions",
+            prediction_path,
+            "--prediction-sha256",
+            prediction_hash,
+            "--labels",
+            paths["queries"],
+            "--reviews",
+            Path.join(packet_path, "reviews-template.json"),
+            "--output",
+            Path.join(root, "unmeasured-scores")
+          ]
+      )
+
+    assert unmeasured["status"] == "failed" and
+             unmeasured["result"]["quality_gates_passed"] == false
+
+    assert unmeasured["result"]["gates"]["support"]["status"] == "unmeasured"
+    assert File.regular?(Path.join(root, "unmeasured-scores/scores.json"))
+
+    {rejected, 1} =
+      cli(
+        ["--phase", "review"] ++
+          frozen ++
+          [
+            "--data-manifest",
+            "must-not-open",
+            "--predictions",
+            prediction_path,
+            "--prediction-sha256",
+            String.duplicate("0", 64),
+            "--output",
+            Path.join(root, "bad-review")
+          ]
+      )
+
+    assert rejected["reason"]["code"] == "prediction_hash_mismatch"
 
     {rejected, 1} =
       cli(

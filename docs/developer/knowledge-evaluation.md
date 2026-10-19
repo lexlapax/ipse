@@ -20,6 +20,7 @@ The evaluation helpers have separate owners. Keep their inputs separate:
 | Orchestration | `examples/knowledge/evaluation_runner.exs` | A validated variant plan becomes public Session calls, first predictions and retained execution failures |
 | Session driver | `examples/knowledge/evaluation_session.exs` | Explicit artifact/profile/budget selections and public commands become durable invocation receipts |
 | Answer preparation | `examples/knowledge/evaluation_answer.exs` | Saved ranked citations become a bounded request and an exact shown-span mapping |
+| Independent review preparation | `examples/knowledge/evaluation_review.exs` | A complete hashed prediction grid becomes blinded cases, literal checks and an unmeasured semantic template |
 | Scoring | `examples/knowledge/evaluation_score.exs`, `metrics.exs` | Hashed first predictions and independent labels/reviews become separate measurements |
 
 The Session driver imports independent artifacts through ordinary host APIs.
@@ -429,6 +430,76 @@ The mapped result proves which shown span a claim cited. It does not establish
 that the span supports the claim. Keep that semantic judgment in independent
 review, alongside literal captured-source verification.
 
+## Prepare independent review from finalized predictions
+
+Finish prediction and retain its printed hash before preparing a review. The
+`review` phase verifies the execution freeze, finalized prediction hash and exact
+variant/query grid before opening reference labels. It reuses
+`EvaluationScore.verified_predictions/2`; a separate permissive JSON parser
+cannot substitute for the scorer's row checks. Prediction IDs must be opaque
+`p-` plus SHA256 values before any label loader runs.
+
+Set the paths and independently retained hashes from your completed freeze and
+prediction steps, then choose a new review directory:
+
+```sh
+IPSE_REVIEW_FREEZE=/absolute/path/to/frozen/manifest.json
+IPSE_REVIEW_FREEZE_SHA256=replace_with_the_separately_retained_freeze_sha256
+IPSE_REVIEW_DATA=/absolute/path/to/dataset/manifest.json
+IPSE_REVIEW_PREDICTIONS=/absolute/path/to/run/predictions.jsonl
+IPSE_REVIEW_PREDICTION_SHA256=replace_with_the_recorded_final_prediction_sha256
+IPSE_REVIEW_OUTPUT=/absolute/path/to/new-review-packet
+mix run scripts/evaluate-knowledge.exs -- --phase review \
+  --freeze "$IPSE_REVIEW_FREEZE" --freeze-sha256 "$IPSE_REVIEW_FREEZE_SHA256" \
+  --data-manifest "$IPSE_REVIEW_DATA" --predictions "$IPSE_REVIEW_PREDICTIONS" \
+  --prediction-sha256 "$IPSE_REVIEW_PREDICTION_SHA256" --output "$IPSE_REVIEW_OUTPUT"
+```
+
+Expect `status: "ok"`, the complete row count, `packet_sha256` and
+`reference_integrity_complete: true`. Retain that packet hash separately. An
+existing output path refuses. Files are owner-only in a private directory.
+Invalid reference spans remain visible, set completeness false and produce a
+failing CLI exit. A written packet does not establish semantic support.
+
+Give the independent reviewer only the packet directory:
+
+| File | Review task |
+| --- | --- |
+| `instructions.md` | Follow the versioned verdict definitions and record reviewer identity and limitations |
+| `cases.jsonl` | Read the saved outputs and claim/span pairs, with strategy labels removed and order blinded |
+| `queries.json` | Compare questions, reference answers, relevance and the fixed as-of time |
+| `source-texts.json` | Check the original source bodies and their complete typed/versioned identities |
+| `reference-integrity.json` | Inspect literal annotation failures before accepting reference-based scores |
+| `reviews-template.json` | Copy to a separate review file and fill actual semantic verdicts |
+| `manifest.json` | Verify every packet file hash and its execution/data/prediction identities |
+
+Keep the run and freeze directories private: they contain strategy selections
+and execution history. All prediction-bearing packet lists use the same seeded
+order, including the template. Output style can still hint at a method; removing
+labels cannot guarantee that a reviewer cannot infer one.
+
+The `source-bytes-v1` integrity rows compare the original corpus against complete
+project/source/generation/typed-version/hash identities and exact UTF8 byte spans.
+The semantic template remains `unmeasured` with `independent: false`, even when
+every byte check succeeds. The independent reviewer judges entailment and each
+claim/span pair, using their actual identity. The generating model cannot judge
+itself independently. Review flags cannot prove a reviewer's independence.
+Keep notes and disagreements bound to the retained packet hash. Preserve packet
+files; write completed verdicts to a separate `reviews.json`.
+
+Run the synthetic boundary and CLI exercises before changing this workflow:
+
+```sh
+mix test test/knowledge_evaluation_review_test.exs test/knowledge_evaluation_score_test.exs test/knowledge_evaluation_runner_test.exs
+```
+
+Trace the false-claim fixture: its quotations match actual corpus bytes, but no
+semantic verdict is manufactured. Then compare identical bodies with reused
+integer/string version labels, a foreign project and a wrong reference offset.
+The hash/grid refusal cases must not invoke the label callback. The real CLI
+exercise checks private files, unchanged output after overwrite refusal and a
+nonzero score exit when the supplied review is still unmeasured.
+
 ## Verify the hash-before-label rule
 
 Run the synthetic suites:
@@ -486,8 +557,13 @@ Cross-project evidence is invalid even if a supplied integrity review calls it
 valid. Missing or non-independent review stays unmeasured. A retrieval-only row
 has no supported-answer measurement.
 
-The scorer's support and citation thresholds are 0.90 and 0.95. Incomplete review
-cannot pass. These checks do not measure authority, scope isolation, replay,
+The scorer's support and citation thresholds are 0.90 and 0.95. Its aggregate
+`semantic`, `gates` and `quality_gates_passed` fields cover the complete frozen
+variant/query grid, including missing rows. `quality_gate_scope` identifies that
+scope; each variant retains its own independent measurements and gates. A
+complete-workload pass does not promote a failing individual engine.
+Incomplete review cannot pass. The `score` CLI preserves `scores.json` and exits
+nonzero for failed or unmeasured aggregate gates. These checks do not measure authority, scope isolation, replay,
 suppression, native enforcement, installed execution, latency or resources.
 Follow the [plan](../plan.md#p27-optional-research-graph-and-rag) for the complete
 acceptance requirements. Passing these synthetic exercises establishes helper

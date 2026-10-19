@@ -1,5 +1,5 @@
 for file <-
-      ~w(evaluation_input evaluation_freeze evaluation_session evaluation_answer evaluation_resources evaluation_inventory evaluation_gateway evaluation_score) do
+      ~w(evaluation_input evaluation_freeze evaluation_session evaluation_answer evaluation_resources evaluation_inventory evaluation_gateway evaluation_score evaluation_review) do
   Code.require_file(file <> ".exs", __DIR__)
 end
 
@@ -14,7 +14,8 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     EvaluationAnswer,
     EvaluationResources,
     EvaluationInventory,
-    EvaluationGateway
+    EvaluationGateway,
+    EvaluationReview
   }
 
   alias Ipse.Extensions.{Manifest, ModelCall, EmbeddingCall, State, MCPCall}
@@ -38,6 +39,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
         verify_frozen: ~w(freeze freeze_sha256 data_manifest output)a,
         tune: ~w(plan corpus queries output)a,
         verify: ~w(plan corpus queries output)a,
+        review: ~w(freeze freeze_sha256 data_manifest predictions prediction_sha256 output)a,
         score:
           ~w(freeze freeze_sha256 data_manifest predictions prediction_sha256 labels reviews output)a
       }
@@ -562,36 +564,59 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     })
   end
 
+  defp dispatch(:review, options) do
+    {plan, freeze, bytes} = scoring_context(options)
+
+    result =
+      EvaluationReview.prepare(
+        freeze,
+        %{"predictions" => bytes},
+        fn ->
+          data = verify_dataset!(options[:data_manifest], plan["data"])
+          root = Path.dirname(Path.expand(options[:data_manifest]))
+          at = if plan["as_of_ms"] == "manifest", do: data["as_of_ms"], else: plan["as_of_ms"]
+
+          {:ok,
+           %{
+             "corpus" => read!(Path.join(root, plan["data"]["corpus"])),
+             "queries" => read!(Path.join(root, plan["data"]["queries"])),
+             "split" => plan["data"]["split"],
+             "as_of_ms" => at
+           }}
+        end,
+        plan["blind_seed"]
+      )
+
+    case result do
+      {:ok, packet} ->
+        prepare_output!(options[:output])
+
+        manifest =
+          packet["summary"]
+          |> Map.put("execution_freeze_sha256", options[:freeze_sha256])
+          |> Map.put("data_manifest_sha256", plan["data"]["manifest_sha256"])
+
+        files = Map.put(packet["files"], "manifest.json", JSON.encode!(manifest) <> "\n")
+
+        for {name, contents} <- files,
+            do: private_file!(Path.join(options[:output], name), contents)
+
+        {:ok,
+         %{
+           "path" => options[:output],
+           "rows" => manifest["rows"],
+           "packet_sha256" => sha(files["manifest.json"]),
+           "reference_integrity_complete" => manifest["reference_integrity_complete"],
+           "semantic_support" => "unmeasured"
+         }}
+
+      error ->
+        error
+    end
+  end
+
   defp dispatch(:score, options) do
-    {:ok, verified} = EvaluationFreeze.verify(options[:freeze], options[:freeze_sha256])
-    plan = verified["plan"]
-    :ok = checked(validate(plan))
-    bytes = read!(options[:predictions], 16_777_216)
-    require!(sha(bytes) == options[:prediction_sha256], :prediction_hash_mismatch)
-    saved = decode!(read!(Path.join(Path.dirname(options[:predictions]), "finalized.json")))
-    require!(saved["prediction_sha256"] == options[:prediction_sha256], :prediction_hash_mismatch)
-    require!(saved["freeze_sha256"] == options[:freeze_sha256], :prediction_freeze_mismatch)
-
-    require!(
-      saved["data_manifest_sha256"] == plan["data"]["manifest_sha256"],
-      :prediction_dataset_mismatch
-    )
-
-    require!(
-      saved["variants"] == Enum.map(plan["variants"], & &1["id"]) and
-        length(saved["queries"]) == plan["data"]["expected_queries"],
-      :scoring_grid
-    )
-
-    freeze = %{
-      "version" => 1,
-      "metric_version" => 1,
-      "variants" => saved["variants"],
-      "baseline" => "lexical",
-      "queries" => saved["queries"],
-      "files" => [%{"id" => "predictions", "sha256" => options[:prediction_sha256]}],
-      "classification_map" => Map.new(~w(answer conflict open abstain), &{&1, &1})
-    }
+    {plan, freeze, bytes} = scoring_context(options)
 
     result =
       IpseKnowledge.EvaluationScore.score(
@@ -622,6 +647,54 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
   end
 
   defp dispatch(_, _), do: {:error, %{"code" => "unknown_phase"}}
+
+  defp scoring_context(options) do
+    {:ok, verified} = EvaluationFreeze.verify(options[:freeze], options[:freeze_sha256])
+    plan = verified["plan"]
+    :ok = checked(validate(plan))
+    bytes = read!(options[:predictions], 16_777_216)
+    require!(sha(bytes) == options[:prediction_sha256], :prediction_hash_mismatch)
+    saved = decode!(read!(Path.join(Path.dirname(options[:predictions]), "finalized.json")))
+    require!(saved["prediction_sha256"] == options[:prediction_sha256], :prediction_hash_mismatch)
+    require!(saved["freeze_sha256"] == options[:freeze_sha256], :prediction_freeze_mismatch)
+
+    require!(
+      saved["data_manifest_sha256"] == plan["data"]["manifest_sha256"],
+      :prediction_dataset_mismatch
+    )
+
+    require!(
+      saved["variants"] == Enum.map(plan["variants"], & &1["id"]) and
+        length(saved["queries"]) == plan["data"]["expected_queries"],
+      :scoring_grid
+    )
+
+    freeze = %{
+      "version" => 1,
+      "metric_version" => 1,
+      "variants" => saved["variants"],
+      "baseline" => "lexical",
+      "queries" => saved["queries"],
+      "files" => [%{"id" => "predictions", "sha256" => options[:prediction_sha256]}],
+      "classification_map" => Map.new(~w(answer conflict open abstain), &{&1, &1})
+    }
+
+    checked_rows =
+      case IpseKnowledge.EvaluationScore.verified_predictions(freeze, %{"predictions" => bytes}) do
+        {:ok, rows} -> rows
+        {:error, code} -> fail!(code)
+      end
+
+    grid = for v <- freeze["variants"], q <- freeze["queries"], do: {v, q["query_id"]}
+
+    require!(
+      Enum.sort(Enum.map(checked_rows["rows"], &{&1["variant"], &1["query_id"]})) ==
+        Enum.sort(grid),
+      :scoring_grid
+    )
+
+    {plan, freeze, bytes}
+  end
 
   defp execute(plan, paths, documents, queries, output, seal) do
     require!(length(queries) == plan["data"]["expected_queries"], :query_count)

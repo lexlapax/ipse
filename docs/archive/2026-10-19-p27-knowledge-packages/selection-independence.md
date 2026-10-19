@@ -95,5 +95,13 @@ macOS native enforcement, packaging and every installed proof passed. This is
 evidence for the preceding commit, not the new selection proof. Earlier hosted
 failures remain preserved in their own records.
 
+The [250080e matrix](https://github.com/lexlapax/ipse/actions/runs/39269141923)
+subsequently passed on both hosts. All 24 steps per job were inspected. The
+combined logs contain four parsed independence reports: source and installed
+proofs on each host, each with ten checks, nine pairings, the required one/two
+State-file counts, zero model requests and no domain modules loaded in the host.
+Installed reports confirm unchanged archive and host files. These receipts cover
+the selection proof itself; they do not measure semantic quality.
+
 No held-out member, manifest contents or evaluator was read. No model weights,
 model inference, model downloads, paid providers or new dependencies were used.

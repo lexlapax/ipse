@@ -123,6 +123,9 @@ including the source-generation and child SDK dependency corrections.
 The [post-prediction lifecycle record](storage-lifecycle.md) adds explicit frozen
 suppression/collection policy, bounded exact page approvals and per-projection
 storage measurements without rerunning quality queries.
+The [review preparation record](review-preparation.md) adds complete-grid
+hash-before-reference checks, bounded blinded packets, independent literal
+verification and explicit complete-workload quality gate results.
 The later [model wire investigation](model-wire.md) identifies the response-body
 limit in a captured diagnostic and separates streaming framing from returned text.
 The later [model workflow investigation](model-workflows.md) records exact draft

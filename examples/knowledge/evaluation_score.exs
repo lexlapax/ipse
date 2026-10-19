@@ -29,12 +29,28 @@ defmodule IpseKnowledge.EvaluationScore do
   @prediction_keys ~w(version prediction_id variant query_id project attempt status top_k predicted_class response_kind answer claims evidence context_evidence citations)
   @safe_integer 9_007_199_254_740_991
 
+  @doc "Verify closed first-attempt rows and raw hashes without loading labels or reviews."
+  def verified_predictions(freeze, blobs) do
+    try do
+      {files, rows} = verified_predictions!(freeze, blobs)
+      {:ok, %{"files" => files, "rows" => rows}}
+    rescue
+      _ -> {:error, :scoring_failed}
+    catch
+      {:evaluation_score, code} -> {:error, code}
+    end
+  end
+
+  defp verified_predictions!(freeze, blobs) do
+    require!(freeze?(freeze), :invalid_freeze)
+    {verify_blobs!(freeze["files"], blobs), decode_predictions!(freeze, blobs)}
+  end
+
   def score(freeze, blobs, labels_loader, review_loader) do
     try do
       require!(freeze?(freeze), :invalid_freeze)
       require!(is_function(labels_loader, 0) and is_function(review_loader, 0), :invalid_loader)
-      verified = verify_blobs!(freeze["files"], blobs)
-      saved = decode_predictions!(freeze, blobs)
+      {verified, saved} = verified_predictions!(freeze, blobs)
       labels = load!(labels_loader, :labels_failed)
       require!(labels?(labels, freeze), :invalid_labels)
       reviews = load!(review_loader, :review_failed)
@@ -370,6 +386,29 @@ defmodule IpseKnowledge.EvaluationScore do
         }
       end)
 
+    complete_grid =
+      for variant <- variants,
+          row <- variant["rows"],
+          do: semantic_projection(row["prediction"], labels[row["query_id"]], integrity)
+
+    semantic = metric!(Metrics.semantic(complete_grid, reviews["semantic"]))
+    literal_complete = Enum.all?(variants, & &1["literal_review_complete"])
+
+    gates = %{
+      "support" =>
+        gate(
+          semantic["support"]["accuracy"],
+          0.90,
+          semantic["review_complete"] and literal_complete
+        ),
+      "citation" =>
+        gate(
+          semantic["citation"]["precision"],
+          0.95,
+          semantic["review_complete"] and literal_complete
+        )
+    }
+
     {:ok,
      %{
        "version" => 1,
@@ -379,6 +418,11 @@ defmodule IpseKnowledge.EvaluationScore do
        "variants" => variants,
        "paired" => paired,
        "review" => reviews,
+       "semantic" => semantic,
+       "literal_review_complete" => literal_complete,
+       "gates" => gates,
+       "quality_gate_scope" => "complete_frozen_grid",
+       "quality_gates_passed" => Enum.all?(gates, fn {_, gate} -> gate["status"] == "pass" end),
        "thresholds" => %{"support" => 0.90, "citation" => 0.95},
        "outside_scoring" =>
          Map.new(

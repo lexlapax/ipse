@@ -30,6 +30,7 @@ phases = %{
   "tune" => :tune,
   "verify" => :verify,
   "verify-frozen" => :verify_frozen,
+  "review" => :review,
   "score" => :score
 }
 
@@ -49,13 +50,15 @@ case result do
         do:
           Map.take(
             report,
-            ~w(path sha256 source_commit mode prediction_sha256 rows failed_rows execution_complete heldout_quality_complete)
+            ~w(path sha256 source_commit mode prediction_sha256 rows failed_rows execution_complete heldout_quality_complete packet_sha256 reference_integrity_complete quality_gates_passed quality_gate_scope gates)
           ),
         else: %{}
 
     failed =
       is_map(report) and
-        ((report["failed_rows"] || 0) > 0 or report["execution_complete"] == false)
+        ((report["failed_rows"] || 0) > 0 or report["execution_complete"] == false or
+           report["reference_integrity_complete"] == false or
+           (phase == :score and report["quality_gates_passed"] != true))
 
     IO.puts(
       JSON.encode!(%{"status" => if(failed, do: "failed", else: "ok"), "result" => summary})
