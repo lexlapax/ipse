@@ -42,8 +42,11 @@ Proposed call sites, not current APIs:
 
 ```elixir
 # Worker query completion, after its existing domain revalidation.
-{:ok, ResultPublication.prepare(value), state}
-# => ordinary bounded SDK result, or a private SDK Output value.
+{:ok, delivery} = ResultPublication.prepare(value)
+{:ok, delivery, state}
+# delivery is an ordinary bounded SDK result or a private SDK Output value.
+# An invalid/over-cap aggregate returns {:error, :invalid_result_document};
+# the domain callback must return its existing bounded capacity refusal.
 # Bootstrap freezes Output and owns the terminal transport phase.
 
 # Trusted Session client or evaluation driver, after the exact final receipt.
@@ -138,7 +141,9 @@ Keep each SDK object at 16,384 encoded bytes, strings at 8,192 bytes, depth at 1
 collections at 128, worker frames at 32,768 and cumulative traffic at 64 MiB.
 Keep each output page below 12,000 encoded bytes. A raw fragment of at most 4,096
 bytes becomes at most 5,464 base64 bytes; validate the complete response wrapper.
-Fragments may split JSON tokens or UTF8 bytes because decoding happens after
+Each fragment contains exactly `min(4096, byte_count - offset)` raw bytes.
+This fixed stride determines every offset and the exact fragment count before
+reservation; a short nonfinal fragment refuses. Fragments may split JSON tokens or UTF8 bytes because decoding happens after
 assembly. Public string views instead respect UTF8 boundaries.
 
 The new logical document has a separate finite contract: at most 4 MiB encoded,
@@ -263,6 +268,15 @@ public. Missing/foreign source closure or tampered committed records blocks
 startup before tail repair. Source records never become automatic model messages
 or ordinary history-content rows. Derive the read index and quota charges from
 validated records, including unreadable orphan prefixes.
+
+Unsealed prefixes validate record syntax, admitted identity, resource bounds,
+offsets and hashes, without requiring a valid logical document. A producer can
+supply every declared byte and then fail JSON/schema validation; its complete but
+unsealed prefix remains unreadable diagnostic evidence. This legal failure must
+not prevent Session recovery. A seal always requires complete aggregate and
+declared-schema validation, and an invalid sealed or committed document blocks
+recovery. Test malformed and schema-invalid complete prefixes both before and
+after adding a seal.
 
 ## Enumerate every readable child
 

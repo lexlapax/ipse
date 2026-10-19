@@ -19,8 +19,9 @@ validates the complete journal once. Successful initialization links to the owne
 Session monitors writer loss and stops dependent work if it disappears. There is
 no automatic writer restart or append retry.
 
-Only the owner may append or close. For every record the writer encodes the JSON,
-checks descriptor/path identity and expected length, and admits a private
+Only the owner may append, reserve capacity, release it, or close. For each record
+the writer encodes the JSON, checks descriptor/path identity and expected length,
+and admits a private
 filesystem completion owner. That process opens a separate append descriptor,
 checks identity/protection/length again, writes, fsyncs, closes, and replies. Session
 waits for confirmation before dispatching effects or exposing a lifecycle source.
@@ -70,12 +71,29 @@ Operator-only `journal` configuration can lower ceilings. Children inherit that
 policy across profile routing. These are per-file admission/work bounds, not an
 aggregate disk, memory, retention, or billing quota.
 
-Normal admission reserves space for both the proposed record and a
-`journal_limit_reached` receipt. On exhaustion the writer syncs that receipt once,
-refuses the proposal, and stops before further dispatch. The receipt binds limits,
+Normal admission retains space for both the proposed record and a terminal
+`journal_limit_reached` receipt. Without an outstanding group reservation,
+exhaustion makes the writer sync that receipt once, refuse the proposal, and stop
+before further dispatch. The receipt binds limits,
 reason, prior offset, and prior event count without rejected content. Nothing may
 follow it. Confirmed exhaustion is `journal_limit_reached`; unconfirmed quota IO
 still has the ordinary unknown-write behavior.
+
+For a group of related records, the owner can call `Writer.reserve/2` with
+`%{bytes: jsonl_bytes, events: count}` before writing the first record. Include
+each newline in the byte total. A successful call returns a writer-local token;
+`append_reserved/3` charges the actual encoded bytes and one event against it.
+Every record still has to fit the record ceiling. Ordinary appends can use only
+unreserved capacity. If one would consume the reservation, it refuses with
+`journal_reservation_unavailable` and leaves the file writable and unchanged.
+Reservation admission also retains the terminal receipt's byte and event space.
+
+Call `Writer.release/2` before recording cancellation or another ordinary control
+outcome. Release returns unused capacity; it does not erase written records.
+Tokens disappear when the writer closes and cannot authorize writes after a
+restart. Reservation is capacity admission, not an atomic multi-record commit or
+a guarantee that later IO succeeds. A partial group retains its written prefix
+and the caller's existing unknown-outcome rules.
 
 Reader, restore, repair, and writer initialization decode incrementally with size,
 line, and event bounds. They retain decoded recovery history within those bounds;
@@ -91,10 +109,17 @@ model context, not retained evidence. Automatic rotation, deletion, redaction, a
 secure erasure are not implemented.
 
 ```sh
-mix test test/ipse/journal_test.exs test/journal_writer_test.exs test/journal_limits_test.exs test/inactive_journal_test.exs
+mix test test/ipse/journal_test.exs test/journal_writer_test.exs test/journal_limits_test.exs test/journal_reservations_test.exs test/inactive_journal_test.exs
 ```
 
 Use writer tests for ownership/IO races and limits tests for sealing and strict
 recovery. A meaningful storage change must preserve intent-before-effect,
 confirmation-before-success, lock retention after owner loss, and unknown outcomes
 without replay. See [budget storage](budgets.md) for its stronger live-prefix check.
+
+Follow the reservation test with a 1,024-byte journal policy. It reserves every
+remaining nonterminal byte, rejects an ordinary append without changing the
+file, writes the reserved record, then releases the token. The next ordinary
+append seals the journal with a valid quota receipt. Repeat the cancellation
+case: the orphan record stays on disk while the released capacity admits the
+cancellation record. These controls distinguish capacity protection from rollback.

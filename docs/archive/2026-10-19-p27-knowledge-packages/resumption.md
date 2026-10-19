@@ -110,6 +110,32 @@ does not establish runtime correctness. Generic aggregate validation and Writer
 reservations are the first implementation units; Session publication, source
 closure, readers, installed proofs and knowledge-package integration remain open.
 
+## Complete-result prerequisites
+
+The first generic units are `ResultDocument` and owner-only Writer reservations.
+Thirty focused aggregate/schema/registry/catalog tests and twenty-eight
+reservation/Writer/Limits tests pass. Three independent read-only implementation
+reviews report no actionable findings. The aggregate exercise in the contributor
+manual runs against the built runtime; ordinary SDK validation still rejects its
+256-member array. The current worker transport remains inline.
+
+The final prerequisite baseline passes build, formatting with Elixir 1.20.3 and
+1.18.5, warnings-as-errors compilation, the CI policy check and the credential-free
+demo. Its full source suite passes 1,192 tests with 32 tagged exclusions in
+723.6 seconds, using the strict stdio cleanup probe and an explicit 60,000-ms test
+timeout. Documentation checks cover 246 Markdown files and 2,660 local links with
+zero errors. A separate whole-chapter review of persistence and artifact training
+finds no documentation issues. These are local prerequisite results, not final
+P27 native, installed, platform, semantic-quality or resource acceptance.
+
+Implementation found Jason's existing 1,024-byte integer-token ceiling, including
+a minus sign. The aggregate encoder uses the same ceiling; the 8,192-byte lexical
+guard remains for other primitive tokens. Global codec configuration is unchanged.
+The proposal also clarifies explicit preparation failure and legal unsealed
+diagnostic prefixes. Complete malformed or schema-invalid producer bytes remain
+unreadable until a valid seal; failing such validation must not make a Session
+unrestorable. That source-state behavior is still an implementation/proof task.
+
 ## Synthetic result and identity reproduction
 
 A separate domain-test VM reproduced both remaining boundaries with synthetic

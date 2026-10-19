@@ -23,6 +23,16 @@ defmodule Ipse.Journal.Writer do
   def append(writer, event), do: call(writer, {:append, :plain, event})
   def append_observed(writer, event), do: call(writer, {:append, :observed, event})
   def append_with_source(writer, event), do: call(writer, {:append, :source, event})
+
+  @doc "Reserves JSONL bytes, including newlines, and events while retaining quota-marker headroom."
+  def reserve(writer, capacity), do: call(writer, {:reserve, capacity})
+
+  @doc "Appends one plain record against an owner-only, writer-local reservation token."
+  def append_reserved(writer, token, event), do: call(writer, {:append_reserved, token, event})
+
+  @doc "Releases unused reserved capacity; already appended bytes and events remain charged."
+  def release(writer, token), do: call(writer, {:release, token})
+
   def close(writer), do: call(writer, :close)
 
   @doc false
@@ -73,6 +83,9 @@ defmodule Ipse.Journal.Writer do
         count: 0,
         limits: limits,
         sealed: false,
+        reservations: %{},
+        reserved_bytes: 0,
+        reserved_events: 0,
         identity: identity(stat)
       }
 
@@ -102,6 +115,64 @@ defmodule Ipse.Journal.Writer do
     append_record(state, mode, event)
   end
 
+  def handle_call({:reserve, _}, {owner, _}, %{owner: owner, sealed: true} = state),
+    do: {:reply, {:error, :journal_limit_reached}, state}
+
+  def handle_call({:reserve, capacity}, {owner, _}, %{owner: owner} = state) do
+    case capacity do
+      %{bytes: bytes, events: events}
+      when map_size(capacity) == 2 and
+             is_integer(bytes) and is_integer(events) and
+             events > 0 and bytes >= events * 3 ->
+        if available?(state, bytes, events) do
+          case unchanged(state) do
+            :ok ->
+              token = make_ref()
+
+              {:reply, {:ok, token},
+               %{
+                 state
+                 | reservations: Map.put(state.reservations, token, capacity),
+                   reserved_bytes: state.reserved_bytes + bytes,
+                   reserved_events: state.reserved_events + events
+               }}
+
+            _ ->
+              {:stop, :normal, {:error, :journal_write_unconfirmed}, state}
+          end
+        else
+          {:reply, {:error, :journal_reservation_unavailable}, state}
+        end
+
+      _ ->
+        {:reply, {:error, :journal_reservation_invalid}, state}
+    end
+  end
+
+  def handle_call({:append_reserved, token, event}, {owner, _}, %{owner: owner} = state)
+      when is_map(event) do
+    case Map.fetch(state.reservations, token) do
+      {:ok, capacity} -> append_reserved_record(state, token, capacity, event)
+      :error -> {:reply, {:error, :journal_reservation_invalid}, state}
+    end
+  end
+
+  def handle_call({:release, token}, {owner, _}, %{owner: owner} = state) do
+    case Map.pop(state.reservations, token) do
+      {nil, _} ->
+        {:reply, {:error, :journal_reservation_invalid}, state}
+
+      {capacity, reservations} ->
+        {:reply, :ok,
+         %{
+           state
+           | reservations: reservations,
+             reserved_bytes: state.reserved_bytes - capacity.bytes,
+             reserved_events: state.reserved_events - capacity.events
+         }}
+    end
+  end
+
   def handle_call(:close, {owner, _}, %{owner: owner} = state),
     do: {:stop, :normal, :ok, state}
 
@@ -119,11 +190,51 @@ defmodule Ipse.Journal.Writer do
         end
 
       {:limit, reason} ->
-        seal(state, reason)
+        if map_size(state.reservations) == 0,
+          do: seal(state, reason),
+          else: {:reply, {:error, :journal_reservation_unavailable}, state}
 
       _ ->
         {:reply, {:error, :journal_record_refused}, state}
     end
+  end
+
+  defp append_reserved_record(state, token, capacity, event) do
+    case encode(%{state | reserved_bytes: 0, reserved_events: 0}, :plain, event) do
+      {:ok, line, result} ->
+        if capacity.events > 0 and byte_size(line) <= capacity.bytes do
+          with :ok <- unchanged(state),
+               :ok <- append_line(state, line) do
+            remaining = %{bytes: capacity.bytes - byte_size(line), events: capacity.events - 1}
+
+            {:reply, result,
+             %{
+               state
+               | offset: state.offset + byte_size(line),
+                 count: state.count + 1,
+                 reservations: Map.put(state.reservations, token, remaining),
+                 reserved_bytes: state.reserved_bytes - byte_size(line),
+                 reserved_events: state.reserved_events - 1
+             }}
+          else
+            _ -> {:stop, :normal, {:error, :journal_write_unconfirmed}, state}
+          end
+        else
+          {:reply, {:error, :journal_reservation_exhausted}, state}
+        end
+
+      {:limit, _} ->
+        {:reply, {:error, :journal_record_refused}, state}
+
+      _ ->
+        {:reply, {:error, :journal_record_refused}, state}
+    end
+  end
+
+  defp available?(state, bytes, events) do
+    state.offset + state.reserved_bytes + bytes + Limits.reserve_bytes() <=
+      state.limits["max_bytes"] and
+      state.count + state.reserved_events + events + 1 <= state.limits["max_events"]
   end
 
   @impl true
@@ -201,7 +312,12 @@ defmodule Ipse.Journal.Writer do
   defp encode(state, mode, event) do
     with {:ok, encoded} <- Limits.encode(event, state.limits),
          {:ok, result} <- source(state, mode, event, encoded) do
-      case Limits.admit(state.limits, state.offset, state.count, byte_size(encoded)) do
+      case Limits.admit(
+             state.limits,
+             state.offset + state.reserved_bytes,
+             state.count + state.reserved_events,
+             byte_size(encoded)
+           ) do
         :ok -> {:ok, encoded <> "\n", result}
         {:error, reason} -> {:limit, reason}
       end

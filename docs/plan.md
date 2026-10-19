@@ -349,6 +349,9 @@ repairs and verification are complete; the user authorized proceeding to P27,
 with similar review before P27 completion.
 Reconcile affected shared-host verification first; never replay the interrupted
 comparison automatically.
+The [resumption record](archive/2026-10-19-p27-knowledge-packages/resumption.md)
+tracks the repaired inference allowance, failed-answer rows and rerank identity,
+plus the new complete-result transport design and its unfinished implementation.
 
 Independently built Corpus,
 Graph and Research packages now have source and extracted-runtime protocol proofs;
@@ -380,6 +383,7 @@ the milestone. Preserve current SDK bounds and existing operation authority.
 | P27H1 | Source-bound bounded result pages and explicit mixed read/effect allowance where necessary; unchanged legacy grants and pure saved-source validation | Complete for the MCP text contract at `2fe3583`; local source/native/installed and hosted Linux/macOS gates pass at `1f90178` |
 | P27H2 | Approved configured MCP actions from extensions; pinned descriptors, child denial, owned cancellation and unknown-outcome recovery | Complete at `2fe3583`; real stdio/HTTP, denial, cancellation and inert recovery pass; source/installed proofs pass on hosted Linux/macOS at `1f90178` |
 | P27H3 | Versioned embedding operation with selected profiles, bounded ordinary vectors, exact egress, operation-aware accounting/costs/shared budgets and no text-envelope substitution | Complete at `3e32051`; local source/macOS/installed gates and exact-source hosted Linux/macOS source/package/installed proofs pass with 768/4096-coordinate native fixtures |
+| P27H4 | Opt-in bounded complete-result publication for original top-level tools/commands, historical receipt reads, strict source closure and unchanged ordinary SDK bounds | Design reviewed; aggregate validation and Writer reservations verified locally. SDK-2, Session publication, bounded readers, recovery and installed proofs remain open |
 | P27A | Independent research and lexical corpus packages with named interchangeable profiles, cited evidence, explicit limits, partial failures, stale-index handling and suppression | Implementation present; controlled Graph/Corpus provider lifecycle and installed checks pass; final authority/platform and quality validation open |
 | P27B | Independent attributable graph, optional extraction, embedding/hybrid and rerank adapters; matched quality/resource comparisons before engine selection | Implementation present; accounted tuning embedding, extraction and revalidated rerank paths exercised; retained failures, full lifecycle gates and matched quality/resource comparisons remain open |
 | P27 verification | Frozen held-out workload, zero authority/isolation/replay/resurrection failures, measured retrieval/support/citation/resources, source/native/installed checks, coherent user and contributor manuals | Open; seven-variant public-Session fixtures and saved-prediction controls pass; full lifecycle, held-out quality and resource/selection gates remain |
@@ -442,8 +446,11 @@ adds query/phase clocks and request/budget reconciliation. The
 [storage inventory record](archive/2026-10-19-p27-knowledge-packages/storage-inventory.md)
 adds strict retained-page reachability and draft/orphan/tombstone measurements.
 The full resource comparison, process-memory coverage and held-out evaluation
-remain open. The accounting revision's hosted macOS driver timeout also remains
-under investigation; local passing evidence does not close that failure.
+remain open. The inherited combined-fixture timeout is repaired with independent
+test units and unchanged deadlines/assertions; the exact-source `25f1d8e`
+[hosted matrix](https://github.com/lexlapax/ipse/actions/runs/39309132023)
+passes on both platforms. Older append-timeout and MCP-discovery negatives remain
+unexplained, and later P27 changes still need their own applicable platform proofs.
 Successful tuning and
 scripted provider responses do not establish quality. Held-out predictions,
 independent semantic review and the complete resource comparison remain unmeasured.

@@ -105,6 +105,33 @@ has at most 128 members. Schemas independently allow at most 32 KiB encoded,
 depth eight, and 256 schema nodes. Keep the full enclosing callback object within
 its limit rather than budgeting only the domain value.
 
+Host-side complete document validation has a separate adapter,
+`Ipse.Extensions.ResultDocument`. It accepts at most 4 MiB of received and
+re-encoded JSON, with a map root, depth twelve, 8-KiB strings, 4,096 members per
+collection and 262,144 nodes including keys. Integer tokens retain Jason's
+1,024-byte limit, including a minus sign. A lexical resource guard runs before
+decoding; duplicate decoded keys refuse at every depth. Schema validation uses
+the same checked subset as the ordinary adapter. `Manifest.decode_json/2` keeps
+its separate 1-MiB maximum.
+
+Run this exercise in `iex -S mix`:
+
+```elixir
+alias Ipse.Extensions.ResultDocument
+schema = %{"type" => "object", "additionalProperties" => true}
+value = %{"items" => Enum.to_list(1..256)}
+{:ok, bytes} = ResultDocument.encode(value, schema)
+{:ok, ^value} = ResultDocument.decode(bytes, schema)
+{:error, :invalid_extension_value} = Ipse.Extension.validate(value)
+```
+
+The aggregate adapter accepts this document; the worker SDK still rejects its
+256-member array. Aggregate validation neither publishes a saved result nor
+makes the value a valid callback response. The current worker protocol remains
+inline and bounded. Follow `test/extensions_result_document_test.exs` to check
+the exact 4-MiB boundary, escaped duplicate keys, overlong integer tokens and
+declared-schema failures before changing either adapter.
+
 A raw developer call to `Worker.start/1` supplies `owner`, `store`, `digest`,
 `trusted`, and schema-valid `options`. `trusted` must equal the selected digest.
 It is a caller assertion; Session supplies it only after configuration/trust

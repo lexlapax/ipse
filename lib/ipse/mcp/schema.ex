@@ -46,6 +46,21 @@ defmodule Ipse.MCP.Schema do
 
   def validate_arguments(_, _), do: {:error, @argument_error}
 
+  @doc "Validate an independently bounded result object against the checked schema subset."
+  def validate_result(schema, value) when is_map(schema) and is_map(value) do
+    with :ok <- validate_schema(schema),
+         {:ok, compiled} <- compile(schema),
+         :ok <- JSONSchex.validate(compiled, value) do
+      :ok
+    else
+      _ -> {:error, @argument_error}
+    end
+  rescue
+    _ -> {:error, @argument_error}
+  end
+
+  def validate_result(_, _), do: {:error, @argument_error}
+
   @doc "Validate a bounded plain JSON object without compiling an application schema."
   def validate_object(arguments) when is_map(arguments) do
     with :ok <- json_value(arguments, 1),
