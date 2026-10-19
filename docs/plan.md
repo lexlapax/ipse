@@ -348,7 +348,7 @@ the milestone. Preserve current SDK bounds and existing operation authority.
 | P27H3 | Versioned embedding operation with selected profiles, bounded ordinary vectors, exact egress, operation-aware accounting/costs/shared budgets and no text-envelope substitution | Complete at `3e32051`; local source/macOS/installed gates and exact-source hosted Linux/macOS source/package/installed proofs pass with 768/4096-coordinate native fixtures |
 | P27A | Independent research and lexical corpus packages with named interchangeable profiles, cited evidence, explicit limits, partial failures, stale-index handling and suppression | Implementation present; final lifecycle/authority/platform and quality validation open |
 | P27B | Independent attributable graph, optional extraction, embedding/hybrid and rerank adapters; matched quality/resource comparisons before engine selection | Implementation present; accounted tuning embedding, extraction and revalidated rerank paths exercised; retained failures, full lifecycle gates and matched quality/resource comparisons remain open |
-| P27 verification | Frozen held-out workload, zero authority/isolation/replay/resurrection failures, measured retrieval/support/citation/resources, source/native/installed checks, coherent user and contributor manuals | Open |
+| P27 verification | Frozen held-out workload, zero authority/isolation/replay/resurrection failures, measured retrieval/support/citation/resources, source/native/installed checks, coherent user and contributor manuals | Open; seven-variant public-Session fixtures and saved-prediction controls pass; full lifecycle, held-out quality and resource/selection gates remain |
 
 The [first host-contract record](archive/2026-10-19-p27-mcp-host-contracts/index.md)
 retains causal regressions, independent review corrections and local verification.
@@ -367,8 +367,11 @@ The [evaluation preparation record](archive/2026-10-19-p27-knowledge-packages/ev
 separates synthetic scorer checks from the initial tuning outcomes. The later
 [model workflow record](archive/2026-10-19-p27-knowledge-packages/model-workflows.md)
 retains the intervening failures, causal repairs and accounted extraction/rerank
-trials. Those successful tuning paths do not establish quality. Held-out
-predictions and independent semantic review remain unmeasured.
+trials. The [orchestration record](archive/2026-10-19-p27-knowledge-packages/evaluation-orchestration.md)
+adds matched public-Session fixtures, explicit time selection, suppression
+controls and separate ranked/answer-context citations. Successful tuning and
+scripted provider responses do not establish quality. Held-out predictions,
+independent semantic review and the complete resource comparison remain unmeasured.
 
 ## P28: voice and realtime media
 

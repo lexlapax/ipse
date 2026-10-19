@@ -71,6 +71,12 @@ defmodule IpseKnowledgeExample.ResearchProof do
       true = action_count(events(pid, root), "effect.result.read") >= 3
       true = Session.info(pid).accounting["request_count"] == 0
 
+      for {at, expected} <- [{0, "abstain"}, {1, "ok"}] do
+        {:ok, fixed} = invoke(pid, Map.put(arguments(), "as_of_ms", at))
+        true = fixed["status"] == expected
+        true = fixed["coverage"]["as_of_ms"] == at
+      end
+
       before = web_calls(backend)
       {:ok, %{"status" => "refused", "evidence" => []}} = invoke(pid, arguments(), :deny)
       true = web_calls(backend) == before
@@ -140,7 +146,8 @@ defmodule IpseKnowledgeExample.ResearchProof do
           do: false = :code.is_loaded(module)
 
       %{
-        "checks" => 15,
+        "checks" => 17,
+        "fixed_as_of" => true,
         "native_fetch_citations" => true,
         "paged_body" => true,
         "denied_dispatches" => 0,

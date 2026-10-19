@@ -89,7 +89,7 @@ than submitting an ordinary conversational task. In chat, enter this complete
 invocation and wait for it to finish:
 
 ```text
-/ext ext__research__investigate {"search":"given","fetch":"given","retrieval":"words","rerank":null,"query":"quiescence","limits":{"max_sources":1,"max_body_bytes":1024,"timeout_ms":5000},"sources":[{"source_id":"manual:release","generation":1,"title":"Release policy","text":"Release requires quiescence.","uri":"local:release-policy","observed_at_ms":1700000000000,"event_at_ms":null,"expires_at_ms":null}]}
+/ext ext__research__investigate {"search":"given","fetch":"given","retrieval":"words","rerank":null,"query":"quiescence","as_of_ms":1700000000000,"limits":{"max_sources":1,"max_body_bytes":1024,"timeout_ms":5000},"sources":[{"source_id":"manual:release","generation":1,"title":"Release policy","text":"Release requires quiescence.","uri":"local:release-policy","observed_at_ms":1700000000000,"event_at_ms":null,"expires_at_ms":null}]}
 ```
 
 Expect `status: "ok"`, a passage quoting `Release requires quiescence.`, and
@@ -102,8 +102,11 @@ request, or retained-store write.
 `observed_at_ms` is Unix milliseconds. Sources observed after the investigation's
 selected time, expired sources, and historical imports do not become current
 evidence. Supply an observation time you can justify; backdating text does not
-make it trustworthy. The selection time is fixed after the supplied or fetched
-sources have been captured, then reused for ranking, citations, and coverage.
+make it trustworthy. The example supplies `as_of_ms` to select a fixed time for
+ranking, citations, and coverage. Omit that optional field to use the current
+time after source capture. A fixed time changes eligibility; it does not fetch an
+older page or prove that the captured text existed at that time. Observation
+equal to the selected time is eligible; expiry equal to it is excluded.
 
 A word match does not establish semantic support. With no attributed graph facts,
 the extension leaves the question's claim open with
@@ -112,7 +115,10 @@ Inspect source text and gaps before asking a model or writing a conclusion.
 
 ## Bound the question and inspect caller-provided claims
 
-Every investigation names all seven argument fields shown above. `rerank` is
+Every investigation names `search`, `fetch`, `retrieval`, `rerank`, `query`,
+`limits`, and `sources`. Optional `as_of_ms` is an integer from zero through
+9007199254740991 Unix milliseconds. Null, strings, and negative times refuse.
+`rerank` is
 null unless you explicitly select a configured profile. A supplied source has
 exactly the eight fields in the example; do not add arbitrary metadata.
 
@@ -360,10 +366,11 @@ reviewed `--mcp-config` file. The generator accepts only explicit `profiles`,
 does not read your ordinary home configuration for a missing profile.
 
 Invoke `investigate` with `rerank: "ordered"`. Reranking sends the query and up to
-16 supplied candidate IDs with excerpts of at most 32 characters/128 UTF-8 bytes
+16 supplied candidate IDs with excerpts of at most 128 UTF-8 bytes
 to that named model. A separate full model-egress approval is required. Its JSON
-must name unique supplied IDs; invented IDs or malformed output refuse. The
-remaining candidates retain their order. The call consumes ordinary accounting
+must return one `order` object naming every supplied ID exactly once. Missing,
+duplicate or invented IDs and malformed output refuse. Put irrelevant candidates
+last rather than dropping them. The call consumes ordinary accounting
 and applicable shared [budget reservations](budgets.md).
 Rendered rerank input must fit 4096 bytes and model output 8192 bytes. A long
 query/candidate combination can refuse despite individually legal fields; it is

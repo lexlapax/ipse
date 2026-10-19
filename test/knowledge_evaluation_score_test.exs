@@ -27,7 +27,7 @@ defmodule Ipse.KnowledgeEvaluationScoreTest do
   defp prediction(extra \\ %{}) do
     Map.merge(
       %{
-        "version" => 1,
+        "version" => 2,
         "prediction_id" => "prediction",
         "variant" => "base",
         "query_id" => "q",
@@ -40,6 +40,7 @@ defmodule Ipse.KnowledgeEvaluationScoreTest do
         "answer" => "A café.",
         "claims" => [%{"claim_id" => "c", "text" => "A café."}],
         "evidence" => [span()],
+        "context_evidence" => [],
         "citations" => [%{"citation_id" => "pair", "claim_id" => "c", "span_id" => "s"}]
       },
       extra
@@ -64,6 +65,41 @@ defmodule Ipse.KnowledgeEvaluationScoreTest do
     }
 
     {freeze, %{"predictions" => bytes}}
+  end
+
+  test "legacy rows and uncontained context spans refuse before loading labels" do
+    cropped = %{
+      span()
+      | "span_id" => "a",
+        "start_byte" => 12,
+        "end_byte" => 17,
+        "quote" => "café"
+    }
+
+    invalid_contexts = [
+      %{cropped | "source" => source("foreign")},
+      %{cropped | "quote" => "cafX"},
+      %{cropped | "start_byte" => 30, "end_byte" => 35},
+      %{cropped | "span_id" => "s"}
+    ]
+
+    rows = [
+      prediction(%{"version" => 1})
+      | Enum.map(invalid_contexts, &prediction(%{"context_evidence" => [&1]}))
+    ]
+
+    owner = self()
+
+    loader = fn ->
+      send(owner, :labels_opened)
+      {:error, :must_not_open}
+    end
+
+    for row <- rows do
+      {freeze, blobs} = inputs([row])
+      assert {:error, :invalid_prediction} = Score.score(freeze, blobs, loader, loader)
+      refute_received :labels_opened
+    end
   end
 
   defp labels(relevance \\ nil) do
@@ -187,6 +223,49 @@ defmodule Ipse.KnowledgeEvaluationScoreTest do
     assert variant["gates"]["support"]["status"] == "fail"
     assert variant["gates"]["citation"]["status"] == "fail"
     assert unsupported["outside_scoring"]["authority"] == "unmeasured"
+  end
+
+  test "cropped answer citations do not replace the saved retrieval ranking or span measurement" do
+    answer_span = %{
+      span()
+      | "span_id" => "answer",
+        "start_byte" => 12,
+        "end_byte" => 17,
+        "quote" => "café"
+    }
+
+    row =
+      prediction(%{
+        "version" => 2,
+        "context_evidence" => [answer_span],
+        "citations" => [%{"citation_id" => "pair", "claim_id" => "c", "span_id" => "answer"}]
+      })
+
+    review =
+      update_in(
+        reviews(),
+        ["integrity"],
+        &(&1 ++
+            [
+              %{
+                "prediction_id" => "prediction",
+                "span_id" => "answer",
+                "verdict" => "valid",
+                "reviewer_id" => "literal-checker",
+                "independent" => true
+              }
+            ])
+      )
+
+    assert {:ok, report} = score([row], labels(), review)
+    [variant] = report["variants"]
+    [measured] = variant["rows"]
+    assert measured["prediction"]["evidence"] == [span()]
+    assert measured["retrieval"]["recall_at_5"] == 1.0
+    assert measured["spans"]["exact_recall"] == 0.0
+    assert measured["spans"]["contained_recall"] == 1.0
+    assert variant["semantic"]["citation"]["precision"] == 1.0
+    assert length(measured["integrity"]) == 2
   end
 
   test "missing rows and N-A queries stay in the frozen grid and cannot pass semantic gates" do

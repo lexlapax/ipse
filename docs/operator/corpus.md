@@ -94,7 +94,7 @@ its projections. Delayed indexing or old imports cannot restore it. Earlier
 journals, exports, backups and provider transfers remain. Follow
 [session recovery](recovery.md) for conversations that already contain the source.
 
-## Use larger sources and optional algorithms
+## Publish a larger source
 
 Small `put` accepts at most 8192 text bytes when the work fits its invocation
 allowance. Larger sources use explicit `open`, contiguous `append` calls and
@@ -103,18 +103,127 @@ Publish verifies the declared byte count and hash. An incomplete draft is not
 searchable. Inspect an interrupted draft before explicitly appending, publishing
 or aborting it. Resume never completes it automatically.
 
-Embedding indexing and graph extraction are explicit. They do not start when
-you query, import or enable another package. Build a preset with the required
-grants, define named profiles, select source generations and chunk IDs, and
-review the separate model or egress approval. The [embedding manual](embeddings.md)
-explains host profiles. The [package build guide](../../extensions/knowledge/README.md#choose-the-required-capabilities)
-lists closed presets and complete configuration inputs.
+## Add explicit embeddings and reranking
 
-Lexical retrieval uses BM25. Optional profiles select dense cosine retrieval,
-hybrid fusion, bounded graph augmentation or reranking. A profile never silently
-switches providers. Missing projections either refuse or follow an explicitly
-configured lexical-with-gap policy. Coverage identifies the gap; it does not
-mean indexing succeeded.
+This example needs an already running local Ollama service with
+`embeddinggemma:latest` and `qwen3.5:9b` already available. It installs or downloads
+nothing. Select your actual models and native embedding dimensions explicitly if
+they differ. The [embedding manual](embeddings.md) explains host profile fields.
+Keep the lexical route when you do not want model calls.
+
+Exit the earlier chat with `/exit`. Keep the artifact parent and application home
+from the first example. Create a fresh workspace and these two files in your shell:
+
+```sh
+IPSE_CORPUS_SEMANTIC_WORKSPACE=$(mktemp -d)
+cat > "$IPSE_CORPUS_ARTIFACTS/semantic-options.json" <<'JSON'
+{
+  "version": 1,
+  "stores": {"notes": {"kind": "state", "scope": "project", "partition": "manual"}},
+  "search": {}, "fetch": {},
+  "retrieval": {
+    "words": {"kind": "bm25", "version": 1},
+    "similar": {"kind": "dense", "version": 1, "embedding": "vectors"},
+    "blend": {
+      "kind": "hybrid", "version": 1, "lexical": "words", "embedding": "vectors",
+      "graph": null, "rrf_k": 60, "missing_embedding": "refuse"
+    }
+  },
+  "embedding": {"vectors": {"kind": "embedding", "profile": "encoder"}},
+  "rerank": {"ordered": {"kind": "model_complete", "profile": "ranker", "max_candidates": 16, "quote_bytes": 128}},
+  "extraction": {}
+}
+JSON
+cat > "$IPSE_CORPUS_ARTIFACTS/semantic-inference.json" <<'JSON'
+{
+  "embedding_profiles": {
+    "encoder": {
+      "operation": "embedding", "provider": "ollama", "model": "embeddinggemma:latest",
+      "credential": "none", "base_url": "http://127.0.0.1:11434",
+      "dimensions": 768, "dimension_mode": "native", "timeout_ms": 120000
+    }
+  },
+  "profiles": {
+    "ranker": {
+      "provider": "ollama", "model": "qwen3.5:9b", "credential": "none",
+      "base_url": "http://127.0.0.1:11434", "max_output_tokens": 4096,
+      "reasoning_effort": "none", "timeout_ms": 120000
+    }
+  },
+  "budget": {"version": 1, "max_requests": 6}
+}
+JSON
+elixir extensions/knowledge/build.exs \
+  --sdk _build/dev/lib/ipse/ebin \
+  --output "$IPSE_CORPUS_ARTIFACTS/corpus-semantic" \
+  --package corpus --preset state-semantic
+elixir extensions/knowledge/config.exs \
+  --artifact "$IPSE_CORPUS_ARTIFACTS/corpus-semantic" \
+  --package corpus --preset state-semantic --instance corpus \
+  --options "$IPSE_CORPUS_ARTIFACTS/semantic-options.json" \
+  --inference-config "$IPSE_CORPUS_ARTIFACTS/semantic-inference.json" \
+  --state-binding knowledge \
+  --output "$IPSE_CORPUS_ARTIFACTS/operator-semantic.json"
+IPSE_HOME="$IPSE_CORPUS_HOME" ./bin/ipse extension import "$IPSE_CORPUS_ARTIFACTS/corpus-semantic"
+```
+
+Inspect the actual printed digest as before. Review the generated trust, both
+inference routes and the six-request shared budget. Validate, then start a fresh chat:
+
+```sh
+IPSE_HOME="$IPSE_CORPUS_HOME" ./bin/ipse config \
+  --config "$IPSE_CORPUS_ARTIFACTS/operator-semantic.json" --no-project-config \
+  --extension corpus
+IPSE_HOME="$IPSE_CORPUS_HOME" ./bin/ipse chat --provider demo \
+  --config "$IPSE_CORPUS_ARTIFACTS/operator-semantic.json" --no-project-config \
+  --extension corpus --cwd "$IPSE_CORPUS_SEMANTIC_WORKSPACE"
+```
+
+The main provider stays scripted. Explicit index and query commands below can
+call the selected local models after their separate approvals. Importing or
+selecting the extension starts no indexing.
+
+Store and inspect one source in this fresh workspace:
+
+```text
+/ext ext__corpus__source {"store":"notes","action":"put","args":{"source_id":"manual:locks","generation":1,"expected_revision":0,"title":"Session locks","text":"Lock files remain on disk. Releasing the OS lock preserves inode identity.","uri":"local:manual-locks","observed_at_ms":1700000000000,"event_at_ms":null,"expires_at_ms":null}}
+/ext ext__corpus__source {"store":"notes","action":"inspect","args":{"source_id":"manual:locks"}}
+```
+
+Copy the chunk ID from the inspection result. Replace `CHUNK_ID` below with that
+exact ID, then run one explicit indexing operation:
+
+```text
+/ext ext__corpus__index {"store":"notes","embedding":"vectors","source_id":"manual:locks","generation":1,"action":"next","chunks":["CHUNK_ID"]}
+```
+
+Approve only the inspected source text, the selected `encoder` route and the
+shown State writes. A completed index publishes vectors for that source
+generation. Each indexing invocation selects one or two chunk IDs; a larger
+source needs separate explicit batches. Changing a source does not automatically
+reindex it. An interrupted projection needs inspection before new work.
+
+Compare the three retrieval choices on the same source:
+
+```text
+/ext ext__corpus__query {"store":"notes","retrieval":"similar","rerank":null,"query":"lock files inode","top_k":5,"as_of_ms":1700000020000}
+/ext ext__corpus__query {"store":"notes","retrieval":"blend","rerank":null,"query":"lock files inode","top_k":5,"as_of_ms":1700000020000}
+/ext ext__corpus__query {"store":"notes","retrieval":"blend","rerank":"ordered","query":"lock files inode","top_k":5,"as_of_ms":1700000020000}
+```
+
+Dense retrieval uses cosine similarity. Hybrid retrieval combines lexical and
+dense rankings with reciprocal rank fusion. Both send the query to `encoder`.
+The last command also sends candidate IDs and excerpts to `ranker`; its output
+must list every supplied ID exactly once. Inspect each egress approval, citation,
+coverage and revalidation result. The example expects the retained locks passage,
+not a synthesized answer. A valid model response does not prove better relevance.
+
+The selected `missing_embedding: "refuse"` policy refuses missing/incompatible
+projections. An explicit `lexical_with_gap` policy can return lexical evidence
+with a reported gap; it does not mean indexing succeeded. Providers and models
+never switch automatically. Budget exhaustion requires a reviewed new decision,
+not an automatic retry in a fresh Session. For attributed graph augmentation,
+follow the independent [Graph procedure](graph.md).
 
 ## Keep stores bounded and recover from refusal
 

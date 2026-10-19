@@ -90,6 +90,9 @@ The later [HTTP fixture lifetime correction](http-lifetime.md) retains the
 corrected-format run's Linux failure and the controlled ordering proof and repair.
 The later [evaluation preparation record](evaluation-preparation.md) retains
 synthetic helper verification and actual tuning-only embedding/text outcomes.
+The later [public-Session orchestration record](evaluation-orchestration.md)
+retains matched synthetic variants, source suppression, frozen fixture execution
+and separate ranked/context citation measurements.
 The later [model wire investigation](model-wire.md) identifies the response-body
 limit in a captured diagnostic and separates streaming framing from returned text.
 The later [model workflow investigation](model-workflows.md) records exact draft

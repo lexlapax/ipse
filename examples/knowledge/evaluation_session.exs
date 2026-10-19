@@ -142,7 +142,11 @@ defmodule IpseKnowledgeExample.EvaluationSession do
   end
 
   def invoke(run, "research", params) do
-    if exact?(params, ~w(search fetch retrieval rerank query limits sources)) and
+    if exact?(
+         Map.delete(params, "as_of_ms"),
+         ~w(search fetch retrieval rerank query limits sources)
+       ) and
+         (not Map.has_key?(params, "as_of_ms") or uint?(params["as_of_ms"])) and
          Enum.all?(~w(search fetch retrieval), &profile_name?(params[&1])) and
          (is_nil(params["rerank"]) or profile_name?(params["rerank"])) and
          text?(params["query"], 1024) and is_map(params["limits"]) and

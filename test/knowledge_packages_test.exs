@@ -134,6 +134,20 @@ defmodule IpseKnowledge.PackagesIsolationTest do
       end)
     end
 
+    test "explicit research time applies observation and expiry while invalid times refuse" do
+      source = %{"source_id" => "dev:locks", "generation" => 1, "title" => "Locks",
+        "text" => "Session lock files preserve inode identity.", "uri" => "local:locks",
+        "observed_at_ms" => 10, "event_at_ms" => nil, "expires_at_ms" => 100}
+      for {at, expected} <- [{9, "abstain"}, {10, "ok"}, {99, "ok"}, {100, "abstain"}, {-1, "refused"}, {"50", "refused"}, {nil, "refused"}] do
+        {:ok, state} = IpseKnowledge.Research.init(offline_options())
+        args = investigation([source]) |> Map.put("as_of_ms", at)
+        assert {:ok, %{"kind" => "result", "value" => result}, _} =
+          IpseKnowledge.Research.handle("invoke.command", %{"id" => "investigate", "arguments" => args}, state)
+        assert result["status"] == expected
+        if expected != "refused", do: assert(result["coverage"]["as_of_ms"] == at)
+      end
+    end
+
     test "research selects current time after capture and keeps genuinely future sources excluded" do
       alias IpseKnowledge.{Adapters, Evidence, Research}
       uri = "fixture:captured"

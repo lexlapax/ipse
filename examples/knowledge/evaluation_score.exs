@@ -26,7 +26,7 @@ defmodule IpseKnowledge.EvaluationScore do
   @statuses ~w(ok partial failed refused timeout unavailable missing cancelled)
   @classes ~w(answer conflict open abstain)
   @source_keys ~w(project source_id generation version sha256)
-  @prediction_keys ~w(version prediction_id variant query_id project attempt status top_k predicted_class response_kind answer claims evidence citations)
+  @prediction_keys ~w(version prediction_id variant query_id project attempt status top_k predicted_class response_kind answer claims evidence context_evidence citations)
   @safe_integer 9_007_199_254_740_991
 
   def score(freeze, blobs, labels_loader, review_loader) do
@@ -170,7 +170,7 @@ defmodule IpseKnowledge.EvaluationScore do
   end
 
   defp prediction?(p, freeze, queries) do
-    exact?(p, @prediction_keys) and p["version"] === 1 and id?(p["prediction_id"]) and
+    exact?(p, @prediction_keys) and p["version"] === 2 and id?(p["prediction_id"]) and
       not String.starts_with?(p["prediction_id"], "missing:") and
       p["variant"] in freeze["variants"] and Map.has_key?(queries, p["query_id"]) and
       queries[p["query_id"]] == p["project"] and
@@ -185,14 +185,19 @@ defmodule IpseKnowledge.EvaluationScore do
       end) and
       bounded_list?(p["evidence"], 0, p["top_k"]) and unique?(p["evidence"], "span_id") and
       Enum.all?(p["evidence"], &span?/1) and
+      bounded_list?(p["context_evidence"], 0, 10) and
+      Enum.all?(p["context_evidence"], fn span ->
+        span?(span) and Enum.any?(p["evidence"], &contains?(&1, span))
+      end) and unique?(all_spans(p), "span_id") and
       bounded_list?(p["citations"], 0, 256) and unique?(p["citations"], "citation_id") and
       Enum.all?(p["citations"], fn c ->
         exact?(c, ~w(citation_id claim_id span_id)) and id?(c["citation_id"]) and
           Enum.any?(p["claims"], &(&1["claim_id"] == c["claim_id"])) and
-          Enum.any?(p["evidence"], &(&1["span_id"] == c["span_id"]))
+          Enum.any?(all_spans(p), &(&1["span_id"] == c["span_id"]))
       end) and
       (p["response_kind"] != "retrieval_only" or
-         (p["claims"] == [] and p["citations"] == [] and is_nil(p["answer"])))
+         (p["claims"] == [] and p["citations"] == [] and p["context_evidence"] == [] and
+            is_nil(p["answer"])))
   end
 
   defp labels?(labels, freeze) do
@@ -238,7 +243,7 @@ defmodule IpseKnowledge.EvaluationScore do
           exact?(r, ~w(prediction_id span_id verdict reviewer_id independent)) and
             Map.has_key?(predictions, r["prediction_id"]) and
             Enum.any?(
-              predictions[r["prediction_id"]]["evidence"],
+              all_spans(predictions[r["prediction_id"]]),
               &(&1["span_id"] == r["span_id"])
             ) and id?(r["reviewer_id"]) and is_boolean(r["independent"]) and
             r["verdict"] in ~w(valid invalid unmeasured)
@@ -292,7 +297,7 @@ defmodule IpseKnowledge.EvaluationScore do
               "retrieval" => retrieval,
               "spans" => span_coverage(p, label, integrity),
               "classification" => classification(p, label, freeze["classification_map"]),
-              "integrity" => Enum.map(p["evidence"], &integrity_receipt(p, &1, integrity))
+              "integrity" => Enum.map(all_spans(p), &integrity_receipt(p, &1, integrity))
             }
           end)
 
@@ -384,7 +389,7 @@ defmodule IpseKnowledge.EvaluationScore do
   end
 
   defp semantic_projection(p, label, integrity) do
-    span_map = Map.new(p["evidence"], &{&1["span_id"], &1})
+    span_map = Map.new(all_spans(p), &{&1["span_id"], &1})
 
     %{
       "prediction_id" => p["prediction_id"] || missing_id(p),
@@ -575,7 +580,7 @@ defmodule IpseKnowledge.EvaluationScore do
 
   defp missing(variant, query),
     do: %{
-      "version" => 1,
+      "version" => 2,
       "prediction_id" => nil,
       "variant" => variant,
       "query_id" => query["query_id"],
@@ -588,8 +593,11 @@ defmodule IpseKnowledge.EvaluationScore do
       "answer" => nil,
       "claims" => [],
       "evidence" => [],
+      "context_evidence" => [],
       "citations" => []
     }
+
+  defp all_spans(prediction), do: prediction["evidence"] ++ prediction["context_evidence"]
 
   defp missing_id(p), do: "missing:" <> sha256(JSON.encode!([p["variant"], p["query_id"]]))
 

@@ -43,7 +43,13 @@ defmodule IpseKnowledge.Research do
   defp invoke(_, state), do: finish(state, refused(:invalid_invocation))
 
   defp investigate(args, state) do
-    with true <- exact?(args, ~w(search fetch retrieval rerank query limits sources)),
+    with true <-
+           exact?(
+             Map.delete(args, "as_of_ms"),
+             ~w(search fetch retrieval rerank query limits sources)
+           ),
+         true <-
+           not Map.has_key?(args, "as_of_ms") or num?(args["as_of_ms"], 0, 9_007_199_254_740_991),
          {:ok, search_profile} <- Profiles.lookup(state.resolved, "search", args["search"]),
          {:ok, fetch_profile} <- Profiles.lookup(state.resolved, "fetch", args["fetch"]),
          {:ok, retrieval} <- Profiles.lookup(state.resolved, "retrieval", args["retrieval"]),
@@ -308,7 +314,13 @@ defmodule IpseKnowledge.Research do
   end
 
   defp rank(state) do
-    state = %{state | ctx: %{state.ctx | at: System.system_time(:millisecond)}}
+    state = %{
+      state
+      | ctx: %{
+          state.ctx
+          | at: Map.get(state.ctx.args, "as_of_ms", System.system_time(:millisecond))
+        }
+    }
 
     case Evidence.rank_lexical(state.ctx.sources, state.ctx.args["query"], 10, state.ctx.at) do
       {:ok, ranked} ->
@@ -373,6 +385,7 @@ defmodule IpseKnowledge.Research do
         "retrieval" => string(64),
         "rerank" => %{"type" => ["string", "null"]},
         "query" => string(1024),
+        "as_of_ms" => integer(0, 9_007_199_254_740_991),
         "limits" => %{
           "type" => "object",
           "additionalProperties" => false,

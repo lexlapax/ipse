@@ -191,7 +191,7 @@ quoted source and the assertion before using the result for a decision.
 
 Extraction selects one or two chunks and at most 32 facts. MCP-backed extraction
 selects one chunk. Larger sources use the explicit source draft lifecycle in
-[Corpus](corpus.md#use-larger-sources-and-optional-algorithms), rather than hidden
+[Corpus](corpus.md#publish-a-larger-source), rather than hidden
 background extraction. Commands fit the ordinary 16-operation host allowance;
 state scans have their separate read bound. A plan that cannot fit refuses.
 Inspect the source and draft state before requesting a smaller explicit batch

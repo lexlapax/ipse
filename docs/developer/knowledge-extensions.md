@@ -82,12 +82,15 @@ remain open for semantic support. Research's provided ledger normalizes supplied
 provenance and cannot manufacture the native [research ledger](research.md)'s
 receipt authority.
 
-Research chooses its ranking time after capturing the bounded source set. A
+By default, Research chooses its ranking time after capturing the bounded source set. A
 gateway can stamp a fetch at completion, so using the invocation's earlier time
 would wrongly exclude that newly captured source. Follow `Research.rank/1` and
-`publish/1`: the fixed capture time drives ranking and coverage, while each
-citation retains its own observation time. Provided and fetched routes both
-report the accumulated raw text bytes. Future-dated observations remain excluded.
+`publish/1`: the selected time drives ranking and coverage, while each citation
+retains its own observation time. An explicit integer `as_of_ms` selects a fixed
+time instead, allowing Research and Corpus to share an evaluation snapshot.
+Research accepts omission for current time; explicit null refuses. Provided and
+fetched routes both report the accumulated raw text bytes. Observations after
+the selected time and expiry at or before it remain excluded.
 
 ## Read a continuation at the host boundary
 

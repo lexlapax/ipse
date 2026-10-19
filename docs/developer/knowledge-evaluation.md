@@ -2,7 +2,9 @@
 
 Use this chapter to change the knowledge evaluation helpers and verify their
 failure behavior. You need a built source checkout and the Elixir toolchain.
-The exercises use synthetic saved data. They start no model or external service.
+The exercises use synthetic data and local fixtures. The orchestration exercise
+starts loopback search and model-protocol fixtures; it uses no model weights or
+external service.
 For changing the packages themselves, start with
 [knowledge extension development](knowledge-extensions.md).
 
@@ -14,6 +16,7 @@ The evaluation helpers have separate owners. Keep their inputs separate:
 | --- | --- | --- |
 | Freeze | `examples/knowledge/evaluation_freeze.exs` | A clean source tree, public plan and inert artifacts become a pinned manifest and copied artifacts |
 | Dataset projection | `examples/knowledge/evaluation_input.exs` | Dataset bytes become separately validated corpus, label-free queries or scoring labels |
+| Orchestration | `examples/knowledge/evaluation_runner.exs` | A validated variant plan becomes public Session calls, first predictions and retained execution failures |
 | Session driver | `examples/knowledge/evaluation_session.exs` | Explicit artifact/profile/budget selections and public commands become durable invocation receipts |
 | Answer preparation | `examples/knowledge/evaluation_answer.exs` | Saved ranked citations become a bounded request and an exact shown-span mapping |
 | Scoring | `examples/knowledge/evaluation_score.exs`, `metrics.exs` | Hashed first predictions and independent labels/reviews become separate measurements |
@@ -155,6 +158,52 @@ replace the missing Session cleanup acknowledgment. Keep those assertions
 separate when adding owner-loss or cancellation controls. Never clear `unsettled`
 to continue an interrupted evaluation or open a replacement budget root silently.
 
+## Follow a matched public-Session comparison
+
+Run the orchestration fixture:
+
+```sh
+mix test test/knowledge_evaluation_runner_test.exs
+```
+
+Open its `matrix_plan/2` helper. It selects independently built Corpus, Graph,
+Research and text-helper artifacts, with explicit command bindings and named
+profiles. Its seven variants cover lexical retrieval, explicit and model
+extraction, dense retrieval, hybrid retrieval, reranking and Research. The
+synthetic HTTP fixture returns declared two-coordinate vectors and scripted
+text. Those outputs exercise the provider wire formats and canonical accounting;
+they measure no model quality.
+
+Follow `run_variant/9`, `prepare/4`, `invoke/4` and `approve/1` in the runner:
+
+1. Each project and variant gets a fresh Session and a fixed share of its declared
+   inference budget. Budgets are not transferred or renewed after failure.
+2. Source authoring runs outside the host VM. Ingestion and explicit forget
+   commands finish before projections start. Only current eligible generations
+   reach index or extraction commands. Skipped projections remain recorded.
+3. Each invocation logs every new public receipt, including source paging steps.
+   A refusal before dispatch cannot acquire an older command's receipt.
+4. Approval checks bind the selected artifact, command owner, profile and complete
+   egress. Per-invocation counts restrict embedding, text, search and fetch calls.
+   Research fetches only URIs returned by that query's controlled search result.
+5. All variants receive the plan's fixed `as_of_ms`. Research's optional argument
+   selects that same time; omitting it preserves current-time behavior after capture.
+6. Prediction failures retain their declared rows. Cleanup attempts cover the
+   Session, gateway and sampler, with errors preserved in the output directory.
+
+Compare the current-source and suppressed-source fixtures. A suppression warning
+can produce a partial retrieval, which stays partial in saved predictions. It
+does not become a successful measurement because a retained passage looks useful.
+The model fixture also proves that forgotten and expired text never enters its
+requests. Worker, model and whole-system RSS remain unmeasured; the sampler's
+start, end and sampled maximum describe only the harness BEAM.
+
+For a change exercise, trace the Research approval through `MCPCall`. Its effect
+has no State namespace. State writes use the selected logical project namespace,
+while embedding and text calls use the Session identity. Changing all three to
+the same namespace must refuse the mismatched effect. Keep the host's existing
+contracts as the authority when changing an evaluation adapter.
+
 ## Trace an answer's evidence
 
 `IpseKnowledgeExample.EvaluationAnswer.prepare/3` takes the query, an as-of time
@@ -169,6 +218,13 @@ fits 4096 bytes. A cropped quote gets an adjusted end offset and quote hash.
 The mapping retains source identity, provenance, times and the original captured
 span. Coverage lists omissions and cropping. Preserve the full retrieval result
 separately so answer-context limits cannot erase the retrieval measurement.
+
+Saved prediction rows use version two. `evidence` keeps the complete returned
+ranking; `context_evidence` holds the cited answer spans after cropping. Each
+context span must be contained in an original ranked span with identical source
+identity and bytes. Source and annotated-span retrieval metrics use `evidence`.
+Claim/span citation judgments can refer to the corresponding context spans.
+Do not replace a ranked passage with its answer excerpt to improve span scores.
 
 After the public Session call completes, pass the saved response text and the
 same bundle to `decode_answer/2`. The decoder requires one complete JSON object

@@ -8,7 +8,7 @@ defmodule IpseKnowledgeExample.MCPPackageProof do
     {proof_file, proof_module, checks} =
       case package do
         "corpus" -> {"mcp-proof.exs", "IpseKnowledgeExample.MCPProof", 9}
-        "research" -> {"research-proof.exs", "IpseKnowledgeExample.ResearchProof", 15}
+        "research" -> {"research-proof.exs", "IpseKnowledgeExample.ResearchProof", 17}
       end
 
     archive = Path.expand(archive)
