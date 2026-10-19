@@ -34,6 +34,10 @@ A compiled preset fixes authority. `state-lexical` includes State actions and
 omits MCP, embeddings and text-model grants. Its options cannot promote it to
 `state-semantic`. The builder changes one known `@preset` literal and compiles
 against the public SDK. Import, operator trust and activation remain separate.
+All knowledge presets declare SDK 2 and `invoke.result.pages`. The builder
+requires the selected descriptor to match that SDK and its compiled capability
+list. The operator generator rejects an SDK-1 artifact or a missing page grant.
+Changing options cannot upgrade an older artifact's protocol declaration.
 
 ## Verify independent memory and knowledge selections
 
@@ -177,7 +181,20 @@ source generation, content hash, chunk ID, quote, quote hash, URI, times and ori
 
 An exact quote proves which bytes were recorded. It does not prove that a claim
 follows from them. Facts retain every support citation and extraction identity.
-Conflicting assertions remain separate. Lexical results without assessed facts
+Conflicting assertions remain separate, with explicit polarity. Traversal still
+follows positive edges only. Before classification, `claim_context/2` adds each
+current validated assertion that contradicts a reached fact, without traversing
+its edge. The shared `conflicts?/2` predicate owns both selection and labels.
+Evidence comes from that bounded context before `top_k`; every attributed claim
+keeps its own exact citation basis even when its passage falls outside the rank.
+Coverage separates traversal edges from context facts and counterassertions.
+The conflict predicate compares object identifiers with the same case-insensitive
+matching used for traversal nodes. It preserves the original fields, fact IDs
+and citation bytes. Case variants of one positive relationship are not conflicting
+alternatives; opposite polarities still conflict when their object names differ
+only in case. The Evidence regression exercises classification and traversal in
+both input orders.
+Lexical results without assessed facts
 remain open for semantic support. Research's provided ledger normalizes supplied
 provenance and cannot manufacture the native [research ledger](research.md)'s
 receipt authority.
@@ -190,15 +207,17 @@ zero-based position in that result's complete `evidence` array. Follow the
 reference to read its full citation; do not interpret it as assessed support.
 Attributed graph claims retain their own citation `basis`. An open claim whose
 basis includes an unreturned citation also keeps its full basis, so fusion or
-truncation cannot erase provenance or produce a dangling reference. The conversion avoids duplicating
-every quotation for the synthetic open claim while preserving source identity.
-It does not raise the 12000-byte public result ceiling. Research accepts up to
-ten sources, but a legal source count can still produce `result_too_large`.
+truncation cannot erase provenance or produce a dangling reference. The conversion
+avoids duplicating every quotation for the synthetic open claim while preserving
+source identity. Graph's `top_k` bounds evidence passages, not the citations
+retained in each attributed claim's basis.
 
 Run `mix test test/knowledge_packages_test.exs` before changing these bounds.
-Its ten-source control checks every returned source and index. The eleventh
-source refuses, and ten longer quotations still refuse at the original output
-ceiling. The suite runs domain modules in a separate VM.
+Its ten-source controls check every returned source and index. The eleventh
+source refuses. Ten full 1024-byte quotes use a complete SDK-2 publication with
+their exact spans and provenance. An escaped quote also exercises a citation
+larger than one 4096-byte transport fragment without raising the domain quote
+limit. The suite runs domain modules in a separate VM.
 
 By default, Research chooses its ranking time after capturing the bounded source set. A
 gateway can stamp a fetch at completion, so using the invocation's earlier time
@@ -224,12 +243,76 @@ Store and Adapters return these private values:
 The entrypoint converts `:call` to an SDK host proposal. Its next `host.actions`
 callback resumes that exact owner. Initialize every key used by a map update;
 `%{state | key: value}` raises if `key` was absent. Private state can contain
-complete bounded text and vectors. Public results remain closed JSON objects of
-at most 12,000 encoded bytes.
+complete bounded text and vectors. At completion, each entrypoint passes the
+whole public JSON object to `Ipse.Extension.ResultPublication.prepare/1`.
 
 Unknown effects terminate the chain. They cannot become empty successful search,
 a retry or permission to switch profiles. Session owns journaling, approvals,
 accounting, cancellation and cleanup. Domain code preserves those outcomes.
+
+## Publish and read the complete domain value
+
+Read `finish/2` in Corpus, Graph and Research. Each passes its complete output
+to the public SDK helper. A small value becomes the ordinary inline `result`
+callback. A larger valid value becomes a private
+`Ipse.Extension.ResultPublication.Output` containing immutable JSON bytes, their
+length and SHA256. It is a callback return value, not a JSON object to serialize
+or a host request to execute. An invalid aggregate becomes the small explicit
+`result_too_large` refusal. Keep that refusal path when changing a domain output.
+
+The domain still owns source, citation, claim and coverage rules. For example,
+quotes remain limited to 1024 UTF8 bytes. The generic transport allows a complete
+document of at most 4 MiB with its own string, depth, collection and node bounds.
+It fragments bytes in fixed 4096-byte pieces, so one encoded citation can cross
+several fragments. Do not shorten a quote or remove Graph basis merely to align
+with a fragment. Follow [invocation training](extension-invocations.md#keep-wire-bounds-separate-from-document-bounds)
+for the separate bounds and journal reservations.
+
+Bootstrap handles the private output after the domain callback finishes. Session
+owns its invocation lease, deadline, reserved journal capacity and final
+publication. Host validates the complete document and declared schema, then
+confirms worker cleanup. Only the committed final invocation result makes the
+saved descriptor readable. No Corpus, Graph or Research module loads into the
+host for this work. Ordinary inline results keep their existing shape.
+
+Consumers must distinguish that descriptor from a domain value. Use
+`Ipse.Session.materialize_result/2` with the exact saved delivery before reading
+`evidence`, `claims`, `coverage` or `status`. It returns the complete decoded value
+and exact retained bytes with `provenance: "historical_receipt"`. A failed read
+cannot become an empty ranking, an inline fallback or a repeated query.
+The [evaluation driver](knowledge-evaluation.md#materialize-before-interpreting-a-result)
+shows that boundary before answer preparation and metrics.
+
+For a worked exercise, build the three artifacts from the selection exercise
+above, then run:
+
+```sh
+mix run examples/knowledge/verify-complete-results.exs "$IPSE_SELECTION_ARTIFACTS"
+elixir examples/knowledge/verify-package.exs /path/to/ipse.tar.gz "$IPSE_SELECTION_ARTIFACTS" complete
+```
+
+Read `examples/knowledge/complete-result-proof.exs` alongside its five checks.
+Research and Corpus each return ten full quotations. A second Research case
+retains an escaped citation larger than a fragment. Graph returns eight full
+claims while `top_k: 1` leaves some claim bases outside the evidence list. The
+exercise checks every cited span, complete hashes, an exact historical read and
+unchanged journal bytes after idle restart. Expect zero model requests, confirmed
+cleanup and no production domain modules in the host. The fifth check records
+opposite assertions and requires both polarity/citation claims in direct Graph
+and Corpus graph retrieval, even with one returned passage. These are protocol
+controls, not semantic support judgments.
+
+The installed `complete` wrapper compiles its trusted proof harness in the outer
+development VM before starting the extracted runtime. The runtime loads the
+prebuilt harness and artifact BEAMs with development tools absent from its PATH.
+It rechecks archive, artifact, host and harness identities afterward. Build the
+archive and artifacts for the same platform and OTP release.
+
+For dense citation changes, follow `dense_candidates/3` into the shared
+`Evidence.utf8_prefix/2` boundary. Preserve the ordinary 200-grapheme excerpt,
+then cap its bytes at 1024 before constructing the citation. The package test
+uses a single combining grapheme longer than that limit with a valid vector,
+and separately removes the vector to keep the real missing-index refusal.
 
 ## Plan projections before inference
 
@@ -297,7 +380,11 @@ validates every supporting source. Queries do not rebuild missing projections.
 Collection removes unreachable bodies while retaining State tombstones. It does
 not recover the 256-record allowance. The 1 MiB ceiling includes old generations,
 drafts, orphan pages and tombstones. Selected exports are paged. Foreign copies
-become historical assertions and need explicit reindexing or extraction.
+become historical assertions. Extraction and indexing preserve that flag, so
+`Evidence.current?/2` still excludes them. Current evidence requires an explicit
+fresh source replacement with a newer generation and inspected root revision,
+without `historical_import`, followed by its required projections. Do not treat
+reindexing an imported record as promotion to current evidence.
 Suppression cannot erase journals, backups, prior transfers or independent stores.
 
 An explicitly aborted draft also invalidates delayed publication. `Store.abort`
@@ -307,6 +394,15 @@ clearing a fact draft cannot turn it into publishable source content. Work throu
 `test/knowledge_store_test.exs` for State and MCP controls: wrong ID/revision,
 source publication against a projection, stale completion, a newer draft and
 permanent suppression.
+
+Corpus `index` aborts use the same Store continuation as projection commits.
+After a successful abort, the receipt must include the generation actually read
+from the committed root as well as its revision. Corpus checks both fields before
+reporting success. A cleared draft is not enough if its receipt fails that fence.
+Run `mix test test/knowledge_index_abort_test.exs` to exercise real Corpus and
+Store callbacks against State and MCP CAS. The controls cover successful abort,
+stale profile/generation/chunks, repeated abort, delayed completion and a source
+replacement whose generation differs from the abandoned draft's target.
 
 Then run the public Graph-only recovery exercise with a fresh `state-model`
 artifact. It denies model egress, inspects the retained draft and approves its
@@ -357,6 +453,12 @@ Compare the other cases:
 | One-request budget exhausted | The first projection completes; a second attempt is refused before another HTTP request and preserves the selected projection |
 | Malformed provider output | No projection is published; the domain retains the failed result and its ordinary accounting |
 | Provider unavailable | No successful projection or fallback appears; the actual request remains in canonical accounting |
+
+For Corpus, the malformed and unavailable cases then inspect the retained draft
+and explicitly abort it through `index`. The receipt must report the committed
+generation and next revision, inspection must show no draft, and the provider
+request count must stay unchanged. This exercises recovery through the public
+worker protocol as well as the lower-level CAS controls.
 
 Unknown embedding work retains its input reservation and no text-output liability.
 Unknown extraction retains both input and output reservations. Read

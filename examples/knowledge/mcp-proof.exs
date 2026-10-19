@@ -1,3 +1,5 @@
+Code.require_file("evaluation_session.exs", __DIR__)
+
 Code.require_file("../../test/support/knowledge_mcp_fixture.exs", __DIR__)
 
 defmodule IpseKnowledgeExample.MCPProof do
@@ -251,7 +253,18 @@ defmodule IpseKnowledgeExample.MCPProof do
   defp invoke(pid, command, args, approve \\ true) do
     :ok = Session.invoke_export(pid, :command, "ext__corpus__" <> command, args)
     status = wait(pid, approve, System.monotonic_time(:millisecond) + 60_000)
-    {status, (Session.info(pid).extension_result || %{})["value"]}
+
+    if status == :ok do
+      {:ok, value, _proof} =
+        IpseKnowledgeExample.EvaluationSession.complete_result(
+          pid,
+          Session.info(pid).extension_result
+        )
+
+      {status, value}
+    else
+      {status, nil}
+    end
   end
 
   defp wait(pid, approve, deadline) do

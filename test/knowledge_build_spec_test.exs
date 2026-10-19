@@ -29,7 +29,7 @@ defmodule Ipse.KnowledgeBuildSpecTest do
       isolated(
         "options=S.read_json!(#{inspect(path)},16_384)\n" <>
           ~S'''
-          m=%{"id"=>"ipse-knowledge/corpus","entrypoint"=>"IpseKnowledge.Corpus",
+          m=%{"sdk"=>2,"id"=>"ipse-knowledge/corpus","entrypoint"=>"IpseKnowledge.Corpus",
             "capabilities"=>IpseKnowledge.Profiles.capabilities("corpus","state-lexical"),
           "options_schema"=>S.options_schema(), "exports"=>%{"commands"=>[%{"id"=>"source"}],"tools"=>[],"services"=>[]}}
           bytes=IO.iodata_to_binary(JSON.encode!(m))
@@ -58,7 +58,7 @@ defmodule Ipse.KnowledgeBuildSpecTest do
         "options=S.read_json!(#{inspect(path)},16_384)\n" <>
           ~S'''
           options=put_in(options,["stores","notes"],%{"kind"=>"mcp_cas","binding"=>"reviewed","partition"=>"project-a","contract"=>"ipse-cas-v1"})
-          m=%{"id"=>"ipse-knowledge/corpus","entrypoint"=>"IpseKnowledge.Corpus",
+          m=%{"sdk"=>2,"id"=>"ipse-knowledge/corpus","entrypoint"=>"IpseKnowledge.Corpus",
           "capabilities"=>IpseKnowledge.Profiles.capabilities("corpus","mcp-lexical"),"options_schema"=>S.options_schema(),"exports"=>%{"commands"=>[%{"id"=>"source"}],"tools"=>[],"services"=>[]}}
           bytes=IO.iodata_to_binary(JSON.encode!(m))
           bindings=%{"reviewed"=>"mcp__local__cas"}
@@ -103,7 +103,7 @@ defmodule Ipse.KnowledgeBuildSpecTest do
           ~S'''
           options=put_in(options,["embedding","encoder"],%{"kind"=>"embedding","profile"=>"local-encoder"})
           options=put_in(options,["rerank","judge"],%{"kind"=>"model_complete","profile"=>"local-ranker","max_candidates"=>16,"quote_bytes"=>128})
-          m=%{"id"=>"ipse-knowledge/corpus","entrypoint"=>"IpseKnowledge.Corpus",
+          m=%{"sdk"=>2,"id"=>"ipse-knowledge/corpus","entrypoint"=>"IpseKnowledge.Corpus",
             "capabilities"=>IpseKnowledge.Profiles.capabilities("corpus","state-semantic"),
             "options_schema"=>S.options_schema(),"exports"=>%{"commands"=>[%{"id"=>"source"}],"tools"=>[],"services"=>[]}}
           bytes=IO.iodata_to_binary(JSON.encode!(m))

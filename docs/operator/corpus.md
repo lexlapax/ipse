@@ -54,6 +54,8 @@ IPSE_HOME="$IPSE_CORPUS_HOME" ./bin/ipse chat --provider demo \
 
 The demo provider avoids model credentials. The following commands invoke the
 extension directly; they do not ask a conversation model to choose tools.
+The generated trust includes `invoke.result.pages` for complete SDK-2 results.
+Review that grant with the artifact's other capabilities.
 
 ## Store text and retrieve its citation
 
@@ -89,6 +91,42 @@ That also applies when no passage is returned: an incomplete search cannot claim
 that no usable evidence exists. Inspect the gap before publishing an answer or
 deciding on further work. Combined retrieval exposes each algorithm's coverage
 under `coverage.components`; fusion does not remove a component's limits.
+
+## Read a complete retrieval result
+
+Small queries return their JSON value directly. A larger query can return a
+`saved.result` descriptor containing an `output_id`, byte count and SHA256.
+That descriptor identifies the complete retained result. It does not replace
+the result's evidence, claims, gaps or coverage.
+
+In the same chat, replace the example output ID with the returned one and read
+the first passage's quote:
+
+```text
+/result {"output_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","path":["evidence",0,"citation","quote"]}
+```
+
+To print the complete JSON value after closing chat, keep the original session
+ID and state directory. For the scratch home above, run:
+
+```sh
+IPSE_CORPUS_OUTPUT_ID='COPY_THE_64_CHARACTER_OUTPUT_ID'
+IPSE_CORPUS_SESSION_ID='COPY_THE_SESSION_ID'
+IPSE_HOME="$IPSE_CORPUS_HOME" ./bin/ipse result "$IPSE_CORPUS_OUTPUT_ID" \
+  --resume "$IPSE_CORPUS_SESSION_ID" --state-dir "$IPSE_CORPUS_HOME/sessions"
+```
+
+Saved documents allow up to 4 MiB of encoded JSON. Each quotation still has its
+1024-byte domain limit. Transport does not shorten quotes, remove provenance,
+or discard claims to fit an inline reply. An aggregate or journal-capacity
+refusal publishes no partial success. Follow [saved-result reading](extensions.md#read-a-saved-result)
+for bounded views, continuation cursors and read errors.
+
+Reading starts no query, worker or model call. The document is a historical
+receipt: later replacement, expiry or suppression changes future retrieval,
+not that earlier result. A model can read saved output only when an original
+tool invocation disclosed it in the same session. A direct `/ext` command and
+your `/result` reads do not disclose the document to the model.
 
 ## Inspect, replace and forget a source
 
@@ -218,6 +256,19 @@ generation. Each indexing invocation selects one or two chunk IDs; a larger
 source needs separate explicit batches. Changing a source does not automatically
 reindex it. An interrupted projection needs inspection before new work.
 
+After a failed or interrupted index command, inspect the source again. If its
+registered draft matches the same generation, embedding profile and selected
+chunks, explicitly discard that draft before restarting work:
+
+```text
+/ext ext__corpus__index {"store":"notes","embedding":"vectors","source_id":"manual:locks","generation":1,"action":"abort","chunks":["CHUNK_ID"]}
+```
+
+Approve the matching State update. Success reports `status: "ok"` and coverage
+with `status: "aborted"`, the committed source generation and its new revision.
+It makes no embedding request. A changed generation, profile or chunk selection
+refuses; inspect the current draft instead of retrying the old command.
+
 Compare the three retrieval choices on the same source:
 
 ```text
@@ -228,6 +279,10 @@ Compare the three retrieval choices on the same source:
 
 Dense retrieval uses cosine similarity. Hybrid retrieval combines lexical and
 dense rankings with reciprocal rank fusion. Both send the query to `encoder`.
+Dense citations take at most the first 200 graphemes of a chunk, bounded again
+to 1024 UTF-8 bytes. A long combining sequence can end inside that visual cluster
+while retaining valid UTF-8 and exact byte coordinates. It does not become a
+missing-vector diagnostic.
 The last command also sends candidate IDs and excerpts to `ranker`; its output
 must list every supplied ID exactly once. Inspect each egress approval, citation,
 coverage and revalidation result. The example expects the retained locks passage,
@@ -246,8 +301,11 @@ State allows 256 retained record slots and 1 MiB per namespace, including drafts
 old pages and tombstones. Collection removes unreachable bodies but does not
 recover record slots. Plan exports and a reviewed migration before filling the
 store. Selected exports are paged. An incomplete export cannot be imported as a
-complete source. Foreign copies retain historical provenance and require explicit
-reindexing or extraction.
+complete source. Foreign copies retain historical provenance and stay excluded
+from current queries after indexing or extraction. For a freshly verified current
+capture, inspect the root and repeat the ingestion procedure as an explicit
+replacement with a newer generation and current revision. Omit
+`historical_import` for that fresh capture, then build its required projections.
 
 The example uses project scope and partition `manual`. Ipse supplies the actual
 workspace namespace. Sharing with Graph requires the same operator State binding

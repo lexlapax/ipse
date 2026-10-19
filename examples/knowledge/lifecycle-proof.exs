@@ -1,3 +1,5 @@
+Code.require_file("evaluation_session.exs", __DIR__)
+
 defmodule IpseKnowledgeExample.LifecycleProof do
   @moduledoc "Barrier-controlled public domain operations, using only synthetic provider responses."
   alias Ipse.{Session, Journal, Budget, Usage}
@@ -95,6 +97,21 @@ defmodule IpseKnowledgeExample.LifecycleProof do
         true = inspect_source(session)["projections"] == coverage["projections"]
       end
 
+      index_abort = kind == "corpus" and mode in [:malformed, :unavailable]
+
+      if index_abort do
+        true = is_map(coverage["draft"])
+
+        aborted =
+          invoke(session, "index", Map.put(projection_args(kind, chunk), "action", "abort"))
+
+        "ok" = aborted["status"]
+        1 = aborted["coverage"]["generation"]
+        true = aborted["coverage"]["revision"] == coverage["revision"] + 1
+        nil = inspect_source(session)["draft"]
+        no_dispatch(http)
+      end
+
       {:ok, events} = Journal.load(session.state_dir, session.id)
       {:ok, ledger} = Usage.restore(events, session.id)
       requests = Usage.snapshot(ledger)["requests"]
@@ -118,7 +135,8 @@ defmodule IpseKnowledgeExample.LifecycleProof do
         "provider_requests" => 1,
         "idle_resume_replays" => 0,
         "session_cleanup" => "confirmed",
-        "canonical_requests" => length(requests)
+        "canonical_requests" => length(requests),
+        "index_abort_confirmed" => index_abort
       }
     after
       if Process.alive?(session.pid), do: :ok = Session.close_confirmed(session.pid)
@@ -524,7 +542,13 @@ defmodule IpseKnowledgeExample.LifecycleProof do
         await(session, monitor, command, args, deadline)
 
       {:ipse, pid, {:done, :ok}} when pid == session.pid ->
-        (Session.info(pid).extension_result || %{})["value"]
+        {:ok, value, _proof} =
+          IpseKnowledgeExample.EvaluationSession.complete_result(
+            pid,
+            Session.info(pid).extension_result
+          )
+
+        value
 
       {:ipse, pid, {:done, :cancelled}} when pid == session.pid ->
         %{"fixture_outcome" => "cancelled"}

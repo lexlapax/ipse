@@ -2,7 +2,7 @@
 
 Build Corpus for retained source retrieval, Research for an explicit investigation,
 or Graph for attributed facts and bounded traversal. Each package is a separate
-SDK artifact. Importing one does not enable another. The existing working and
+SDK-2 artifact. Importing one does not enable another. The existing working and
 persistent memory extensions keep their own selections.
 
 Follow the complete user procedures for [Corpus](../../docs/operator/corpus.md),
@@ -50,6 +50,9 @@ identity; operator scope deliberately shares across workspaces.
 
 The preset is compiled into the entrypoint. Configuration cannot change it.
 Build only the authority needed by the selected algorithms.
+All presets declare `invoke.result.pages` alongside their tool and command
+capabilities. The builder and configuration generator require matching SDK-2
+declarations; an SDK-1 artifact needs a new build rather than an options change.
 
 | Package | Presets | Additional work |
 | --- | --- | --- |
@@ -109,6 +112,30 @@ requires domain modules to remain absent from the host VM. It uses synthetic
 source text and no model service. These checks establish protocol behavior;
 they do not measure semantic answer quality or choose an embedding model.
 
+Use the same three SDK-2 artifacts to exercise complete results beyond the inline
+reply size:
+
+```sh
+mix run examples/knowledge/verify-complete-results.exs "$IPSE_KNOWLEDGE_ARTIFACTS"
+```
+
+Expect five checks. Research and Corpus each retain ten full 1024-byte quotes.
+Another Research case retains one escaped citation larger than a 4096-byte
+fragment. Graph retains eight complete claim bases while returning one evidence
+passage. A separate pair of opposing assertions keeps both polarities and citation
+bases through Graph and Corpus graph retrieval. The exercise validates complete
+byte counts and hashes, exact historical reads, inert restart, unchanged journal
+bytes and confirmed cleanup. No model
+service is used, and domain modules remain absent from the host.
+
+Small results still return inline JSON. Larger results use a `saved.result`
+descriptor for a complete document of at most 4 MiB, subject to aggregate and
+journal limits. Per-quote and request bounds remain unchanged. Read the retained
+document before consuming its domain fields; never remove quotes or provenance
+to fit a reply. Follow [contributor training](../../docs/developer/knowledge-extensions.md#publish-and-read-the-complete-domain-value)
+for SDK ownership and [the user procedure](../../docs/operator/extensions.md#read-a-saved-result)
+for `ipse result` and `/result` examples.
+
 Run `mix run examples/knowledge/verify-independence.exs "$IPSE_KNOWLEDGE_ARTIFACTS"`
 to pair each package with session-, project- and operator-scoped memory. It checks
 idle/resume dispatch counters, explicit note/evidence isolation and the combined
@@ -137,6 +164,7 @@ For an extracted runtime, run:
 ```sh
 elixir examples/knowledge/verify-package.exs dist/ipse-*.tar.gz "$IPSE_KNOWLEDGE_ARTIFACTS"
 elixir examples/knowledge/verify-package.exs dist/ipse-*.tar.gz "$IPSE_KNOWLEDGE_ARTIFACTS" independence
+elixir examples/knowledge/verify-package.exs dist/ipse-*.tar.gz "$IPSE_KNOWLEDGE_ARTIFACTS" complete
 elixir examples/knowledge/verify-mcp-package.exs dist/ipse-*.tar.gz /path/to/corpus-mcp
 elixir examples/knowledge/verify-mcp-package.exs dist/ipse-*.tar.gz /path/to/research-mcp research
 ```
@@ -144,3 +172,9 @@ elixir examples/knowledge/verify-mcp-package.exs dist/ipse-*.tar.gz /path/to/res
 The verifiers hide development tools from the runtime PATH and check that the
 archive and extracted host files remain unchanged. The MCP fixture needs loopback
 sockets. Keep one matching archive in `dist/` or supply its exact path.
+The `complete` mode compiles its trusted proof harness in the outer development
+VM, then runs its prebuilt BEAMs and the selected artifact BEAMs inside the
+extracted runtime. Its PATH contains declared host utilities and bundled `erl`,
+with no system development toolchain. It also checks unchanged artifact and
+proof-harness files. The archive and artifacts must match the platform and OTP
+release used to build them.

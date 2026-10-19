@@ -563,7 +563,10 @@ defmodule Ipse.KnowledgeQueryCompletenessTest do
         wait(run, policy, deadline)
 
       {:ipse, pid, {:done, :ok}} when pid == run.pid ->
-        Session.info(pid).extension_result["value"]
+        assert {:ok, value, _proof} =
+                 EvaluationSession.complete_result(pid, Session.info(pid).extension_result)
+
+        value
 
       {:ipse, pid, _} when pid == run.pid ->
         wait(run, policy, deadline)

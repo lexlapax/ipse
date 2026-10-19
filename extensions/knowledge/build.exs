@@ -47,7 +47,7 @@ try do
   end
 
   description = module.describe()
-  true = description["sdk"] == 1
+  true = description["sdk"] === 2
   true = description["capabilities"] == IpseKnowledge.Profiles.capabilities(package, preset)
   File.rm!(entry_path)
   File.cp!(Path.expand("../../LICENSE", __DIR__), Path.join(temporary, "LICENSE"))
@@ -66,7 +66,7 @@ try do
     "format" => 1,
     "id" => "ipse-knowledge/" <> package,
     "version" => "0.1.0",
-    "sdk" => 1,
+    "sdk" => 2,
     "protocol" => 1,
     "backend" => "elixir_worker",
     "entrypoint" => module |> Atom.to_string() |> String.replace_prefix("Elixir.", ""),

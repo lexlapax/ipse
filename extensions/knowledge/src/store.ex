@@ -311,7 +311,14 @@ defmodule IpseKnowledge.Store do
 
   defp advance(%{stage: :committed, operation: operation}, value)
        when operation in [:abort, :projection_abort],
-       do: {:done, {:ok, %{"status" => "aborted", "revision" => value["record"]["revision"]}}}
+       do:
+         {:done,
+          {:ok,
+           %{
+             "status" => "aborted",
+             "generation" => value["record"]["value"]["generation"],
+             "revision" => value["record"]["revision"]
+           }}}
 
   defp advance(%{stage: :committed} = state, value) do
     root = value["record"]["value"]

@@ -57,6 +57,11 @@ jobs:
       - name: Independent knowledge preset admission
         run: |
           mix run examples/knowledge/verify-builds.exs _build/dev/lib/ipse/ebin "$RUNNER_TEMP/ipse-knowledge-presets"
+      - name: Independent source and installed saved-result proof
+        run: |
+          elixir examples/saved-results/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-saved-results"
+          mix run examples/saved-results/verify.exs "$RUNNER_TEMP/ipse-saved-results"
+          elixir examples/saved-results/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-saved-results"
       - name: Independent source and installed knowledge proof
         run: |
           elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-knowledge/corpus" --package corpus --preset state-lexical
@@ -65,6 +70,7 @@ jobs:
           elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-knowledge/corpus-mcp" --package corpus --preset mcp-lexical
           elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-knowledge/research-mcp" --package research --preset mcp
           mix run examples/knowledge/verify.exs "$RUNNER_TEMP/ipse-knowledge"
+          mix run examples/knowledge/verify-complete-results.exs "$RUNNER_TEMP/ipse-knowledge"
           mix run examples/knowledge/verify-independence.exs "$RUNNER_TEMP/ipse-knowledge"
           mix run examples/knowledge/verify-evaluation.exs "$RUNNER_TEMP/ipse-knowledge/corpus"
           mix run examples/knowledge/verify-mcp.exs "$RUNNER_TEMP/ipse-knowledge/corpus-mcp"
@@ -73,6 +79,7 @@ jobs:
           mix run examples/knowledge/verify-lifecycle.exs "$RUNNER_TEMP/ipse-knowledge-presets/graph-state-model" graph
           mix run examples/knowledge/verify-lifecycle.exs "$RUNNER_TEMP/ipse-knowledge-presets/corpus-state-dense" corpus
           elixir examples/knowledge/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-knowledge"
+          elixir examples/knowledge/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-knowledge" complete
           elixir examples/knowledge/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-knowledge" independence
           elixir examples/knowledge/verify-mcp-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-knowledge/corpus-mcp"
           elixir examples/knowledge/verify-mcp-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-knowledge/research-mcp" research

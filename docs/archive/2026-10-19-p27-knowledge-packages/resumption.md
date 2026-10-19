@@ -193,9 +193,46 @@ and bundled `erl` on PATH; its archive, artifact, host and prebuilt harness rema
 unchanged. The [review record](result-transport-review.md) owns the hashes and
 verification boundary.
 
-Exact-source Linux/hosted gates and knowledge quality remain open. Knowledge
-packages still use their prior inline finish paths and must migrate to SDK 2
-before their result-capacity boundary is closed.
+At exact generic host `11d067f`, Serenity's native-enabled source suite passes
+1,258 tests with 15 exclusions, followed by demo, packaging, extracted verification
+and exact 4-MiB source/installed saved-result proofs. Hosted run
+[39328913714](https://github.com/lexlapax/ipse/actions/runs/39328913714) is red on
+both platforms from twelve invalid tests in compiler-marker fixture setup under
+Elixir 1.18. The corrected isolation fixture passes twelve tests under 1.18.5;
+the next integrated candidate still requires its own green platform gates.
+
+The later
+[domain migration](complete-domain-results.md) moves all fifteen presets to SDK 2
+and materializes complete values before evaluation. Its actual source/installed
+checks preserve full Corpus/Research quotes and Graph bases outside top-k evidence.
+Whole-milestone adversarial review then found dropped counterassertions, dense
+Unicode excerpts falsely reported as missing vectors and successful index aborts
+reported as conflicts. All three were independently reproduced and repaired.
+An independent follow-up then found case-sensitive object comparison inconsistent
+with traversal's case-insensitive entity identity. That fourth defect was also
+reproduced and repaired, with both opposite-polarity and equivalent-positive
+regressions. A fresh whole-milestone review reports no remaining actionable
+implementation finding within its documented coverage; all 82 reviewed file
+hashes match at that checkpoint.
+Refreshed five-case source/installed proofs and seven-case Corpus lifecycle
+proofs pass. The domain-result record distinguishes those checks from final
+integrated review, source baseline, platform and quality gates.
+
+The repaired integration's full source baseline now passes 1,248 tests with
+32 exclusions in 724.9 seconds. Build, both formatter versions, strict compile,
+CI policy and demo pass. The failed abort-test isolation assertion is reproduced
+and corrected without removing any production-module isolation checks; its
+interrupted full run remains negative evidence. The replacement completed without
+SIGTERM. Fresh independent artifacts pass all fifteen preset checks, five complete-
+result cases and sixteen base groups in source/installed execution. Platform
+checks for the committed candidate and the quality/resource gates remain open.
+
+The user requires exact peak memory measurements before the new comparison.
+Kernel largest-process lifetime RSS high water and simultaneous combined-process
+peak are different measures. The second scope question remains pending; no
+sampled total is accepted as an exact peak. An isolated owned model service and
+private verified cache will be necessary for attribution. The existing Ollama
+service and original interrupted comparison remain untouched.
 
 ## Synthetic result and identity reproduction
 

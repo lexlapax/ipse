@@ -1,3 +1,5 @@
+Code.require_file("evaluation_session.exs", __DIR__)
+
 defmodule IpseKnowledgeExample.Proof do
   @moduledoc false
   alias Ipse.{Session, Journal}
@@ -861,7 +863,14 @@ defmodule IpseKnowledgeExample.Proof do
   defp invoke(pid, package, command, arguments) do
     :ok = Session.invoke_export(pid, :command, "ext__" <> package <> "__" <> command, arguments)
     wait(pid, System.monotonic_time(:millisecond) + 30_000)
-    Session.info(pid).extension_result["value"]
+
+    {:ok, value, _proof} =
+      IpseKnowledgeExample.EvaluationSession.complete_result(
+        pid,
+        Session.info(pid).extension_result
+      )
+
+    value
   end
 
   defp wait(pid, deadline) do

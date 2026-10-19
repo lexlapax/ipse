@@ -12,6 +12,8 @@ teaches their ownership and execution flow. The
 [plan](../../plan.md#p27-optional-research-graph-and-rag) owns acceptance status.
 The later [complete-result review](result-transport-review.md) records the generic
 SDK-2 publication boundary and its remaining integration gates.
+The [complete domain-result record](complete-domain-results.md) follows the
+knowledge packages and evaluation consumers through that boundary.
 
 ## Implementation and corrections
 

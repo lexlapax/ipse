@@ -6,7 +6,7 @@ defmodule IpseKnowledge.Research do
 
   def describe do
     %{
-      "sdk" => 1,
+      "sdk" => 2,
       "capabilities" => Profiles.capabilities("research", @preset),
       "exports" => %{
         "version" => 1,
@@ -468,10 +468,16 @@ defmodule IpseKnowledge.Research do
         Enum.all?(basis, &text?(&1, 1024))
 
   defp finish(state, value) do
-    safe =
-      if byte_size(JSON.encode!(value)) <= 12_000, do: value, else: refused(:result_too_large)
+    {:ok, reply} =
+      case Ipse.Extension.ResultPublication.prepare(value) do
+        {:ok, _} = prepared ->
+          prepared
 
-    {:ok, %{"api_version" => 1, "kind" => "result", "value" => safe}, %{state | phase: :idle}}
+        {:error, :invalid_result_document} ->
+          Ipse.Extension.ResultPublication.prepare(refused(:result_too_large))
+      end
+
+    {:ok, reply, %{state | phase: :idle}}
   end
 
   defp output(status, evidence, claims, gaps, coverage, continuation),

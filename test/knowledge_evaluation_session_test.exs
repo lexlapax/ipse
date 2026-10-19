@@ -9,7 +9,7 @@ defmodule Ipse.KnowledgeEvaluationSessionTest do
     root = Path.join(System.tmp_dir!(), "ipse-evaluation-fault-artifact-" <> Ipse.Usage.id())
     artifact = Path.join(root, "artifact")
     File.mkdir_p!(Path.join(artifact, "ebin"))
-    capabilities = ["invoke.command"]
+    capabilities = ["invoke.command", "invoke.result.pages"]
 
     descriptor = %{
       "id" => "source",
@@ -33,7 +33,7 @@ defmodule Ipse.KnowledgeEvaluationSessionTest do
     source = """
     defmodule #{entrypoint} do
       @behaviour Ipse.Extension
-      def describe, do: %{"sdk" => 1, "capabilities" => #{inspect(capabilities)}, "exports" => #{inspect(exports)}}
+      def describe, do: %{"sdk" => 2, "capabilities" => #{inspect(capabilities)}, "exports" => #{inspect(exports)}}
       def init(options), do: {:ok, options}
       def handle("invoke.command", payload, options) do
         args = payload["arguments"]
@@ -53,7 +53,13 @@ defmodule Ipse.KnowledgeEvaluationSessionTest do
         value = %{"version" => 1, "status" => if(continuation, do: "draft", else: "ok"),
           "coverage" => %{}, "evidence" => [], "claims" => [], "gaps" => [],
           "continuation" => continuation}
-        {:ok, %{"api_version" => 1, "kind" => "result", "value" => value}, options}
+        value = if options["mode"] == "large" do
+          Map.put(value, "complete_evidence", [String.duplicate("a", 8192), String.duplicate("b", 8192)])
+        else
+          value
+        end
+        {:ok, publication} = Ipse.Extension.ResultPublication.prepare(value)
+        {:ok, publication, options}
       end
     end
     """
@@ -75,7 +81,7 @@ defmodule Ipse.KnowledgeEvaluationSessionTest do
       "format" => 1,
       "id" => "fixture/evaluation-driver-faults",
       "version" => "0.1.0",
-      "sdk" => 1,
+      "sdk" => 2,
       "protocol" => 1,
       "backend" => "elixir_worker",
       "entrypoint" => entrypoint,
@@ -85,7 +91,7 @@ defmodule Ipse.KnowledgeEvaluationSessionTest do
         "required" => ~w(mode log ready),
         "additionalProperties" => false,
         "properties" => %{
-          "mode" => %{"type" => "string", "enum" => ~w(bad_open bad_append hang)},
+          "mode" => %{"type" => "string", "enum" => ~w(bad_open bad_append hang large)},
           "log" => %{"type" => "string"},
           "ready" => %{"type" => "string"}
         }
@@ -221,6 +227,86 @@ defmodule Ipse.KnowledgeEvaluationSessionTest do
     assert {:error, %{"cleanup" => "unconfirmed", "snapshot" => saved}} = Evaluation.close(next)
     assert saved["session_id"] == run.session_id
     await_worker_exit(paths.ready)
+  end
+
+  test "saved results are fully materialized before receipts expose a domain value", ctx do
+    {run, paths} = open(ctx, "large")
+
+    assert {:ok, receipt, next} =
+             Evaluation.invoke(run, "inspect", %{
+               "store" => "notes",
+               "source_id" => "fixture:source"
+             })
+
+    assert receipt["completion_confirmed"]
+    assert receipt["status"] == "ok"
+    assert receipt["materialization_error"] == nil
+    assert receipt["delivery"]["kind"] == "saved.result"
+    proof = receipt["complete_result"]
+    bytes = Base.decode64!(proof["bytes_base64"])
+    assert byte_size(bytes) > 16_384
+    assert byte_size(bytes) == proof["byte_count"]
+    assert sha(bytes) == proof["sha256"]
+    assert sha(bytes) == receipt["delivery"]["sha256"]
+    assert JSON.decode!(bytes) == receipt["value"]
+
+    assert receipt["value"]["complete_evidence"] == [
+             String.duplicate("a", 8192),
+             String.duplicate("b", 8192)
+           ]
+
+    assert proof["provenance"] == "historical_receipt"
+
+    display = %{
+      "delivery" => receipt["delivery"],
+      "value" => %{"status" => "ok", "partial" => true}
+    }
+
+    forged = put_in(display, ["delivery", "sha256"], String.duplicate("0", 64))
+    assert {:error, :complete_result_unavailable} = Evaluation.complete_result(run.pid, forged)
+
+    :sys.replace_state(run.pid, fn state ->
+      %{state | extension_result_sources: %Ipse.Extensions.ResultSource.Index{}}
+    end)
+
+    assert {:error, :complete_result_unavailable} = Evaluation.complete_result(run.pid, display)
+    assert actions(paths.log) == ["inspect"]
+    assert {:ok, snapshot} = Evaluation.snapshot(next)
+    assert snapshot["accounting"]["request_count"] == 0
+    assert {:ok, %{"cleanup" => "confirmed"}} = Evaluation.close(next)
+  end
+
+  test "a lost saved source retains the completed first receipt as failed without retry", ctx do
+    {run, paths} = open(ctx, "large")
+
+    invocation =
+      Task.async(fn ->
+        Evaluation.invoke(run, "inspect", %{"store" => "notes", "source_id" => "fixture:source"})
+      end)
+
+    # Hold the completed notification until the immutable-source read is unavailable.
+    pid = run.pid
+    assert_receive {:ipse, ^pid, {:done, :ok}} = completed, 10_000
+
+    :sys.replace_state(pid, fn state ->
+      %{state | extension_result_sources: %Ipse.Extensions.ResultSource.Index{}}
+    end)
+
+    send(invocation.pid, completed)
+
+    assert {:error, {:command_failed, "failed"}, next} = Task.await(invocation, 10_000)
+    [receipt] = next.receipts
+    assert receipt["completion_confirmed"]
+    assert receipt["observation_outcome"] == "completed"
+    assert receipt["status"] == "failed"
+    assert receipt["materialization_error"] == "complete_result_unavailable"
+    assert receipt["delivery"]["kind"] == "saved.result"
+    assert receipt["complete_result"] == nil
+    assert receipt["value"] == nil
+    assert actions(paths.log) == ["inspect"]
+    assert {:ok, snapshot} = Evaluation.snapshot(next)
+    assert snapshot["accounting"]["request_count"] == 0
+    assert {:ok, %{"cleanup" => "confirmed"}} = Evaluation.close(next)
   end
 
   test "unexpected paging diagnostics exclude arguments and unrecognized receipt strings" do

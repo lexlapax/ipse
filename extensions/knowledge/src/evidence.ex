@@ -482,14 +482,16 @@ defmodule IpseKnowledge.Evidence do
           limits
         )
 
+      context = claim_context(selected, valid["facts"])
+
       evidence =
-        selected
+        context
         |> Enum.flat_map(& &1["citations"])
         |> Enum.uniq_by(&span_key/1)
         |> Enum.map(&%{"citation" => &1, "score" => 1.0, "method" => "graph"})
         |> Enum.take(limits["top_k"])
 
-      {:ok, claims} = classify(evidence, selected, seed)
+      {:ok, claims} = classify(evidence, context, seed)
 
       {:ok,
        result(evidence, claims, valid["gaps"], %{
@@ -497,6 +499,8 @@ defmodule IpseKnowledge.Evidence do
          "method" => "graph",
          "nodes" => MapSet.size(nodes),
          "edges" => length(selected),
+         "context_facts" => length(context),
+         "counterassertions" => length(context) - length(Enum.uniq_by(selected, & &1["fact_id"])),
          "complete" => not truncated
        })}
     else
@@ -511,16 +515,7 @@ defmodule IpseKnowledge.Evidence do
          text?(query, 1024) do
       claims =
         Enum.map(facts, fn f ->
-          conflict =
-            Enum.any?(facts, fn other ->
-              other["fact_id"] != f["fact_id"] and
-                String.downcase(other["subject"]) == String.downcase(f["subject"]) and
-                String.downcase(other["predicate"]) == String.downcase(f["predicate"]) and
-                ((other["polarity"] == "positive" and f["polarity"] == "positive" and
-                    other["object"] != f["object"]) or
-                   (other["object"] == f["object"] and other["polarity"] != f["polarity"])) and
-                overlaps?(f, other)
-            end)
+          conflict = Enum.any?(facts, &conflicts?(f, &1))
 
           label =
             cond do
@@ -534,6 +529,7 @@ defmodule IpseKnowledge.Evidence do
             "subject" => f["subject"],
             "predicate" => f["predicate"],
             "object" => f["object"],
+            "polarity" => f["polarity"],
             "label" => label,
             "basis" => f["citations"],
             "uncertainty" => "predicted_from_attributed_assertion"
@@ -554,6 +550,31 @@ defmodule IpseKnowledge.Evidence do
     else
       {:error, :invalid_claims}
     end
+  end
+
+  defp claim_context(selected, facts) do
+    selected = Enum.uniq_by(selected, & &1["fact_id"])
+    selected_ids = MapSet.new(selected, & &1["fact_id"])
+
+    counterassertions =
+      facts
+      |> Enum.reject(&MapSet.member?(selected_ids, &1["fact_id"]))
+      |> Enum.filter(fn fact -> Enum.any?(selected, &conflicts?(&1, fact)) end)
+      |> Enum.uniq_by(& &1["fact_id"])
+      |> Enum.sort_by(& &1["fact_id"])
+
+    selected ++ counterassertions
+  end
+
+  defp conflicts?(fact, other) do
+    same_object = String.downcase(other["object"]) == String.downcase(fact["object"])
+
+    other["fact_id"] != fact["fact_id"] and
+      String.downcase(other["subject"]) == String.downcase(fact["subject"]) and
+      String.downcase(other["predicate"]) == String.downcase(fact["predicate"]) and
+      ((other["polarity"] == "positive" and fact["polarity"] == "positive" and not same_object) or
+         (same_object and other["polarity"] != fact["polarity"])) and
+      overlaps?(fact, other)
   end
 
   def public_claims(evidence, claims) do
@@ -723,9 +744,10 @@ defmodule IpseKnowledge.Evidence do
     split_utf8(rest, max, start + byte_size(part), [{start, part} | acc])
   end
 
-  defp utf8_prefix(text, max) when byte_size(text) <= max, do: {text, ""}
+  @doc false
+  def utf8_prefix(text, max) when byte_size(text) <= max, do: {text, ""}
 
-  defp utf8_prefix(text, max) do
+  def utf8_prefix(text, max) do
     part = binary_part(text, 0, max)
 
     if String.valid?(part),

@@ -6,6 +6,7 @@ defmodule IpseKnowledge.PackagesIsolationTest do
   for file <- ~w(evidence profiles store/state store/mcp_cas store adapters corpus research graph) do
     Code.require_file(Path.join("extensions/knowledge/src", file <> ".ex"))
   end
+  Code.require_file("extensions/knowledge/spec.exs")
 
   defmodule DomainPackagesSuite do
     use ExUnit.Case, async: false
@@ -17,10 +18,29 @@ defmodule IpseKnowledge.PackagesIsolationTest do
         {IpseKnowledge.Graph, ~w(source extract query)}
       ] do
         descriptor = module.describe()
-        assert descriptor["sdk"] == 1
+        assert descriptor["sdk"] == 2
+        assert "invoke.result.pages" in descriptor["capabilities"]
         assert Enum.map(descriptor["exports"]["commands"], & &1["id"]) == commands
         assert length(descriptor["exports"]["tools"]) == 1
         assert descriptor["exports"]["services"] == []
+      end
+    end
+
+    test "operator configuration binds the selected SDK2 artifact and page capability" do
+      alias IpseKnowledge.{BuildSpec, Research}
+      descriptor = Research.describe()
+      manifest = Map.merge(descriptor, %{"id" => "ipse-knowledge/research",
+        "entrypoint" => "IpseKnowledge.Research", "options_schema" => BuildSpec.options_schema()})
+      configure = fn selected -> BuildSpec.operator(JSON.encode!(selected), "research", "offline",
+        "research", offline_options(), nil, %{}) end
+      config = configure.(manifest)
+      assert hd(config["extensions"])["enabled"] == false
+      assert hd(config["extension_trust"])["capabilities"] == descriptor["capabilities"]
+      for incompatible <- [Map.put(manifest, "sdk", 1), Map.put(manifest, "sdk", 2.0),
+        Map.put(manifest, "capabilities", descriptor["capabilities"] -- ["invoke.result.pages"])] do
+        assert_raise ArgumentError, "Artifact does not match the selected package and preset.", fn ->
+          configure.(incompatible)
+        end
       end
     end
 
@@ -87,6 +107,53 @@ defmodule IpseKnowledge.PackagesIsolationTest do
       [candidate]=JSON.decode!(request["input"])["candidates"]
       assert byte_size(candidate["quote"])<=128
       assert String.valid?(candidate["quote"]) and String.starts_with?(quote,candidate["quote"])
+    end
+
+    test "dense and hybrid citations keep a valid byte span for a long combining grapheme" do
+      alias IpseKnowledge.{Evidence, Corpus}
+      for kind <- ~w(dense hybrid),
+          text <- [String.duplicate("a", 1100), "a" <> String.duplicate(<<0x0301::utf8>>, 600)],
+          indexed <- [true, false] do
+        {:ok, source}=Evidence.source(%{"source_id"=>"unicode", "partition"=>"notes", "generation"=>1,
+          "title"=>"Unicode", "text"=>text, "uri"=>"local:unicode", "observed_at_ms"=>1,
+          "event_at_ms"=>nil, "expires_at_ms"=>nil, "origin"=>%{"kind"=>"provided",
+          "store_profile"=>"notes", "partition_or_scope"=>"notes", "receipt"=>nil, "historical"=>false}})
+        {:ok,[chunk]}=Evidence.chunks(source)
+        {:ok,vector}=Evidence.vector(%{"chunk_id"=>chunk["chunk_id"], "input_sha256"=>Evidence.sha256(text),
+          "profile"=>"encoder", "model"=>"test", "dimensions"=>1, "values"=>[1.0]})
+        input=%{"chunk_id"=>Evidence.sha256("query"), "text"=>"query"}
+        bytes=<<1.0::little-float-size(32)>>
+        descriptor=%{"version"=>2, "kind"=>"embedding.f32le", "encoding"=>"float32le.base64",
+          "vector_count"=>1, "dimensions"=>1, "source_sha256"=>Evidence.sha256("source"),
+          "operation_id"=>String.duplicate("1",32)}
+        page=Map.merge(Map.take(descriptor,~w(version kind encoding dimensions source_sha256 operation_id)),
+          %{"vector_index"=>0, "offset"=>0, "complete"=>true, "next"=>nil,
+            "input_sha256"=>Evidence.sha256("query"), "vector_sha256"=>Evidence.sha256(bytes), "values"=>Base.encode64(bytes)})
+        cont=%{phase: :embedding_read, descriptor: descriptor, inference: %{"reported_model"=>"test", "usage"=>%{}},
+          host_profile: "encoder", inputs: [input], raw_hashes: [Evidence.sha256("query")], vector_index: 0,
+          offset: 0, bytes: <<>>, input_hash: nil, vector_hash: nil, vectors: [], reads: 0, effects: 1}
+        snapshot=%{"sources"=>[source], "projections"=>%{source["source_key"]=>%{"vectors"=>if(indexed,do: [vector],else: [])}},
+          "tokens"=>[], "gaps"=>[], "coverage"=>%{}}
+        ctx=%{snapshot: snapshot, args: %{"query"=>"query", "top_k"=>1, "store"=>"notes", "rerank"=>nil},
+          retrieval: %{"kind"=>kind, "missing_embedding"=>"refuse"},
+          store_profile: %{"kind"=>"state", "scope"=>"project", "partition"=>"notes"}, as_of_ms: 2}
+        state=%{resolved: %{}, phase: :query_embed, pending: :adapter, cont: cont, ctx: ctx}
+        assert {:ok,%{"kind"=>"result", "value"=>result},_}=
+          Corpus.handle("host.actions",%{"outcome"=>%{"status"=>"ok", "value"=>page}},state)
+        if indexed do
+          assert result["status"]=="ok" and result["gaps"]==[]
+          assert result["coverage"]["revalidated"]
+          [candidate]=result["evidence"]
+          citation=candidate["citation"]
+          assert String.valid?(citation["quote"]) and byte_size(citation["quote"]) in 1..1024
+          assert citation["quote"]==binary_part(text,0,citation["end_byte"])
+          assert citation["start_byte"]==0 and citation["quote_sha256"]==Evidence.sha256(citation["quote"])
+          assert byte_size(citation["quote"])==if(String.starts_with?(text,"aa"),do: 200,else: 1023)
+        else
+          assert result["status"]=="refused"
+          assert result["gaps"]==[%{"code"=>"missing_embedding"}]
+        end
+      end
     end
 
     test "successful model rerank preserves Corpus and Research contexts through completion" do
@@ -165,7 +232,8 @@ defmodule IpseKnowledge.PackagesIsolationTest do
       end
     end
 
-    test "ten-source allowance does not widen the result byte ceiling" do
+    test "ten full citations use SDK2 publication without losing quote bytes or provenance" do
+      alias IpseKnowledge.Evidence
       sources = Enum.map(1..10, fn n ->
         %{"source_id" => "s#{n}", "generation" => 1, "title" => "Locks",
           "text" => "Lock " <> String.duplicate("files ", 170), "uri" => "local:s#{n}",
@@ -173,10 +241,57 @@ defmodule IpseKnowledge.PackagesIsolationTest do
       end)
       {:ok, state} = IpseKnowledge.Research.init(offline_options())
       args = investigation(sources) |> put_in(["limits", "max_sources"], 10)
-      assert {:ok, %{"kind" => "result", "value" => result}, _} =
+        |> Map.put("as_of_ms", 20)
+      assert {:ok, %Ipse.Extension.ResultPublication.Output{} = publication, %{phase: :idle}} =
         IpseKnowledge.Research.handle("invoke.command", %{"id" => "investigate", "arguments" => args}, state)
-      assert result["status"] == "refused"
-      assert result["gaps"] == [%{"code" => "result_too_large"}]
+      assert publication.byte_count > 12_000
+      assert publication.byte_count == byte_size(publication.bytes)
+      assert publication.sha256 == Evidence.sha256(publication.bytes)
+      result = JSON.decode!(publication.bytes)
+      assert result["status"] == "ok"
+      normalized = Enum.map(sources, fn source ->
+        {:ok, value} = Evidence.source(Map.merge(source, %{"partition" => "research-provided",
+          "origin" => %{"kind" => "provided", "store_profile" => nil,
+            "partition_or_scope" => nil, "receipt" => nil, "historical" => false}}))
+        value
+      end)
+      {:ok, rank} = Evidence.rank_lexical(normalized, args["query"], 10, 20)
+      assert result["evidence"] == rank["evidence"]
+      assert length(result["evidence"]) == 10
+      for item <- result["evidence"] do
+        citation = item["citation"]
+        source = Enum.find(normalized, &(&1["source_id"] == citation["source_id"]))
+        assert byte_size(citation["quote"]) == 1024
+        assert Evidence.valid_span?(source, citation)
+      end
+      assert result["claims"] == [%{"label" => "open", "evidence_indexes" => Enum.to_list(0..9),
+        "uncertainty" => "semantic_support_unassessed"}]
+      assert result["coverage"]["source_count"] == 10
+      assert result["coverage"]["bytes"] == Enum.sum(Enum.map(sources, &byte_size(&1["text"])))
+    end
+
+    test "one escaped citation crosses a transport fragment without changing its quote" do
+      text = "Lock " <> String.duplicate(<<1>>, 1019)
+      sources = Enum.map(1..10, fn n ->
+        %{"source_id" => "s#{n}", "generation" => 1, "title" => "Locks",
+          "text" => if(n == 1, do: text, else: "Lock files preserve inode identity."),
+          "uri" => "local:s#{n}", "observed_at_ms" => 1,
+          "event_at_ms" => nil, "expires_at_ms" => nil}
+      end)
+      {:ok, state} = IpseKnowledge.Research.init(offline_options())
+      args = investigation(sources) |> put_in(["limits", "max_sources"], 10)
+      assert byte_size(JSON.encode!(args)) <= 12_000
+      assert {:ok, %Ipse.Extension.ResultPublication.Output{} = publication, _} =
+        IpseKnowledge.Research.handle("invoke.command", %{"id" => "investigate", "arguments" => args}, state)
+      result = JSON.decode!(publication.bytes)
+      assert length(result["evidence"]) == 10
+      citation = Enum.find_value(result["evidence"], fn item ->
+        if item["citation"]["source_id"] == "s1", do: item["citation"]
+      end)
+      assert byte_size(JSON.encode!(citation)) > 4096
+      assert citation["quote"] == text
+      assert citation["quote_sha256"] == IpseKnowledge.Evidence.sha256(text)
+      assert citation["origin"]["kind"] == "provided"
     end
 
     test "explicit research time applies observation and expiry while invalid times refuse" do
@@ -468,8 +583,16 @@ defmodule IpseKnowledge.PackagesIsolationTest do
     elixir = System.find_executable("elixir")
     assert is_binary(elixir)
 
+    dependency_paths =
+      for module <- [Jason, JSONSchex, ExJSONPointer],
+          path = module |> :code.which() |> to_string() |> Path.dirname(),
+          do: ["-pa", path]
+
     {output, status} =
-      System.cmd(elixir, ["-pa", sdk_ebin, "-e", @suite], cd: root, stderr_to_stdout: true)
+      System.cmd(elixir, ["-pa", sdk_ebin] ++ List.flatten(dependency_paths) ++ ["-e", @suite],
+        cd: root,
+        stderr_to_stdout: true
+      )
 
     assert status == 0, output
     refute Code.ensure_loaded?(IpseKnowledge.Corpus)

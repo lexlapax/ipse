@@ -134,22 +134,31 @@ defmodule Ipse.Extensions.ResultSessionTest do
     end
     """)
 
+    compiler = """
+    destination = #{inspect(Path.join(source, "ebin"))}
+    Code.prepend_path(destination)
+    {:ok, [module], _} = Kernel.ParallelCompiler.compile_to_path([#{inspect(fixture)}], destination)
+    Code.ensure_loaded!(module)
+    """
+
     {output, status} =
       System.cmd(
-        System.find_executable("elixirc"),
+        System.find_executable("elixir"),
         [
           "-pa",
           Application.app_dir(:ipse, "ebin"),
           "-pa",
           Application.app_dir(:jason, "ebin"),
-          "-o",
-          Path.join(source, "ebin"),
-          fixture
+          "-e",
+          compiler
         ],
         stderr_to_stdout: true
       )
 
     assert status == 0, output
+    assert File.read!(marker) == "loaded\n"
+    File.rm!(marker)
+    refute File.exists?(marker)
     File.write!(Path.join(source, "LICENSE"), "MIT synthetic fixture")
 
     manifest = %{

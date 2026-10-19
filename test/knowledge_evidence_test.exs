@@ -182,6 +182,98 @@ defmodule Ipse.KnowledgeEvidenceTest do
     ''')
   end
 
+  test "graph conflict context preserves opposing polarity and every basis beyond top k" do
+    pure(~S'''
+    s=source.("Release requires lock. Release does not require lock.",%{})
+    positive=fact.("Release","lock",cite.(s,"Release requires lock."))
+    {:ok,negative}=E.fact(positive |> Map.drop(~w(version fact_id)) |> Map.merge(%{"polarity"=>"negative","citations"=>[cite.(s,"Release does not require lock.")]}))
+    limits=%{"depth"=>2,"max_nodes"=>128,"max_edges"=>256,"top_k"=>1}
+    {:ok,result}=E.traverse([s],[negative,positive,negative],"Release",limits,20)
+    assert result["coverage"]["complete"]
+    assert result["coverage"]["edges"]==1 and result["coverage"]["nodes"]==2
+    assert result["coverage"]["context_facts"]==2 and result["coverage"]["counterassertions"]==1
+    assert length(result["evidence"])==1
+    assert Enum.map(result["claims"],& &1["fact_id"])==[positive["fact_id"],negative["fact_id"]]
+    assert Enum.map(result["claims"],& &1["polarity"])==["positive","negative"]
+    assert Enum.all?(result["claims"],&(&1["label"]=="conflict"))
+    assert Enum.map(result["claims"],& &1["basis"])==[positive["citations"],negative["citations"]]
+    assert E.public_claims(result["evidence"],result["claims"])==result["claims"]
+    assert hd(result["evidence"])["citation"]==hd(positive["citations"])
+    {:ok,no_path}=E.traverse([s],[negative],"Release",limits,20)
+    assert no_path["evidence"]==[] and hd(no_path["claims"])["label"]=="open"
+    assert no_path["coverage"]["edges"]==0 and no_path["coverage"]["context_facts"]==0
+    ''')
+  end
+
+  test "graph conflict identity ignores object case while preserving exact fact attribution" do
+    pure(~S'''
+    s=source.("Release requires lock. RELEASE does not require LOCK. Release requires LOCK.",%{})
+    positive=fact.("Release","lock",cite.(s,"Release requires lock."))
+    {:ok,negative}=E.fact(positive |> Map.drop(~w(version fact_id)) |> Map.merge(%{"subject"=>"RELEASE","predicate"=>"REQUIRES","object"=>"LOCK","polarity"=>"negative","citations"=>[cite.(s,"RELEASE does not require LOCK.")]}))
+    equivalent=fact.("RELEASE","LOCK",cite.(s,"Release requires LOCK."))
+    limits=%{"depth"=>1,"max_nodes"=>2,"max_edges"=>2,"top_k"=>1}
+    for facts <- [[positive,negative],[negative,positive],[positive,equivalent],[equivalent,positive]] do
+      expected=if Enum.any?(facts,&(&1["polarity"]=="negative")),do: "conflict",else: "supported"
+      {:ok,direct}=E.classify([],facts,"release")
+      assert Enum.all?(direct,&(&1["label"]==expected))
+      {:ok,result}=E.traverse([s],facts,"release",limits,20)
+      assert result["coverage"]["complete"]
+      assert result["coverage"]["nodes"]==2 and result["coverage"]["context_facts"]==2
+      assert result["coverage"]["edges"]==if(expected=="conflict",do: 1,else: 2)
+      assert result["coverage"]["counterassertions"]==if(expected=="conflict",do: 1,else: 0)
+      assert length(result["evidence"])==1
+      assert Enum.all?(result["claims"],&(&1["label"]==expected))
+      assert Map.new(result["claims"],&{&1["fact_id"],Map.take(&1,~w(subject predicate object polarity))})==
+        Map.new(facts,&{&1["fact_id"],Map.take(&1,~w(subject predicate object polarity))})
+      assert Map.new(result["claims"],&{&1["fact_id"],&1["basis"]})==Map.new(facts,&{&1["fact_id"],&1["citations"]})
+      assert E.public_claims(result["evidence"],result["claims"])==result["claims"]
+    end
+    ''')
+  end
+
+  test "graph counterassertions exclude unrelated inactive and replaced assertions" do
+    pure(~S'''
+    s=source.("Release requires lock. Release does not require lock.",%{})
+    positive=fact.("Release","lock",cite.(s,"Release requires lock."))
+    attrs=positive |> Map.drop(~w(version fact_id)) |> Map.merge(%{"polarity"=>"negative","citations"=>[cite.(s,"Release does not require lock.")]})
+    {:ok,unrelated}=E.fact(Map.put(attrs,"subject","Other"))
+    {:ok,other_predicate}=E.fact(Map.put(attrs,"predicate","owns"))
+    {:ok,other_object}=E.fact(Map.put(attrs,"object","other"))
+    {:ok,expired}=E.fact(Map.put(attrs,"valid_to_ms",20))
+    {:ok,future}=E.fact(Map.put(attrs,"valid_from_ms",21))
+    old=source.(s["text"],%{"source_id"=>"old"})
+    {:ok,replaced}=E.fact(Map.put(attrs,"citations",[cite.(old,"Release does not require lock.")]))
+    limits=%{"depth"=>2,"max_nodes"=>128,"max_edges"=>256,"top_k"=>10}
+    for negative <- [unrelated,other_predicate,other_object,expired,future,replaced] do
+      {:ok,result}=E.traverse([s,Map.put(old,"generation",2)],[positive,negative],"Release",limits,20)
+      assert [%{"label"=>"supported","polarity"=>"positive","basis"=>basis}]=result["claims"]
+      assert basis==positive["citations"]
+      assert result["coverage"]["context_facts"]==1 and result["coverage"]["counterassertions"]==0
+    end
+    ''')
+  end
+
+  test "graph context includes a cut positive alternative without traversing its descendants" do
+    pure(~S'''
+    s=source.("Release requires lock. Release requires quiescence. Lock requires exit. Quiescence requires exit.",%{})
+    first=fact.("Release","lock",cite.(s,"Release requires lock."))
+    second=fact.("Release","quiescence",cite.(s,"Release requires quiescence."))
+    descendants=[fact.("lock","exit",cite.(s,"Lock requires exit.")),fact.("quiescence","exit",cite.(s,"Quiescence requires exit."))]
+    selected=Enum.min_by([first,second],& &1["fact_id"])
+    extra=Enum.find([first,second],&(&1["fact_id"]!=selected["fact_id"]))
+    limits=%{"depth"=>3,"max_nodes"=>128,"max_edges"=>1,"top_k"=>1}
+    {:ok,result}=E.traverse([s],descendants++[second,first],"Release",limits,20)
+    refute result["coverage"]["complete"]
+    assert result["coverage"]["edges"]==1 and result["coverage"]["nodes"]==2
+    assert result["coverage"]["context_facts"]==2 and result["coverage"]["counterassertions"]==1
+    assert Enum.map(result["claims"],& &1["fact_id"])==[selected["fact_id"],extra["fact_id"]]
+    assert Enum.all?(result["claims"],&(&1["label"]=="conflict" and &1["polarity"]=="positive"))
+    assert Enum.map(result["claims"],& &1["basis"])==[selected["citations"],extra["citations"]]
+    assert length(result["evidence"])==1
+    assert E.query_scope(result,[s],[],20)["status"]=="partial"
+    ''')
+  end
+
   test "fact policy exclusions remain distinct from missing or replaced provenance" do
     pure(~S'''
     s=source.("Release requires quiescence.",%{})

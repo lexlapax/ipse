@@ -94,8 +94,10 @@ limit to that project's allocated request cap plus one. This lets the next reque
 reach canonical budget-refusal accounting; the budget still prevents dispatch.
 Preflight reports the selected `inference_step_limit`. Embedding and text calls
 consume the same step allowance. Ordinary Session defaults are unchanged.
-Research requests up to ten sources within the existing
-body, time and result bounds; a result that cannot fit remains a failed row.
+Research requests up to ten sources within its body and time bounds. Knowledge
+artifacts use SDK 2 for complete results up to the 4 MiB aggregate limit, subject
+to journal capacity. A capacity refusal or unavailable complete result remains
+a failed row; the runner does not reduce the source set to make that row succeed.
 
 The explicit `storage_policy: "forget_all_then_collect_v1"` selects the final
 storage exercise. After saving every query prediction for a project/variant,
@@ -256,6 +258,60 @@ Change expected-answer, class and relevance values in its first fixture. Query
 projection must remain unchanged even when those labels become invalid. Then run
 the label adapter and observe its separate refusal. This tests information
 separation without opening the held-out workload.
+
+## Materialize before interpreting a result
+
+Follow `record_invoked/8` and `complete_result/2` in the Session driver before
+changing answer preparation or metrics. An inline invocation result already
+contains its complete domain `value`. A larger SDK-2 result carries a
+`saved.result` delivery descriptor. Its output ID, length and digest describe
+retained bytes, not an evidence array or a successful retrieval status.
+
+The driver calls `Ipse.Session.materialize_result/2` with that exact delivery.
+Only a successful complete read supplies the receipt's `value` for prediction,
+answer preparation and measurement. The receipt retains these fields:
+
+| Field | Meaning |
+| --- | --- |
+| `delivery` | The original saved-result descriptor, or null for inline output |
+| `complete_result.byte_count`, `complete_result.sha256` | Length and hash of the exact retained document |
+| `complete_result.bytes_base64` | Those complete source bytes, without re-encoding the domain value |
+| `complete_result.provenance` | `historical_receipt`, not a claim of current source eligibility |
+| `value` | The complete decoded domain object, or null when unavailable |
+| `materialization_error` | A failed-read diagnostic, or null after success |
+
+The existing `result_sha256` binds the invocation's displayed result text. For
+saved output that text describes delivery; use `complete_result.sha256` to bind
+the document. Preserve both identities. The Base64 field retains the original
+bytes for verification.
+
+When materialization fails, the receipt keeps its original delivery, sets
+`value: null` and reports failed status. `completion_confirmed` still records
+whether the original invocation committed its matching final receipt. A completed
+invocation can have an unavailable document; do not rewrite that fact as lost
+completion. The driver makes no retry, replacement query or model request.
+Later prediction handling must retain this first failed row rather than compute
+metrics from an empty or partially decoded ranking.
+
+Run the Session-driver suite and follow its large-result controls:
+
+```sh
+mix test test/knowledge_evaluation_session_test.exs
+```
+
+The successful control requires more than 16 KiB of complete bytes and verifies
+their hash, decoded value and provenance. The forged-delivery control changes
+the digest and refuses even when a supplied inline value looks usable. The
+lost-source control holds completion delivery, removes the readable source in
+the fixture, then releases completion. It must retain one completed first receipt
+as failed, submit no second command and make zero model requests. That fixture
+changes internal test state; it does not alter a saved journal or establish an
+OS enforcement boundary.
+
+For the real independently built packages, follow the [complete-result exercise](knowledge-extensions.md#publish-and-read-the-complete-domain-value).
+It checks ten full Corpus and Research quotes, Graph bases outside `top_k`,
+and exact inert historical recovery. Historical reads supply the original
+retrieval snapshot; they do not rerun its current-source eligibility policy.
 
 ## Exercise failed paging and lost completion
 

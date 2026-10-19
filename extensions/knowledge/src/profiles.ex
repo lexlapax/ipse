@@ -3,7 +3,7 @@ defmodule IpseKnowledge.Profiles do
   @families ~w(stores search fetch retrieval embedding rerank extraction)
   @state ~w(host.actions host.actions.mixed host.state.read host.state.scan host.state.write host.state.bound)
   @mcp ~w(host.actions host.actions.mixed host.mcp host.results)
-  @invoke ~w(invoke.command invoke.tool)
+  @invoke ~w(invoke.command invoke.tool invoke.result.pages)
 
   def capabilities(package, preset) do
     extra =

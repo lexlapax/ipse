@@ -81,7 +81,8 @@ or native feed-worker cleanup claim.
 | macOS native checks | Four Rust policy tests and 30 integration tests passed, six exclusions |
 | Fresh bundled runtime and base extracted-package verifier | Passed with a utility-only runtime PATH |
 | Generic SDK-2 source and installed-runtime proofs | Passed independently by the lead; exact 4 MiB, 1,024 fragments, one load and callback, zero model requests, confirmed cleanup and inert recovery |
-| Exact-source Linux/hosted gates | Open |
+| Exact-source Serenity Linux at `11d067f` | 1,258 passed, 15 excluded with native sandbox enabled; demo, package, installed verifier and exact 4-MiB source/installed proofs pass |
+| Hosted `11d067f` run 39328913714 | Red on both platforms from twelve invalid tests in compiler-marker fixture setup under Elixir 1.18; corrected fixture and next-source gates recorded separately |
 
 Session tests use separately compiled, inertly imported SDK-2 artifacts. They
 cover command and model-tool publication, whole historical materialization,
@@ -115,7 +116,18 @@ complete output SHA-256 is
 These example scripts and documentation were added after the completed full source
 baseline; their actual source and installed executions supply their separate checks.
 
-The knowledge packages still have their previous inline finish paths. Migration,
-whole-result evaluation hydration, package proofs, lifecycle audit, independent
-semantic review, and the exposed quality/resource comparison remain separate work.
+The Linux archive SHA-256 is
+`2d10587d9dbb07dbfc908cb0266e9cf2c8a87f4ca08583d4aa4d130f9748cf08`.
+Its independent saved-result artifact SHA-256 is
+`cd83fdc2ae705bdd7865137dc170a98369f7c61c2ca83b559e06c601b0f6026d`;
+the complete output digest matches the macOS proof above. Linux used an isolated
+detached worktree on Serenity and left its main checkout unchanged. Its native
+checks do not replace the red hosted floor-version gate. The
+[domain-result record](complete-domain-results.md#platform-and-resource-boundaries)
+explains the compiler-marker setup repair and its separate Elixir 1.18.5 check.
+
+At this generic snapshot, knowledge packages retained their inline finish paths.
+Their later [migration and complete-result verification](complete-domain-results.md)
+are recorded separately. Lifecycle audit, independent semantic review and the
+exposed quality/resource comparison remain open.
 No original paused prediction or budget was replayed or renewed.

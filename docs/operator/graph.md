@@ -36,6 +36,8 @@ IPSE_HOME="$IPSE_GRAPH_HOME" ./bin/ipse extension import "$IPSE_GRAPH_ARTIFACTS/
 The builder requires a fresh artifact output path and compatible platform/OTP
 version. It compiles the selected preset into the artifact. Configuration cannot
 add capabilities to an existing artifact. These commands do not call a model.
+The artifact declares SDK 2 and `invoke.result.pages`; review that complete-result
+grant in the generated trust alongside the selected State capabilities.
 If you already have a reviewed compatible artifact, skip building and import it
 instead. See [the package build guide](../../extensions/knowledge/README.md).
 
@@ -178,8 +180,18 @@ milliseconds. Sources observed after that time, expired sources, historical
 imports, and facts outside their validity interval are not current evidence.
 
 Traversal follows outgoing positive relationships, matching entity names without
-case. Negative assertions can be retained but are not traversal steps. Bounds
-are depth 0..4, 1..128 nodes, 1..256 edges, and 1..10 returned passages. Depth zero
+case. Current assertions that contradict a reached relationship remain in the
+result as separate claims, with their own `polarity` and supporting citations.
+Negative assertions supply that conflict context but are not traversal steps.
+Object names use the same case-insensitive matching: `lock` and `LOCK` name the
+same traversal node. Claims keep the original recorded spelling and citations.
+Read both claims before treating a `conflict` as resolved.
+
+`coverage.edges` counts traversal steps. `context_facts` also counts the retained
+counterassertions; `counterassertions` counts those extra assertions. A conflicting
+alternative outside the path can therefore appear without adding a traversed
+edge or node. Bounds are depth 0..4, 1..128 nodes, 1..256 traversal edges, and
+1..10 returned passages. Depth zero
 follows no edge. `coverage.complete: false` means a traversal bound cut the path;
 the result is `partial`, and absent relationships have not been checked and
 disproved. An unpublished source also makes the result partial, including an
@@ -205,8 +217,45 @@ background extraction. Commands fit the ordinary 16-operation host allowance;
 state scans have their separate read bound. A plan that cannot fit refuses.
 Inspect the source and draft state before requesting a smaller explicit batch
 instead of widening grants to evade the refusal.
-The complete SDK request must fit 16 KiB and Graph's encoded result 12000 bytes.
-Legal individual field maxima do not guarantee the combined object fits.
+The complete SDK request must fit 16 KiB. Legal individual field maxima do not
+guarantee the combined request fits.
+
+## Read every claim's supporting citations
+
+`top_k` limits returned evidence passages. Attributed claims retain their own
+complete `basis`, including supporting citations outside that evidence list.
+Read a claim's basis when checking its provenance; the first evidence passage
+alone need not support every returned claim.
+
+Small results print directly. A larger result returns a `saved.result` descriptor
+with its output ID, byte count and SHA256. Graph keeps the complete claims,
+citations, gaps and coverage in that document, up to the 4 MiB aggregate limit.
+Each quotation still allows at most 1024 bytes. No claim basis is removed to
+make the result fit an inline reply.
+
+In the same chat, replace the example ID with the returned output ID and inspect
+the first claim's first supporting quote:
+
+```text
+/result {"output_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","path":["claims",0,"basis",0,"quote"]}
+```
+
+After closing chat, print the whole result with the original session ID and
+state directory:
+
+```sh
+IPSE_GRAPH_OUTPUT_ID='COPY_THE_64_CHARACTER_OUTPUT_ID'
+IPSE_GRAPH_SESSION_ID='COPY_THE_SESSION_ID'
+IPSE_HOME="$IPSE_GRAPH_HOME" ./bin/ipse result "$IPSE_GRAPH_OUTPUT_ID" \
+  --resume "$IPSE_GRAPH_SESSION_ID" --state-dir "$IPSE_GRAPH_HOME/sessions"
+```
+
+This read starts no traversal, extraction, worker or model call. It returns a
+historical receipt, not a new eligibility check on its sources. Suppression or
+expiry affects future queries while earlier journal bytes remain. A model can
+read a saved result only after an original tool invocation discloses it in that
+session; direct command output stays separate. See [saved-result reading](extensions.md#read-a-saved-result)
+for bounded views, cursors and capacity or recovery errors.
 
 ## Replace, suppress, and recover a source
 
@@ -230,8 +279,12 @@ your goal. Ordinary resume retains earlier committed results.
 State permits 256 retained slots and 1 MiB per namespace, including drafts,
 old pages, and tombstones. Collection removes unreachable bodies, but does not
 recover slots. Export and plan a reviewed migration before filling the store.
-Foreign imports preserve historical provenance and need explicit re-extraction
-before becoming current evidence. Keep complete generation-consistent exports;
+Foreign imports preserve historical provenance and stay excluded from current
+queries even after extraction. To use a freshly verified capture as current
+evidence, inspect the root and explicitly replace the source through the earlier
+ingestion procedure, using a newer generation and the current revision. Submit
+that fresh capture without `historical_import`, then extract new facts from it.
+Keep complete generation-consistent exports;
 a partial export is not a complete restorable source.
 
 For conflict, inspect again. After a denied, failed or interrupted extraction,

@@ -31,7 +31,7 @@ defmodule Ipse.KnowledgeProfilesTest do
     refute Enum.any?(~w(host.mcp host.embedding host.model host.results),&(&1 in caps))
     offline=Map.merge(empty,%{"search"=>%{"given"=>%{"kind"=>"provided","version"=>1}},"fetch"=>%{"given"=>%{"kind"=>"provided","version"=>1}},"retrieval"=>%{"words"=>%{"kind"=>"bm25","version"=>1}}})
     assert {:ok,_}=P.validate("research","offline",offline)
-    assert P.capabilities("research","offline")==["invoke.command","invoke.tool"]
+    assert P.capabilities("research","offline")==["invoke.command","invoke.result.pages","invoke.tool"]
     assert {:error,:invalid_preset}=P.capabilities("corpus","invented")
     ''')
   end

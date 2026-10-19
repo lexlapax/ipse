@@ -88,7 +88,8 @@ defmodule IpseKnowledgeExample.EvaluationSession do
       {:ok, worker} ->
         try do
           initialized = Worker.call(worker, "initialize", entry.options)
-          ready = match?({:ok, %{"sdk" => 1}}, initialized)
+          expected_sdk = artifact.manifest["sdk"]
+          ready = match?({:ok, %{"sdk" => ^expected_sdk}}, initialized)
 
           options_validated =
             if knowledge? and ready do
@@ -514,7 +515,13 @@ defmodule IpseKnowledgeExample.EvaluationSession do
       )
 
     info = live_info(run.pid)
-    value = if result, do: result["value"], else: nil
+
+    {value, complete, materialization_error} =
+      case complete_result(run.pid, result) do
+        {:ok, value, proof} -> {value, proof, nil}
+        {:error, reason} -> {nil, nil, Atom.to_string(reason)}
+      end
+
     status = if is_map(value), do: value["status"], else: "failed"
 
     receipt = %{
@@ -524,6 +531,9 @@ defmodule IpseKnowledgeExample.EvaluationSession do
       "outcome" => inspect(outcome),
       "status" => status,
       "value" => value,
+      "delivery" => if(result, do: result["delivery"]),
+      "complete_result" => complete,
+      "materialization_error" => materialization_error,
       "invocation_id" => if(intent, do: intent["invocation_id"], else: nil),
       "result_sha256" => if(result, do: result["text_sha256"], else: nil),
       "journal_event_range" => [length(before), length(after_events)],
@@ -550,6 +560,32 @@ defmodule IpseKnowledgeExample.EvaluationSession do
        do: {:ok, receipt, next},
        else: {:error, {:command_failed, status}, next}
   end
+
+  @doc "Read one complete result before using its domain value. Saved results retain exact bytes."
+  def complete_result(pid, %{"delivery" => delivery}) do
+    case Session.materialize_result(pid, delivery) do
+      {:ok, %{bytes: bytes, value: value, provenance: "historical_receipt"}} ->
+        {:ok, value,
+         %{
+           "byte_count" => byte_size(bytes),
+           "sha256" => sha(bytes),
+           "bytes_base64" => Base.encode64(bytes),
+           "provenance" => "historical_receipt"
+         }}
+
+      _ ->
+        {:error, :complete_result_unavailable}
+    end
+  rescue
+    _ -> {:error, :complete_result_unavailable}
+  catch
+    :exit, _ -> {:error, :complete_result_unavailable}
+  end
+
+  def complete_result(_pid, %{"value" => value}) when is_map(value),
+    do: {:ok, value, nil}
+
+  def complete_result(_, _), do: {:error, :invocation_result_unavailable}
 
   defp observation_outcome(:ok), do: "completed"
   defp observation_outcome({:timeout, _, _}), do: "timeout"

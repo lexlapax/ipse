@@ -1392,7 +1392,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     args = Map.put(variant["query_options"], "query", query["query"])
     args = Map.put(args, "as_of_ms", plan["as_of_ms"])
     {run, receipt} = invoke(run, verb, args, output)
-    value = if receipt, do: receipt["value"], else: %{}
+    value = if receipt, do: receipt["value"] || %{}, else: %{}
     evidence = value["evidence"] || []
 
     status =

@@ -4,10 +4,11 @@ defmodule IpseKnowledgeExample.PackageProof do
 
   def run([archive, artifact]), do: run([archive, artifact, "base"])
 
-  def run([archive, artifact, mode]) when mode in ~w(base independence) do
+  def run([archive, artifact, mode]) when mode in ~w(base independence complete) do
     archive = Path.expand(archive)
     artifact = Path.expand(artifact)
     original = digest(archive)
+    artifact_files = inventory(artifact)
 
     root =
       Path.join(
@@ -55,14 +56,56 @@ defmodule IpseKnowledgeExample.PackageProof do
       frozen = inventory(release)
       proof_function = if mode == "base", do: "run", else: "independence"
 
+      {harness, harness_files} =
+        if mode == "complete" do
+          directory = Path.join(root, "proof-ebin")
+          File.mkdir!(directory)
+          File.chmod!(root, 0o700)
+          for path <- Path.wildcard(Path.join(release, "lib/*/ebin")), do: Code.prepend_path(path)
+
+          case Kernel.ParallelCompiler.compile_to_path(
+                 [Path.join(__DIR__, "complete-result-proof.exs")],
+                 directory,
+                 return_diagnostics: true
+               ) do
+            {:ok, _, []} -> :ok
+            {:ok, _, %{compile_warnings: [], runtime_warnings: []}} -> :ok
+            _ -> raise "Complete-result harness compilation failed or emitted warnings"
+          end
+
+          {directory, inventory(directory)}
+        else
+          {nil, nil}
+        end
+
+      proof =
+        if mode == "complete" do
+          [erl] = Path.wildcard(Path.join(release, "erts-*/bin/erl"))
+          runtime_bin = Path.join(root, "runtime-bin")
+          File.mkdir!(runtime_bin)
+          File.ln_s!(erl, Path.join(runtime_bin, "erl"))
+
+          """
+          System.put_env("PATH", #{inspect(utilities <> ":" <> runtime_bin)})
+          for name <- ~w(elixir elixirc erlc mix rustc cargo), do: nil = System.find_executable(name)
+          Code.prepend_path(#{inspect(harness)})
+          Code.ensure_loaded!(IpseKnowledgeExample.CompleteResultProof)
+          IO.puts(:json.encode(IpseKnowledgeExample.CompleteResultProof.run(#{inspect(artifact)})))
+          """
+        else
+          """
+          Code.require_file(#{inspect(Path.join(__DIR__, "proof.exs"))})
+          IO.puts(:json.encode(IpseKnowledgeExample.Proof.#{proof_function}(#{inspect(artifact)})))
+          """
+        end
+
       expression = """
       canonical = fn path -> {:ok, resolved} = Ipse.WorkspaceContext.canonical_path(path); resolved end
       bundled = #{inspect(Path.join(release, "erts-*/bin/erl"))} |> Path.wildcard() |> Enum.map(canonical)
       found = for name <- ~w(elixir erl mix rustc), path = System.find_executable(name), path != nil,
         not (name == "erl" and canonical.(path) in bundled), do: {name, path}
       unless found == [], do: raise("Unexpected system development toolchain")
-      Code.require_file(#{inspect(Path.join(__DIR__, "proof.exs"))})
-      IO.puts(:json.encode(IpseKnowledgeExample.Proof.#{proof_function}(#{inspect(artifact)})))
+      #{proof}
       """
 
       {output, status} =
@@ -89,9 +132,25 @@ defmodule IpseKnowledgeExample.PackageProof do
 
         "independence" ->
           true = valid_independence?(report)
+
+        "complete" ->
+          true =
+            report["checks"] == 5 and report["research_evidence"] == 10 and
+              report["research_bytes"] > 12_000 and report["corpus_evidence"] == 10 and
+              report["corpus_bytes"] > 12_000 and report["graph_bytes"] > 12_000 and
+              report["escaped_citation_bytes"] > 4096 and report["citation_crosses_fragment"] and
+              report["graph_evidence"] == 1 and report["graph_claims"] == 8 and
+              report["unranked_claim_bases_preserved"] and report["complete_hashes_verified"] and
+              report["opposing_assertions_preserved"] and report["corpus_graph_conflict"] and
+              report["historical_reads_exact"] and report["resume_inert"] and
+              report["journal_unchanged"] and
+              report["model_requests"] == 0 and report["host_loaded_domain_modules"] == false and
+              report["cleanup"] == "confirmed" and inventory(harness) == harness_files
       end
 
-      true = inventory(release) == frozen and digest(archive) == original
+      true =
+        inventory(release) == frozen and digest(archive) == original and
+          inventory(artifact) == artifact_files
 
       IO.puts(
         :json.encode(

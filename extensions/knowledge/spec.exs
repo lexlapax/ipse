@@ -56,7 +56,7 @@ defmodule IpseKnowledge.BuildSpec do
     manifest = JSON.decode!(manifest_bytes)
     caps = IpseKnowledge.Profiles.capabilities(package, preset)
 
-    unless manifest["id"] == "ipse-knowledge/" <> package and
+    unless manifest["sdk"] === 2 and manifest["id"] == "ipse-knowledge/" <> package and
              manifest["entrypoint"] ==
                String.replace_prefix(Atom.to_string(module), "Elixir.", "") and
              manifest["capabilities"] == caps and manifest["options_schema"] == options_schema(),
