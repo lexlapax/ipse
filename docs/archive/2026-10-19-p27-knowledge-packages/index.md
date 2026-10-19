@@ -97,6 +97,9 @@ abort recovery, rerank continuation repairs, explicit Ollama thinking selection
 and separately accounted tuning successes and failures.
 The later [evaluation failure-path record](evaluation-failures.md) verifies
 malformed paging, confirmed timeout and poisoned Session-loss behavior.
+The later [identity/input record](evaluation-seal.md) verifies clean-source seals,
+inert artifact copies and label-free projection, and retains a separate hosted
+MCP Client failure that remains under investigation.
 
 Exact-source hosted checks still need their final receipts. Actual domain
 embedding, extraction, hybrid and rerank

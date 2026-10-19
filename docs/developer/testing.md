@@ -163,6 +163,22 @@ can also report metadata for four fixed trace paths on failure, without reading
 contents or listing unrelated filenames. Privacy and owner-cleanup fixtures
 exercise those boundaries.
 
+For an unexpected MCP discovery or rediscovery failure, enable the same flag:
+
+```sh
+IPSE_TEST_STDIO_PROBE=1 mix test test/mcp/client_test.exs
+```
+
+The controlled server receives a public fixture-only argument and records fixed
+boot, initialize, catalog and tool stages with integer wall times. Unexpected
+success-path failures report at most sixteen stage records, the host's operation
+start time and elapsed milliseconds. The collector accepts only fixed stage names
+and bounded numeric times, and retains no arguments, environment or response
+payload. Its privacy control checks unrelated files and malformed/private marker
+content. Missing stages describe incomplete fixture observation; they do not
+establish why a process stopped. Keep the original timeout and assertions while
+collecting evidence.
+
 For frame/drain load instead of host-call timing:
 
 ```sh

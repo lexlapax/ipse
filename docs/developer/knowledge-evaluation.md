@@ -8,10 +8,12 @@ For changing the packages themselves, start with
 
 ## Follow the prediction and scoring boundary
 
-Evaluation has three different owners. Keep their inputs separate:
+The evaluation helpers have separate owners. Keep their inputs separate:
 
 | Owner | Implementation | Input and result |
 | --- | --- | --- |
+| Freeze | `examples/knowledge/evaluation_freeze.exs` | A clean source tree, public plan and inert artifacts become a pinned manifest and copied artifacts |
+| Dataset projection | `examples/knowledge/evaluation_input.exs` | Dataset bytes become separately validated corpus, label-free queries or scoring labels |
 | Session driver | `examples/knowledge/evaluation_session.exs` | Explicit artifact/profile/budget selections and public commands become durable invocation receipts |
 | Answer preparation | `examples/knowledge/evaluation_answer.exs` | Saved ranked citations become a bounded request and an exact shown-span mapping |
 | Scoring | `examples/knowledge/evaluation_score.exs`, `metrics.exs` | Hashed first predictions and independent labels/reviews become separate measurements |
@@ -34,6 +36,89 @@ and expected answers out of the driver, extension options and model inputs.
 Finalize raw prediction files and their hashes before opening labels. A scorer
 can enforce the order of its own callbacks, but cannot prove that another caller
 has never opened those files.
+
+## Seal identities before opening inputs
+
+Build Ipse and one independent lexical Corpus artifact first. Use fresh output
+paths and a clean source checkout, including untracked files:
+
+```sh
+elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output /tmp/ipse-evaluation-corpus --package corpus --preset state-lexical
+mix run -r examples/knowledge/evaluation_freeze.exs -e '
+alias IpseKnowledgeExample.EvaluationFreeze, as: Freeze
+plan = JSON.encode!(%{"version" => 1, "purpose" => "identity exercise"})
+{:ok, seal} = Freeze.create(File.cwd!(), plan,
+  %{"corpus" => "/tmp/ipse-evaluation-corpus"}, "/tmp/ipse-evaluation-seal")
+IO.puts(JSON.encode!(seal))
+{:ok, verified} = Freeze.verify(seal["path"], seal["sha256"])
+IO.puts(JSON.encode!(%{"artifacts" => Map.keys(verified["artifact_paths"])}))
+'
+```
+
+Expect the manifest path, its SHA256 and the source commit, followed by the
+`corpus` artifact name. The exercise starts no worker or model and reads no
+dataset. `create/4` copies declared artifacts through `Ipse.Extensions.Store`.
+An edit to the original build cannot change that copy. The manifest binds all
+tracked source files, the Git commit/tree, code-path BEAM files, native helpers,
+toolchain identity and exact plan bytes.
+Run creation and verification in the declared development runtime with Git
+available. A source-runtime seal does not attest a different installed runtime;
+installed protocol verification retains its separate archive/host identities.
+
+Retain the printed manifest hash separately. `verify/2` requires that expected
+hash, then rechecks the clean source identity, runtime, plan and copied artifacts.
+Keep source and runtime files fixed through execution. Existing output directories
+refuse; failed creation preserves its partial directory for inspection. Imports
+remain inert. The execution caller must validate the benchmark plan and each
+egress/State/MCP decision before starting work; an identity seal grants no effects.
+The small exercise plan above is not a complete comparison declaration.
+
+Run the synthetic tampering controls before changing the seal format:
+
+```sh
+mix test test/knowledge_evaluation_freeze_test.exs
+```
+
+They distinguish changed plan bytes, a changed manifest, copied-artifact tampering,
+dirty source, a different clean commit and a new code-path file. The valid control
+also verifies that a dataset path in a plan is never opened during sealing.
+
+## Project query inputs without labels
+
+After a complete execution freeze is verified, its input adapter may open the
+declared dataset members. `EvaluationInput.queries/2` accepts the version-one
+query JSON bytes and the declared split. Its `queries` result contains exactly
+`query_id`, `project` and `query`, preserving their input order. Relevance,
+expected classes, expected answers and refusal labels remain excluded. The
+separate `excluded_fields` list reports field names; keep it in run metadata,
+outside Session/model inputs.
+
+`EvaluationInput.corpus/1` checks each complete source's identity, generation,
+version, byte length, SHA256, UTF8 text and timestamps. It retains all source
+generations and state metadata. It neither suppresses sources automatically nor
+turns metadata into model instructions. The execution plan must declare how
+source lifecycle metadata becomes public ingestion/update/forget commands.
+
+Each member is at most 1 MiB. The adapter reuses the host's duplicate-key-rejecting
+JSON decoder. It refuses an oversized member, duplicate query ID, duplicate source
+generation, malformed row or mismatched split as a complete input error. It never
+drops rows to make a comparison fit. Resolve any required capacity gap before
+freezing the implementation intended to cover the workload.
+
+Only the scoring phase calls `EvaluationInput.labels/2`. It normalizes full source
+identities and exact byte-coordinate annotations for the existing scorer. Keep
+that call inside the label loader that runs after saved prediction hashes pass.
+The original expected-answer text remains available to the independent semantic
+reviewer through the separately retained dataset; it is not a predictor input.
+
+```sh
+mix test test/knowledge_evaluation_input_test.exs
+```
+
+Change expected-answer, class and relevance values in its first fixture. Query
+projection must remain unchanged even when those labels become invalid. Then run
+the label adapter and observe its separate refusal. This tests information
+separation without opening the held-out workload.
 
 ## Exercise failed paging and lost completion
 

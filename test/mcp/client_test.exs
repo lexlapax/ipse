@@ -13,7 +13,7 @@ defmodule Ipse.MCP.ClientTest do
   test "discovers only configured tools, validates arguments, then calls the reviewed tool",
        ctx do
     server = server(ctx.cwd)
-    assert {:ok, [descriptor]} = Client.discover(server, ctx.cwd)
+    descriptor = discover!(server, ctx.cwd)
     assert descriptor.tool_id == "mcp__notes__write_note"
     assert descriptor.name == "write_note"
     assert descriptor.input_schema["additionalProperties"] == false
@@ -24,7 +24,9 @@ defmodule Ipse.MCP.ClientTest do
     refute File.exists?(Path.join(ctx.cwd, "calls.log"))
 
     assert {:ok, "wrote note"} =
-             Client.call(descriptor, %{"path" => "note.txt", "content" => "hello"}, ctx.cwd)
+             observed(ctx.cwd, "call", fn ->
+               Client.call(descriptor, %{"path" => "note.txt", "content" => "hello"}, ctx.cwd)
+             end)
 
     assert File.read!(Path.join(ctx.cwd, "note.txt")) == "hello"
     assert File.read!(Path.join(ctx.cwd, "calls.log")) == "write_note\n"
@@ -92,7 +94,9 @@ defmodule Ipse.MCP.ClientTest do
     refute descriptor.description =~ "fixture-secret-value"
 
     assert {:ok, "[redacted]"} =
-             Client.call(descriptor, %{"path" => "note.txt", "content" => "hello"}, ctx.cwd)
+             observed(ctx.cwd, "call", fn ->
+               Client.call(descriptor, %{"path" => "note.txt", "content" => "hello"}, ctx.cwd)
+             end)
   end
 
   test "connection loss after dispatch produces unknown and records the effect only once", ctx do
@@ -178,8 +182,82 @@ defmodule Ipse.MCP.ClientTest do
   end
 
   defp discover!(server, cwd) do
-    assert {:ok, [descriptor]} = Client.discover(server, cwd)
+    assert {:ok, [descriptor]} = observed(cwd, "discover", fn -> Client.discover(server, cwd) end)
     descriptor
+  end
+
+  test "failure diagnostics retain only bounded fixed stages and integer times", ctx do
+    previous = System.get_env("IPSE_TEST_STDIO_PROBE")
+    System.put_env("IPSE_TEST_STDIO_PROBE", "1")
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("IPSE_TEST_STDIO_PROBE", previous),
+        else: System.delete_env("IPSE_TEST_STDIO_PROBE")
+    end)
+
+    File.write!(Path.join(ctx.cwd, "mcp-diagnostic-123-boot"), "12345")
+    File.write!(Path.join(ctx.cwd, "mcp-diagnostic-123-effect_written"), "private-stage-payload")
+
+    File.write!(
+      Path.join(ctx.cwd, "mcp-diagnostic-123-private-stage-name"),
+      "private-stage-payload"
+    )
+
+    File.write!(Path.join(ctx.cwd, "unrelated"), "private-stage-payload")
+
+    output =
+      ExUnit.CaptureIO.capture_io(:stderr, fn ->
+        assert observed(ctx.cwd, "synthetic", fn -> {:error, :controlled} end) ==
+                 {:error, :controlled}
+      end)
+
+    report = Jason.decode!(String.trim(output))
+    assert report["stages"] == [%{"pid" => "123", "stage" => "boot", "at_ms" => 12345}]
+    refute output =~ "private-stage"
+    refute output =~ "unrelated"
+  end
+
+  defp observed(cwd, phase, fun) do
+    started = System.monotonic_time(:millisecond)
+    at = System.system_time(:millisecond)
+    result = fun.()
+
+    if System.get_env("IPSE_TEST_STDIO_PROBE") == "1" and not match?({:ok, _}, result) do
+      paths = Path.wildcard(Path.join(cwd, "mcp-diagnostic-*"))
+
+      stages =
+        paths
+        |> Enum.take(16)
+        |> Enum.flat_map(fn path ->
+          with [_, pid, stage] <-
+                 Regex.run(
+                   ~r/\Amcp-diagnostic-([0-9]{1,16})-(boot|initialize|list_tools|call_tool|effect_written)\z/,
+                   Path.basename(path)
+                 ),
+               {:ok, bytes} when is_binary(bytes) <-
+                 File.open(path, [:read, :binary], &IO.binread(&1, 32)),
+               true <- Regex.match?(~r/\A[0-9]{1,16}\z/, bytes) do
+            [%{"pid" => pid, "stage" => stage, "at_ms" => String.to_integer(bytes)}]
+          else
+            _ -> []
+          end
+        end)
+
+      IO.puts(
+        :stderr,
+        Jason.encode!(%{
+          "synthetic_mcp_failure" => phase,
+          "started_at_ms" => at,
+          "elapsed_ms" => System.monotonic_time(:millisecond) - started,
+          "stages" => stages,
+          "stage_files" => length(paths),
+          "truncated" => length(paths) > 16
+        })
+      )
+    end
+
+    result
   end
 
   defp server(cwd, scenario \\ "normal", env \\ %{}) do
@@ -188,12 +266,17 @@ defmodule Ipse.MCP.ClientTest do
     jason_ebin = Path.dirname(jason_beam)
     script = Path.expand("../support/mcp_server.exs", __DIR__)
 
+    diagnostics =
+      if System.get_env("IPSE_TEST_STDIO_PROBE") == "1",
+        do: ["--fixture-diagnostics"],
+        else: []
+
     config = %{
       "servers" => [
         %{
           "id" => "notes",
           "command" => elixir,
-          "args" => ["--erl", "+S 2:2", "-pa", jason_ebin, script, scenario],
+          "args" => ["--erl", "+S 2:2", "-pa", jason_ebin, script, scenario] ++ diagnostics,
           "tools" => ["write_note"],
           "env" =>
             Map.put(

@@ -4,6 +4,13 @@ scenario = List.first(System.argv()) || "normal"
 secret = System.get_env("FIXTURE_SECRET")
 
 phase = fn name ->
+  if "--fixture-diagnostics" in System.argv() do
+    File.write!(
+      "mcp-diagnostic-" <> System.pid() <> "-" <> name,
+      Integer.to_string(System.system_time(:millisecond))
+    )
+  end
+
   if scenario in ["disconnect_after_dispatch", "controlled_disconnect"] do
     File.write!("mcp-stage-" <> System.pid(), name <> "\n", [:append])
   end
