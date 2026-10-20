@@ -43,6 +43,7 @@ defmodule Ipse.KnowledgeEvaluationSessionTest do
           File.write!(options["ready"], System.pid())
           Process.sleep(:infinity)
         end
+        if action == "put" and options["mode"] == "fail", do: raise("PRIVATE_CALLBACK_DETAIL")
         continuation = case action do
           "open" -> %{"draft_id" => String.duplicate("a", 32), "expected_revision" => 1,
             "offset" => if(options["mode"] == "bad_open", do: 1, else: 0)}
@@ -91,7 +92,7 @@ defmodule Ipse.KnowledgeEvaluationSessionTest do
         "required" => ~w(mode log ready),
         "additionalProperties" => false,
         "properties" => %{
-          "mode" => %{"type" => "string", "enum" => ~w(bad_open bad_append hang large)},
+          "mode" => %{"type" => "string", "enum" => ~w(bad_open bad_append hang large fail)},
           "log" => %{"type" => "string"},
           "ready" => %{"type" => "string"}
         }
@@ -186,6 +187,61 @@ defmodule Ipse.KnowledgeEvaluationSessionTest do
     assert snapshot["accounting"]["request_count"] == 0
     assert {:ok, %{"cleanup" => "confirmed"}} = Evaluation.close(latest)
     await_worker_exit(paths.ready)
+  end
+
+  test "complete-result deadline retains its notification code without error text", ctx do
+    {run, paths} = open(ctx, "hang")
+    run = %{run | timeout_ms: 10_000}
+
+    invocation =
+      Task.async(fn ->
+        Evaluation.invoke(run, "ingest", %{
+          "store" => "notes",
+          "source" => source("fixture"),
+          "expected_revision" => 0
+        })
+      end)
+
+    await(fn -> File.exists?(paths.ready) end)
+    state = :sys.get_state(run.pid)
+    assert state.extension_output_clock != nil
+
+    # Deliver the real timer message to exercise notification/receipt handling without a 120-second wait.
+    send(run.pid, {:extension_output_deadline, state.job_ref})
+    pid = run.pid
+    assert_receive {:ipse, ^pid, {:error, message}} = notification, 10_000
+    assert message == "Complete-result deadline exceeded. Inspect prior actions before retrying."
+    send(invocation.pid, notification)
+    assert_receive {:ipse, ^pid, {:done, :error}} = completed, 10_000
+    send(invocation.pid, completed)
+
+    assert {:error, {:command_failed, "failed"}, next} = Task.await(invocation, 10_000)
+    assert [receipt] = next.receipts
+    assert receipt["failure_codes"] == ["complete_result_deadline"]
+    refute JSON.encode!(receipt) =~ message
+    assert receipt["outcome"] == ":error"
+    refute receipt["completion_confirmed"]
+    assert actions(paths.log) == ["put"]
+    refute next.unsettled
+    assert {:ok, %{"cleanup" => "confirmed"}} = Evaluation.close(next)
+    await_worker_exit(paths.ready)
+  end
+
+  test "unrecognized Session errors retain only a generic diagnostic code", ctx do
+    {run, paths} = open(ctx, "fail")
+
+    assert {:error, {:command_failed, "failed"}, next} =
+             Evaluation.invoke(run, "ingest", %{
+               "store" => "notes",
+               "source" => source("fixture"),
+               "expected_revision" => 0
+             })
+
+    assert [receipt] = next.receipts
+    assert receipt["failure_codes"] == ["session_error"]
+    refute JSON.encode!(receipt) =~ "PRIVATE_CALLBACK_DETAIL"
+    assert actions(paths.log) == ["put"]
+    assert {:ok, %{"cleanup" => "confirmed"}} = Evaluation.close(next)
   end
 
   test "Session loss retains intent, poisons further dispatch and cannot claim cleanup", ctx do

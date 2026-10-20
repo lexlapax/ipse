@@ -588,6 +588,10 @@ corrections; exposed inputs are now diagnostic material.
 Final validation uses a new independently authored private 50-question workload,
 with answers sealed until predictions are frozen. The earlier questions remain
 tuning data.
+The [quality-remediation record](archive/2026-10-20-p27-quality-remediation/index.md)
+tracks subsequent work. Its diagnostic increment retains bounded Session failure
+codes without error text; nine Session and 24 runner fixtures pass. It does not
+establish the cause of old timeouts or any new model-quality result.
 The selected-runtime CPU compatibility proof passes two real explicit requests,
 with complete accounting and confirmed cleanup. It establishes no quality or
 exact memory result. The superseded `f2bfc8d` comparison was intentionally stopped

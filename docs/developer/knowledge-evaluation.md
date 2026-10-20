@@ -622,7 +622,7 @@ separation without opening the held-out workload.
 
 ## Materialize before interpreting a result
 
-Follow `record_invoked/8` and `complete_result/2` in the Session driver before
+Follow `record_invoked/9` and `complete_result/2` in the Session driver before
 changing answer preparation or metrics. An inline invocation result already
 contains its complete domain `value`. A larger SDK-2 result carries a
 `saved.result` delivery descriptor. Its output ID, length and digest describe
@@ -640,6 +640,7 @@ answer preparation and measurement. The receipt retains these fields:
 | `complete_result.provenance` | `historical_receipt`, not a claim of current source eligibility |
 | `value` | The complete decoded domain object, or null when unavailable |
 | `materialization_error` | A failed-read diagnostic, or null after success |
+| `failure_codes` | Distinct classified Session error notifications observed before completion, in arrival order; no error text |
 
 The existing `result_sha256` binds the invocation's displayed result text. For
 saved output that text describes delivery; use `complete_result.sha256` to bind
@@ -728,6 +729,20 @@ observations. A timeout receipt establishes that the selected deadline expired;
 it does not identify which component delayed completion. Keep unexpected timeout
 evidence separate from the intended malformed-response case. Passing repetitions
 or a later green run cannot establish the original failure's cause.
+
+For a failed invocation, inspect `failure_codes` separately from `outcome`.
+The driver recognizes the Session's complete-result deadline notification as
+`complete_result_deadline`; other error notifications become `session_error`.
+The list contains at most those two distinct codes. Raw error strings are not
+copied into the receipt, and a code does not turn unknown work into a confirmed
+failure or authorize a retry. Older receipts without this field cannot establish
+which notification occurred.
+
+The deadline control delivers the real timer message to a held invocation and
+checks the resulting Session notification and receipt. It tests diagnostic
+handling without waiting 120 seconds; it does not measure a naturally elapsed
+deadline. A separate failing callback checks that its private error detail stays
+out of the diagnostic receipt.
 
 ## Follow a matched public-Session comparison
 

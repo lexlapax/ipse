@@ -433,7 +433,7 @@ defmodule IpseKnowledgeExample.EvaluationSession do
 
       case submission do
         :ok ->
-          {outcome, approvals} =
+          {outcome, approvals, failure_codes} =
             try do
               wait(
                 run,
@@ -441,12 +441,13 @@ defmodule IpseKnowledgeExample.EvaluationSession do
                 binding["name"],
                 arguments,
                 System.monotonic_time(:millisecond) + run.timeout_ms,
+                [],
                 []
               )
             rescue
-              _ -> {{:wait_failed, :exception}, []}
+              _ -> {{:wait_failed, :exception}, [], []}
             catch
-              :exit, _ -> {{:wait_failed, :exit}, []}
+              :exit, _ -> {{:wait_failed, :exit}, [], []}
             end
 
           record_invoked(
@@ -457,7 +458,8 @@ defmodule IpseKnowledgeExample.EvaluationSession do
             before,
             started,
             outcome,
-            approvals
+            approvals,
+            failure_codes
           )
 
         {:submission_unconfirmed, reason} ->
@@ -469,6 +471,7 @@ defmodule IpseKnowledgeExample.EvaluationSession do
             before,
             started,
             {:submission_unconfirmed, reason},
+            [],
             []
           )
 
@@ -487,7 +490,17 @@ defmodule IpseKnowledgeExample.EvaluationSession do
     end
   end
 
-  defp record_invoked(run, verb, arguments, command, before, started, outcome, approvals) do
+  defp record_invoked(
+         run,
+         verb,
+         arguments,
+         command,
+         before,
+         started,
+         outcome,
+         approvals,
+         failure_codes
+       ) do
     after_result =
       try do
         journal(run)
@@ -529,6 +542,7 @@ defmodule IpseKnowledgeExample.EvaluationSession do
       "command" => command,
       "arguments" => arguments,
       "outcome" => inspect(outcome),
+      "failure_codes" => failure_codes,
       "status" => status,
       "value" => value,
       "delivery" => if(result, do: result["delivery"]),
@@ -601,7 +615,7 @@ defmodule IpseKnowledgeExample.EvaluationSession do
     :exit, _ -> nil
   end
 
-  defp wait(run, verb, command, arguments, deadline, approvals) do
+  defp wait(run, verb, command, arguments, deadline, approvals, failure_codes) do
     remaining = max(0, deadline - System.monotonic_time(:millisecond))
 
     receive do
@@ -634,13 +648,23 @@ defmodule IpseKnowledgeExample.EvaluationSession do
           "ordinal" => ordinal
         }
 
-        wait(run, verb, command, arguments, deadline, [approval | approvals])
+        wait(run, verb, command, arguments, deadline, [approval | approvals], failure_codes)
+
+      {:ipse, pid, {:error, message}} when pid == run.pid ->
+        code =
+          if message ==
+               "Complete-result deadline exceeded. Inspect prior actions before retrying.",
+             do: "complete_result_deadline",
+             else: "session_error"
+
+        codes = if code in failure_codes, do: failure_codes, else: [code | failure_codes]
+        wait(run, verb, command, arguments, deadline, approvals, codes)
 
       {:ipse, pid, {:done, status}} when pid == run.pid ->
-        {status, approvals}
+        {status, approvals, Enum.reverse(failure_codes)}
 
       {:ipse, pid, _} when pid == run.pid ->
-        wait(run, verb, command, arguments, deadline, approvals)
+        wait(run, verb, command, arguments, deadline, approvals, failure_codes)
     after
       remaining ->
         cancellation =
@@ -651,7 +675,7 @@ defmodule IpseKnowledgeExample.EvaluationSession do
           end
 
         completion = wait_cancelled(run.pid, System.monotonic_time(:millisecond) + 10_000)
-        {{:timeout, cancellation, completion}, approvals}
+        {{:timeout, cancellation, completion}, approvals, Enum.reverse(failure_codes)}
     end
   end
 
