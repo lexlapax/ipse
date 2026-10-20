@@ -76,6 +76,31 @@ and selection configurations pass with synthetic data. The
 original and archived review hashes, log hashes and coverage limits. No actual
 model inference or new charged-memory comparison ran in these checks.
 
+## Select the declared service during tuning
+
+The first tuning-only preparation on `e7638fe` stopped at plan validation with
+`model_origin`. Its fresh service selection used a private port, while the
+version-one tuning resolver required 11434. Preparation built artifacts but never
+reached the execution claim or model-service launch. Its failed directory and
+original scripts/logs are preserved; it is not a model-quality result.
+
+Tuning now derives one common canonical IPv4-loopback origin from the explicitly
+selected text and embedding profiles. Mixed endpoints, malformed origins and a
+search-port collision refuse. The existing default port remains available when
+selected. No additional plan field, provider fallback, service launch, deadline
+or inference allowance is introduced. Legacy held-out and measured-resolution
+policies retain their earlier contracts.
+
+The plan regression fails before this correction and passes afterward. All 48
+adjacent plan, runner and freeze tests pass. A real loopback inventory control
+observes the selected listener, returns an empty inventory, and verifies refusal
+before nonexistent dataset files open, with zero inference requests. Formatting,
+strict compilation and documentation checks pass. The
+[focused receipt](tuning-origin.json) distinguishes this development-evaluator
+correction from the preceding full platform/package verification. A new real
+tuning diagnostic requires a separate source, declaration and output directory;
+no real model result is claimed here.
+
 ## Remaining quality work
 
 Dense retrieval still uses a 200-grapheme prefix, reranking sees at most 128 UTF8

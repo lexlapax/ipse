@@ -10,6 +10,56 @@ defmodule Ipse.KnowledgeEvaluationPlanTest do
     |> Map.put("blind_seed", String.duplicate("b", 64))
   end
 
+  test "tuning derives one explicit local origin from all selected profiles" do
+    origin = "http://127.0.0.1:47635"
+
+    declared =
+      spec()
+      |> Map.put("mode", "tuning")
+      |> Map.put("as_of_ms", 1_800_000_000_000)
+      |> Map.update!(
+        "profiles",
+        &Map.new(&1, fn {id, p} -> {id, Map.put(p, "base_url", origin)} end)
+      )
+      |> Map.update!(
+        "embedding_profiles",
+        &Map.new(&1, fn {id, p} -> {id, Map.put(p, "base_url", origin)} end)
+      )
+
+    assert {:ok, plan} = EvaluationPlan.build(declared)
+    assert :ok = EvaluationRunner.validate(plan)
+    refute Map.has_key?(plan, "model_origin")
+
+    for changed <- [
+          put_in(declared, ["profiles", "p27_answer", "base_url"], "http://127.0.0.1:47636"),
+          Map.put(declared, "search_port", 47635),
+          Map.put(declared, "mode", "heldout")
+        ] do
+      assert {:error, :model_origin} = EvaluationPlan.build(changed)
+    end
+
+    for bad <- [
+          "http://127.0.0.1:0",
+          "http://127.0.0.1:047635",
+          "https://example.com",
+          "http://127.0.0.1:47635/path",
+          "http://user@127.0.0.1:47635"
+        ] do
+      changed =
+        declared
+        |> Map.update!(
+          "profiles",
+          &Map.new(&1, fn {id, p} -> {id, Map.put(p, "base_url", bad)} end)
+        )
+        |> Map.update!(
+          "embedding_profiles",
+          &Map.new(&1, fn {id, p} -> {id, Map.put(p, "base_url", bad)} end)
+        )
+
+      assert {:error, :model_origin} = EvaluationPlan.build(changed)
+    end
+  end
+
   test "the complete declaration is valid without opening dataset members or artifacts" do
     declared = spec()
     assert {:ok, plan} = EvaluationPlan.build(declared)

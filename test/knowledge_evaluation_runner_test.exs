@@ -522,6 +522,50 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
     declared
   end
 
+  test "tuning inventories its declared private origin before opening input files", ctx do
+    {server, origin, tag} = model_fixture()
+    root = Path.join(ctx.root, Ipse.Usage.id())
+    File.mkdir!(root)
+
+    declared =
+      plan(ctx)
+      |> Map.put("mode", "tuning")
+      |> put_in(["data", "split"], "tuning")
+      |> Map.put("profiles", %{
+        "p27_answer" => %{
+          "provider" => "ollama",
+          "model" => "qwen3.5:9b",
+          "credential" => "none",
+          "base_url" => origin,
+          "max_output_tokens" => 4096,
+          "reasoning_effort" => "none",
+          "timeout_ms" => 120_000
+        }
+      })
+      |> Map.put("models", %{"qwen3.5:9b" => String.duplicate("a", 64)})
+
+    plan_path = Path.join(root, "plan.json")
+    File.write!(plan_path, JSON.encode!(declared))
+    output = Path.join(root, "result")
+
+    try do
+      assert {:error, %{"code" => "preflight_failed"}} =
+               Runner.run(:tune,
+                 plan: plan_path,
+                 corpus: Path.join(root, "absent-corpus.json"),
+                 queries: Path.join(root, "absent-queries.json"),
+                 output: output
+               )
+
+      assert drain(tag, []) == [%{"fixture_operation" => "inventory"}]
+      preflight = JSON.decode!(File.read!(Path.join(output, "preflight.json")))
+      assert preflight["inventory"]["status"] == "failed"
+      assert preflight["model_requests"] == 0
+    after
+      stop_model_fixture(server)
+    end
+  end
+
   defp model_fixture do
     {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}])
     {:ok, {_, port}} = :inet.sockname(listener)
@@ -572,7 +616,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
     case :binary.split(bytes, "\r\n\r\n") do
       [header, rest] ->
         [line | fields] = String.split(header, "\r\n")
-        ["POST", target, _] = String.split(line, " ")
+        [_method, target, _] = String.split(line, " ")
 
         headers =
           Map.new(fields, fn field ->
@@ -580,13 +624,13 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
             {String.downcase(key), String.trim(value)}
           end)
 
-        length = String.to_integer(headers["content-length"])
+        length = String.to_integer(Map.get(headers, "content-length", "0"))
 
         if byte_size(rest) < length do
           {:ok, more} = :gen_tcp.recv(socket, 0, 5000)
           http_request(socket, bytes <> more)
         else
-          {target, JSON.decode!(binary_part(rest, 0, length))}
+          {target, if(length == 0, do: %{}, else: JSON.decode!(binary_part(rest, 0, length)))}
         end
 
       _ ->
@@ -594,6 +638,8 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
         http_request(socket, bytes <> more)
     end
   end
+
+  defp fixture_response("/api/tags", _body), do: {"inventory", %{"models" => []}}
 
   defp fixture_response("/api/embed", body) do
     vectors =

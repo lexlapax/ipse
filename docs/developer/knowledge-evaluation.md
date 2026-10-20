@@ -179,6 +179,31 @@ artifacts use SDK 2 for complete results up to the 4 MiB aggregate limit, subjec
 to journal capacity. A capacity refusal or unavailable complete result remains
 a failed row; the runner does not reduce the source set to make that row succeed.
 
+For an exposed-input tuning exercise, use a version-one plan with `mode: "tuning"`,
+a numeric `as_of_ms` and `data.split: "tuning"`. Every text and embedding profile
+must name the same explicit HTTP IPv4-loopback origin. The runner derives that
+origin from the profiles, including a canonical private port such as
+`http://127.0.0.1:47635`; it does not add another endpoint setting. A conflicting
+profile, malformed origin or collision with `search_port` refuses. The default
+port remains usable when explicitly selected. This does not change legacy
+version-one held-out policy or version-two measured resolution.
+
+Keep the actual service under its declared owner. Tuning starts no daemon and
+grants no fallback to another endpoint. With a reviewed tuning plan, exposed
+input files and an already admitted service, run:
+
+```sh
+mix run scripts/evaluate-knowledge.exs -- --phase tune \
+  --plan /absolute/path/to/tuning-plan.json \
+  --corpus /absolute/path/to/exposed-corpus.json \
+  --queries /absolute/path/to/exposed-queries.json \
+  --output /absolute/path/to/fresh-tuning-results
+```
+
+Catalog admission and `/api/tags`/`/api/show` inventory use that exact origin
+before the input files open. Preserve first failures and cleanup; do not retry an
+unknown request or present exposed-input tuning as fresh held-out validation.
+
 The explicit `storage_policy: "forget_all_then_collect_v1"` selects the final
 storage exercise. After saving every query prediction for a project/variant,
 the runner suppresses its isolated source copies and collects their unreferenced
@@ -194,6 +219,11 @@ mix test test/knowledge_evaluation_plan_test.exs test/knowledge_evaluation_runne
 
 The CLI control generates two independent seeds, checks permissions, refuses an
 overwrite and verifies that nonexistent dataset/artifact paths stay unopened.
+The private-origin control declares a common tuning address and refuses divergent
+profiles, malformed origins and a search-port collision. The runner control
+observes an actual inventory request at the selected loopback listener, then
+returns an empty inventory. That preflight failure must precede access to absent
+input files and must produce no inference request.
 The public-Session matrix uses this same builder with scripted profiles. A
 valid plan is preparation. The identity seal and executable preflight are
 separate checks. Declaration and sealing do not run workers or open held-out inputs. Measured

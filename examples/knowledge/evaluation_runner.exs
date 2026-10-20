@@ -121,6 +121,9 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
 
       origin = model_origin!(plan)
 
+      if plan["mode"] == "tuning",
+        do: require!(plan["search_port"] != URI.parse(origin).port, :model_origin)
+
       if plan["version"] == 2 do
         require!(
           Enum.all?(
@@ -382,6 +385,20 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
       _ -> {:error, :schedule_shape}
     catch
       {:evaluation_runner, code} -> {:error, code}
+    end
+  end
+
+  defp model_origin!(%{"version" => 1, "mode" => "tuning"} = plan) do
+    origins =
+      (Map.values(plan["profiles"]) ++ Map.values(plan["embedding_profiles"]))
+      |> Enum.map(& &1["base_url"])
+      |> Enum.uniq()
+
+    case origins do
+      [] -> "http://127.0.0.1:11434"
+      ["http://127.0.0.1:11434" = origin] -> origin
+      [origin] -> model_origin!(%{"version" => 2, "model_origin" => origin})
+      _ -> fail!(:model_origin)
     end
   end
 
