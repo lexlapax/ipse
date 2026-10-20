@@ -244,7 +244,7 @@ defmodule IpseKnowledge.Evidence do
                     (tf + 1.2 * (0.25 + 0.75 * length(doc.tokens) / avg))
               end)
 
-            if score > 0, do: [candidate(doc.source, doc.chunk, score, "bm25", terms)], else: []
+            if score > 0, do: [candidate(doc.source, doc.chunk, score, "bm25", query)], else: []
           end)
           |> order()
           |> Enum.take(top_k)
@@ -264,8 +264,9 @@ defmodule IpseKnowledge.Evidence do
     end
   end
 
-  def rank_remote(sources, refs, top_k, now) do
+  def rank_remote(sources, refs, query, top_k, now) do
     with :ok <- inputs(sources, top_k, now),
+         :ok <- if(text?(query, 1024), do: :ok, else: {:error, :invalid_query}),
          true <- is_list(refs) and length(refs) <= top_k and Enum.all?(refs, &remote_ref?/1),
          true <- length(Enum.uniq_by(refs, &{&1["source_key"], &1["chunk_id"]})) == length(refs) do
       if sources |> Enum.map(& &1["partition"]) |> Enum.uniq() |> length() <= 1 do
@@ -281,7 +282,7 @@ defmodule IpseKnowledge.Evidence do
                  ),
                {:ok, chunks} <- chunks(source),
                chunk when is_map(chunk) <- Enum.find(chunks, &(&1["chunk_id"] == ref["chunk_id"])) do
-            {:cont, {:ok, [candidate(source, chunk, ref["score"], "mcp_query", []) | acc]}}
+            {:cont, {:ok, [candidate(source, chunk, ref["score"], "mcp_query", query) | acc]}}
           else
             _ -> {:halt, {:error, :invalid_remote_selection}}
           end
@@ -748,26 +749,180 @@ defmodule IpseKnowledge.Evidence do
     end)
   end
 
-  defp candidate(s, chunk, score, method, terms) do
-    # Pick a bounded exact window around the first matching token, retaining byte coordinates.
-    offset =
-      Enum.find_value(token_offsets(chunk["text"]), 0, fn {term, start} ->
-        if term in terms, do: start
-      end)
-
-    text = binary_part(chunk["text"], offset, byte_size(chunk["text"]) - offset)
-    {quote, _} = utf8_prefix(text, 1024)
-
-    {:ok, citation} =
-      citation(
-        s,
-        chunk,
-        chunk["start_byte"] + offset,
-        chunk["start_byte"] + offset + byte_size(quote)
-      )
-
+  defp candidate(s, chunk, score, method, query) do
+    {:ok, citation} = excerpt(s, chunk, query)
     %{"citation" => citation, "score" => score, "method" => method}
   end
+
+  def excerpt(source, chunk, query) do
+    if text?(query, 1024) do
+      text = chunk["text"]
+
+      {start, finish} =
+        if byte_size(text) <= 1024 do
+          {0, byte_size(text)}
+        else
+          terms = MapSet.new(tokens(query))
+
+          groups =
+            token_offsets(text)
+            |> Enum.chunk_by(fn {_, start, finish} -> {start, finish} end)
+            |> Enum.flat_map(fn [{_, start, finish} | _] = rows ->
+              matched =
+                rows |> Enum.map(&elem(&1, 0)) |> MapSet.new() |> MapSet.intersection(terms)
+
+              if finish - start <= 1024 and MapSet.size(matched) > 0,
+                do: [{start, finish, matched}],
+                else: []
+            end)
+
+          excerpt_context(text, text_units(text), coverage_core(groups))
+        end
+
+      citation(source, chunk, chunk["start_byte"] + start, chunk["start_byte"] + finish)
+    else
+      {:error, :invalid_query}
+    end
+  rescue
+    _ -> {:error, :invalid_span}
+  end
+
+  defp coverage_core([]), do: nil
+
+  defp coverage_core(groups) do
+    {_, _, coverage} =
+      Enum.reduce(groups, {:queue.new(), %{}, 0}, fn group, {queue, counts, best} ->
+        {queue, counts} = add_group(group, queue, counts)
+        {queue, counts, max(best, map_size(counts))}
+      end)
+
+    {_, _, best} =
+      Enum.reduce(groups, {:queue.new(), %{}, nil}, fn group, {queue, counts, best} ->
+        {queue, counts} = add_group(group, queue, counts)
+        shortest_core(queue, counts, coverage, best)
+      end)
+
+    {_, start, finish} = best
+    {start, finish}
+  end
+
+  defp add_group({_, finish, terms} = group, queue, counts) do
+    queue = :queue.in(group, queue)
+    counts = term_counts(counts, terms, 1)
+    trim_core(queue, counts, finish)
+  end
+
+  defp trim_core(queue, counts, finish) do
+    {:value, {start, _, _}} = :queue.peek(queue)
+
+    if finish - start <= 1024 do
+      {queue, counts}
+    else
+      {queue, counts} = remove_group(queue, counts)
+      trim_core(queue, counts, finish)
+    end
+  end
+
+  defp shortest_core(queue, counts, coverage, best) when map_size(counts) < coverage,
+    do: {queue, counts, best}
+
+  defp shortest_core(queue, counts, coverage, best) do
+    {:value, {start, _, _}} = :queue.peek(queue)
+    {:value, {_, finish, _}} = :queue.peek_r(queue)
+    trial = {finish - start, start, finish}
+    best = if best == nil or trial < best, do: trial, else: best
+    {queue, counts} = remove_group(queue, counts)
+    shortest_core(queue, counts, coverage, best)
+  end
+
+  defp remove_group(queue, counts) do
+    {{:value, {_, _, terms}}, queue} = :queue.out(queue)
+    {queue, term_counts(counts, terms, -1)}
+  end
+
+  defp term_counts(counts, terms, delta) do
+    Enum.reduce(terms, counts, fn term, acc ->
+      case Map.get(acc, term, 0) + delta do
+        0 -> Map.delete(acc, term)
+        n -> Map.put(acc, term, n)
+      end
+    end)
+  end
+
+  defp text_units(text) do
+    boundaries =
+      Regex.scan(
+        ~r/[.!?](?=[\t\n\v\f\r ]|\z)[\t\n\v\f\r ]*|\n[\t\n\v\f\r ]*/,
+        text,
+        return: :index
+      )
+
+    {start, spans} =
+      Enum.reduce(boundaries, {0, []}, fn [{offset, size}], {start, acc} ->
+        finish = offset + size
+        {finish, [{start, finish} | acc]}
+      end)
+
+    spans = if start < byte_size(text), do: [{start, byte_size(text)} | spans], else: spans
+    Enum.reverse(spans)
+  end
+
+  defp excerpt_context(text, units, nil) do
+    complete = Enum.take_while(units, fn {_, finish} -> finish <= 1024 end)
+
+    case List.last(complete) do
+      nil ->
+        {quote, _} = utf8_prefix(text, 1024)
+        {0, byte_size(quote)}
+
+      {_, finish} ->
+        {0, finish}
+    end
+  end
+
+  defp excerpt_context(text, units, {start, finish} = core) do
+    {before, rest} = Enum.split_while(units, fn {_, last} -> last <= start end)
+    {hull, after_units} = Enum.split_while(rest, fn {first, _} -> first < finish end)
+    {first, _} = hd(hull)
+    {_, last} = List.last(hull)
+
+    if last - first <= 1024 do
+      first =
+        case Enum.find(before, fn {previous, _} -> last - previous <= 1024 end) do
+          {previous, _} -> previous
+          _ -> first
+        end
+
+      last =
+        case after_units
+             |> Enum.take_while(fn {_, next} -> next - first <= 1024 end)
+             |> List.last() do
+          {_, next} -> next
+          _ -> last
+        end
+
+      {first, last}
+    else
+      centered_span(text, core)
+    end
+  end
+
+  defp centered_span(text, {start, finish}) do
+    first = max(0, start - div(1024 - (finish - start), 2))
+    last = min(byte_size(text), first + 1024)
+    first = max(0, last - 1024)
+    {codepoint_boundary(text, first, 1), codepoint_boundary(text, last, -1)}
+  end
+
+  defp codepoint_boundary(text, offset, direction) when offset < byte_size(text) do
+    byte = :binary.at(text, offset)
+
+    if byte >= 128 and byte < 192,
+      do: codepoint_boundary(text, offset + direction, direction),
+      else: offset
+  end
+
+  defp codepoint_boundary(_, offset, _), do: offset
 
   defp candidate?(c),
     do:
@@ -821,7 +976,7 @@ defmodule IpseKnowledge.Evidence do
       normalized = String.downcase(binary_part(text, start, length))
 
       Regex.scan(~r/[\p{L}\p{N}]+/u, normalized)
-      |> Enum.map(fn [term] -> {term, start} end)
+      |> Enum.map(fn [term] -> {term, start, start + length} end)
     end)
   end
 

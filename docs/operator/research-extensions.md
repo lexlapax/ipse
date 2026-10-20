@@ -123,6 +123,10 @@ asking a model or writing a conclusion.
 Word matching ignores case, while quotations retain the original UTF-8 bytes.
 Case conversion during matching does not move the citation into a different
 part of the source. The byte offsets always address the supplied or captured text.
+Returned passages use the same [query-aware excerpts as Corpus](corpus.md#store-text-and-retrieve-its-citation).
+Nearby actors and conditions can fit in the quote; distant qualifications can
+remain outside its byte or chunk boundary. Inspect the source when
+the selected passage leaves an important condition unclear.
 
 ## Bound an investigation
 

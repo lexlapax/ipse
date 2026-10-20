@@ -56,7 +56,8 @@ defmodule Ipse.KnowledgeDomainRegressionsTest do
       assert result["status"]=="ok"
       assert [candidate]=result["evidence"]
       assert candidate["score"]==3/61
-      assert candidate["citation"]["start_byte"]==9
+      assert candidate["citation"]["start_byte"]==0
+      assert candidate["citation"]["quote"]==text
       assert result["coverage"]["components"]["graph"]["seed"]=="Release"
       assert Enum.map(result["claims"],& &1["basis"])==Enum.map(facts,& &1["citations"])
       assert Enum.all?(result["claims"],&(&1["label"]=="conflict"))

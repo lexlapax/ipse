@@ -76,8 +76,25 @@ and final revalidation. A complete search with no usable match returns `abstain`
 record it in coverage. Expired sources and sources observed after the selected
 time do not become current evidence. Exact quotation establishes recorded bytes;
 check whether they support your question before relying on an answer.
-Lexical excerpts begin at a matched token's original byte offset, including when
-Unicode downcasing changes its normalized spelling.
+Lexical, dense and server-selected retrieval use the same query-aware excerpts.
+Ipse keeps a complete chunk when it fits the existing 1024-byte citation limit.
+For longer chunks, it selects a cluster of query terms and includes nearby
+sentence or line context within that limit. Source offsets refer to the original UTF-8 bytes,
+including when Unicode downcasing changes a search term's spelling.
+
+To inspect a condition alongside its actor, store and query another source:
+
+```text
+/ext ext__corpus__source {"store":"notes","action":"put","args":{"source_id":"manual:migration","generation":1,"expected_revision":0,"title":"Migration conditions","text":"Ada owns the migration. It proceeds only after audit.","uri":"local:manual-migration","observed_at_ms":1700000000000,"event_at_ms":null,"expires_at_ms":null}}
+/ext ext__corpus__query {"store":"notes","retrieval":"words","rerank":null,"query":"migration","top_k":5,"as_of_ms":1700000020000}
+```
+
+Expect the quotation to include both sentences, preserving Ada's role and the
+audit condition. Longer chunks can lose distant actors or qualifications.
+Context before the selected passage gets priority; a long sentence can require
+a shorter byte window. Inspect the original
+source when the quote leaves a condition unclear. A complete retrieval result
+does not certify that its bounded quotes contain every relevant statement.
 
 Read `status` together with `coverage.complete`. Deliberately forgotten, expired,
 future-dated and historical sources stay excluded. Their diagnostics remain in
@@ -319,10 +336,11 @@ component contributes once, and the best component rank supplies its displayed
 citation. Graph claims retain their own exact bases even when that representative
 quotes another span in the chunk. Fusion does not combine different source
 generations or Store partitions.
-Dense citations take at most the first 200 graphemes of a chunk, bounded again
-to 1024 UTF-8 bytes. A long combining sequence can end inside that visual cluster
-while retaining valid UTF-8 and exact byte coordinates. It does not become a
-missing-vector diagnostic.
+Dense retrieval uses the shared query-aware quotations for indexed chunks.
+This changes displayed spans without changing stored chunks or vectors, so it
+requires no reindex by itself. A byte boundary can end inside a long visual
+combining cluster while retaining valid UTF-8 and exact source coordinates. It
+does not become a missing-vector diagnostic.
 The last command sends short candidate IDs, canonical source-span references and
 at most 128 UTF8 bytes per excerpt to `ranker`. The model returns every short ID
 exactly once; Ipse maps the order back to the original citations. Missing,

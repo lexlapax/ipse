@@ -242,11 +242,58 @@ Citation offsets are bytes in the complete source. Validation binds the exact
 source generation, content hash, chunk ID, quote, quote hash, URI, times and origin.
 
 BM25 uses `k1 = 1.2` and `b = 0.75`. Scoring and excerpt selection share
-`token_offsets/1`: each normalized token retains its original UTF-8 byte start.
+`token_offsets/1`: each normalized token retains its original half-open UTF-8
+byte range.
 Downcasing can split one source token into several normalized terms, as with
 `İstanbul`. Those terms still refer to the original token's bytes. Never apply
 offsets from a downcased string to the captured source. The Unicode regression
 places the match after byte 1024 and requires the selected quotation to contain it.
+
+Follow `Evidence.excerpt/3` from lexical candidates, `Corpus.dense_candidates/4`
+and `Evidence.rank_remote/5`. These paths share one selection rule; Research
+inherits it through lexical ranking. Scoring still examines the complete chunk.
+The selector keeps a complete chunk when it fits the existing 1024-byte citation
+limit. Only longer chunks need query-aware cropping. For those chunks it groups
+normalized terms by their original token span, then uses
+two forward queue scans. It finds the maximum distinct query-term coverage in
+1024 bytes, chooses the shortest such core and breaks ties by original start
+and end. Original tokens longer than 1024 bytes remain scored but cannot count
+as whole-token excerpt coverage.
+
+`text_units/1` partitions original bytes at LF or ASCII `.`, `?` and `!` runs
+followed by ASCII whitespace or end of chunk. It keeps following whitespace
+with the preceding unit. These are mechanical boundaries: `3.14` stays together,
+while `Dr. Rowan` can split. The smallest whole-unit hull around the core stays
+intact when it fits 1024 bytes. The selector includes the earliest preceding
+whole unit that still fits with that hull, then includes as many following
+whole units as fit. Earlier context gets priority. Every included byte remains
+contiguous with the selected core.
+
+When the whole-unit hull is too long, the selector centers a 1024-byte window
+around the core. It
+transfers space at chunk edges and clips inward to valid codepoint boundaries.
+With no eligible matching token, it takes a whole-unit prefix up to 1024 bytes,
+or a codepoint-safe prefix when the first unit is longer. No path joins disjoint
+text, normalizes the quote or crosses a stored chunk boundary. `citation/4`
+still reconstructs and validates the selected source span independently.
+
+For a worked example, query `migration` in `Ada owns the migration. It proceeds
+only after audit.`. The selected unit and following neighbor retain both
+sentences. A longer preceding paragraph or a later condition outside the byte
+allowance can still be omitted. The bounded rule does not prove semantic
+completeness. Run `mix test test/knowledge_evidence_test.exs` and follow the
+complete-short-chunk, omitted-context, exhaustive-window and answer-packing cases.
+The packing control uses actual encoded Answer requests: six 480-byte passages
+fit, while three of six 900-byte passages fit without shortening their conditions.
+Escaping can admit fewer passages at the same raw quote length.
+
+BM25 and cosine formulas, stored chunk IDs and embedding inputs stay unchanged.
+New excerpt bounds legitimately change span IDs. Existing ordering still uses
+score, source/chunk/span identity and scope; span-sensitive ties and resulting
+RRF component ranks can change. Graph fact support spans remain independent of
+text excerpts. Recompute rerank IDs from the final selected citations and retain
+them through response mapping. The rerank model still sees only a 128-byte
+prefix, which can omit a qualification present in the full selected quote.
 
 An exact quote proves which bytes were recorded. It does not prove that a claim
 follows from them. Facts retain every support citation and extraction identity.
@@ -394,11 +441,12 @@ prebuilt harness and artifact BEAMs with development tools absent from its PATH.
 It rechecks archive, artifact, host and harness identities afterward. Build the
 archive and artifacts for the same platform and OTP release.
 
-For dense citation changes, follow `dense_candidates/3` into the shared
-`Evidence.utf8_prefix/2` boundary. Preserve the ordinary 200-grapheme excerpt,
-then cap its bytes at 1024 before constructing the citation. The package test
-uses a single combining grapheme longer than that limit with a valid vector,
-and separately removes the vector to keep the real missing-index refusal.
+For dense citation changes, follow the shared excerpt selection described above.
+The package test exercises the same late passage through lexical, dense, hybrid
+and remote selection, retaining chunk/vector identity and exact final span IDs.
+It also uses a combining grapheme longer than the byte target with a valid vector,
+then removes the vector to retain the real missing-index refusal. Excerpt policy
+cannot turn absent or incompatible vectors into successful dense retrieval.
 
 ## Plan projections before inference
 

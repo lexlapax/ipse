@@ -227,6 +227,25 @@ defmodule Ipse.KnowledgeEvidenceTest do
     ''')
   end
 
+  test "shared excerpts retain actors and conditions and prefer a compact term cluster" do
+    pure(~S'''
+    text="Ada owns the migration. It proceeds only after audit. Unrelated appendix."
+    s=source.(text,%{}); {:ok,[chunk]}=E.chunks(s)
+    for query <- ["migration","audit"] do
+      assert {:ok,c}=E.excerpt(s,chunk,query)
+      assert String.contains?(c["quote"],"Ada owns the migration.")
+      assert String.contains?(c["quote"],"It proceeds only after audit.")
+      assert E.valid_span?(s,c)
+    end
+    s=source.("alpha. "<>String.duplicate("unrelated ",110)<>". alpha beta.",%{})
+    {:ok,[chunk]}=E.chunks(s)
+    assert {:ok,c}=E.excerpt(s,chunk,"alpha beta")
+    assert c["quote"]=="alpha beta."
+    assert c["end_byte"]==byte_size(s["text"])
+    assert E.valid_span?(s,c)
+    ''')
+  end
+
   test "normalized lexical matches keep original UTF8 byte offsets" do
     pure(~S'''
     text=String.duplicate("x ",600)<>"İstanbul"
@@ -234,15 +253,159 @@ defmodule Ipse.KnowledgeEvidenceTest do
     for query <- ["İstanbul","i","stanbul"] do
       {:ok,r}=E.rank_lexical([s],query,5,20)
       [hit]=r["evidence"]
-      assert hit["citation"]["start_byte"]==1200
-      assert hit["citation"]["quote"]=="İstanbul"
+      assert hit["citation"]["start_byte"]<=1200
+      assert hit["citation"]["end_byte"]>=1200+byte_size("İstanbul")
+      assert String.ends_with?(hit["citation"]["quote"],"İstanbul")
       assert E.valid_span?(s,hit["citation"])
     end
     later=source.(String.duplicate("é ",700)<>"İstanbul",%{})
     {:ok,r}=E.rank_lexical([later],"stanbul",5,20)
     [hit]=r["evidence"]
-    assert hit["citation"]["start_byte"]==2100
+    assert hit["citation"]["start_byte"]<=2100
+    assert hit["citation"]["end_byte"]==byte_size(later["text"])
+    assert String.ends_with?(hit["citation"]["quote"],"İstanbul")
     assert E.valid_span?(later,hit["citation"])
+    ''')
+  end
+
+  test "complete short chunks and bounded long context expose their omissions" do
+    pure(~S'''
+    long="Migration "<>String.duplicate("x",850)<>" only after the audit completes."
+    s=source.(long,%{}); {:ok,[chunk]}=E.chunks(s)
+    assert byte_size(long)>512 and byte_size(long)<=1024
+    assert {:ok,%{"quote"=>^long}}=E.excerpt(s,chunk,"migration")
+    text="Owner Ada. Migration proceeds. Administrative note. Only after audit."
+    s=source.(text,%{}); {:ok,[chunk]}=E.chunks(s)
+    assert {:ok,c}=E.excerpt(s,chunk,"migration")
+    assert c["quote"]==text
+    text="Owner Ada. Migration proceeds. "<>String.duplicate("Administrative note. ",60)<>"Only after audit."
+    s=source.(text,%{}); {:ok,[chunk]}=E.chunks(s)
+    assert {:ok,c}=E.excerpt(s,chunk,"migration")
+    assert String.starts_with?(c["quote"],"Owner Ada. Migration proceeds. ")
+    refute String.contains?(c["quote"],"Only after audit")
+    text="Owner Ada "<>String.duplicate("x",1050)<>". Migration proceeds. Only after audit."
+    s=source.(text,%{}); {:ok,[chunk]}=E.chunks(s)
+    assert {:ok,c}=E.excerpt(s,chunk,"migration")
+    assert c["quote"]=="Migration proceeds. Only after audit."
+    refute String.contains?(c["quote"],"Owner Ada")
+    text="Migration "<>String.duplicate("x",1200)<>" only after audit."
+    s=source.(text,%{}); {:ok,[chunk]}=E.chunks(s)
+    assert {:ok,c}=E.excerpt(s,chunk,"migration")
+    assert byte_size(c["quote"])==1024
+    assert String.starts_with?(c["quote"],"Migration ")
+    refute String.contains?(c["quote"],"only after audit")
+    assert E.valid_span?(s,c)
+    ''')
+  end
+
+  test "mechanical boundaries and unmatched prefixes retain literal original bytes" do
+    pure(~S'''
+    for text <- ["Dr. Rowan owns version 3.14.\r\nRelease requires review!\nNext step? Done.",
+                 "Owner says \"ready.\" Release proceeds only after audit.",
+                 String.duplicate("é ",600)<>"release"] do
+      s=source.(text,%{}); {:ok,[chunk]}=E.chunks(s)
+      assert {:ok,c}=E.excerpt(s,chunk,"release")
+      assert E.valid_span?(s,c)
+      assert c["quote"]==binary_part(text,c["start_byte"],c["end_byte"]-c["start_byte"])
+      assert String.contains?(String.downcase(c["quote"]),"release")
+    end
+    for {count,kept} <- [{200,200},{400,341}], query <- ["absent","?!",""] do
+      s=source.(String.duplicate("A. ",count),%{}); {:ok,[chunk]}=E.chunks(s)
+      assert {:ok,c}=E.excerpt(s,chunk,query)
+      assert c["quote"]==String.duplicate("A. ",kept)
+      assert c["start_byte"]==0 and c["end_byte"]==3*kept
+    end
+    s=source.("A.",%{}); {:ok,[chunk]}=E.chunks(s)
+    assert {:error,:invalid_query}=E.excerpt(s,chunk,String.duplicate("x",1025))
+    assert {:error,:invalid_query}=E.rank_remote([],[],nil,1,20)
+    assert {:error,:invalid_span}=E.excerpt(s,Map.put(chunk,"chunk_id",E.sha256("forged")),"a")
+    ''')
+  end
+
+  test "coverage core agrees with exhaustive bounded windows on varied long lines" do
+    pure(~S'''
+    for seed <- 1..40 do
+      :rand.seed(:exsss,{seed,seed+1,seed+2})
+      words=Enum.map(1..35, fn _ ->
+        Enum.at(~w(alpha beta gamma unrelated),:rand.uniform(4)-1)<>
+          String.duplicate(" ",:rand.uniform(22))
+      end)
+      text=String.duplicate("x",520)<>" "<>Enum.join(words)<>String.duplicate("y",520)
+      assert byte_size(text)>1024 and byte_size(text)<=2048
+      hits=Regex.scan(~r/alpha|beta|gamma/,text,return: :index)
+        |> Enum.map(fn [{start,size}] -> {start,start+size,binary_part(text,start,size)} end)
+      trials=for {start,_,_}<-hits, {_,finish,_}<-hits, finish>start,
+        finish-start<=1024 do
+        covered=hits |> Enum.filter(fn {a,b,_}-> a>=start and b<=finish end)
+          |> Enum.map(&elem(&1,2)) |> Enum.uniq() |> length()
+        {-covered,finish-start,start,finish}
+      end
+      {_,size,start,finish}=Enum.min(trials)
+      target=1024
+      left=max(0,start-div(target-size,2))
+      right=min(byte_size(text),left+target)
+      left=max(0,right-target)
+      s=source.(text,%{}); {:ok,[chunk]}=E.chunks(s)
+      assert {:ok,c}=E.excerpt(s,chunk,"alpha beta gamma")
+      assert {c["start_byte"],c["end_byte"]}=={left,right}
+      assert c["start_byte"]<=start and c["end_byte"]>=finish
+      assert E.valid_span?(s,c)
+    end
+    ''')
+  end
+
+  test "huge original tokens and combining graphemes never invent normalized byte spans" do
+    pure(~S'''
+    for text <- [String.duplicate("İ",520)<>" owner i",
+                 "a"<>String.duplicate(<<0x0301::utf8>>,600),
+                 String.duplicate("😀",180)<>" migration "<>String.duplicate("😀",180)] do
+      s=source.(text,%{}); {:ok,[chunk]}=E.chunks(s)
+      assert {:ok,c}=E.excerpt(s,chunk,"i migration")
+      assert E.valid_span?(s,c)
+      assert String.valid?(c["quote"]) and byte_size(c["quote"])<=1024
+      assert c["quote"]==binary_part(text,c["start_byte"],c["end_byte"]-c["start_byte"])
+      if String.starts_with?(text,"İ"), do: assert(String.ends_with?(c["quote"],"owner i"))
+    end
+    ''')
+  end
+
+  test "selected whole excerpts expose the exact answer packing tradeoff" do
+    pure(~S'''
+    Code.require_file("examples/knowledge/evaluation_answer.exs")
+    alias IpseKnowledgeExample.EvaluationAnswer, as: Answer
+    query="release "<>String.duplicate("z",56)
+    assert byte_size(query)==64
+    candidates=fn size, filler ->
+      quote="Release "<>String.duplicate(filler,size-byte_size("Release  only after audit."))<>" only after audit."
+      assert byte_size(quote)==size
+      Enum.map(1..6,fn n ->
+        s=source.("Preface "<>String.duplicate("x",900)<>". "<>quote,
+          %{"source_id"=>String.pad_leading(Integer.to_string(n),16,"s"),"observed_at_ms"=>1700000000000})
+        {:ok,[chunk]}=E.chunks(s)
+        assert {:ok,c}=E.excerpt(s,chunk,query)
+        assert c["quote"]==quote and E.valid_span?(s,c)
+        %{"citation"=>c}
+      end)
+    end
+    short=candidates.(480,"x")
+    assert {:ok,compact}=Answer.prepare(query,1700000020000,short)
+    assert length(compact["shown"])==6
+    assert byte_size(compact["request"]["input"])<=4096
+    long=candidates.(900,"x")
+    assert {:ok,whole}=Answer.prepare(query,1700000020000,long)
+    assert length(whole["shown"])==3
+    assert byte_size(whole["request"]["input"])<=4096
+    original=JSON.decode!(whole["request"]["input"])
+    fourth=hd(Enum.drop(long,3))["citation"] |> Map.take(~w(source_id generation observed_at_ms event_at_ms quote))
+      |> Map.put("id","e4")
+    assert byte_size(JSON.encode!(Map.update!(original,"candidates",&(&1++[fourth]))))>4096
+    assert Enum.map(whole["shown"],& &1["citation"])==Enum.take(long,3)|>Enum.map(& &1["citation"])
+    assert Enum.all?(whole["shown"],&String.ends_with?(&1["citation"]["quote"],"only after audit."))
+    assert length(whole["coverage"]["omitted"])==3
+    assert {:ok,escaped}=Answer.prepare(query,1700000020000,candidates.(480,"\""))
+    assert length(escaped["shown"])<6
+    assert Enum.all?(escaped["shown"],&(&1["cropped"]==false))
+    assert byte_size(escaped["request"]["input"])<=4096
     ''')
   end
 
@@ -469,7 +632,7 @@ defmodule Ipse.KnowledgeEvidenceTest do
     s=source.(String.duplicate("x",2047)<>"é"<>String.duplicate("y",1300),%{})
     {:ok,chunks}=E.chunks(s); selected=Enum.at(chunks,1)
     ref=Map.take(s,~w(source_id source_key generation content_sha256))|>Map.merge(%{"chunk_id"=>selected["chunk_id"],"score"=>2.75})
-    {:ok,r}=E.rank_remote([s],[ref],5,20)
+    {:ok,r}=E.rank_remote([s],[ref], "release", 5, 20)
     [hit]=r["evidence"]
     assert hit["method"]=="mcp_query" and hit["score"]==2.75
     assert hit["citation"]["chunk_id"]==selected["chunk_id"]
@@ -488,15 +651,15 @@ defmodule Ipse.KnowledgeEvidenceTest do
     pure(~S'''
     a=source.("alpha",%{}); b=source.("beta",%{"source_id"=>"second"})
     refs=Enum.map([a,b],fn s -> {:ok,[c]}=E.chunks(s);Map.take(s,~w(source_id source_key generation content_sha256))|>Map.merge(%{"chunk_id"=>c["chunk_id"],"score"=>1.0}) end)
-    {:ok,ties}=E.rank_remote([a,b],refs,5,20)
-    assert {:ok,^ties}=E.rank_remote([a,b],Enum.reverse(refs),5,20)
+    {:ok,ties}=E.rank_remote([a,b],refs, "release", 5, 20)
+    assert {:ok,^ties}=E.rank_remote([a,b],Enum.reverse(refs), "release", 5, 20)
     ranked=[Map.put(hd(refs),"score",-3),Map.put(List.last(refs),"score",0)]
-    {:ok,result}=E.rank_remote([a,b],ranked,5,20)
+    {:ok,result}=E.rank_remote([a,b],ranked, "release", 5, 20)
     assert Enum.map(result["evidence"],& &1["score"])==[0,-3]
     assert hd(result["evidence"])["citation"]["source_id"]=="second"
-    assert {:error,:invalid_remote_refs}=E.rank_remote([a,b],[hd(refs),hd(refs)],5,20)
-    assert {:error,:invalid_remote_refs}=E.rank_remote([a,b],List.duplicate(hd(refs),11),10,20)
-    assert {:error,:invalid_sources}=E.rank_remote([a,b],refs,0,20)
+    assert {:error,:invalid_remote_refs}=E.rank_remote([a,b],[hd(refs),hd(refs)], "release", 5, 20)
+    assert {:error,:invalid_remote_refs}=E.rank_remote([a,b],List.duplicate(hd(refs),11), "release", 10, 20)
+    assert {:error,:invalid_sources}=E.rank_remote([a,b],refs, "release", 0, 20)
     ''')
   end
 
@@ -504,18 +667,18 @@ defmodule Ipse.KnowledgeEvidenceTest do
     pure(~S'''
     s=source.("captured evidence",%{});{:ok,[chunk]}=E.chunks(s)
     ref=Map.take(s,~w(source_id source_key generation content_sha256))|>Map.merge(%{"chunk_id"=>chunk["chunk_id"],"score"=>1.0})
-    assert {:error,:invalid_remote_refs}=E.rank_remote([s],[Map.put(ref,"source_id","other")],5,20)
-    assert {:error,:invalid_remote_refs}=E.rank_remote([s],[Map.put(ref,"partition","other")],5,20)
-    assert {:error,:invalid_remote_refs}=E.rank_remote([s],[Map.put(ref,"score",:nan)],5,20)
-    assert {:error,:invalid_remote_refs}=E.rank_remote([s],[Map.put(ref,"generation",0)],5,20)
+    assert {:error,:invalid_remote_refs}=E.rank_remote([s],[Map.put(ref,"source_id","other")], "release", 5, 20)
+    assert {:error,:invalid_remote_refs}=E.rank_remote([s],[Map.put(ref,"partition","other")], "release", 5, 20)
+    assert {:error,:invalid_remote_refs}=E.rank_remote([s],[Map.put(ref,"score",:nan)], "release", 5, 20)
+    assert {:error,:invalid_remote_refs}=E.rank_remote([s],[Map.put(ref,"generation",0)], "release", 5, 20)
     for field<-~w(content_sha256 chunk_id) do
-      assert {:error,:invalid_remote_selection}=E.rank_remote([s],[Map.put(ref,field,String.duplicate("0",64))],5,20)
+      assert {:error,:invalid_remote_selection}=E.rank_remote([s],[Map.put(ref,field,String.duplicate("0",64))], "release", 5, 20)
     end
-    assert {:error,:invalid_remote_selection}=E.rank_remote([s],[Map.put(ref,"generation",2)],5,20)
-    assert {:error,:invalid_remote_selection}=E.rank_remote([], [ref],5,20)
+    assert {:error,:invalid_remote_selection}=E.rank_remote([s],[Map.put(ref,"generation",2)], "release", 5, 20)
+    assert {:error,:invalid_remote_selection}=E.rank_remote([], [ref], "release", 5, 20)
     other=source.("foreign",%{"source_id"=>"second","partition"=>"other"})
-    assert {:error,:invalid_remote_selection}=E.rank_remote([s,other],[ref],5,20)
-    assert {:error,:invalid_sources}=E.rank_remote([Map.put(s,"text","tampered")],[ref],5,20)
+    assert {:error,:invalid_remote_selection}=E.rank_remote([s,other],[ref], "release", 5, 20)
+    assert {:error,:invalid_sources}=E.rank_remote([Map.put(s,"text","tampered")],[ref], "release", 5, 20)
     ''')
   end
 
@@ -527,12 +690,12 @@ defmodule Ipse.KnowledgeEvidenceTest do
     future=Map.put(s,"observed_at_ms",21)
     historical=put_in(s,["origin","historical"],true)
     for stale<-[expired,future,historical] do
-      assert {:error,:invalid_remote_selection}=E.rank_remote([stale],[ref],5,20)
+      assert {:error,:invalid_remote_selection}=E.rank_remote([stale],[ref], "release", 5, 20)
     end
     live=source.("live",%{"source_id"=>"second"});{:ok,[c]}=E.chunks(live)
     live_ref=Map.take(live,~w(source_id source_key generation content_sha256))|>Map.merge(%{"chunk_id"=>c["chunk_id"],"score"=>2.0})
-    assert {:error,:invalid_remote_selection}=E.rank_remote([live],[live_ref,ref],5,20)
-    {:ok,empty}=E.rank_remote([],[],5,20)
+    assert {:error,:invalid_remote_selection}=E.rank_remote([live],[live_ref,ref], "release", 5, 20)
+    {:ok,empty}=E.rank_remote([],[], "release", 5, 20)
     assert empty["evidence"]==[] and empty["claims"]==[] and empty["gaps"]==[]
     assert empty["coverage"]["sources"]==0 and empty["coverage"]["chunks"]==0
     assert empty["coverage"]["score_provenance"]=="server_asserted"

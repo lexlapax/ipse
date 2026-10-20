@@ -157,6 +157,55 @@ checks were not repeated for this increment. The
 synthetic audits, package identity and the coverage limits. No real model quality,
 matched resource comparison or new process-level answer-access trace is claimed.
 
+## Preserve complete chunks and share excerpt selection
+
+Lexical, dense and remote retrieval now use one original-byte excerpt selector.
+It keeps a complete chunk whenever that chunk fits the existing 1024-byte
+citation limit. Only longer chunks need cropping. Two forward scans select the
+maximum distinct query-term coverage, then the shortest and earliest core.
+Mechanical sentence/line boundaries retain the whole hull when possible, with
+earlier context taking priority over following context. An oversized hull uses
+a centered UTF8-safe window. Graph fact support spans remain independent.
+Stored chunks, vectors, scoring formulas and scoped chunk fusion are unchanged;
+new span bounds can legitimately change IDs and span-sensitive ranking ties.
+
+The initial implementation preferred 512-byte context and one neighboring unit
+on either side. It matched that design and passed its focused reviews, but an
+exposed-data diagnostic found avoidable omissions from already-legal short
+chunks. It retained 61 of 73 complete positive reference spans. Some missing
+text named an approver or stated a retention rule before the selected passage.
+The policy was revised before commit. The final implementation retains 73 of
+73 reference spans across 45 old questions. The
+[containment receipt](excerpt-containment.json) binds both implementations and
+the identical exposed inputs. These checks consider annotated chunks regardless
+of retrieval rank and make no eligibility, semantic-quality or private-workload
+claim. The earlier prototype's similar count is separate evidence.
+
+Both final independent reviews, [A](excerpt-review-a.md) and
+[B](excerpt-review-b.md), report no actionable finding. They review the complete
+revised change; their earlier compact-policy verdicts do not establish this
+result. Review A also reports 204 independent context, whole-chunk and Unicode
+probes. Focused controls check original byte attribution, explicit oversized
+context omissions, lexical/dense/remote parity, preserved graph bases, final
+rerank IDs and actual encoded Answer packing. Six 480-byte citations fit where
+three 900-byte citations fit; neither policy shortens their selected conditions.
+Those outer test counts include isolated suite wrappers and overlap full suites.
+
+The same [461-file runtime/test inventory](excerpt-source.json) passes macOS's
+1,369-test suite, with one skip and 36 exclusions, and Linux's 1,408-test suite,
+with native sandbox enabled and 19 exclusions. Both pass build, formatting,
+strict compilation, demo, all fifteen preset builds, generic package checks and
+four source/installed proof pairs: base knowledge, complete results, selected
+MCP query/storage and the Research gateway. Three affected manuals were reviewed
+as whole chapters. Four exact operator commands pass through the real CLI with
+a fresh artifact, complete actor/condition quote and final revalidation.
+The [verification receipt](excerpt-verification.json) retains source, review,
+log and package identities and distinguishes the intentionally stopped first
+policy runs from passing checks. Their recorded process trees were empty after
+the stop. macOS native tests and synthetic measured 350-row proofs were not
+repeated for this increment. No actual model inference, new matched resource
+comparison or engine selection is established here.
+
 ## Commit independent validation inputs
 
 A fresh-context independent author committed fifty new questions across two
@@ -179,16 +228,17 @@ taxonomy. This preparation establishes no model-quality or resource result.
 
 ## Remaining quality work
 
-Dense retrieval still uses a 200-grapheme prefix, reranking sees at most 128 UTF8
-bytes of each excerpt, and lexical windows begin at a matched query token. Whole
-answer citations cannot recover context omitted upstream. The comparison's
-one-fact-per-chunk preparation and narrow explicit-fact author remain limits.
-No engine is selected. Compact output's quality and latency benefits remain
+The shared excerpt repair removes the separate dense-prefix and first-match
+policies. Reranking still sees at most 128 UTF8 bytes of each selected excerpt,
+and Answer admits only the longest complete rank prefix fitting its 4096-byte
+input. Neither can recover upstream omissions or guarantee every qualification.
+The comparison's one-fact-per-chunk preparation and narrow explicit-fact author
+remain limits. No engine is selected. Real quality and latency benefits remain
 hypotheses until measured on exposed tuning inputs.
 
-An offline excerpt diagnostic considers each positively annotated old source
-chunk independently of retrieval rank. Of 73 exact reference spans, the current
-dense prefix contains 19 and the first-match lexical window contains 63. A
+An earlier offline diagnostic considers each positively annotated old source
+chunk independently of retrieval rank. Of 73 exact reference spans, the
+pre-repair dense prefix contains 19 and the first-match lexical window contains 63. A
 query-aware, punctuation-aligned window prototype contains 73. Original source
 hashes, reference bytes and constructed citation spans are checked. This is a
 literal containment upper bound on exposed material, with no model call,

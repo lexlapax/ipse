@@ -260,6 +260,7 @@ defmodule IpseKnowledge.Corpus do
       case Evidence.rank_remote(
              snapshot["sources"],
              state.ctx.remote["refs"],
+             state.ctx.args["query"],
              state.ctx.args["top_k"],
              state.ctx.as_of_ms
            ) do
@@ -423,7 +424,10 @@ defmodule IpseKnowledge.Corpus do
   defp rank_semantic(state) do
     snap = state.ctx.snapshot
     args = state.ctx.args
-    {candidates, missing} = dense_candidates(snap, state.ctx.as_of_ms, state.ctx.query_vector)
+
+    {candidates, missing} =
+      dense_candidates(snap, state.ctx.as_of_ms, state.ctx.query_vector, args["query"])
+
     policy = state.ctx.retrieval["missing_embedding"]
 
     dense =
@@ -558,7 +562,7 @@ defmodule IpseKnowledge.Corpus do
     )
   end
 
-  defp dense_candidates(snapshot, as_of_ms, query_vector) do
+  defp dense_candidates(snapshot, as_of_ms, query_vector, query) do
     Enum.reduce(snapshot["sources"], {[], 0}, fn source, {acc, missing} ->
       if Evidence.current?(source, as_of_ms) do
         {:ok, chunks} = Evidence.chunks(source)
@@ -574,14 +578,7 @@ defmodule IpseKnowledge.Corpus do
           if vector == nil do
             {hits, gaps + 1}
           else
-            {quote, _} = Evidence.utf8_prefix(String.slice(chunk["text"], 0, 200), 1024)
-
-            case Evidence.citation(
-                   source,
-                   chunk,
-                   chunk["start_byte"],
-                   chunk["start_byte"] + byte_size(quote)
-                 ) do
+            case Evidence.excerpt(source, chunk, query) do
               {:ok, citation} ->
                 {[
                    %{

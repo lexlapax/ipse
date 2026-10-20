@@ -271,7 +271,8 @@ defmodule IpseKnowledge.PackagesIsolationTest do
     test "dense and hybrid citations keep a valid byte span for a long combining grapheme" do
       alias IpseKnowledge.{Evidence, Corpus}
       for kind <- ~w(dense hybrid),
-          text <- [String.duplicate("a", 1100), "a" <> String.duplicate(<<0x0301::utf8>>, 600)],
+          text <- [String.duplicate("a", 1100), "a" <> String.duplicate(<<0x0301::utf8>>, 600),
+            "Preface "<>String.duplicate("x",1100)<>". Owner Ada answers the query only after audit."],
           indexed <- [true, false] do
         {:ok, source}=Evidence.source(%{"source_id"=>"unicode", "partition"=>"notes", "generation"=>1,
           "title"=>"Unicode", "text"=>text, "uri"=>"local:unicode", "observed_at_ms"=>1,
@@ -305,9 +306,24 @@ defmodule IpseKnowledge.PackagesIsolationTest do
           [candidate]=result["evidence"]
           citation=candidate["citation"]
           assert String.valid?(citation["quote"]) and byte_size(citation["quote"]) in 1..1024
-          assert citation["quote"]==binary_part(text,0,citation["end_byte"])
-          assert citation["start_byte"]==0 and citation["quote_sha256"]==Evidence.sha256(citation["quote"])
-          assert byte_size(citation["quote"])==if(String.starts_with?(text,"aa"),do: 200,else: 1023)
+          assert {:ok,^citation}=Evidence.excerpt(source,chunk,"query")
+          assert citation["quote"]==binary_part(text,citation["start_byte"],citation["end_byte"]-citation["start_byte"])
+          assert citation["quote_sha256"]==Evidence.sha256(citation["quote"])
+          assert Evidence.chunks(source)=={:ok,[chunk]}
+          assert vector["input_sha256"]==Evidence.sha256(text)
+          if String.starts_with?(text,"Preface") do
+            assert citation["quote"]=="Owner Ada answers the query only after audit."
+            assert citation["start_byte"]>200
+            assert {:ok,%{"evidence"=>[lexical]}}=Evidence.rank_lexical([source],"query",1,2)
+            ref=Map.take(source,~w(source_id source_key generation content_sha256))
+              |> Map.merge(%{"chunk_id"=>chunk["chunk_id"],"score"=>1.0})
+            assert {:ok,%{"evidence"=>[remote]}}=Evidence.rank_remote([source],[ref],"query",1,2)
+            assert lexical["citation"]==citation and remote["citation"]==citation
+            assert {:ok,[^candidate]}=Evidence.apply_rerank([candidate],[Evidence.candidate_id(candidate)])
+          else
+            assert citation["start_byte"]==0
+            assert byte_size(citation["quote"])==if(String.starts_with?(text,"aa"),do: 1024,else: 1023)
+          end
         else
           assert result["status"]=="refused"
           assert result["gaps"]==[%{"code"=>"missing_embedding"}]
@@ -317,9 +333,10 @@ defmodule IpseKnowledge.PackagesIsolationTest do
 
     test "successful model rerank preserves Corpus and Research contexts through completion" do
       alias IpseKnowledge.{Adapters, Corpus, Evidence, Research}
+      text="Ada "<>String.duplicate("x",200)<>" owns release only after audit."
       sources=Enum.map(~w(one two),fn id ->
         {:ok,source}=Evidence.source(%{"source_id"=>id,"partition"=>"notes","generation"=>1,
-          "title"=>id,"text"=>"Release requires quiescence.","uri"=>"local:"<>id,"observed_at_ms"=>1,
+          "title"=>id,"text"=>text,"uri"=>"local:"<>id,"observed_at_ms"=>1,
           "event_at_ms"=>nil,"expires_at_ms"=>nil,"origin"=>%{"kind"=>"provided","store_profile"=>"notes",
           "partition_or_scope"=>"notes","receipt"=>nil,"historical"=>false}})
         source
@@ -327,7 +344,13 @@ defmodule IpseKnowledge.PackagesIsolationTest do
       {:ok,rank}=Evidence.rank_lexical(sources,"release",10,20)
       ids=Enum.map(rank["evidence"], &Evidence.candidate_id/1) |> Enum.reverse()
       resolved=%{"options"=>%{"rerank"=>%{"ordered"=>%{"kind"=>"model_complete","profile"=>"host_rank","max_candidates"=>16,"quote_bytes"=>128}}}}
-      {:call,_,cont}=Adapters.start(resolved,:rerank,%{"profile"=>"ordered","query"=>"release","candidates"=>rank["evidence"]})
+      {:call,request,cont}=Adapters.start(resolved,:rerank,%{"profile"=>"ordered","query"=>"release","candidates"=>rank["evidence"]})
+      for {shown,original}<-Enum.zip(JSON.decode!(request["input"])["candidates"],rank["evidence"]) do
+        assert shown["ref"]==Evidence.candidate_id(original)
+        assert shown["quote"]==binary_part(text,0,128)
+        refute String.contains?(shown["quote"],"release")
+        assert original["citation"]["quote"]==text
+      end
       outcome=%{"status"=>"ok","value"=>%{"profile"=>"host_rank","text"=>JSON.encode!(%{"order"=>~w(e2 e1)}),"usage"=>%{}}}
       snapshot=%{"tokens"=>[],"coverage"=>%{"fixture"=>"captured snapshot"},"gaps"=>[],"sources"=>sources}
       ctx=%{args: %{"store"=>"notes","query"=>"release"},store_profile: %{"kind"=>"state","scope"=>"project","partition"=>"notes"},snapshot: snapshot,rank: rank,as_of_ms: 20}
@@ -336,11 +359,11 @@ defmodule IpseKnowledge.PackagesIsolationTest do
       assert result["status"]=="ok" and result["coverage"]["revalidated"]
       assert result["coverage"]["store"]==snapshot["coverage"]
       assert Enum.map(result["evidence"], &Evidence.candidate_id/1)==ids
-      research_ctx=%{args: %{"query"=>"release"},ranked: rank,at: 20,sources: sources,bytes: 56,profile: %{"kind"=>"mcp"}}
+      research_ctx=%{args: %{"query"=>"release"},ranked: rank,at: 20,sources: sources,bytes: 2*byte_size(text),profile: %{"kind"=>"mcp"}}
       state=%{resolved: resolved,phase: :rerank,cont: cont,ctx: research_ctx}
       assert {:ok,%{"kind"=>"result","value"=>result},_}=Research.handle("host.actions",%{"outcome"=>outcome},state)
       assert result["status"]=="ok" and result["coverage"]["source_count"]==2
-      assert result["coverage"]["as_of_ms"]==20 and result["coverage"]["bytes"]==56
+      assert result["coverage"]["as_of_ms"]==20 and result["coverage"]["bytes"]==2*byte_size(text)
       assert Enum.map(result["evidence"], &Evidence.candidate_id/1)==ids
     end
 
@@ -395,7 +418,7 @@ defmodule IpseKnowledge.PackagesIsolationTest do
       alias IpseKnowledge.Evidence
       sources = Enum.map(1..10, fn n ->
         %{"source_id" => "s#{n}", "generation" => 1, "title" => "Locks",
-          "text" => "Lock " <> String.duplicate("files ", 170), "uri" => "local:s#{n}",
+          "text" => "Lock " <> String.duplicate("x", 1018) <> ".", "uri" => "local:s#{n}",
           "observed_at_ms" => 1, "event_at_ms" => nil, "expires_at_ms" => nil}
       end)
       {:ok, state} = IpseKnowledge.Research.init(offline_options())
@@ -666,21 +689,21 @@ defmodule IpseKnowledge.PackagesIsolationTest do
       valid = source()
       ref = remote_ref(valid)
       assert {:ok, %{"evidence" => [_]}} =
-        IpseKnowledge.Evidence.rank_remote([valid], [ref], 1, 10)
+        IpseKnowledge.Evidence.rank_remote([valid], [ref], "release", 1, 10)
 
       expired = %{valid | "expires_at_ms" => 10}
       assert {:error, :invalid_remote_selection} =
-        IpseKnowledge.Evidence.rank_remote([expired], [ref], 1, 10)
+        IpseKnowledge.Evidence.rank_remote([expired], [ref], "release", 1, 10)
 
       historical = put_in(valid, ["origin", "historical"], true)
       assert {:error, :invalid_remote_selection} =
-        IpseKnowledge.Evidence.rank_remote([historical], [ref], 1, 10)
+        IpseKnowledge.Evidence.rank_remote([historical], [ref], "release", 1, 10)
 
       assert {:error, :invalid_remote_selection} =
-        IpseKnowledge.Evidence.rank_remote([], [ref], 1, 10)
+        IpseKnowledge.Evidence.rank_remote([], [ref], "release", 1, 10)
 
       assert {:ok, %{"evidence" => []}} =
-        IpseKnowledge.Evidence.rank_remote([], [], 1, 10)
+        IpseKnowledge.Evidence.rank_remote([], [], "release", 1, 10)
     end
 
     defp query_resolved(store_partition \\ "bench") do

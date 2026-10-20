@@ -18,7 +18,7 @@ defmodule IpseKnowledgeExample.CompleteResultProof do
     try do
       configs = Map.new(~w(corpus graph research), &{&1, prepare(artifacts, &1, root)})
       research = start(configs["research"], root, "research")
-      quote = "Lock " <> String.duplicate("x", 1019)
+      quote = "Lock " <> String.duplicate("x", 1018) <> "."
       sources = Enum.map(1..10, &raw("s#{&1}", quote))
       full = invoke(research, "research", "investigate", investigation(sources))
       true = byte_size(full.bytes) > 12_000
