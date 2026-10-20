@@ -1,4 +1,4 @@
-Code.require_file("../examples/knowledge/evaluation_plan.exs", __DIR__)
+Code.require_file("../examples/knowledge/evaluation_runner.exs", __DIR__)
 
 defmodule Ipse.KnowledgeEvaluationMeasuredTest do
   use ExUnit.Case, async: false

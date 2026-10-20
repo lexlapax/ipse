@@ -1,8 +1,9 @@
-Code.require_file("../examples/knowledge/evaluation_plan.exs", __DIR__)
+Code.require_file("../examples/knowledge/evaluation_runner.exs", __DIR__)
 
 defmodule Ipse.KnowledgeEvaluationRunnerTest do
   use ExUnit.Case, async: false
   alias IpseKnowledgeExample.EvaluationRunner, as: Runner
+  alias IpseKnowledgeExample.EvaluationContract, as: Contract
 
   setup_all do
     root = Path.join(System.tmp_dir!(), "ipse-evaluation-runner-" <> Ipse.Usage.id())
@@ -189,7 +190,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
           do: File.write!(Path.join(root, name <> ".json"), JSON.encode!(value))
 
       try do
-        assert :ok = Runner.validate(plan)
+        assert :ok = Contract.validate(plan)
         output = Path.join(root, "results")
 
         assert {:ok, report} =
@@ -410,7 +411,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
     output = Path.join(root, "results")
 
     try do
-      assert :ok = Runner.validate(plan)
+      assert :ok = Contract.validate(plan)
 
       assert {:ok, report} =
                Runner.run(:verify,
@@ -518,7 +519,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
           )
       })
 
-    {:ok, declared} = IpseKnowledgeExample.EvaluationPlan.build(spec)
+    {:ok, declared} = IpseKnowledgeExample.EvaluationContract.build(spec)
     declared
   end
 
@@ -979,7 +980,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
 
   test "heldout declarations cannot omit variants, actual profiles or answer generation", ctx do
     declared = %{plan(ctx) | "mode" => "heldout", "answer" => true}
-    assert {:error, :heldout_matrix} = Runner.validate(declared)
+    assert {:error, :heldout_matrix} = Contract.validate(declared)
 
     assert {:error, %{"code" => "labels_forbidden"}} =
              Runner.run(:predict, labels: "must-not-open")
@@ -1287,7 +1288,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
       File.mkdir!(root)
       path = Path.join(root, "plan.json")
       File.write!(path, JSON.encode!(declared))
-      assert :ok = Runner.validate(declared)
+      assert :ok = Contract.validate(declared)
       output = Path.join(root, "result")
 
       outcome =
@@ -1766,7 +1767,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
   test "variant declarations reject hidden fallback, mismatched stores and unselected model routes",
        ctx do
     declared = matrix_plan(ctx, "http://127.0.0.1:19999")
-    assert :ok = Runner.validate(declared)
+    assert :ok = Contract.validate(declared)
 
     changed = fn id, update ->
       Map.update!(declared, "variants", fn variants ->
@@ -1784,7 +1785,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
           %{"max_sources" => 1, "max_body_bytes" => 1024, "timeout_ms" => 1000, "renew" => true}
         ] do
       assert {:error, :research_limits} =
-               Runner.validate(
+               Contract.validate(
                  changed.("research", fn variant ->
                    put_in(variant, ["query_options", "limits"], limits)
                  end)
@@ -1792,10 +1793,10 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
     end
 
     assert {:error, :variant_algorithm} =
-             Runner.validate(changed.("lexical", &Map.put(&1, "prepare", "embedding")))
+             Contract.validate(changed.("lexical", &Map.put(&1, "prepare", "embedding")))
 
     assert {:error, :hidden_fallback} =
-             Runner.validate(
+             Contract.validate(
                changed.("hybrid", fn variant ->
                  Map.update!(variant, "artifacts", fn [corpus | rest] ->
                    [
@@ -1811,7 +1812,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
              )
 
     assert {:error, :graph_store_sharing} =
-             Runner.validate(
+             Contract.validate(
                changed.("graph_model", fn variant ->
                  Map.update!(
                    variant,
@@ -1826,7 +1827,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
              )
 
     assert {:error, :profile_reference} =
-             Runner.validate(
+             Contract.validate(
                changed.("rerank", fn variant ->
                  Map.update!(variant, "artifacts", fn [corpus | rest] ->
                    [
@@ -1838,7 +1839,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
              )
 
     assert {:error, :fixture_model_origin} =
-             Runner.validate(
+             Contract.validate(
                put_in(declared, ["profiles", "p27_answer", "base_url"], "http://127.0.0.1:11434")
              )
   end

@@ -117,6 +117,7 @@ are needed for tests or the demo.
 | File tools and native Port protocol | `lib/ipse/tools.ex`, `runner.ex` |
 | Unix process groups and advisory locks | `native/ipse-runner.rs`, `native/ipse-process-group.rs` |
 | Bundled skill instructions | `priv/skills/` |
+| Pure knowledge evaluation declarations | `dev/evaluation/contract.exs` |
 | Behavior and local protocol fixtures | `test/` |
 
 ## Invariants to preserve

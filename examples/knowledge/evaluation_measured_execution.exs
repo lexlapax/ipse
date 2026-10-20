@@ -1,6 +1,9 @@
+Code.require_file("../../dev/evaluation/contract.exs", __DIR__)
+
 defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
   @moduledoc "One permanently claimed, sealed measured knowledge population and its read-only audit."
   alias IpseKnowledgeExample.{
+    EvaluationContract,
     EvaluationFreeze,
     EvaluationRunner,
     EvaluationModelService,
@@ -258,18 +261,18 @@ defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
     require!(absolute?(path) and hash?(expected), :freeze_identity)
     {:ok, verified} = EvaluationFreeze.verify(path, expected)
     require!(verified["manifest"]["version"] == 2, :measured_plan_required)
-    :ok = EvaluationRunner.validate(verified["plan"])
+    :ok = EvaluationContract.validate(verified["plan"])
     manifest = verified["manifest"]
     expected_directory = Path.join(manifest["source"]["root"], "examples/knowledge")
     require!(Path.expand(__DIR__) == expected_directory, :evaluator_source)
 
-    for name <- ~w(evaluation_runner.exs evaluation_measured_execution.exs) do
-      relative = "examples/knowledge/" <> name
-
+    for relative <-
+          ~w(examples/knowledge/evaluation_runner.exs examples/knowledge/evaluation_measured_execution.exs dev/evaluation/contract.exs) do
       require!(
         Enum.any?(
           manifest["source"]["files"],
-          &(&1["path"] == relative and &1["sha256"] == sha(File.read!(Path.join(__DIR__, name))))
+          &(&1["path"] == relative and
+              &1["sha256"] == sha(File.read!(Path.join(manifest["source"]["root"], relative))))
         ),
         :evaluator_source
       )

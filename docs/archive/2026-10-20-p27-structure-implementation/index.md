@@ -72,13 +72,64 @@ operator extension/recovery chapters retain accurate identity and frozen-runner
 guidance. The agent source map names the shared JSON owner. Documentation links
 and archive rules pass. No operator command or configuration format changes.
 
+## Give evaluation declarations a pure owner
+
+This increment starts at `2c72b69fa0cd380d62186b2e7666c6d0dc423c81`.
+`dev/evaluation/contract.exs` now owns recipe construction, complete declaration
+admission, Freeze's distinct plan-shape recognition, selected commands and model
+origins. The old Plan module/file and Runner validation API are deleted. All
+callers move directly, including generated installed launches and tests; there
+is no forwarding compatibility module. The formatter includes the final `dev/`
+location, and measured launch admission pins this source owner explicitly.
+
+Declaration construction no longer requires Runner, model-service code or the
+CAS fixture. A fresh-VM test builds a plan with absent data/artifact paths and
+checks that those execution implementations remain unloaded. Runtime callers
+receive tagged selection/origin results through Runner's existing error boundary.
+Preflight derives command keys only after complete declaration admission. Freeze
+keeps portable projection, local resolution, identity IO and its generic version-one
+map seals. Shape recognition does not become executable policy validation.
+
+The before/after oracle retains 8,738 public-specification and synthetic mutation
+outcomes, including exact successful maps and error atoms. Every outcome matches
+on macOS and Linux. Both [bounded reviews](contract-reviews.md) report no finding.
+One source-only AST probe also compares eleven moved Plan clauses and thirteen
+moved Runner clauses under the documented ownership substitutions. Both reviewers
+read the complete developer evaluation chapter. Its literal declaration example
+runs successfully with absent dataset and artifact paths.
+
+The [verification receipt](contract-verification.json) binds the same
+[462-file implementation inventory](contract-source.json) to 89 focused tests on
+each platform. macOS additionally passes the normal build, formatting, strict
+compilation and demo. Linux passes build, formatting, strict compilation, package
+and installed-package checks. Its complete source and installed synthetic subjects
+each retain 350 first predictions, complete execution/resource audits, unchanged
+read-only inspection and refused reentry/tampering. Synthetic answers remain
+absent through prediction and measured audit; post-audit review/scoring controls
+retain ten authority/input refusals and three review-binding refusals. The
+unreviewed score deliberately refuses quality acceptance. No model weights or
+private evaluation inputs are used.
+
+The first focused attempts exposed remaining preflight and test-alias callers,
+plus a deprecated API in the new purity test. Those corrections precede the
+frozen successful checks; the earlier failed attempts are not passing evidence.
+Full product/native/macOS-specific suites and hosted CI were not repeated for this
+developer-tooling increment. Installed measured helpers retain their existing
+trusted source loading; stronger common installed isolation remains open.
+
+This unit preserves historical declaration, request and aggregate-score behavior.
+The separately selected new evaluator generation and individual qualification
+policy are subsequent work. These protocol fixtures establish no held-out quality,
+matched real-model resource result, engine choice or whole-P27 acceptance.
+
 ## Remaining work
 
 Shared artifact construction and verification, development-tooling ownership,
-evaluation loading, costs, bundled behavior, configuration and Session state
+the remaining evaluation layout, costs, bundled behavior, configuration and Session state
 remain separate implementation units. The complete operator/developer manual
-consolidation and whole-codebase review remain open. A running exposed-data
-diagnostic uses its own pinned `bfe8ca5` checkout; this implementation does not
-change its source or replay its attempts. Fresh private evaluation inputs remain
+consolidation and whole-codebase review remain open. The separately recorded
+[exposed diagnostic](../2026-10-20-p27-quality-remediation/index.md#retain-the-complete-excerpt-diagnostic)
+retains its pinned `bfe8ca5` source and first outcomes; these structural increments
+do not change its source or replay its attempts. Fresh private evaluation inputs remain
 withheld until the final code/configuration freeze. No quality improvement,
 resource comparison, engine selection or P27 acceptance is claimed here.

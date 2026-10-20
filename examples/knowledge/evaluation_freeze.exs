@@ -1,4 +1,5 @@
 Code.require_file("evaluation_model_service.exs", __DIR__)
+Code.require_file("../../dev/evaluation/contract.exs", __DIR__)
 
 defmodule IpseKnowledgeExample.EvaluationFreeze do
   @moduledoc """
@@ -21,6 +22,7 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
   and establishes no attempt claim. Version 1 seals keep their original contract.
   """
   alias Ipse.Extensions.{Store}
+  alias IpseKnowledgeExample.EvaluationContract
 
   @completion_policy %{
     "completion_policy" => "bounded_natural_drain_v1",
@@ -33,7 +35,6 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
             "expected_projects" => 2,
             "backend" => "linux_cgroup_v2_v2"
           })
-  @plan_keys ~w(version mode data as_of_ms artifacts profiles embedding_profiles models variants answer interval_ms search_port blind_seed storage_policy)
 
   @doc "Fixed native population completion policy bound into each new experiment."
   def completion_policy, do: @completion_policy
@@ -362,15 +363,7 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
 
   defp decode_execution_plan!(bytes) do
     {:ok, plan} = Ipse.JSON.decode_bounded(bytes, 1_048_576)
-    require!(is_map(plan) and plan["version"] in [1, 2], :invalid_plan)
-    keys = if plan["version"] == 2, do: ["model_origin" | @plan_keys], else: @plan_keys
-    require!(exact?(plan, keys), :invalid_plan)
-
-    require!(
-      is_map(plan["artifacts"]) and is_map(plan["profiles"]) and
-        is_map(plan["embedding_profiles"]),
-      :invalid_plan
-    )
+    require!(EvaluationContract.validate_shape(plan, :execution) == :ok, :invalid_plan)
 
     plan
   end
@@ -439,20 +432,7 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
 
     plan = experiment["plan"]
 
-    require!(
-      exact?(plan, @plan_keys -- ~w(artifacts search_port)) and plan["version"] === 2,
-      :invalid_experiment
-    )
-
-    for key <- ~w(profiles embedding_profiles) do
-      require!(
-        is_map(plan[key]) and
-          Enum.all?(plan[key], fn {id, profile} ->
-            name?(id) and is_map(profile) and !Map.has_key?(profile, "base_url")
-          end),
-        :invalid_experiment
-      )
-    end
+    require!(EvaluationContract.validate_shape(plan, :portable) == :ok, :invalid_experiment)
 
     experiment
   end

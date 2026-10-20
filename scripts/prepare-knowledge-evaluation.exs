@@ -1,4 +1,4 @@
-Code.require_file("../examples/knowledge/evaluation_plan.exs", __DIR__)
+Code.require_file("../dev/evaluation/contract.exs", __DIR__)
 
 result =
   try do
@@ -34,7 +34,7 @@ result =
         end)
       end)
 
-    {:ok, plan} = IpseKnowledgeExample.EvaluationPlan.build(spec)
+    {:ok, plan} = IpseKnowledgeExample.EvaluationContract.build(spec)
     bytes = JSON.encode!(plan) <> "\n"
     true = byte_size(bytes) <= 1_048_576
     output = Path.expand(Keyword.fetch!(options, :output))

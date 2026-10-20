@@ -1,9 +1,9 @@
-Code.require_file("../examples/knowledge/evaluation_plan.exs", __DIR__)
+Code.require_file("../examples/knowledge/evaluation_runner.exs", __DIR__)
 Code.require_file("../priv/cost-report-demo.exs", __DIR__)
 
 defmodule Ipse.KnowledgeEvaluationScheduleTest do
   use ExUnit.Case, async: false
-  alias IpseKnowledgeExample.{EvaluationPlan, EvaluationRunner}
+  alias IpseKnowledgeExample.{EvaluationContract, EvaluationRunner}
   @variants ~w(lexical graph_explicit graph_model dense hybrid rerank research)
 
   defp plan do
@@ -11,7 +11,7 @@ defmodule Ipse.KnowledgeEvaluationScheduleTest do
       JSON.decode!(File.read!("examples/knowledge/benchmark-spec.json"))
       |> Map.put("blind_seed", String.duplicate("b", 64))
 
-    {:ok, plan} = EvaluationPlan.build(spec)
+    {:ok, plan} = EvaluationContract.build(spec)
 
     plan
     |> Map.put("version", 2)
@@ -35,7 +35,7 @@ defmodule Ipse.KnowledgeEvaluationScheduleTest do
 
   test "a resolved plan binds every selected model profile to one explicit private origin" do
     plan = plan()
-    assert :ok = EvaluationRunner.validate(plan)
+    assert :ok = EvaluationContract.validate(plan)
 
     for origin <- [
           "http://127.0.0.1:11434",
@@ -49,14 +49,14 @@ defmodule Ipse.KnowledgeEvaluationScheduleTest do
           "http://127.0.0.1:65536"
         ] do
       assert {:error, :model_origin} =
-               EvaluationRunner.validate(Map.put(plan, "model_origin", origin))
+               EvaluationContract.validate(Map.put(plan, "model_origin", origin))
     end
 
     mismatched = put_in(plan, ["profiles", "p27_answer", "base_url"], "http://127.0.0.1:31434")
-    assert {:error, :model_origin} = EvaluationRunner.validate(mismatched)
+    assert {:error, :model_origin} = EvaluationContract.validate(mismatched)
 
     assert {:error, :model_origin} =
-             EvaluationRunner.validate(Map.put(plan, "search_port", 21434))
+             EvaluationContract.validate(Map.put(plan, "search_port", 21434))
   end
 
   test "the full schedule preserves original allowances and disjoint research shares" do
@@ -129,7 +129,7 @@ defmodule Ipse.KnowledgeEvaluationScheduleTest do
         end)
       end)
 
-    assert :ok = EvaluationRunner.validate(plan)
+    assert :ok = EvaluationContract.validate(plan)
     assert {:ok, schedule} = EvaluationRunner.schedule(plan, queries())
 
     for variant <- @variants do

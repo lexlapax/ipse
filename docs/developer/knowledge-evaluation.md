@@ -19,7 +19,7 @@ Follow these owners in execution order:
 
 | Owner | Implementation | Responsibility |
 | --- | --- | --- |
-| Plan | `examples/knowledge/evaluation_plan.exs` | Build the explicit seven-strategy declaration without opening inputs |
+| Declaration | `dev/evaluation/contract.exs` | Build seven strategies, admit complete plans and resolve declared command/model selections without loading execution |
 | Identity | `examples/knowledge/evaluation_freeze.exs` | Declare portable content and seal one closed local resolution |
 | Measured execution | `examples/knowledge/evaluation_measured_execution.exs` | Claim the native root, admit preparation/cells/finalization and audit their evidence |
 | Kernel population | `native/ipse-bound.rs`, `ipse-measure.rs`, `ipse-sequence.rs` | Retain directory/scope authority, launch work inside cgroups and record terminal receipts |
@@ -34,6 +34,30 @@ The Session driver imports artifacts through ordinary host APIs. It does not loa
 production knowledge modules into the evaluator or call a provider directly.
 Its caller validates the complete proposed action. A selected profile names a
 route; it does not approve every request on that route.
+
+Start a declaration change in `EvaluationContract.build/1` and `validate/1`.
+The same owner holds the selected command and model-origin rules used by Runner.
+It loads no execution, model-service or fixture implementation. For example,
+this prepares the public template while its data and artifact paths are absent:
+
+```elixir
+Code.require_file("dev/evaluation/contract.exs")
+spec = JSON.decode!(File.read!("examples/knowledge/benchmark-spec.json"))
+spec = Map.put(spec, "blind_seed", String.duplicate("b", 64))
+{:ok, plan} = IpseKnowledgeExample.EvaluationContract.build(spec)
+:ok = IpseKnowledgeExample.EvaluationContract.validate(plan)
+```
+
+Run the example in `iex -S mix` from the repository root. The repeated seed is
+for this declaration exercise; use `--new-blind-seed` for a real declaration.
+Building a plan admits policy without importing artifacts, opening data or
+running models. `validate_shape/2` has a narrower purpose: Freeze uses it to
+recognize the existing execution or portable envelope before checking identities.
+It does not replace full policy validation. Freeze still owns portable projection,
+local resolution and filesystem identity, and generic version-one seals retain
+their original map contract. Tests or tools that execute a comparison explicitly
+load `examples/knowledge/evaluation_runner.exs`; requiring the declaration owner
+alone no longer loads those implementations.
 
 Keep labels and expected answers out of the driver, extension options and model
 inputs. Query projection produces only `query_id`, `project` and `query`. Save and
@@ -903,7 +927,7 @@ Run the orchestration fixture:
 mix test test/knowledge_evaluation_runner_test.exs
 ```
 
-Open its `matrix_plan/2` helper and follow `EvaluationPlan.build/1`. They select independently built Corpus, Graph,
+Open its `matrix_plan/2` helper and follow `EvaluationContract.build/1`. They select independently built Corpus, Graph,
 Research and text-helper artifacts, with explicit command bindings and named
 profiles. Its seven variants cover lexical retrieval, explicit and model
 extraction, dense retrieval, hybrid retrieval, reranking and Research. The

@@ -1,9 +1,9 @@
-Code.require_file("../examples/knowledge/evaluation_plan.exs", __DIR__)
+Code.require_file("../examples/knowledge/evaluation_runner.exs", __DIR__)
 Code.require_file("support/frozen_model_selection.exs", __DIR__)
 
 defmodule Ipse.KnowledgeEvaluationDeclarationCLITest do
   use ExUnit.Case, async: false
-  alias IpseKnowledgeExample.EvaluationPlan
+  alias IpseKnowledgeExample.EvaluationContract
 
   test "real CLI preserves a portable declaration and seals only an inert measured identity" do
     root = Path.join(System.tmp_dir!(), "ipse-declaration-cli-" <> Ipse.Usage.id())
@@ -35,7 +35,7 @@ defmodule Ipse.KnowledgeEvaluationDeclarationCLITest do
       |> Map.put("blind_seed", String.duplicate("b", 64))
       |> Map.update!("artifacts", &Map.new(&1, fn {id, _} -> {id, artifact} end))
 
-    assert {:ok, plan} = EvaluationPlan.build(spec)
+    assert {:ok, plan} = EvaluationContract.build(spec)
     plan_path = Path.join(root, "public-plan.json")
     private!(plan_path, JSON.encode!(plan))
     experiment_path = Path.join(root, "experiment.json")

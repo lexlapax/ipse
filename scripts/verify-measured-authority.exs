@@ -1,4 +1,4 @@
-Code.require_file("../examples/knowledge/evaluation_plan.exs", __DIR__)
+Code.require_file("../examples/knowledge/evaluation_runner.exs", __DIR__)
 Code.require_file("../test/support/measured_model_fixture.exs", __DIR__)
 Code.require_file("../test/support/measured_knowledge_verification.exs", __DIR__)
 Code.require_file("../test/support/measured_authority_verification.exs", __DIR__)

@@ -58,7 +58,7 @@ environment =
 expression = """
 for name <- ~w(elixir elixirc mix rustc cargo), do: nil = System.find_executable(name)
 {:ok, _} = Application.ensure_all_started(:ipse)
-Code.require_file(#{inspect(Path.join(repository, "examples/knowledge/evaluation_plan.exs"))})
+Code.require_file(#{inspect(Path.join(repository, "examples/knowledge/evaluation_runner.exs"))})
 Code.require_file(#{inspect(Path.join(repository, "test/support/measured_model_fixture.exs"))})
 Code.require_file(#{inspect(Path.join(repository, "test/support/measured_knowledge_verification.exs"))})
 Code.require_file(#{inspect(Path.join(repository, "test/support/measured_scoring_verification.exs"))})

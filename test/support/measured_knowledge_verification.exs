@@ -2,7 +2,7 @@ defmodule MeasuredKnowledgeVerification do
   @moduledoc false
   alias IpseKnowledgeExample.{
     EvaluationFreeze,
-    EvaluationPlan,
+    EvaluationContract,
     EvaluationRunner,
     EvaluationMeasuredExecution
   }
@@ -205,9 +205,9 @@ defmodule MeasuredKnowledgeVerification do
           spec |> put_in(["data", "contract"], contract) |> put_in(["data", "split"], "heldout"),
         else: spec
 
-    {:ok, plan} = EvaluationPlan.build(spec)
+    {:ok, plan} = EvaluationContract.build(spec)
 
-    :ok = EvaluationRunner.validate(plan)
+    :ok = EvaluationContract.validate(plan)
     {:ok, experiment} = EvaluationFreeze.declare(repository, JSON.encode!(plan), artifacts)
 
     resolution = %{
