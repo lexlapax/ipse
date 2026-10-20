@@ -248,15 +248,27 @@ mod linux {
     mod tests {
         use super::*;
         use std::time::{Duration, SystemTime, UNIX_EPOCH};
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static NEXT_TEMP: AtomicU64 = AtomicU64::new(0);
         struct Temp(PathBuf);
         impl Temp {
             fn new() -> Self {
-                let n = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
-                let p = std::env::temp_dir().join(format!("ipse-bound-{}-{n}", std::process::id()));
+                Self::new_at(SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos())
+            }
+            fn new_at(n: u128) -> Self {
+                let ordinal = NEXT_TEMP.fetch_add(1, Ordering::Relaxed);
+                let p = std::env::temp_dir().join(format!("ipse-bound-{}-{n}-{ordinal}", std::process::id()));
                 fs::DirBuilder::new().mode(0o700).create(&p).unwrap(); Self(p)
             }
         }
         impl Drop for Temp { fn drop(&mut self) { let _ = fs::remove_dir_all(&self.0); } }
+        #[test]
+        fn equal_clock_ticks_keep_fixture_directories_distinct() {
+            let _ordinary = Temp::new();
+            let first = Temp::new_at(1);
+            let second = Temp::new_at(1);
+            assert_ne!(first.0, second.0);
+        }
         fn authority(path: &Path) -> Vec<u8> {
             let m = fs::metadata(path.join("attempts")).unwrap();
             let mut b = b"IPBND001".to_vec();

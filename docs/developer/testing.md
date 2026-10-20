@@ -156,11 +156,12 @@ and verify inode identity. They do not simulate aliases on an unsuitable volume.
 The native checks use isolated owner-only homes, rather than the operator's
 signed cache. Report platform exclusions separately from executed checks.
 
-For native copy fixtures, open `Root` in `native/ipse-file-copy.rs`. Parallel
-tests share one process ID and can observe the same clock tick. The constructor
-adds a process-local atomic ordinal to each directory name. Its fixed-clock
-exercise keeps two roots alive at the same tick and requires distinct paths.
-Run the complete copy controls after changing that fixture:
+For native fixture directories, open `Root` in `native/ipse-file-copy.rs` and
+`Temp` in the Linux tests of `native/ipse-bound.rs`. Parallel tests share one
+process ID and can observe the same clock tick. Each constructor adds a
+process-local atomic ordinal to its directory names. The fixed-clock exercises
+keep two roots alive at the same tick and require distinct paths. Run the
+complete copy controls after changing that fixture:
 
 ```sh
 IPSE_COPY_TESTS=$(mktemp -d)
@@ -171,6 +172,20 @@ rustc --edition=2021 --test -D warnings native/ipse-file-copy.rs -o "$IPSE_COPY_
 Expect all ordinary controls to pass. The ignored `fifo_open_probe` is invoked
 by the enclosing bounded FIFO test, rather than run as an independent case.
 Keep the copy's size, inode, symlink, permission and nonblocking checks intact.
+
+For the Bound fixture, run the authority controls on Linux:
+
+```sh
+IPSE_BOUND_TESTS=$(mktemp -d)
+rustc --edition=2021 --test -D warnings native/ipse-bound.rs -o "$IPSE_BOUND_TESTS/bound"
+"$IPSE_BOUND_TESTS/bound"
+```
+
+Expect the fixed-clock case and the authority, FIFO and descriptor-transfer
+controls to pass. macOS runs only the three platform-independent protocol tests;
+that result does not exercise the Linux directory constructor. An extracted
+Unix constructor probe can reproduce a naming collision, but it cannot replace
+the complete Linux controls.
 
 ### Probe the signed macOS worker
 

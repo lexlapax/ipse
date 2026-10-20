@@ -1,4 +1,4 @@
-# Native copy fixture directory identity
+# Native fixture directory identity
 
 Historical investigation and correction record, 2026-10-20. Source is
 `1e31e5bb54ac8a35a7e6b10ff55c88c8006f9c1f`. Current contributor instructions are in
@@ -39,3 +39,29 @@ Local compiler, native controls, production-prefix comparison, formatting,
 CI-policy and documentation checks validate this test-only repair. They do not
 supply a complete corrected hosted result, Linux run, real-comparison quality,
 resource acceptance or P27 completion. Original failed runs remain retained.
+
+## Hosted confirmation and the Linux Bound fixture
+
+The exact `3605ac181ca2b44a239e522ed1e3c352595d8be0`
+[hosted matrix](https://github.com/lexlapax/ipse/actions/runs/39399838296)
+passes Ubuntu and macOS, including full source, native, package and installed
+proofs. It covers the copy-fixture repair and preceding public changes. It does
+not cover the subsequent uncommitted review-binding/resource-join correction or
+the Bound fixture change described below.
+
+A root-cause search also finds the process/time-only formula in the Linux-only
+`Temp` constructor in `native/ipse-bound.rs`. Its parallel tests can encounter the
+same collision. No retained hosted failure is attributed to this second site.
+An exact extracted constructor with a fixed-clock seam fails at `create_dir`
+with `AlreadyExists`, exit 101, on Unix. Adding the atomic ordinal makes that
+same extracted regression pass. This is constructor evidence, not a full Linux
+authority test.
+
+The test-only correction applies that ordinal and fixed-clock regression to
+`Temp`. Bound's production source prefix is byte-identical; native protocol,
+authority, FIFO, descriptor-transfer and process behavior are unchanged. Local
+macOS compilation with warnings denied and its three platform-independent controls
+pass. The Linux-only constructor and full authority controls still require a
+Linux run. The existing hosted job runs them on a separate host, preserving the
+active Serenity comparison's CPU isolation. A passing earlier matrix or local
+extracted probe must not be reported as that future run's result.
