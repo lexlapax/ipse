@@ -10,7 +10,7 @@ defmodule Ipse.Extensions.EmbeddingCall do
 
   def validate(request) do
     if keys?(request, ~w(op version profile inputs timeout_ms)) and operation?(request) and
-         request["version"] === 1 and profile_id?(request["profile"]) and
+         request["version"] in [1, 2] and profile_id?(request["profile"]) and
          is_integer(request["timeout_ms"]) and request["timeout_ms"] in 1000..120_000 and
          is_list(request["inputs"]) and length(request["inputs"]) in 1..8 and
          Enum.all?(request["inputs"], &text?/1) and
@@ -200,7 +200,12 @@ defmodule Ipse.Extensions.EmbeddingCall do
         valid_response?(source, admission, Ipse.Extensions.Actions.result_intent(event)) and
           completion["usage"] === source["inference"]["usage"] and
           completion["reported_model"] === source["inference"]["reported_model"] and
-          value_from_completion(event["request"], admission, completion, source) ==
+          value_from_completion(
+            Ipse.Extensions.Actions.result_intent(event),
+            admission,
+            completion,
+            source
+          ) ==
             {:ok, outcome["value"]}
 
       {"failed", %{completion: %{} = completion}} ->
@@ -218,8 +223,11 @@ defmodule Ipse.Extensions.EmbeddingCall do
     _ -> false
   end
 
-  def value_from_completion(request, admission, %{"outcome" => "completed"} = completion, source) do
-    if EffectResult.valid_private_source?(source) and source["kind"] == "embedding.f32le" and
+  def value_from_completion(intent, admission, %{"outcome" => "completed"} = completion, source) do
+    request = intent["request"]
+
+    if valid_response?(source, admission, intent) and source["kind"] == "embedding.f32le" and
+         completion["finality"] == "final" and
          source["operation_id"] == admission["request_id"] and
          source["inference"]["attempt_id"] == admission["attempt_id"] and
          source["inference"]["profile"] == request["profile"] and
@@ -231,7 +239,7 @@ defmodule Ipse.Extensions.EmbeddingCall do
          completion["usage"] === source["inference"]["usage"] and
          completion["reported_model"] === source["inference"]["reported_model"] do
       value = %{
-        "version" => 1,
+        "version" => request["version"],
         "request_id" => admission["request_id"],
         "attempt_id" => admission["attempt_id"],
         "profile" => request["profile"],
@@ -239,6 +247,14 @@ defmodule Ipse.Extensions.EmbeddingCall do
         "usage" => completion["usage"],
         "result" => EffectResult.descriptor(source)
       }
+
+      value =
+        if request["version"] == 2 do
+          {:ok, selection} = selection_sha256(intent)
+          Map.put(value, "selection_sha256", selection)
+        else
+          value
+        end
 
       if Ipse.Extension.validate(value) == :ok,
         do: {:ok, value},
@@ -252,6 +268,31 @@ defmodule Ipse.Extensions.EmbeddingCall do
 
   def value_from_completion(_, _, _, _), do: failed("embedding_request_failed")
 
+  def selection_sha256(intent) do
+    with true <- valid_binding?(intent["effect_binding"], intent["request"]) do
+      binding = intent["effect_binding"]
+      EmbeddingProfiles.selection_sha256(binding["execution"], binding["destination"])
+    else
+      _ -> @error
+    end
+  rescue
+    _ -> @error
+  end
+
+  def bound_selection?(event) do
+    if event["request"]["version"] === 1 do
+      true
+    else
+      with {:ok, selection} <- selection_sha256(Ipse.Extensions.Actions.result_intent(event)) do
+        event["outcome"]["value"]["selection_sha256"] === selection
+      else
+        _ -> false
+      end
+    end
+  rescue
+    _ -> false
+  end
+
   def valid_outcome?(_request, status, value, _) when status in ~w(unknown denied),
     do: value == %{}
 
@@ -259,9 +300,13 @@ defmodule Ipse.Extensions.EmbeddingCall do
     do: keys?(value, ["code"]) and value["code"] in @failures
 
   def valid_outcome?(request, "ok", value, operation) do
+    fields = ~w(version request_id attempt_id profile reported_model usage result)
+    fields = if request["version"] === 2, do: ["selection_sha256" | fields], else: fields
+
     validate(request) == :ok and
-      keys?(value, ~w(version request_id attempt_id profile reported_model usage result)) and
-      value["version"] === 1 and value["request_id"] == operation and id?(value["attempt_id"]) and
+      keys?(value, fields) and value["version"] === request["version"] and
+      (request["version"] === 1 or hash?(value["selection_sha256"])) and
+      value["request_id"] == operation and id?(value["attempt_id"]) and
       value["profile"] == request["profile"] and is_binary(value["reported_model"]) and
       Ipse.RuntimeInfo.model_name(value["reported_model"]) == value["reported_model"] and
       Ipse.Usage.Normalizer.valid?(value["usage"], "embedding") and

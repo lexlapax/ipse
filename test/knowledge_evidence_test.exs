@@ -107,7 +107,7 @@ defmodule Ipse.KnowledgeEvidenceTest do
   test "full4096 vectors preserve canonical values and reject hash or profile substitutions" do
     pure(~S'''
     s=source.("the evidence",%{}); c=cite.(s,"the evidence")
-    attrs=%{"chunk_id"=>c["chunk_id"],"input_sha256"=>E.sha256("opaque host input"),"profile"=>"encoder","model"=>"model-a","dimensions"=>4096,"values"=>[1.0|List.duplicate(0.0,4095)]}
+    attrs=%{"chunk_id"=>c["chunk_id"],"selection_sha256"=>E.sha256("selected encoder"),"input_sha256"=>E.sha256("opaque host input"),"profile"=>"encoder","model"=>"model-a","dimensions"=>4096,"values"=>[1.0|List.duplicate(0.0,4095)]}
     {:ok,v}=E.vector(attrs)
     assert E.valid_vector?(v)
     assert length(v["values"])==4096
@@ -118,6 +118,18 @@ defmodule Ipse.KnowledgeEvidenceTest do
     refute Map.has_key?(hd(r["evidence"]),"vector")
     assert {:error,:incompatible_vector}=E.rank_cosine([put_in(candidate,["vector","model"],"model-b")],v,5)
     refute E.valid_vector?(Map.put(v,"vector_sha256",String.duplicate("0",64)))
+    assert v["version"] === 2
+    refute E.compatible_vectors?(v,Map.put(v,"selection_sha256",E.sha256("other encoder")))
+    assert {:error,:incompatible_vector}=E.rank_cosine([put_in(candidate,["vector","selection_sha256"],E.sha256("other encoder"))],v,5)
+    legacy=v |> Map.delete("selection_sha256") |> Map.put("version",1)
+    assert E.valid_vector?(legacy)
+    refute E.current_vector?(legacy)
+    refute E.compatible_vectors?(v,legacy)
+    assert {:error,:invalid_vector}=E.rank_cosine([],legacy,5)
+    assert {:error,:incompatible_vector}=E.rank_cosine([Map.put(candidate,"vector",legacy)],v,5)
+    assert {:error,:invalid_vector}=E.vector(Map.delete(attrs,"selection_sha256"))
+    refute E.valid_vector?(Map.delete(v,"selection_sha256"))
+    refute E.valid_vector?(Map.put(legacy,"selection_sha256",E.sha256("invented")))
     assert {:error,:invalid_vector}=E.vector(Map.put(attrs,"values",List.duplicate(0.0,4096)))
     assert {:error,:invalid_vector}=E.vector(Map.merge(attrs,%{"dimensions"=>1,"values"=>[1.0e-100]}))
     assert {:error,:invalid_vector}=E.vector(Map.merge(attrs,%{"dimensions"=>1,"values"=>[1.0e100]}))
@@ -154,6 +166,33 @@ defmodule Ipse.KnowledgeEvidenceTest do
     assert ids==Enum.map(r["evidence"],&E.candidate_id/1)
     assert {:ok,ordered}=E.apply_rerank(r["evidence"],Enum.reverse(ids))
     assert ordered==Enum.reverse(r["evidence"])
+    ''')
+  end
+
+  test "depth exhaustion reports remaining graph work without marking leaves or closed cycles partial" do
+    pure(~S'''
+    s=source.("A requires B. B requires C. B requires A.",%{})
+    ab=fact.("A","B",cite.(s,"A requires B."))
+    bc=fact.("B","C",cite.(s,"B requires C."))
+    ba=fact.("B","A",cite.(s,"B requires A."))
+    limits=%{"depth"=>1,"max_nodes"=>8,"max_edges"=>8,"top_k"=>5}
+    for {facts,depth,complete,edges} <- [
+      {[],0,true,0},{[ab],0,false,0},{[ab],1,true,1},
+      {[ab,bc],1,false,1},{[ab,bc],2,true,2},
+      {[ab,ba],1,false,1},{[ab,ba],2,true,2},{[ab,ba],4,true,2}
+    ] do
+      {:ok,rank}=E.traverse([s],facts,"A",Map.put(limits,"depth",depth),20)
+      result=E.query_scope(rank,[s],[],20)
+      assert result["coverage"]["complete"]==complete
+      assert result["coverage"]["edges"]==edges
+      expected_status=cond do
+        not complete -> "partial"
+        edges==0 -> "abstain"
+        true -> "ok"
+      end
+      assert result["status"]==expected_status
+      assert Enum.all?(result["evidence"], &E.valid_span?(s,&1["citation"]))
+    end
     ''')
   end
 

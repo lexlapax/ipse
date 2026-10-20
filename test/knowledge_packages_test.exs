@@ -119,7 +119,7 @@ defmodule IpseKnowledge.PackagesIsolationTest do
           "event_at_ms"=>nil, "expires_at_ms"=>nil, "origin"=>%{"kind"=>"provided",
           "store_profile"=>"notes", "partition_or_scope"=>"notes", "receipt"=>nil, "historical"=>false}})
         {:ok,[chunk]}=Evidence.chunks(source)
-        {:ok,vector}=Evidence.vector(%{"chunk_id"=>chunk["chunk_id"], "input_sha256"=>Evidence.sha256(text),
+        {:ok,vector}=Evidence.vector(%{"chunk_id"=>chunk["chunk_id"], "selection_sha256"=>Evidence.sha256("selected encoder"), "input_sha256"=>Evidence.sha256(text),
           "profile"=>"encoder", "model"=>"test", "dimensions"=>1, "values"=>[1.0]})
         input=%{"chunk_id"=>Evidence.sha256("query"), "text"=>"query"}
         bytes=<<1.0::little-float-size(32)>>
@@ -129,7 +129,7 @@ defmodule IpseKnowledge.PackagesIsolationTest do
         page=Map.merge(Map.take(descriptor,~w(version kind encoding dimensions source_sha256 operation_id)),
           %{"vector_index"=>0, "offset"=>0, "complete"=>true, "next"=>nil,
             "input_sha256"=>Evidence.sha256("query"), "vector_sha256"=>Evidence.sha256(bytes), "values"=>Base.encode64(bytes)})
-        cont=%{phase: :embedding_read, descriptor: descriptor, inference: %{"reported_model"=>"test", "usage"=>%{}},
+        cont=%{phase: :embedding_read, descriptor: descriptor, inference: %{"selection_sha256"=>Evidence.sha256("selected encoder"),"reported_model"=>"test", "usage"=>%{}},
           host_profile: "encoder", inputs: [input], raw_hashes: [Evidence.sha256("query")], vector_index: 0,
           offset: 0, bytes: <<>>, input_hash: nil, vector_hash: nil, vectors: [], reads: 0, effects: 1}
         snapshot=%{"sources"=>[source], "projections"=>%{source["source_key"]=>%{"vectors"=>if(indexed,do: [vector],else: [])}},
@@ -382,10 +382,14 @@ defmodule IpseKnowledge.PackagesIsolationTest do
       inputs=for index<-0..1,do: %{"chunk_id"=>Evidence.sha256("chunk#{index}"),"text"=>"input#{index}"}
       {:call,request,cont}=Adapters.start(resolved,:embed,%{"profile"=>"encoder","inputs"=>inputs})
       assert request["inputs"]==["input0","input1"]
+      assert request["version"]===2
       descriptor=%{"version"=>2,"kind"=>"embedding.f32le","encoding"=>"float32le.base64",
         "operation_id"=>String.duplicate("1",32),"source_sha256"=>String.duplicate("a",64),
         "vector_count"=>2,"dimensions"=>4096}
-      inference=%{"result"=>descriptor,"profile"=>"host_encoder","reported_model"=>"fixture4096","usage"=>%{}}
+      inference=%{"version"=>2,"selection_sha256"=>Evidence.sha256("selected encoder"),"result"=>descriptor,"profile"=>"host_encoder","reported_model"=>"fixture4096","usage"=>%{}}
+      for invalid <- [Map.delete(inference,"selection_sha256"),Map.put(inference,"selection_sha256","bad"),Map.put(inference,"version",1)] do
+        assert {:done,{:error,:invalid_embedding_result,%{}}}=Adapters.resume(cont,%{"status"=>"ok","value"=>invalid})
+      end
       first=Adapters.resume(cont,%{"status"=>"ok","value"=>inference})
       result=Enum.reduce(1..12,first,fn _,{:call,read,continuation}->
         index=read["vector_index"]; offset=read["offset"]; count=min(768,4096-offset)

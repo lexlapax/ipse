@@ -175,6 +175,30 @@ defmodule Ipse.EmbeddingProfiles do
     _ -> false
   end
 
+  def selection_sha256(execution, destination) do
+    if is_map(execution) and not Map.has_key?(execution, "destination") and
+         public_profile?(Map.put(execution, "destination", destination)) do
+      {:ok,
+       Ipse.Compaction.digest([
+         "ipse.embedding.selection",
+         1,
+         execution["id"],
+         execution["operation"],
+         execution["provider"],
+         execution["model"],
+         execution["billing_mode"],
+         destination["origin"],
+         destination["target_sha256"],
+         execution["dimensions"],
+         execution["dimension_mode"]
+       ])}
+    else
+      @error
+    end
+  rescue
+    _ -> @error
+  end
+
   defp default_destination?(%{"endpoint_sha256" => nil} = profile),
     do:
       Embedding.destination(%{provider: @providers[profile["provider"]]}) ==

@@ -186,6 +186,53 @@ defmodule Ipse.EmbeddingProfilesTest do
     end
   end
 
+  test "selection identity binds configuration while excluding operational timeouts" do
+    fingerprint = fn selected_config, selected_request ->
+      {:ok, runtime, execution} = EmbeddingProfiles.prepare(selected_config, selected_request)
+      {:ok, destination} = Embedding.destination(runtime)
+      {:ok, hash} = EmbeddingProfiles.selection_sha256(execution, destination)
+      hash
+    end
+
+    original = fingerprint.(config(), request())
+    assert byte_size(original) == 64
+    assert original == fingerprint.(Map.put(config(), :timeout_ms, 2000), request())
+
+    assert original ==
+             fingerprint.(config(), %{request() | "timeout_ms" => 1000, "inputs" => ["other"]})
+
+    explicit_default =
+      put_in(config(), [:embedding_profiles, "corpus", "base_url"], "http://127.0.0.1:11434")
+
+    assert original == fingerprint.(explicit_default, request())
+
+    for {field, value} <- [
+          {"model", "different-model"},
+          {"dimensions", 4096},
+          {"dimension_mode", "request"},
+          {"base_url", "http://localhost:11435"},
+          {"base_url", "http://localhost:11434/other"},
+          {"provider", "openai"}
+        ] do
+      changed = put_in(config(), [:embedding_profiles, "corpus", field], value)
+      refute original == fingerprint.(changed, request())
+    end
+
+    renamed = put_in(config(), [:embedding_profiles], %{"other" => profile()})
+    refute original == fingerprint.(renamed, %{request() | "profile" => "other"})
+    selected = EmbeddingProfiles.snapshot(config())["corpus"]
+    execution = Map.delete(selected, "destination")
+
+    assert {:error, _} =
+             EmbeddingProfiles.selection_sha256(
+               Map.put(execution, "dimensions", 0),
+               selected["destination"]
+             )
+
+    assert {:error, _} = EmbeddingProfiles.selection_sha256(selected, selected["destination"])
+    assert {:error, _} = EmbeddingProfiles.selection_sha256(execution, %{})
+  end
+
   defp profile,
     do: %{
       "operation" => "embedding",

@@ -76,6 +76,138 @@ defmodule IpseKnowledgeExample.LifecycleProof do
     end
   end
 
+  def selection(artifact) do
+    {:ok, _} = Application.ensure_all_started(:ipse)
+    root = Path.join(System.tmp_dir!(), "ipse-embedding-selection-" <> Usage.id())
+    File.mkdir!(root)
+    Process.put(:lifecycle_owned_sessions, [])
+    a = http_start(:selection_a)
+    b = http_start(:selection_b)
+
+    try do
+      config_a = configuration(artifact, "corpus", root, a.base, 15_000, true)
+      first = start(config_a, "corpus", root)
+      chunk = prepare(first)
+      %{"status" => "ok"} = invoke(first, "index", projection_args("corpus", chunk))
+      assert_request("corpus", dispatched(a).body)
+      %{"status" => "ok"} = selection_query(first, "dense")
+      ["Release"] = dispatched(a).body["input"]
+      hash_a = selection_receipts(first, 2)
+      :ok = Session.close_confirmed(first.pid)
+
+      config_b = configuration(artifact, "corpus", root, b.base, 15_000, true)
+      second = start(config_b, "corpus", root)
+      %{"status" => "refused", "evidence" => []} = selection_query(second, "dense")
+      ["Release"] = dispatched(b).body["input"]
+
+      %{"status" => "partial", "gaps" => gaps, "evidence" => [_]} =
+        selection_query(second, "fallback")
+
+      true = Enum.any?(gaps, &(&1["code"] == "missing_embedding"))
+      ["Release"] = dispatched(b).body["input"]
+      %{"status" => "ok"} = invoke(second, "index", projection_args("corpus", chunk))
+      assert_request("corpus", dispatched(b).body)
+      %{"status" => "ok"} = selection_query(second, "dense")
+      ["Release"] = dispatched(b).body["input"]
+      hash_b = selection_receipts(second, 4)
+      true = hash_a != hash_b
+      :ok = Session.close_confirmed(second.pid)
+
+      timeout_config =
+        put_in(config_b, [:embedding_profiles, "fixture_embed", "timeout_ms"], 10_000)
+
+      third = start(timeout_config, "corpus", root)
+      %{"status" => "ok"} = selection_query(third, "dense")
+      ["Release"] = dispatched(b).body["input"]
+      ^hash_b = selection_receipts(third, 1)
+      :ok = Session.close_confirmed(third.pid)
+
+      restored = start(config_b, "corpus", root, second.id)
+      ^hash_b = selection_receipts(restored, 4)
+      :idle = Session.info(restored.pid).phase
+      :ok = Session.close_confirmed(restored.pid)
+
+      :atomics.put(b.model_revision, 1, 2)
+      fourth = start(config_b, "corpus", root)
+      %{"status" => "refused", "evidence" => []} = selection_query(fourth, "dense")
+      ["Release"] = dispatched(b).body["input"]
+      %{"status" => "ok"} = invoke(fourth, "index", projection_args("corpus", chunk))
+      assert_request("corpus", dispatched(b).body)
+      %{"status" => "ok"} = selection_query(fourth, "dense")
+      ["Release"] = dispatched(b).body["input"]
+      ^hash_b = selection_receipts(fourth, 3)
+      :ok = Session.close_confirmed(fourth.pid)
+      no_dispatch(a)
+      no_dispatch(b)
+      false = :code.is_loaded(IpseKnowledge.Corpus)
+      false = :code.is_loaded(IpseKnowledge.Store)
+
+      %{
+        "checks" => 10,
+        "fixture_provider_requests" => 10,
+        "actual_model_inference" => false,
+        "changed_endpoint_refused" => true,
+        "explicit_fallback_partial" => true,
+        "explicit_reindex_succeeded" => true,
+        "timeout_only_reused" => true,
+        "changed_reported_model_reindexed" => true,
+        "reported_model_change_preserved_selection" => true,
+        "idle_resume_replays" => 0,
+        "host_loaded_domain_modules" => false,
+        "cleanup" => "confirmed"
+      }
+    after
+      for pid <- Process.delete(:lifecycle_owned_sessions) || [],
+          Process.alive?(pid),
+          do: :ok = Session.close_confirmed(pid)
+
+      :ok = http_stop(a)
+      :ok = http_stop(b)
+      File.rm_rf!(root)
+    end
+  end
+
+  defp selection_query(session, retrieval),
+    do:
+      invoke(session, "query", %{
+        "store" => "notes",
+        "retrieval" => retrieval,
+        "rerank" => nil,
+        "query" => "Release",
+        "top_k" => 10,
+        "as_of_ms" => 10
+      })
+
+  defp selection_receipts(session, count) do
+    {:ok, events} = Journal.load(session.state_dir, session.id)
+    :ok = Ipse.Extensions.Actions.validate_events(events)
+    {:ok, _} = Session.restore_context(events)
+    {:ok, ledger} = Usage.restore(events, session.id)
+    ^count = Usage.snapshot(ledger)["request_count"]
+
+    results =
+      Enum.filter(
+        events,
+        &(&1["type"] == "extension_action_result" and
+            &1["request"]["op"] == "embedding.create")
+      )
+
+    ^count = length(results)
+
+    hashes =
+      Enum.map(results, fn event ->
+        "ok" = event["outcome"]["status"]
+        2 = event["request"]["version"]
+        2 = event["outcome"]["value"]["version"]
+        {:ok, hash} = EmbeddingCall.selection_sha256(Ipse.Extensions.Actions.result_intent(event))
+        ^hash = event["outcome"]["value"]["selection_sha256"]
+        hash
+      end)
+
+    [hash] = Enum.uniq(hashes)
+    hash
+  end
+
   defp sequential(config, kind, mode, root, http) do
     session = start(config, kind, root)
 
@@ -329,7 +461,7 @@ defmodule IpseKnowledgeExample.LifecycleProof do
     }
   end
 
-  defp configuration(artifact, kind, root, origin, timeout) do
+  defp configuration(artifact, kind, root, origin, timeout, selection \\ false) do
     home = Path.join(root, "home")
     {:ok, imported} = Store.import(artifact, Path.join(home, "extensions/artifacts"))
     manifest = JSON.decode!(File.read!(Path.join(artifact, "extension.json")))
@@ -361,6 +493,27 @@ defmodule IpseKnowledgeExample.LifecycleProof do
           "embedding" => %{"native" => %{"kind" => "embedding", "profile" => "fixture_embed"}},
           "retrieval" => %{"words" => %{"kind" => "bm25", "version" => 1}}
         })
+      end
+
+    options =
+      if selection do
+        options
+        |> put_in(["retrieval", "dense"], %{
+          "kind" => "dense",
+          "version" => 1,
+          "embedding" => "native"
+        })
+        |> put_in(["retrieval", "fallback"], %{
+          "kind" => "hybrid",
+          "version" => 1,
+          "lexical" => "words",
+          "embedding" => "native",
+          "graph" => nil,
+          "rrf_k" => 60,
+          "missing_embedding" => "lexical_with_gap"
+        })
+      else
+        options
       end
 
     trust = %{
@@ -405,7 +558,7 @@ defmodule IpseKnowledgeExample.LifecycleProof do
       approval: :ask,
       budget: %{
         "version" => 1,
-        "max_requests" => 1,
+        "max_requests" => if(selection, do: 4, else: 1),
         "max_input_tokens" => 8192,
         "reserve_input_tokens" => 4096,
         "max_output_tokens" => 8192,
@@ -598,9 +751,10 @@ defmodule IpseKnowledgeExample.LifecycleProof do
         %{"max_facts" => 1, "chunks" => [%{"text" => @text}]} = JSON.decode!(request["input"])
 
       "extension:embedding.create" ->
-        "index" = command
+        true = command in ~w(index query)
         "fixture_embed" = request["profile"]
-        [@text] = request["inputs"]
+        true = request["inputs"] == if(command == "index", do: [@text], else: ["Release"])
+        2 = request["version"]
         {:ok, binding} = EmbeddingCall.binding(session.config, request)
         true = proposed["effect_binding"] == binding and proposed["namespace"] == session.id
 
@@ -616,11 +770,21 @@ defmodule IpseKnowledgeExample.LifecycleProof do
     {:ok, {_, port}} = :inet.sockname(listener)
     owner = self()
     tag = make_ref()
+    revision = if mode == :selection_b, do: :atomics.new(1, [])
+    if revision, do: :atomics.put(revision, 1, 1)
+    mode = if revision, do: {mode, revision}, else: mode
 
     {pid, monitor} =
       spawn_monitor(fn -> http_loop(listener, owner, Process.monitor(owner), tag, mode) end)
 
-    %{pid: pid, monitor: monitor, listener: listener, tag: tag, base: "http://127.0.0.1:#{port}"}
+    %{
+      pid: pid,
+      monitor: monitor,
+      listener: listener,
+      tag: tag,
+      base: "http://127.0.0.1:#{port}",
+      model_revision: revision
+    }
   end
 
   defp http_loop(listener, owner, owner_monitor, tag, mode) do
@@ -671,10 +835,26 @@ defmodule IpseKnowledgeExample.LifecycleProof do
   end
 
   defp response("/api/embed", _body, mode) do
-    vectors = if mode == :malformed, do: [[1.0]], else: [[1.0, 0.0]]
+    vectors =
+      case mode do
+        :malformed -> [[1.0]]
+        {:selection_b, _} -> [[0.0, 1.0]]
+        _ -> [[1.0, 0.0]]
+      end
+
+    model =
+      case mode do
+        {:selection_b, revision} ->
+          if :atomics.get(revision, 1) == 2,
+            do: "fixture-embedding-resolved-v2",
+            else: "fixture-embedding"
+
+        _ ->
+          "fixture-embedding"
+      end
 
     JSON.encode!(%{
-      "model" => "fixture-embedding",
+      "model" => model,
       "embeddings" => vectors,
       "prompt_eval_count" => 8
     })

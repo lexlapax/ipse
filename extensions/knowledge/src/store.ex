@@ -50,7 +50,9 @@ defmodule IpseKnowledge.Store do
         operation in [:projection_commit, :projection_abort] and Map.has_key?(args, "draft") ->
           token = args["draft"]
 
-          if draft_token?(token, name, profile) do
+          if draft_token?(token, name, profile) and
+               (operation == :projection_abort or
+                  current_vector_contract?(token, "projection_kind")) do
             state = %{
               state
               | cache: token["cache"],
@@ -267,6 +269,8 @@ defmodule IpseKnowledge.Store do
       "cache" => cache
     }
 
+    token = vector_contract(token, state.args["projection_kind"])
+
     {:done,
      {:ok,
       %{
@@ -346,7 +350,11 @@ defmodule IpseKnowledge.Store do
          true <-
            root["generation"] == token["generation"] and
              root["content_sha256"] == token["content_sha256"],
-         true <- root["draft"] != nil and root["draft"]["id"] == token["draft_id"] do
+         true <- root["draft"] != nil and root["draft"]["id"] == token["draft_id"],
+         true <-
+           state.operation == :projection_abort or
+             (current_vector_contract?(root["draft"], "kind") and
+                Map.get(root["draft"], "vector_version") === Map.get(token, "vector_version")) do
       state = Map.put(state, :expected, record)
 
       if state.operation == :projection_abort,
@@ -940,6 +948,8 @@ defmodule IpseKnowledge.Store do
         "maximum_dimensions" => 4096
       }
 
+      plan = vector_contract(plan, state.args["projection_kind"])
+
       cas(
         Map.merge(state, %{source: source, chunks: selected, plan: plan}),
         record,
@@ -1018,7 +1028,7 @@ defmodule IpseKnowledge.Store do
     with {:ok, source} <- load_source(state, root),
          :ok <- projection_items(kind, items, source, token),
          projection_id = Evidence.id("projection", [kind, ordered(token["profile"])]),
-         previous = get_in(root, ["projections", projection_id, "ref"]),
+         {:ok, previous} <- projection_previous(state, root, projection_id, kind, items),
          {:ok, pages, records} <- projection_pages(source, token["draft_id"], kind, items),
          manifest =
            page(
@@ -1061,7 +1071,8 @@ defmodule IpseKnowledge.Store do
   defp projection_items("vectors", vectors, source, token) do
     with true <- is_list(vectors) and length(vectors) == length(token["chunks"]),
          true <- Enum.map(vectors, & &1["chunk_id"]) |> Enum.sort() == Enum.sort(token["chunks"]),
-         true <- Enum.all?(vectors, &Evidence.valid_vector?/1),
+         true <- Enum.all?(vectors, &Evidence.current_vector?/1),
+         true <- compatible_projection?("vectors", vectors, token["profile"]),
          true <- Enum.all?(vectors, &(&1["profile"] == token["profile"]["profile"])),
          {:ok, chunks} <- Evidence.chunks(source),
          true <-
@@ -1086,6 +1097,20 @@ defmodule IpseKnowledge.Store do
       :ok
     else
       {:error, :invalid_facts}
+    end
+  end
+
+  defp projection_previous(state, root, id, kind, items) do
+    previous = get_in(root, ["projections", id, "ref"])
+
+    if kind == "vectors" and previous != nil do
+      with {:ok, existing, _} <- load_projection(state, root, previous, kind, MapSet.new()) do
+        compatible = Enum.all?(existing, &Evidence.compatible_vectors?(&1, hd(items)))
+
+        {:ok, if(compatible, do: previous)}
+      end
+    else
+      {:ok, previous}
     end
   end
 
@@ -1506,19 +1531,15 @@ defmodule IpseKnowledge.Store do
     chunk_ids = Enum.map(chunks, & &1["chunk_id"])
 
     Enum.reduce_while(records, {:ok, []}, fn record, {:ok, vectors} ->
-      with true <-
-             keys?(
-               record,
-               ~w(version chunk_id input_sha256 profile model dimensions encoding vector_sha256 pages)
-             ),
+      with true <- vector_record?(record),
            true <- is_list(record["pages"]) and length(record["pages"]) in 1..6,
            {:ok, bytes} <- load_vector_parts(state, root, draft, record, record["pages"], <<>>),
            true <- byte_size(bytes) == record["dimensions"] * 4,
-           attrs =
+           vector =
              record
-             |> Map.drop(~w(version encoding vector_sha256 pages))
+             |> Map.delete("pages")
              |> Map.put("values", for(<<value::little-float-size(32) <- bytes>>, do: value)),
-           {:ok, vector} <- Evidence.vector(attrs),
+           true <- Evidence.valid_vector?(vector),
            true <- vector["chunk_id"] in chunk_ids,
            true <- vector["vector_sha256"] == record["vector_sha256"] do
         {:cont, {:ok, vectors ++ [vector]}}
@@ -1559,6 +1580,23 @@ defmodule IpseKnowledge.Store do
 
   defp load_projection_items(_, _, _, _, _), do: {:error, :projection_corrupt}
 
+  defp vector_record?(record) do
+    fields =
+      ~w(version chunk_id input_sha256 profile model dimensions encoding vector_sha256 pages)
+
+    ((record["version"] === 1 and keys?(record, fields)) or
+       (record["version"] === 2 and keys?(record, ["selection_sha256" | fields]) and
+          hash?(record["selection_sha256"]))) and record["encoding"] == "float32le" and
+      is_integer(record["dimensions"]) and record["dimensions"] in 1..4096
+  end
+
+  defp vector_part_fields(record) do
+    fields =
+      ~w(chunk_id input_sha256 profile model dimensions encoding vector_sha256 offset values)
+
+    if record["version"] === 2, do: ["selection_sha256" | fields], else: fields
+  end
+
   defp load_vector_parts(_state, _root, _draft, _record, [], bytes), do: {:ok, bytes}
 
   defp load_vector_parts(state, root, draft, record, [ref | rest], bytes) do
@@ -1568,11 +1606,11 @@ defmodule IpseKnowledge.Store do
          true <-
            keys?(
              body,
-             ~w(chunk_id input_sha256 profile model dimensions encoding vector_sha256 offset values)
+             vector_part_fields(record)
            ),
          true <-
            Map.drop(body, ~w(encoding offset values)) ==
-             Map.take(record, ~w(chunk_id input_sha256 profile model dimensions vector_sha256)),
+             Map.drop(record, ~w(version encoding pages)),
          true <-
            body["encoding"] == "float32le.base64" and body["offset"] == div(byte_size(bytes), 4),
          {:ok, part} <- Base.decode64(body["values"]),
@@ -1760,20 +1798,19 @@ defmodule IpseKnowledge.Store do
   end
 
   defp projection_draft(root, args) do
-    %{
+    draft = %{
       "id" => random_id(),
       "kind" => args["projection_kind"],
       "source_generation" => root["generation"],
       "content_sha256" => root["content_sha256"],
       "plan_sha256" =>
-        Evidence.id("projection-plan", [
-          root["source_key"],
-          root["generation"],
-          root["content_sha256"],
+        projection_plan(
+          root,
           args["projection_kind"],
-          ordered(args["profile"]),
-          args["chunks"]
-        ]),
+          args["profile"],
+          args["chunks"],
+          if(args["projection_kind"] == "vectors", do: 2)
+        ),
       "progress" => nil,
       "next_offset" => 0,
       "target" => nil,
@@ -1781,6 +1818,30 @@ defmodule IpseKnowledge.Store do
       "chunk_ids" => args["chunks"],
       "expires_at_ms" => System.system_time(:millisecond) + 3_600_000
     }
+
+    vector_contract(draft, args["projection_kind"])
+  end
+
+  defp vector_contract(value, "vectors"), do: Map.put(value, "vector_version", 2)
+  defp vector_contract(value, _), do: value
+
+  defp current_vector_contract?(value, field),
+    do: value[field] != "vectors" or value["vector_version"] === 2
+
+  defp projection_plan(root, kind, profile, chunks, vector_version) do
+    fields = [
+      root["source_key"],
+      root["generation"],
+      root["content_sha256"],
+      kind,
+      ordered(profile),
+      chunks
+    ]
+
+    Evidence.id(
+      "projection-plan",
+      if(vector_version == nil, do: fields, else: fields ++ [vector_version])
+    )
   end
 
   defp staging(source, draft),
@@ -1958,10 +2019,16 @@ defmodule IpseKnowledge.Store do
   end
 
   defp valid_draft?(draft, root) do
-    keys?(
-      draft,
+    fields =
       ~w(id kind source_generation content_sha256 plan_sha256 progress next_offset target profile chunk_ids expires_at_ms)
-    ) and
+
+    fields =
+      if draft["kind"] == "vectors" and Map.has_key?(draft, "vector_version"),
+        do: ["vector_version" | fields],
+        else: fields
+
+    keys?(draft, fields) and
+      (not Map.has_key?(draft, "vector_version") or draft["vector_version"] === 2) and
       id?(draft["id"]) and draft["kind"] in ~w(source vectors facts) and
       (draft["source_generation"] == nil or positive?(draft["source_generation"])) and
       (draft["content_sha256"] == nil or hash?(draft["content_sha256"])) and
@@ -1979,14 +2046,13 @@ defmodule IpseKnowledge.Store do
             draft["content_sha256"] == root["content_sha256"] and
             draft["progress"] == nil and draft["next_offset"] == 0 and
             draft["plan_sha256"] ==
-              Evidence.id("projection-plan", [
-                root["source_key"],
-                root["generation"],
-                root["content_sha256"],
+              projection_plan(
+                root,
                 draft["kind"],
-                ordered(draft["profile"]),
-                draft["chunk_ids"]
-              ])
+                draft["profile"],
+                draft["chunk_ids"],
+                draft["vector_version"]
+              )
       )
   rescue
     _ -> false
@@ -2088,6 +2154,8 @@ defmodule IpseKnowledge.Store do
         id?(token["draft_id"]) and positive?(token["generation"]) and
         hash?(token["content_sha256"]) and
         token["projection_kind"] in ~w(vectors facts) and is_map(token["profile"]) and
+        (not Map.has_key?(token, "vector_version") or
+           (token["projection_kind"] == "vectors" and token["vector_version"] === 2)) and
         is_list(token["chunks"]) and
         is_map(token["cache"]) and is_integer(token["effects_before_model"]) and
         token["effects_before_model"] in 1..16 and
@@ -2121,7 +2189,7 @@ defmodule IpseKnowledge.Store do
     do:
       Map.take(
         draft,
-        ~w(id kind source_generation content_sha256 next_offset chunk_ids expires_at_ms)
+        ~w(id kind source_generation content_sha256 next_offset chunk_ids expires_at_ms vector_version)
       )
 
   defp put_record(cache, record, generation),
@@ -2151,7 +2219,12 @@ defmodule IpseKnowledge.Store do
 
   defp compatible_projection?("vectors", items, profile) do
     Enum.all?(items, &(&1["profile"] == profile["profile"])) and
-      length(Enum.uniq_by(items, &Map.take(&1, ~w(profile model dimensions encoding)))) <= 1
+      length(
+        Enum.uniq_by(
+          items,
+          &Map.take(&1, ~w(version selection_sha256 profile model dimensions encoding))
+        )
+      ) <= 1
   end
 
   defp coverage(state),

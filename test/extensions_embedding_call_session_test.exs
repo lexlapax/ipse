@@ -239,6 +239,36 @@ defmodule Ipse.Extensions.EmbeddingCallSessionTest do
     end
   end
 
+  test "v2 selection is checked by standalone action and session recovery without usage reads",
+       ctx do
+    http = http(ctx, 768)
+    cfg = config(ctx, http.base, 768)
+    pid = start(ctx, cfg)
+    invoke(pid, Map.put(request(), "version", 2))
+    assert_receive {:embedding_http, _, handler, _}, 5000
+    send(handler, :respond)
+    done(pid)
+    ev = events(ctx, pid)
+    assert :ok = Session.close_confirmed(pid)
+    refute Enum.any?(results(ev), &(&1["request"]["op"] == "usage.read"))
+    assert Actions.validate_events(ev) == :ok
+    assert {:ok, _} = Session.restore_context(ev)
+    result = Enum.find(results(ev), &(&1["request"]["op"] == "embedding.create"))
+    assert result["outcome"]["value"]["version"] === 2
+
+    assert {:ok, result["outcome"]["value"]["selection_sha256"]} ==
+             Ipse.Extensions.EmbeddingCall.selection_sha256(Actions.result_intent(result))
+
+    outcome = put_in(result["outcome"], ["value", "selection_sha256"], digest("forged selection"))
+    forged = result |> Map.put("outcome", outcome) |> Map.put("outcome_sha256", digest(outcome))
+    assert Actions.valid_result?(forged)
+    damaged = replace(ev, result, forged)
+    assert {:error, _} = Actions.validate_events(damaged)
+    assert {:error, _} = Usage.restore(damaged)
+    assert {:error, _} = Session.restore_context(damaged)
+    assert length(calls(ctx)) == 1
+  end
+
   test "source/attempt/namespace/operation and recomputed page corruption refuse before tail repair",
        ctx do
     http = http(ctx, 768)

@@ -46,7 +46,7 @@ defmodule Ipse.Extensions.EmbeddingResultTest do
 
     assert {:ok, value} =
              EmbeddingCall.value_from_completion(
-               fixture.request,
+               fixture.intent,
                fixture.admission,
                fixture.completion,
                source
@@ -63,6 +63,55 @@ defmodule Ipse.Extensions.EmbeddingResultTest do
     assert Ipse.Extension.validate(value) == :ok
     refute Map.has_key?(value, "text")
     refute Map.has_key?(value, "assistant")
+  end
+
+  test "v2 result authenticates selection from the original approved intent without changing private pages" do
+    f = fixture(4096, 2, 2)
+    assert EmbeddingCall.validate(f.request) == :ok
+    assert {:error, _} = EmbeddingCall.validate(Map.put(f.request, "version", 2.0))
+
+    assert {:ok, value} =
+             EmbeddingCall.value_from_completion(f.intent, f.admission, f.completion, f.source)
+
+    assert value["version"] === 2
+    assert {:ok, value["selection_sha256"]} == EmbeddingCall.selection_sha256(f.intent)
+    assert EmbeddingCall.valid_outcome?(f.request, "ok", value, f.intent["operation_id"])
+    assert f.source["version"] === 2
+    assert value["result"]["version"] === 2
+    refute Map.has_key?(f.source, "selection_sha256")
+    assert Ipse.Extension.validate(value) == :ok
+    assert Enum.all?(pages(f.source, 0, 0, []), &(&1["version"] === 2))
+
+    for changed <- [
+          Map.delete(value, "selection_sha256"),
+          Map.put(value, "selection_sha256", "bad"),
+          Map.put(value, "version", 1)
+        ] do
+      refute EmbeddingCall.valid_outcome?(f.request, "ok", changed, f.intent["operation_id"])
+    end
+
+    changed_intent = put_in(f.intent, ["effect_binding", "execution", "model"], "substituted")
+
+    assert {:failed, _} =
+             EmbeddingCall.value_from_completion(
+               changed_intent,
+               f.admission,
+               f.completion,
+               f.source
+             )
+
+    legacy = fixture(2, 1)
+
+    assert {:ok, old_value} =
+             EmbeddingCall.value_from_completion(
+               legacy.intent,
+               legacy.admission,
+               legacy.completion,
+               legacy.source
+             )
+
+    assert old_value["version"] === 1
+    refute Map.has_key?(old_value, "selection_sha256")
   end
 
   for dimensions <- [768, 4096] do
@@ -205,7 +254,7 @@ defmodule Ipse.Extensions.EmbeddingResultTest do
 
     assert {:ok, value} =
              EmbeddingCall.value_from_completion(
-               fixture.request,
+               fixture.intent,
                fixture.admission,
                fixture.completion,
                source
@@ -299,8 +348,8 @@ defmodule Ipse.Extensions.EmbeddingResultTest do
       else: pages(source, index, page["next"], [page | acc])
   end
 
-  defp fixture(dimensions, count) do
-    request = %{request() | "inputs" => Enum.map(1..count, &"chunk #{&1}")}
+  defp fixture(dimensions, count, version \\ 1) do
+    request = %{request() | "inputs" => Enum.map(1..count, &"chunk #{&1}"), "version" => version}
 
     config = %{
       embedding_profiles: %{

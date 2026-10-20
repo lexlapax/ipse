@@ -567,10 +567,7 @@ defmodule IpseKnowledge.Corpus do
         Enum.reduce(chunks, {acc, missing}, fn chunk, {hits, gaps} ->
           vector =
             Enum.find(vectors, fn v ->
-              v["chunk_id"] == chunk["chunk_id"] and v["profile"] == query_vector["profile"] and
-                v["model"] == query_vector["model"] and
-                v["dimensions"] == query_vector["dimensions"] and
-                Evidence.valid_vector?(v)
+              v["chunk_id"] == chunk["chunk_id"] and Evidence.compatible_vectors?(v, query_vector)
             end)
 
           if vector == nil do

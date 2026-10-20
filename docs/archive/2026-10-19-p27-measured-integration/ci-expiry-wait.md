@@ -26,4 +26,10 @@ request deadline or product approval behavior.
 The complete affected local macOS file passes all 16 tests in 18.7 seconds.
 A separate 300-sample local timer probe did not reproduce an early wake, so it is
 not evidence of a local reproduction. The hosted assertion values above are the
-observed counterexample. A corrected-source hosted matrix remains required.
+observed counterexample.
+
+The exact corrected source `f2bfc8d7f8dd3fadedd2e18183faf4533ee63ac5`
+[passes the complete hosted matrix](https://github.com/lexlapax/ipse/actions/runs/39377288100)
+on Ubuntu and macOS, including native, package and independent installed proofs.
+That result verifies this expiry-wait repair. Later graph and embedding review
+corrections require their own verification and do not inherit that green gate.

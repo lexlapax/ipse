@@ -1555,7 +1555,7 @@ defmodule Ipse.Session do
             {:failed, %{"code" => "embedding_response"}}
 
           true ->
-            EmbeddingCall.value_from_completion(intent["request"], admission, completion, source)
+            EmbeddingCall.value_from_completion(intent, admission, completion, source)
         end
 
       {:reply, outcome, s}

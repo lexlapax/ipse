@@ -4,6 +4,8 @@ defmodule IpseKnowledgeExample.RecoveryPackageProof do
 
   def run([archive, artifact]), do: execute(archive, artifact, :recovery)
 
+  def run([archive, artifact, "selection"]), do: execute(archive, artifact, :selection)
+
   def run([archive, artifact, kind]) when kind in ~w(graph corpus),
     do: execute(archive, artifact, {:lifecycle, kind})
 
@@ -61,6 +63,10 @@ defmodule IpseKnowledgeExample.RecoveryPackageProof do
         case mode do
           :recovery ->
             {"recovery-proof.exs", "IpseKnowledgeExample.RecoveryProof.run(#{inspect(artifact)})"}
+
+          :selection ->
+            {"lifecycle-proof.exs",
+             "IpseKnowledgeExample.LifecycleProof.selection(#{inspect(artifact)})"}
 
           {:lifecycle, kind} ->
             {"lifecycle-proof.exs",
@@ -120,6 +126,16 @@ defmodule IpseKnowledgeExample.RecoveryPackageProof do
         report["session_cleanup_unconfirmed_cases"] == ["owner_loss"] and
         report["host_loaded_domain_modules"] == false and
         Enum.all?(report["cases"], &(&1["idle_resume_replays"] == 0))
+
+  defp valid_report?(report, :selection),
+    do:
+      report["checks"] == 10 and report["fixture_provider_requests"] == 10 and
+        report["actual_model_inference"] == false and report["cleanup"] == "confirmed" and
+        report["changed_endpoint_refused"] == true and report["explicit_fallback_partial"] == true and
+        report["explicit_reindex_succeeded"] == true and report["timeout_only_reused"] == true and
+        report["changed_reported_model_reindexed"] == true and
+        report["reported_model_change_preserved_selection"] == true and
+        report["idle_resume_replays"] == 0 and report["host_loaded_domain_modules"] == false
 
   defp inventory(root) do
     root

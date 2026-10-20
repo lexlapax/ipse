@@ -191,10 +191,12 @@ Read both claims before treating a `conflict` as resolved.
 counterassertions; `counterassertions` counts those extra assertions. A conflicting
 alternative outside the path can therefore appear without adding a traversed
 edge or node. Bounds are depth 0..4, 1..128 nodes, 1..256 traversal edges, and
-1..10 returned passages. Depth zero
-follows no edge. `coverage.complete: false` means a traversal bound cut the path;
-the result is `partial`, and absent relationships have not been checked and
-disproved. An unpublished source also makes the result partial, including an
+1..10 returned passages. Depth zero follows no edge. Reaching the depth limit
+while an unvisited positive outgoing fact remains makes coverage incomplete,
+including at depth zero. Reaching a leaf or finishing a cycle does not leave
+unfinished traversal work. `coverage.complete: false` means a traversal bound cut
+the path; the result is `partial`, and absent relationships have not been checked
+and disproved. An unpublished source also makes the result partial, including an
 empty result. Complete empty traversal returns `abstain`.
 
 Forgotten and non-current sources remain excluded, with diagnostics in `gaps`

@@ -19,10 +19,10 @@ defmodule Ipse.EmbeddingAccountingTest do
     Usage.admission(session, config, "extension", Usage.id())
   end
 
-  defp fixture do
+  defp fixture(version \\ 1) do
     request = %{
       "op" => "embedding.create",
-      "version" => 1,
+      "version" => version,
       "profile" => "embed",
       "inputs" => ["Synthetic source"],
       "timeout_ms" => 5000
@@ -79,7 +79,7 @@ defmodule Ipse.EmbeddingAccountingTest do
     observed = Usage.observation(admission, raw, 1)
     completion = Usage.completion(admission, {:ok, payload, raw}, 2, observed["usage"])
     {:ok, response} = EmbeddingCall.response(intent, admission, completion, payload)
-    {:ok, value} = EmbeddingCall.value_from_completion(request, admission, completion, response)
+    {:ok, value} = EmbeddingCall.value_from_completion(intent, admission, completion, response)
     {:ok, result} = Actions.result(intent, %{"status" => "ok", "value" => value})
 
     metadata = %{
@@ -294,6 +294,23 @@ defmodule Ipse.EmbeddingAccountingTest do
         ] do
       assert {:error, _} = Usage.restore(events)
     end
+  end
+
+  test "v2 recovery rejects a changed selection even with a syntactically rehashed action result" do
+    f = fixture(2)
+    assert {:ok, ledger} = Usage.restore(f.events)
+    record = ledger.requests[f.admission["request_id"]]
+    assert EmbeddingCall.valid_result_source?(f.result, record, f.response)
+    assert Actions.bound_effect?(f.result, %{f.result["operation_id"] => f.response}, [])
+
+    changed =
+      put_in(f.result, ["outcome", "value", "selection_sha256"], String.duplicate("b", 64))
+
+    changed = Map.put(changed, "outcome_sha256", Ipse.Compaction.digest([changed["outcome"]]))
+    assert Actions.valid_result?(changed)
+    refute Actions.bound_effect?(changed, %{f.result["operation_id"] => f.response}, [])
+    refute EmbeddingCall.valid_result_source?(changed, record, f.response)
+    assert {:error, _} = Usage.restore(List.replace_at(f.events, -1, changed))
   end
 
   test "unknown action preserves an interrupted prefix but cannot excuse contradictory completed evidence" do

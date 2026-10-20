@@ -23,7 +23,7 @@ Return the SDK host-call envelope:
   "kind": "host_call",
   "request": {
     "op": "embedding.create",
-    "version": 1,
+    "version": 2,
     "profile": "local_embedding",
     "inputs": ["A bounded synthetic source chunk."],
     "timeout_ms": 30000
@@ -93,13 +93,28 @@ provable ledger coverage, recovery fails closed for inspection.
 
 ## Reconstruct one vector without widening the SDK
 
-A successful action returns this shape, with real IDs/hashes/counters substituted:
+A successful v2 action returns this shape, with real IDs/hashes/counters substituted:
 
 ```text
-{version:1, request_id, attempt_id, profile, reported_model, usage,
+{version:2, request_id, attempt_id, profile, reported_model, usage, selection_sha256,
  result:{version:2, operation_id, kind:"embedding.f32le", source_sha256,
          encoding:"float32le.base64", vector_count, dimensions}}
 ```
+
+Use v2 when retaining embeddings for later comparison. `EmbeddingProfiles.selection_sha256/2`
+owns the identity of the approved selection. It hashes a fixed ordered array with
+the tag `ipse.embedding.selection`, identity version 1, profile ID, operation,
+provider, requested model, billing mode, destination origin and wire-target digest,
+dimensions and dimension mode. The existing destination normalizer owns URL
+equivalence. Timeouts, inputs, credentials, budgets and request/session IDs do not
+change this identity. An unchanged endpoint and model name cannot prove unchanged
+remote weights or routing. Keep that limit explicit in any durable index.
+
+Request v1 remains supported with its exact v1 result shape, without a selection
+hash. It cannot authenticate a current durable vector. A host refusing v2 must
+produce an ordinary refusal; do not fall back to v1 and stamp the current hash
+onto an older result. Both request versions use the same private source v2,
+descriptor v2 and page-read v2 protocols.
 
 Save the descriptor in private worker state. Request a page:
 
@@ -138,7 +153,12 @@ Its `inference` fields bind request/attempt/profile, reported model, normalized
 usage and native-response digest.
 
 `Usage.restore/2` and `Actions.restore/2` independently check their respective
-accounting/action contracts. A source followed by completion requires completed,
+accounting/action contracts. `EmbeddingCall.value_from_completion/4` takes the
+full original approved intent, validates its source and derives the public v2
+selection hash from that saved binding. Recovery never substitutes current
+operator configuration. Standalone Actions validation also compares that hash
+with the original binding, including journals with no `usage.read` action.
+A source followed by completion requires completed,
 final, equal usage and equal reported model, even when the action ends unknown.
 Source without completion is a permissible interrupted prefix. Source and even
 completed measurement without the successful action grant no read authority.
@@ -168,7 +188,12 @@ mix test test/embedding_profiles_test.exs test/provider/embedding_test.exs test/
 
 As an exercise, change a saved input hash, vector width, source digest or operation
 tag in a fixture. Require refusal before tail repair and zero additional provider
-dispatch. Then test cancellation and a settlement failure after the response
+dispatch. In `test/extensions_embedding_call_session_test.exs`, change only a
+successful v2 selection hash and recompute the superficial outcome hash. Both
+standalone Actions validation and full Session recovery must refuse. In
+`test/embedding_profiles_test.exs`, compare endpoints and models with identical
+dimensions, then change only a timeout. Only the latter keeps selection identity.
+Then test cancellation and a settlement failure after the response
 arrives. Known counters must survive, readable vectors must remain absent and
 applicable liabilities must remain booked. Run the unchanged text model-job
 proof after changing the shared coordinator.

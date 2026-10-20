@@ -131,7 +131,7 @@ defmodule Ipse.KnowledgeQueryCompletenessTest do
 
   test "public Corpus graph fusion retains a truncated traversal", ctx do
     {run, policy} = open(ctx, :graph)
-    text = "Release requires quiescence. Release uses locks."
+    text = "Release requires quiescence. Quiescence uses locks."
     input = Map.put(source("current"), "text", text)
 
     try do
@@ -162,8 +162,8 @@ defmodule Ipse.KnowledgeQueryCompletenessTest do
       {:ok, [chunk]} = E.chunks(source)
       {:ok, citation} = E.citation(source, chunk, 0, byte_size(source["text"]))
       expires = System.system_time(:millisecond) + 86_400_000
-      facts = for {predicate, object} <- [{"requires", "quiescence"}, {"uses", "locks"}] do
-        {:ok, fact} = E.fact(%{"subject" => "Release", "predicate" => predicate, "object" => object, "polarity" => "positive", "inferred" => false, "valid_from_ms" => nil, "valid_to_ms" => expires, "extraction" => %{"kind" => "explicit", "profile" => nil, "version" => 1}, "citations" => [citation]})
+      facts = for {subject, predicate, object} <- [{"Release", "requires", "quiescence"}, {"quiescence", "uses", "locks"}] do
+        {:ok, fact} = E.fact(%{"subject" => subject, "predicate" => predicate, "object" => object, "polarity" => "positive", "inferred" => false, "valid_from_ms" => nil, "valid_to_ms" => expires, "extraction" => %{"kind" => "explicit", "profile" => nil, "version" => 1}, "citations" => [citation]})
         fact
       end
       IO.puts(JSON.encode!(facts))
@@ -201,6 +201,12 @@ defmodule Ipse.KnowledgeQueryCompletenessTest do
       assert result["coverage"]["complete"] == false
       assert result["coverage"]["components"]["graph"]["complete"] == false
 
+      depth_bounded = query(run, policy, "Release", "depth_bounded")
+      assert depth_bounded["status"] == "partial"
+      assert depth_bounded["coverage"]["components"]["graph"]["complete"] == false
+      assert depth_bounded["coverage"]["complete"] == false
+      assert depth_bounded["evidence"] != []
+
       graph_args = %{
         "store" => "notes",
         "entity" => "Release",
@@ -212,6 +218,22 @@ defmodule Ipse.KnowledgeQueryCompletenessTest do
       }
 
       direct_bounded = invoke(run, policy, "query", graph_args, "graph")
+
+      for depth <- [0, 1] do
+        direct =
+          invoke(
+            run,
+            policy,
+            "query",
+            %{graph_args | "depth" => depth, "max_edges" => 16},
+            "graph"
+          )
+
+        assert direct["status"] == "partial"
+        refute direct["coverage"]["complete"]
+        assert direct["coverage"]["edges"] == depth
+      end
+
       assert put(run, policy, source("forgotten"))["status"] == "ok"
 
       revision =
@@ -367,6 +389,14 @@ defmodule Ipse.KnowledgeQueryCompletenessTest do
             "depth" => 2,
             "max_nodes" => 16,
             "max_edges" => 1
+          })
+          |> put_in(["retrieval", "depth_bounded"], %{
+            "kind" => "graph",
+            "version" => 1,
+            "lexical" => "words",
+            "depth" => 1,
+            "max_nodes" => 16,
+            "max_edges" => 16
           }),
         else: options
 

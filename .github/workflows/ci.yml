@@ -99,6 +99,7 @@ jobs:
           mix run examples/knowledge/verify-recovery.exs "$RUNNER_TEMP/ipse-knowledge-presets/graph-state-model"
           mix run examples/knowledge/verify-lifecycle.exs "$RUNNER_TEMP/ipse-knowledge-presets/graph-state-model" graph
           mix run examples/knowledge/verify-lifecycle.exs "$RUNNER_TEMP/ipse-knowledge-presets/corpus-state-dense" corpus
+          mix run examples/knowledge/verify-lifecycle.exs "$RUNNER_TEMP/ipse-knowledge-presets/corpus-state-dense" selection
           elixir examples/knowledge/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-knowledge"
           elixir examples/knowledge/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-knowledge" complete
           elixir examples/knowledge/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-knowledge" independence
@@ -107,6 +108,7 @@ jobs:
           elixir examples/knowledge/verify-recovery-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-knowledge-presets/graph-state-model"
           elixir examples/knowledge/verify-recovery-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-knowledge-presets/graph-state-model" graph
           elixir examples/knowledge/verify-recovery-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-knowledge-presets/corpus-state-dense" corpus
+          elixir examples/knowledge/verify-recovery-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-knowledge-presets/corpus-state-dense" selection
       - name: Experimental macOS App Sandbox enforcement
         if: runner.os == 'macOS'
         run: |

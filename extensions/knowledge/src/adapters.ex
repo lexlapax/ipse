@@ -75,7 +75,8 @@ defmodule IpseKnowledge.Adapters do
   def resume(%{phase: :embedding} = state, %{"status" => "ok", "value" => value}) do
     descriptor = value["result"]
 
-    with true <-
+    with true <- value["version"] === 2 and hash?(value["selection_sha256"]),
+         true <-
            is_map(descriptor) and descriptor["version"] == 2 and
              descriptor["kind"] == "embedding.f32le",
          true <- descriptor["encoding"] == "float32le.base64",
@@ -140,6 +141,7 @@ defmodule IpseKnowledge.Adapters do
                  "chunk_id" => input["chunk_id"],
                  "input_sha256" => page["input_sha256"],
                  "profile" => state.host_profile,
+                 "selection_sha256" => state.inference["selection_sha256"],
                  "model" => state.inference["reported_model"],
                  "dimensions" => state.descriptor["dimensions"],
                  "values" => values
@@ -306,7 +308,7 @@ defmodule IpseKnowledge.Adapters do
          true <- id?(host) do
       request = %{
         "op" => "embedding.create",
-        "version" => 1,
+        "version" => 2,
         "profile" => host,
         "inputs" => Enum.map(inputs, & &1["text"]),
         "timeout_ms" => 120_000

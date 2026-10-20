@@ -256,6 +256,26 @@ generation. Each indexing invocation selects one or two chunk IDs; a larger
 source needs separate explicit batches. Changing a source does not automatically
 reindex it. An interrupted projection needs inspection before new work.
 
+Stored vectors also identify the embedding configuration that produced them.
+Changing the selected provider, endpoint, model, dimensions, dimension mode or
+host profile name makes the previous vectors incompatible, even if the server
+still reports the same model name and width. Older vectors without this identity
+also need an explicit reindex. Changing only a timeout preserves compatibility.
+A changed server-reported model also makes old vectors incompatible. Explicit
+reindexing can replace them even when the requested model and endpoint stay the
+same.
+
+After a configuration change, start a fresh chat with the reviewed configuration
+and the same home and workspace. Inspect the source and run the `index` command
+above with its current generation and chunk IDs. The first successful batch
+replaces that embedding profile's old vector chain. Previously indexed chunks
+outside the new batch need their own explicit batches before dense retrieval can
+cover them again. Source text, facts and other selected profiles remain available.
+Old vector pages remain until explicit collection and still consume store slots.
+If a server changes weights behind an unchanged endpoint and model name, Ipse
+cannot detect that change. Select a distinct model or host profile name before
+reindexing so the new and old embeddings cannot be combined.
+
 After a failed or interrupted index command, inspect the source again. If its
 registered draft matches the same generation, embedding profile and selected
 chunks, explicitly discard that draft before restarting work:
@@ -268,6 +288,9 @@ Approve the matching State update. Success reports `status: "ok"` and coverage
 with `status: "aborted"`, the committed source generation and its new revision.
 It makes no embedding request. A changed generation, profile or chunk selection
 refuses; inspect the current draft instead of retrying the old command.
+An older-format vector draft can be inspected and aborted with this same command.
+It cannot be resumed into a new-format index. Abort it explicitly, then review
+a separate `next` command and its new embedding request.
 
 Compare the three retrieval choices on the same source:
 

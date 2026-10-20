@@ -514,9 +514,23 @@ pass locally. The exact-source
 passes Ubuntu, including the independent source and installed proofs. macOS fails
 a memory test's wall-clock expiry precondition before approval. The
 [retained failure and repair](archive/2026-10-19-p27-measured-integration/ci-expiry-wait.md)
-preserve the expiry assertions and bound the condition wait. A corrected-source
-hosted result remains required. Actual selected-runtime CPU proof and the real
-comparison remain open.
+preserve the expiry assertions and bound the condition wait. The corrected
+`f2bfc8d` [hosted matrix](https://github.com/lexlapax/ipse/actions/runs/39377288100)
+passes all Ubuntu and macOS gates. Later whole-P27 review reproduces depth-bound
+completeness and durable embedding-selection gaps. The
+[corrective increment](archive/2026-10-20-p27-selection-corrections/index.md)
+also repairs explicit reindexing after a reported-model change. It passes whole
+source suites, native and installed checks on macOS and Linux, with current
+manuals and no remaining findings in bounded internal follow-up reviews.
+The earlier green matrix does not cover these corrections; their own hosted
+verification remains separate.
+The selected-runtime CPU compatibility proof passes two real explicit requests,
+with complete accounting and confirmed cleanup. It establishes no quality or
+exact memory result. The superseded `f2bfc8d` comparison was intentionally stopped
+after 25 completed rows. It has no complete audit and must never be resumed or
+replayed. Its first cell's native receipt also reports residual descendants and
+incomplete measurement despite domain closure. Cleanup diagnosis, a fresh
+corrected comparison and resource/quality acceptance remain open.
 The inherited combined-fixture timeout is repaired with independent
 test units and unchanged deadlines/assertions; the exact-source `25f1d8e`
 [hosted matrix](https://github.com/lexlapax/ipse/actions/runs/39309132023)

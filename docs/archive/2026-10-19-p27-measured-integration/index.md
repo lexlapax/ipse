@@ -16,3 +16,9 @@ real-model work. No scripted response establishes held-out inference quality.
 
 The later [hosted expiry-wait record](ci-expiry-wait.md) retains the exact
 `81a4387` matrix result, its failed test precondition and the bounded repair.
+It also links the successful corrected-source matrix.
+
+The [CPU compatibility record](cpu-compatibility.md) retains two real selected
+model requests and their closed accounting and cleanup evidence. The
+[superseded comparison record](interrupted-comparison.md) distinguishes its 25
+closed rows from an incomplete experiment and forbids replay of that seal.

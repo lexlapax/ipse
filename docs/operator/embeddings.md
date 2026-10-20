@@ -131,4 +131,7 @@ Idle resume makes no embedding call and reads no result pages. Changing a profil
 can prevent resume because the old session pins its exact selection. Preserve the
 original configuration or create a reviewed fresh-session handoff. A model alias
 does not prove unchanged model weights. An extension index needs an explicit
-generation/reindex policy when its selected model or profile changes.
+generation/reindex policy when its selected model or profile changes. Corpus
+binds current vectors to the approved embedding selection and requires an
+[explicit reindex](corpus.md#add-explicit-embeddings-and-reranking) for older or
+incompatible vectors. A timeout-only change preserves that vector identity.

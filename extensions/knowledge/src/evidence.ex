@@ -169,13 +169,14 @@ defmodule IpseKnowledge.Evidence do
   end
 
   def vector(attrs) do
-    with true <- exact?(attrs, @vector -- ~w(version encoding vector_sha256)),
+    with true <-
+           exact?(attrs, ["selection_sha256" | @vector -- ~w(version encoding vector_sha256)]),
          values when is_list(values) <- attrs["values"],
          true <- length(values) in 1..4096 and Enum.all?(values, &finite?/1),
          {:ok, canonical, bytes} <- float32(values) do
       v =
         Map.merge(attrs, %{
-          "version" => 1,
+          "version" => 2,
           "encoding" => "float32le",
           "values" => canonical,
           "vector_sha256" => sha256(bytes)
@@ -189,7 +190,9 @@ defmodule IpseKnowledge.Evidence do
 
   def valid_vector?(v) do
     with true <-
-           exact?(v, @vector) and v["version"] == 1 and v["encoding"] == "float32le" and
+           ((exact?(v, @vector) and v["version"] === 1) or
+              (exact?(v, ["selection_sha256" | @vector]) and v["version"] === 2 and
+                 hash?(v["selection_sha256"]))) and v["encoding"] == "float32le" and
              hash?(v["chunk_id"]) and hash?(v["input_sha256"]) and identifier?(v["profile"], 128) and
              identifier?(v["model"], 128) and is_integer(v["dimensions"]) and
              v["dimensions"] in 1..4096 and is_list(v["values"]) and
@@ -204,6 +207,13 @@ defmodule IpseKnowledge.Evidence do
     end
   rescue
     _ -> false
+  end
+
+  def current_vector?(v), do: valid_vector?(v) and v["version"] === 2
+
+  def compatible_vectors?(a, b) do
+    current_vector?(a) and current_vector?(b) and
+      Enum.all?(~w(selection_sha256 profile model dimensions encoding), &(a[&1] === b[&1]))
   end
 
   def rank_lexical(sources, query, top_k, now) do
@@ -306,14 +316,13 @@ defmodule IpseKnowledge.Evidence do
   end
 
   def rank_cosine(candidates, query_vector, top_k) do
-    if is_list(candidates) and length(candidates) <= 1024 and valid_vector?(query_vector) and
+    if is_list(candidates) and length(candidates) <= 1024 and current_vector?(query_vector) and
          top?(top_k) do
       Enum.reduce_while(candidates, {:ok, []}, fn c, {:ok, acc} ->
         v = if is_map(c), do: c["vector"], else: nil
 
         if exact?(c, ~w(citation score method vector)) and candidate?(Map.delete(c, "vector")) and
-             valid_vector?(v) and
-             Enum.all?(~w(profile model dimensions), &(v[&1] == query_vector[&1])) and
+             compatible_vectors?(v, query_vector) and
              v["chunk_id"] == c["citation"]["chunk_id"] do
           score = cosine(v["values"], query_vector["values"])
 
@@ -595,16 +604,14 @@ defmodule IpseKnowledge.Evidence do
     end)
   end
 
-  defp walk(_, _, nodes, selected, 0, _), do: {selected, nodes, false}
+  defp walk(facts, frontier, nodes, selected, 0, _),
+    do: {selected, nodes, remaining_facts(facts, frontier, selected) != []}
+
   defp walk(_, [], nodes, selected, _, _), do: {selected, nodes, false}
 
   defp walk(facts, frontier, nodes, selected, depth, limits) do
     eligible =
-      Enum.filter(
-        facts,
-        &(&1["polarity"] == "positive" and String.downcase(&1["subject"]) in frontier and
-            not Enum.any?(selected, fn f -> f["fact_id"] == &1["fact_id"] end))
-      )
+      remaining_facts(facts, frontier, selected)
       |> Enum.sort_by(& &1["fact_id"])
 
     {chosen, new_nodes, next, cut} =
@@ -626,6 +633,14 @@ defmodule IpseKnowledge.Evidence do
 
     {edges, seen, later_cut} = walk(facts, next, new_nodes, chosen, depth - 1, limits)
     {edges, seen, cut or later_cut}
+  end
+
+  defp remaining_facts(facts, frontier, selected) do
+    Enum.filter(
+      facts,
+      &(&1["polarity"] == "positive" and String.downcase(&1["subject"]) in frontier and
+          not Enum.any?(selected, fn f -> f["fact_id"] == &1["fact_id"] end))
+    )
   end
 
   defp fact_id(f) do

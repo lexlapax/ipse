@@ -142,6 +142,14 @@ policy. A valid expired fact is excluded, while missing or replaced provenance
 remains `stale_fact` even if the fact has also expired. An invalid span still
 refuses validation.
 
+At depth exhaustion, `Evidence.walk/6` checks whether its frontier still has an
+unselected positive outgoing fact. If so, the bounded result remains partial.
+An empty frontier, a leaf and a fully consumed cycle stay complete. Follow the
+depth-zero and chain controls in `test/knowledge_evidence_test.exs`, then compare
+the direct Graph and fused Corpus depth controls in
+`test/knowledge_query_completeness_test.exs`. They exercise status and coverage
+through the public Session, rather than checking only the returned edge count.
+
 Run the public regression before changing these rules:
 
 ```sh
@@ -321,6 +329,35 @@ returns selected chunks, an opaque token and a capacity plan. The entrypoint
 checks the remaining effect/read allowance before inference and passes validated
 results back with that token. Store owns page packing and final publication.
 
+For embeddings, follow `Adapters.run(:embed, ...)` into an explicit
+`embedding.create` v2 request. The successful host value carries
+`selection_sha256`, derived from the original approved binding by
+`EmbeddingProfiles`. Adapters copies that authenticated identity into each closed
+v2 Evidence vector. `Evidence.compatible_vectors?/2` requires two valid current
+vectors with equal selection hash, host profile, reported model, dimensions and
+encoding. Both direct cosine ranking and Corpus candidate selection use it.
+An exact legacy v1 vector remains structurally readable, but is never eligible
+for dense comparison. Legacy or changed selections take the existing
+missing-embedding refusal or explicitly configured partial lexical fallback.
+
+Store reads version-specific vector records and coordinate parts, requiring
+their metadata to agree. It validates selection homogeneity across each complete
+projection chain before deduplicating chunk IDs. A newer duplicate must never
+hide an incompatible older record. Keep one head for each existing domain
+embedding profile. Fully compatible batches append. An explicitly indexed batch
+with a different selection, reported model or legacy vector sets `previous` to null under the same root
+CAS, without copying old chunks into the new chain. Detached pages remain
+collectible through the ordinary explicit collection path. Other heads, source
+text, facts and suppression retain their existing ownership.
+
+New vector drafts, capacity plans and private tokens mark `vector_version: 2`.
+The registered draft's plan hash includes this requirement. An older draft stays
+inspectable and exactly abortable, but cannot be promoted or committed with a new
+token. A fresh `next` refuses while that draft is active. Source and fact drafts
+keep their existing formats. Follow the State and MCP controls in
+`test/knowledge_store_test.exs` through append, selection replacement, legacy
+decode, mixed-chain refusal and an attempted old-draft promotion.
+
 The extraction adapter sends `max_facts` alongside the selected chunks. Its fixed
 instruction specifies the closed fact fields and absolute half-open UTF8 byte
 offsets. The decoder separately enforces the requested fact count, selected
@@ -489,6 +526,25 @@ elixir examples/knowledge/verify-recovery-package.exs /path/to/ipse.tar.gz "$IPS
 The optional third argument selects the lifecycle cases. Omitting it preserves
 the earlier eight-check Graph abort exercise. Both installed routes hide the
 development toolchain and check unchanged archive and host bytes.
+
+Exercise durable embedding identity with the same Corpus artifact:
+
+```sh
+mix run examples/knowledge/verify-lifecycle.exs "$IPSE_LIFECYCLE_ARTIFACTS/corpus" selection
+elixir examples/knowledge/verify-recovery-package.exs /path/to/ipse.tar.gz "$IPSE_LIFECYCLE_ARTIFACTS/corpus" selection
+```
+
+Follow `LifecycleProof.selection/1`. It uses two owned loopback endpoints with
+the same requested/reported model and two-coordinate width, but different vector
+values. Index and query at A, then open a fresh Session at B against the same
+durable State binding. Dense retrieval must refuse; an explicit lexical fallback
+must remain partial. Reindex at B and require successful dense retrieval. Change
+only its timeout and require reuse, then resume an earlier Session without IO.
+At that same endpoint, change the fixture's reported model. Querying must refuse
+the old vectors, while explicit reindex and the next query succeed under the same
+approved selection hash. Expect ten synthetic requests, exact v2 selection receipts, valid accounting
+and confirmed cleanup. These responses establish configuration separation and
+recovery behavior, not retrieval quality or remote weight identity.
 
 For a change exercise, use an older `expected_revision` in the forget command.
 The public command must refuse and the control must fail at its expected-success

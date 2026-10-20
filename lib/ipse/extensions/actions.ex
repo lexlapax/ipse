@@ -593,7 +593,7 @@ defmodule Ipse.Extensions.Actions do
       Operation.embedding?(request) and outcome["status"] == "ok" ->
         source = sources[event["operation_id"]]
 
-        is_map(source) and
+        is_map(source) and Ipse.Extensions.EmbeddingCall.bound_selection?(event) and
           outcome["value"]["result"] == Ipse.Extensions.EffectResult.descriptor(source)
 
       Operation.result_read?(request) ->
