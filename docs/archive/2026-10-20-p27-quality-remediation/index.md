@@ -226,6 +226,39 @@ protection against disclosure outside the workflow. Relevance-grade review check
 the existing ordinal consistency; the contract provides no named prose grade
 taxonomy. This preparation establishes no model-quality or resource result.
 
+## Retain the complete excerpt diagnostic
+
+A new diagnostic at `bfe8ca5` completed all twelve first rows for the same four
+exposed questions and lexical, model-graph and dense variants. It used one fresh
+owned CPU-only service/cache, a separately declared one-hour outer lifetime and
+unchanged individual deadlines and budgets. The callback returned; native and
+staging cleanup are confirmed. No previous attempt was replayed.
+
+The outcome is seven `ok`, four `partial` and one `failed`. Lexical has four
+execution-successful rows, dense three plus one failure, and model-graph four
+partial rows after preparation failures. These are execution classifications,
+not semantic grades. The [retained diagnostic receipt](tuning-excerpts.json)
+binds source, declaration, original first outcomes, cleanup and offline probes.
+Shared warm state and absent aggregate collection prevent a matched latency or
+charged-memory claim.
+
+Eight answer requests reconstruct exactly from their retained query receipts.
+Seven responses decode; dense Q04 contains an unquoted JSON field name. Both
+independent parsers reject its syntax, and the first attempt stays failed.
+Of eighteen returned graph-extraction texts, four have non-object roots, four
+exceed the declared one-fact limit, and one omits a required field. Nine domain
+refusals correspond to those shapes; original responses remain in the journals.
+Three other extraction attempts record
+`complete_result_deadline` with unconfirmed completion. Service cleanup does not
+turn those incomplete invocations into successful projections.
+
+Supervisor inspection finds direct actor/timer content in lexical Q02/Q04 and a
+false conflict classification for compatible processing stages in Q26. Dense
+Q02 returns empty `open` despite the old reference's `answer` class. These exposed
+observations guide further investigation; they are not the independent final
+semantic review or a measured quality improvement. No parser repair, automatic
+classification change, retry or threshold change was made.
+
 ## Remaining quality work
 
 The shared excerpt repair removes the separate dense-prefix and first-match
@@ -233,8 +266,9 @@ policies. Reranking still sees at most 128 UTF8 bytes of each selected excerpt,
 and Answer admits only the longest complete rank prefix fitting its 4096-byte
 input. Neither can recover upstream omissions or guarantee every qualification.
 The comparison's one-fact-per-chunk preparation and narrow explicit-fact author
-remain limits. No engine is selected. Real quality and latency benefits remain
-hypotheses until measured on exposed tuning inputs.
+remain limits. No engine is selected. The completed diagnostic above exposes
+remaining output-shape, deadline, retrieval/context and classification work.
+Matched quality and latency benefits remain unproven.
 
 An earlier offline diagnostic considers each positively annotated old source
 chunk independently of retrieval rank. Of 73 exact reference spans, the

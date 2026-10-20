@@ -387,7 +387,7 @@ the milestone. Preserve current SDK bounds and existing operation authority.
 | P27H4 | Opt-in bounded complete-result publication for original top-level tools/commands, historical receipt reads, strict source closure and unchanged ordinary SDK bounds | Complete at `fb980a0`; whole-milestone review, local 1,248-test baseline, Serenity 1,265-test native-enabled suite, exact 4 MiB and complete-domain source/installed proofs pass. Exact-source hosted Ubuntu/macOS matrix passes |
 | P27A | Independent research and lexical corpus packages with named interchangeable profiles, cited evidence, explicit limits, partial failures, stale-index handling and suppression | Review repairs and corrected-source fixture/platform/installed checks pass; held-out quality acceptance remains open |
 | P27B | Independent attributable graph, optional extraction, embedding/hybrid and rerank adapters; matched quality/resource comparisons before engine selection | Review defects, compact model contracts and shared original-byte excerpts verified through source/platform/installed checks; corrected-source matched quality/resource comparisons and selection remain open |
-| P27 verification | Frozen held-out workload, zero authority/isolation/replay/resurrection failures, measured retrieval/support/citation/resources, source/native/installed checks, coherent user and contributor manuals | Open; review repairs, compact contracts, detached-answer evaluation, cited-claim answer derivation and shared excerpts pass scoped reviews and checks; prior exposed 350-row result failed quality; real tuning, fresh held-out quality, resource/selection and structural-readiness gates remain |
+| P27 verification | Frozen held-out workload, zero authority/isolation/replay/resurrection failures, measured retrieval/support/citation/resources, source/native/installed checks, coherent user and contributor manuals | Open; scoped repair reviews/checks pass. The fresh exposed diagnostic completes twelve first rows but retains five failed/partial rows and classification defects. Further quality repair, fresh held-out quality, resource/selection and structural-readiness gates remain |
 | P27 structural readiness | Holistic redesign and consolidation of the entire codebase and all user/developer documentation for maintainability and ease of use; migrate callers, builds, tests, packaging and CI together | Open; whole-tree survey, two proposals and independent design review complete; [selected target](archive/2026-10-20-p27-structure-design/index.md) recorded. Shared [JSON ownership implementation](archive/2026-10-20-p27-structure-implementation/index.md) passes two reviews, both platform suites and source/installed proofs with precompiled SDK artifacts. Remaining consolidation precedes the final private-evaluation freeze |
 
 The [first host-contract record](archive/2026-10-19-p27-mcp-host-contracts/index.md)
@@ -628,8 +628,12 @@ report no actionable finding. The same frozen 461-file implementation passes
 macOS's 1,369-test suite and Linux's 1,408-test native-enabled suite, plus four
 source/installed proof pairs and package checks on both platforms. Its exposed
 73-of-73 literal span containment is independent of ranking and semantics; it
-does not establish model quality. Real tuning, structural implementation and
-final private evaluation remain open.
+does not establish model quality. A separately declared
+[exposed diagnostic](archive/2026-10-20-p27-quality-remediation/index.md#retain-the-complete-excerpt-diagnostic)
+then completes all twelve first rows with confirmed service cleanup: seven `ok`,
+four `partial` and one `failed`. Output-shape refusals, extraction deadlines and
+classification defects remain. Further quality repair, structural implementation
+and final private evaluation remain open.
 The selected-runtime CPU compatibility proof passes two real explicit requests,
 with complete accounting and confirmed cleanup. It establishes no quality or
 exact memory result. The superseded `f2bfc8d` comparison was intentionally stopped
