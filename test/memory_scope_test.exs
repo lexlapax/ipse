@@ -63,6 +63,53 @@ defmodule Ipse.MemoryScopeTest do
     assert result["collector_loss_incomplete"]
   end
 
+  test "measured sequencing refuses outside an admitted hierarchy before reading commands" do
+    root =
+      Path.join(System.tmp_dir!(), "ipse-sequence-refusal-#{System.unique_integer([:positive])}")
+
+    File.mkdir!(root)
+    on_exit(fn -> File.rm_rf!(root) end)
+    bootstrap = Path.join(root, "must-not-read")
+
+    port =
+      Port.open({:spawn_executable, Path.expand("priv/ipse-runner")}, [
+        :binary,
+        :exit_status,
+        {:args, ["--measure-sequence", bootstrap]},
+        {:env, [{~c"IPSE_MEASURE_ROOT", false}]}
+      ])
+
+    assert {bytes, 1} = read_result(port, "")
+    assert <<?E, size::32, error::binary-size(size)>> = bytes
+
+    assert error =~
+             if(match?({:unix, :linux}, :os.type()),
+               do: "sequence requires measured root",
+               else: "measured sequencing requires Linux"
+             )
+
+    refute File.exists?(bootstrap)
+    assert File.ls!(root) == []
+  end
+
+  @tag :memory_scope
+  @tag timeout: 60_000
+  test "complete measured sequences retain first attempts and reject malformed descriptors" do
+    assert {bytes, 0} =
+             System.cmd(
+               "elixir",
+               ["scripts/verify-memory-sequence.exs", Path.expand("priv/ipse-runner")],
+               stderr_to_stdout: true
+             )
+
+    result = JSON.decode!(String.trim(bytes))
+    assert result["checks"] == 6
+    assert result["inference_requests"] == 0
+    assert result["measured_preparation"] and result["measured_finalization"]
+    assert result["no_replay"] and result["lost_collector_halts"]
+    assert result["bootstrap_fifo_refused"] and result["cells_fifo_refused"]
+  end
+
   defp read_result(port, bytes) do
     receive do
       {^port, {:data, more}} -> read_result(port, bytes <> more)

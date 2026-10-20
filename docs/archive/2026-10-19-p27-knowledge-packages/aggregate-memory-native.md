@@ -101,8 +101,29 @@ output directory or executing its marker command. Archive SHA-256 is
 This verifies fail-closed macOS behavior, not an exact macOS aggregate metric.
 The whole affected manuals were reviewed with the implementation. A later
 editorial correction names the optional measurement test's default exclusion.
-Exact-commit hosted and full native-enabled Linux gates remain to be recorded
-separately; earlier runtime-candidate gates do not cover this native change.
+At that initial save, exact-commit hosted and full native-enabled Linux gates
+were still pending. Their subsequent terminal results follow; earlier
+runtime-candidate gates do not cover this native change.
+
+## Exact-commit platform gates
+
+The complete owned Serenity pipeline passes at
+`d04b610e3ad37158b7f1b758ab262de9283a5ef1`. Its source suite includes native
+sandbox and aggregate-memory tests: 1,267 pass with 15 exclusions in 662.8 seconds.
+Build, formatting, strict compilation, CI policy, documentation, demo, package,
+base installed checks and all ten installed-helper measurement controls pass.
+The Linux archive SHA-256 is
+`8f70793294c281f0fedd0d6af5214e1fc919193c2110477dd47206336990a60c`.
+The retained evidence includes actual synthetic receipts; an independent archive
+read verifies their closed outcomes, source identity and completed suite.
+
+The automatically triggered [hosted matrix](https://github.com/lexlapax/ipse/actions/runs/39344698317)
+also completes successfully at that exact commit on Ubuntu and macOS. Each source
+suite reports 1,282 total tests, zero failures and 33 exclusions. The macOS native
+suite reports 36 total, zero failures and six exclusions, and its four Rust policy
+tests pass. Both jobs finish all applicable package, installed, extension and
+knowledge proofs. Full terminal logs and status metadata are retained separately.
+These gates cover the collector commit, not later sequencing or evaluator changes.
 
 ## Remaining integration boundary
 

@@ -127,6 +127,79 @@ The result reports ten controls and a private evidence directory. Follow the
 to interpret their subjects and failure records. This collector is not yet
 connected to the knowledge evaluator's full comparison or isolated model service.
 
+### Sequence complete measured stages
+
+Use `ipse-runner --measure-sequence ABSOLUTE_BOOTSTRAP` only as an application
+inside an admitted root collector. It executes fresh preparation, declared cells
+and finalization through the same collector. All those processes, including the
+sequencer, contribute to the whole-run counter. The caller owns evaluation
+policy, frozen identities, approvals and nonrenewing allowances.
+
+Descriptors are binary, at most 1 MiB, with unsigned big-endian integers. A string
+is a u32 byte length followed by valid UTF-8 without NUL, at most 65,536 bytes.
+Paths are absolute normalized component paths. The descriptor is opened with
+`O_NOFOLLOW | O_NONBLOCK`, then checked through its FD for regular-file type,
+owner UID, owner-only permissions and bounded size. A writerless FIFO refuses
+without waiting for a writer. Bytes and post-read metadata must match the
+admitted size; exact bytes and numeric FD identity are preserved privately.
+
+| Record | Ordered fields |
+| --- | --- |
+| Bootstrap | Eight bytes `IPSEQ001`, sequence evidence directory string, future cells descriptor path string, preparation Stage, finalization Stage, EOF |
+| Prepared cells | Eight bytes `IPSCELL1`, u32 count from 1 to 64, that many Stages, EOF |
+| Stage | Token string of 32 lowercase hexadecimal characters, u64 timeout from 1 to 86,400,000 ms, fresh metric directory string, u32 argument count from 1 to 121, argument strings |
+
+A Stage's first argument is an absolute executable; other arguments are opaque
+and may be empty. The argument-byte total and complete collector argv must each
+fit the existing 65,536-byte bound. The 121-workload-argument ceiling leaves the
+collector's seven own argv slots. Tokens and metric paths must be distinct across
+all stages; a metric path cannot equal the sequence evidence directory.
+
+The cells descriptor must be absent before preparation and must be produced by
+successful preparation. The sequencer creates the fresh mode-0700 evidence
+directory itself; its parent must exist. Every stage metric directory must also
+be fresh, with its parent present by launch. These are trusted caller-selected
+executables, not permission grants from repository text.
+
+The internal stage entry uses `--measure-stage cell TOKEN TIMEOUT OUTPUT --
+EXECUTABLE ARGS`. It emits the unchanged `M` frame followed by one `T` frame with
+a two-byte payload: complete and cleanup-confirmed, each zero or one. Both bytes
+come from the same terminal booleans as the JSON receipt. The ordinary
+`--measure-cgroup` interface remains `M` only. Child logs never enter this channel.
+
+The sequencer requires exactly M then T, bounded frame bytes, an identical private
+receipt and successful collector exit. A failed command with confirmed cleanup
+remains failed and allows later distinct stages and finalization. Missing or
+malformed status, receipt mismatch, collector loss or unconfirmed cleanup halts
+the remaining sequence. No stage is retried.
+
+Each stage has an exclusive synced `stage-NNN.claim` before launch. Its bytes are
+`IPSECLM1` followed by the Stage encoding. Preparation is index zero, cells follow
+in declared order and finalization is the last index. The evidence directory also
+retains bootstrap/cells bytes and identities, each stage's raw protocol, receipt,
+receipt identity and two-byte status. All files are private and directory entries
+are synced. `sequence.json` exists only after every stage has confirmed cleanup;
+its complete flag remains false if any stage failed.
+
+Refusing an existing sequence output preserves these first attempts. The
+application must separately claim its frozen comparison permanently before
+opening inputs; changing outputs is not permission to renew its budget. A
+finalizer cannot inspect its own later terminal receipt or the outer root receipt.
+A post-exit measurement audit must reconcile those records before accepting the
+comparison. This generic sequence facility does not implement that domain policy.
+
+Run its separate no-model controls on the same supported Linux host:
+
+```sh
+elixir scripts/verify-memory-sequence.exs "$PWD/priv/ipse-runner"
+```
+
+Expect six cases, including preparation/finalization allocations, an excluded
+unrelated sibling, a failed stage with forged child output, retained attempts,
+collector loss and both FIFO descriptor seams. The
+[contributor exercise](../docs/developer/knowledge-evaluation.md#exercise-complete-measured-sequences)
+connects these records to the remaining evaluator integration.
+
 ## Session locks
 
 `ipse-runner --lock PATH` opens a persistent file with mode 0600 and takes a

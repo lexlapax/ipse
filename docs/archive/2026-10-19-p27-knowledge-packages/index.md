@@ -28,6 +28,9 @@ implementation, adversarial repairs and synthetic lifecycle checks. Complete
 evaluator/model integration and the actual comparison remain open.
 The [serialized-capacity record](serialized-capacity.md) closes prediction and
 review file-limit mismatches with complete synthetic grids and retained bounds.
+The [measured-sequence record](measured-sequence.md) adds preparation, cells and
+finalization inside the whole-run population, with retained first attempts,
+native completion evidence and refusal after collector loss or malformed input.
 
 ## Implementation and corrections
 

@@ -754,6 +754,46 @@ still reports its sampled BEAM memory and incomplete resource evaluation. Its
 complete-cell execution, owned model service, model/cache identities and frozen
 aggregate receipt integration remain to be implemented and verified.
 
+### Exercise complete measured sequences
+
+Use the same supported Linux host and built helper to verify the generic stage
+launcher. This exercise needs no model service or evaluation dataset:
+
+```sh
+elixir scripts/verify-memory-sequence.exs "$PWD/priv/ipse-runner"
+IPSE_SEQUENCE_TESTS=$(mktemp -d)
+rustc --edition=2021 --test -D warnings native/ipse-sequence.rs \
+  -o "$IPSE_SEQUENCE_TESTS/sequence"
+"$IPSE_SEQUENCE_TESTS/sequence"
+```
+
+Expect six live cases and six native parser/filesystem tests. Follow one
+`Stage` from its immutable binary descriptor into `stage-000.claim`, then through
+the child collector's `M` receipt and two-byte `T` completion status. Preparation
+and finalization use the same birth-before-exec path as cells. Their separate
+scope and parent-interval peaks contribute to the whole-run counter; they are
+not incremental differences to subtract from another peak.
+
+The live fixture allocates memory in fresh preparation/finalization BEAM entries
+and their brief Port children while an unrelated sibling stays alive outside
+the measured root. Another case prints a forged completion frame from a failed
+application. Its bytes must remain opaque logs, the stage stays failed, and the
+real finalizer runs only after cleanup confirmation. Collector loss instead
+leaves a permanent claim without status or summary and prevents later stages.
+
+Then follow both writerless FIFO inputs. A bootstrap FIFO must refuse before
+preparation; a preparation-produced cells FIFO must refuse before any cell or
+finalizer. Descriptor admission opens nonblocking before checking the retained
+FD type, so refusal does not wait for the outer run deadline.
+
+The [native protocol](../../native/README.md#sequence-complete-measured-stages)
+owns the exact descriptor layout, limits and evidence filenames. A domain runner
+still has to seal and validate the schedule, preserve original allocations and
+claim the freeze before opening inputs. It must reconcile the finalizer and
+outer-root receipts after exit; those records do not exist while finalization
+is running. These generic controls do not implement complete evaluator cells,
+model-service/cache identity, resource acceptance or held-out quality.
+
 ### Interpret latency and measurement limits
 
 Phase clocks use monotonic microseconds. The summary reports nearest-rank p50

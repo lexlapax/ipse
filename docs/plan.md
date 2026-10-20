@@ -467,6 +467,10 @@ selects fresh complete cells under a whole-run scope. The first
 [native collector](archive/2026-10-19-p27-knowledge-packages/aggregate-memory-native.md)
 implements owned admission, birth-before-exec and lifetime/interval counters;
 ten synthetic Linux controls and local source/native/installed checks pass.
+The [measured sequencer](archive/2026-10-19-p27-knowledge-packages/measured-sequence.md)
+adds fresh preparation, cell and finalization stages under the whole counter.
+Six live Linux cases and six native protocol tests cover retained attempts,
+failed-but-closed stages, collector loss and writerless descriptor FIFOs.
 Complete evaluator/model integration and comparison coverage remain open.
 Charged memory, summed RSS and device memory must not be conflated.
 The inherited combined-fixture timeout is repaired with independent

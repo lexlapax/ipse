@@ -4,7 +4,7 @@ use std::os::unix::process::CommandExt;
 use std::process::{Child, Command, Stdio};
 use std::time::Duration;
 
-extern "C" { fn setsid() -> i32; fn signal(number: i32, handler: usize) -> usize; }
+extern "C" { fn setsid() -> i32; fn signal(number: i32, handler: usize) -> usize; fn mkfifo(path: *const i8, mode: u32) -> i32; }
 
 fn wait_for(mut condition: impl FnMut() -> bool) {
     for _ in 0..500 {
@@ -40,6 +40,10 @@ fn release(mut child: Child) {
 fn main() {
     let args = std::env::args().collect::<Vec<_>>();
     match args[1].as_str() {
+        "fifo" => {
+            let path = std::ffi::CString::new(args[2].as_bytes()).unwrap();
+            assert_eq!(unsafe { mkfifo(path.as_ptr(), 0o600) }, 0);
+        }
         "allocate" => {
             let bytes = memory(args[2].parse().unwrap());
             println!("ready"); std::io::stdout().flush().unwrap();

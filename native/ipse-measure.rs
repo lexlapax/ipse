@@ -314,7 +314,7 @@ mod linux {
         }
     }
 
-    pub fn run(args: &[String]) -> Result<(), String> {
+    pub fn run(args: &[String], stage_status: bool) -> Result<(), String> {
         if args.len() < 8 || args[6] != "--" || !matches!(args[2].as_str(), "root" | "cell")
             || !token(&args[3]) || !Path::new(&args[7]).is_absolute()
             || args.len() > 128 || args.iter().map(String::len).sum::<usize>() > 65_536 {
@@ -409,7 +409,9 @@ mod linux {
         private_file(&output.join("receipt.json"), record.as_bytes())?;
         File::open(&output).and_then(|f| f.sync_all()).map_err(failure)?;
         if cleanup { lease.scope.remove()?; }
-        crate::frame(b'M', record.as_bytes()).map_err(failure)
+        crate::frame(b'M', record.as_bytes()).map_err(failure)?;
+        if stage_status { crate::frame(b'T', &[u8::from(complete), u8::from(cleanup)]).map_err(failure)?; }
+        Ok(())
     }
 
     use std::os::unix::fs::DirBuilderExt;
@@ -417,7 +419,7 @@ mod linux {
 
 pub fn run(args: &[String]) -> Result<(), String> {
     #[cfg(all(target_os = "linux", any(target_arch = "x86_64", target_arch = "aarch64")))]
-    { linux::run(args) }
+    { linux::run(args, false) }
     #[cfg(not(all(target_os = "linux", any(target_arch = "x86_64", target_arch = "aarch64"))))]
     { let _ = args; Err("exact aggregate memory requires supported Linux cgroup-v2 capabilities".into()) }
 }
@@ -427,4 +429,11 @@ pub fn anchor() -> Result<(), String> {
     { linux::anchor() }
     #[cfg(not(all(target_os = "linux", any(target_arch = "x86_64", target_arch = "aarch64"))))]
     { Err("measurement anchor requires supported Linux".into()) }
+}
+
+pub fn stage(args: &[String]) -> Result<(), String> {
+    #[cfg(all(target_os = "linux", any(target_arch = "x86_64", target_arch = "aarch64")))]
+    { linux::run(args, true) }
+    #[cfg(not(all(target_os = "linux", any(target_arch = "x86_64", target_arch = "aarch64"))))]
+    { let _ = args; Err("exact aggregate memory requires supported Linux cgroup-v2 capabilities".into()) }
 }
