@@ -119,8 +119,9 @@ import and real CLI configuration validation.
 No new dependency or native collector behavior is introduced. The separate frozen
 comparison uses an earlier source and remains separate from corrected-product
 quality evidence. Its 350-row execution has completed with confirmed native
-cleanup; strict historical audit and semantic review remain separate tasks.
-Corrected-source Linux verification, independent external review, untouched
+cleanup. The [subsequent admission and platform record](../2026-10-20-p27-historical-admission/index.md)
+records passing strict historical admission and the successful exact `b9370fb`
+Ubuntu/macOS matrix. Semantic review, independent external review, untouched
 held-out requirements and P27 acceptance remain open.
 
 To rerun the focused contract and integration exercises:

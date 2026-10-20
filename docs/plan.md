@@ -545,8 +545,9 @@ passes Ubuntu and macOS. The same test-only naming repair also covers Bound's
 Linux fixture constructor at `d97a765`; its exact
 [hosted matrix](https://github.com/lexlapax/ipse/actions/runs/39406193501)
 passes both platforms, including native, package and independent installed
-proofs. These results cover the committed fixture repairs. Verification of the
-pending resource-join and review-binding corrections remains separate.
+proofs. These results cover the committed fixture repairs. The later
+resource-join, review-binding and product corrections have their own exact-source
+receipt below.
 The historical fixture slowdown cause remains unproven.
 The [subsequent whole-source review](archive/2026-10-20-p27-whole-source-review/index.md)
 reproduces source-import capacity, time-qualified fact retention, finite float32
@@ -554,13 +555,19 @@ and compatible-positive relationship defects. Its follow-up finds a concurrent
 root-admission race. The corrective increment uses a generic conditional State
 put and an explicitly selected MCP v2 contract, preserves existing storage formats
 and v1 reads/updates, and documents the inherited remote snapshot ceiling. Internal
-review findings are repaired. The corrected working increment passes 1,324 macOS
+review findings are repaired. The corrected `b9370fb` increment passes 1,324 macOS
 source tests, with one skipped and 36 excluded, and source/installed knowledge,
 complete-result and MCP proofs. The exact code inventory remains unchanged
-through the full baseline. Linux confirmation, independent external review and
-quality/resource acceptance remain open. The earlier frozen comparison completes
-350 rows with confirmed native cleanup, but does not establish quality for the
-new product corrections.
+through the full baseline. Its exact
+[hosted matrix](https://github.com/lexlapax/ipse/actions/runs/39440053471)
+passes Ubuntu and macOS, including native, package and installed proofs. The
+[historical admission record](archive/2026-10-20-p27-historical-admission/index.md)
+retains the separate original-first audit, strict supplemental checks and native
+tamper proof. The earlier frozen comparison completes 350 rows with confirmed
+cleanup and passes admission to independent blinded review. Semantic judgments,
+corrected-source quality/resource evidence, untouched held-out requirements and
+external whole-P27 review remain open. The older comparison does not establish
+quality for the new product corrections.
 The selected-runtime CPU compatibility proof passes two real explicit requests,
 with complete accounting and confirmed cleanup. It establishes no quality or
 exact memory result. The superseded `f2bfc8d` comparison was intentionally stopped
