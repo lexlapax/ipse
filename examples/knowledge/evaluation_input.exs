@@ -1,10 +1,10 @@
 defmodule IpseKnowledgeExample.EvaluationInput do
   @moduledoc """
-  Bounded projections of the version-one evaluation dataset.
+  Bounded dataset projections and delayed reference normalization.
 
   Query projection returns only query ID, project and query text. It never returns
   relevance, expected answers or expected classes. Labels are a separate API for
-  the scoring phase after prediction hashes have been verified. Both are pure;
+  review and scoring phases after prediction hashes have been verified. Both are pure;
   the orchestrator owns file access and the freeze-before-input boundary.
 
   Each JSON member is at most 1 MiB, using the host's duplicate-rejecting decoder.
@@ -14,18 +14,36 @@ defmodule IpseKnowledgeExample.EvaluationInput do
 
   @document_fields ~w(document_id project source_id generation version title text created_at observed_at state sha256 byte_length media_type)
   @query_fields ~w(query_id project query)
+  @contract "sealed_answers_v1"
+  @answer_fields ~w(query_id project expected_class expected_refusal expected_answer relevance)
+  @source_fields ~w(project source_id generation version sha256)
   @safe 9_007_199_254_740_991
 
   def queries(bytes, split) do
     project(bytes, fn data ->
-      require!(is_map(data) and data["schema_version"] === 1, :dataset_version)
+      sealed = is_map(data) and data["contract"] == @contract and Map.has_key?(data, "queries")
+
+      require!(
+        sealed or
+          (is_map(data) and data["schema_version"] === 1 and !Map.has_key?(data, "contract")),
+        :dataset_version
+      )
+
+      if sealed do
+        require!(exact?(data, ~w(contract split queries)), :query_shape)
+        require!(data["split"] == split and split == "heldout", :query_split)
+      end
+
       rows = data["queries"]
       require!(list?(rows, 1, 1024), :query_limit)
       require!(text?(split, 64), :invalid_split)
 
       projected =
         Enum.map(rows, fn row ->
-          require!(is_map(row) and row["split"] == split, :query_split)
+          if sealed,
+            do: require!(exact?(row, @query_fields), :query_shape),
+            else: require!(is_map(row) and row["split"] == split, :query_split)
+
           require!(text?(row["query_id"], 256) and name?(row["project"]), :query_identity)
           require!(text?(row["query"], 1024), :query_text)
           Map.take(row, @query_fields)
@@ -33,11 +51,13 @@ defmodule IpseKnowledgeExample.EvaluationInput do
 
       require!(unique?(projected, & &1["query_id"]), :duplicate_query)
 
-      %{
+      result = %{
         "version" => 1,
         "queries" => projected,
         "excluded_fields" => excluded(rows, @query_fields)
       }
+
+      if sealed, do: Map.put(result, "contract", @contract), else: result
     end)
   end
 
@@ -81,29 +101,148 @@ defmodule IpseKnowledgeExample.EvaluationInput do
   end
 
   def labels(bytes, split) do
-    with {:ok, _projection} <- queries(bytes, split) do
-      project(bytes, fn data ->
-        rows =
-          Enum.map(data["queries"], fn row ->
-            require!(row["expected_class"] in ~w(answer conflict open abstain), :label_class)
-            refusal = Map.get(row, "expected_refusal", false)
-            require!(is_boolean(refusal), :label_refusal)
-            relevance = row["relevance"]
-            require!(list?(relevance, 0, 1024), :relevance_limit)
+    project(bytes, fn data ->
+      if is_map(data) and data["contract"] == @contract and Map.has_key?(data, "answers") do
+        {labels, _answers} = sealed_answers!(data, split)
+        labels
+      else
+        require!(!is_map(data) or !Map.has_key?(data, "contract"), :dataset_version)
+        checked!(queries(bytes, split))
+        legacy_labels!(data)
+      end
+    end)
+  end
 
-            %{
-              "query_id" => row["query_id"],
-              "project" => row["project"],
-              "expected_class" => row["expected_class"],
-              "expected_refusal" => refusal,
-              "relevance" => Enum.map(relevance, &relevance!(&1, row["project"]))
-            }
+  def references(bytes, split, questions) do
+    project(bytes, fn data ->
+      {labels, answers} =
+        if questions["contract"] == @contract do
+          sealed_answers!(data, split)
+        else
+          require!(
+            is_map(data) and data["schema_version"] === 1 and !Map.has_key?(data, "contract"),
+            :dataset_version
+          )
+
+          checked!(queries(bytes, split))
+          labels = legacy_labels!(data)
+
+          answers =
+            Map.new(data["queries"], fn row ->
+              answer = row["expected_answer"]
+
+              require!(
+                is_nil(answer) or
+                  (is_binary(answer) and String.valid?(answer) and byte_size(answer) <= 8192),
+                :invalid_reference_answer
+              )
+
+              {row["query_id"], answer}
+            end)
+
+          {labels, answers}
+        end
+
+      identity = &Map.take(&1, ~w(query_id project))
+
+      require!(
+        Enum.sort(Enum.map(labels["queries"], identity)) ==
+          Enum.sort(Enum.map(questions["queries"], identity)),
+        :answer_join
+      )
+
+      by_id = Map.new(labels["queries"], &{&1["query_id"], &1})
+
+      labels =
+        Map.put(
+          labels,
+          "queries",
+          Enum.map(questions["queries"], &Map.fetch!(by_id, &1["query_id"]))
+        )
+
+      %{"labels" => labels, "expected_answers" => answers}
+    end)
+  end
+
+  defp sealed_answers!(data, split) do
+    require!(
+      is_map(data) and data["contract"] == @contract and Map.has_key?(data, "answers"),
+      :dataset_version
+    )
+
+    require!(
+      exact?(data, ~w(contract split commitment_nonce answers)) and
+        hash?(data["commitment_nonce"]),
+      :answer_shape
+    )
+
+    require!(data["split"] == split and split == "heldout", :query_split)
+    require!(list?(data["answers"], 1, 1024), :query_limit)
+
+    rows =
+      Enum.map(data["answers"], fn row ->
+        require!(exact?(row, @answer_fields), :answer_shape)
+        require!(text?(row["query_id"], 256) and name?(row["project"]), :query_identity)
+
+        require!(
+          is_nil(row["expected_answer"]) or
+            (is_binary(row["expected_answer"]) and String.valid?(row["expected_answer"]) and
+               byte_size(row["expected_answer"]) <= 8192),
+          :invalid_reference_answer
+        )
+
+        require!(row["expected_class"] in ~w(answer conflict open abstain), :label_class)
+        require!(is_boolean(row["expected_refusal"]), :label_refusal)
+        require!(list?(row["relevance"], 0, 1024), :relevance_limit)
+
+        spans =
+          Enum.map(row["relevance"], fn span ->
+            require!(
+              exact?(span, ~w(source grade start_byte end_byte quote)) and
+                exact?(span["source"], @source_fields),
+              :invalid_relevance
+            )
+
+            relevance!(Map.merge(Map.delete(span, "source"), span["source"]), row["project"])
           end)
 
-        require!(Enum.sum(Enum.map(rows, &length(&1["relevance"]))) <= 65_536, :relevance_limit)
-        %{"version" => 1, "queries" => rows}
+        require!(
+          unique?(spans, &Map.take(&1, ~w(source start_byte end_byte))),
+          :duplicate_relevance
+        )
+
+        row
+        |> Map.take(~w(query_id project expected_class expected_refusal))
+        |> Map.put("relevance", spans)
       end)
-    end
+
+    require!(unique?(rows, & &1["query_id"]), :duplicate_query)
+    require!(Enum.sum(Enum.map(rows, &length(&1["relevance"]))) <= 65_536, :relevance_limit)
+
+    {%{"version" => 1, "queries" => rows},
+     Map.new(data["answers"], &{&1["query_id"], &1["expected_answer"]})}
+  end
+
+  defp legacy_labels!(data) do
+    rows =
+      Enum.map(data["queries"], fn row ->
+        require!(row["expected_class"] in ~w(answer conflict open abstain), :label_class)
+        refusal = Map.get(row, "expected_refusal", false)
+        require!(is_boolean(refusal), :label_refusal)
+        relevance = row["relevance"]
+        require!(list?(relevance, 0, 1024), :relevance_limit)
+
+        %{
+          "query_id" => row["query_id"],
+          "project" => row["project"],
+          "expected_class" => row["expected_class"],
+          "expected_refusal" => refusal,
+          "relevance" => Enum.map(relevance, &relevance!(&1, row["project"]))
+        }
+      end)
+
+    require!(Enum.sum(Enum.map(rows, &length(&1["relevance"]))) <= 65_536, :relevance_limit)
+    %{"version" => 1, "queries" => rows}
   end
 
   defp relevance!(row, project) do
@@ -176,4 +315,7 @@ defmodule IpseKnowledgeExample.EvaluationInput do
     do: is_list(value) and length(value) >= min and length(value) <= max
 
   defp unique?(rows, key), do: length(rows) == length(Enum.uniq_by(rows, key))
+  defp exact?(value, keys), do: is_map(value) and Enum.sort(Map.keys(value)) == Enum.sort(keys)
+  defp checked!({:ok, value}), do: value
+  defp checked!({:error, code}), do: throw({:evaluation_input, code})
 end

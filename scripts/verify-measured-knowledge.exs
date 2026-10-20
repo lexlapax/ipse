@@ -9,7 +9,13 @@ arguments =
     rest -> rest
   end
 
-[repository, output] = Enum.map(arguments, &Path.expand/1)
+{paths, contract} =
+  case arguments do
+    [repository, output] -> {[repository, output], nil}
+    [repository, output, "--sealed-answers"] -> {[repository, output], "sealed_answers_v1"}
+  end
+
+[repository, output] = Enum.map(paths, &Path.expand/1)
 
 unless :os.type() == {:unix, :linux},
   do: raise("complete measured verification requires the optional Linux backend")
@@ -22,7 +28,16 @@ artifacts =
   MeasuredKnowledgeVerification.build_artifacts(Path.join(output, "artifacts"), repository)
 
 MeasuredKnowledgeVerification.save!(Path.join(output, "artifacts.json"), JSON.encode!(artifacts))
-run = MeasuredKnowledgeVerification.prepare(Path.join(output, "source"), repository, artifacts)
+
+run =
+  MeasuredKnowledgeVerification.prepare(
+    Path.join(output, "source"),
+    repository,
+    artifacts,
+    nil,
+    contract
+  )
+
 result = MeasuredKnowledgeVerification.verify(run)
 scoring = MeasuredScoringVerification.verify(run, result, repository)
 

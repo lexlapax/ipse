@@ -149,6 +149,80 @@ defmodule Ipse.KnowledgeEvaluationReviewTest do
     refute_received :opened_labels
   end
 
+  defp sealed_context do
+    legacy = context()
+    [row] = JSON.decode!(legacy["queries"])["queries"]
+    [span] = row["relevance"]
+
+    answer =
+      row
+      |> Map.take(~w(query_id project expected_class expected_answer))
+      |> Map.put("expected_refusal", false)
+      |> Map.put("relevance", [
+        Map.take(span, ~w(grade start_byte end_byte quote))
+        |> Map.put("source", Map.take(span, ~w(project source_id generation version sha256)))
+      ])
+
+    legacy
+    |> Map.put("split", "heldout")
+    |> Map.put(
+      "queries",
+      JSON.encode!(%{
+        "contract" => "sealed_answers_v1",
+        "split" => "heldout",
+        "queries" => [Map.take(row, ~w(query_id project query))]
+      })
+    )
+    |> Map.put(
+      "answers",
+      JSON.encode!(%{
+        "contract" => "sealed_answers_v1",
+        "split" => "heldout",
+        "commitment_nonce" => String.duplicate("a", 64),
+        "answers" => [answer]
+      })
+    )
+  end
+
+  test "sealed review joins separate references and refuses invalid typed source spans" do
+    {freeze, blobs} = inputs()
+    context = sealed_context()
+    assert {:ok, packet} = Review.prepare(freeze, blobs, fn -> {:ok, context} end, @seed)
+    assert packet["summary"]["queries_sha256"] == sha(context["queries"])
+    assert packet["summary"]["answers_sha256"] == sha(context["answers"])
+    refute Map.has_key?(packet["summary"], "query_labels_sha256")
+    [query] = JSON.decode!(packet["files"]["queries.json"])["queries"]
+    assert query["expected_answer"] == "A café."
+    refute packet["files"]["queries.json"] =~ "commitment_nonce"
+
+    bad =
+      context["answers"]
+      |> JSON.decode!()
+      |> put_in(["answers", Access.at(0), "relevance", Access.at(0), "source", "version"], "1")
+      |> JSON.encode!()
+
+    assert {:error, :invalid_reference_integrity} =
+             Review.prepare(
+               freeze,
+               blobs,
+               fn -> {:ok, Map.put(context, "answers", bad)} end,
+               @seed
+             )
+
+    assert {:error, :invalid_context} =
+             Review.prepare(freeze, blobs, fn -> {:ok, Map.delete(context, "answers")} end, @seed)
+
+    changed = put_in(freeze, ["queries", Access.at(0), "project"], "foreign")
+
+    loader = fn ->
+      send(self(), :opened_answers)
+      {:ok, context}
+    end
+
+    assert {:error, _} = Review.prepare(changed, blobs, loader, @seed)
+    refute_received :opened_answers
+  end
+
   test "literal UTF8 matches do not independently support a false semantic claim" do
     {freeze, blobs} = inputs()
     assert {:ok, packet} = Review.prepare(freeze, blobs, fn -> {:ok, context()} end, @seed)

@@ -1,4 +1,5 @@
 Code.require_file("../examples/knowledge/evaluation_input.exs", __DIR__)
+Code.require_file("../examples/knowledge/evaluation_integrity.exs", __DIR__)
 
 defmodule Ipse.KnowledgeEvaluationInputTest do
   use ExUnit.Case, async: true
@@ -48,6 +49,110 @@ defmodule Ipse.KnowledgeEvaluationInputTest do
 
   defp queries(rows), do: JSON.encode!(%{"schema_version" => 1, "queries" => rows})
   defp corpus(rows), do: JSON.encode!(%{"schema_version" => 1, "documents" => rows})
+
+  defp sealed_questions(rows \\ [Map.take(query(), ~w(query_id project query))]) do
+    JSON.encode!(%{"contract" => "sealed_answers_v1", "split" => "heldout", "queries" => rows})
+  end
+
+  defp sealed_answer do
+    legacy = query()
+    [span] = legacy["relevance"]
+
+    legacy
+    |> Map.take(~w(query_id project expected_class expected_answer))
+    |> Map.put("expected_refusal", false)
+    |> Map.put("relevance", [
+      Map.take(span, ~w(grade start_byte end_byte quote))
+      |> Map.put("source", Map.take(document(), ~w(project source_id generation version sha256)))
+    ])
+  end
+
+  defp sealed_answers(rows \\ [sealed_answer()]) do
+    JSON.encode!(%{
+      "contract" => "sealed_answers_v1",
+      "split" => "heldout",
+      "commitment_nonce" => String.duplicate("a", 64),
+      "answers" => rows
+    })
+  end
+
+  test "sealed questions reject answer fields and normalize detached answers in question order" do
+    second = %{"query_id" => "q2", "project" => "beta", "query" => "Another question?"}
+
+    assert {:ok, questions} =
+             Input.queries(
+               sealed_questions([Map.take(query(), ~w(query_id project query)), second]),
+               "heldout"
+             )
+
+    assert questions["excluded_fields"] == []
+    refute JSON.encode!(questions) =~ "expected_answer"
+
+    other =
+      sealed_answer() |> Map.merge(%{"query_id" => "q2", "project" => "beta", "relevance" => []})
+
+    assert {:ok, refs} =
+             Input.references(sealed_answers([other, sealed_answer()]), "heldout", questions)
+
+    assert Enum.map(refs["labels"]["queries"], & &1["query_id"]) == ~w(q1 q2)
+    assert refs["expected_answers"] == %{"q1" => "A café.", "q2" => "A café."}
+    refute JSON.encode!(refs["labels"]) =~ "expected_answer"
+
+    assert {:error, :query_shape} =
+             Input.queries(
+               sealed_questions([Map.put(second, "expected_answer", "secret")]),
+               "heldout"
+             )
+
+    assert {:error, :query_split} = Input.queries(sealed_questions(), "tuning")
+    assert {:error, :dataset_version} = Input.labels(sealed_questions(), "heldout")
+    assert {:error, :dataset_version} = Input.queries(sealed_answers(), "heldout")
+  end
+
+  test "sealed answer joins and typed relevance are closed and never silently drop rows" do
+    assert {:ok, questions} = Input.queries(sealed_questions(), "heldout")
+    answer = sealed_answer()
+
+    for rows <- [
+          [],
+          [answer, answer],
+          [Map.put(answer, "query_id", "foreign")],
+          [Map.put(answer, "project", "beta")]
+        ] do
+      assert {:error, _} = Input.references(sealed_answers(rows), "heldout", questions)
+    end
+
+    for changed <- [
+          Map.put(answer, "query", "duplicated text"),
+          Map.delete(answer, "expected_refusal"),
+          Map.put(answer, "expected_answer", String.duplicate("x", 8193)),
+          Map.update!(answer, "relevance", &(&1 ++ &1)),
+          put_in(answer, ["relevance", Access.at(0), "source", "project"], "beta"),
+          put_in(answer, ["relevance", Access.at(0), "end_byte"], 6),
+          put_in(answer, ["relevance", Access.at(0), "source", "extra"], true)
+        ] do
+      assert {:error, _} = Input.references(sealed_answers([changed]), "heldout", questions)
+    end
+
+    assert {:ok, refs} = Input.references(sealed_answers(), "heldout", questions)
+    assert {:ok, sources} = IpseKnowledge.EvaluationIntegrity.sources(corpus([document()]))
+
+    assert Enum.all?(
+             IpseKnowledge.EvaluationIntegrity.references(refs["labels"]["queries"], sources),
+             & &1["valid"]
+           )
+
+    changed = put_in(answer, ["relevance", Access.at(0), "source", "version"], "1")
+    assert {:ok, wrong} = Input.references(sealed_answers([changed]), "heldout", questions)
+
+    refute Enum.all?(
+             IpseKnowledge.EvaluationIntegrity.references(wrong["labels"]["queries"], sources),
+             & &1["valid"]
+           )
+
+    raw = sealed_answers() |> JSON.decode!() |> Map.delete("commitment_nonce") |> JSON.encode!()
+    assert {:error, :answer_shape} = Input.references(raw, "heldout", questions)
+  end
 
   test "query projection excludes label values even when they change or become invalid" do
     original = query()

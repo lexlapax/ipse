@@ -4,7 +4,16 @@ arguments =
     rest -> rest
   end
 
-[archive, repository, artifact_file, output] = Enum.map(arguments, &Path.expand/1)
+{paths, contract} =
+  case arguments do
+    [archive, repository, artifact_file, output] ->
+      {[archive, repository, artifact_file, output], nil}
+
+    [archive, repository, artifact_file, output, "--sealed-answers"] ->
+      {[archive, repository, artifact_file, output], "sealed_answers_v1"}
+  end
+
+[archive, repository, artifact_file, output] = Enum.map(paths, &Path.expand/1)
 
 unless :os.type() == {:unix, :linux},
   do: raise("complete installed measured verification requires Linux")
@@ -54,7 +63,7 @@ Code.require_file(#{inspect(Path.join(repository, "test/support/measured_model_f
 Code.require_file(#{inspect(Path.join(repository, "test/support/measured_knowledge_verification.exs"))})
 Code.require_file(#{inspect(Path.join(repository, "test/support/measured_scoring_verification.exs"))})
 artifacts = JSON.decode!(File.read!(#{inspect(artifact_file)}))
-run = MeasuredKnowledgeVerification.prepare(#{inspect(Path.join(output, "installed"))}, #{inspect(repository)}, artifacts)
+run = MeasuredKnowledgeVerification.prepare(#{inspect(Path.join(output, "installed"))}, #{inspect(repository)}, artifacts, nil, #{inspect(contract)})
 result = MeasuredKnowledgeVerification.verify(run)
 scoring = MeasuredScoringVerification.verify(run, result, #{inspect(repository)})
 IO.puts(JSON.encode!(%{"synthetic" => true, "installed" => true, "model_quality_measured" => false, "result" => result, "scoring" => scoring}))

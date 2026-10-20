@@ -76,20 +76,42 @@ defmodule IpseKnowledgeExample.EvaluationReview do
       {:ok, context} = context_loader.()
 
       require!(
-        is_map(context) and Enum.sort(Map.keys(context)) == ~w(as_of_ms corpus queries split),
+        is_map(context) and
+          Enum.sort(Map.keys(context)) in [
+            ~w(as_of_ms corpus queries split),
+            ~w(answers as_of_ms corpus queries split)
+          ],
         :invalid_context
       )
 
       require!(is_integer(context["as_of_ms"]) and context["as_of_ms"] >= 0, :invalid_context)
       {:ok, corpus} = Input.corpus(context["corpus"])
       {:ok, queries} = Input.queries(context["queries"], context["split"])
-      {:ok, labels} = Input.labels(context["queries"], context["split"])
-      {:ok, original} = Ipse.Extensions.Manifest.decode_json(context["queries"], 1_048_576)
-      originals = Map.new(original["queries"], &{&1["query_id"], &1})
+      sealed = queries["contract"] == "sealed_answers_v1"
+      require!(Map.has_key?(context, "answers") == sealed, :invalid_context)
+
+      if sealed,
+        do:
+          require!(
+            Enum.map(queries["queries"], &Map.take(&1, ~w(query_id project))) == freeze["queries"],
+            :query_order
+          )
+
+      {:ok, reference} =
+        checked(
+          Input.references(
+            if(sealed, do: context["answers"], else: context["queries"]),
+            context["split"],
+            queries
+          )
+        )
+
+      labels = reference["labels"]
       query_map = Map.new(queries["queries"], &{&1["query_id"], &1})
       {:ok, sources} = Integrity.sources(context["corpus"])
       integrity = Integrity.predictions(rows, sources)
       references = Integrity.references(labels["queries"], sources)
+      if sealed, do: require!(Enum.all?(references, & &1["valid"]), :invalid_reference_integrity)
 
       review = %{
         "version" => 2,
@@ -120,13 +142,7 @@ defmodule IpseKnowledgeExample.EvaluationReview do
 
       reference_queries =
         Enum.map(labels["queries"], fn q ->
-          answer = originals[q["query_id"]]["expected_answer"]
-
-          require!(
-            answer == nil or
-              (is_binary(answer) and String.valid?(answer) and byte_size(answer) <= 8192),
-            :invalid_reference_answer
-          )
+          answer = reference["expected_answers"][q["query_id"]]
 
           q
           |> Map.put("query", query_map[q["query_id"]]["query"])
@@ -166,12 +182,21 @@ defmodule IpseKnowledgeExample.EvaluationReview do
         "variant_count" => length(freeze["variants"]),
         "prediction_files" => Enum.map(verified["files"], &Map.take(&1, ["sha256"])),
         "corpus_sha256" => sha(context["corpus"]),
-        "query_labels_sha256" => sha(context["queries"]),
         "semantic_support" => "unmeasured",
         "literal_invalid" => Enum.count(integrity, &(&1["verdict"] == "invalid")),
         "reference_integrity_complete" => Enum.all?(references, & &1["valid"]),
         "files" => Map.new(files, fn {name, bytes} -> {name, sha(bytes)} end)
       }
+
+      summary =
+        if sealed do
+          Map.merge(summary, %{
+            "queries_sha256" => sha(context["queries"]),
+            "answers_sha256" => sha(context["answers"])
+          })
+        else
+          Map.put(summary, "query_labels_sha256", sha(context["queries"]))
+        end
 
       {:ok,
        %{

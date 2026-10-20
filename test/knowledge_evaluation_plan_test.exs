@@ -10,6 +10,374 @@ defmodule Ipse.KnowledgeEvaluationPlanTest do
     |> Map.put("blind_seed", String.duplicate("b", 64))
   end
 
+  defp sealed_spec do
+    origin = "http://127.0.0.1:47635"
+
+    spec()
+    |> Map.put("version", 2)
+    |> Map.put("model_origin", origin)
+    |> Map.update!(
+      "data",
+      &Map.merge(&1, %{
+        "contract" => "sealed_answers_v1",
+        "queries" => "queries.json",
+        "manifest_sha256" => String.duplicate("c", 64)
+      })
+    )
+    |> Map.update!(
+      "profiles",
+      &Map.new(&1, fn {id, p} -> {id, Map.put(p, "base_url", origin)} end)
+    )
+    |> Map.update!(
+      "embedding_profiles",
+      &Map.new(&1, fn {id, p} -> {id, Map.put(p, "base_url", origin)} end)
+    )
+  end
+
+  defp trace_files(fun) do
+    functions = [
+      {File, :read!, 1},
+      {File, :open, 3},
+      {File, :lstat!, 1},
+      {File, :stat!, 1},
+      {File, :exists?, 1}
+    ]
+
+    for mfa <- functions, do: :erlang.trace_pattern(mfa, true, [:local])
+    owner = self()
+
+    worker =
+      spawn(fn ->
+        receive do
+          :go ->
+            outcome =
+              try do
+                {:ok, fun.()}
+              catch
+                kind, reason -> {:raised, kind, reason, __STACKTRACE__}
+              end
+
+            send(owner, {:outcome, self(), outcome})
+            receive do: (:stop -> :ok)
+        end
+      end)
+
+    try do
+      :erlang.trace(worker, true, [:call, {:tracer, self()}])
+      send(worker, :go)
+      assert_receive {:outcome, ^worker, outcome}, 15_000
+      ref = :erlang.trace_delivered(worker)
+      assert_receive {:trace_delivered, ^worker, ^ref}, 1_000
+      calls = drain_calls(worker, [])
+
+      case outcome do
+        {:ok, result} -> {result, calls}
+        {:raised, kind, reason, stack} -> :erlang.raise(kind, reason, stack)
+      end
+    after
+      send(worker, :stop)
+      for mfa <- functions, do: :erlang.trace_pattern(mfa, false, [:local])
+    end
+  end
+
+  defp drain_calls(pid, calls) do
+    receive do
+      {:trace, ^pid, :call, {File, function, [path | _]}} ->
+        drain_calls(pid, [{function, path} | calls])
+    after
+      0 -> Enum.reverse(calls)
+    end
+  end
+
+  test "new sealed workload uses the v2 builder without relaxing heldout model or grid policies" do
+    declared = sealed_spec()
+    assert {:ok, plan} = EvaluationPlan.build(declared)
+    assert :ok = EvaluationRunner.validate(plan)
+    assert plan["data"] == declared["data"]
+
+    fixture_spec =
+      declared |> Map.put("mode", "fixture") |> Map.put("as_of_ms", 1_800_000_000_000)
+
+    assert {:error, :fixture_models} = EvaluationPlan.build(fixture_spec)
+
+    fixture =
+      fixture_spec
+      |> Map.put("models", %{
+        "fixture-text:latest" => String.duplicate("a", 64),
+        "fixture-embedding:latest" => String.duplicate("b", 64)
+      })
+      |> Map.update!(
+        "profiles",
+        &Map.new(&1, fn {id, profile} ->
+          {id, Map.put(profile, "model", "fixture-text:latest")}
+        end)
+      )
+      |> Map.update!(
+        "embedding_profiles",
+        &Map.new(&1, fn {id, profile} ->
+          {id, Map.put(profile, "model", "fixture-embedding:latest")}
+        end)
+      )
+
+    assert {:ok, _} = EvaluationPlan.build(fixture)
+    assert {:error, _} = EvaluationPlan.build(Map.put(fixture, "mode", "heldout"))
+
+    assert {:error, :heldout_manifest} =
+             EvaluationPlan.build(update_in(declared, ["data"], &Map.delete(&1, "contract")))
+
+    for changed <- [
+          Map.delete(declared, "model_origin"),
+          Map.put(declared, "extra", true),
+          declared |> Map.put("version", 1) |> Map.delete("model_origin"),
+          Map.put(declared, "mode", "fixture"),
+          put_in(declared, ["data", "split"], "tuning"),
+          put_in(declared, ["data", "labels"], "must-not-open"),
+          put_in(declared, ["data", "expected_queries"], 49),
+          put_in(declared, ["models", "qwen3.5:9b"], String.duplicate("0", 64)),
+          put_in(declared, ["profiles", "p27_answer", "max_output_tokens"], 2048)
+        ] do
+      assert {:error, _} = EvaluationPlan.build(changed)
+    end
+  end
+
+  test "sealed preparation reads only committed corpus and questions, and refuses extra descriptors" do
+    root = Path.join(System.tmp_dir!(), "ipse-sealed-inputs-" <> Ipse.Usage.id())
+    File.mkdir!(root)
+    on_exit(fn -> File.rm_rf!(root) end)
+    corpus = JSON.encode!(%{"schema_version" => 1, "documents" => []})
+
+    questions =
+      for n <- 1..50,
+          do: %{
+            "query_id" => "q#{n}",
+            "project" => if(n <= 25, do: "alpha", else: "beta"),
+            "query" => "Synthetic question #{n}?"
+          }
+
+    queries =
+      JSON.encode!(%{
+        "contract" => "sealed_answers_v1",
+        "split" => "heldout",
+        "queries" => questions
+      })
+
+    File.write!(Path.join(root, "corpus.json"), corpus)
+    File.write!(Path.join(root, "queries.json"), queries)
+    answers = Path.join(root, "must-not-open-answers.json")
+
+    manifest = %{
+      "contract" => "sealed_answers_v1",
+      "as_of_ms" => 1_800_000_000_000,
+      "inputs" => %{
+        "corpus" => %{
+          "path" => "corpus.json",
+          "sha256" => Ipse.Extensions.Manifest.sha256(corpus)
+        },
+        "queries" => %{
+          "path" => "queries.json",
+          "sha256" => Ipse.Extensions.Manifest.sha256(queries)
+        }
+      },
+      "answers_sha256" => String.duplicate("a", 64)
+    }
+
+    path = Path.join(root, "manifest.json")
+
+    write_plan = fn value ->
+      bytes = JSON.encode!(value)
+      File.write!(path, bytes)
+
+      declared =
+        put_in(sealed_spec(), ["data", "manifest_sha256"], Ipse.Extensions.Manifest.sha256(bytes))
+
+      {:ok, plan} = EvaluationPlan.build(declared)
+      plan
+    end
+
+    plan = write_plan.(manifest)
+    output = Path.join(root, "prepared")
+    File.mkdir!(output)
+
+    {{:ok, prepared}, calls} =
+      trace_files(fn -> EvaluationRunner.prepare_inputs(plan, path, output) end)
+
+    assert prepared["queries"] == questions
+    assert length(prepared["schedule"]["cells"]) == 14
+    assert {:lstat!, path} in calls
+    refute Enum.any?(calls, fn {_function, file} -> file == answers end)
+    refute File.exists?(answers)
+    refute JSON.encode!(prepared) =~ "commitment_nonce"
+
+    File.write!(answers, "synthetic answer access sentinel")
+
+    {_, positive} =
+      trace_files(fn ->
+        File.lstat!(answers)
+        File.read!(answers)
+      end)
+
+    assert {:lstat!, answers} in positive and {:read!, answers} in positive
+    present = Path.join(root, "prepared-with-sentinel")
+    File.mkdir!(present)
+
+    {{:ok, again}, calls} =
+      trace_files(fn -> EvaluationRunner.prepare_inputs(plan, path, present) end)
+
+    assert again == prepared
+    refute Enum.any?(calls, fn {_function, file} -> file == answers end)
+
+    changed =
+      put_in(manifest, ["inputs", "answers"], %{
+        "path" => answers,
+        "sha256" => String.duplicate("a", 64)
+      })
+
+    assert {:error, %{"code" => "data_manifest_members"}} =
+             EvaluationRunner.prepare_inputs(
+               write_plan.(changed),
+               path,
+               Path.join(root, "never-created")
+             )
+
+    assert {:error, %{"code" => "data_manifest_shape"}} =
+             EvaluationRunner.prepare_inputs(
+               write_plan.(
+                 Map.put(manifest, "answers", %{
+                   "path" => answers,
+                   "sha256" => String.duplicate("a", 64)
+                 })
+               ),
+               path,
+               Path.join(root, "never-created")
+             )
+
+    plan = write_plan.(manifest)
+    File.write!(Path.join(root, "queries.json"), queries <> " ")
+
+    assert {:error, %{"code" => "data_member_hash"}} =
+             EvaluationRunner.prepare_inputs(plan, path, Path.join(root, "never-created"))
+
+    refute File.exists?(Path.join(root, "never-created"))
+
+    legacy =
+      JSON.encode!(%{
+        "schema_version" => 1,
+        "queries" =>
+          Enum.map(
+            questions,
+            &Map.merge(&1, %{
+              "split" => "heldout",
+              "expected_answer" => "PRIVATE_LEGACY_LABEL",
+              "expected_class" => "answer",
+              "relevance" => []
+            })
+          )
+      })
+
+    File.write!(Path.join(root, "queries.json"), legacy)
+
+    legacy_manifest =
+      put_in(manifest, ["inputs", "queries", "sha256"], Ipse.Extensions.Manifest.sha256(legacy))
+
+    legacy_plan = write_plan.(legacy_manifest)
+    legacy_output = Path.join(root, "legacy-shaped")
+    File.mkdir!(legacy_output)
+
+    {refused, calls} =
+      trace_files(fn -> EvaluationRunner.prepare_inputs(legacy_plan, path, legacy_output) end)
+
+    assert {:error, %{"code" => "data_query_contract"}} = refused
+    refute Enum.any?(calls, fn {_function, file} -> file == answers end)
+    assert File.ls!(legacy_output) == []
+  end
+
+  test "author CLI validates fifty detached rows and emits only private manifest metadata" do
+    root = Path.join(System.tmp_dir!(), "ipse-dataset-author-" <> Ipse.Usage.id())
+    File.mkdir!(root)
+    on_exit(fn -> File.rm_rf!(root) end)
+    corpus = Path.join(root, "corpus.json")
+    queries = Path.join(root, "queries.json")
+    answers = Path.join(root, "custody.json")
+    output = Path.join(root, "manifest.json")
+    File.write!(corpus, JSON.encode!(%{"schema_version" => 1, "documents" => []}))
+
+    rows =
+      for n <- 1..50,
+          do: %{
+            "query_id" => "q#{n}",
+            "project" => if(n <= 25, do: "alpha", else: "beta"),
+            "query" => "Synthetic question #{n}?"
+          }
+
+    File.write!(
+      queries,
+      JSON.encode!(%{"contract" => "sealed_answers_v1", "split" => "heldout", "queries" => rows})
+    )
+
+    labels =
+      Enum.map(rows, fn row ->
+        row
+        |> Map.delete("query")
+        |> Map.merge(%{
+          "expected_class" => "open",
+          "expected_refusal" => false,
+          "expected_answer" => "PRIVATE_ANSWER_SENTINEL",
+          "relevance" => []
+        })
+      end)
+
+    File.write!(
+      answers,
+      JSON.encode!(%{
+        "contract" => "sealed_answers_v1",
+        "split" => "heldout",
+        "commitment_nonce" => String.duplicate("f", 64),
+        "answers" => labels
+      })
+    )
+
+    code =
+      Path.wildcard(Path.join([Path.dirname(Application.app_dir(:ipse)), "*", "ebin"]))
+      |> Enum.flat_map(&["-pa", &1])
+
+    args =
+      code ++
+        [
+          Path.expand("scripts/prepare-knowledge-dataset.exs"),
+          "--corpus",
+          corpus,
+          "--queries",
+          queries,
+          "--answers",
+          answers,
+          "--as-of-ms",
+          "1800000000000",
+          "--output",
+          output
+        ]
+
+    {bytes, 0} = System.cmd(System.find_executable("elixir"), args, stderr_to_stdout: true)
+    report = JSON.decode!(String.trim(bytes))
+    assert report["status"] == "ok"
+    assert report["result"]["query_count"] == 50 and report["result"]["project_count"] == 2
+    refute bytes =~ "PRIVATE_ANSWER_SENTINEL"
+    refute bytes =~ String.duplicate("f", 64)
+    assert Bitwise.band(File.stat!(output).mode, 0o777) == 0o600
+    manifest = File.read!(output)
+
+    assert JSON.decode!(manifest)["answers_sha256"] ==
+             Ipse.Extensions.Manifest.sha256(File.read!(answers))
+
+    {failed, 1} = System.cmd(System.find_executable("elixir"), args, stderr_to_stdout: true)
+    assert JSON.decode!(String.trim(failed))["code"] == "invalid_dataset_or_output"
+    assert File.read!(output) == manifest
+    File.rm!(output)
+    File.write!(answers, "{}")
+    {failed, 1} = System.cmd(System.find_executable("elixir"), args, stderr_to_stdout: true)
+    assert JSON.decode!(String.trim(failed))["code"] == "invalid_dataset_or_output"
+    refute File.exists?(output)
+  end
+
   test "tuning derives one explicit local origin from all selected profiles" do
     origin = "http://127.0.0.1:47635"
 

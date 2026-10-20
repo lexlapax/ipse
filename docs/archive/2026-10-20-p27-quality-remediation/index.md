@@ -99,7 +99,31 @@ strict compilation and documentation checks pass. The
 [focused receipt](tuning-origin.json) distinguishes this development-evaluator
 correction from the preceding full platform/package verification. A new real
 tuning diagnostic requires a separate source, declaration and output directory;
-no real model result is claimed here.
+no real model result is claimed for that correction's fixture checks.
+
+## Retain the bounded tuning outcome
+
+A separate declared diagnostic at `8a10be3` selected four exposed questions and
+lexical, model-graph and dense variants before prediction. One fresh owned
+CPU-only daemon/cache served the entire diagnostic, with shared warm state across
+variants. It supplies no matched latency or memory comparison.
+
+The service reached its original 1,200,000-ms lifetime after retaining eight of
+twelve planned first rows: five `ok`, one `failed` and two `partial`. The callback
+did not return, and no complete population was finalized. Native and staging
+cleanup are confirmed; interrupted callback journal/budget closure remains
+unconfirmed. Four earlier project/variant Sessions retained validated accounting.
+An extraction receipt records `complete_result_deadline` and unconfirmed
+completion. Missing rows are not invented or replayed.
+
+An offline probe reconstructs the failed lexical request exactly from retained
+receipts, without inference. Its model response has `classification: "open"`,
+an empty claim list and a null answer, which violates the required answer-string
+shape. Other retained prose also contradicts its own cited claims. These are
+tuning observations, not independent final semantic verdicts. The
+[diagnostic receipt](tuning-c2.json) binds original file hashes, terminal cleanup,
+the decode probe and limits. Future work needs new declarations and preserves
+this failed attempt.
 
 ## Remaining quality work
 

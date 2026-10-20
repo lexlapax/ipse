@@ -387,7 +387,7 @@ the milestone. Preserve current SDK bounds and existing operation authority.
 | P27H4 | Opt-in bounded complete-result publication for original top-level tools/commands, historical receipt reads, strict source closure and unchanged ordinary SDK bounds | Complete at `fb980a0`; whole-milestone review, local 1,248-test baseline, Serenity 1,265-test native-enabled suite, exact 4 MiB and complete-domain source/installed proofs pass. Exact-source hosted Ubuntu/macOS matrix passes |
 | P27A | Independent research and lexical corpus packages with named interchangeable profiles, cited evidence, explicit limits, partial failures, stale-index handling and suppression | Review repairs and corrected-source fixture/platform/installed checks pass; held-out quality acceptance remains open |
 | P27B | Independent attributable graph, optional extraction, embedding/hybrid and rerank adapters; matched quality/resource comparisons before engine selection | Review defects and compact model contracts verified through source/platform/installed checks; corrected-source matched quality/resource comparisons and selection remain open |
-| P27 verification | Frozen held-out workload, zero authority/isolation/replay/resurrection failures, measured retrieval/support/citation/resources, source/native/installed checks, coherent user and contributor manuals | Open; review repairs and compact contracts pass platform/installed checks; prior exposed 350-row result failed quality; fresh held-out quality, resource/selection and structural-readiness gates remain |
+| P27 verification | Frozen held-out workload, zero authority/isolation/replay/resurrection failures, measured retrieval/support/citation/resources, source/native/installed checks, coherent user and contributor manuals | Open; review repairs, compact contracts and detached-answer evaluation pass their scoped reviews and checks, including synthetic measured source/installed proofs; prior exposed 350-row result failed quality; fresh held-out quality, resource/selection and structural-readiness gates remain |
 | P27 structural readiness | Holistic redesign and consolidation of the entire codebase and all user/developer documentation for maintainability and ease of use; migrate callers, builds, tests, packaging and CI together | Open; authorized after feature and review remediation, before P27 completion |
 
 The [first host-contract record](archive/2026-10-19-p27-mcp-host-contracts/index.md)
@@ -588,6 +588,13 @@ corrections; exposed inputs are now diagnostic material.
 Final validation uses a new independently authored private 50-question workload,
 with answers sealed until predictions are frozen. The earlier questions remain
 tuning data.
+The [sealed-answer verification record](archive/2026-10-20-p27-sealed-evaluation/index.md)
+retains the detached-answer contract, repaired legacy-envelope acceptance and
+clear independent follow-ups. The frozen implementation passes macOS's
+1,357-test suite, 93 focused Linux integration tests and separate 350-row
+synthetic source and installed-package measured proofs. Linux's full suite was
+not rerun for that increment. The authoring and audit-access controls establish
+no real-model quality result, and the new private workload is not yet authored.
 The [quality-remediation record](archive/2026-10-20-p27-quality-remediation/index.md)
 tracks subsequent work. Its diagnostic increment retains bounded Session failure
 codes without error text; nine Session and 24 runner fixtures pass. It does not

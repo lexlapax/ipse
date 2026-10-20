@@ -14,7 +14,15 @@ defmodule MeasuredScoringVerification do
     true = result["execution_complete"] and result["resource_complete"]
     prediction = Path.join(run.reports, "predictions.jsonl")
     data = verified["resolution"]["data_manifest"]
-    labels = Path.join(Path.dirname(data), verified["plan"]["data"]["queries"])
+
+    labels =
+      if run.answers do
+        false = File.exists?(run.labels)
+        save!(run.labels, run.answers)
+        run.labels
+      else
+        Path.join(Path.dirname(data), verified["plan"]["data"]["queries"])
+      end
 
     common = [
       freeze: run.seal["path"],
@@ -27,7 +35,7 @@ defmodule MeasuredScoringVerification do
 
     unchanged = snapshot!(run.root, root)
     packet = Path.join(root, "review")
-    review_options = common ++ [output: packet]
+    review_options = common ++ [output: packet] ++ if(run.answers, do: [labels: labels], else: [])
     {review, 0} = cli!(launch, repository, root, "review", :review, review_options)
     true = review["status"] == "ok"
     true = review["result"]["rows"] == result["rows"]
@@ -131,7 +139,9 @@ defmodule MeasuredScoringVerification do
       "review_binding_refusals" => binding_refusals,
       "unopened_label_and_review_inputs" => true,
       "evaluation_artifacts_and_model_request_logs_unchanged" => true,
-      "new_model_work" => false
+      "new_model_work" => false,
+      "answer_contract" => verified["plan"]["data"]["contract"],
+      "answers_absent_through_measured_audit" => is_binary(run.answers)
     }
 
     save!(Path.join(root, "verification.json"), JSON.encode!(summary) <> "\n")

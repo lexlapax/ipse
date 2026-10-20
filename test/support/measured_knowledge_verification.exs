@@ -56,7 +56,8 @@ defmodule MeasuredKnowledgeVerification do
     )
   end
 
-  def prepare(root, repository, artifacts, fault \\ nil) do
+  def prepare(root, repository, artifacts, fault \\ nil, contract \\ nil) do
+    true = contract in [nil, "sealed_answers_v1"]
     File.mkdir!(root)
     File.chmod!(root, 0o700)
     {:ok, launch} = EvaluationFreeze.runtime_launch()
@@ -106,18 +107,56 @@ defmodule MeasuredKnowledgeVerification do
       end
 
     corpus = JSON.encode!(%{"schema_version" => 1, "documents" => documents})
-    query_bytes = JSON.encode!(%{"schema_version" => 1, "queries" => queries})
+
+    answers =
+      if contract do
+        JSON.encode!(%{
+          "contract" => contract,
+          "split" => "heldout",
+          "commitment_nonce" => Ipse.Usage.id() <> Ipse.Usage.id(),
+          "answers" =>
+            Enum.map(queries, fn q ->
+              q
+              |> Map.drop(~w(split query))
+              |> Map.put("expected_refusal", q["expected_class"] == "abstain")
+            end)
+        })
+      end
+
+    query_bytes =
+      if contract do
+        JSON.encode!(%{
+          "contract" => contract,
+          "split" => "heldout",
+          "queries" => Enum.map(queries, &Map.take(&1, ~w(query_id project query)))
+        })
+      else
+        JSON.encode!(%{"schema_version" => 1, "queries" => queries})
+      end
+
     save!(Path.join(data_root, "corpus.json"), corpus)
     save!(Path.join(data_root, "queries.json"), query_bytes)
 
     data =
-      JSON.encode!(%{
-        "as_of_ms" => 1_800_000_000_000,
-        "files" => [
-          %{"path" => "corpus.json", "sha256" => Manifest.sha256(corpus)},
-          %{"path" => "queries.json", "sha256" => Manifest.sha256(query_bytes)}
-        ]
-      })
+      if contract do
+        JSON.encode!(%{
+          "contract" => contract,
+          "as_of_ms" => 1_800_000_000_000,
+          "inputs" => %{
+            "corpus" => %{"path" => "corpus.json", "sha256" => Manifest.sha256(corpus)},
+            "queries" => %{"path" => "queries.json", "sha256" => Manifest.sha256(query_bytes)}
+          },
+          "answers_sha256" => Manifest.sha256(answers)
+        })
+      else
+        JSON.encode!(%{
+          "as_of_ms" => 1_800_000_000_000,
+          "files" => [
+            %{"path" => "corpus.json", "sha256" => Manifest.sha256(corpus)},
+            %{"path" => "queries.json", "sha256" => Manifest.sha256(query_bytes)}
+          ]
+        })
+      end
 
     data_path = Path.join(data_root, "manifest.json")
     save!(data_path, data)
@@ -155,13 +194,19 @@ defmodule MeasuredKnowledgeVerification do
         end)
       end)
 
-    {:ok, legacy_plan} = EvaluationPlan.build(spec)
-
-    plan =
-      legacy_plan
+    spec =
+      spec
       |> Map.put("version", 2)
       |> Map.put("model_origin", origin)
       |> Map.put("models", service["models"])
+
+    spec =
+      if contract,
+        do:
+          spec |> put_in(["data", "contract"], contract) |> put_in(["data", "split"], "heldout"),
+        else: spec
+
+    {:ok, plan} = EvaluationPlan.build(spec)
 
     :ok = EvaluationRunner.validate(plan)
     {:ok, experiment} = EvaluationFreeze.declare(repository, JSON.encode!(plan), artifacts)
@@ -185,10 +230,19 @@ defmodule MeasuredKnowledgeVerification do
 
     save!(Path.join(root, "seal-receipt.json"), JSON.encode!(seal))
     save!(Path.join(root, "experiment.json"), experiment["bytes"])
-    %{seal: seal, reports: resolution["reports"], root: root}
+
+    %{
+      seal: seal,
+      reports: resolution["reports"],
+      root: root,
+      answers: answers,
+      labels: Path.join(root, "released-answers.json")
+    }
   end
 
   def verify(run) do
+    if run.answers, do: false = File.exists?(run.labels)
+
     {:ok, result} =
       EvaluationMeasuredExecution.run(freeze: run.seal["path"], freeze_sha256: run.seal["sha256"])
 
@@ -205,6 +259,7 @@ defmodule MeasuredKnowledgeVerification do
     verify_provider_logs!(run)
     before = snapshot(run.root)
     {:ok, ^result} = EvaluationMeasuredExecution.audit(run.seal["path"], run.seal["sha256"])
+    if run.answers, do: false = File.exists?(run.labels)
     true = snapshot(run.root) == before
     save!(Path.join(run.root, "verified-audit.json"), JSON.encode!(result))
     before = snapshot(run.root)

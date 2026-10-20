@@ -56,6 +56,11 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
       expected =
         if optional_audit, do: Map.update!(expected, phase, &[:audit_sha256 | &1]), else: expected
 
+      expected =
+        if phase == :review and Keyword.has_key?(options, :labels),
+          do: Map.update!(expected, :review, &[:labels | &1]),
+          else: expected
+
       if phase in [:predict, :verify_frozen] and Keyword.has_key?(options, :labels),
         do: fail!(:labels_forbidden)
 
@@ -136,10 +141,21 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
 
       require!(plan["storage_policy"] == "forget_all_then_collect_v1", :storage_policy)
 
+      sealed = sealed?(plan["data"])
+      data_fields = ~w(corpus queries split expected_queries manifest_sha256)
+
       require!(
-        exact?(plan["data"], ~w(corpus queries split expected_queries manifest_sha256)),
+        exact?(plan["data"], if(sealed, do: ["contract" | data_fields], else: data_fields)),
         :data_plan
       )
+
+      if sealed,
+        do:
+          require!(
+            plan["version"] == 2 and plan["mode"] in ~w(fixture heldout) and
+              plan["data"]["split"] == "heldout",
+            :data_contract
+          )
 
       require!(Enum.all?(~w(corpus queries), &relative?(plan["data"][&1])), :data_path)
 
@@ -285,8 +301,9 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
         )
 
         require!(
-          plan["data"]["manifest_sha256"] ==
-            "2759aebcd62f1d6368ce41dfd038ead0d4948f78ab5db4ba41ae92d7e9336063",
+          sealed or
+            plan["data"]["manifest_sha256"] ==
+              "2759aebcd62f1d6368ce41dfd038ead0d4948f78ab5db4ba41ae92d7e9336063",
           :heldout_manifest
         )
 
@@ -756,6 +773,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
 
   defp dispatch(:review, options) do
     {plan, freeze, bytes} = scoring_context(options)
+    require!(Keyword.has_key?(options, :labels) == sealed?(plan["data"]), :option_shape)
 
     result =
       EvaluationReview.prepare(
@@ -766,13 +784,26 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
           root = Path.dirname(Path.expand(options[:data_manifest]))
           at = if plan["as_of_ms"] == "manifest", do: data["as_of_ms"], else: plan["as_of_ms"]
 
-          {:ok,
-           %{
-             "corpus" => read!(Path.join(root, plan["data"]["corpus"])),
-             "queries" => read!(Path.join(root, plan["data"]["queries"])),
-             "split" => plan["data"]["split"],
-             "as_of_ms" => at
-           }}
+          corpus = dataset_member!(data, root, plan["data"]["corpus"])
+          queries = dataset_member!(data, root, plan["data"]["queries"])
+
+          context = %{
+            "corpus" => corpus,
+            "queries" => queries,
+            "split" => plan["data"]["split"],
+            "as_of_ms" => at
+          }
+
+          context =
+            if sealed?(plan["data"]) do
+              checked_public_inputs(corpus, queries, plan["data"]["split"], freeze["queries"])
+
+              Map.put(context, "answers", answer_bytes!(options[:labels], data))
+            else
+              context
+            end
+
+          {:ok, context}
         end,
         plan["blind_seed"]
       )
@@ -815,12 +846,28 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
         fn ->
           verified_data = verify_dataset!(options[:data_manifest], plan["data"])
 
-          [member] =
-            Enum.filter(verified_data["members"], &(&1["path"] == plan["data"]["queries"]))
+          if sealed?(plan["data"]) do
+            root = Path.dirname(options[:data_manifest])
+            corpus = dataset_member!(verified_data, root, plan["data"]["corpus"])
+            queries = dataset_member!(verified_data, root, plan["data"]["queries"])
 
-          labels = read!(options[:labels])
-          require!(sha(labels) == member["sha256"], :label_member_hash)
-          EvaluationInput.labels(labels, plan["data"]["split"])
+            projection =
+              checked_public_inputs(corpus, queries, plan["data"]["split"], freeze["queries"])
+
+            answers = answer_bytes!(options[:labels], verified_data)
+
+            case EvaluationInput.references(answers, plan["data"]["split"], projection) do
+              {:ok, reference} -> {:ok, reference["labels"]}
+              error -> error
+            end
+          else
+            [member] =
+              Enum.filter(verified_data["members"], &(&1["path"] == plan["data"]["queries"]))
+
+            labels = read!(options[:labels])
+            require!(sha(labels) == member["sha256"], :label_member_hash)
+            EvaluationInput.labels(labels, plan["data"]["split"])
+          end
         end,
         fn ->
           {:ok, reviews} =
@@ -834,8 +881,9 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
           [member] =
             Enum.filter(verified_data["members"], &(&1["path"] == plan["data"]["corpus"]))
 
-          corpus = read!(Path.join(Path.dirname(options[:data_manifest]), member["path"]))
-          require!(sha(corpus) == member["sha256"], :corpus_member_hash)
+          corpus =
+            dataset_member!(verified_data, Path.dirname(options[:data_manifest]), member["path"])
+
           {:ok, corpus}
         end
       )
@@ -948,13 +996,16 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
           else: plan["as_of_ms"]
 
       directory = Path.dirname(manifest_path)
-      {:ok, corpus} = EvaluationInput.corpus(read!(Path.join(directory, plan["data"]["corpus"])))
+
+      {:ok, corpus} =
+        EvaluationInput.corpus(dataset_member!(manifest, directory, plan["data"]["corpus"]))
 
       queries =
         project_queries(
           Path.join(directory, plan["data"]["queries"]),
           plan["data"]["split"],
-          output
+          output,
+          if(sealed?(plan["data"]), do: member_hash!(manifest, plan["data"]["queries"]))
         )
 
       {:ok, schedule} = schedule(plan, queries)
@@ -2432,17 +2483,18 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     )
   end
 
-  defp project_queries(path, split, output) do
+  defp project_queries(path, split, output, digest \\ nil) do
     result = Path.join(output, "projected-queries.json")
 
     expression =
-      "{:ok, result} = IpseKnowledgeExample.EvaluationInput.queries(File.read!(hd(System.argv())), Enum.at(System.argv(), 1)); File.write!(Enum.at(System.argv(), 2), JSON.encode!(result), [:exclusive])"
+      "[path, split, output, digest] = System.argv(); %{type: :regular, size: size} = File.lstat!(path); true = size <= 1_048_576; bytes = File.read!(path); true = digest == \"\" or Ipse.Extensions.Manifest.sha256(bytes) == digest; {:ok, result} = IpseKnowledgeExample.EvaluationInput.queries(bytes, split); File.write!(output, JSON.encode!(result), [:exclusive])"
 
     {command, arguments} =
       child_command([Path.join(__DIR__, "evaluation_input.exs")], expression, [
         Path.expand(path),
         split,
-        result
+        result,
+        digest || ""
       ])
 
     {_, status} = System.cmd(command, arguments, stderr_to_stdout: true)
@@ -2455,7 +2507,34 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     bytes = read!(path)
     require!(sha(bytes) == data["manifest_sha256"], :data_manifest_hash)
     manifest = decode!(bytes)
-    members = manifest_members(manifest) |> Enum.uniq()
+    sealed = sealed?(data)
+
+    members =
+      if sealed do
+        require!(
+          exact?(manifest, ~w(contract as_of_ms inputs answers_sha256)) and
+            manifest["contract"] == "sealed_answers_v1" and uint?(manifest["as_of_ms"]) and
+            hash?(manifest["answers_sha256"]),
+          :data_manifest_shape
+        )
+
+        require!(exact?(manifest["inputs"], ~w(corpus queries)), :data_manifest_members)
+        require!(data["corpus"] != data["queries"], :data_member_conflict)
+
+        for role <- ~w(corpus queries) do
+          member = manifest["inputs"][role]
+
+          require!(
+            exact?(member, ~w(path sha256)) and member["path"] == data[role],
+            :data_manifest_member
+          )
+
+          {member["path"], member["sha256"]}
+        end
+      else
+        manifest_members(manifest) |> Enum.uniq()
+      end
+
     require!(members != [], :data_manifest_members)
 
     require!(
@@ -2473,19 +2552,62 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
         child
       end)
 
-      require!(sha(read!(Path.join(Path.dirname(path), relative))) == digest, :data_member_hash)
+      member_bytes = read!(Path.join(Path.dirname(path), relative))
+      require!(sha(member_bytes) == digest, :data_member_hash)
+
+      if sealed and relative == data["queries"],
+        do: sealed_questions!(member_bytes, data["split"])
     end)
 
     Enum.each(~w(corpus queries), fn key ->
       require!(Enum.count(members, &(elem(&1, 0) == data[key])) == 1, :data_member_missing)
     end)
 
-    %{
+    result = %{
       "sha256" => sha(bytes),
       "as_of_ms" => manifest_time(manifest),
       "members" =>
         Enum.map(members, fn {name, digest} -> %{"path" => name, "sha256" => digest} end)
     }
+
+    if sealed, do: Map.put(result, "answers_sha256", manifest["answers_sha256"]), else: result
+  end
+
+  defp sealed?(data), do: is_map(data) and data["contract"] == "sealed_answers_v1"
+
+  defp member_hash!(verified, path) do
+    [member] = Enum.filter(verified["members"], &(&1["path"] == path))
+    member["sha256"]
+  end
+
+  defp dataset_member!(verified, root, path) do
+    bytes = read!(Path.join(root, path))
+    require!(sha(bytes) == member_hash!(verified, path), :data_member_hash)
+    bytes
+  end
+
+  defp answer_bytes!(path, verified) do
+    bytes = read!(path)
+    require!(sha(bytes) == verified["answers_sha256"], :label_member_hash)
+    bytes
+  end
+
+  defp checked_public_inputs(corpus, queries, split, saved) do
+    checked(EvaluationInput.corpus(corpus))
+    questions = sealed_questions!(queries, split)
+
+    require!(
+      Enum.map(questions["queries"], &Map.take(&1, ~w(query_id project))) == saved,
+      :query_order
+    )
+
+    questions
+  end
+
+  defp sealed_questions!(bytes, split) do
+    questions = checked(EvaluationInput.queries(bytes, split))
+    require!(questions["contract"] == "sealed_answers_v1", :data_query_contract)
+    questions
   end
 
   defp manifest_time(manifest) do
@@ -2873,6 +2995,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     do: File.write!(Path.join(root, name), JSON.encode!(value) <> "\n", [:append])
 
   defp checked(:ok), do: :ok
+  defp checked({:ok, value}), do: value
   defp checked({:error, code}), do: fail!(code)
 
   defp frames(stack),

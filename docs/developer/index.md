@@ -115,7 +115,8 @@ synthetic check. Then choose the host interaction you need:
 state/actions. [Knowledge extensions](knowledge-extensions.md) traces the
 independent Corpus, Research and Graph workers, source-root publication, exact
 citations and projection preflight, with a ranker change exercise.
-[Knowledge evaluation](knowledge-evaluation.md) teaches prediction/label separation,
+[Knowledge evaluation](knowledge-evaluation.md) teaches independent dataset commitments,
+detached answer custody, prediction/label separation,
 complete measured execution through the optional Linux backend, private model
 service ownership and separate retrieval, span and semantic measurements.
 [Capability placement](runtime-capabilities.md) helps decide when a new generic

@@ -63,6 +63,15 @@ exercise actual v2 CLI review, an unmeasured score exit and refusal before label
 or review input access. These are expected results to verify, not evidence that a
 particular source, host or package has passed.
 
+To exercise detached answers through the same measured path, add
+`--sealed-answers` after the output argument. The helper retains synthetic answers
+in the outer test owner's memory. They are absent from disk during preparation,
+all fourteen cells, finalization and audit. After that audit, the scoring helper
+releases the exact committed bytes and supplies `--labels` to review and score.
+The plan remains `mode: "fixture"`, with fixture model identities and no quality
+claim. This format exercise does not substitute for an independently authored
+held-out workload.
+
 Inspect `$IPSE_MEASURED_PROOF/source/source/freeze`, the adjacent `reports`, and
 the adjacent `scoring-controls` directory. A failed command
 preserves its partial evidence. Read the first failed stage's `process.log`,
@@ -92,6 +101,7 @@ A successful installed exercise is protocol evidence for that archive and host.
 It does not establish real Ollama CPU execution, held-out quality or complete
 failure/loss coverage. Keep actual evidence in [dated records](../archive/index.md)
 and acceptance criteria in [the plan](../plan.md#p27-optional-research-graph-and-rag).
+The installed helper accepts the same final `--sealed-answers` argument.
 
 ### Exercise authority and loss before accepting an execution change
 
@@ -124,6 +134,86 @@ no model quality.
 
 ## Declare the complete comparison
 
+For a new acceptance workload, first obtain a metadata-only commitment from an
+independent author. Keep their corpus, questions and answers unavailable to the
+implementation team until code and configuration are frozen. The author retains
+the answer bytes until every first prediction and the measured audit are frozen.
+A hash commits bytes; provenance and custody records establish who authored and
+handled them. Neither prevents disclosure through another channel.
+
+The author prepares three UTF8 JSON files, each at most 1 MiB. `corpus.json` uses
+`schema_version: 1` and a `documents` array of at most 256 complete source rows.
+This complete one-document example has matching body bytes, length and SHA256:
+
+```json
+{"schema_version":1,"documents":[{"document_id":"d1","project":"alpha","source_id":"source:one","generation":1,"version":1,"title":"Fixture","text":"A café.","created_at":"2026-01-01T00:00:00Z","observed_at":"2026-03-01T00:00:00Z","state":"current","sha256":"17279f71f4ea96992036469e0ac54aebc728033c129e8a52dc7dddfbd9e3b8d3","byte_length":8,"media_type":"text/plain; charset=utf-8"}]}
+```
+
+Every shown document field is required. A project name starts with a lowercase
+ASCII letter and contains at most 64 lowercase letters, digits, underscores or
+hyphens. Bound `document_id` and title to 128 UTF8 bytes, `source_id` to 256, body
+text to 65536, state to 64 and media type to 128. These fields are nonempty.
+Generation is a positive safe integer; version is a positive safe integer or a
+nonempty string of at most 64 bytes. Times are ISO8601 values with nonnegative
+epoch milliseconds. Use distinct project/source/generation identities. The
+corpus adapter preserves additional metadata as excluded field names, while
+projecting only the documented source fields. It validates complete body hashes
+and lengths; [input projection](#project-query-inputs-without-labels) explains
+lifecycle handling and duplicate generation refusal.
+
+`queries.json` has this closed envelope and exactly these three fields per row:
+
+```json
+{"contract":"sealed_answers_v1","split":"heldout","queries":[{"query_id":"q1","project":"alpha","query":"What must precede release?"}]}
+```
+
+The separately retained answer file has a private random nonce and normalized
+source identities. This one-row illustration is too small for the fifty-question
+author validator. Source hashes and span bytes must match the actual corpus:
+
+```json
+{"contract":"sealed_answers_v1","split":"heldout","commitment_nonce":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","answers":[{"query_id":"q1","project":"alpha","expected_class":"open","expected_refusal":false,"expected_answer":null,"relevance":[]}]}
+```
+
+Generate the actual nonce once with
+`Base.encode16(:crypto.strong_rand_bytes(32), case: :lower)` in the author's Elixir
+tooling. Keep it in the final answer bytes, outside shared metadata. The repeated
+`a` value above is a synthetic example. A withheld nonce prevents guessing a
+small answer set against its published file hash; it does not replace custody.
+Each nonempty relevance entry has exactly `source`, `grade`, `start_byte`,
+`end_byte` and `quote`. `source` has exactly `project`, `source_id`, `generation`,
+typed `version` and `sha256`. Coordinates are half-open UTF8 byte offsets into
+the complete captured source. Integer `1` and string `"1"` are different versions.
+
+In the author's custody, place `corpus.json` and `queries.json` beside the intended
+manifest output, then validate all fifty query identities across two projects:
+
+```sh
+mix run scripts/prepare-knowledge-dataset.exs -- \
+  --corpus /author/public/corpus.json --queries /author/public/queries.json \
+  --answers /author/escrow/answers.json --as-of-ms 1800000000000 \
+  --output /author/public/manifest.json
+```
+
+Expect `status: "ok"`, `manifest_sha256`, `answers_sha256`, `query_count: 50` and
+`project_count: 2`. No source, question, answer, class or nonce appears in this
+receipt. The validator checks complete joins and literal references, creates an
+owner-only manifest exclusively and refuses an overwrite. A failure prints only
+`invalid_dataset_or_output`; inspect the private files in the author's environment.
+Do not regenerate committed bytes after observing predictions.
+
+The closed manifest binds only the two predictor inputs and the pathless answer
+digest:
+
+```json
+{"contract":"sealed_answers_v1","as_of_ms":1800000000000,"inputs":{"corpus":{"path":"corpus.json","sha256":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},"queries":{"path":"queries.json","sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}},"answers_sha256":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"}
+```
+
+These illustrative digests are placeholders. The author tool computes real hashes
+over exact bytes. Share only its metadata receipt before freezing. Install the
+committed manifest, corpus and questions at the resolved dataset location after
+freezing; do not install the answers yet.
+
 Build the seven independent artifacts into a fresh private directory. These
 commands compile artifacts without importing them or contacting a model:
 
@@ -139,17 +229,28 @@ elixir examples/model-calls/build.exs --sdk _build/dev/lib/ipse/ebin --output "$
 cp examples/knowledge/benchmark-spec.json "$IPSE_BENCHMARK/spec.json"
 ```
 
-Review `spec.json` before generating a plan. It declares a fifty-query held-out
+Review `spec.json` before generating a plan. The template declares a fifty-query held-out
 comparison with lexical, explicit graph, model graph, dense, hybrid, rerank and
 Research variants. Every variant selects the same answer helper. Its example
 local profiles name Qwen and embeddinggemma with exact expected inventory
 digests; review the endpoint, installed model identities and budgets for your
 authorized run. There is no provider fallback or model download. The declared
-`corpus.json` and `heldout.json` are relative dataset member names. Confirm the
-actual member names from independently supplied metadata before freezing;
-generating a plan does not verify them or open the dataset manifest.
+template retains the historical combined query/answer contract. Its exposed
+workload is suitable only for tuning and historical reproduction. For the new
+workload, set `version: 2`, `model_origin` to one canonical private IPv4-loopback
+origin, and every profile's `base_url` to that same origin. Set `data` to:
 
-Generate the private version-one plan used by both identity exercises below:
+```json
+{"contract":"sealed_answers_v1","corpus":"corpus.json","queries":"queries.json","split":"heldout","expected_queries":50,"manifest_sha256":"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"}
+```
+
+Replace the illustrative digest with the independently retained author receipt's
+`manifest_sha256`. Keep the model selections, seven variants and budgets under
+review. The subsequent portable declaration removes local endpoint bindings and
+the execution resolution supplies them again. Generating a plan does not open
+the manifest, corpus, questions or answers. Their paths may still be absent.
+
+Generate the private plan:
 
 ```sh
 mix run scripts/prepare-knowledge-evaluation.exs -- --spec "$IPSE_BENCHMARK/spec.json" --output "$IPSE_BENCHMARK/plan.json" --new-blind-seed
@@ -186,7 +287,11 @@ origin from the profiles, including a canonical private port such as
 `http://127.0.0.1:47635`; it does not add another endpoint setting. A conflicting
 profile, malformed origin or collision with `search_port` refuses. The default
 port remains usable when explicitly selected. This does not change legacy
-version-one held-out policy or version-two measured resolution.
+version-one held-out policy or version-two measured resolution. V1 rejects the
+new sealed-answer contract. V2 permits it in `heldout` and explicitly synthetic
+`fixture` mode; the question/answer split remains `heldout` in either mode.
+Fixture mode requires fixture model names and inventory. It cannot satisfy the
+held-out model gates.
 
 Keep the actual service under its declared owner. Tuning starts no daemon and
 grants no fallback to another endpoint. With a reviewed tuning plan, exposed
@@ -613,8 +718,14 @@ with refused retrieval still retains its failed prediction rows.
 
 After the execution's authority and catalog admission pass, the input adapter
 opens the declared dataset members. Version two does this during measured
-preparation; version one does it after its executable preflight. `EvaluationInput.queries/2` accepts the version-one
-query JSON bytes and the declared split. Its `queries` result contains exactly
+preparation; version one does it after its executable preflight. New sealed
+manifests admit exactly their corpus and query input roles. No answer pathname is
+present, and preparation never traverses arbitrary manifest members. An extra
+answer descriptor refuses. The legacy reader preserves recursive member hashing
+for historical manifests, including their combined query/reference file.
+
+`EvaluationInput.queries/2` accepts the strict sealed question envelope or the
+historical version-one bytes and declared split. Its `queries` result contains exactly
 `query_id`, `project` and `query`, preserving their input order. Relevance,
 expected classes, expected answers and refusal labels remain excluded. The
 separate `excluded_fields` list reports field names; keep it in run metadata,
@@ -635,11 +746,21 @@ a separate identity. The adapter never
 drops rows to make a comparison fit. Resolve any required capacity gap before
 freezing the implementation intended to cover the workload.
 
-Only the scoring phase calls `EvaluationInput.labels/2`. It normalizes full source
-identities and exact byte-coordinate annotations for the existing scorer. Keep
-that call inside the label loader that runs after saved prediction hashes pass.
-The original expected-answer text remains available to the independent semantic
-reviewer through the separately retained dataset; it is not a predictor input.
+Review and scoring load references only after their authority and first-prediction
+checks. `EvaluationInput.references/3` validates every detached answer, exact
+query/project identity equality and duplicate typed relevance spans before it
+builds lookup maps. It returns normalized score labels in original question
+order and a separate expected-answer lookup for the independent review packet.
+Reordered answers normalize to question order. Changed public question bytes
+fail their manifest hash; a changed identity order also fails the saved sequence
+check before answer loading. Public corpus and question bytes are hash-checked
+again on the same bytes actually parsed. Review validates their semantics before
+opening answers. Scoring retains its corpus-before-label boundary.
+
+`EvaluationInput.labels/2` remains the historical scorer adapter and also accepts
+the new answer envelope. The runner uses `references/3` for a new workload so the
+complete question join cannot be skipped. Neither API gives the predictor any
+expected answer, reference class or refusal label.
 
 ```sh
 mix test test/knowledge_evaluation_input_test.exs
@@ -939,12 +1060,14 @@ The review binding is opaque to a reviewer. It does not reveal strategy names.
 For the v2 seal above, prepare a private packet and then score a separate review:
 
 ```sh
+export IPSE_LABELS=/released/identical-committed-answers.json
 mix run scripts/evaluate-knowledge.exs -- --phase review \
   --freeze "$IPSE_BENCHMARK/frozen-measured/manifest.json" \
   --freeze-sha256 "$IPSE_FREEZE_SHA256" --audit-sha256 "$IPSE_AUDIT_SHA256" \
   --data-manifest "$IPSE_DATA_MANIFEST" \
   --predictions "$IPSE_BENCHMARK/reports/predictions.jsonl" \
   --prediction-sha256 "$IPSE_PREDICTION_SHA256" \
+  --labels "$IPSE_LABELS" \
   --output "$IPSE_BENCHMARK/review-packet"
 cp "$IPSE_BENCHMARK/review-packet/reviews-template.json" "$IPSE_BENCHMARK/reviews.json"
 ```
@@ -955,7 +1078,6 @@ and `review_binding_sha256` exactly. Fill the existing verdict rows without
 changing IDs. After that review, run:
 
 ```sh
-IPSE_LABELS=$(elixir -e '[manifest, plan] = System.argv(); p = JSON.decode!(File.read!(plan)); IO.puts(Path.join(Path.dirname(manifest), p["data"]["queries"]))' "$IPSE_DATA_MANIFEST" "$IPSE_BENCHMARK/frozen-measured/plan.json")
 mix run scripts/evaluate-knowledge.exs -- --phase score \
   --freeze "$IPSE_BENCHMARK/frozen-measured/manifest.json" \
   --freeze-sha256 "$IPSE_FREEZE_SHA256" --audit-sha256 "$IPSE_AUDIT_SHA256" \
@@ -967,12 +1089,17 @@ mix run scripts/evaluate-knowledge.exs -- --phase score \
   --output "$IPSE_BENCHMARK/scores"
 ```
 
-`IPSE_LABELS` names the query member from the sealed plan. Scoring verifies those
-label bytes against the declared member hash. An untouched template produces
+For the new contract, `IPSE_LABELS` names the answer bytes released after the
+audit. Their release path can differ from author escrow; exact bytes must match
+`answers_sha256`. Review requires `--labels` for this contract and reports separate
+`queries_sha256` and `answers_sha256` packet identities. Missing or changed answers
+refuse without regenerating predictions. An untouched template produces
 unmeasured support, writes `scores.json` and
 exits one; it cannot manufacture a quality pass.
 
-For v1, use its separately retained freeze/prediction hashes and selected dataset
+For a legacy combined dataset, omit `--labels` from review and supply the declared
+query/reference member to score. Its summary retains `query_labels_sha256`. For
+v1, use its separately retained freeze/prediction hashes and selected dataset
 paths, and omit `--audit-sha256`. V1 refuses an audit argument. V2 refuses missing
 or changed audit authority before labels/reviews, and refuses alternate canonical
 prediction/data paths even when the caller supplies a plausible hash. The legacy
@@ -982,8 +1109,12 @@ use `measure` and `audit` for that format.
 For review, expect `status: "ok"`, the complete row count, `packet_sha256` and
 `reference_integrity_complete: true`. Retain that packet hash separately. An
 existing output path refuses. Files are owner-only in a private directory.
-Invalid reference spans remain visible, set completeness false and produce a
-failing CLI exit. A written packet does not establish semantic support.
+For the sealed-answer contract, an invalid reference refuses with
+`invalid_reference_integrity` before creating the packet directory. Investigate
+the committed private references without changing first predictions. Legacy
+combined datasets retain invalid references in a diagnostic packet, set
+completeness false and produce a failing CLI exit. A written packet does not
+establish semantic support.
 
 Give the independent reviewer only the packet directory:
 

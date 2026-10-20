@@ -8,7 +8,10 @@ defmodule IpseKnowledgeExample.EvaluationPlan do
   @fields ~w(version mode data as_of_ms artifacts profiles embedding_profiles models interval_ms search_port blind_seed budgets storage_policy)
 
   def build(spec) do
-    with true <- exact?(spec, @fields),
+    fields =
+      if is_map(spec) and spec["version"] == 2, do: ["model_origin" | @fields], else: @fields
+
+    with true <- exact?(spec, fields),
          true <- exact?(spec["artifacts"], @artifacts),
          true <- exact?(spec["budgets"], @variants),
          true <- exact?(spec["profiles"], ~w(p27_answer p27_extract p27_rerank)),
