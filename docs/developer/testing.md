@@ -301,3 +301,11 @@ in the [archive](../archive/index.md); keep milestone status in the
 [plan](../plan.md). The [checks workflow](../../.github/workflows/ci.yml) defines
 current CI commands. It is a reproducible procedure, not a substitute for reading
 the actual result at the candidate revision.
+
+Distinguish a failed assertion from the outer job deadline. The checks workflow
+gives each platform a finite 45-minute budget for setup, the source suite, native
+checks, packaging and independent installed proofs. If GitHub cancels a job,
+read its check annotations and last completed step. A passing `mix test` does not
+establish that the later installed checks finished. Change an undersized job
+budget only with retained timing evidence, then verify the complete candidate
+run. Individual Worker, model, native and test deadlines remain separate.
