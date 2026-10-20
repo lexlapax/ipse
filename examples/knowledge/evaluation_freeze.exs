@@ -1,3 +1,5 @@
+Code.require_file("evaluation_model_service.exs", __DIR__)
+
 defmodule IpseKnowledgeExample.EvaluationFreeze do
   @moduledoc """
   Seal the identities needed by a knowledge evaluation before opening its inputs.
@@ -75,6 +77,11 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
     protect(fn -> resolved_plan!(decode_experiment!(experiment_bytes), resolution) end)
   end
 
+  @doc "Inspect the current ERTS launch identity for explicitly selected evaluation fixtures."
+  def runtime_launch do
+    protect(fn -> measured_runtime_snapshot()["launch"] end)
+  end
+
   @doc "Seal one fresh local resolution of a portable declaration; this does not authorize execution."
   def create_v2(repository, experiment_bytes, resolution, output) do
     protect(fn ->
@@ -96,17 +103,20 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
       registry = Path.join(output, "attempts")
       File.mkdir!(registry)
       File.chmod!(registry, 0o700)
+      registry_identity = directory_identity!(registry)
       write_private(Path.join(output, "experiment.json"), experiment_bytes)
       plan_bytes = JSON.encode!(plan) <> "\n"
       write_private(Path.join(output, "plan.json"), plan_bytes)
       copied = import_artifacts!(resolution["artifacts"], Path.join(output, "artifacts"))
       require!(copied == experiment["artifacts"], :artifact_changed)
-      runtime = runtime_snapshot()
+      runtime = measured_runtime_snapshot()
       require!(source_snapshot(repository) == source, :source_changed)
       id = nonce()
       experiment_digest = Manifest.sha256(experiment_bytes)
       plan_digest = Manifest.sha256(plan_bytes)
-      recipe = launch_recipe(id, experiment_digest, plan_digest, registry, resolution["reports"])
+
+      recipe =
+        launch_recipe(id, experiment_digest, plan_digest, registry, registry_identity, resolution)
 
       manifest = %{
         "version" => 2,
@@ -119,6 +129,7 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
         "artifacts" => copied,
         "resolution" => resolution,
         "attempt_registry" => registry,
+        "attempt_registry_identity" => registry_identity,
         "launch_recipe" => recipe,
         "recipe_sha256" => Manifest.sha256(JSON.encode!(recipe)),
         "provenance" => %{
@@ -246,7 +257,7 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
     require!(
       exact?(
         manifest,
-        ~w(version created_at execution_id source runtime experiment_sha256 plan_sha256 artifacts resolution attempt_registry launch_recipe recipe_sha256 provenance)
+        ~w(version created_at execution_id source runtime experiment_sha256 plan_sha256 artifacts resolution attempt_registry attempt_registry_identity launch_recipe recipe_sha256 provenance)
       ),
       :invalid_manifest
     )
@@ -267,6 +278,12 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
 
     %{type: :directory, mode: mode} = File.lstat!(registry)
     require!(Bitwise.band(mode, 0o777) == 0o700, :registry_changed)
+
+    require!(
+      directory_identity!(registry) == manifest["attempt_registry_identity"],
+      :registry_changed
+    )
+
     experiment_bytes = read_bounded!(Path.join(root, "experiment.json"), 1_048_576)
 
     require!(
@@ -283,7 +300,7 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
       :source_changed
     )
 
-    require!(runtime_snapshot() == manifest["runtime"], :runtime_changed)
+    require!(measured_runtime_snapshot() == manifest["runtime"], :runtime_changed)
     resolution = manifest["resolution"]
     plan = resolved_plan!(experiment, resolution)
     require!(canonical!(resolution["reports"]) == resolution["reports"], :reports_changed)
@@ -312,7 +329,8 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
         manifest["experiment_sha256"],
         manifest["plan_sha256"],
         registry,
-        resolution["reports"]
+        manifest["attempt_registry_identity"],
+        resolution
       )
 
     require!(
@@ -430,6 +448,11 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
   defp resolved_plan!(experiment, resolution) do
     validate_resolution!(resolution)
 
+    require!(
+      resolution["model_service"]["models"] == experiment["plan"]["models"],
+      :model_selection
+    )
+
     actual_aliases = Enum.sort(Map.keys(resolution["artifacts"]))
     declared_aliases = Enum.sort(Map.keys(experiment["artifacts"]))
     require!(actual_aliases == declared_aliases, :artifact_aliases)
@@ -447,7 +470,10 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
 
   defp validate_resolution!(resolution) do
     require!(
-      exact?(resolution, ~w(artifacts model_origin search_port reports)),
+      exact?(
+        resolution,
+        ~w(artifacts model_origin search_port reports data_manifest model_service)
+      ),
       :invalid_resolution
     )
 
@@ -455,7 +481,7 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
 
     require!(
       Enum.all?(Map.values(resolution["artifacts"]), &absolute?/1) and
-        absolute?(resolution["reports"]),
+        absolute?(resolution["reports"]) and absolute?(resolution["data_manifest"]),
       :invalid_resolution
     )
 
@@ -474,6 +500,14 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
         resolution["search_port"] != uri.port,
       :search_port
     )
+
+    require!(
+      IpseKnowledgeExample.EvaluationModelService.validate(resolution["model_service"]) == :ok,
+      :model_service
+    )
+
+    require!(resolution["model_service"]["origin"] == origin, :model_origin)
+    _ = measured_timeouts!(resolution)
   end
 
   defp normalize_resolution!(resolution) do
@@ -484,7 +518,12 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
         {id, path}
       end)
 
-    %{resolution | "artifacts" => artifacts, "reports" => canonical!(resolution["reports"])}
+    %{
+      resolution
+      | "artifacts" => artifacts,
+        "reports" => canonical!(resolution["reports"]),
+        "data_manifest" => canonical!(resolution["data_manifest"])
+    }
   end
 
   defp validate_artifact_paths!(artifacts) do
@@ -504,7 +543,7 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
     end)
   end
 
-  defp launch_recipe(id, experiment, plan, registry, reports),
+  defp launch_recipe(id, experiment, plan, registry, identity, resolution),
     do: %{
       "version" => 1,
       "kind" => "knowledge_measured_v1",
@@ -512,8 +551,23 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
       "experiment_sha256" => experiment,
       "plan_sha256" => plan,
       "attempt_registry" => registry,
-      "reports" => reports
+      "attempt_registry_identity" => identity,
+      "reports" => resolution["reports"],
+      "data_manifest" => resolution["data_manifest"],
+      "timeouts" => measured_timeouts!(resolution)
     }
+
+  defp measured_timeouts!(resolution) do
+    cell = resolution["model_service"]["limits"]["lifetime_ms"] + 30_000
+    root = 14 * cell + 360_000 + 16 * 8_000 + 10_000
+    require!(root <= 86_400_000, :execution_limits)
+    %{"root_ms" => root, "prepare_ms" => 180_000, "cell_ms" => cell, "finalize_ms" => 180_000}
+  end
+
+  defp directory_identity!(path) do
+    %{type: :directory, major_device: device, inode: inode} = File.lstat!(path)
+    %{"device" => device, "inode" => inode}
+  end
 
   defp nonce, do: Base.encode16(:crypto.strong_rand_bytes(16), case: :lower)
 
@@ -590,6 +644,55 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
     }
   end
 
+  defp measured_runtime_snapshot do
+    root = to_string(:code.root_dir()) |> Path.expand()
+
+    binary_directory =
+      Path.join([root, "erts-" <> to_string(:erlang.system_info(:version)), "bin"])
+
+    executable = Path.join(binary_directory, "erl")
+
+    release_boot =
+      case :init.get_argument(:boot) do
+        {:ok, [[path]]} ->
+          path = to_string(path)
+
+          if Path.type(path) == :absolute and
+               String.starts_with?(Path.expand(path), Path.join(root, "releases") <> "/"),
+             do: Path.join(Path.dirname(path), "start_clean")
+
+        _ ->
+          nil
+      end
+
+    boot =
+      Enum.find(
+        [release_boot, Path.join(root, "bin/no_dot_erlang")],
+        &(is_binary(&1) and File.regular?(&1 <> ".boot"))
+      ) || fail!(:runtime_launcher)
+
+    require!(File.regular?(executable), :runtime_launcher)
+
+    paths =
+      :code.get_path()
+      |> Enum.map(&(to_string(&1) |> Path.expand()))
+
+    files =
+      [boot <> ".boot" | Path.wildcard(Path.join(binary_directory, "*"))]
+      |> Enum.filter(&match?({:ok, %{type: :regular}}, File.lstat(&1)))
+      |> Enum.uniq()
+      |> Enum.sort()
+      |> Enum.map(&file_identity/1)
+
+    Map.put(runtime_snapshot(), "launch", %{
+      "executable" => executable,
+      "boot" => boot,
+      "root" => root,
+      "code_paths" => paths,
+      "files" => files
+    })
+  end
+
   defp file_identity(path) do
     %{type: :regular, size: size} = File.lstat!(path)
     require!(size <= 67_108_864, :file_size_limit)
@@ -625,7 +728,9 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
   end
 
   defp git!(root, arguments) do
-    case System.cmd("git", ["-C", root | arguments], stderr_to_stdout: true) do
+    case System.cmd("git", ["--no-optional-locks", "-C", root | arguments],
+           stderr_to_stdout: true
+         ) do
       {output, 0} -> output
       _ -> fail!(:source_git)
     end

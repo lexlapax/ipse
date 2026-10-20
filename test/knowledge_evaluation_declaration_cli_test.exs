@@ -1,4 +1,5 @@
 Code.require_file("../examples/knowledge/evaluation_plan.exs", __DIR__)
+Code.require_file("support/frozen_model_selection.exs", __DIR__)
 
 defmodule Ipse.KnowledgeEvaluationDeclarationCLITest do
   use ExUnit.Case, async: false
@@ -85,7 +86,10 @@ defmodule Ipse.KnowledgeEvaluationDeclarationCLITest do
       "artifacts" => plan["artifacts"],
       "model_origin" => "http://127.0.0.1:47631",
       "search_port" => 47632,
-      "reports" => Path.join(root, "reports")
+      "reports" => Path.join(root, "reports"),
+      "data_manifest" => Path.join(root, "missing-dataset/manifest.json"),
+      "model_service" =>
+        FrozenModelSelection.configuration(plan["models"], root, "http://127.0.0.1:47631")
     }
 
     resolution_path = Path.join(root, "resolution.json")

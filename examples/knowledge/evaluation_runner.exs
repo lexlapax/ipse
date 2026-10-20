@@ -1,5 +1,5 @@
 for file <-
-      ~w(evaluation_input evaluation_freeze evaluation_session evaluation_answer evaluation_resources evaluation_inventory evaluation_gateway evaluation_score evaluation_review) do
+      ~w(evaluation_input evaluation_freeze evaluation_session evaluation_answer evaluation_resources evaluation_inventory evaluation_gateway evaluation_score evaluation_review evaluation_model_service evaluation_measured_execution) do
   Code.require_file(file <> ".exs", __DIR__)
 end
 
@@ -37,6 +37,8 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
         freeze: ~w(plan output)a,
         declare: ~w(plan output)a,
         freeze_measured: ~w(experiment experiment_sha256 resolution output)a,
+        measure: ~w(freeze freeze_sha256)a,
+        audit: ~w(freeze freeze_sha256)a,
         predict: ~w(freeze freeze_sha256 data_manifest output)a,
         verify_frozen: ~w(freeze freeze_sha256 data_manifest output)a,
         tune: ~w(plan corpus queries output)a,
@@ -47,6 +49,11 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
       }
 
       require!(is_list(options) and Keyword.keyword?(options), :option_shape)
+
+      optional_audit = phase in [:review, :score] and Keyword.has_key?(options, :audit_sha256)
+
+      expected =
+        if optional_audit, do: Map.update!(expected, phase, &[:audit_sha256 | &1]), else: expected
 
       if phase in [:predict, :verify_frozen] and Keyword.has_key?(options, :labels),
         do: fail!(:labels_forbidden)
@@ -203,7 +210,23 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
           :model_origin
         )
       else
-        require!(plan["models"] == %{}, :fixture_models)
+        if plan["version"] == 2 do
+          selected =
+            Enum.map(
+              Map.values(plan["profiles"]) ++ Map.values(plan["embedding_profiles"]),
+              & &1["model"]
+            )
+            |> Enum.uniq()
+            |> Enum.sort()
+
+          require!(
+            Enum.sort(Map.keys(plan["models"])) == selected and selected != [] and
+              Enum.all?(selected, &Regex.match?(~r/\Afixture-[a-z0-9._-]+:[a-z0-9._-]+\z/, &1)),
+            :fixture_models
+          )
+        else
+          require!(plan["models"] == %{}, :fixture_models)
+        end
 
         require!(
           Enum.all?(
@@ -608,6 +631,16 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     {:ok, declaration |> Map.delete("bytes") |> Map.put("path", output)}
   end
 
+  defp dispatch(:measure, options),
+    do: IpseKnowledgeExample.EvaluationMeasuredExecution.run(options)
+
+  defp dispatch(:audit, options),
+    do:
+      IpseKnowledgeExample.EvaluationMeasuredExecution.audit(
+        options[:freeze],
+        options[:freeze_sha256]
+      )
+
   defp dispatch(:freeze_measured, options) do
     bytes = read!(options[:experiment])
 
@@ -794,7 +827,32 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
 
   defp scoring_context(options) do
     {:ok, verified} = EvaluationFreeze.verify(options[:freeze], options[:freeze_sha256])
-    require!(verified["manifest"]["version"] == 1, :measured_entry_required)
+
+    if verified["manifest"]["version"] == 2 do
+      require!(hash?(options[:audit_sha256]), :measured_audit_required)
+
+      {:ok, audit} =
+        IpseKnowledgeExample.EvaluationMeasuredExecution.audit(
+          options[:freeze],
+          options[:freeze_sha256]
+        )
+
+      require!(
+        audit["sha256"] == options[:audit_sha256] and
+          audit["prediction_sha256"] == options[:prediction_sha256],
+        :measured_audit_mismatch
+      )
+
+      require!(
+        Path.expand(options[:predictions]) ==
+          Path.join(verified["resolution"]["reports"], "predictions.jsonl") and
+          Path.expand(options[:data_manifest]) == verified["resolution"]["data_manifest"],
+        :measured_input_mismatch
+      )
+    else
+      require!(!Keyword.has_key?(options, :audit_sha256), :option_shape)
+    end
+
     plan = verified["plan"]
     :ok = checked(validate(plan))
     bytes = read!(options[:predictions], 67_108_864)
@@ -839,6 +897,306 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     )
 
     {plan, freeze, bytes}
+  end
+
+  @doc "Admit catalogs and initialized options without contacting a model service."
+  def catalog_admission(plan, paths, output) do
+    capture(fn ->
+      :ok = checked(validate(plan))
+      preflight!(plan, paths, output, false)
+      decode!(read!(Path.join(output, "preflight.json")))
+    end)
+  end
+
+  @doc "Verify input members and retain label-free projections and the complete schedule."
+  def prepare_inputs(plan, manifest_path, output) do
+    capture(fn ->
+      manifest = verify_dataset!(manifest_path, plan["data"])
+
+      effective =
+        if plan["as_of_ms"] == "manifest",
+          do: manifest["as_of_ms"] || fail!(:manifest_time),
+          else: plan["as_of_ms"]
+
+      directory = Path.dirname(manifest_path)
+      {:ok, corpus} = EvaluationInput.corpus(read!(Path.join(directory, plan["data"]["corpus"])))
+
+      queries =
+        project_queries(
+          Path.join(directory, plan["data"]["queries"]),
+          plan["data"]["split"],
+          output
+        )
+
+      {:ok, schedule} = schedule(plan, queries)
+
+      %{
+        "data_manifest" => manifest,
+        "documents" => corpus["documents"],
+        "queries" => queries,
+        "effective_as_of_ms" => effective,
+        "schedule" => schedule
+      }
+    end)
+  end
+
+  @doc "Perform a complete original cell, including independent Session and gateway closure."
+  def evaluate_cell(plan, cell, prepared, output, service_inventory) do
+    :ok = checked(validate(plan))
+    {:ok, derived} = schedule(plan, prepared["queries"])
+
+    require!(
+      Enum.at(derived["cells"], cell["ordinal"]) == cell and cell["original_project_count"] == 2,
+      :cell_schedule
+    )
+
+    variant = Enum.find(plan["variants"], &(&1["id"] == cell["variant"]))
+
+    documents =
+      Enum.filter(prepared["documents"], &(&1["project"] == cell["project"]))
+      |> Enum.sort_by(&{&1["source_id"], &1["generation"], to_string(&1["version"])})
+
+    queries = Enum.filter(prepared["queries"], &(&1["project"] == cell["project"]))
+    require!(Enum.map(queries, & &1["query_id"]) == cell["query_ids"], :cell_queries)
+    File.mkdir!(output)
+    File.chmod!(output, 0o700)
+
+    for name <-
+          ~w(execution.jsonl predictions.jsonl usage.jsonl request-resources.jsonl resources.jsonl memory-samples.jsonl timings.jsonl),
+        do: private_file!(Path.join(output, name), "")
+
+    write!(output, "service-inventory.json", service_inventory)
+    Process.put(:comparison_run, nil)
+    Process.put(:comparison_gateway, nil)
+    Process.put(:comparison_inventory, %{})
+    Process.put(:comparison_as_of_ms, prepared["effective_as_of_ms"])
+    Process.put(:comparison_runtime_launch, prepared["runtime_launch"])
+
+    sampler =
+      EvaluationResources.start(Path.join(output, "memory-samples.jsonl"), plan["interval_ms"])
+
+    execution =
+      capture(fn ->
+        gateway =
+          if variant["prepare"] == "research" do
+            {:ok, gateway} = EvaluationGateway.start(plan["search_port"], cell["research_share"])
+            Process.put(:comparison_gateway, gateway)
+            gateway
+          end
+
+        run_variant(
+          plan,
+          variant,
+          prepared["artifact_paths"],
+          cell["project"],
+          documents,
+          queries,
+          2,
+          output,
+          gateway
+        )
+      end)
+
+    session =
+      capture(fn -> if run = Process.delete(:comparison_run), do: persist_close(output, run) end)
+
+    gateway =
+      capture(fn ->
+        if gateway = Process.delete(:comparison_gateway) do
+          try do
+            write!(output, "gateway-calls.json", EvaluationGateway.calls(gateway))
+            write!(output, "gateway-summary.json", EvaluationGateway.summary(gateway))
+          after
+            :ok = EvaluationGateway.stop(gateway)
+          end
+        end
+      end)
+
+    memory =
+      capture(fn ->
+        {:ok, report} = EvaluationResources.stop(sampler)
+        write!(output, "memory-summary.json", report)
+      end)
+
+    errors =
+      for {phase, {:error, error}} <- [
+            {"execution", execution},
+            {"session_cleanup", session},
+            {"gateway_cleanup", gateway},
+            {"sampler_cleanup", memory}
+          ],
+          do: Map.put(error, "phase", phase)
+
+    resources =
+      EvaluationResources.summary(
+        jsonl!(output, "predictions.jsonl"),
+        jsonl!(output, "timings.jsonl"),
+        jsonl!(output, "request-resources.jsonl"),
+        Enum.filter(jsonl!(output, "usage.jsonl"), &Map.has_key?(&1, "budget")),
+        jsonl!(output, "resources.jsonl")
+      )
+
+    complete =
+      errors == [] and resources["complete"] and resources["storage_reachability_complete"]
+
+    report = %{
+      "version" => 1,
+      "cell" => cell["id"],
+      "complete" => complete,
+      "errors" => errors,
+      "resources" => resources,
+      "prediction_sha256" => sha(File.read!(Path.join(output, "predictions.jsonl"))),
+      "files" => domain_files(output)
+    }
+
+    write!(output, "domain-result.json", report)
+
+    for key <- [
+          :comparison_run,
+          :comparison_gateway,
+          :comparison_inventory,
+          :comparison_policy,
+          :comparison_as_of_ms,
+          :comparison_runtime_launch
+        ],
+        do: Process.delete(key)
+
+    if complete, do: {:ok, report}, else: {:error, report}
+  end
+
+  @doc "Recheck the closed domain artifact after all owned work has exited."
+  def audit_cell(output, report) do
+    require!(report["files"] == domain_files(output), :domain_files_changed)
+    :ok
+  end
+
+  defp domain_files(output) do
+    paths = Path.wildcard(Path.join(output, "**/*"), match_dot: true)
+    require!(length(paths) <= 4096, :domain_file_limit)
+
+    paths
+    |> Enum.sort()
+    |> Enum.flat_map(fn path ->
+      case File.lstat!(path) do
+        %{type: :directory} ->
+          []
+
+        %{type: :regular, size: size} when size <= 67_108_864 ->
+          if path == Path.join(output, "domain-result.json"),
+            do: [],
+            else: [
+              %{
+                "path" => Path.relative_to(path, output),
+                "bytes" => size,
+                "sha256" => sha(File.read!(path))
+              }
+            ]
+
+        _ ->
+          fail!(:domain_file_type)
+      end
+    end)
+  end
+
+  @doc "Merge immutable first cell predictions and seal the original query grid."
+  def seal_predictions(plan, queries, cell_outputs, output, seal) do
+    require!(length(queries) == plan["data"]["expected_queries"], :query_count)
+
+    grid =
+      for variant <- plan["variants"],
+          query <- queries,
+          do: {variant["id"], query["query_id"], query["project"]}
+
+    rows =
+      Enum.flat_map(cell_outputs, fn path ->
+        if File.regular?(Path.join(path, "predictions.jsonl")),
+          do: jsonl!(path, "predictions.jsonl"),
+          else: []
+      end)
+
+    keys = Enum.map(rows, &{&1["variant"], &1["query_id"], &1["project"]})
+
+    require!(
+      length(Enum.uniq(keys)) == length(keys) and Enum.all?(keys, &(&1 in grid)),
+      :prediction_grid
+    )
+
+    if cell_outputs != [output] do
+      for name <-
+            ~w(predictions.jsonl execution.jsonl usage.jsonl request-resources.jsonl resources.jsonl timings.jsonl) do
+        bytes =
+          Enum.map(cell_outputs, fn path ->
+            case File.read(Path.join(path, name)) do
+              {:ok, bytes} -> bytes
+              {:error, :enoent} -> ""
+            end
+          end)
+
+        private_file!(Path.join(output, name), bytes)
+      end
+    end
+
+    for variant <- plan["variants"],
+        query <- queries,
+        {variant["id"], query["query_id"], query["project"]} not in keys,
+        do:
+          append!(
+            output,
+            "predictions.jsonl",
+            empty_prediction(plan, variant, query, "unavailable")
+          )
+
+    bytes = File.read!(Path.join(output, "predictions.jsonl"))
+    rows = jsonl!(output, "predictions.jsonl")
+    require!(length(rows) == length(grid), :missing_prediction)
+
+    resources =
+      EvaluationResources.summary(
+        rows,
+        jsonl!(output, "timings.jsonl"),
+        jsonl!(output, "request-resources.jsonl"),
+        Enum.filter(jsonl!(output, "usage.jsonl"), &Map.has_key?(&1, "budget")),
+        jsonl!(output, "resources.jsonl")
+      )
+
+    errors = (seal || %{})["errors"] || []
+
+    errors =
+      if resources["complete"],
+        do: errors,
+        else: errors ++ [%{"phase" => "resources", "code" => "measurement_incomplete"}]
+
+    errors =
+      if resources["storage_reachability_complete"],
+        do: errors,
+        else: errors ++ [%{"phase" => "storage", "code" => "inventory_incomplete"}]
+
+    write!(output, "resource-summary.json", resources)
+    write!(output, "execution-outcomes.json", %{"errors" => errors})
+
+    final = %{
+      "version" => 1,
+      "mode" => plan["mode"],
+      "prediction_sha256" => sha(bytes),
+      "freeze_sha256" => if(seal, do: seal["sha256"]),
+      "data_manifest_sha256" => plan["data"]["manifest_sha256"],
+      "variants" => Enum.map(plan["variants"], & &1["id"]),
+      "queries" => Enum.map(queries, &Map.take(&1, ~w(query_id project))),
+      "rows" => length(rows),
+      "failed_rows" => Enum.count(rows, &(&1["status"] != "ok")),
+      "execution_complete" => errors == [],
+      "errors" => errors,
+      "semantic_support" => "unmeasured",
+      "cost" =>
+        if(Enum.all?(resources["variants"], &(&1["money"]["status"] == "unpriced")),
+          do: "unpriced",
+          else: "see_resource_summary"
+        ),
+      "heldout_quality_complete" => false
+    }
+
+    write!(output, "finalized.json", final)
+    {:ok, final}
   end
 
   defp execute(plan, paths, documents, queries, output, seal) do
@@ -939,69 +1297,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
 
     errors = for {phase, {:error, error}} <- outcomes, do: Map.put(error, "phase", phase)
 
-    existing =
-      File.read!(Path.join(output, "predictions.jsonl"))
-      |> String.split("\n", trim: true)
-      |> Enum.map(&JSON.decode!/1)
-
-    saved_keys = MapSet.new(existing, &{&1["variant"], &1["query_id"]})
-
-    for variant <- plan["variants"],
-        query <- queries,
-        not MapSet.member?(saved_keys, {variant["id"], query["query_id"]}) do
-      append!(output, "predictions.jsonl", empty_prediction(plan, variant, query, "unavailable"))
-    end
-
-    bytes = File.read!(Path.join(output, "predictions.jsonl"))
-    rows = bytes |> String.split("\n", trim: true) |> Enum.map(&JSON.decode!/1)
-    require!(length(rows) == length(queries) * length(plan["variants"]), :missing_prediction)
-
-    resources =
-      EvaluationResources.summary(
-        rows,
-        jsonl!(output, "timings.jsonl"),
-        jsonl!(output, "request-resources.jsonl"),
-        Enum.filter(jsonl!(output, "usage.jsonl"), &Map.has_key?(&1, "budget")),
-        jsonl!(output, "resources.jsonl")
-      )
-
-    write!(output, "resource-summary.json", resources)
-
-    errors =
-      if resources["complete"],
-        do: errors,
-        else: errors ++ [%{"phase" => "resources", "code" => "measurement_incomplete"}]
-
-    errors =
-      if resources["storage_reachability_complete"],
-        do: errors,
-        else: errors ++ [%{"phase" => "storage", "code" => "inventory_incomplete"}]
-
-    write!(output, "execution-outcomes.json", %{"errors" => errors})
-
-    final = %{
-      "version" => 1,
-      "mode" => plan["mode"],
-      "prediction_sha256" => sha(bytes),
-      "freeze_sha256" => if(seal, do: seal["sha256"]),
-      "data_manifest_sha256" => plan["data"]["manifest_sha256"],
-      "variants" => Enum.map(plan["variants"], & &1["id"]),
-      "queries" => Enum.map(queries, &Map.take(&1, ~w(query_id project))),
-      "rows" => length(rows),
-      "failed_rows" => Enum.count(rows, &(&1["status"] != "ok")),
-      "execution_complete" => errors == [],
-      "errors" => errors,
-      "semantic_support" => "unmeasured",
-      "cost" =>
-        if(Enum.all?(resources["variants"], &(&1["money"]["status"] == "unpriced")),
-          do: "unpriced",
-          else: "see_resource_summary"
-        ),
-      "heldout_quality_complete" => false
-    }
-
-    write!(output, "finalized.json", final)
-    {:ok, final}
+    seal_predictions(plan, queries, [output], output, Map.put(seal || %{}, "errors", errors))
   end
 
   defp capture(fun) do
@@ -1086,7 +1382,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     {artifacts, runtime}
   end
 
-  defp preflight!(plan, paths, output) do
+  defp preflight!(plan, paths, output, inventory? \\ true) do
     root = Path.join(output, "preflight")
     File.mkdir!(root)
 
@@ -1137,8 +1433,13 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
         if kind == :ok, do: {:cont, {:ok, next}}, else: {:halt, {:error, next}}
       end)
 
-    inventory = if status == :ok, do: capture(fn -> inventory!(plan) end), else: nil
-    status = if status == :ok and not match?({:ok, _}, inventory), do: :error, else: status
+    inventory =
+      if status == :ok and inventory?, do: capture(fn -> inventory!(plan) end), else: nil
+
+    status =
+      if inventory? and status == :ok and not match?({:ok, _}, inventory),
+        do: :error,
+        else: status
 
     write!(output, "preflight.json", %{
       "status" => if(status == :ok, do: "ok", else: "failed"),
@@ -1179,7 +1480,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
       EvaluationResources.measure(
         output,
         %{"phase" => "source_authoring", "project" => project, "variant" => variant["id"]},
-        fn -> author!(documents, variant, plan["as_of_ms"], output, project) end
+        fn -> author!(documents, variant, effective_time(plan), output, project) end
       )
 
     scope_runtime =
@@ -1248,7 +1549,8 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
 
         if gateway != nil and variant["prepare"] == "research",
           do:
-            :ok = EvaluationGateway.select(gateway, current_documents(prepared, plan["as_of_ms"]))
+            :ok =
+              EvaluationGateway.select(gateway, current_documents(prepared, effective_time(plan)))
 
         resource(output, run, "after_preparation")
 
@@ -1465,7 +1767,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
         end)
       end)
 
-    eligible = current_documents(prepared, Process.get(:comparison_policy).plan["as_of_ms"])
+    eligible = current_documents(prepared, effective_time(Process.get(:comparison_policy).plan))
     eligible_keys = MapSet.new(eligible, & &1["key"])
 
     Enum.each(prepared, fn doc ->
@@ -1535,7 +1837,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     Process.put(:comparison_policy, %{policy | active: query, answer: nil})
     verb = if variant["prepare"] == "research", do: "research", else: "query"
     args = Map.put(variant["query_options"], "query", query["query"])
-    args = Map.put(args, "as_of_ms", plan["as_of_ms"])
+    args = Map.put(args, "as_of_ms", effective_time(plan))
     {run, receipt} = invoke(run, verb, args, output)
     value = if receipt, do: receipt["value"] || %{}, else: %{}
     evidence = value["evidence"] || []
@@ -1567,7 +1869,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     }
 
     if plan["answer"] and status == "ok" do
-      case EvaluationAnswer.prepare(query["query"], plan["as_of_ms"], evidence) do
+      case EvaluationAnswer.prepare(query["query"], effective_time(plan), evidence) do
         {:ok, bundle} ->
           Process.put(:comparison_policy, %{
             Process.get(:comparison_policy)
@@ -1893,7 +2195,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
 
             chunks =
               Enum.flat_map(
-                current_documents(policy.prepared, policy.plan["as_of_ms"]),
+                current_documents(policy.prepared, effective_time(policy.plan)),
                 & &1["chunks"]
               )
 
@@ -2022,22 +2324,17 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     expression =
       "rows = JSON.decode!(File.read!(hd(System.argv()))); result = IpseKnowledgeExample.EvaluationAuthor.prepare(rows); File.write!(Enum.at(System.argv(), 1), JSON.encode!(result), [:exclusive])"
 
-    {_, status} =
-      System.cmd(
-        System.find_executable("elixir"),
+    {command, arguments} =
+      child_command(
         [
-          "-r",
           Path.expand("../../extensions/knowledge/src/evidence.ex", __DIR__),
-          "-r",
-          Path.join(__DIR__, "evaluation_author.exs"),
-          "-e",
-          expression,
-          "--",
-          input,
-          result
+          Path.join(__DIR__, "evaluation_author.exs")
         ],
-        stderr_to_stdout: true
+        expression,
+        [input, result]
       )
+
+    {_, status} = System.cmd(command, arguments, stderr_to_stdout: true)
 
     require!(status == 0, :source_authoring)
     authored = JSON.decode!(read!(result, 4_194_304))
@@ -2055,6 +2352,23 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     entry["options"]["stores"][variant["prepare_options"]["store"]]
   end
 
+  defp child_command(requires, expression, arguments) do
+    if launch = Process.get(:comparison_runtime_launch) do
+      IpseKnowledgeExample.EvaluationMeasuredExecution.command(
+        launch,
+        requires,
+        expression,
+        arguments
+      )
+    else
+      {System.find_executable("elixir"),
+       ["-pa", Application.app_dir(:ipse, "ebin"), "-pa", Application.app_dir(:jason, "ebin")] ++
+         Enum.flat_map(requires, &["-r", &1]) ++ ["-e", expression, "--"] ++ arguments}
+    end
+  end
+
+  defp effective_time(plan), do: Process.get(:comparison_as_of_ms, plan["as_of_ms"])
+
   defp current_documents(documents, at) do
     documents
     |> Enum.group_by(& &1["source"]["source_id"])
@@ -2071,25 +2385,14 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     expression =
       "{:ok, result} = IpseKnowledgeExample.EvaluationInput.queries(File.read!(hd(System.argv())), Enum.at(System.argv(), 1)); File.write!(Enum.at(System.argv(), 2), JSON.encode!(result), [:exclusive])"
 
-    {_, status} =
-      System.cmd(
-        System.find_executable("elixir"),
-        [
-          "-pa",
-          Application.app_dir(:ipse, "ebin"),
-          "-pa",
-          Application.app_dir(:jason, "ebin"),
-          "-r",
-          Path.join(__DIR__, "evaluation_input.exs"),
-          "-e",
-          expression,
-          "--",
-          Path.expand(path),
-          split,
-          result
-        ],
-        stderr_to_stdout: true
-      )
+    {command, arguments} =
+      child_command([Path.join(__DIR__, "evaluation_input.exs")], expression, [
+        Path.expand(path),
+        split,
+        result
+      ])
+
+    {_, status} = System.cmd(command, arguments, stderr_to_stdout: true)
 
     require!(status == 0, :query_projection)
     decode!(read!(result))["queries"]
@@ -2190,7 +2493,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     if map_size(plan["models"]) == 0 do
       %{"models" => [], "inference_requests" => 0}
     else
-      origin = "http://127.0.0.1:11434"
+      origin = model_origin!(plan)
       request = Finch.build(:get, origin <> "/api/tags")
       {:ok, 200, bytes} = Ipse.HTTPProfile.bounded_request(request, 1_048_576, 10_000)
       tags = decode!(bytes)["models"]
@@ -2395,7 +2698,8 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
                          Path.join(run.directory, "home/extensions/artifacts"),
                          digest,
                          store["partition"],
-                         output
+                         output,
+                         Process.get(:comparison_runtime_launch)
                        ) do
                     {:ok, report} -> report
                     {:error, _} -> %{"status" => "unavailable"}

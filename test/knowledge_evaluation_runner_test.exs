@@ -1212,9 +1212,8 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
     end
   end
 
-  test "CLI freezes copied selections, verifies execution and creates an unmeasured blind review",
-       ctx do
-    {paths, root, manifest, sealed, frozen} = cli_frozen_inputs(ctx)
+  test "CLI freezes copied selections and verifies complete execution", ctx do
+    {_paths, root, manifest, _sealed, frozen} = cli_frozen_inputs(ctx, :cli)
     output = Path.join(root, "frozen-results")
 
     {summary, 0} =
@@ -1226,10 +1225,18 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
     assert summary["result"]["rows"] == 2
     assert summary["result"]["failed_rows"] == 0
     assert summary["result"]["execution_complete"]
+    assert File.regular?(Path.join(output, "predictions.jsonl"))
+  end
+
+  test "CLI creates a private blind review and reports unmeasured support", ctx do
+    {paths, root, manifest, sealed, frozen} = cli_frozen_inputs(ctx, :predictions)
+    output = Path.join(root, "frozen-results")
+    prediction = sealed["prediction"]
+    assert prediction["execution_complete"] and prediction["failed_rows"] == 0
 
     packet_path = Path.join(root, "blind-review")
     prediction_path = Path.join(output, "predictions.jsonl")
-    prediction_hash = summary["result"]["prediction_sha256"]
+    prediction_hash = prediction["prediction_sha256"]
 
     review_args =
       ["--phase", "review"] ++
@@ -1262,10 +1269,6 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
              Path.wildcard(Path.join(packet_path, "*")),
              &(Bitwise.band(File.stat!(&1).mode, 0o777) == 0o600)
            )
-
-    {rejected, 1} = cli(review_args)
-    assert rejected["reason"]["code"] == "output_exists"
-    assert File.read!(Path.join(packet_path, "manifest.json")) == manifest_bytes
 
     review_path = Path.join(root, "unmeasured-reviews.json")
 
@@ -1300,6 +1303,33 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
 
     assert unmeasured["result"]["gates"]["support"]["status"] == "unmeasured"
     assert File.regular?(Path.join(root, "unmeasured-scores/scores.json"))
+  end
+
+  test "CLI refuses an existing review output without replacing its manifest", ctx do
+    {_paths, root, manifest, sealed, frozen} = cli_frozen_inputs(ctx, :predictions)
+    packet_path = Path.join(root, "existing-review")
+    File.mkdir!(packet_path)
+    manifest_bytes = JSON.encode!(%{"retained" => "original review output"})
+    File.write!(Path.join(packet_path, "manifest.json"), manifest_bytes)
+
+    {rejected, 1} =
+      cli(
+        ["--phase", "review"] ++
+          frozen ++
+          [
+            "--data-manifest",
+            manifest,
+            "--predictions",
+            Path.join(root, "frozen-results/predictions.jsonl"),
+            "--prediction-sha256",
+            sealed["prediction"]["prediction_sha256"],
+            "--output",
+            packet_path
+          ]
+      )
+
+    assert rejected["reason"]["code"] == "output_exists"
+    assert File.read!(Path.join(packet_path, "manifest.json")) == manifest_bytes
   end
 
   test "CLI refuses mode changes and verifies prediction hashes before labels or review inputs",
@@ -1373,7 +1403,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
     assert rejected["reason"]["code"] == "execution_mode"
   end
 
-  defp cli_frozen_inputs(ctx) do
+  defp cli_frozen_inputs(ctx, prepare \\ :seal) do
     {paths, root} = cli_inputs(ctx, false)
     label_input = JSON.decode!(File.read!(paths["queries"]))
 
@@ -1428,15 +1458,63 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
 
     File.write!(paths["plan"], JSON.encode!(declared))
 
-    {sealed, 0} =
-      cli(
-        ["--phase", "freeze", "--plan", paths["plan"], "--output", Path.join(root, "seal")],
-        repository
-      )
+    sealed =
+      case prepare do
+        :cli ->
+          {sealed, 0} =
+            cli(
+              ["--phase", "freeze", "--plan", paths["plan"], "--output", Path.join(root, "seal")],
+              repository
+            )
+
+          sealed
+
+        mode when mode in [:seal, :predictions] ->
+          frozen_api_inputs(paths["plan"], root, manifest, repository, mode)
+      end
 
     assert sealed["status"] == "ok"
     frozen = ["--freeze", sealed["result"]["path"], "--freeze-sha256", sealed["result"]["sha256"]]
     {paths, root, manifest, sealed, frozen}
+  end
+
+  defp frozen_api_inputs(plan, root, manifest, repository, mode) do
+    code = """
+    [source, plan, seal_output, manifest, output, mode] = System.argv()
+    Code.require_file(source)
+    alias IpseKnowledgeExample.EvaluationRunner, as: Runner
+    {:ok, sealed} = Runner.run(:freeze, plan: plan, output: seal_output)
+    prediction =
+      if mode == "predictions" do
+        {:ok, prediction} = Runner.run(:verify_frozen,
+          freeze: sealed["path"], freeze_sha256: sealed["sha256"],
+          data_manifest: manifest, output: output)
+        prediction
+      end
+    IO.puts(JSON.encode!(%{"status" => "ok", "result" => sealed, "prediction" => prediction}))
+    """
+
+    {output, status} =
+      System.cmd(
+        System.find_executable("elixir"),
+        cli_code_paths() ++
+          [
+            "-e",
+            code,
+            "--",
+            Path.expand("examples/knowledge/evaluation_runner.exs"),
+            plan,
+            Path.join(root, "seal"),
+            manifest,
+            Path.join(root, "frozen-results"),
+            Atom.to_string(mode)
+          ],
+        stderr_to_stdout: true,
+        cd: repository
+      )
+
+    assert status == 0, output
+    output |> String.split("\n", trim: true) |> List.last() |> JSON.decode!()
   end
 
   defp cli_inputs(ctx, failed) do
@@ -1490,18 +1568,20 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
   end
 
   defp cli(arguments, cwd \\ File.cwd!()) do
-    paths = Path.wildcard(Path.join([Path.dirname(Application.app_dir(:ipse)), "*", "ebin"]))
-    code_paths = Enum.flat_map(paths, &["-pa", &1])
-
     {output, status} =
       System.cmd(
         System.find_executable("elixir"),
-        code_paths ++ [Path.expand("scripts/evaluate-knowledge.exs") | arguments],
+        cli_code_paths() ++ [Path.expand("scripts/evaluate-knowledge.exs") | arguments],
         stderr_to_stdout: true,
         cd: cwd
       )
 
     {output |> String.split("\n", trim: true) |> List.last() |> JSON.decode!(), status}
+  end
+
+  defp cli_code_paths do
+    paths = Path.wildcard(Path.join([Path.dirname(Application.app_dir(:ipse)), "*", "ebin"]))
+    Enum.flat_map(paths, &["-pa", &1])
   end
 
   test "variant declarations reject hidden fallback, mismatched stores and unselected model routes",

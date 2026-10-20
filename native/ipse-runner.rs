@@ -26,6 +26,9 @@ mod process_group;
 mod ipse_measure;
 #[path = "ipse-sequence.rs"]
 mod ipse_sequence;
+#[cfg(target_os = "linux")]
+#[path = "ipse-bound.rs"]
+mod ipse_bound;
 #[path = "ipse-file-copy.rs"]
 mod ipse_file_copy;
 use process_group::{signal_group, GroupGuard};
@@ -87,6 +90,10 @@ fn lock_file(path: &str) -> Result<(), String> {
 }
 fn run() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
+    #[cfg(target_os = "linux")]
+    if !args.get(1).is_some_and(|a| matches!(a.as_str(), "--measure-sequence" | "--measure-stage" | "--measure-cgroup")) {
+        ipse_bound::scrub_ordinary();
+    }
     if args.get(1).is_some_and(|arg| arg == "--copy-regular") { return ipse_file_copy::run(&args); }
     if args.len() == 2 && args[1] == "--measure-anchor" { return ipse_measure::anchor(); }
     if args.get(1).is_some_and(|arg| arg == "--measure-sequence") { return ipse_sequence::run(&args); }

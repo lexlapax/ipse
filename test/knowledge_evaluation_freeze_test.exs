@@ -1,4 +1,5 @@
 Code.require_file("../examples/knowledge/evaluation_freeze.exs", __DIR__)
+Code.require_file("support/frozen_model_selection.exs", __DIR__)
 
 defmodule Ipse.KnowledgeEvaluationFreezeTest do
   use ExUnit.Case, async: false
@@ -78,6 +79,16 @@ defmodule Ipse.KnowledgeEvaluationFreezeTest do
 
     assert File.read!(Path.join(copied, "ebin/Elixir.Independent.FrozenArtifact.beam")) ==
              "inert fixture bytes"
+  end
+
+  test "identity verification does not refresh the source Git index", ctx do
+    {:ok, sealed} = create(ctx)
+    source = Path.join(ctx.repository, "main.exs")
+    File.touch!(source, 1_000_000_000)
+    index = Path.join(ctx.repository, ".git/index")
+    original = File.read!(index)
+    assert {:ok, _} = Freeze.verify(sealed["path"], sealed["sha256"])
+    assert File.read!(index) == original
   end
 
   test "copied artifact tampering refuses even when its original still matches", ctx do
@@ -201,6 +212,9 @@ defmodule Ipse.KnowledgeEvaluationFreezeTest do
       | "model_origin" => "http://127.0.0.1:22112",
         "reports" => Path.join(ctx.root, "second-reports")
     }
+
+    second_resolution =
+      put_in(second_resolution, ["model_service", "origin"], second_resolution["model_origin"])
 
     assert {:ok, second} =
              Freeze.create_v2(relocated, experiment["bytes"], second_resolution, second_output)
@@ -405,6 +419,69 @@ defmodule Ipse.KnowledgeEvaluationFreezeTest do
     assert {:error, :runtime_changed} = Freeze.verify(sealed["path"], sealed["sha256"])
   end
 
+  test "the sealed model selection and local input path cannot drift or add a fallback", ctx do
+    {:ok, experiment} = declare(ctx)
+    selected = resolution(ctx)
+
+    assert {:error, :invalid_resolution} =
+             Freeze.resolve_plan(experiment["bytes"], Map.delete(selected, "model_service"))
+
+    assert {:error, :invalid_resolution} =
+             Freeze.resolve_plan(experiment["bytes"], Map.delete(selected, "data_manifest"))
+
+    assert {:error, :model_origin} =
+             Freeze.resolve_plan(
+               experiment["bytes"],
+               put_in(selected, ["model_service", "origin"], "http://127.0.0.1:22112")
+             )
+
+    changed_models = %{"fixture-other:latest" => String.duplicate("b", 64)}
+
+    assert {:error, :model_selection} =
+             Freeze.resolve_plan(
+               experiment["bytes"],
+               Map.put(
+                 selected,
+                 "model_service",
+                 FrozenModelSelection.configuration(
+                   changed_models,
+                   ctx.root,
+                   selected["model_origin"]
+                 )
+               )
+             )
+
+    assert {:error, :execution_limits} =
+             Freeze.resolve_plan(
+               experiment["bytes"],
+               put_in(selected, ["model_service", "limits", "lifetime_ms"], 86_400_000)
+             )
+
+    assert {:ok, _} = Freeze.resolve_plan(experiment["bytes"], selected)
+    refute File.exists?(selected["data_manifest"])
+    refute File.exists?(selected["model_service"]["cache_source"])
+    refute File.exists?(ctx.output)
+  end
+
+  test "v2 binds the actual ordered launcher and refuses a replacement registry", ctx do
+    {:ok, experiment} = declare(ctx)
+
+    {:ok, sealed} =
+      Freeze.create_v2(ctx.repository, experiment["bytes"], resolution(ctx), ctx.output)
+
+    {:ok, verified} = Freeze.verify(sealed["path"], sealed["sha256"])
+    {:ok, launch} = Freeze.runtime_launch()
+    assert verified["manifest"]["runtime"]["launch"] == launch
+    assert launch["code_paths"] == Enum.map(:code.get_path(), &(to_string(&1) |> Path.expand()))
+    assert Enum.any?(launch["files"], &(&1["path"] == launch["executable"]))
+    assert Enum.any?(launch["files"], &(&1["path"] == launch["boot"] <> ".boot"))
+    assert verified["manifest"]["launch_recipe"]["timeouts"]["root_ms"] < 86_400_000
+    File.rename!(sealed["attempt_registry"], sealed["attempt_registry"] <> "-retained")
+    File.mkdir!(sealed["attempt_registry"])
+    File.chmod!(sealed["attempt_registry"], 0o700)
+    assert {:error, :registry_changed} = Freeze.verify(sealed["path"], sealed["sha256"])
+  end
+
   defp plan_v2(ctx),
     do: %{
       "version" => 1,
@@ -421,12 +498,12 @@ defmodule Ipse.KnowledgeEvaluationFreezeTest do
       "profiles" => %{
         "answer" => %{
           "provider" => "ollama",
-          "model" => "fixture-answer",
+          "model" => "fixture-answer:latest",
           "base_url" => "http://127.0.0.1:21434"
         }
       },
       "embedding_profiles" => %{},
-      "models" => %{},
+      "models" => %{"fixture-answer:latest" => String.duplicate("a", 64)},
       "variants" => [],
       "answer" => true,
       "interval_ms" => 100,
@@ -443,7 +520,14 @@ defmodule Ipse.KnowledgeEvaluationFreezeTest do
       "artifacts" => %{"fixture" => ctx.artifact},
       "model_origin" => "http://127.0.0.1:22111",
       "search_port" => 22110,
-      "reports" => Path.join(ctx.root, "reports")
+      "reports" => Path.join(ctx.root, "reports"),
+      "data_manifest" => Path.join(ctx.root, "unopened-dataset/manifest.json"),
+      "model_service" =>
+        FrozenModelSelection.configuration(
+          plan_v2(ctx)["models"],
+          ctx.root,
+          "http://127.0.0.1:22111"
+        )
     }
 
   defp create(ctx),

@@ -7,6 +7,7 @@ preserved pre-rewrite chapters. Their dated bodies and verdicts are unchanged.
 
 | Snapshot | Provenance | Current guidance and retained records |
 | --- | --- | --- |
+| [2026-10-19 measured knowledge integration](2026-10-19-p27-measured-integration/index.md) | Increment after `2c2ffd7`; whole-population authority and audit, preserved prior contributor chapter, synthetic failures and verification | [Knowledge evaluation training](../developer/knowledge-evaluation.md), [plan](../plan.md) |
 | [2026-10-19 P26 external review and remediation](2026-10-19-p26-remediation/index.md) | External review of `10b9dd6`; scoped visibility, restore, missing-source and admission repairs | [Memory manual](../operator/memory.md), [memory training](../developer/memory.md), [plan](../plan.md) |
 | [2026-10-19 independent knowledge packages](2026-10-19-p27-knowledge-packages/index.md) | Domain increment after `66de1f8`; independent artifacts, causal Research repairs and synthetic Session/installed proofs | [Corpus](../operator/corpus.md), [Graph](../operator/graph.md), [Research extension](../operator/research-extensions.md), [knowledge training](../developer/knowledge-extensions.md), [plan](../plan.md) |
 | [2026-10-19 knowledge contributor manual](2026-10-19-knowledge-manual-rewrite/index.md) | Chapter from `66de1f8`, preserved before replacing generic design guidance with package training | [Knowledge training](../developer/knowledge-extensions.md), [source retrieval manual](../operator/corpus.md) |

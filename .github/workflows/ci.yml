@@ -28,6 +28,12 @@ jobs:
           "$RUNNER_TEMP/ipse-sequence-tests"
           rustc --edition=2021 --test -D warnings native/ipse-listener.rs -o "$RUNNER_TEMP/ipse-listener-tests"
           "$RUNNER_TEMP/ipse-listener-tests"
+          rustc --edition=2021 --test -D warnings native/ipse-runner.rs -o "$RUNNER_TEMP/ipse-runner-tests"
+          "$RUNNER_TEMP/ipse-runner-tests" bound_environment_excludes_manager_state_and_keeps_only_selected_values
+      - name: Native bound authority controls
+        run: |
+          rustc --edition=2021 --test -D warnings native/ipse-bound.rs -o "$RUNNER_TEMP/ipse-bound-tests"
+          "$RUNNER_TEMP/ipse-bound-tests"
       - name: Native regular-file copy controls
         run: |
           rustc --edition=2021 --test -D warnings native/ipse-file-copy.rs -o "$RUNNER_TEMP/ipse-file-copy-tests"

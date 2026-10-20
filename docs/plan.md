@@ -494,14 +494,23 @@ The [portable experiment foundation](archive/2026-10-19-p27-knowledge-packages/p
 separates content-based declarations from fresh local execution seals and derives
 the complete fourteen-cell schedule with fixed original allowances. These inert
 identity operations do not claim attempts or start measured work. Version-two
-seals refuse the old prediction/review paths until complete measured integration
-is available.
+seals refuse legacy prediction entry points. The measured entry owns complete
+execution; v2 review and scoring additionally require a retained post-exit audit
+digest before label access.
 The [owned model-service component](archive/2026-10-19-p27-knowledge-packages/owned-model-service.md)
 adds fresh private runtime/cache copies, listener admission before HTTP, one
 guarded full-work callback and separate service/cleanup outcomes. Its synthetic
-Linux source and installed controls pass. Binding that selection to the execution
-seal and complete measured cells, actual selected-runtime CPU proof and the real
-comparison remain open.
+Linux source and installed controls pass. The
+[complete measured integration](archive/2026-10-19-p27-measured-integration/index.md)
+binds that selection, input location, permanent native authority and finite
+deadlines into a fresh seal. It runs preparation, fourteen complete cells and
+finalization under the whole-population counter, then audits first predictions,
+accounting and distinct peak subjects before admitting labels. Complete synthetic
+source and installed 350-row exercises and five integrated loss controls pass;
+macOS passes 1,294 source and 30 native tests, and Linux passes 1,333 tests with
+native sandbox enforcement enabled. Package, installed, demo and manual checks
+pass locally. A new exact-source hosted result remains required. Actual selected
+runtime CPU proof and the real comparison remain open.
 The inherited combined-fixture timeout is repaired with independent
 test units and unchanged deadlines/assertions; the exact-source `25f1d8e`
 [hosted matrix](https://github.com/lexlapax/ipse/actions/runs/39309132023)

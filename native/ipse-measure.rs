@@ -248,18 +248,27 @@ mod linux {
         CString::new(bytes).map_err(|_| "NUL in launch argument".into())
     }
 
-    fn launch(scope: &Scope, command: &[String], root: &Path, anchor_lease: i32) -> Result<(i32, File), String> {
+    fn environment_key(key: &[u8], bound: bool, cell: bool) -> bool {
+        if !bound {
+            return !matches!(key, b"IPSE_MEASURE_ROOT" | b"OPENAI_API_KEY" | b"ANTHROPIC_API_KEY" | b"IPSE_CHATGPT_ACCESS_TOKEN");
+        }
+        if crate::ipse_bound::is_bound_key(key) { return false; }
+        matches!(key, b"PATH" | b"LANG" | b"HOME" | b"TMPDIR")
+            || (cell && matches!(key, b"IPSE_BOUND_STAGE_INDEX" | b"IPSE_BOUND_STAGE_TOKEN"))
+    }
+
+    fn launch(scope: &Scope, command: &[String], root: &Path, anchor_lease: i32, transfer: Option<&crate::ipse_bound::Transfer>, cell: bool) -> Result<(i32, File), String> {
         let args = command.iter().map(|s| cstring(s.as_bytes())).collect::<Result<Vec<_>, _>>()?;
         let mut argv = args.iter().map(|s| s.as_ptr()).collect::<Vec<_>>();
         argv.push(std::ptr::null());
-        let mut environment = env::vars_os().filter(|(key, _)| {
-            !matches!(key.as_bytes(), b"IPSE_MEASURE_ROOT" | b"OPENAI_API_KEY" |
-                b"ANTHROPIC_API_KEY" | b"IPSE_CHATGPT_ACCESS_TOKEN")
-        }).map(|(key, value)| {
+        let mut environment = env::vars_os().filter(|(key, _)| environment_key(key.as_bytes(), transfer.is_some(), cell)).map(|(key, value)| {
             let mut item = key.as_bytes().to_vec(); item.push(b'='); item.extend(value.as_bytes()); cstring(&item)
         }).collect::<Result<Vec<_>, _>>()?;
         let mut root_env = b"IPSE_MEASURE_ROOT=".to_vec(); root_env.extend(root.as_os_str().as_bytes());
         environment.push(cstring(&root_env)?);
+        if let Some(transfer) = transfer {
+            for (key, value) in transfer.environment() { environment.push(cstring(format!("{key}={value}").as_bytes())?); }
+        }
         let mut envp = environment.iter().map(|s| s.as_ptr()).collect::<Vec<_>>(); envp.push(std::ptr::null());
         let null = File::open("/dev/null").map_err(failure)?;
         let mut fds = [-1_i32; 2];
@@ -274,6 +283,7 @@ mod linux {
             unsafe {
                 if close(anchor_lease) < 0 || signal(13, 0) == usize::MAX || signal(17, 0) == usize::MAX { _exit(126); }
                 if dup2(null.as_raw_fd(), 0) < 0 || dup2(write.as_raw_fd(), 1) < 0 || dup2(write.as_raw_fd(), 2) < 0 { _exit(126); }
+                if transfer.is_some_and(|t| !t.install()) { _exit(126); }
                 execve(args[0].as_ptr(), argv.as_ptr(), envp.as_ptr());
                 _exit(127);
             }
@@ -282,17 +292,21 @@ mod linux {
         Ok((pid as i32, read))
     }
 
-    fn parent(role: &str, id: &str) -> Result<(PathBuf, Option<File>), String> {
+    fn root_admission(id: &str) -> Result<(PathBuf, File), String> {
         let current = own_membership()?;
+        if current.file_name().and_then(|s| s.to_str()) != Some(&format!("ipse-measure-{id}.service")) {
+            return Err("root collector requires its dedicated delegated user service".into());
+        }
+        let root = directory(&current)?;
+        let members = read_text(&mut control(&root, "cgroup.procs", false)?)?;
+        if members.trim() != std::process::id().to_string() {
+            return Err("measurement service is not exclusively owned".into());
+        }
+        Ok((current, root))
+    }
+    fn parent(role: &str, id: &str) -> Result<(PathBuf, Option<File>), String> {
         if role == "root" {
-            if current.file_name().and_then(|s| s.to_str()) != Some(&format!("ipse-measure-{id}.service")) {
-                return Err("root collector requires its dedicated delegated user service".into());
-            }
-            let root = directory(&current)?;
-            let members = read_text(&mut control(&root, "cgroup.procs", false)?)?;
-            if members.trim() != std::process::id().to_string() {
-                return Err("measurement service is not exclusively owned".into());
-            }
+            let (current, root) = root_admission(id)?;
             let collector = current.join(format!("collector-{id}"));
             fs::create_dir(&collector).map_err(failure)?;
             let collector = directory(&collector)?;
@@ -300,6 +314,7 @@ mod linux {
             control(&root, "cgroup.subtree_control", true)?.write_all(b"+memory").map_err(failure)?;
             Ok((current, None))
         } else {
+            let current = own_membership()?;
             let parent = PathBuf::from(env::var_os("IPSE_MEASURE_ROOT").ok_or("missing parent measurement scope")?);
             let name = parent.file_name().and_then(|s| s.to_str()).ok_or("invalid parent scope")?;
             if !name.strip_prefix("ipse-run-").is_some_and(token)
@@ -315,20 +330,36 @@ mod linux {
     }
 
     pub fn run(args: &[String], stage_status: bool) -> Result<(), String> {
-        if args.len() < 8 || args[6] != "--" || !matches!(args[2].as_str(), "root" | "cell")
-            || !token(&args[3]) || !Path::new(&args[7]).is_absolute()
-            || args.len() > 128 || args.iter().map(String::len).sum::<usize>() > 65_536 {
+        let bound_flag = args.get(6).is_some_and(|s| s == "--bound-root");
+        let separator = if bound_flag { 8 } else { 6 };
+        if args.len() < separator + 2 || args[separator] != "--" || !matches!(args[2].as_str(), "root" | "cell")
+            || !token(&args[3]) || !Path::new(&args[separator + 1]).is_absolute()
+            || (bound_flag && (args[2] != "root" || stage_status))
+            || args.len() > if bound_flag { 130 } else { 128 } || args.iter().map(String::len).sum::<usize>() > 65_536 {
             return Err("usage: --measure-cgroup root|cell TOKEN TIMEOUT_MS OUTPUT -- ABSOLUTE_COMMAND ARGS".into());
         }
         let role = &args[2]; let id = &args[3];
         if unsafe { signal(17, 0) } == usize::MAX { return Err("cannot retain measurement children".into()); }
         let timeout: u64 = args[4].parse().map_err(|_| "invalid measurement timeout")?;
         if !(1..=86_400_000).contains(&timeout) { return Err("invalid measurement timeout".into()); }
-        let output = PathBuf::from(&args[5]);
+        let named_output = PathBuf::from(&args[5]);
+        let mut output = named_output.clone();
         if !output.is_absolute() { return Err("measurement output must be absolute".into()); }
         if owner_closed()? { return Err("measurement owner closed before admission".into()); }
+        if bound_flag { root_admission(id)?; }
+        let bound = if bound_flag {
+            Some(crate::ipse_bound::Bound::create(Path::new(&args[7]), &output, &args[separator + 1..])?)
+        } else { crate::ipse_bound::Bound::inherited()? };
+        if let Some(bound) = &bound {
+            bound.check()?;
+            if !bound_flag {
+                if role != "cell" || env::var("IPSE_BOUND_STAGE_TOKEN").ok().as_deref() != Some(id) { return Err("invalid bound stage admission".into()); }
+                bound.current(true)?; bound.stage(args)?;
+            }
+            output = bound.anchor(&named_output)?;
+        }
         let (parent, mut interval) = parent(role, id)?;
-        fs::DirBuilder::new().mode(0o700).create(&output).map_err(failure)?;
+        if !bound_flag { fs::DirBuilder::new().mode(0o700).create(&output).map_err(failure)?; }
         let name = format!("{}-{id}", if role == "root" { "ipse-run" } else { "cell" });
         let scope = Scope::create(&parent, &name)?;
         let mut lease = Lease { scope, pid: None, anchor: None };
@@ -342,8 +373,11 @@ mod linux {
             Some(Scope::create(&lease.scope.path, "application")?)
         } else { None };
         if owner_closed()? { return Err("measurement owner closed before launch".into()); }
-        let (pid, mut child_output) = launch(workload.as_ref().unwrap_or(&lease.scope), &args[7..], &root,
-            lease.anchor.as_ref().unwrap().lease_fd())?;
+        let whole = if bound.is_some() && role == "cell" { Some(directory(&root)?) } else { None };
+        let transfer = bound.as_ref().map(|b| b.transfer(whole.as_ref().unwrap_or(&lease.scope.directory),
+            &workload.as_ref().unwrap_or(&lease.scope).directory)).transpose()?;
+        let (pid, mut child_output) = launch(workload.as_ref().unwrap_or(&lease.scope), &args[separator + 1..], &root,
+            lease.anchor.as_ref().unwrap().lease_fd(), transfer.as_ref(), role == "cell")?;
         lease.pid = Some(pid);
         let mut log = OpenOptions::new().write(true).create_new(true).mode(0o600)
             .open(output.join("process.log")).map_err(failure)?;
@@ -352,6 +386,9 @@ mod linux {
         let mut stopped_at = None; let mut cleanup = false; let mut output_open = true;
         let mut log_truncated = false;
         loop {
+            if stopped_at.is_none() && bound.as_ref().is_some_and(|b| b.check().is_err()) {
+                reason = "authority_lost"; lease.scope.kill()?; stopped_at = Some(Instant::now());
+            }
             if stopped_at.is_none() && owner_closed()? {
                 reason = "owner_closed"; lease.scope.kill()?; stopped_at = Some(Instant::now());
             }
@@ -415,6 +452,28 @@ mod linux {
     }
 
     use std::os::unix::fs::DirBuilderExt;
+
+    #[cfg(test)]
+    mod tests {
+        use super::environment_key;
+        #[test]
+        fn bound_environment_excludes_manager_state_and_keeps_only_selected_values() {
+            for key in [b"PATH".as_slice(), b"LANG", b"HOME", b"TMPDIR"] {
+                assert!(environment_key(key, true, false)); assert!(environment_key(key, true, true));
+            }
+            for key in [b"DBUS_SESSION_BUS_ADDRESS".as_slice(), b"XDG_RUNTIME_DIR", b"ERL_FLAGS", b"ERL_LIBS", b"RELEASE_ROOT", b"HTTP_PROXY", b"HTTPS_PROXY", b"OPENAI_API_KEY", b"ANTHROPIC_API_KEY", b"IPSE_CHATGPT_ACCESS_TOKEN", b"IPSE_MEASURE_ROOT", b"IPSE_BOUND_ROOT_FD", b"UNDECLARED"] {
+                assert!(!environment_key(key, true, false)); assert!(!environment_key(key, true, true));
+            }
+            for key in [b"IPSE_BOUND_STAGE_INDEX".as_slice(), b"IPSE_BOUND_STAGE_TOKEN"] {
+                assert!(!environment_key(key, true, false)); assert!(environment_key(key, true, true));
+            }
+            assert!(environment_key(b"ERL_FLAGS", false, false));
+            assert!(environment_key(b"DBUS_SESSION_BUS_ADDRESS", false, false));
+            assert!(environment_key(b"IPSE_BOUND_ROOT_FD", false, false));
+            assert!(!environment_key(b"OPENAI_API_KEY", false, false));
+            assert!(!environment_key(b"IPSE_MEASURE_ROOT", false, false));
+        }
+    }
 }
 
 pub fn run(args: &[String]) -> Result<(), String> {

@@ -2,6 +2,7 @@ defmodule IpseKnowledgeExample.EvaluationInventory do
   @moduledoc "Read-only State metadata audit in a separately loaded, verified domain artifact."
   import Bitwise
   alias Ipse.Extensions.{Manifest, Registry, State}
+  @compile {:no_warn_undefined, IpseKnowledgeExample.EvaluationMeasuredExecution}
   @bytes 1_048_576
 
   @doc "Exact project-scope deletions after all roots in a verified partition are suppressed."
@@ -70,7 +71,10 @@ defmodule IpseKnowledgeExample.EvaluationInventory do
     _ -> {:error, :inventory_unavailable}
   end
 
-  def snapshot(path, store, digest, partition, output) do
+  def snapshot(path, store, digest, partition, output),
+    do: snapshot(path, store, digest, partition, output, nil)
+
+  def snapshot(path, store, digest, partition, output, launch) do
     true = :code.is_loaded(IpseKnowledge.Store) == false
     {:ok, artifact} = Registry.lookup(store, digest)
 
@@ -114,26 +118,46 @@ defmodule IpseKnowledgeExample.EvaluationInventory do
         end
         '''
 
-        {_, 0} =
-          System.cmd(
-            System.find_executable("elixir") || raise("Elixir unavailable"),
-            [
-              "--erl",
-              "+S 2:2",
-              "-pa",
-              Application.app_dir(:ipse, "ebin"),
-              "-pa",
-              Application.app_dir(:jason, "ebin"),
-              "-pa",
-              Path.join(artifact.path, "ebin"),
-              "-e",
-              expression,
-              "--",
+        expression =
+          if launch,
+            do:
+              "Code.prepend_path(" <>
+                inspect(Path.join(artifact.path, "ebin")) <> "); " <> expression,
+            else: expression
+
+        {command, arguments} =
+          if launch do
+            IpseKnowledgeExample.EvaluationMeasuredExecution.command(launch, [], expression, [
               path,
               hash,
               partition,
               result
-            ],
+            ])
+          else
+            {System.find_executable("elixir") || raise("Elixir unavailable"),
+             [
+               "--erl",
+               "+S 2:2",
+               "-pa",
+               Application.app_dir(:ipse, "ebin"),
+               "-pa",
+               Application.app_dir(:jason, "ebin"),
+               "-pa",
+               Path.join(artifact.path, "ebin"),
+               "-e",
+               expression,
+               "--",
+               path,
+               hash,
+               partition,
+               result
+             ]}
+          end
+
+        {_, 0} =
+          System.cmd(
+            command,
+            arguments,
             stderr_to_stdout: true
           )
 

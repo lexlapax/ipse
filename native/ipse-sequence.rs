@@ -131,6 +131,10 @@ fn protocol(bytes: &[u8], receipt: &[u8]) -> Result<Status, String> {
 #[cfg(target_os = "linux")]
 mod linux {
     use super::*;
+    #[cfg(test)]
+    use super::super::test_bound as bound;
+    #[cfg(not(test))]
+    use crate::ipse_bound as bound;
     use std::os::fd::AsRawFd;
     use std::process::{Child, Command, Stdio};
     use std::time::{Duration, Instant};
@@ -154,7 +158,7 @@ mod linux {
         if !current.starts_with(&root) || current == root { return Err("sequence is outside measured application".into()); }
         Ok(())
     }
-    fn run_stage(root: &Path, index: usize, stage: &Stage) -> Result<Status, String> {
+    fn run_stage(root: &Path, index: usize, stage: &Stage, bound: Option<&bound::Bound>) -> Result<Status, String> {
         let executable = std::env::current_exe().map_err(|e| e.to_string())?;
         let executable_text = executable.to_str().ok_or("non-UTF8 sequence helper path")?;
         let mut args = vec!["--measure-stage".to_string(), "cell".into(), stage.token.clone(),
@@ -163,14 +167,20 @@ mod linux {
         if executable_text.len() + args.iter().map(String::len).sum::<usize>() > 65_536 {
             return Err("native sequence launch arguments exceed bound".into());
         }
+        if let Some(bound) = bound { bound.check()?; bound.current(true)?; bound.anchor(&stage.output)?; }
         save(root, &format!("stage-{index:03}.claim"), &claim(stage))?;
-        let mut owned = Owned { child: Command::new(executable)
-            .args(&args).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null())
-            .spawn().map_err(|e| format!("claimed stage launch failed: {e}"))? };
+        let mut command = Command::new(executable);
+        command.args(&args).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null());
+        if let Some(bound) = bound {
+            command.env("IPSE_BOUND_STAGE_INDEX", index.to_string()).env("IPSE_BOUND_STAGE_TOKEN", &stage.token);
+            bound.inherited_transfer()?.command(&mut command);
+        }
+        let mut owned = Owned { child: command.spawn().map_err(|e| format!("claimed stage launch failed: {e}"))? };
         let mut output = owned.child.stdout.take().unwrap();
         let mut bytes = Vec::new(); let mut eof = false; let mut status = None;
         let deadline = Instant::now() + Duration::from_millis(stage.timeout + 8000);
         let outcome = loop {
+            if bound.is_some_and(|b| b.check().is_err()) { break Err("bound sequence authority lost".into()); }
             if status.is_none() {
                 match owned.child.try_wait() {
                     Ok(value) => status = value,
@@ -200,7 +210,8 @@ mod linux {
         save(root, &format!("stage-{index:03}.protocol"), &bytes)?;
         outcome?;
         if !status.unwrap().success() { return Err("native stage collector exit unconfirmed".into()); }
-        let (receipt, identity) = descriptor(&stage.output.join("receipt.json"))?;
+        let receipt_path = bound.map(|b| b.anchor(&stage.output.join("receipt.json"))).transpose()?.unwrap_or(stage.output.join("receipt.json"));
+        let (receipt, identity) = descriptor(&receipt_path)?;
         save(root, &format!("stage-{index:03}.receipt"), &receipt)?;
         save(root, &format!("stage-{index:03}.receipt-identity"), identity.as_bytes())?;
         let result = protocol(&bytes, &receipt)?;
@@ -210,27 +221,41 @@ mod linux {
     }
     pub fn execute(path: &Path) -> Result<(), String> {
         admitted()?;
+        let mut bound = bound::Bound::inherited()?;
+        if let Some(bound) = &bound { bound.current(true)?; }
         if unsafe { signal(17, 0) } == usize::MAX { return Err("cannot retain sequence collectors".into()); }
         let (bytes, identity) = descriptor(path)?; let launch = bootstrap(&bytes)?;
+        if let Some(bound) = &bound {
+            if path != bound.authority.bootstrap || bytes != bound::read(&bound::fd_path(&bound.root).join("bootstrap.bin"))?
+                || launch.output != bound.authority.root.join("sequence") || launch.cells != bound.authority.root.join("prepared/cells.bin") {
+                return Err("bound sequence differs from first launch".into());
+            }
+            bound.anchor(&launch.preparation.output)?; bound.anchor(&launch.finalization.output)?;
+        }
         match fs::symlink_metadata(&launch.cells) {
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => (),
             _ => return Err("sequence cells descriptor is not fresh".into()),
         }
-        fs::DirBuilder::new().mode(0o700).create(&launch.output).map_err(|e| e.to_string())?;
-        File::open(launch.output.parent().ok_or("sequence output has no parent")?)
+        let output = bound.as_ref().map(|b| b.anchor(&launch.output)).transpose()?.unwrap_or(launch.output.clone());
+        fs::DirBuilder::new().mode(0o700).create(&output).map_err(|e| e.to_string())?;
+        File::open(output.parent().ok_or("sequence output has no parent")?)
             .and_then(|f| f.sync_all()).map_err(|e| e.to_string())?;
-        save(&launch.output, "bootstrap.bin", &bytes)?; save(&launch.output, "bootstrap.identity", identity.as_bytes())?;
-        let prep = run_stage(&launch.output, 0, &launch.preparation)?;
+        if let Some(bound) = bound.as_mut() { bound.set_sequence(bound::directory(&output)?); }
+        let output = bound.as_ref().map(|b| bound::fd_path(b.sequence.as_ref().unwrap())).unwrap_or(output);
+        save(&output, "bootstrap.bin", &bytes)?; save(&output, "bootstrap.identity", identity.as_bytes())?;
+        let prep = run_stage(&output, 0, &launch.preparation, bound.as_ref())?;
         if !prep.complete { return Err("sequence preparation failed".into()); }
-        let (bytes, identity) = descriptor(&launch.cells)?; let selected = cells(&bytes)?;
+        let cells_path = bound.as_ref().map(|b| b.anchor(&launch.cells)).transpose()?.unwrap_or(launch.cells.clone());
+        let (bytes, identity) = descriptor(&cells_path)?; let selected = cells(&bytes)?;
         let mut all = vec![launch.preparation.clone(), launch.finalization.clone()]; all.extend(selected.clone());
         distinct(&all, &launch.output)?;
-        save(&launch.output, "cells.bin", &bytes)?; save(&launch.output, "cells.identity", identity.as_bytes())?;
+        if let Some(bound) = &bound { for stage in &all { bound.anchor(&stage.output)?; } }
+        save(&output, "cells.bin", &bytes)?; save(&output, "cells.identity", identity.as_bytes())?;
         let mut completed = true;
-        for (index, stage) in selected.iter().enumerate() { completed &= run_stage(&launch.output, index + 1, stage)?.complete; }
-        completed &= run_stage(&launch.output, selected.len() + 1, &launch.finalization)?.complete;
+        for (index, stage) in selected.iter().enumerate() { completed &= run_stage(&output, index + 1, stage, bound.as_ref())?.complete; }
+        completed &= run_stage(&output, selected.len() + 1, &launch.finalization, bound.as_ref())?.complete;
         let summary = format!("{{\"version\":1,\"stages\":{},\"complete\":{completed},\"cleanup_confirmed\":true}}\n", selected.len() + 2);
-        save(&launch.output, "sequence.json", summary.as_bytes())?;
+        save(&output, "sequence.json", summary.as_bytes())?;
         if completed { Ok(()) } else { Err("sequence contains failed first stages".into()) }
     }
 }
@@ -338,3 +363,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
     #[cfg(target_os = "linux")] { implementation::run(args) }
     #[cfg(not(target_os = "linux"))] { let _ = args; Err("measured sequencing requires Linux cgroup-v2 support".into()) }
 }
+#[cfg(all(test, target_os = "linux"))]
+#[allow(dead_code)]
+#[path = "ipse-bound.rs"]
+mod test_bound;

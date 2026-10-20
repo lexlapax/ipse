@@ -371,7 +371,18 @@ defmodule IpseKnowledgeExample.Proof do
     end
   end
 
-  def independence(artifacts) do
+  @independence_cases for {kind, scope} <- [
+                            {"working", "session"},
+                            {"persistent", "project"},
+                            {"persistent", "operator"}
+                          ],
+                          package <- ~w(corpus graph research),
+                          do: {kind, scope, package}
+
+  @doc "Prove all nine memory/package combinations, or one complete combination."
+  def independence(artifacts, selected \\ :all) do
+    selected = if selected == :all, do: @independence_cases, else: [selected]
+    true = Enum.all?(selected, &(&1 in @independence_cases))
     {:ok, _} = Application.ensure_all_started(:ipse)
     unloaded!()
     root = Path.join(System.tmp_dir!(), "ipse-knowledge-independence-" <> Ipse.Usage.id())
@@ -381,12 +392,7 @@ defmodule IpseKnowledgeExample.Proof do
 
     try do
       cases =
-        for {kind, scope} <- [
-              {"working", "session"},
-              {"persistent", "project"},
-              {"persistent", "operator"}
-            ],
-            package <- ~w(corpus graph research) do
+        for {kind, scope, package} <- selected do
           label = scope <> "-" <> package
           home = Path.join(root, "home-" <> label)
           config = prepare(artifacts, package, root, true, home: home)
@@ -576,7 +582,7 @@ defmodule IpseKnowledgeExample.Proof do
       unloaded!()
 
       %{
-        "checks" => 10,
+        "checks" => length(cases) + 1,
         "cases" => cases,
         "catalog_bound_refused" => true,
         "catalog_refusal_calls" => refusal_calls,

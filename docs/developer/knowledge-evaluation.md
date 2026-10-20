@@ -1,47 +1,126 @@
 # Measure knowledge results without exposing labels
 
-Use this chapter to change the knowledge evaluation helpers and verify their
-failure behavior. You need a built source checkout and the Elixir toolchain.
-The exercises use synthetic data and local fixtures. The orchestration exercise
-starts loopback search and model-protocol fixtures; it uses no model weights or
-external service.
-For changing the packages themselves, start with
-[knowledge extension development](knowledge-extensions.md).
+Use this chapter to follow one complete knowledge comparison, change its owners,
+and diagnose a failed first execution. Start with a built, clean source checkout.
+The complete measured exercise needs Linux cgroup v2, delegated systemd user
+services and the toolchains listed in [dependencies](dependencies.md). The smaller
+Session, scoring and identity exercises also run without that optional backend.
+For package implementation, start with [knowledge extension development](knowledge-extensions.md).
 
 ## Follow the prediction and scoring boundary
 
-The evaluation helpers have separate owners. Keep their inputs separate:
+A comparison has two identities. The portable experiment binds source and artifact
+content, algorithms, model identities, prompts, budgets, dataset hashes and policy.
+A local execution seal adds paths, the current runtime and a fresh execution ID.
+One measured execution consumes that local identity. A later audit verifies its
+saved first predictions before review or scoring can open labels.
 
-| Owner | Implementation | Input and result |
+Follow these owners in execution order:
+
+| Owner | Implementation | Responsibility |
 | --- | --- | --- |
-| Plan | `examples/knowledge/evaluation_plan.exs` | Explicit artifacts, local profiles and seven budgets become the complete strategy matrix without opening inputs |
-| Declaration and freeze | `examples/knowledge/evaluation_freeze.exs` | Source and artifact content become a portable experiment; local bindings and runtime become a separate execution seal |
-| Dataset projection | `examples/knowledge/evaluation_input.exs` | Dataset bytes become separately validated corpus, label-free queries or scoring labels |
-| Orchestration | `examples/knowledge/evaluation_runner.exs` | A validated variant plan becomes public Session calls, first predictions and retained execution failures |
-| Owned model service | `examples/knowledge/evaluation_model_service.exs` | An explicit local runtime/cache selection becomes one private daemon lifetime and one guarded work callback |
-| Session driver | `examples/knowledge/evaluation_session.exs` | Explicit artifact/profile/budget selections and public commands become durable invocation receipts |
-| Answer preparation | `examples/knowledge/evaluation_answer.exs` | Saved ranked citations become a bounded request and an exact shown-span mapping |
-| Independent review preparation | `examples/knowledge/evaluation_review.exs` | A complete hashed prediction grid becomes blinded cases, literal checks and an unmeasured semantic template |
-| Scoring | `examples/knowledge/evaluation_score.exs`, `metrics.exs` | Hashed first predictions and independent labels/reviews become separate measurements |
+| Plan | `examples/knowledge/evaluation_plan.exs` | Build the explicit seven-strategy declaration without opening inputs |
+| Identity | `examples/knowledge/evaluation_freeze.exs` | Declare portable content and seal one closed local resolution |
+| Measured execution | `examples/knowledge/evaluation_measured_execution.exs` | Claim the native root, admit preparation/cells/finalization and audit their evidence |
+| Kernel population | `native/ipse-bound.rs`, `ipse-measure.rs`, `ipse-sequence.rs` | Retain directory/scope authority, launch work inside cgroups and record terminal receipts |
+| Domain execution | `examples/knowledge/evaluation_runner.exs` | Admit catalogs, project inputs, run complete cells and finalize first predictions |
+| Model lifetime | `examples/knowledge/evaluation_model_service.exs` | Copy a fresh runtime/cache, own one daemon and guard one complete cell callback |
+| Public Session | `examples/knowledge/evaluation_session.exs` | Invoke approved public commands and retain complete results and cleanup acknowledgments |
+| Input and answer projection | `evaluation_input.exs`, `evaluation_answer.exs` in the same directory | Keep labels outside predictor input and map shown answer spans back to complete evidence |
+| Inspection | `evaluation_inventory.exs`, `evaluation_resources.exs` | Verify storage reachability and reconcile canonical requests with conservative budget liability |
+| Review and score | `evaluation_review.exs`, `evaluation_score.exs`, `metrics.exs` | Blind saved predictions, inspect literal references and measure independent verdicts |
 
-The Session driver imports independent artifacts through ordinary host APIs.
-It does not load the production knowledge modules into the host or call a
-provider directly. Its caller supplies the approved configuration and validates
-each complete proposed action. A selected profile is a route, not permission
-to approve every request on that route.
+The Session driver imports artifacts through ordinary host APIs. It does not load
+production knowledge modules into the evaluator or call a provider directly.
+Its caller validates the complete proposed action. A selected profile names a
+route; it does not approve every request on that route.
 
-Use the driver's `abort` verb only after inspecting a retained draft. Supply the
-selected store, source ID, exact 32-character draft ID and current root revision.
-It calls the public source-abort command with its ordinary State/MCP approval;
-it neither invents a replacement draft nor retries inference. See the
-[Graph recovery procedure](../operator/graph.md#replace-suppress-and-recover-a-source).
+Keep labels and expected answers out of the driver, extension options and model
+inputs. Query projection produces only `query_id`, `project` and `query`. Save and
+hash all first predictions before review. A scorer can enforce its own loader
+order; it cannot prove that another caller has never read a label file.
 
-Before running predictions, record the source/artifact identities, algorithms,
-prompts, profile destinations, budgets, query order and time policy. Keep labels
-and expected answers out of the driver, extension options and model inputs.
-Finalize raw prediction files and their hashes before opening labels. A scorer
-can enforce the order of its own callbacks, but cannot prove that another caller
-has never opened those files.
+## Run a complete synthetic measured population
+
+Use this exercise to follow the integration before selecting real runtime or
+model files. It builds seven artifacts and uses a scripted Ollama-protocol daemon
+inside every measured cell. It loads no model weights and makes no quality claim.
+Run it from a clean repository on the supported optional Linux backend:
+
+```sh
+./scripts/build.sh
+IPSE_MEASURED_PROOF=$(mktemp -d)
+mix run scripts/verify-measured-knowledge.exs -- "$PWD" "$IPSE_MEASURED_PROOF/source"
+```
+
+A successful invocation reports `synthetic: true`, `model_quality_measured: false`,
+350 saved rows and complete execution/resource audit results. The workload has
+fifty queries, two projects and seven strategies. Its fourteen cells each own a
+fresh daemon and complete public-Session lifecycle. The driver checks selected
+model calls, exclusion markers, canonical request counts, unchanged read-only
+audit, first-attempt refusal and changed-evidence refusal. Its scoring controls
+exercise actual v2 CLI review, an unmeasured score exit and refusal before label
+or review input access. These are expected results to verify, not evidence that a
+particular source, host or package has passed.
+
+Inspect `$IPSE_MEASURED_PROOF/source/source/freeze`, the adjacent `reports`, and
+the adjacent `scoring-controls` directory. A failed command
+preserves its partial evidence. Read the first failed stage's `process.log`,
+`started.json`, terminal receipt and domain report together. Do not remove a claim
+or repeat model work against that seal. After diagnosing a synthetic failure,
+choose a new output directory for a separate exercise.
+
+To exercise a bundled runtime, use the artifacts built by the source exercise:
+
+```sh
+./scripts/package.sh
+set -- dist/ipse-*.tar.gz
+test "$#" -eq 1
+elixir scripts/verify-measured-knowledge-package.exs \
+  "$1" "$PWD" "$IPSE_MEASURED_PROOF/source/artifacts.json" \
+  "$IPSE_MEASURED_PROOF/installed"
+```
+
+The installed driver extracts the archive, retains its hash and runs the same
+synthetic population through bundled `ipse eval`. Its outer release process has
+no `elixir`, `elixirc`, `mix`, `rustc` or `cargo` on PATH. Child launch environments
+include selected runtime and system directories; that outer assertion is not a
+claim that development tools are unreachable everywhere. Artifact construction
+happens before the installed run. Source helpers remain explicitly loaded from
+the checkout, while BEAM/native execution uses the selected installed runtime.
+A successful installed exercise is protocol evidence for that archive and host.
+It does not establish real Ollama CPU execution, held-out quality or complete
+failure/loss coverage. Keep actual evidence in [dated records](../archive/index.md)
+and acceptance criteria in [the plan](../plan.md#p27-optional-research-graph-and-rag).
+
+### Exercise authority and loss before accepting an execution change
+
+Use the same prebuilt artifacts with a fresh output directory:
+
+```sh
+mix run scripts/verify-measured-authority.exs -- \
+  "$PWD" "$IPSE_MEASURED_PROOF/source/artifacts.json" \
+  "$IPSE_MEASURED_PROOF/authority"
+```
+
+This helper creates five separate synthetic seals. It observes the actual
+preparation VM's descriptors 4 through 8 and kernel membership before inducing
+owner loss, collector loss, an owned-service stop or registry replacement. The
+service-stop case also checks the ordinary native helper and daemon's complete
+descriptor inventories for leaked authority objects. The fifth seal selects a
+fixture that exits itself after recording its first answer request. Its failed
+service receipt, incomplete stage and first canonical request remain observable.
+
+Expect five retained control results, confirmed owned-scope cleanup and refused
+reentry. An absent live observation, missing cleanup or unexpected later claim
+fails the exercise and preserves `failure.json`. A missed timing boundary is
+not a passing capability check. The daemon-loss case permits later distinct
+cells only after confirmed cleanup; it never retries the interrupted request.
+Inspect its original journal and usage separately from process disappearance.
+This control does not manufacture full liability reconciliation when the domain
+report is unavailable. It starts only its own temporary services and stops only
+those named units. These controls need the optional Linux backend and establish
+no model quality.
 
 ## Declare the complete comparison
 
@@ -117,134 +196,254 @@ The CLI control generates two independent seeds, checks permissions, refuses an
 overwrite and verifies that nonexistent dataset/artifact paths stay unopened.
 The public-Session matrix uses this same builder with scripted profiles. A
 valid plan is preparation. The identity seal and executable preflight are
-separate checks. The measured identity exercise below does not run preflight
-or open held-out inputs.
+separate checks. Declaration and sealing do not run workers or open held-out inputs. Measured
+preparation performs executable catalog admission after native authority passes.
 
 ## Seal identities before opening inputs
 
-Choose the identity format for your task. A version-two experiment describes
-the comparison through content identities and policy. Its execution seal binds
-one local resolution. Version-one seals retain their existing fixture and
-prediction behavior.
+Use a version-two seal for the measured path. Version-one seals keep the fixture,
+tuning and frozen-prediction behavior described later in this chapter. Both
+formats require separately retained expected hashes and fixed source/runtime
+bytes. Git inspection uses `--no-optional-locks`, so verification does not refresh
+the source index as a side effect.
 
 ### Separate the experiment from its local execution
 
-Use the complete plan and seven artifacts prepared above. Keep the source
-checkout clean, including untracked files, and use fresh output paths. Declare
-the portable experiment:
+Use the complete plan and seven artifacts prepared above. Keep the checkout
+clean, including untracked files. Store receipts separately from authoritative
+freeze data and disposable reports:
 
 ```sh
+IPSE_RETAINED=$(mktemp -d)
 mix run scripts/evaluate-knowledge.exs -- --phase declare \
   --plan "$IPSE_BENCHMARK/plan.json" \
   --output "$IPSE_BENCHMARK/experiment.json" \
-  > "$IPSE_BENCHMARK/declaration-receipt.json"
-IPSE_EXPERIMENT_SHA256=$(elixir -e 'receipt = JSON.decode!(File.read!(hd(System.argv()))); IO.puts(receipt["result"]["sha256"])' "$IPSE_BENCHMARK/declaration-receipt.json")
-cat "$IPSE_BENCHMARK/declaration-receipt.json"
+  > "$IPSE_RETAINED/declaration.json"
+IPSE_EXPERIMENT_SHA256=$(elixir -e 'r = File.read!(hd(System.argv())) |> String.split("\n", trim: true) |> List.last() |> JSON.decode!(); IO.puts(r["result"]["sha256"])' "$IPSE_RETAINED/declaration.json")
 ```
 
-Expect `status: "ok"`, the experiment path, its SHA256 and the source commit.
-Retain the receipt and expected hash separately from the experiment bytes.
-`EvaluationFreeze.declare/3` records the clean commit, tree, tracked file hashes
-and inert artifact digests. It removes source/artifact paths, profile origins
-and the search port from the portable declaration. Model identities, prompts,
-budgets and dataset member identities remain part of the experiment. The
-declaration contains its private blind seed; keep it away from the independent
-reviewer.
+Expect `status: "ok"`, the experiment path/hash and the source commit.
+`EvaluationFreeze.declare/3` removes source/artifact paths, profile origins and
+the search port. The private blind seed remains part of the experiment. Keep
+that declaration away from the independent reviewer.
 
 The declared policy selects `linux_memcg_charged_peak_bytes_v1`, CPU-only model
-execution, fresh private cache inodes per cell and exactly two projects. The
-optional backend is `linux_cgroup_v2_v1`. Hostnames, architecture descriptions
-and tool versions do not become portable admission requirements. The kernel
-quantity is workload-charged RAM, including cache and kernel charges. It does
-not describe summed process RSS or device memory.
+execution, fresh private cache inodes per cell, two projects and the optional
+`linux_cgroup_v2_v1` backend. Local runtime/version provenance does not become a
+hostname or kernel-version allowlist. A local seal is not relocatable or renewable.
 
-Resolve the same experiment on the machine where you intend to run it. Write
-this closed four-field object, using absolute artifact and report paths:
+### Build the six local bindings
+
+A resolution contains exactly `artifacts`, `model_origin`, `search_port`, `reports`,
+`data_manifest` and `model_service`. The service selection is the existing closed
+`EvaluationModelService.validate/1` schema. Its origin and exact model map must
+match the resolved plan. The shared model port 11434 is forbidden; the search
+port must differ. Sealing proves neither port availability nor listener ownership.
+
+For an already authorized real comparison, select a reviewed local Ollama
+runtime distribution and existing model cache. The runtime directory below must
+contain `bin/ollama` and its complete `lib/ollama` files as regular files. The
+example hashes those runtime files. Model manifests/blobs stay unopened until
+cell staging. It downloads nothing and does not borrow a running service:
 
 ```sh
-cat > "$IPSE_BENCHMARK/resolution.json" <<EOF
-{
-  "artifacts": {
-    "answer": "$IPSE_BENCHMARK/artifacts/answer",
-    "dense": "$IPSE_BENCHMARK/artifacts/dense",
-    "explicit": "$IPSE_BENCHMARK/artifacts/explicit",
-    "lexical": "$IPSE_BENCHMARK/artifacts/lexical",
-    "model": "$IPSE_BENCHMARK/artifacts/model",
-    "research": "$IPSE_BENCHMARK/artifacts/research",
-    "semantic": "$IPSE_BENCHMARK/artifacts/semantic"
-  },
-  "model_origin": "http://127.0.0.1:47631",
-  "search_port": 47632,
-  "reports": "$IPSE_BENCHMARK/reports"
+export IPSE_BENCHMARK
+export IPSE_DATA_MANIFEST=/absolute/path/to/reviewed/dataset/manifest.json
+export IPSE_OLLAMA_RUNTIME=/absolute/path/to/reviewed/ollama-distribution
+export IPSE_OLLAMA_MODELS=/absolute/path/to/existing/ollama-models
+mix run -r examples/knowledge/evaluation_model_service.exs -e '
+root = System.fetch_env!("IPSE_BENCHMARK")
+plan = JSON.decode!(File.read!(Path.join(root, "plan.json")))
+{:ok, runtime} = Ipse.WorkspaceContext.canonical_path(System.fetch_env!("IPSE_OLLAMA_RUNTIME"))
+{:ok, cache} = Ipse.WorkspaceContext.canonical_path(System.fetch_env!("IPSE_OLLAMA_MODELS"))
+files = [Path.join(runtime, "bin/ollama") | Path.wildcard(Path.join(runtime, "lib/ollama/**/*"))]
+files = for path <- Enum.sort(files), File.lstat!(path).type != :directory do
+  {:ok, ^path} = Ipse.WorkspaceContext.canonical_path(path)
+  %{type: :regular, size: size, mode: mode} = File.lstat!(path)
+  digest = File.stream!(path, 1_048_576, []) |> Enum.reduce(:crypto.hash_init(:sha256), &:crypto.hash_update(&2, &1)) |> :crypto.hash_final() |> Base.encode16(case: :lower)
+  %{"source" => path, "path" => Path.relative_to(path, runtime), "bytes" => size,
+    "sha256" => digest, "executable" => Bitwise.band(mode, 0o111) != 0}
+end
+models = plan["models"]
+service = %{
+  "version" => 1, "origin" => "http://127.0.0.1:47631", "models" => models,
+  "manifests" => Map.new(models, fn {name, _} ->
+    [model, tag] = String.split(name, ":", parts: 2)
+    {name, "manifests/registry.ollama.ai/library/" <> model <> "/" <> tag}
+  end),
+  "cache_source" => cache,
+  "runtime" => %{"executable" => "bin/ollama", "files" => files},
+  "limits" => %{"ready_ms" => 60000, "lifetime_ms" => 1800000, "metadata_ms" => 10000},
+  "cpu_policy" => "visibility_v1"
 }
-EOF
-chmod 600 "$IPSE_BENCHMARK/resolution.json"
+:ok = IpseKnowledgeExample.EvaluationModelService.validate(service)
+resolution = %{
+  "artifacts" => plan["artifacts"], "model_origin" => service["origin"],
+  "search_port" => 47632, "reports" => Path.join(root, "reports"),
+  "data_manifest" => Path.expand(System.fetch_env!("IPSE_DATA_MANIFEST")),
+  "model_service" => service
+}
+File.write!(Path.join(root, "resolution.json"), JSON.encode!(resolution), [:exclusive])
+File.chmod!(Path.join(root, "resolution.json"), 0o600)
+'
 mix run scripts/evaluate-knowledge.exs -- --phase freeze-measured \
   --experiment "$IPSE_BENCHMARK/experiment.json" \
   --experiment-sha256 "$IPSE_EXPERIMENT_SHA256" \
   --resolution "$IPSE_BENCHMARK/resolution.json" \
-  --output "$IPSE_BENCHMARK/frozen-measured"
+  --output "$IPSE_BENCHMARK/frozen-measured" \
+  > "$IPSE_RETAINED/freeze.json"
+IPSE_FREEZE_SHA256=$(elixir -e 'r = File.read!(hd(System.argv())) |> String.split("\n", trim: true) |> List.last() |> JSON.decode!(); IO.puts(r["result"]["sha256"])' "$IPSE_RETAINED/freeze.json")
 ```
 
-The artifact aliases must exactly match the declaration, and every imported
-artifact must retain its declared digest. `model_origin` accepts only literal
-`http://127.0.0.1:PORT`; the shared service port 11434 is forbidden. The search
-port must differ from the model port. Choose both ports deliberately before
-sealing. This identity operation neither starts listeners nor proves port
-availability or service ownership.
+Use the actual reviewed distribution layout when building a selection. Missing
+libraries, symlinks or a changed manifest must refuse; do not omit required files
+to make the selection pass. The held-out specification pins its permitted model
+names/digests and dataset manifest. Selecting other models needs a different
+reviewed experiment, not an edited execution seal.
 
-`reports` must name a fresh path disjoint from the freeze directory. It cannot
-contain the source checkout. The freezer resolves canonical paths before sealing
-and rejects overlap or an existing report directory. An ignored report directory
-inside the checkout is allowed if it stays separate from the freeze. The freezer
-creates a fixed owner-only
-`frozen-measured/attempts` registry, separate from disposable reports. The
-registry is currently an identity boundary; creation does not claim an attempt
-or authorize execution. A future measured entry must claim it before effects.
+`reports` must be fresh and disjoint from the freeze. It cannot contain the source
+checkout. An ignored report directory inside the checkout is allowed. The freezer
+canonicalizes local paths, copies the exact declared artifacts and creates a
+private fixed `attempts` registry. Its manifest binds the registry device/inode,
+source, plan, full service selection, runtime launch and semantic recipe. The
+recipe derives finite preparation/finalization/cell/root deadlines and rejects a
+whole lifetime over one day. Sealing starts no worker, provider or model and
+opens no dataset or weight files.
+The semantic recipe precedes the final manifest hash. Concrete bootstrap bytes
+and tickets derive afterward, so the seal does not contain its own future hash.
 
-Expect a new manifest path, its SHA256 and the source commit. The version-two
-manifest binds a fresh execution ID, exact experiment and resolved-plan bytes,
-copied artifacts, canonical local paths, runtime identities and semantic launch
-recipe. Its provenance records the observed OS, architecture, Elixir and OTP.
-Keep the returned manifest hash separately and keep source/runtime bytes fixed
-within this execution. Resolving the portable experiment elsewhere creates a
-new local seal; it does not make an existing execution relocatable or renewable.
+### Follow authority into preparation
 
-Follow `resolve_plan/2`, `create_v2/4` and `verify/2` in `EvaluationFreeze`.
-Resolution constructs every text and embedding profile with the selected origin
-before sealing. Verification checks those exact resolved bytes rather than
-editing a frozen profile. The recipe has its own digest and contains no digest
-of the final manifest or future native bootstrap, avoiding a circular identity.
+Read `context!/2`, `run/1`, `enter/1` and `admit_stage!/2` in
+`EvaluationMeasuredExecution`. The entry rechecks the seal and the actual evaluator
+source files. It creates exclusive `launch` and fixed `native-root` evidence,
+separate from reports and the removable registry. Deleting reports or replacing
+the registry does not authorize another first execution. Preserve an interrupted
+claim even when no terminal receipt exists; work may already have happened.
 
-These two CLI phases read public plans, source/runtime files and inert
-artifacts. They do no dataset, provider, worker or model work and claim no
-measured resource result. The existing `predict`, `verify-frozen`, `review` and
-`score` paths reject a version-two seal with `measured_entry_required` before
-dataset access. Complete measured lifecycle integration remains required.
+The native bound descriptor retains these distinct handles:
 
-Trace `EvaluationRunner.schedule/2` after resolving the plan. This pure function
-accepts projected query identities, requires two projects and derives fourteen
-cells in sorted-project and declared-variant order. Each cell retains the
-original project count and its fixed share of the original variant budget.
-Version two divides every request, token and monetary limit by that count,
-rounding down. Per-request reservations and the rate card stay unchanged. A
-share below its reservation refuses admission; unused amounts cannot move to
-another cell. Version one divides request and token caps only; any optional
-monetary cap applies independently to each project.
-Research gets each project's query count times `1 + max_sources`; shares cannot
-transfer or renew. The function reads no inputs or services and starts no cell.
-Measured preparation must eventually supply those validated query identities.
+| FD | Authority |
+| --- | --- |
+| 4 | Fixed native-root filesystem directory |
+| 5 | Sealed attempts directory |
+| 6 | Whole measured cgroup |
+| 7 | Exact current workload cgroup |
+| 8 | Native sequence evidence directory |
 
-Run the identity and real-CLI exercises before changing these boundaries:
+Native code validates owner/mode, current named identities and actual kernel
+membership before workload launch. A stage checks its expected token/index,
+ticket, exact native claim bytes and started scope identity before it reads
+Prepared or opens dataset/model files. Ordinary child launches do not inherit
+these authority handles. See [native scopes](../../native/README.md#optional-exact-aggregate-memory-scopes)
+and [sequence framing](../../native/README.md#sequence-complete-measured-stages)
+for descriptor and terminal layouts.
+
+Preparation admits every catalog/options set before opening the dataset. It then
+verifies members and projects label-free queries. Its prepared directory uses
+`/proc/<preparation-VM-pid>/fd/4`, so a lock helper can resolve the owning VM's
+retained directory. `/proc/self/fd/4` would refer to that helper's descriptors.
+Prepared bytes include the original plan, copied artifacts, projected inputs,
+effective time, exact runtime launch and schedule. Preparation persists their
+hash before producing cell tickets/descriptors; future descriptor hashes do not
+create a circular identity.
+
+`EvaluationRunner.schedule/2` derives fourteen cells in sorted-project and
+original-variant order. Version two divides every request, token and monetary
+cap by the original two-project count, rounding down. Reservations and the rate
+card remain unchanged. A share below its reservation refuses admission. Unused
+amounts cannot transfer or renew. Each Research share is its project's query
+count times `1 + max_sources`; its controlled gateway owns that separate finite
+share. Version one divides request/token caps only and uses one gateway allowance
+across projects.
+
+### Follow one complete cell and its first predictions
+
+The stage VM calls `EvaluationModelService.run/3` inside its fresh measured scope.
+The owner copies the selected runtime and manifest/blob closure into new private
+files. The caller drains the native Port while a guarded Task works. Only native
+listener `P` admission permits initial HTTP inventory and the callback; child
+stdout cannot supply that proof. See [owned listener observation](../../native/README.md#observe-an-owned-loopback-listener).
+
+The callback calls `EvaluationRunner.evaluate_cell/5` with the original plan and
+one schedule cell. Source authoring, ingestion, projection, all project queries,
+source suppression, collection, Session close, gateway close and budget
+reconciliation happen inside that cell. Authoring and inventory children use
+`EvaluationMeasuredExecution.command/4`. The selected ERTS executable and clean
+boot restore the exact ordered code-path set before loading scripts or starting
+Ipse. They do not find Elixir or Mix on PATH.
+
+The owner preserves callback outcome, final service admission and native cleanup
+as separate facts. Task termination cannot prove domain closure or settled
+provider liability. A failed cell retains its first predictions and errors.
+Native sequencing proceeds only after confirmed cleanup. Finalization merges
+first-cell predictions, inserts explicit unavailable rows for missing work and
+seals the full grid without rerunning a question. A complete fifty-query matrix
+contains 350 rows, including failed rows.
+
+### Measure, audit and retain the authority for labels
+
+Run only the already reviewed workload represented by this seal:
 
 ```sh
-mix test test/knowledge_evaluation_freeze_test.exs test/knowledge_evaluation_declaration_cli_test.exs test/knowledge_evaluation_schedule_test.exs
+mix run scripts/evaluate-knowledge.exs -- --phase measure \
+  --freeze "$IPSE_BENCHMARK/frozen-measured/manifest.json" \
+  --freeze-sha256 "$IPSE_FREEZE_SHA256" \
+  > "$IPSE_RETAINED/measure.json"
+mix run scripts/evaluate-knowledge.exs -- --phase audit \
+  --freeze "$IPSE_BENCHMARK/frozen-measured/manifest.json" \
+  --freeze-sha256 "$IPSE_FREEZE_SHA256" \
+  > "$IPSE_RETAINED/audit.json"
+IPSE_AUDIT_SHA256=$(elixir -e 'r = File.read!(hd(System.argv())) |> String.split("\n", trim: true) |> List.last() |> JSON.decode!(); IO.puts(r["result"]["sha256"])' "$IPSE_RETAINED/audit.json")
+IPSE_PREDICTION_SHA256=$(elixir -e 'r = File.read!(hd(System.argv())) |> String.split("\n", trim: true) |> List.last() |> JSON.decode!(); IO.puts(r["result"]["prediction_sha256"])' "$IPSE_RETAINED/audit.json")
 ```
 
-The CLI fixture preserves portable bytes, checks local profile resolution and
-private files, rejects a changed experiment hash and refuses prediction before
-opening its nonexistent dataset. It proves identity handling, not a complete
-comparison or the fourteen-cell execution.
+Continue to review only after a successful audit. Audit joins the root M frame,
+collector exits, stage M/T frames, receipt bytes and recorded file identities,
+claim/scope identities, model-service cleanup, domain files, first predictions
+and recomputed resource summaries. The finalizer cannot observe the future outer
+root receipt; read-only post-exit audit supplies that check. Keep the audit hash
+outside both freeze and reports. Repeating `audit` performs inspection; repeating
+`measure` must refuse.
+
+If a stage, collector, authority handle or owner is lost, inspect its retained
+claim, logs and acknowledgments. Missing completion stays unknown. A later clean
+process list cannot supply a missing receipt or prove that no request dispatched.
+Do not delete claims, clear `unsettled`, repair evidence in place or open a new
+budget root to continue that same execution.
+
+### Interpret the three charged-memory subjects
+
+The CLI prints an audit summary. To inspect all joined receipts, retain the full
+read-only API result under the same declared development runtime:
+
+```sh
+mix run -r examples/knowledge/evaluation_runner.exs -e '
+[path, expected] = System.argv()
+{:ok, audit} = IpseKnowledgeExample.EvaluationMeasuredExecution.audit(path, expected)
+IO.puts(JSON.encode!(audit))
+' -- "$IPSE_BENCHMARK/frozen-measured/manifest.json" "$IPSE_FREEZE_SHA256" \
+  > "$IPSE_RETAINED/audit-full.json"
+```
+
+The metric is kernel workload-charged RAM, including cache and kernel charges:
+
+| Subject | Audited field | Population and interval |
+| --- | --- | --- |
+| Whole lifetime | `report.whole_lifetime.peak_bytes` | Root workload, preparation, all cells and finalization through root cleanup |
+| Fresh stage lifetime | `report.stages[].fresh_lifetime_peak_bytes` | That preparation, cell or finalization workload and descendants born in its fresh scope |
+| Whole population during one stage | `report.stages[].whole_population_interval_peak_bytes` | The complete root population during that stage's reset/read interval |
+
+These are distinct high-water observations. Do not sum them, subtract a starting
+baseline or describe them as process RSS. The whole lifetime includes retained
+charges between stages. Device memory and an exact macOS aggregate are outside
+this backend. Sampled BEAM memory remains a separate diagnostic.
+
+CPU visibility environment values and zero-VRAM residency checks express the
+selected policy. The synthetic daemon verifies those values. They do not prove
+real Ollama CPU execution or every transient device allocation. An audited
+resource result also does not establish held-out quality or independent semantic
+review.
 
 ### Exercise the version-one identity contract
 
@@ -323,7 +522,8 @@ checks instead.
 
 Every worker requires a confirmed native cleanup receipt. The report records
 artifact, option and export hashes, the catalogs and each initialization outcome.
-After all selections pass, model inventory must match the declared profiles.
+Version one checks model inventory after the selections pass. Version two defers
+HTTP inventory to each owned model service, after native listener admission.
 `preflight.json` retains success or the first failed variant. Failed preflight
 opens no corpus or queries and starts no search gateway. Its partial directory
 and any existing identity seal remain available for diagnosis. A seal file's
@@ -350,8 +550,9 @@ with refused retrieval still retains its failed prediction rows.
 
 ## Project query inputs without labels
 
-After a version-one execution freeze and preflight pass, its input adapter may
-open the declared dataset members. `EvaluationInput.queries/2` accepts the version-one
+After the execution's authority and catalog admission pass, the input adapter
+opens the declared dataset members. Version two does this during measured
+preparation; version one does it after its executable preflight. `EvaluationInput.queries/2` accepts the version-one
 query JSON bytes and the declared split. Its `queries` result contains exactly
 `query_id`, `project` and `query`, preserving their input order. Relevance,
 expected classes, expected answers and refusal labels remain excluded. The
@@ -533,7 +734,8 @@ Follow `run_variant/9`, `prepare/4`, `invoke/4` and `approve/1` in the runner:
 7. Prediction failures retain their declared rows. Cleanup attempts cover the
    Session, gateway and sampler, with errors preserved in the output directory.
 
-The controlled gateway uses one finite allowance across all projects. The runner
+The version-one controlled gateway uses one finite allowance across all projects.
+Version two assigns disjoint shares to the separately owned Research cells. The runner
 derives it from `expected_queries * (1 + max_sources)`: one search and at most
 the declared number of fetches per question. Fifty ten-source questions allow
 550 calls. Changing documents or beginning another question does not renew the
@@ -578,8 +780,10 @@ must remain partial. The [query completeness exercise](knowledge-extensions.md#t
 tests those distinctions through public workers. The scorer still gives partial
 results zero successful retrieval utility; it does not upgrade a useful-looking passage.
 The model fixture also proves that forgotten and expired text never enters its
-requests. Worker, model and whole-system RSS remain unmeasured; the sampler's
-start, end and sampled maximum describe only the harness BEAM.
+requests. The sampler's start, end and sampled maximum describe only the harness
+BEAM.
+The v2 native audit supplies the separate charged-memory subjects described above;
+neither result measures worker/model RSS or whole-system memory.
 
 For a change exercise, trace the Research approval through `MCPCall`. Its effect
 has no State namespace. State writes use the selected logical project namespace,
@@ -632,32 +836,57 @@ review, alongside literal captured-source verification.
 
 ## Prepare independent review from finalized predictions
 
-Use this procedure for a completed version-one prediction. Version-two identity
-seals cannot enter review through this path. Finish prediction and retain its
-printed hash before preparing a review. The `review` phase verifies the execution
-freeze, finalized prediction hash and exact
-variant/query grid before opening reference labels. It reuses
+Use a completed v1 prediction or an audited v2 measured execution. Retain the
+first-prediction hash before preparing a review. Version two additionally requires
+the separately retained audit hash and the exact sealed data/prediction paths.
+The `review` phase verifies the execution freeze, first-prediction identity and
+complete variant/query grid before opening reference labels. It reuses
 `EvaluationScore.verified_predictions/2`; a separate permissive JSON parser
 cannot substitute for the scorer's row checks. Prediction IDs must be opaque
 `p-` plus SHA256 values before any label loader runs.
 
-Set the paths and independently retained hashes from your completed freeze and
-prediction steps, then choose a new review directory:
+For the v2 seal above, prepare a private packet and then score a separate review:
 
 ```sh
-IPSE_REVIEW_FREEZE=/absolute/path/to/frozen/manifest.json
-IPSE_REVIEW_FREEZE_SHA256=replace_with_the_separately_retained_freeze_sha256
-IPSE_REVIEW_DATA=/absolute/path/to/dataset/manifest.json
-IPSE_REVIEW_PREDICTIONS=/absolute/path/to/run/predictions.jsonl
-IPSE_REVIEW_PREDICTION_SHA256=replace_with_the_recorded_final_prediction_sha256
-IPSE_REVIEW_OUTPUT=/absolute/path/to/new-review-packet
 mix run scripts/evaluate-knowledge.exs -- --phase review \
-  --freeze "$IPSE_REVIEW_FREEZE" --freeze-sha256 "$IPSE_REVIEW_FREEZE_SHA256" \
-  --data-manifest "$IPSE_REVIEW_DATA" --predictions "$IPSE_REVIEW_PREDICTIONS" \
-  --prediction-sha256 "$IPSE_REVIEW_PREDICTION_SHA256" --output "$IPSE_REVIEW_OUTPUT"
+  --freeze "$IPSE_BENCHMARK/frozen-measured/manifest.json" \
+  --freeze-sha256 "$IPSE_FREEZE_SHA256" --audit-sha256 "$IPSE_AUDIT_SHA256" \
+  --data-manifest "$IPSE_DATA_MANIFEST" \
+  --predictions "$IPSE_BENCHMARK/reports/predictions.jsonl" \
+  --prediction-sha256 "$IPSE_PREDICTION_SHA256" \
+  --output "$IPSE_BENCHMARK/review-packet"
+cp "$IPSE_BENCHMARK/review-packet/reviews-template.json" "$IPSE_BENCHMARK/reviews.json"
 ```
 
-Expect `status: "ok"`, the complete row count, `packet_sha256` and
+The copied template remains unmeasured. Give the packet to an independent reviewer
+and keep their actual verdicts in `reviews.json`. After that review, run:
+
+```sh
+IPSE_LABELS=$(elixir -e '[manifest, plan] = System.argv(); p = JSON.decode!(File.read!(plan)); IO.puts(Path.join(Path.dirname(manifest), p["data"]["queries"]))' "$IPSE_DATA_MANIFEST" "$IPSE_BENCHMARK/frozen-measured/plan.json")
+mix run scripts/evaluate-knowledge.exs -- --phase score \
+  --freeze "$IPSE_BENCHMARK/frozen-measured/manifest.json" \
+  --freeze-sha256 "$IPSE_FREEZE_SHA256" --audit-sha256 "$IPSE_AUDIT_SHA256" \
+  --data-manifest "$IPSE_DATA_MANIFEST" \
+  --predictions "$IPSE_BENCHMARK/reports/predictions.jsonl" \
+  --prediction-sha256 "$IPSE_PREDICTION_SHA256" \
+  --labels "$IPSE_LABELS" \
+  --reviews "$IPSE_BENCHMARK/reviews.json" \
+  --output "$IPSE_BENCHMARK/scores"
+```
+
+`IPSE_LABELS` names the query member from the sealed plan. Scoring verifies those
+label bytes against the declared member hash. An untouched template produces
+unmeasured support, writes `scores.json` and
+exits one; it cannot manufacture a quality pass.
+
+For v1, use its separately retained freeze/prediction hashes and selected dataset
+paths, and omit `--audit-sha256`. V1 refuses an audit argument. V2 refuses missing
+or changed audit authority before labels/reviews, and refuses alternate canonical
+prediction/data paths even when the caller supplies a plausible hash. The legacy
+`predict` and `verify-frozen` phases refuse v2 seals with `measured_entry_required`;
+use `measure` and `audit` for that format.
+
+For review, expect `status: "ok"`, the complete row count, `packet_sha256` and
 `reference_integrity_complete: true`. Retain that packet hash separately. An
 existing output path refuses. Files are owner-only in a private directory.
 Invalid reference spans remain visible, set completeness false and produce a
@@ -772,8 +1001,8 @@ variant/query grid, including missing rows. `quality_gate_scope` identifies that
 scope; each variant retains its own independent measurements and gates. A
 complete-workload pass does not promote a failing individual engine.
 Incomplete review cannot pass. The `score` CLI preserves `scores.json` and exits
-nonzero for failed or unmeasured aggregate gates. These checks do not measure authority, scope isolation, replay,
-suppression, native enforcement, installed execution, latency or resources.
+nonzero for failed or unmeasured aggregate gates. Semantic quality gates do not replace the separate native authority, cleanup,
+resource, installed-execution or source-suppression checks.
 Follow the [plan](../plan.md#p27-optional-research-graph-and-rag) for the complete
 acceptance requirements. Passing these synthetic exercises establishes helper
 behavior, not held-out quality or a selected retrieval engine.
@@ -838,10 +1067,16 @@ input tokens and later seven. Removing the sixty-token observation from the
 budget must fail reconciliation even though its final counters still match.
 Removing a refusal or concealing usage behind a refused admission must also fail.
 
+## Isolate model and native ownership
+
+Use the smaller exercises below when a complete population fails. They let you
+trace service admission, kernel collection and sequencing separately. A passing
+component exercise cannot replace the complete measured audit.
+
 ### Exercise ownership of a model service
 
-Use this exercise before connecting a cell to the native memory collector. The
-cell must own the service and create its cache inside the measured scope. A
+Use this smaller exercise to isolate the model owner used by a measured cell.
+The cell owns the service and creates its cache inside the measured scope. A
 shared daemon can retain allocations from another cell, and a hardlinked cache
 can reuse charges established outside the scope.
 
@@ -886,7 +1121,8 @@ elixir scripts/verify-model-service-package.exs "$1" "$IPSE_MODEL_PROOF/probe" "
 ```
 
 Expect the same synthetic case results with `installed: true`. The verifier
-extracts the package and removes development executables from its PATH. On macOS,
+extracts the package and removes development executables from the outer release
+PATH. Internal launch environments include system directories. On macOS,
 its result instead confirms refusal before effects. The service module and
 fixture are trusted evaluation code loaded from the checkout; Runner, HTTP and
 native execution use the bundled package.
@@ -906,9 +1142,11 @@ Trace `EvaluationModelService.run/3` through these ownership boundaries:
    One native listener observation must identify the selected direct child
    before any inventory request. Child stdout remains opaque log data.
 4. The Task checks exact tags, model capabilities and empty initial residency,
-   then calls the work function once. It reports the work outcome before final
+   then calls the work function once. A returned callback outcome precedes final
    inventory and private runtime/manifest/config rechecks. Final resident models
    must have selected digests and `size_vram: 0` under the explicit CPU policy.
+   A callback exception preserves the raised outcome and reports `callback_raised`;
+   it proceeds directly to cleanup without further HTTP inventory.
 5. The caller waits for the Task and HTTP clients to stop, closes the daemon,
    then persists bounded logs and the receipt. No log-file write runs in the
    live Port receive loop. Bytes drained during native close are outside the
@@ -923,18 +1161,18 @@ Session journal closure or canonical inference accounting.
 
 The fixed CPU environment selects a policy that hides CUDA, ROCm and Vulkan
 devices and disables cloud models. The synthetic fixture verifies those environment
-values; real runtime CPU execution still needs separate verification. The selected daemon defaults use one parallel request, retain selected
+values; real runtime CPU execution still needs separate verification. The selected
+daemon defaults use one parallel request, retain selected
 models and cap loaded models at the selection count. These concrete values appear
 in the receipt. Final residency supplements this policy; it cannot prove every
 allocation throughout the interval. This module grants no OS sandbox and trusts
 the explicitly selected runtime. Ordinary process-group containment limits still
 apply.
 
-The service owner is an independently exercised evaluation component. The current
-version-two seal does not yet bind its selection or authorize measured execution.
-Complete cells must claim their attempts and establish kernel membership before
-calling it. Synthetic service receipts establish neither exact-memory coverage
-nor model quality.
+The v2 resolution binds this service selection. Measured stage admission claims
+the attempt and establishes kernel membership before calling the owner. A service
+receipt alone still establishes neither the complete native population nor model
+quality; the post-exit audit joins the cell and native evidence.
 
 ### Exercise the native aggregate collector
 
@@ -978,11 +1216,9 @@ establish GPU/device-memory coverage or an exact macOS aggregate. Do not sum pea
 or subtract a starting baseline. See the [native protocol](../../native/README.md#optional-exact-aggregate-memory-scopes)
 for lease, output and receipt rules.
 
-These controls verify the native collector only. The current evaluation runner
-still reports its sampled BEAM memory and incomplete resource evaluation. Its
-complete-cell execution and frozen aggregate receipt integration remain to be
-implemented and verified. The service-owner exercise above verifies that
-component separately; it does not connect it to the runner's measured entry.
+These controls isolate native collection. Use the complete measured-population
+exercise to check how its receipts join evaluator claims, model ownership and
+first predictions. The sampler remains a separate diagnostic.
 
 ### Exercise complete measured sequences
 
@@ -997,7 +1233,7 @@ rustc --edition=2021 --test -D warnings native/ipse-sequence.rs \
 "$IPSE_SEQUENCE_TESTS/sequence"
 ```
 
-Expect six live cases and six native parser/filesystem tests. Follow one
+Expect the live cases and native parser/filesystem tests to pass. Follow one
 `Stage` from its immutable binary descriptor into `stage-000.claim`, then through
 the child collector's `M` receipt and two-byte `T` completion status. Preparation
 and finalization use the same birth-before-exec path as cells. Their separate
@@ -1017,12 +1253,11 @@ finalizer. Descriptor admission opens nonblocking before checking the retained
 FD type, so refusal does not wait for the outer run deadline.
 
 The [native protocol](../../native/README.md#sequence-complete-measured-stages)
-owns the exact descriptor layout, limits and evidence filenames. A domain runner
-still has to seal and validate the schedule, preserve original allocations and
-claim the freeze before opening inputs. It must reconcile the finalizer and
-outer-root receipts after exit; those records do not exist while finalization
-is running. These generic controls do not implement complete evaluator cells,
-model-service/cache identity, resource acceptance or held-out quality.
+owns the exact descriptor layout, limits and evidence filenames. `EvaluationMeasuredExecution` supplies the sealed schedule, original allocations
+and first claim for knowledge work. Its post-exit audit reconciles finalizer and
+outer-root receipts, which do not exist while finalization runs. The generic
+controls isolate sequencing; held-out quality and real model execution require
+their own evidence.
 
 ### Interpret latency and measurement limits
 
@@ -1039,22 +1274,24 @@ the journal and remains unknown when unavailable.
 The summary's `complete` field covers the declared clock and accounting scope.
 Read `storage_reachability_complete` separately. Check `measurement_scope`,
 `unmeasured` and `resource_evaluation_complete` before comparing engines. The
-separate sampler describes the harness BEAM only. OS process peak memory and
-model process memory remain unknown. File counts under a run directory also
+separate sampler describes the harness BEAM only. It does not report process RSS or device memory. The measured v2 audit separately
+reports kernel charged-memory high waters; v1 has no equivalent aggregate. File counts under a run directory also
 exclude authoring and preflight copies outside that directory; the output-wide
 overview counts those copies separately. Lifecycle file lengths and sampled
 harness memory do not measure whole-system memory or every storage allocation.
 
 ### Verify retained storage without querying through the audit
 
-Follow `EvaluationInventory.snapshot/5` and the pure `Store.inventory/2` in the
+Follow `EvaluationInventory.snapshot/6` and the pure `Store.inventory/2` in the
 independent knowledge artifact. The host validates the bounded, owner-only State
 file and every record envelope through `State.valid_outcome?/4`. It checks the
-namespace, version and generation sum. A separate Elixir VM loads the verified
+namespace, version and generation sum. A separate VM loads the verified
 artifact, public SDK and existing Jason runtime, then computes counts and opaque
 hashes. The SDK validator needs Jason even when the audit itself uses Elixir JSON.
-The host rechecks file bytes
-and artifact identity afterward. Domain modules remain unloaded in the host.
+Measured inventory children first restore the sealed ERTS/ordered code paths
+through `EvaluationMeasuredExecution.command/4`, then add the verified artifact's
+`ebin` in that child. The `/5` wrapper uses the v1 development Elixir launcher.
+The host rechecks file bytes and artifact identity afterward. Domain modules remain unloaded in the host.
 
 Selected root references identify retained content and projections. The audit
 verifies each referenced page's hash, partition, source and generation. It also
@@ -1095,7 +1332,7 @@ suppression or collection keeps earlier prediction rows and reports incomplete
 execution. Earlier journal text and original dataset bytes remain retained;
 collection is not transcript erasure or slot recovery.
 
-`execution-overview.json` records elapsed time from runner entry through first
+For v1, `execution-overview.json` records elapsed time from runner entry through first
 prediction finalization, including preflight, input handling, cleanup and the
 primary reports. CLI startup, module loading and the overview's own inspection
 and receipt stay outside that clock. The overview counts regular file lengths

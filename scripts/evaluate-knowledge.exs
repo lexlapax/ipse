@@ -22,6 +22,7 @@ arguments =
       data_manifest: :string,
       predictions: :string,
       prediction_sha256: :string,
+      audit_sha256: :string,
       labels: :string,
       reviews: :string
     ]
@@ -31,6 +32,8 @@ phases = %{
   "freeze" => :freeze,
   "declare" => :declare,
   "freeze-measured" => :freeze_measured,
+  "measure" => :measure,
+  "audit" => :audit,
   "predict" => :predict,
   "tune" => :tune,
   "verify" => :verify,

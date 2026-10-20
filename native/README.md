@@ -166,8 +166,9 @@ elixir scripts/verify-memory-scope.exs "$PWD/priv/ipse-runner"
 
 The result reports ten controls and a private evidence directory. Follow the
 [training exercise](../docs/developer/knowledge-evaluation.md#exercise-the-native-aggregate-collector)
-to interpret their subjects and failure records. This collector is not yet
-connected to the knowledge evaluator's full comparison or isolated model service.
+to interpret their subjects and failure records. The knowledge evaluator uses
+this protocol through its optional measured-execution owner. Its complete
+synthetic exercise is separate from these collector controls.
 
 ### Sequence complete measured stages
 
@@ -240,7 +241,85 @@ Expect six cases, including preparation/finalization allocations, an excluded
 unrelated sibling, a failed stage with forged child output, retained attempts,
 collector loss and both FIFO descriptor seams. The
 [contributor exercise](../docs/developer/knowledge-evaluation.md#exercise-complete-measured-sequences)
-connects these records to the remaining evaluator integration.
+connects these records to the evaluator's domain claims and post-exit audit.
+
+### Bind a measured sequence to one execution
+
+The knowledge evaluator adds a bound root to the generic sequence protocol:
+
+```text
+ipse-runner --measure-cgroup root TOKEN TIMEOUT_MS F/native-root \
+  --bound-root F/native-authority.bin -- \
+  SAME_HELPER --measure-sequence F/bootstrap.bin
+```
+
+`--bound-root` is accepted only in this root position. The selected executable
+must be this helper's sequencer. The ordinary root, cell and sequence interfaces
+retain their existing format. `native/ipse-bound.rs` owns this additional
+directory and kernel-scope authority.
+
+The private authority file contains `IPBND001`, the registry path string, its
+device and inode as u64 values, the native-root path string and the bootstrap
+path string, then EOF. Strings use the sequence encoding above. The paths must
+be exactly `F/attempts`, `F/native-root` and `F/bootstrap.bin`. Before launching
+work, native admission retains the owner-only registry directory and checks its
+named identity. It exclusively creates `F/native-root`, retains that directory
+and saves the exact authority and bootstrap bytes there. An existing native-root
+refuses even if its terminal receipt is missing or reports were deleted.
+
+The sequencer creates `F/native-root/sequence`; preparation produces
+`F/native-root/prepared/cells.bin`. Claims and evidence use retained directory
+handles. The bound chain passes these reserved descriptors through exec:
+
+| Descriptor | Validated environment name | Subject |
+| --- | --- | --- |
+| 4 | `IPSE_BOUND_ROOT_FD` | Permanent native-root directory |
+| 5 | `IPSE_BOUND_REGISTRY_FD` | Original attempt registry directory |
+| 6 | `IPSE_MEASURE_ROOT_FD` | Whole-population cgroup |
+| 7 | `IPSE_MEASURE_SCOPE_FD` | Exact application or current cell cgroup |
+| 8 | `IPSE_BOUND_SEQUENCE_FD` | Sequence evidence directory |
+
+Environment names alone grant no admission. Native validates types, owner/mode,
+distinct handles and cgroup filesystem identities before adopting descriptors.
+It duplicates handles above the reserved range before remapping them, preserving
+Rust's child-exec error channel. FD3 remains the anchor's private control lease.
+Ordinary native dispatch removes a validated inherited bound contract instead
+of passing authority handles into lock, shell or daemon commands.
+
+The sequencer must belong to the exact application leaf of FD6. A stage
+collector must enter from that leaf, then place its workload in a fresh cell
+scope and replace FD7. Its started record names the scope's device/inode before
+launch. Native injects the stage index and token. The stage VM compares actual
+kernel membership, descriptor identities, started record and exact native claim
+bytes before consuming its exclusive domain claim or opening evaluation inputs.
+The VM's preparation paths name its own process in procfs so ordinary lock and
+projection children resolve the retained directory without inheriting its FDs.
+
+Registry or native-root replacement causes refusal and owned-scope cleanup;
+the chain never adopts the replacement. Domain and native claims remain outside
+disposable reports and the registry. A lost collector, missing terminal record
+or absent cleanup confirmation leaves an incomplete attempt. Preserve its
+evidence and investigate; no missing result grants permission to replay it.
+
+Bound workloads receive only selected `PATH`, `LANG`, `HOME`, `TMPDIR` and the
+validated native scope/stage fields. The launcher explicitly sets those four
+values for the transient service as well. Manager bus settings, credentials,
+proxies and Erlang launcher options do not flow into measured workloads.
+Selected ERTS commands restore the sealed code paths directly; the system PATH
+still contains ordinary OS utility directories.
+
+Run the portable authority parser checks without starting services:
+
+```sh
+rustc --edition=2021 --test -D warnings native/ipse-bound.rs -o /tmp/ipse-bound-tests
+/tmp/ipse-bound-tests
+```
+
+Linux also runs retained-directory and transfer controls. The
+[complete measured exercise](../docs/developer/knowledge-evaluation.md)
+adds domain execution and a read-only audit. Only that post-exit audit can join
+finalizer and root receipts, first-prediction hashes, model-service evidence and
+the separate lifetime, cell and whole-population interval peaks.
 
 ## Session locks
 
