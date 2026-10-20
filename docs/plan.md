@@ -535,8 +535,12 @@ the two changed paths pass again in the main checkout. The exact `914bc0a`
 macOS passes its source suite, native checks, package and early installed proofs,
 then GitHub cancels the final knowledge proof at the outer 30-minute job limit.
 The [job-budget correction](archive/2026-10-20-p27-ci-job-budget/index.md) gives
-the complete procedure a finite 45-minute budget. Its complete hosted result is
-still required. The historical fixture slowdown cause remains unproven.
+the complete procedure a finite 45-minute budget. Its `1e31e5b` macOS job fails
+earlier at native-copy fixture directory creation. The separate
+[fixture identity repair](archive/2026-10-20-p27-native-fixture-identity/index.md)
+reproduces equal-clock collisions and adds a test-only atomic ordinal. It retains
+all native copy assertions. A complete corrected hosted result is still required.
+The historical fixture slowdown cause remains unproven.
 The selected-runtime CPU compatibility proof passes two real explicit requests,
 with complete accounting and confirmed cleanup. It establishes no quality or
 exact memory result. The superseded `f2bfc8d` comparison was intentionally stopped

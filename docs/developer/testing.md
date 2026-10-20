@@ -156,6 +156,22 @@ and verify inode identity. They do not simulate aliases on an unsuitable volume.
 The native checks use isolated owner-only homes, rather than the operator's
 signed cache. Report platform exclusions separately from executed checks.
 
+For native copy fixtures, open `Root` in `native/ipse-file-copy.rs`. Parallel
+tests share one process ID and can observe the same clock tick. The constructor
+adds a process-local atomic ordinal to each directory name. Its fixed-clock
+exercise keeps two roots alive at the same tick and requires distinct paths.
+Run the complete copy controls after changing that fixture:
+
+```sh
+IPSE_COPY_TESTS=$(mktemp -d)
+rustc --edition=2021 --test -D warnings native/ipse-file-copy.rs -o "$IPSE_COPY_TESTS/copy"
+"$IPSE_COPY_TESTS/copy"
+```
+
+Expect all ordinary controls to pass. The ignored `fifo_open_probe` is invoked
+by the enclosing bounded FIFO test, rather than run as an independent case.
+Keep the copy's size, inode, symlink, permission and nonblocking checks intact.
+
 ### Probe the signed macOS worker
 
 Use a disposable workspace outside the probe's temporary directory:

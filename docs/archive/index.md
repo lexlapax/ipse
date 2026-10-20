@@ -7,6 +7,7 @@ preserved pre-rewrite chapters. Their dated bodies and verdicts are unchanged.
 
 | Snapshot | Provenance | Current guidance and retained records |
 | --- | --- | --- |
+| [2026-10-20 native fixture identity](2026-10-20-p27-native-fixture-identity/index.md) | Exact `1e31e5b` macOS fixture-creation failure; fixed-clock reproduction and test-only unique directory names | [Testing](../developer/testing.md#test-actual-os-enforcement), [plan](../plan.md) |
 | [2026-10-20 hosted job budget](2026-10-20-p27-ci-job-budget/index.md) | Exact `914bc0a` Ubuntu success and macOS 30-minute job cancellation; finite outer budget correction | [Testing](../developer/testing.md#measure-and-report-honestly), [plan](../plan.md) |
 | [2026-10-20 bounded CI fixture waits](2026-10-20-p27-ci-fixture-waits/index.md) | Test-only increment after `063de41`; retained hosted failures, controlled observer-budget regression and passing macOS/Linux affected modules | [Testing](../developer/testing.md#diagnose-worker-and-stdio-cleanup), [plan](../plan.md) |
 | [2026-10-20 native population completion](2026-10-20-p27-native-drain/index.md) | Corrective increment after `93f71ad`; bounded natural population drain, strict original deadlines, causal loss controls and source/installed measured proofs | [Evaluation training](../developer/knowledge-evaluation.md), [native protocol](../../native/README.md#optional-exact-aggregate-memory-scopes), [plan](../plan.md) |

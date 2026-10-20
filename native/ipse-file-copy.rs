@@ -118,6 +118,8 @@ mod unix {
 
     #[cfg(test)]
     mod tests {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static NEXT_ROOT: AtomicU64 = AtomicU64::new(0);
         use super::*;
         use std::os::unix::fs::symlink;
         use std::process::{Child, Command, Stdio};
@@ -125,12 +127,21 @@ mod unix {
         struct Root(std::path::PathBuf);
         impl Root {
             fn new() -> Self {
-                let nonce = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
-                let path = std::env::temp_dir().join(format!("ipse-copy-{}-{nonce}", std::process::id()));
+                Self::new_at(SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos())
+            }
+            fn new_at(nonce: u128) -> Self {
+                let ordinal = NEXT_ROOT.fetch_add(1, Ordering::Relaxed);
+                let path = std::env::temp_dir().join(format!("ipse-copy-{}-{nonce}-{ordinal}", std::process::id()));
                 fs::create_dir(&path).unwrap();
                 fs::set_permissions(&path, Permissions::from_mode(0o700)).unwrap(); Self(path)
             }
             fn path(&self, name: &str) -> std::path::PathBuf { self.0.join(name) }
+        }
+        #[test]
+        fn equal_clock_ticks_keep_fixture_directories_distinct() {
+            let first = Root::new_at(1);
+            let second = Root::new_at(1);
+            assert_ne!(first.0, second.0);
         }
         impl Drop for Root { fn drop(&mut self) { let _ = fs::remove_dir_all(&self.0); } }
         #[test]
