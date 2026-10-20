@@ -31,6 +31,9 @@ review file-limit mismatches with complete synthetic grids and retained bounds.
 The [measured-sequence record](measured-sequence.md) adds preparation, cells and
 finalization inside the whole-run population, with retained first attempts,
 native completion evidence and refusal after collector loss or malformed input.
+The [portable experiment foundation](portable-experiment.md) records the selected
+charged-RAM quantity, portable declaration/local execution split, full schedule
+and repaired hosted test assumptions. Complete measured execution remains open.
 
 ## Implementation and corrections
 

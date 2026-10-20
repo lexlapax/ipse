@@ -294,6 +294,7 @@ defmodule Ipse.MCP.SessionTest do
     assert_receive {:DOWN, ^ref, :process, ^transport, _}, 5_000
     resumed = session(ctx, [scenario: "hang", approval: :allow], id)
     :ok = Ipse.Session.prompt(resumed, "inspect")
+    assert_receive {:ipse, ^resumed, {:status, "Thinking"}}, 15_000
     assert_receive {:model_input, messages, _}, 5_000
     assert_receive {:ipse, ^resumed, {:done, :ok}}, 5_000
     assert File.read!(Path.join(ctx.root, "calls.log")) == "write_note\n"

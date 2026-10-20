@@ -456,7 +456,7 @@ status, plus full canonical usage export. The [resource accounting record](archi
 adds query/phase clocks and request/budget reconciliation. The
 [storage inventory record](archive/2026-10-19-p27-knowledge-packages/storage-inventory.md)
 adds strict retained-page reachability and draft/orphan/tombstone measurements.
-The full resource comparison, exact peak process-memory measurements and held-out
+The full resource comparison, exact peak workload-charged RAM measurements and held-out
 evaluation remain open. The user requires exact peaks; periodic samples alone
 cannot satisfy that gate. The [native accounting investigation](archive/2026-10-19-p27-knowledge-packages/resource-memory-grounding.md)
 reproduces a completed Port child's missing high water in an outer Elixir receipt
@@ -479,17 +479,31 @@ server execution; ordinary stdio and a nested namespace with its own procfs
 remain supported. This generic capability does not establish complete model
 service or benchmark integration.
 Charged memory, summed RSS and device memory must not be conflated.
-The user has reopened the memory quantity and Linux/systemd backend decision.
-Exact simultaneous aggregate peak remains required. Existing native controls
-establish their declared kernel counter behavior; they do not settle that design
-choice. Benchmark integration is paused pending clarification, while independent
-review and verification of existing implementation continue. Host configuration
-belongs to each run's provenance rather than a requirement to use Serenity.
+After reconsidering the measurement design, the user selected exact
+workload-charged RAM with an optional Linux benchmark backend. This includes
+cache and kernel charges under the declared `linux_memcg_charged_peak_bytes_v1`
+subject. The fresh comparison uses the approved CPU-only policy. Existing
+synthetic native controls establish counter behavior; complete evaluator/model
+integration and real comparison remain open. The experiment specification must
+remain portable. Resolved paths, runtime identities and observed host configuration
+belong to each fresh execution's manifest and provenance; Serenity is a verification
+host rather than a requirement for the experiment. Existing systemd user tools
+remain an approved optional benchmark-launch dependency. Ordinary Ipse operation
+does not require the Linux measurement backend.
+The [portable experiment foundation](archive/2026-10-19-p27-knowledge-packages/portable-experiment.md)
+separates content-based declarations from fresh local execution seals and derives
+the complete fourteen-cell schedule with fixed original allowances. These inert
+identity operations do not claim attempts or start measured work. Version-two
+seals refuse the old prediction/review paths until complete measured integration
+is available.
 The inherited combined-fixture timeout is repaired with independent
 test units and unchanged deadlines/assertions; the exact-source `25f1d8e`
 [hosted matrix](https://github.com/lexlapax/ipse/actions/runs/39309132023)
-passes on both platforms. Older append-timeout and MCP-discovery negatives remain
-unexplained, and later P27 changes still need their own applicable platform proofs.
+passes on both platforms. The later exact `21d710c` run passes Ubuntu and fails
+macOS in CLI aggregate-deadline and resumed MCP readiness assumptions. The
+portable-foundation record retains both failures and their controlled repairs;
+the corrected source still needs its own applicable platform proofs. The older
+append-timeout negative remains unexplained.
 Successful tuning and
 scripted provider responses do not establish quality. Held-out predictions,
 independent semantic review and the complete resource comparison remain unmeasured.

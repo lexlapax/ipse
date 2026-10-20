@@ -35,6 +35,8 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     try do
       expected = %{
         freeze: ~w(plan output)a,
+        declare: ~w(plan output)a,
+        freeze_measured: ~w(experiment experiment_sha256 resolution output)a,
         predict: ~w(freeze freeze_sha256 data_manifest output)a,
         verify_frozen: ~w(freeze freeze_sha256 data_manifest output)a,
         tune: ~w(plan corpus queries output)a,
@@ -95,18 +97,31 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
 
   def validate(plan) do
     try do
+      fields =
+        ~w(version mode data as_of_ms artifacts profiles embedding_profiles models variants answer interval_ms search_port blind_seed storage_policy)
+
       require!(
-        exact?(
-          plan,
-          ~w(version mode data as_of_ms artifacts profiles embedding_profiles models variants answer interval_ms search_port blind_seed storage_policy)
-        ),
+        exact?(plan, if(plan["version"] == 2, do: fields ++ ["model_origin"], else: fields)),
         :plan_shape
       )
 
       require!(
-        plan["version"] === 1 and plan["mode"] in ~w(fixture tuning heldout),
+        (plan["version"] === 1 and plan["mode"] in ~w(fixture tuning heldout)) or
+          (plan["version"] === 2 and plan["mode"] in ~w(fixture heldout)),
         :plan_version
       )
+
+      origin = model_origin!(plan)
+
+      if plan["version"] == 2 do
+        require!(
+          Enum.all?(
+            Map.values(plan["profiles"]) ++ Map.values(plan["embedding_profiles"]),
+            &(&1["base_url"] == origin)
+          ) and plan["search_port"] != URI.parse(origin).port,
+          :model_origin
+        )
+      end
 
       require!(plan["storage_policy"] == "forget_all_then_collect_v1", :storage_policy)
 
@@ -183,7 +198,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
         require!(
           Enum.all?(
             Map.values(plan["profiles"]) ++ Map.values(plan["embedding_profiles"]),
-            &(&1["base_url"] == "http://127.0.0.1:11434")
+            &(&1["base_url"] == origin)
           ),
           :model_origin
         )
@@ -210,6 +225,13 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
         is_list(variants) and length(variants) in 1..7 and unique?(variants, & &1["id"]),
         :variants
       )
+
+      if plan["version"] == 2,
+        do:
+          require!(
+            Enum.map(variants, & &1["id"]) == @variants and plan["answer"],
+            :measured_matrix
+          )
 
       if plan["mode"] == "heldout" do
         require!(
@@ -253,7 +275,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
         require!(
           Enum.all?(
             Map.values(plan["profiles"]),
-            &(&1["model"] == "qwen3.5:9b" and &1["base_url"] == "http://127.0.0.1:11434" and
+            &(&1["model"] == "qwen3.5:9b" and &1["base_url"] == origin and
                 &1["max_output_tokens"] == 4096 and &1["reasoning_effort"] == "none")
           ),
           :heldout_profiles
@@ -263,7 +285,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
           Enum.all?(
             Map.values(plan["embedding_profiles"]),
             &(&1["model"] == "embeddinggemma:latest" and &1["dimensions"] == 768 and
-                &1["dimension_mode"] == "native" and &1["base_url"] == "http://127.0.0.1:11434")
+                &1["dimension_mode"] == "native" and &1["base_url"] == origin)
           ),
           :heldout_profiles
         )
@@ -274,6 +296,89 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
       _ -> {:error, :plan_shape}
     catch
       {:evaluation_runner, code} -> {:error, code}
+    end
+  end
+
+  @doc "Derive every complete project/strategy cell without reading inputs or renewing allowances."
+  def schedule(plan, queries) do
+    try do
+      :ok = checked(validate(plan))
+      require!(plan["version"] == 2, :measured_plan_required)
+
+      require!(
+        is_list(queries) and length(queries) == plan["data"]["expected_queries"],
+        :query_count
+      )
+
+      require!(
+        Enum.all?(queries, fn query ->
+          is_map(query) and is_binary(query["query_id"]) and
+            byte_size(query["query_id"]) in 1..256 and String.valid?(query["query_id"]) and
+            name?(query["project"])
+        end) and unique?(queries, & &1["query_id"]),
+        :query_identity
+      )
+
+      projects = queries |> Enum.map(& &1["project"]) |> Enum.uniq() |> Enum.sort()
+      require!(length(projects) == 2, :project_count)
+
+      cells =
+        for project <- projects, variant <- plan["variants"] do
+          selected = Enum.filter(queries, &(&1["project"] == project))
+
+          %{
+            "project" => project,
+            "variant" => variant["id"],
+            "query_ids" => Enum.map(selected, & &1["query_id"]),
+            "original_project_count" => length(projects),
+            "budget" => allocate(variant["budget"], length(projects), plan["version"]),
+            "research_share" =>
+              if(variant["prepare"] == "research",
+                do: length(selected) * (1 + variant["query_options"]["limits"]["max_sources"]),
+                else: 0
+              )
+          }
+        end
+        |> Enum.with_index()
+        |> Enum.map(fn {cell, ordinal} ->
+          cell
+          |> Map.put("ordinal", ordinal)
+          |> Map.put("id", "cell-" <> String.pad_leading(Integer.to_string(ordinal), 3, "0"))
+        end)
+
+      {:ok,
+       %{
+         "version" => 1,
+         "original_project_count" => length(projects),
+         "query_count" => length(queries),
+         "research_call_limit" => Enum.sum(Enum.map(cells, & &1["research_share"])),
+         "cells" => cells
+       }}
+    rescue
+      _ -> {:error, :schedule_shape}
+    catch
+      {:evaluation_runner, code} -> {:error, code}
+    end
+  end
+
+  defp model_origin!(%{"version" => 1}), do: "http://127.0.0.1:11434"
+
+  defp model_origin!(%{"version" => 2, "model_origin" => origin}) do
+    require!(is_binary(origin) and byte_size(origin) <= 64, :model_origin)
+
+    case Regex.run(~r/\Ahttp:\/\/127\.0\.0\.1:([0-9]{1,5})\z/, origin) do
+      [_, text] ->
+        port = String.to_integer(text)
+
+        require!(
+          port in 1..65535 and port != 11434 and Integer.to_string(port) == text,
+          :model_origin
+        )
+
+        origin
+
+      _ ->
+        fail!(:model_origin)
     end
   end
 
@@ -492,10 +597,42 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     end
   end
 
+  defp dispatch(:declare, options) do
+    bytes = read!(options[:plan])
+    plan = decode!(bytes)
+    :ok = checked(validate(plan))
+    require!(plan["mode"] in ~w(heldout fixture), :freeze_mode)
+    {:ok, declaration} = EvaluationFreeze.declare(File.cwd!(), bytes, plan["artifacts"])
+    output = Path.expand(options[:output])
+    private_file!(output, declaration["bytes"])
+    {:ok, declaration |> Map.delete("bytes") |> Map.put("path", output)}
+  end
+
+  defp dispatch(:freeze_measured, options) do
+    bytes = read!(options[:experiment])
+
+    require!(
+      hash?(options[:experiment_sha256]) and sha(bytes) == options[:experiment_sha256],
+      :experiment_changed
+    )
+
+    resolution = decode!(read!(options[:resolution]))
+    {:ok, plan} = EvaluationFreeze.resolve_plan(bytes, resolution)
+    :ok = checked(validate(plan))
+
+    with {:ok, seal} <-
+           EvaluationFreeze.create_v2(File.cwd!(), bytes, resolution, options[:output]),
+         {:ok, verified} <- EvaluationFreeze.verify(seal["path"], seal["sha256"]) do
+      :ok = checked(validate(verified["plan"]))
+      {:ok, seal}
+    end
+  end
+
   defp dispatch(:freeze, options) do
     bytes = read!(options[:plan])
     plan = decode!(bytes)
     :ok = checked(validate(plan))
+    require!(plan["version"] == 1, :measured_entry_required)
     require!(plan["mode"] in ~w(heldout fixture), :freeze_mode)
 
     with {:ok, seal} <-
@@ -510,6 +647,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
   defp dispatch(phase, options) when phase in [:tune, :verify] do
     plan = decode!(read!(options[:plan]))
     :ok = checked(validate(plan))
+    require!(plan["version"] == 1, :measured_entry_required)
     require!(plan["mode"] == if(phase == :verify, do: "fixture", else: "tuning"), :execution_mode)
 
     require!(
@@ -528,6 +666,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
   defp dispatch(phase, options) when phase in [:predict, :verify_frozen] do
     require!(!Keyword.has_key?(options, :labels), :labels_forbidden)
     {:ok, verified} = EvaluationFreeze.verify(options[:freeze], options[:freeze_sha256])
+    require!(verified["manifest"]["version"] == 1, :measured_entry_required)
     plan = verified["plan"]
     :ok = checked(validate(plan))
 
@@ -655,6 +794,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
 
   defp scoring_context(options) do
     {:ok, verified} = EvaluationFreeze.verify(options[:freeze], options[:freeze_sha256])
+    require!(verified["manifest"]["version"] == 1, :measured_entry_required)
     plan = verified["plan"]
     :ok = checked(validate(plan))
     bytes = read!(options[:predictions], 67_108_864)
@@ -930,7 +1070,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
         }
       end)
 
-    budget = allocate(variant["budget"], project_count)
+    budget = allocate(variant["budget"], project_count, plan["version"])
 
     runtime = %{
       provider: :ollama,
@@ -2296,11 +2436,19 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     |> Enum.map(&decode!/1)
   end
 
-  defp allocate(budget, projects) do
+  defp allocate(budget, projects, version) do
     Map.new(budget, fn {key, value} ->
-      if key in ~w(max_requests max_input_tokens max_output_tokens),
-        do: {key, div(value, projects)},
-        else: {key, value}
+      cond do
+        key in ~w(max_requests max_input_tokens max_output_tokens) ->
+          {key, div(value, projects)}
+
+        key == "money" and version == 2 ->
+          {key,
+           Enum.map(value, &Map.update!(&1, "limit_nanos", fn cap -> div(cap, projects) end))}
+
+        true ->
+          {key, value}
+      end
     end)
   end
 

@@ -1107,8 +1107,11 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
     end
   end
 
-  test "CLI status agrees with retained failed rows and refuses unsupported phases", ctx do
-    for failed <- [false, true] do
+  for failed <- [false, true] do
+    @tag failed_rows: failed
+    test "CLI status agrees with retained #{if failed, do: "failed", else: "successful"} rows",
+         ctx do
+      failed = ctx.failed_rows
       {paths, root} = cli_inputs(ctx, failed)
       output = Path.join(root, "results")
 
@@ -1135,11 +1138,15 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
       assert Enum.all?(rows, &(&1["attempt"] == 1))
       assert Enum.all?(rows, &(&1["status"] == if(failed, do: "partial", else: "ok")))
     end
+  end
 
+  test "CLI refuses unsupported phases" do
     {summary, status} = cli(["--phase", "unsupported"])
     assert status == 1
     assert summary == %{"status" => "failed", "reason" => %{"code" => "invalid_options"}}
+  end
 
+  test "CLI forbids label input during prediction" do
     {summary, status} = cli(["--phase", "predict", "--labels", "must-not-open"])
     assert status == 1
     assert summary["reason"]["code"] == "labels_forbidden"

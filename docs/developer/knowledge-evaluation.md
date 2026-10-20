@@ -14,8 +14,8 @@ The evaluation helpers have separate owners. Keep their inputs separate:
 
 | Owner | Implementation | Input and result |
 | --- | --- | --- |
-| Declaration | `examples/knowledge/evaluation_plan.exs` | Explicit artifacts, local profiles and seven budgets become the complete strategy matrix without opening inputs |
-| Freeze | `examples/knowledge/evaluation_freeze.exs` | A clean source tree, public plan and inert artifacts become a pinned manifest and copied artifacts |
+| Plan | `examples/knowledge/evaluation_plan.exs` | Explicit artifacts, local profiles and seven budgets become the complete strategy matrix without opening inputs |
+| Declaration and freeze | `examples/knowledge/evaluation_freeze.exs` | Source and artifact content become a portable experiment; local bindings and runtime become a separate execution seal |
 | Dataset projection | `examples/knowledge/evaluation_input.exs` | Dataset bytes become separately validated corpus, label-free queries or scoring labels |
 | Orchestration | `examples/knowledge/evaluation_runner.exs` | A validated variant plan becomes public Session calls, first predictions and retained execution failures |
 | Session driver | `examples/knowledge/evaluation_session.exs` | Explicit artifact/profile/budget selections and public commands become durable invocation receipts |
@@ -69,7 +69,7 @@ authorized run. There is no provider fallback or model download. The declared
 actual member names from independently supplied metadata before freezing;
 generating a plan does not verify them or open the dataset manifest.
 
-Generate one private declaration:
+Generate the private version-one plan used by both identity exercises below:
 
 ```sh
 mix run scripts/prepare-knowledge-evaluation.exs -- --spec "$IPSE_BENCHMARK/spec.json" --output "$IPSE_BENCHMARK/plan.json" --new-blind-seed
@@ -86,8 +86,8 @@ preparing independent blind review.
 The example budgets explicitly cap each variant at 1024 baseline requests or
 8192 requests for inference-heavy preparation. Their token caps equal their
 request cap times the declared reservation. These are finite admission limits,
-not predicted consumption or cost. The runner divides each budget equally
-among projects. The baseline caps cover fifty answers even for an uneven
+not predicted consumption or cost. The runner divides request and token caps
+equally among projects. The baseline caps cover fifty answers even for an uneven
 project split; unused shares are not transferred or renewed. Review preparation
 capacity separately. Each evaluation Session explicitly sets its inference-step
 limit to that project's allocated request cap plus one. This lets the next request
@@ -115,10 +115,137 @@ mix test test/knowledge_evaluation_plan_test.exs test/knowledge_evaluation_runne
 The CLI control generates two independent seeds, checks permissions, refuses an
 overwrite and verifies that nonexistent dataset/artifact paths stay unopened.
 The public-Session matrix uses this same builder with scripted profiles. A
-valid declaration is preparation. The executable preflight and complete clean
-freeze below are still required before opening held-out inputs.
+valid plan is preparation. The identity seal and executable preflight are
+separate checks. The measured identity exercise below does not run preflight
+or open held-out inputs.
 
 ## Seal identities before opening inputs
+
+Choose the identity format for your task. A version-two experiment describes
+the comparison through content identities and policy. Its execution seal binds
+one local resolution. Version-one seals retain their existing fixture and
+prediction behavior.
+
+### Separate the experiment from its local execution
+
+Use the complete plan and seven artifacts prepared above. Keep the source
+checkout clean, including untracked files, and use fresh output paths. Declare
+the portable experiment:
+
+```sh
+mix run scripts/evaluate-knowledge.exs -- --phase declare \
+  --plan "$IPSE_BENCHMARK/plan.json" \
+  --output "$IPSE_BENCHMARK/experiment.json" \
+  > "$IPSE_BENCHMARK/declaration-receipt.json"
+IPSE_EXPERIMENT_SHA256=$(elixir -e 'receipt = JSON.decode!(File.read!(hd(System.argv()))); IO.puts(receipt["result"]["sha256"])' "$IPSE_BENCHMARK/declaration-receipt.json")
+cat "$IPSE_BENCHMARK/declaration-receipt.json"
+```
+
+Expect `status: "ok"`, the experiment path, its SHA256 and the source commit.
+Retain the receipt and expected hash separately from the experiment bytes.
+`EvaluationFreeze.declare/3` records the clean commit, tree, tracked file hashes
+and inert artifact digests. It removes source/artifact paths, profile origins
+and the search port from the portable declaration. Model identities, prompts,
+budgets and dataset member identities remain part of the experiment. The
+declaration contains its private blind seed; keep it away from the independent
+reviewer.
+
+The declared policy selects `linux_memcg_charged_peak_bytes_v1`, CPU-only model
+execution, fresh private cache inodes per cell and exactly two projects. The
+optional backend is `linux_cgroup_v2_v1`. Hostnames, architecture descriptions
+and tool versions do not become portable admission requirements. The kernel
+quantity is workload-charged RAM, including cache and kernel charges. It does
+not describe summed process RSS or device memory.
+
+Resolve the same experiment on the machine where you intend to run it. Write
+this closed four-field object, using absolute artifact and report paths:
+
+```sh
+cat > "$IPSE_BENCHMARK/resolution.json" <<EOF
+{
+  "artifacts": {
+    "answer": "$IPSE_BENCHMARK/artifacts/answer",
+    "dense": "$IPSE_BENCHMARK/artifacts/dense",
+    "explicit": "$IPSE_BENCHMARK/artifacts/explicit",
+    "lexical": "$IPSE_BENCHMARK/artifacts/lexical",
+    "model": "$IPSE_BENCHMARK/artifacts/model",
+    "research": "$IPSE_BENCHMARK/artifacts/research",
+    "semantic": "$IPSE_BENCHMARK/artifacts/semantic"
+  },
+  "model_origin": "http://127.0.0.1:47631",
+  "search_port": 47632,
+  "reports": "$IPSE_BENCHMARK/reports"
+}
+EOF
+chmod 600 "$IPSE_BENCHMARK/resolution.json"
+mix run scripts/evaluate-knowledge.exs -- --phase freeze-measured \
+  --experiment "$IPSE_BENCHMARK/experiment.json" \
+  --experiment-sha256 "$IPSE_EXPERIMENT_SHA256" \
+  --resolution "$IPSE_BENCHMARK/resolution.json" \
+  --output "$IPSE_BENCHMARK/frozen-measured"
+```
+
+The artifact aliases must exactly match the declaration, and every imported
+artifact must retain its declared digest. `model_origin` accepts only literal
+`http://127.0.0.1:PORT`; the shared service port 11434 is forbidden. The search
+port must differ from the model port. Choose both ports deliberately before
+sealing. This identity operation neither starts listeners nor proves port
+availability or service ownership.
+
+`reports` must name a fresh path disjoint from the freeze directory. It cannot
+contain the source checkout. The freezer resolves canonical paths before sealing
+and rejects overlap or an existing report directory. An ignored report directory
+inside the checkout is allowed if it stays separate from the freeze. The freezer
+creates a fixed owner-only
+`frozen-measured/attempts` registry, separate from disposable reports. The
+registry is currently an identity boundary; creation does not claim an attempt
+or authorize execution. A future measured entry must claim it before effects.
+
+Expect a new manifest path, its SHA256 and the source commit. The version-two
+manifest binds a fresh execution ID, exact experiment and resolved-plan bytes,
+copied artifacts, canonical local paths, runtime identities and semantic launch
+recipe. Its provenance records the observed OS, architecture, Elixir and OTP.
+Keep the returned manifest hash separately and keep source/runtime bytes fixed
+within this execution. Resolving the portable experiment elsewhere creates a
+new local seal; it does not make an existing execution relocatable or renewable.
+
+Follow `resolve_plan/2`, `create_v2/4` and `verify/2` in `EvaluationFreeze`.
+Resolution constructs every text and embedding profile with the selected origin
+before sealing. Verification checks those exact resolved bytes rather than
+editing a frozen profile. The recipe has its own digest and contains no digest
+of the final manifest or future native bootstrap, avoiding a circular identity.
+
+These two CLI phases read public plans, source/runtime files and inert
+artifacts. They do no dataset, provider, worker or model work and claim no
+measured resource result. The existing `predict`, `verify-frozen`, `review` and
+`score` paths reject a version-two seal with `measured_entry_required` before
+dataset access. Complete measured lifecycle integration remains required.
+
+Trace `EvaluationRunner.schedule/2` after resolving the plan. This pure function
+accepts projected query identities, requires two projects and derives fourteen
+cells in sorted-project and declared-variant order. Each cell retains the
+original project count and its fixed share of the original variant budget.
+Version two divides every request, token and monetary limit by that count,
+rounding down. Per-request reservations and the rate card stay unchanged. A
+share below its reservation refuses admission; unused amounts cannot move to
+another cell. Version one divides request and token caps only; any optional
+monetary cap applies independently to each project.
+Research gets each project's query count times `1 + max_sources`; shares cannot
+transfer or renew. The function reads no inputs or services and starts no cell.
+Measured preparation must eventually supply those validated query identities.
+
+Run the identity and real-CLI exercises before changing these boundaries:
+
+```sh
+mix test test/knowledge_evaluation_freeze_test.exs test/knowledge_evaluation_declaration_cli_test.exs test/knowledge_evaluation_schedule_test.exs
+```
+
+The CLI fixture preserves portable bytes, checks local profile resolution and
+private files, rejects a changed experiment hash and refuses prediction before
+opening its nonexistent dataset. It proves identity handling, not a complete
+comparison or the fourteen-cell execution.
+
+### Exercise the version-one identity contract
 
 Build Ipse and one independent lexical Corpus artifact first. Use fresh output
 paths and a clean source checkout, including untracked files:
@@ -166,7 +293,8 @@ also verifies that a dataset path in a plan is never opened during sealing.
 
 ## Check every selection before opening the dataset
 
-The runner's `freeze` phase adds executable preflight after the identity seal.
+The version-one runner's `freeze` phase adds executable preflight after the
+identity seal.
 Follow `preflight!/3`, `selection/4` and `EvaluationSession.preflight/1`. Tuning,
 fixture execution and frozen prediction also perform this check before opening
 any dataset member, including its manifest. The direct `EvaluationFreeze.create/4`
@@ -221,8 +349,8 @@ with refused retrieval still retains its failed prediction rows.
 
 ## Project query inputs without labels
 
-After a complete execution freeze is verified, its input adapter may open the
-declared dataset members. `EvaluationInput.queries/2` accepts the version-one
+After a version-one execution freeze and preflight pass, its input adapter may
+open the declared dataset members. `EvaluationInput.queries/2` accepts the version-one
 query JSON bytes and the declared split. Its `queries` result contains exactly
 `query_id`, `project` and `query`, preserving their input order. Relevance,
 expected classes, expected answers and refusal labels remain excluded. The
@@ -503,8 +631,10 @@ review, alongside literal captured-source verification.
 
 ## Prepare independent review from finalized predictions
 
-Finish prediction and retain its printed hash before preparing a review. The
-`review` phase verifies the execution freeze, finalized prediction hash and exact
+Use this procedure for a completed version-one prediction. Version-two identity
+seals cannot enter review through this path. Finish prediction and retain its
+printed hash before preparing a review. The `review` phase verifies the execution
+freeze, finalized prediction hash and exact
 variant/query grid before opening reference labels. It reuses
 `EvaluationScore.verified_predictions/2`; a separate permissive JSON parser
 cannot substitute for the scorer's row checks. Prediction IDs must be opaque

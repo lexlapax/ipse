@@ -9,6 +9,10 @@ the [evaluation training manual](../../developer/knowledge-evaluation.md) owns
 current implemented procedures. Commands and signatures below are proposed.
 The later [native collector record](aggregate-memory-native.md) covers the first
 implemented backend and its verification; this page retains the original design.
+The later [portable experiment record](portable-experiment.md) resolves the
+reopened metric/platform decision as workload-charged RAM with an optional Linux
+backend and records the approved CPU-only policy. The proposals below retain
+their original status and context.
 
 ## Choose complete fresh cells inside one measured run
 

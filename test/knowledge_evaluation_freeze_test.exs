@@ -139,6 +139,313 @@ defmodule Ipse.KnowledgeEvaluationFreezeTest do
     refute File.exists?(Path.join(ctx.root, "invalid"))
   end
 
+  test "non-object manifests preserve the version-one invalid-manifest refusal", ctx do
+    path = Path.join(ctx.root, "invalid-manifest.json")
+
+    for bytes <- ["[]", "null", "1", "{}"] do
+      File.write!(path, bytes)
+      assert {:error, :invalid_manifest} = Freeze.verify(path, Manifest.sha256(bytes))
+    end
+  end
+
+  test "portable declaration survives clean source and artifact relocation", ctx do
+    {:ok, first} = declare(ctx)
+    relocated = Path.join(ctx.root, "relocated")
+    File.cp_r!(ctx.repository, relocated)
+    copied_artifact = Path.join(ctx.root, "other-artifact")
+    File.cp_r!(ctx.artifact, copied_artifact)
+
+    other_plan =
+      plan_v2(ctx)
+      |> Map.put("artifacts", %{"fixture" => copied_artifact})
+      |> Map.put("search_port", 22002)
+      |> put_in(["profiles", "answer", "base_url"], "http://127.0.0.1:22003")
+
+    assert {:ok, second} =
+             Freeze.declare(relocated, JSON.encode!(other_plan), %{"fixture" => copied_artifact})
+
+    assert first["bytes"] == second["bytes"]
+    assert first["sha256"] == Manifest.sha256(second["bytes"])
+    experiment = JSON.decode!(first["bytes"])
+    refute first["bytes"] =~ ctx.root
+    refute Map.has_key?(experiment["source"], "root")
+    refute Map.has_key?(experiment["plan"], "search_port")
+    refute Map.has_key?(experiment["plan"], "artifacts")
+    refute Map.has_key?(experiment["plan"]["profiles"]["answer"], "base_url")
+
+    assert experiment["policy"] == %{
+             "metric" => "linux_memcg_charged_peak_bytes_v1",
+             "device" => "cpu_only",
+             "cache" => "fresh_private_inodes_per_cell",
+             "expected_projects" => 2,
+             "backend" => "linux_cgroup_v2_v1"
+           }
+
+    refute File.exists?(ctx.output)
+    refute File.exists?(Path.join(ctx.root, "missing-corpus.json"))
+    assert :code.is_loaded(Independent.FrozenArtifact) == false
+  end
+
+  test "one portable declaration yields distinct immutable local execution seals", ctx do
+    {:ok, experiment} = declare(ctx)
+    relocated = Path.join(ctx.root, "relocated")
+    File.cp_r!(ctx.repository, relocated)
+
+    assert {:ok, first} =
+             Freeze.create_v2(ctx.repository, experiment["bytes"], resolution(ctx), ctx.output)
+
+    second_output = Path.join(ctx.root, "second-freeze")
+
+    second_resolution = %{
+      resolution(ctx)
+      | "model_origin" => "http://127.0.0.1:22112",
+        "reports" => Path.join(ctx.root, "second-reports")
+    }
+
+    assert {:ok, second} =
+             Freeze.create_v2(relocated, experiment["bytes"], second_resolution, second_output)
+
+    assert {:ok, left} = Freeze.verify(first["path"], first["sha256"])
+    assert {:ok, right} = Freeze.verify(second["path"], second["sha256"])
+    refute first["execution_id"] == second["execution_id"]
+    refute first["sha256"] == second["sha256"]
+    assert left["manifest"]["experiment_sha256"] == right["manifest"]["experiment_sha256"]
+    refute left["manifest"]["source"]["root"] == right["manifest"]["source"]["root"]
+    assert left["plan"]["version"] == 2
+    assert left["plan"]["model_origin"] == "http://127.0.0.1:22111"
+    assert left["plan"]["profiles"]["answer"]["base_url"] == left["plan"]["model_origin"]
+
+    assert left["manifest"]["attempt_registry"] ==
+             Path.join(Path.dirname(first["path"]), "attempts")
+
+    assert left["manifest"]["launch_recipe"]["execution_id"] == first["execution_id"]
+
+    assert left["manifest"]["recipe_sha256"] ==
+             Manifest.sha256(JSON.encode!(left["manifest"]["launch_recipe"]))
+
+    refute File.exists?(first["reports"])
+    File.write!(Path.join(ctx.artifact, "LICENSE"), "changed original")
+    assert {:ok, _} = Freeze.verify(first["path"], first["sha256"])
+    File.write!(Path.join(left["artifact_paths"]["fixture"], "LICENSE"), "changed copy")
+    assert {:error, :artifact_changed} = Freeze.verify(first["path"], first["sha256"])
+  end
+
+  test "resolution is pure and rejects endpoint aliases, shared origins and extra authority",
+       ctx do
+    {:ok, experiment} = declare(ctx)
+
+    missing = %{
+      resolution(ctx)
+      | "artifacts" => %{"fixture" => Path.join(ctx.root, "absent-artifact")}
+    }
+
+    assert {:ok, plan} = Freeze.resolve_plan(experiment["bytes"], missing)
+    assert plan["artifacts"] == missing["artifacts"]
+    refute File.exists?(missing["artifacts"]["fixture"])
+
+    for origin <- [
+          "http://localhost:22111",
+          "http://127.0.0.1:11434",
+          "https://127.0.0.1:22111",
+          "http://127.0.0.1",
+          "http://127.0.0.1:22111/",
+          "http://user@127.0.0.1:22111",
+          "http://127.0.0.1:22111?x=1",
+          "http://127.0.0.1:0",
+          "http://127.0.0.1:65536"
+        ] do
+      assert {:error, :model_origin} =
+               Freeze.resolve_plan(experiment["bytes"], %{
+                 resolution(ctx)
+                 | "model_origin" => origin
+               })
+    end
+
+    assert {:error, :search_port} =
+             Freeze.resolve_plan(experiment["bytes"], %{resolution(ctx) | "search_port" => 22111})
+
+    assert {:error, :invalid_resolution} =
+             Freeze.resolve_plan(
+               experiment["bytes"],
+               Map.put(resolution(ctx), "attempt_registry", ctx.root)
+             )
+
+    assert {:error, :artifact_aliases} =
+             Freeze.resolve_plan(experiment["bytes"], %{
+               resolution(ctx)
+               | "artifacts" => %{"other" => ctx.artifact}
+             })
+
+    assert {:error, :invalid_resolution} =
+             Freeze.resolve_plan(experiment["bytes"], %{
+               resolution(ctx)
+               | "reports" => Path.join(ctx.root, "a/../reports")
+             })
+
+    changed = JSON.decode!(experiment["bytes"]) |> put_in(["policy", "metric"], "sampled_rss")
+
+    assert {:error, :invalid_experiment} =
+             Freeze.resolve_plan(JSON.encode!(changed), resolution(ctx))
+
+    assert {:error, :invalid_experiment} =
+             Freeze.resolve_plan(
+               JSON.encode!(Map.put(changed, "hostname", "fixture")),
+               resolution(ctx)
+             )
+
+    refute File.exists?(ctx.output)
+  end
+
+  test "canonical attempt registry stays outside ignored disposable reports", ctx do
+    File.write!(Path.join(ctx.repository, ".gitignore"), ".ipse/\n")
+    git(ctx.repository, ["add", ".gitignore"])
+    commit(ctx.repository, "ignore local reports")
+    File.mkdir!(Path.join(ctx.repository, ".ipse"))
+    output = Path.join(ctx.repository, ".ipse/freeze")
+    reports = Path.join(ctx.repository, ".ipse/reports")
+    {:ok, experiment} = declare(ctx)
+
+    assert {:ok, sealed} =
+             Freeze.create_v2(
+               ctx.repository,
+               experiment["bytes"],
+               %{resolution(ctx) | "reports" => reports},
+               output
+             )
+
+    assert {:ok, result} = Freeze.verify(sealed["path"], sealed["sha256"])
+    assert sealed["attempt_registry"] == Path.join(Path.dirname(sealed["path"]), "attempts")
+    assert Bitwise.band(File.stat!(sealed["attempt_registry"]).mode, 0o777) == 0o700
+    File.mkdir!(result["resolution"]["reports"])
+    File.write!(Path.join(result["resolution"]["reports"], "disposable"), "fixture")
+    File.write!(Path.join(sealed["attempt_registry"], "existing-first-attempt"), "retained")
+    File.rm_rf!(result["resolution"]["reports"])
+    assert {:ok, _} = Freeze.verify(sealed["path"], sealed["sha256"])
+
+    assert File.read!(Path.join(sealed["attempt_registry"], "existing-first-attempt")) ==
+             "retained"
+
+    File.rm_rf!(sealed["attempt_registry"])
+    elsewhere = Path.join(ctx.root, "other-registry")
+    File.mkdir!(elsewhere)
+    File.ln_s!(elsewhere, sealed["attempt_registry"])
+    assert {:error, :registry_changed} = Freeze.verify(sealed["path"], sealed["sha256"])
+  end
+
+  test "reports overlap, existing reports and reused freeze output refuse without replacing files",
+       ctx do
+    {:ok, experiment} = declare(ctx)
+
+    for reports <- [ctx.repository, ctx.root, ctx.output, Path.join(ctx.output, "reports")] do
+      assert {:error, :reports_overlap} =
+               Freeze.create_v2(
+                 ctx.repository,
+                 experiment["bytes"],
+                 %{resolution(ctx) | "reports" => reports},
+                 ctx.output
+               )
+
+      refute File.exists?(ctx.output)
+    end
+
+    reports = resolution(ctx)["reports"]
+    File.mkdir!(reports)
+    File.write!(Path.join(reports, "sentinel"), "preserve")
+
+    assert {:error, :reports_exists} =
+             Freeze.create_v2(ctx.repository, experiment["bytes"], resolution(ctx), ctx.output)
+
+    assert File.read!(Path.join(reports, "sentinel")) == "preserve"
+    File.rm_rf!(reports)
+
+    {:ok, sealed} =
+      Freeze.create_v2(ctx.repository, experiment["bytes"], resolution(ctx), ctx.output)
+
+    bytes = File.read!(sealed["path"])
+
+    assert {:error, :output_exists} =
+             Freeze.create_v2(ctx.repository, experiment["bytes"], resolution(ctx), ctx.output)
+
+    assert File.read!(sealed["path"]) == bytes
+  end
+
+  test "v2 detects exact plan and experiment byte tampering and later source commits", ctx do
+    {:ok, experiment} = declare(ctx)
+
+    {:ok, sealed} =
+      Freeze.create_v2(ctx.repository, experiment["bytes"], resolution(ctx), ctx.output)
+
+    plan_path = Path.join(Path.dirname(sealed["path"]), "plan.json")
+    original_plan = File.read!(plan_path)
+    File.write!(plan_path, original_plan <> " ")
+    assert {:error, :plan_changed} = Freeze.verify(sealed["path"], sealed["sha256"])
+    File.write!(plan_path, original_plan)
+    experiment_path = Path.join(Path.dirname(sealed["path"]), "experiment.json")
+    File.write!(experiment_path, experiment["bytes"] <> " ")
+    assert {:error, :experiment_changed} = Freeze.verify(sealed["path"], sealed["sha256"])
+    File.write!(experiment_path, experiment["bytes"])
+    commit(ctx.repository, "new clean source", ["--allow-empty"])
+    assert {:error, :source_changed} = Freeze.verify(sealed["path"], sealed["sha256"])
+  end
+
+  test "v2 runtime identity and registry permissions remain local immutable requirements", ctx do
+    directory = Path.join(ctx.root, "extra-v2-ebin")
+    File.mkdir!(directory)
+    Code.prepend_path(directory)
+    on_exit(fn -> Code.delete_path(directory) end)
+    {:ok, experiment} = declare(ctx)
+
+    {:ok, sealed} =
+      Freeze.create_v2(ctx.repository, experiment["bytes"], resolution(ctx), ctx.output)
+
+    File.chmod!(sealed["attempt_registry"], 0o755)
+    assert {:error, :registry_changed} = Freeze.verify(sealed["path"], sealed["sha256"])
+    File.chmod!(sealed["attempt_registry"], 0o700)
+    File.write!(Path.join(directory, "Elixir.NewV2Fixture.beam"), "changed runtime")
+    assert {:error, :runtime_changed} = Freeze.verify(sealed["path"], sealed["sha256"])
+  end
+
+  defp plan_v2(ctx),
+    do: %{
+      "version" => 1,
+      "mode" => "fixture",
+      "data" => %{
+        "corpus" => "missing-corpus.json",
+        "queries" => "missing-queries.json",
+        "split" => "fixture",
+        "expected_queries" => 2,
+        "manifest_sha256" => String.duplicate("a", 64)
+      },
+      "as_of_ms" => 1,
+      "artifacts" => %{"fixture" => ctx.artifact},
+      "profiles" => %{
+        "answer" => %{
+          "provider" => "ollama",
+          "model" => "fixture-answer",
+          "base_url" => "http://127.0.0.1:21434"
+        }
+      },
+      "embedding_profiles" => %{},
+      "models" => %{},
+      "variants" => [],
+      "answer" => true,
+      "interval_ms" => 100,
+      "search_port" => 21435,
+      "blind_seed" => String.duplicate("b", 64),
+      "storage_policy" => "forget_all_then_collect_v1"
+    }
+
+  defp declare(ctx),
+    do: Freeze.declare(ctx.repository, JSON.encode!(plan_v2(ctx)), %{"fixture" => ctx.artifact})
+
+  defp resolution(ctx),
+    do: %{
+      "artifacts" => %{"fixture" => ctx.artifact},
+      "model_origin" => "http://127.0.0.1:22111",
+      "search_port" => 22110,
+      "reports" => Path.join(ctx.root, "reports")
+    }
+
   defp create(ctx),
     do: Freeze.create(ctx.repository, ctx.plan, %{"fixture" => ctx.artifact}, ctx.output)
 

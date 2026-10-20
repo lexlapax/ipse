@@ -16,6 +16,9 @@ arguments =
       output: :string,
       freeze: :string,
       freeze_sha256: :string,
+      experiment: :string,
+      experiment_sha256: :string,
+      resolution: :string,
       data_manifest: :string,
       predictions: :string,
       prediction_sha256: :string,
@@ -26,6 +29,8 @@ arguments =
 
 phases = %{
   "freeze" => :freeze,
+  "declare" => :declare,
+  "freeze-measured" => :freeze_measured,
   "predict" => :predict,
   "tune" => :tune,
   "verify" => :verify,
