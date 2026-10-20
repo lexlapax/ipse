@@ -109,11 +109,12 @@ The protocol-two review binding is
 `5582e72de4e188cfaaae8a4a59157683283d975adf574b082de09ff1ff513213`.
 This read-only operation made zero new measurement or provider calls.
 
-At packet creation, semantic support remains unmeasured and quality remains
-false. Independent reviewers must judge the actual answers and every claim/span
-pair. Their notes and verdicts stay private and retain the packet binding. This
-record publishes no private predictions, source bodies, reference answers or
-transcripts.
+At packet creation, semantic support was unmeasured and quality was false. The
+[subsequent saved-output review](quality.md) now retains 350 independent answer
+judgments and all 587 citation-pair entries, including four unmeasured pairs.
+Support accuracy is 28%, and the quality gates do not pass. Notes and verdicts
+stay private and retain the packet binding. This record publishes no private
+predictions, source bodies, reference answers or transcripts.
 
 The older run can diagnose its original implementation. It cannot establish
 quality for `b9370fb`, select an engine without the required comparisons, or make

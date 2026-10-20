@@ -121,8 +121,10 @@ comparison uses an earlier source and remains separate from corrected-product
 quality evidence. Its 350-row execution has completed with confirmed native
 cleanup. The [subsequent admission and platform record](../2026-10-20-p27-historical-admission/index.md)
 records passing strict historical admission and the successful exact `b9370fb`
-Ubuntu/macOS matrix. Semantic review, independent external review, untouched
-held-out requirements and P27 acceptance remain open.
+Ubuntu/macOS matrix. Its [saved-output review](../2026-10-20-p27-historical-admission/quality.md)
+measures 28% support accuracy and retains four unmeasured citation pairs.
+Corrected-source quality, independent external review, untouched held-out
+requirements and P27 acceptance remain open.
 
 To rerun the focused contract and integration exercises:
 

@@ -564,10 +564,13 @@ passes Ubuntu and macOS, including native, package and installed proofs. The
 [historical admission record](archive/2026-10-20-p27-historical-admission/index.md)
 retains the separate original-first audit, strict supplemental checks and native
 tamper proof. The earlier frozen comparison completes 350 rows with confirmed
-cleanup and passes admission to independent blinded review. Semantic judgments,
-corrected-source quality/resource evidence, untouched held-out requirements and
-external whole-P27 review remain open. The older comparison does not establish
-quality for the new product corrections.
+cleanup and passes admission to independent blinded review. Its
+[saved-output quality result](archive/2026-10-20-p27-historical-admission/quality.md)
+is negative: 28% support accuracy, 423/583 supported measured citation pairs and
+four unmeasured pairs. No engine is selected. Corrected-source quality/resource
+evidence, untouched held-out requirements and external whole-P27 review remain
+open. The older comparison does not establish quality for the new product
+corrections; exposed inputs are now diagnostic material.
 The selected-runtime CPU compatibility proof passes two real explicit requests,
 with complete accounting and confirmed cleanup. It establishes no quality or
 exact memory result. The superseded `f2bfc8d` comparison was intentionally stopped
