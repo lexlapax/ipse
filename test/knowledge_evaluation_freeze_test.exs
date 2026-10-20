@@ -189,7 +189,9 @@ defmodule Ipse.KnowledgeEvaluationFreezeTest do
              "device" => "cpu_only",
              "cache" => "fresh_private_inodes_per_cell",
              "expected_projects" => 2,
-             "backend" => "linux_cgroup_v2_v1"
+             "backend" => "linux_cgroup_v2_v2",
+             "completion_policy" => "bounded_natural_drain_v1",
+             "population_drain_limit_ms" => 2000
            }
 
     refute File.exists?(ctx.output)

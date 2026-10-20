@@ -12,6 +12,77 @@ defmodule Ipse.KnowledgeEvaluationMeasuredTest do
     %{root: root}
   end
 
+  test "native receipt acceptance requires the declared completion policy and original timeout" do
+    receipt = %{
+      "version" => 2,
+      "metric" => "linux_memcg_charged_peak_bytes_v1",
+      "completion_policy" => "bounded_natural_drain_v1",
+      "population_drain_limit_ms" => 2000,
+      "population_drain_ms" => 215,
+      "natural_drain_us" => 215_123,
+      "elapsed_us" => 500_000,
+      "population_exit" => "natural",
+      "complete" => true,
+      "cleanup_confirmed" => true,
+      "born_in_scope" => true,
+      "exit_code" => 0,
+      "reason" => "completed",
+      "peak_bytes" => 1234
+    }
+
+    assert EvaluationMeasuredExecution.native_receipt?(receipt, 1000)
+
+    for {key, value} <- [
+          {"version", 1},
+          {"version", 3},
+          {"completion_policy", "other"},
+          {"population_drain_limit_ms", 3000},
+          {"population_exit", "forced"},
+          {"elapsed_us", 1_000_000},
+          {"elapsed_us", -1},
+          {"elapsed_us", 499_999.0},
+          {"natural_drain_us", nil},
+          {"natural_drain_us", -1},
+          {"natural_drain_us", 500_001},
+          {"natural_drain_us", 2_000_000},
+          {"population_drain_ms", 214},
+          {"complete", false},
+          {"cleanup_confirmed", false},
+          {"exit_code", 7},
+          {"reason", "timeout"}
+        ] do
+      refute EvaluationMeasuredExecution.native_receipt?(Map.put(receipt, key, value), 1000),
+             inspect({key, value})
+    end
+
+    for key <-
+          ~w(version completion_policy population_drain_limit_ms population_exit elapsed_us natural_drain_us population_drain_ms) do
+      refute EvaluationMeasuredExecution.native_receipt?(Map.delete(receipt, key), 1000), key
+    end
+
+    assert EvaluationMeasuredExecution.native_receipt?(
+             Map.merge(receipt, %{"natural_drain_us" => 0, "population_drain_ms" => 0}),
+             1000
+           )
+
+    boundary =
+      Map.merge(receipt, %{
+        "elapsed_us" => 3_000_000,
+        "natural_drain_us" => 1_999_999,
+        "population_drain_ms" => 1999
+      })
+
+    assert EvaluationMeasuredExecution.native_receipt?(boundary, 4000)
+
+    refute EvaluationMeasuredExecution.native_receipt?(
+             Map.merge(boundary, %{"natural_drain_us" => 2_000_000, "population_drain_ms" => 2000}),
+             4000
+           )
+
+    refute EvaluationMeasuredExecution.native_receipt?(receipt, 500)
+    refute EvaluationMeasuredExecution.native_receipt?(receipt, nil)
+  end
+
   test "measured invocation rejects unbound options before effects", %{root: root} do
     assert {:error, %{"code" => "option_shape"}} = EvaluationMeasuredExecution.run([])
 

@@ -52,6 +52,42 @@ fn main() {
             std::hint::black_box(bytes);
         }
         "brief" => { std::hint::black_box(memory(args.get(2).map_or(256, |n| n.parse().unwrap()))); }
+        "held-leader" => {
+            fs::write(&args[2], std::process::id().to_string()).unwrap();
+            wait_for(|| std::path::Path::new(&args[3]).exists());
+        }
+        "prepare-tail" => {
+            fs::create_dir(std::path::Path::new(&args[3]).parent().unwrap()).unwrap();
+            fs::copy(&args[2], &args[3]).unwrap();
+        }
+        "tail-child" => {
+            fs::write(&args[2], std::process::id().to_string()).unwrap();
+            wait_for(|| std::path::Path::new(&args[3]).exists());
+            let bytes = memory(128);
+            std::thread::sleep(Duration::from_millis(100));
+            std::hint::black_box(bytes);
+        }
+        "tail" => {
+            fs::write(&args[3], std::process::id().to_string()).unwrap();
+            let mut command = Command::new(std::env::current_exe().unwrap());
+            command.args(["tail-child", &args[2], &format!("{}.release", args[2])])
+                .stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
+            if args[4] == "detached" {
+                unsafe { command.pre_exec(|| if setsid() < 0 { Err(std::io::Error::last_os_error()) } else { Ok(()) }); }
+            }
+            let _child = command.spawn().unwrap();
+            wait_for(|| std::path::Path::new(&args[2]).exists());
+            std::process::exit(args[5].parse().unwrap());
+        }
+        "tail-nested" => {
+            let mut child = Command::new(&args[2])
+                .args(["--measure-cgroup", "cell", "00000000000000000000000000000004", "10000", &args[3], "--"])
+                .arg(std::env::current_exe().unwrap()).args(["tail", &args[4], &args[5], "detached", "0"])
+                .stdin(Stdio::piped()).stdout(Stdio::null()).spawn().unwrap();
+            let lease = child.stdin.take().unwrap();
+            assert!(child.wait().unwrap().success());
+            drop(lease);
+        }
         "closed-exec" => {
             let error = Command::new(&args[2]).args(&args[3..]).stdin(Stdio::null()).exec();
             panic!("closed-owner exec failed: {error}");

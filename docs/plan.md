@@ -461,8 +461,8 @@ evaluation remain open. The user requires exact peaks; periodic samples alone
 cannot satisfy that gate. The [native accounting investigation](archive/2026-10-19-p27-knowledge-packages/resource-memory-grounding.md)
 reproduces a completed Port child's missing high water in an outer Elixir receipt
 on macOS and Linux. An outer-only wrapper cannot establish complete coverage.
-The user selected exact simultaneous combined memory across all Ipse and model
-processes. The [aggregate design](archive/2026-10-19-p27-knowledge-packages/aggregate-memory-design.md)
+The initial simultaneous-memory investigation led to the
+[aggregate design](archive/2026-10-19-p27-knowledge-packages/aggregate-memory-design.md), which
 selects fresh complete cells under a whole-run scope. The first
 [native collector](archive/2026-10-19-p27-knowledge-packages/aggregate-memory-native.md)
 implements owned admission, birth-before-exec and lifetime/interval counters;
@@ -471,7 +471,8 @@ The [measured sequencer](archive/2026-10-19-p27-knowledge-packages/measured-sequ
 adds fresh preparation, cell and finalization stages under the whole counter.
 Six live Linux cases and six native protocol tests cover retained attempts,
 failed-but-closed stages, collector loss and writerless descriptor FIFOs.
-Complete evaluator/model integration and comparison coverage remain open.
+These isolated controls precede the complete integration proof below and do not
+establish real comparison coverage.
 The [optional listener record](archive/2026-10-19-p27-knowledge-packages/owned-listener.md)
 documents direct-child loopback ownership controls and a later reproduced
 PID/procfs mismatch. Its repair refuses an inherited ancestor procfs before
@@ -483,9 +484,9 @@ After reconsidering the measurement design, the user selected exact
 workload-charged RAM with an optional Linux benchmark backend. This includes
 cache and kernel charges under the declared `linux_memcg_charged_peak_bytes_v1`
 subject. The fresh comparison uses the approved CPU-only policy. Existing
-synthetic native controls establish counter behavior; complete evaluator/model
-integration and real comparison remain open. The experiment specification must
-remain portable. Resolved paths, runtime identities and observed host configuration
+synthetic native controls establish counter behavior; complete integration is
+verified below, while the real comparison remains open. The experiment
+specification must remain portable. Resolved paths, runtime identities and observed host configuration
 belong to each fresh execution's manifest and provenance; Serenity is a verification
 host rather than a requirement for the experiment. Existing systemd user tools
 remain an approved optional benchmark-launch dependency. Ordinary Ipse operation
@@ -522,15 +523,26 @@ completeness and durable embedding-selection gaps. The
 also repairs explicit reindexing after a reported-model change. It passes whole
 source suites, native and installed checks on macOS and Linux, with current
 manuals and no remaining findings in bounded internal follow-up reviews.
-The earlier green matrix does not cover these corrections; their own hosted
-verification remains separate.
+The earlier green matrix does not cover these corrections. Their exact `93f71ad`
+[hosted run](https://github.com/lexlapax/ipse/actions/runs/39384645172) fails two
+macOS fixture waits and cancels Ubuntu through fail-fast. A separate test-budget
+correction is being verified; the hosted slowdown cause remains unproven.
 The selected-runtime CPU compatibility proof passes two real explicit requests,
 with complete accounting and confirmed cleanup. It establishes no quality or
 exact memory result. The superseded `f2bfc8d` comparison was intentionally stopped
 after 25 completed rows. It has no complete audit and must never be resumed or
 replayed. Its first cell's native receipt also reports residual descendants and
-incomplete measurement despite domain closure. Cleanup diagnosis, a fresh
-corrected comparison and resource/quality acceptance remain open.
+incomplete measurement despite domain closure. The
+[native population correction](archive/2026-10-20-p27-native-drain/index.md)
+retains that result and the separate loaded diagnostic. It permits a fixed
+two-second natural tail within the original deadline, keeps authority live
+through the terminal decision and binds version-two receipts to the declared
+completion policy. Both internal reviewers' reproduced races are corrected.
+Final macOS source/native/package checks pass, as do Linux's 1,345-test
+native-enabled suite, twelve drain and four terminal controls, complete source
+and installed 350-row synthetic proofs and five integrated authority controls.
+A fresh corrected CPU comparison, semantic review and resource/quality acceptance
+remain open. Historical attempts are never upgraded or replayed.
 The inherited combined-fixture timeout is repaired with independent
 test units and unchanged deadlines/assertions; the exact-source `25f1d8e`
 [hosted matrix](https://github.com/lexlapax/ipse/actions/runs/39309132023)

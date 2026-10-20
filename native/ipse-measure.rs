@@ -13,6 +13,7 @@ mod linux {
     use std::time::{Duration, Instant};
 
     const MAX_LOG: usize = 16 * 1024 * 1024;
+    const POPULATION_DRAIN_MS: u64 = 2_000;
     const O_CLOEXEC: i32 = 0x80000;
     const O_NOFOLLOW: i32 = 0x20000;
     const O_DIRECTORY: i32 = 0x10000;
@@ -83,6 +84,18 @@ mod linux {
             Some("0") => Ok(true), Some("1") => Ok(false),
             _ => Err("invalid cgroup population".into()),
         }
+    }
+
+    fn exit_code(raw: i32) -> i32 {
+        if raw < 0 { -1 } else if raw & 127 == 0 { (raw >> 8) & 255 } else { 128 + (raw & 127) }
+    }
+
+    fn population_stop(elapsed: Duration, timeout: Duration, leader: Option<(i32, Duration)>, population_empty: bool) -> Option<&'static str> {
+        if elapsed >= timeout { return Some("timeout"); }
+        let (raw, since_reap) = leader?;
+        if exit_code(raw) != 0 { return Some("command_failed"); }
+        if since_reap >= Duration::from_millis(POPULATION_DRAIN_MS) { return Some("residual_descendants"); }
+        if population_empty { Some("completed") } else { None }
     }
 
     fn token(value: &str) -> bool {
@@ -182,6 +195,14 @@ mod linux {
                 let _ = self.child.try_wait();
             }
         }
+    }
+
+    fn active_failure(bound: Option<&crate::ipse_bound::Bound>, anchor: &mut Anchor, start: Instant, timeout: Duration) -> Result<Option<&'static str>, String> {
+        if bound.is_some_and(|value| value.check().is_err()) { return Ok(Some("authority_lost")); }
+        if owner_closed()? { return Ok(Some("owner_closed")); }
+        if anchor.child.try_wait().map_err(failure)?.is_some() { return Ok(Some("anchor_lost")); }
+        if start.elapsed() >= timeout { return Ok(Some("timeout")); }
+        Ok(None)
     }
 
     pub fn anchor() -> Result<(), String> {
@@ -384,38 +405,49 @@ mod linux {
         let start = Instant::now();
         let mut logged = 0; let mut status = None; let mut reason = "completed";
         let mut stopped_at = None; let mut cleanup = false; let mut output_open = true;
+        let mut leader_reaped_at: Option<Instant> = None;
         let mut log_truncated = false;
         loop {
-            if stopped_at.is_none() && bound.as_ref().is_some_and(|b| b.check().is_err()) {
-                reason = "authority_lost"; lease.scope.kill()?; stopped_at = Some(Instant::now());
-            }
-            if stopped_at.is_none() && owner_closed()? {
-                reason = "owner_closed"; lease.scope.kill()?; stopped_at = Some(Instant::now());
-            }
-            if stopped_at.is_none() && lease.anchor.as_mut().unwrap().child.try_wait().map_err(failure)?.is_some() {
-                reason = "anchor_lost"; lease.scope.kill()?; stopped_at = Some(Instant::now());
+            if reason == "completed" {
+                if let Some(outcome) = active_failure(bound.as_ref(), lease.anchor.as_mut().unwrap(), start, Duration::from_millis(timeout))? {
+                    reason = outcome; lease.scope.kill()?; stopped_at = Some(Instant::now());
+                }
             }
             if status.is_none() {
                 let mut raw = 0;
                 let result = unsafe { waitpid(pid, &mut raw, 1) };
-                if result == pid { status = Some(raw); lease.pid = None; }
+                if result == pid {
+                    status = Some(raw); lease.pid = None;
+                    leader_reaped_at = Some(Instant::now());
+                    private_file(&output.join("leader-exited.json"), format!("{{\"version\":1,\"token\":\"{id}\",\"exit_code\":{},\"observed_elapsed_us\":{}}}\n",
+                        exit_code(raw), leader_reaped_at.unwrap().duration_since(start).as_micros()).as_bytes())?;
+                }
                 else if result < 0 && io::Error::last_os_error().kind() != io::ErrorKind::Interrupted {
                     return Err("measurement child reap failed".into());
                 }
             }
-            if status.is_some() && stopped_at.is_none() {
-                if !empty(&mut lease.scope.events)? {
-                    reason = "residual_descendants"; lease.scope.kill()?;
+            let population_empty = empty(&mut lease.scope.events)?;
+            let observed_at = Instant::now();
+            if reason == "completed" && stopped_at.is_none() {
+                let leader = status.map(|raw| (raw, observed_at.duration_since(leader_reaped_at.unwrap())));
+                if let Some(outcome) = population_stop(observed_at.duration_since(start), Duration::from_millis(timeout), leader, population_empty) {
+                    reason = outcome;
+                    if outcome != "completed" { lease.scope.kill()?; }
+                    stopped_at = Some(observed_at);
                 }
-                stopped_at = Some(Instant::now());
             }
-            if stopped_at.is_none() && start.elapsed() >= Duration::from_millis(timeout) {
-                reason = "timeout"; lease.scope.kill()?; stopped_at = Some(Instant::now());
-            }
-            if status.is_some() && empty(&mut lease.scope.events)? {
+            if status.is_some() && population_empty {
                 cleanup = true;
-                if !output_open { break; }
-                if stopped_at.is_some_and(|t| t.elapsed() >= Duration::from_millis(500)) { break; }
+                let output_since = if reason == "completed" { leader_reaped_at } else { stopped_at };
+                if !output_open || output_since.is_some_and(|t| t.elapsed() >= Duration::from_millis(500)) {
+                    if reason == "completed" {
+                        if let Some(outcome) = active_failure(bound.as_ref(), lease.anchor.as_mut().unwrap(), start, Duration::from_millis(timeout))? {
+                            reason = outcome; lease.scope.kill()?; stopped_at = Some(Instant::now());
+                            cleanup = false; continue;
+                        }
+                    }
+                    break;
+                }
             }
             if stopped_at.is_some_and(|t| t.elapsed() >= Duration::from_secs(5)) { break; }
             let mut fds = [PollFd { fd: if output_open { child_output.as_raw_fd() } else { -1 }, events: 1, revents: 0 }];
@@ -435,14 +467,24 @@ mod linux {
                 }
             }
         }
+        let elapsed_us = start.elapsed().as_micros();
+        if reason == "completed" && elapsed_us >= u128::from(timeout) * 1_000 {
+            reason = "timeout"; lease.scope.kill()?;
+        }
+        let drain = leader_reaped_at.zip(stopped_at).map(|(reaped, stopped)| stopped.saturating_duration_since(reaped));
+        let drain_ms = drain.map_or(0, |value| value.as_millis());
+        let natural_drain_us = if reason == "completed" { drain.map(|value| value.as_micros().to_string()).unwrap_or("null".into()) } else { "null".into() };
+        let population_exit = if reason == "completed" { "natural" } else { "forced" };
         let bytes = peak(&mut lease.scope.peak)?;
         lease.anchor.as_mut().unwrap().finish()?;
         let parent_peak = match interval.as_mut() { Some(fd) => peak(fd)?.to_string(), None => "null".into() };
         let raw = status.unwrap_or(-1);
-        let code = if raw < 0 { -1 } else if raw & 127 == 0 { (raw >> 8) & 255 } else { 128 + (raw & 127) };
-        let complete = cleanup && code == 0 && reason == "completed";
+        let code = exit_code(raw);
+        let complete = cleanup && code == 0 && reason == "completed"
+            && drain.is_some_and(|value| value < Duration::from_millis(POPULATION_DRAIN_MS))
+            && elapsed_us < u128::from(timeout) * 1_000;
         log.sync_all().map_err(failure)?;
-        let record = format!("{{\"version\":1,\"metric\":\"linux_memcg_charged_peak_bytes_v1\",\"token\":\"{id}\",\"role\":\"{role}\",\"peak_bytes\":{bytes},\"parent_interval_peak_bytes\":{parent_peak},\"born_in_scope\":true,\"cleanup_confirmed\":{cleanup},\"exit_code\":{code},\"reason\":\"{reason}\",\"complete\":{complete},\"log_bytes\":{logged},\"log_truncated\":{log_truncated}}}\n");
+        let record = format!("{{\"version\":2,\"metric\":\"linux_memcg_charged_peak_bytes_v1\",\"completion_policy\":\"bounded_natural_drain_v1\",\"population_drain_limit_ms\":{POPULATION_DRAIN_MS},\"population_drain_ms\":{drain_ms},\"natural_drain_us\":{natural_drain_us},\"elapsed_us\":{elapsed_us},\"population_exit\":\"{population_exit}\",\"token\":\"{id}\",\"role\":\"{role}\",\"peak_bytes\":{bytes},\"parent_interval_peak_bytes\":{parent_peak},\"born_in_scope\":true,\"cleanup_confirmed\":{cleanup},\"exit_code\":{code},\"reason\":\"{reason}\",\"complete\":{complete},\"log_bytes\":{logged},\"log_truncated\":{log_truncated}}}\n");
         private_file(&output.join("receipt.json"), record.as_bytes())?;
         File::open(&output).and_then(|f| f.sync_all()).map_err(failure)?;
         if cleanup { lease.scope.remove()?; }
@@ -455,7 +497,23 @@ mod linux {
 
     #[cfg(test)]
     mod tests {
-        use super::environment_key;
+        use super::{environment_key, population_stop, Duration};
+        #[test]
+        fn population_acceptance_keeps_original_and_post_reap_deadlines_strict() {
+            let ms = Duration::from_millis;
+            assert_eq!(population_stop(ms(10), ms(1000), None, true), None);
+            assert_eq!(population_stop(ms(1000), ms(1000), None, true), Some("timeout"));
+            assert_eq!(population_stop(ms(999), ms(1000), Some((0, ms(215))), false), None);
+            assert_eq!(population_stop(ms(999), ms(1000), Some((0, ms(215))), true), Some("completed"));
+            for empty in [false, true] {
+                assert_eq!(population_stop(ms(1000), ms(1000), Some((0, ms(0))), empty), Some("timeout"));
+                assert_eq!(population_stop(ms(3000), ms(3000), Some((0, ms(2000))), empty), Some("timeout"));
+                assert_eq!(population_stop(ms(2999), ms(3000), Some((0, ms(2000))), empty), Some("residual_descendants"));
+                assert_eq!(population_stop(ms(10), ms(3000), Some((7 << 8, ms(0))), empty), Some("command_failed"));
+                assert_eq!(population_stop(ms(10), ms(3000), Some((9, ms(0))), empty), Some("command_failed"));
+            }
+            assert_eq!(population_stop(ms(2999), ms(3000), Some((0, Duration::from_micros(1_999_999))), true), Some("completed"));
+        }
         #[test]
         fn bound_environment_excludes_manager_state_and_keeps_only_selected_values() {
             for key in [b"PATH".as_slice(), b"LANG", b"HOME", b"TMPDIR"] {

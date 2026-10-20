@@ -136,9 +136,21 @@ admission. This internal role inherits a retained cgroup-kill descriptor and a
 private stdin lease. Collector death closes the lease; the anchor kills that
 owned scope even while an outer application remains alive. A command closes its
 inherited lease before exec. Signaling uses the retained cgroup descriptor, not
-a discovered or reusable workload PID. Owner EOF or `C`, timeout and residual
+a discovered or reusable workload PID. Owner EOF or `C`, timeout and persistent
 descendants also trigger owned-scope cleanup. Owner closure is checked before
 admission and again before launch. SIGCHLD normalization preserves child reaping.
+
+A zero-exiting leader starts a fixed two-second natural population drain.
+The collector continues checking authority, owner, anchor and the original
+workload deadline. It accepts only an observed empty `cgroup.events` population
+strictly before both deadlines. Empty process lists or closed output pipes do
+not establish population exit. A nonzero leader fails immediately. A persistent
+population is killed and remains incomplete, even after cleanup succeeds.
+Memory counters cover the entire tail. Output continues to drain while the
+population is active. After population empties, any remaining output wait ends
+at the 500 ms cutoff measured from leader reap. Ownership and the original
+deadline remain checked through the terminal decision. Forced cleanup has a
+separate five-second bound.
 
 The caller keeps stdin open and accepts a terminal `M` frame only with the
 corresponding private `receipt.json` and normal helper exit. A normal helper exit
@@ -149,12 +161,26 @@ not cause automatic replay. Killing a collector can leave `started.json` without
 a final receipt; that is incomplete evidence.
 
 `OUTPUT` must be a fresh absolute directory. It has mode 0700 and immutable
-started/final JSON files have mode 0600. Child stdout/stderr goes only to a private
+started/final JSON files have mode 0600. `leader-exited.json` records actual reap
+observation and elapsed microseconds; its presence does not establish population
+closure. Child stdout/stderr goes only to a private
 16-MiB bounded log with an explicit truncation flag, never the metric channel.
 Receipts retain scope identity and separate numeric peak, command outcome and
 cleanup. Empty owned scope directories are removed after receipt persistence.
 The collector's own native apparatus is outside its measured root; nested
 collectors and anchors contribute to the enclosing whole-run population.
+
+Final receipts have `version: 2`, `completion_policy: "bounded_natural_drain_v1"`
+and `population_drain_limit_ms: 2000`. `population_drain_ms` records the interval
+from observed leader reap to natural closure or failure. For successful natural
+closure, `natural_drain_us` records that interval without millisecond rounding;
+it is null for a forced outcome. `elapsed_us` runs through the terminal output
+decision. `population_exit` is `natural` or `forced` according to the latched
+outcome. Ordinary anchor retirement after proven emptiness does not count as
+forced population termination. Timings are monotonic observations, not exact
+kernel task-death times. Consumers must check the declared policy and original
+timeout as well as completion. Historical receipts require their matching source
+and runtime; an old incomplete result cannot acquire this completion policy.
 
 Run the real no-model controls on a Linux host with the approved systemd
 user-service tools, delegated memory controller and clone-into-cgroup support:
@@ -162,9 +188,20 @@ user-service tools, delegated memory controller and clone-into-cgroup support:
 ```sh
 ./scripts/build.sh
 elixir scripts/verify-memory-scope.exs "$PWD/priv/ipse-runner"
+elixir scripts/verify-memory-drain.exs "$PWD/priv/ipse-runner"
+elixir scripts/verify-memory-terminal.exs "$PWD/priv/ipse-runner"
 ```
 
-The result reports ten controls and a private evidence directory. Follow the
+The commands report ten scope controls and twelve drain controls, each with a
+private evidence directory and zero inference requests. The drain controls wait
+for actual collector reap before releasing a delayed allocator or inducing loss.
+They cover nested peak intervals, persistent descendants, original deadlines,
+owner/anchor/collector loss and bound-registry replacement. The terminal verifier
+reports four controls. It compiles private diagnostic copies with a bounded
+barrier at the final decision, then compares the guard with its deliberate
+reversal. Only the reversed copy may accept cancellation at that boundary;
+the guarded copy also refuses an expired original deadline. Production source
+is unchanged, and diagnostic peaks are not experiment results. Follow the
 [training exercise](../docs/developer/knowledge-evaluation.md#exercise-the-native-aggregate-collector)
 to interpret their subjects and failure records. The knowledge evaluator uses
 this protocol through its optional measured-execution owner. Its complete

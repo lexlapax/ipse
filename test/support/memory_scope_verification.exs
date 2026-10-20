@@ -1,5 +1,5 @@
 defmodule MemoryScopeVerification do
-  def start(helper, output, command, timeout \\ 10_000, bootstrap \\ []) do
+  def start(helper, output, command, timeout \\ 10_000, bootstrap \\ [], authority \\ nil) do
     token = Base.encode16(:crypto.strong_rand_bytes(16), case: :lower)
     unit = "ipse-measure-" <> token
 
@@ -24,9 +24,8 @@ defmodule MemoryScopeVerification do
           "root",
           token,
           Integer.to_string(timeout),
-          output,
-          "--" | command
-        ]
+          output
+        ] ++ if(authority, do: ["--bound-root", authority], else: []) ++ ["--" | command]
 
     port =
       Port.open({:spawn_executable, System.find_executable("systemd-run")}, [
@@ -41,7 +40,7 @@ defmodule MemoryScopeVerification do
       System.cmd("systemctl", ["--user", "stop", unit <> ".service"], stderr_to_stdout: true)
     end)
 
-    %{port: port, output: output, token: token, unit: unit}
+    %{port: port, output: output, token: token, unit: unit, timeout: timeout}
   end
 
   def finish(run) do
@@ -52,6 +51,7 @@ defmodule MemoryScopeVerification do
         true = File.read!(Path.join(run.output, "receipt.json")) == body
         value = JSON.decode!(body)
         true = value["token"] == run.token
+        if value["complete"], do: assert_closed(value, true, run.timeout)
         value
 
       _ ->
@@ -65,6 +65,14 @@ defmodule MemoryScopeVerification do
 
     true = String.contains?(error, "owner closed before admission")
     false = File.exists?(run.output)
+  end
+
+  def failed(run, expected) do
+    {<<?E, size::32, error::binary-size(size)>>, 1} =
+      receive_result(run, "", System.monotonic_time(:millisecond) + 30_000)
+
+    true = error == expected
+    false = File.exists?(Path.join(run.output, "receipt.json"))
   end
 
   defp receive_result(run, bytes, deadline) do
@@ -96,10 +104,40 @@ defmodule MemoryScopeVerification do
     end
   end
 
-  def assert_closed(value, complete) do
+  def wait_json(path, attempts \\ 500)
+  def wait_json(_, 0), do: raise("probe did not persist expected observation")
+
+  def wait_json(path, attempts) do
+    with {:ok, bytes} <- File.read(path), {:ok, value} when is_map(value) <- JSON.decode(bytes) do
+      value
+    else
+      _ ->
+        Process.sleep(10)
+        wait_json(path, attempts - 1)
+    end
+  end
+
+  def assert_closed(value, complete, timeout \\ nil) do
     true = value["cleanup_confirmed"] and value["born_in_scope"]
     true = value["complete"] == complete
     true = value["metric"] == "linux_memcg_charged_peak_bytes_v1"
+
+    if complete do
+      true = value["version"] == 2 and value["exit_code"] == 0 and value["reason"] == "completed"
+
+      true =
+        value["completion_policy"] == "bounded_natural_drain_v1" and
+          value["population_drain_limit_ms"] == 2000
+
+      true = value["population_exit"] == "natural"
+      drain = value["natural_drain_us"]
+      elapsed = value["elapsed_us"]
+      true = is_integer(drain) and drain >= 0 and drain < 2_000_000
+      true = value["population_drain_ms"] == div(drain, 1000)
+      true = is_integer(elapsed) and elapsed >= drain
+      true = is_nil(timeout) or elapsed < timeout * 1000
+    end
+
     value
   end
 

@@ -22,14 +22,21 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
   """
   alias Ipse.Extensions.{Manifest, Store}
 
-  @policy %{
-    "metric" => "linux_memcg_charged_peak_bytes_v1",
-    "device" => "cpu_only",
-    "cache" => "fresh_private_inodes_per_cell",
-    "expected_projects" => 2,
-    "backend" => "linux_cgroup_v2_v1"
+  @completion_policy %{
+    "completion_policy" => "bounded_natural_drain_v1",
+    "population_drain_limit_ms" => 2000
   }
+  @policy Map.merge(@completion_policy, %{
+            "metric" => "linux_memcg_charged_peak_bytes_v1",
+            "device" => "cpu_only",
+            "cache" => "fresh_private_inodes_per_cell",
+            "expected_projects" => 2,
+            "backend" => "linux_cgroup_v2_v2"
+          })
   @plan_keys ~w(version mode data as_of_ms artifacts profiles embedding_profiles models variants answer interval_ms search_port blind_seed storage_policy)
+
+  @doc "Fixed native population completion policy bound into each new experiment."
+  def completion_policy, do: @completion_policy
 
   @doc "Declare portable source, artifact and experiment identities without opening evaluation inputs."
   def declare(repository, plan_bytes, artifacts) do

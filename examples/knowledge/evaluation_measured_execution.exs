@@ -696,7 +696,8 @@ defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
     root_started = json!(Path.join(context.native, "started.json"))
 
     require!(
-      root["token"] == context.id and root["role"] == "root" and native_receipt?(root) and
+      root["token"] == context.id and root["role"] == "root" and
+        native_receipt?(root, context.timeouts["root_ms"]) and
         root_started["token"] == context.id and root_started["role"] == "root" and
         positive?(root_started["scope_inode"]) and positive?(root_started["scope_device"]),
       :root_receipt
@@ -825,7 +826,8 @@ defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
     started = json!(Path.join(stage.output, "started.json"))
 
     require!(
-      receipt["token"] == stage.token and receipt["role"] == "cell" and native_receipt?(receipt) and
+      receipt["token"] == stage.token and receipt["role"] == "cell" and
+        native_receipt?(receipt, stage.timeout) and
         positive?(receipt["parent_interval_peak_bytes"]),
       :stage_receipt
     )
@@ -925,12 +927,25 @@ defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
     }
   end
 
-  defp native_receipt?(value),
-    do:
-      value["metric"] == @metric and value["complete"] == true and
-        value["cleanup_confirmed"] == true and value["born_in_scope"] == true and
-        value["exit_code"] == 0 and value["reason"] == "completed" and
-        positive?(value["peak_bytes"])
+  @doc false
+  def native_receipt?(value, timeout_ms)
+      when is_map(value) and is_integer(timeout_ms) and timeout_ms > 0 do
+    policy = EvaluationFreeze.completion_policy()
+    elapsed = value["elapsed_us"]
+    drain = value["natural_drain_us"]
+
+    value["version"] == 2 and value["metric"] == @metric and value["complete"] == true and
+      Map.take(value, Map.keys(policy)) == policy and value["population_exit"] == "natural" and
+      is_integer(elapsed) and elapsed >= 0 and elapsed < timeout_ms * 1000 and
+      is_integer(drain) and drain >= 0 and drain <= elapsed and
+      drain < policy["population_drain_limit_ms"] * 1000 and
+      value["population_drain_ms"] == div(drain, 1000) and
+      value["cleanup_confirmed"] == true and value["born_in_scope"] == true and
+      value["exit_code"] == 0 and value["reason"] == "completed" and
+      positive?(value["peak_bytes"])
+  end
+
+  def native_receipt?(_, _), do: false
 
   defp launch_environment(context, launch) do
     selected = %{

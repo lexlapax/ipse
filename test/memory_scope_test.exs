@@ -94,6 +94,43 @@ defmodule Ipse.MemoryScopeTest do
 
   @tag :memory_scope
   @tag timeout: 60_000
+  test "post-reap population drain includes late allocation and retains loss and deadline failures" do
+    assert {bytes, 0} =
+             System.cmd(
+               "elixir",
+               ["scripts/verify-memory-drain.exs", Path.expand("priv/ipse-runner")],
+               stderr_to_stdout: true
+             )
+
+    result = JSON.decode!(String.trim(bytes))
+    assert result["checks"] == 12
+    assert result["inference_requests"] == 0
+    assert result["allocation_after_leader_exit_included"]
+    assert result["nested_tail_and_parent_interval_included"]
+    assert result["late_zero_exit_refused"]
+    assert result["owner_loss_during_drain"] and result["owner_eof_during_drain"]
+    assert result["anchor_loss_during_drain"] and result["collector_loss_during_drain_incomplete"]
+    assert result["authority_loss_during_drain"]
+  end
+
+  @tag :memory_scope
+  @tag timeout: 60_000
+  test "terminal output decision observes ownership and original deadline after natural emptiness" do
+    assert {bytes, 0} =
+             System.cmd(
+               "elixir",
+               ["scripts/verify-memory-terminal.exs", Path.expand("priv/ipse-runner")],
+               stderr_to_stdout: true
+             )
+
+    result = JSON.decode!(String.trim(bytes))
+    assert result["checks"] == 4 and result["inference_requests"] == 0
+    assert result["terminal_owner_loss_refused"] and result["terminal_original_deadline_refused"]
+    assert result["reversed_terminal_guard_accepts_cancel"] and result["diagnostic_copies_only"]
+  end
+
+  @tag :memory_scope
+  @tag timeout: 60_000
   test "complete measured sequences retain first attempts and reject malformed descriptors" do
     assert {bytes, 0} =
              System.cmd(

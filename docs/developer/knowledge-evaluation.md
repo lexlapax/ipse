@@ -229,8 +229,12 @@ that declaration away from the independent reviewer.
 
 The declared policy selects `linux_memcg_charged_peak_bytes_v1`, CPU-only model
 execution, fresh private cache inodes per cell, two projects and the optional
-`linux_cgroup_v2_v1` backend. Local runtime/version provenance does not become a
-hostname or kernel-version allowlist. A local seal is not relocatable or renewable.
+`linux_cgroup_v2_v2` backend. Its fixed `bounded_natural_drain_v1` completion
+policy permits at most 2000 ms after leader reap, within the original workload
+deadline. That policy belongs to the declaration alongside the memory quantity;
+changing it requires a fresh experiment and execution seal. Local runtime/version
+provenance does not become a hostname or kernel-version allowlist. A local seal
+is not relocatable or renewable.
 
 ### Build the six local bindings
 
@@ -438,6 +442,15 @@ These are distinct high-water observations. Do not sum them, subtract a starting
 baseline or describe them as process RSS. The whole lifetime includes retained
 charges between stages. Device memory and an exact macOS aggregate are outside
 this backend. Sampled BEAM memory remains a separate diagnostic.
+
+The measured lifetime includes natural population drain after a zero-exiting
+leader. Native success requires observed empty population within the fixed
+two-second allowance and the original deadline, with ownership still valid.
+The audit requires version-two receipts, the exact declared completion policy,
+consistent drain timings and elapsed time below each original root/stage timeout.
+A service's process-group cleanup cannot substitute for that population receipt.
+If forced cleanup was required, retain the failure even when the scope later
+empties. Inspect it under the failed seal; do not replay that execution.
 
 CPU visibility environment values and zero-VRAM residency checks express the
 selected policy. The synthetic daemon verifies those values. They do not prove
@@ -1184,12 +1197,15 @@ benchmark tooling. Ordinary source tests and macOS operation do not require it.
 ```sh
 ./scripts/build.sh
 elixir scripts/verify-memory-scope.exs "$PWD/priv/ipse-runner"
+elixir scripts/verify-memory-drain.exs "$PWD/priv/ipse-runner"
+elixir scripts/verify-memory-terminal.exs "$PWD/priv/ipse-runner"
 ```
 
-Expect one JSON summary with `checks: 10`, zero inference requests and a private
-`evidence` directory. The verifier starts only uniquely named transient user
-services and stops its own services on exit. It retains synthetic receipts for
-inspection. To run the same exercise through ExUnit, include its explicit tag:
+Expect separate JSON summaries with `checks: 10`, `checks: 12` and `checks: 4`,
+zero inference requests and private `evidence` directories. The verifiers start
+only uniquely named transient user services and stop their own services on exit.
+They retain synthetic receipts for inspection. To run the same exercise through
+ExUnit, include its explicit tag:
 
 ```sh
 mix test test/memory_scope_test.exs --include memory_scope
@@ -1201,6 +1217,38 @@ The serial/overlap control distinguishes the simultaneous total from individual
 maxima. The Erlang control captures a brief 256-MiB Port child after it exits.
 Unequal nested allocations check that a parent interval resets independently of
 the whole-run counter, including when the launcher ignored SIGCHLD.
+
+Next follow the controlled tail in `scripts/verify-memory-drain.exs`. The leader
+leaves a child waiting on a release file. The verifier waits for the collector's
+`leader-exited.json`, then releases the child to allocate 128 MiB and exit.
+Both ordinary and detached children must finish naturally, and the nested case
+must include that allocation in its cell and parent interval peaks. Output EOF
+does not end the population measurement.
+
+Compare the persistent child, nonzero leader and original-deadline cases. All
+remain incomplete after cleanup. Another control stops only its own collector,
+allows its leader to exit, then resumes observation after the original deadline;
+the zero exit must still report timeout. Owner cancellation/EOF, anchor loss,
+collector loss and registry replacement happen after actual reap. Killed anchor
+cleanup returns an `E` diagnostic without a final receipt; the test separately
+checks the owned child disappeared. It does not invent a completion record.
+
+Trace `population_stop` and `active_failure` in `native/ipse-measure.rs`.
+One population read and its timestamp govern natural closure, cleanup and
+terminal eligibility. Deadline equality refuses. Guards run during natural
+drain and again at the terminal output decision. The private population decision
+tests exercise exact boundaries without depending on scheduler precision.
+`EvaluationMeasuredExecution.native_receipt?/2` checks the corresponding
+version, policy and timings against each original timeout. A changed or missing
+field cannot be supplied by a later clean process list.
+
+The terminal verifier compiles private copies of the same native source. A
+bounded diagnostic barrier pauses after natural emptiness, immediately before
+the final guard. Cancellation there must fail. Its deliberately reversed guard
+must accept the same cancellation, proving that the control reaches the intended
+boundary. A separate delayed release must report timeout under the original
+deadline. These diagnostic copies leave production source untouched and cannot
+supply accepted benchmark peaks.
 
 Then follow the owner and collector loss cases. A preclosed lease must refuse
 before command execution. A cancellation following ignored control bytes must
