@@ -18,6 +18,31 @@ mod linux {
 
     const MAX_TCP: usize = 1_048_576;
     const MAX_FDS: usize = 4096;
+    const MAX_STATUS: usize = 65_536;
+
+    fn matching_pid_namespace(bytes: &[u8], pid: u32) -> Result<(), String> {
+        if bytes.len() > MAX_STATUS { return Err("owned listener status exceeds bound".into()); }
+        let text = std::str::from_utf8(bytes).map_err(|_| "owned listener status malformed")?;
+        let mut identities = text.lines().filter_map(|line| line.strip_prefix("NStgid:"));
+        let identity = identities.next().ok_or("owned listener PID namespace unavailable")?;
+        let mut values = identity.split_whitespace();
+        let value = values.next().ok_or("owned listener PID namespace unavailable")?;
+        if identities.next().is_some() || values.next().is_some()
+            || !value.bytes().all(|byte| byte.is_ascii_digit())
+            || pid == 0 || value.parse::<u32>().ok() != Some(pid) {
+            return Err("owned listener requires matching procfs and PID namespaces".into());
+        }
+        Ok(())
+    }
+
+    fn require_matching_pid_namespace() -> Result<(), String> {
+        let file = File::open("/proc/self/status")
+            .map_err(|_| "owned listener PID namespace unavailable")?;
+        let mut bytes = Vec::new();
+        file.take((MAX_STATUS + 1) as u64).read_to_end(&mut bytes)
+            .map_err(|_| "owned listener PID namespace unavailable")?;
+        matching_pid_namespace(&bytes, std::process::id())
+    }
 
     fn hexadecimal(text: &str, width: usize) -> Result<u64, String> {
         if text.len() != width || !text.bytes().all(|c| c.is_ascii_hexdigit()) {
@@ -120,6 +145,7 @@ mod linux {
 
     impl Listener {
         pub fn new(port: u16) -> Result<Self, String> {
+            require_matching_pid_namespace()?;
             Ok(Self { port, admitted: false, next: Instant::now(), pending: None })
         }
 
@@ -191,6 +217,18 @@ mod linux {
             assert!(table_bytes(&vec![b'x'; MAX_TCP + 1], 21434).is_err());
             assert!(table_bytes(&[255], 21434).is_err());
             assert_eq!(table_bytes(HEADER.as_bytes(), 21434).unwrap(), None);
+        }
+        #[test]
+        fn procfs_pid_namespace_must_name_only_the_current_process() {
+            assert!(matching_pid_namespace(b"Name:\tipse-runner\nNStgid:\t7\n", 7).is_ok());
+            for text in ["", "NStgid:\n", "NStgid: 7\nNStgid: 7\n", "NStgid: 7 8\n",
+                "NStgid: 7 7\n", "NStgid: 8\n", "NStgid: 0\n", "NStgid: +7\n",
+                "NStgid: -7\n", "NStgid: 7x\n", "NStgid: 4294967296\n"] {
+                assert!(matching_pid_namespace(text.as_bytes(), 7).is_err(), "{text:?}");
+            }
+            assert!(matching_pid_namespace(b"NStgid: 0\n", 0).is_err());
+            assert!(matching_pid_namespace(&[255], 7).is_err());
+            assert!(matching_pid_namespace(&vec![b'x'; MAX_STATUS + 1], 7).is_err());
         }
         #[test]
         fn socket_links_are_exact_and_payload_is_native_fact() {

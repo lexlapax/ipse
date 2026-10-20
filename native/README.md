@@ -454,7 +454,12 @@ ipse-runner --stdio-listener CWD TIMEOUT_MS PORT -- ABSOLUTE_EXECUTABLE ARGS...
 This mode uses sandbox `:off`, the same private launch environment, owned process
 group, I/O queues and lifetime watchdog. It observes only literal `127.0.0.1`
 with a port from 1 to 65535. Invalid options and unsupported platforms refuse
-before server launch. Ordinary `--stdio` keeps its existing frame stream.
+before server launch. Listener admission also requires procfs to represent the
+supervisor's PID namespace. Before launching the server, a bounded 64-KiB read of
+`/proc/self/status` must supply exactly one `NStgid` value equal to the helper's
+process ID. An inherited ancestor procfs, missing identity or malformed status
+refuses. A nested PID namespace with its own procfs is supported. Ordinary
+`--stdio` keeps its existing frame stream and has no such capability requirement.
 
 The supervisor reads its own network namespace's bounded TCP table, finds the
 exact LISTEN tuple and associates its unique positive socket inode with the
@@ -502,10 +507,13 @@ rustc --edition=2021 --test -D warnings native/ipse-listener.rs \
 "$IPSE_LISTENER_TESTS/listener"
 ```
 
-Expect seven public live cases, five parser tests and a separate causal-regression
+Expect seven public live cases, six parser tests and a separate causal-regression
 summary with `status: passed`. The regression command compiles diagnostic copies
 and compares each repair with its deliberate reversal. It leaves production
-source unchanged. Unavailable user/network namespaces produce incomplete coverage
-and exit status 2. No model service, systemd or cgroup hierarchy is required. The
+source unchanged. Three additional controls require refusal before execution
+with an inherited ancestor procfs, ordinary stdio compatibility in that setup,
+and an owned listener inside a nested PID namespace with its own private procfs.
+Unavailable user/network/PID/mount namespaces produce incomplete coverage and
+exit status 2. No model service, systemd or cgroup hierarchy is required. The
 [runtime-contract exercise](../docs/developer/runtime-capabilities.md#check-a-directly-owned-local-listener)
 connects the fields to source, admission and cleanup.

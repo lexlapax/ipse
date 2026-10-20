@@ -1,11 +1,12 @@
 # Run from the source checkout: mix run scripts/verify-owned-listener-regressions.exs
-# Requires Linux user/network namespaces; unavailable coverage exits 2, never PASS.
+# Requires Linux user/network/PID/mount namespaces; unavailable coverage exits 2.
 unless match?({:unix, :linux}, :os.type()),
   do: raise("owned listener causal regressions require Linux")
 
 [] = System.argv()
 Code.require_file("../test/support/listener_regression/instrument.exs", __DIR__)
 Code.require_file("../test/support/listener_regression/namespace.exs", __DIR__)
+Code.require_file("../test/support/listener_regression/pid_namespace.exs", __DIR__)
 {:ok, _} = Application.ensure_all_started(:ipse)
 repository = Path.expand("..", __DIR__)
 
@@ -32,6 +33,10 @@ fixture = Path.join(root, "fixture")
 compile.(Path.join(repository, "test/support/owned_listener_probe.rs"), fixture)
 loss_probe = Path.join(root, "output-loss-probe")
 compile.(Path.join(repository, "test/support/listener_regression/output_loss.rs"), loss_probe)
+pid_probe = Path.join(root, "pid-namespace-probe")
+compile.(Path.join(repository, "test/support/listener_regression/pid_namespace.rs"), pid_probe)
+current_helper = Path.join(root, "current-helper")
+compile.(Path.join(repository, "native/ipse-runner.rs"), current_helper)
 
 {helpers, originals} =
   for kind <- [:namespace, :output_loss], reverted <- [false, true], reduce: {%{}, nil} do
@@ -57,6 +62,14 @@ summary =
         helpers[{:namespace, true}],
         fixture,
         Path.join(root, "namespace-evidence")
+      )
+
+    pid_namespace =
+      OwnedListenerPidNamespaceControls.verify(
+        pid_probe,
+        current_helper,
+        fixture,
+        Path.join(root, "pid-namespace-evidence")
       )
 
     output_loss =
@@ -87,8 +100,13 @@ summary =
     end
 
     %{
-      "status" => if(namespace["status"] == "passed", do: "passed", else: "incomplete"),
+      "status" =>
+        if(namespace["status"] == "passed" and pid_namespace["status"] == "passed",
+          do: "passed",
+          else: "incomplete"
+        ),
       "namespace" => namespace,
+      "pid_namespace" => pid_namespace,
       "output_loss" => output_loss,
       "inference_requests" => 0,
       "source_hashes" => originals,

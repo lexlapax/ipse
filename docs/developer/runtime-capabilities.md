@@ -85,6 +85,11 @@ process owns that endpoint. On Linux, `Runner.open_stdio/6` accepts
 `owned_listener: {:ipv4_loopback, port}` with sandbox `:off` and an absolute
 executable. It emits a native `P` fact after associating the caller's exact
 `127.0.0.1` listening socket with the retained direct child's descriptors.
+Follow the constructor's bounded `/proc/self/status` check before studying the
+descriptor lookup. A sole `NStgid` value equal to the helper's process ID proves
+that numeric procfs paths use the helper's PID namespace. An inherited ancestor
+procfs refuses before server launch. A nested namespace with its own procfs is
+supported; ordinary stdio does not require this optional capability.
 
 Exercise the public API from a built checkout:
 
@@ -113,8 +118,13 @@ It compares current behavior with one deliberately reverted repair at a time.
 A real private-namespace listener must remain unproven in the caller's namespace.
 Closing supervisor stdout while inspection is pending must retain the unreaped
 child until helper teardown. Production source remains unchanged. Expect
-`status: passed` and retained private evidence. Unavailable user/network namespaces
-produce `status: incomplete` with exit status 2, which does not establish coverage.
+`status: passed` and retained private evidence. Three further controls exercise
+PID/procfs identity. Inherited ancestor procfs must refuse before the selected
+executable writes its marker. Ordinary stdio must execute in that same setup.
+A fresh PID namespace with privately mounted procfs must admit its actual owned
+listener. Inspect the recorded namespace identities and cleanup receipts.
+Unavailable user/network/PID/mount capabilities produce `status: incomplete`
+with exit status 2, which does not establish coverage.
 These synthetic controls use no model service, systemd or cgroup hierarchy.
 
 Follow `open_stdio/6` into `native/ipse-stdio.rs` and `native/ipse-listener.rs`.

@@ -472,6 +472,12 @@ adds fresh preparation, cell and finalization stages under the whole counter.
 Six live Linux cases and six native protocol tests cover retained attempts,
 failed-but-closed stages, collector loss and writerless descriptor FIFOs.
 Complete evaluator/model integration and comparison coverage remain open.
+The [optional listener record](archive/2026-10-19-p27-knowledge-packages/owned-listener.md)
+documents direct-child loopback ownership controls and a later reproduced
+PID/procfs mismatch. Its repair refuses an inherited ancestor procfs before
+server execution; ordinary stdio and a nested namespace with its own procfs
+remain supported. This generic capability does not establish complete model
+service or benchmark integration.
 Charged memory, summed RSS and device memory must not be conflated.
 The user has reopened the memory quantity and Linux/systemd backend decision.
 Exact simultaneous aggregate peak remains required. Existing native controls

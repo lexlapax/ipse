@@ -109,3 +109,91 @@ These results do not close P27's
 held-out quality, exact aggregate memory, complete resource or engine-selection
 gates. The user has reopened the memory definition and Linux/systemd backend
 choice. Previous interrupted attempts and unknown liabilities remain unchanged.
+
+## Subsequent exact-commit Linux verification, 2026-10-19
+
+The separate checkout at `51e21f3485c5333907864cb565da33889aa9552d` passes the full
+Linux suite with native sandbox tests enabled: 1,272 pass and 17 are excluded in
+658.7 seconds. The two optional `memory_scope` tests remain excluded while the
+measurement design is reconsidered. Build, formatting, strict compilation,
+documentation and CI policy checks pass. All six sequence tests, five listener
+parser tests, seven public controls and both causal regression families pass.
+The source checkout remains clean at the exact commit.
+
+The initial archive collector expected the count from a run that also included
+the two memory-scope tests. Its count assertion failed after the successful
+suite. The corrected collector reads the actual summary, verifies the complete
+1,289-test inventory and recorded inclusion/exclusion tags, and checks the public
+cleanup and causal records. No tests were rerun for that collector correction.
+The retained Linux evidence archive SHA-256 is
+`120e2e87b0a56c44a62987fecf811e1378c5532dd19e2459c11c827b026d1a83`.
+The locally retained copy has the same hash. These are synthetic controls with
+zero inference requests and no model service or cgroup benchmark launch.
+
+Hosted gates remain to be recorded separately for this unit. The earlier
+sequencer's green gates do not cover the listener changes.
+
+## Subsequent hosted result and PID namespace finding, 2026-10-19
+
+The [hosted matrix for `51e21f3`](https://github.com/lexlapax/ipse/actions/runs/39353971227)
+passes on Ubuntu and macOS. Both source jobs report 1,289 tests with zero
+failures and 34 exclusions; macOS also skips the Linux-only listener case.
+The source suites take 907.3 seconds on Ubuntu and 813.8 seconds on macOS.
+The macOS native suite reports 36 tests, zero failures and six exclusions in
+26.5 seconds. Package checks and every independent installed proof pass on
+both platforms. These results cover that commit, not subsequent repairs.
+
+A later independent audit found an uncovered identity assumption. Numeric
+`Child.id()` follows the supervisor's PID namespace, while `/proc/PID/fd`
+follows the namespace used by the procfs mount. An inherited ancestor procfs can
+therefore inspect another process despite the direct child remaining unreaped.
+An isolated live probe on the unmodified `51e21f3` helper reproduces a false `P`:
+the selected child has ancestor PID 2134216 and local PID 2134212, while the
+separately retained fixture at ancestor PID 2134212 owns socket inode 80548456.
+The emitted fact names that local PID and the foreign socket inode. The probe
+uses fresh user/PID namespaces, records the private counter and both identities,
+makes zero HTTP requests, and confirms cleanup of its owned init and fixture.
+Passing earlier gates does not close this finding.
+
+The correction checks a bounded `/proc/self/status` before launch,
+requiring exactly one positive `NStgid` value equal to the helper's process ID.
+The same live mismatch probe against the corrected helper refuses with
+`owned listener requires matching procfs and PID namespaces` and emits no `P`.
+Six pure native tests pass, including malformed, duplicate, oversized and
+multiple-namespace status controls. The corrected listener source SHA-256 is
+`851af8ae12e6454307d95b596675861784552c933a9a27306fd7a5c73ebe6511`.
+
+The final regression command now includes three live PID/procfs controls using
+an uninstrumented helper. Inherited procfs must refuse before the selected
+executable's marker, ordinary stdio must execute in that setup, and an owned
+listener must succeed in a nested PID namespace with a privately mounted procfs.
+All three pass on Linux and through the extracted package helper. The integrated
+command also passes the existing sixteen network-namespace cases and both
+output-loss controls. Missing namespace capabilities remain incomplete, never a
+pass. Independent final source review of the whole unit and manuals has no
+findings. The reviewer did not run tests.
+
+The Linux focused suite passes 18 tests with 11 exclusions in 13.1 seconds.
+The public API's seven controls pass in source and extracted-runtime execution,
+including confirmed cleanup. The fresh package's standard verifier passes.
+Package SHA-256 is
+`657caa279e90036904b80d74e511f1b2205d3c561d33cb157ded427f1931cc0f`.
+The first installed-check driver created its private evidence directory with
+mode 0755. The verifier rejected that mode before fixture execution. Correcting
+the directory to 0700 and rerunning only that exercise passes; the original
+failure log remains in the evidence.
+
+Root reconciled the before/after raw facts, both cleanup receipts, public
+summaries and all three sets of PID controls. The retained evidence archive's
+SHA-256 is
+`4ff5ac09e56e66aaff320c847e501729dc414dadc63d53ccfe740ce2310cd9f4`.
+The copied archive has the same hash locally. These are synthetic listener
+checks with zero inference and no model service, systemd or cgroup launch.
+The local macOS focused suite passes 17 tests with one Linux-only skip and 11
+exclusions in 12.9 seconds. Changed Elixir tooling passes both current and 1.18
+formatting. The complete macOS baseline passes 1,254 tests with one Linux-only
+skip and 34 exclusions in 725.7 seconds. Build, full formatting, strict
+compilation and the demo pass. The strict stdio probe remains enabled and
+the per-test deadline stays at 60 seconds. The documentation check reports
+257 Markdown files, 2,764 local links and zero errors. This record does not
+claim a hosted result for the correction.
