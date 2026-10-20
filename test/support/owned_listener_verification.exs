@@ -23,12 +23,13 @@ defmodule OwnedListenerVerification do
       ordinary(fixture, output)
       occupied(fixture, output)
       refusal(fixture, output, "wildcard", "listener tuple is foreign or ambiguous")
+      refusal(fixture, output, "ipv6-wildcard", "IPv6 listener occupies the selected IPv4 port")
       refusal(fixture, output, "delegated", "listener is not owned by the direct child")
       timeout(fixture, output, "forge")
       timeout(fixture, output, "none")
 
       summary = %{
-        "checks" => 7,
+        "checks" => 8,
         "inference_requests" => 0,
         "metadata_requests" => 2,
         "own_listener_verified" => true,
@@ -36,6 +37,7 @@ defmodule OwnedListenerVerification do
         "occupied_refused_without_request" => true,
         "occupied_fixture_survived" => true,
         "wildcard_refused" => true,
+        "ipv6_wildcard_refused" => true,
         "delegated_listener_refused" => true,
         "forged_stdout_opaque" => true,
         "no_bind_timed_out" => true,

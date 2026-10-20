@@ -6,13 +6,34 @@ defmodule Ipse.KnowledgeEvaluationScoreTest do
 
   defp sha(bytes), do: Base.encode16(:crypto.hash(:sha256, bytes), case: :lower)
 
+  defp body, do: "..........a café z.........."
+
+  defp corpus do
+    document =
+      Map.merge(source(), %{
+        "document_id" => "doc",
+        "title" => "Source",
+        "text" => body(),
+        "byte_length" => byte_size(body()),
+        "created_at" => "2026-01-01T00:00:00Z",
+        "observed_at" => "2026-01-01T00:00:00Z",
+        "state" => "current",
+        "media_type" => "text/plain"
+      })
+
+    JSON.encode!(%{"schema_version" => 1, "documents" => [document]})
+  end
+
+  defp score_with_corpus(freeze, blobs, labels, reviews),
+    do: Score.score(freeze, blobs, labels, reviews, fn -> {:ok, corpus()} end)
+
   defp source(project \\ "p"),
     do: %{
       "project" => project,
       "source_id" => "source",
       "generation" => 1,
       "version" => 1,
-      "sha256" => sha("source")
+      "sha256" => sha(body())
     }
 
   defp span,
@@ -98,7 +119,7 @@ defmodule Ipse.KnowledgeEvaluationScoreTest do
 
     for row <- rows do
       {freeze, blobs} = inputs([row])
-      assert {:error, :invalid_prediction} = Score.score(freeze, blobs, loader, loader)
+      assert {:error, :invalid_prediction} = score_with_corpus(freeze, blobs, loader, loader)
       refute_received :labels_opened
     end
   end
@@ -160,12 +181,47 @@ defmodule Ipse.KnowledgeEvaluationScoreTest do
   defp score(rows \\ [prediction()], label \\ labels(), review \\ reviews()) do
     {freeze, blobs} = inputs(rows)
     review = bind_fixture_review(freeze, blobs, review)
-    Score.score(freeze, blobs, fn -> {:ok, label} end, fn -> {:ok, review} end)
+    score_with_corpus(freeze, blobs, fn -> {:ok, label} end, fn -> {:ok, review} end)
   end
 
   defp bind_fixture_review(freeze, blobs, review) do
     {:ok, verified} = Score.verified_predictions(freeze, blobs)
     Map.put(review, "review_binding_sha256", verified["review_binding_sha256"])
+  end
+
+  test "reviewer flags cannot validate fabricated bytes or invalidate genuine bytes" do
+    fabricated = put_in(prediction(), ["evidence", Access.at(0), "quote"], "a fake zz")
+    assert {:ok, report} = score([fabricated])
+    [row] = hd(report["variants"])["rows"]
+    assert hd(row["integrity"])["verdict"] == "invalid"
+    assert hd(row["integrity"])["reviewer_id"] == "source-bytes-v1"
+    refute report["quality_gates_passed"]
+
+    false_flags = put_in(reviews(), ["integrity", Access.at(0), "verdict"], "invalid")
+    assert {:ok, report} = score([prediction()], labels(), false_flags)
+    assert report["quality_gates_passed"]
+  end
+
+  test "corpus loading follows binding verification and hash validation precedes label access" do
+    {freeze, blobs} = inputs()
+    review = bind_fixture_review(freeze, blobs, reviews())
+    unopened = fn -> flunk("must not open unverified context") end
+
+    assert {:error, :review_binding_mismatch} =
+             Score.score(
+               Map.put(freeze, "context_sha256", sha("changed")),
+               blobs,
+               unopened,
+               fn -> {:ok, review} end,
+               unopened
+             )
+
+    corrupt = JSON.decode!(corpus()) |> put_in(["documents", Access.at(0), "text"], "changed")
+
+    assert {:error, :invalid_corpus} =
+             Score.score(freeze, blobs, unopened, fn -> {:ok, review} end, fn ->
+               {:ok, JSON.encode!(corrupt)}
+             end)
   end
 
   test "scoring requires a closed version-two declaration with caller-owned context" do
@@ -183,7 +239,7 @@ defmodule Ipse.KnowledgeEvaluationScoreTest do
           Map.put(freeze, "context_sha256", "not-a-hash"),
           Map.put(freeze, "extra", true)
         ] do
-      assert {:error, :invalid_freeze} = Score.score(invalid, blobs, unopened, unopened)
+      assert {:error, :invalid_freeze} = score_with_corpus(invalid, blobs, unopened, unopened)
       refute_received :opened_data
     end
   end
@@ -210,7 +266,7 @@ defmodule Ipse.KnowledgeEvaluationScoreTest do
           {Map.put(freeze, "context_sha256", sha("different context")), blobs}
         ] do
       assert {:error, :review_binding_mismatch} =
-               Score.score(declaration, values, loader, fn -> {:ok, review} end)
+               score_with_corpus(declaration, values, loader, fn -> {:ok, review} end)
 
       refute_received :labels_opened
     end
@@ -222,12 +278,12 @@ defmodule Ipse.KnowledgeEvaluationScoreTest do
           Map.put(review, "extra", true)
         ] do
       assert {:error, :invalid_reviews} =
-               Score.score(freeze, blobs, loader, fn -> {:ok, invalid} end)
+               score_with_corpus(freeze, blobs, loader, fn -> {:ok, invalid} end)
 
       refute_received :labels_opened
     end
 
-    assert {:ok, report} = Score.score(freeze, blobs, loader, fn -> {:ok, review} end)
+    assert {:ok, report} = score_with_corpus(freeze, blobs, loader, fn -> {:ok, review} end)
     assert_received :labels_opened
     assert report["quality_gates_passed"]
     assert report["review"]["review_binding_sha256"] == review["review_binding_sha256"]
@@ -337,7 +393,7 @@ defmodule Ipse.KnowledgeEvaluationScoreTest do
       blobs = Map.new(files, &{&1["id"], bytes})
 
       assert {:error, :prediction_size_limit} =
-               Score.score(bounded_freeze, blobs, loader, loader)
+               score_with_corpus(bounded_freeze, blobs, loader, loader)
 
       refute_received :reference_opened
     end
@@ -357,7 +413,7 @@ defmodule Ipse.KnowledgeEvaluationScoreTest do
     end
 
     assert {:error, :prediction_hash_mismatch} =
-             Score.score(freeze, Map.put(blobs, "predictions", "{}\n"), loader, review)
+             score_with_corpus(freeze, Map.put(blobs, "predictions", "{}\n"), loader, review)
 
     refute_received :labels_opened
     refute_received :reviews_opened
@@ -368,19 +424,19 @@ defmodule Ipse.KnowledgeEvaluationScoreTest do
     frozen = put_in(freeze, ["files", Access.at(0), "sha256"], sha(malformed))
 
     assert {:error, :duplicate_prediction_key} =
-             Score.score(frozen, %{"predictions" => malformed}, loader, review)
+             score_with_corpus(frozen, %{"predictions" => malformed}, loader, review)
 
     refute_received :labels_opened
     refute_received :reviews_opened
 
     {duplicates, raw} = inputs([prediction(), prediction()])
-    assert {:error, :duplicate_prediction} = Score.score(duplicates, raw, loader, review)
+    assert {:error, :duplicate_prediction} = score_with_corpus(duplicates, raw, loader, review)
     refute_received :labels_opened
     {second, raw} = inputs([prediction(%{"attempt" => 2})])
-    assert {:error, :invalid_prediction} = Score.score(second, raw, loader, review)
+    assert {:error, :invalid_prediction} = score_with_corpus(second, raw, loader, review)
     refute_received :labels_opened
     {reserved, raw} = inputs([prediction(%{"prediction_id" => "missing:collision"})])
-    assert {:error, :invalid_prediction} = Score.score(reserved, raw, loader, review)
+    assert {:error, :invalid_prediction} = score_with_corpus(reserved, raw, loader, review)
     refute_received :labels_opened
   end
 
@@ -474,7 +530,7 @@ defmodule Ipse.KnowledgeEvaluationScoreTest do
       )
 
     assert {:ok, report} =
-             Score.score(freeze, blobs, fn -> {:ok, label} end, fn ->
+             score_with_corpus(freeze, blobs, fn -> {:ok, label} end, fn ->
                {:ok, bind_fixture_review(freeze, blobs, reviews())}
              end)
 
@@ -538,7 +594,7 @@ defmodule Ipse.KnowledgeEvaluationScoreTest do
     end
 
     assert {:ok, passed} =
-             Score.score(freeze, blobs, fn -> {:ok, label} end, fn -> {:ok, review.(1)} end)
+             score_with_corpus(freeze, blobs, fn -> {:ok, label} end, fn -> {:ok, review.(1)} end)
 
     assert passed["quality_gate_scope"] == "complete_frozen_grid"
     assert passed["quality_gates_passed"] and passed["semantic"]["support"]["total_n"] == 20
@@ -546,7 +602,7 @@ defmodule Ipse.KnowledgeEvaluationScoreTest do
     assert List.last(passed["variants"])["gates"]["citation"]["status"] == "fail"
 
     assert {:ok, failed} =
-             Score.score(freeze, blobs, fn -> {:ok, label} end, fn -> {:ok, review.(2)} end)
+             score_with_corpus(freeze, blobs, fn -> {:ok, label} end, fn -> {:ok, review.(2)} end)
 
     refute failed["quality_gates_passed"]
     assert failed["gates"]["support"]["status"] == "pass"
@@ -591,7 +647,7 @@ defmodule Ipse.KnowledgeEvaluationScoreTest do
   test "foreign rows and nested over-limit JSON refuse before labels are loaded" do
     loader = fn -> flunk("invalid predictions must not open labels") end
     {freeze, blobs} = inputs([prediction(%{"project" => "foreign"})])
-    assert {:error, :invalid_prediction} = Score.score(freeze, blobs, loader, loader)
+    assert {:error, :invalid_prediction} = score_with_corpus(freeze, blobs, loader, loader)
 
     {freeze, _} = inputs()
 
@@ -601,7 +657,7 @@ defmodule Ipse.KnowledgeEvaluationScoreTest do
     freeze = put_in(freeze, ["files", Access.at(0), "sha256"], sha(bytes))
 
     assert {:error, :prediction_depth_limit} =
-             Score.score(freeze, %{"predictions" => bytes}, loader, loader)
+             score_with_corpus(freeze, %{"predictions" => bytes}, loader, loader)
   end
 
   test "coordinate mismatch, foreign evidence and absent independent review never gain support from a quote" do
@@ -609,8 +665,7 @@ defmodule Ipse.KnowledgeEvaluationScoreTest do
       put_in(labels(), ["queries", Access.at(0), "relevance", Access.at(0), "start_byte"], 11)
       |> put_in(["queries", Access.at(0), "relevance", Access.at(0), "end_byte"], 16)
 
-    assert {:ok, report} = score([prediction()], wrong_coordinates)
-    assert hd(hd(report["variants"])["rows"])["spans"]["contained_recall"] == 0.0
+    assert {:error, :invalid_reference_integrity} = score([prediction()], wrong_coordinates)
 
     foreign = put_in(prediction(), ["evidence", Access.at(0), "source"], source("other"))
     assert {:ok, report} = score([foreign])
@@ -622,7 +677,7 @@ defmodule Ipse.KnowledgeEvaluationScoreTest do
              score([prediction()], labels(), reviews(%{"semantic" => [], "integrity" => []}))
 
     [variant] = report["variants"]
-    assert is_nil(hd(variant["rows"])["spans"]["contained_recall"])
+    assert hd(variant["rows"])["spans"]["contained_recall"] == 1.0
     assert variant["gates"]["citation"]["status"] == "unmeasured"
     assert variant["gates"]["support"]["status"] == "unmeasured"
   end

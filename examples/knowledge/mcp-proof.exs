@@ -154,7 +154,7 @@ defmodule IpseKnowledgeExample.MCPProof do
           "kind" => "mcp_cas",
           "binding" => "storage",
           "partition" => "notes",
-          "contract" => "ipse-cas-v2"
+          "contract" => "ipse-cas-v3"
         }
       },
       "retrieval" => %{

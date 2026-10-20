@@ -150,22 +150,29 @@ defmodule Ipse.KnowledgeEvidenceTest do
     ''')
   end
 
-  test "fusion retains different spans in one chunk and reranks both without dropping evidence" do
+  test "fusion reinforces chunk overlap and keeps the best ranked exact span" do
     pure(~S'''
     s=source.("alpha beta gamma",%{})
     a=%{"citation"=>cite.(s,"alpha"),"score"=>2.0,"method"=>"bm25"}
     b=%{"citation"=>cite.(s,"beta"),"score"=>1.0,"method"=>"cosine"}
-    {:ok,r}=E.fuse([[a],[b]],10,60)
-    assert length(r["evidence"])==2
-    assert length(Enum.uniq_by(r["evidence"],& &1["citation"]["chunk_id"]))==1
-    ids=Enum.map(r["evidence"],fn c ->
-      citation=c["citation"]
-      citation["chunk_id"]<>":"<>Integer.to_string(citation["start_byte"])<>":"<>Integer.to_string(citation["end_byte"])
-    end)
-    assert length(Enum.uniq(ids))==2
-    assert ids==Enum.map(r["evidence"],&E.candidate_id/1)
-    assert {:ok,ordered}=E.apply_rerank(r["evidence"],Enum.reverse(ids))
-    assert ordered==Enum.reverse(r["evidence"])
+    {:ok,r}=E.fuse([[a,a,b],[b]],10,60)
+    assert [hit]=r["evidence"]
+    assert hit["score"]==2/61
+    assert hit["citation"]==a["citation"]
+    assert E.candidate_id(hit)==E.candidate_id(a)
+    other=source.("other",%{"source_id"=>"other"})
+    c=%{"citation"=>cite.(other,"other"),"score"=>1.0,"method"=>"bm25"}
+    {:ok,r}=E.fuse([[c,a],[b]],10,60)
+    assert hd(r["evidence"])["citation"]==b["citation"]
+    assert {:ok,[^a,^b]}=E.apply_rerank([a,b],[E.candidate_id(a),E.candidate_id(b)])
+    partitioned=put_in(Map.put(s,"partition","elsewhere"),["origin","partition_or_scope"],"elsewhere")
+    p=%{"citation"=>cite.(partitioned,"alpha"),"score"=>1.0,"method"=>"bm25"}
+    newer=source.(s["text"],%{"generation"=>2})
+    n=%{"citation"=>cite.(newer,"alpha"),"score"=>1.0,"method"=>"bm25"}
+    changed=source.("alpha changed",%{})
+    d=%{"citation"=>cite.(changed,"alpha"),"score"=>1.0,"method"=>"bm25"}
+    {:ok,r}=E.fuse([[a],[p],[n],[d]],10,60)
+    assert length(r["evidence"])==4
     ''')
   end
 
@@ -196,6 +203,67 @@ defmodule Ipse.KnowledgeEvidenceTest do
     ''')
   end
 
+  test "graph seeds use eligible facts and complete longest entity names" do
+    pure(~S'''
+    s=source.("Release requires lock. Release train requires approval.",%{})
+    release=fact.("Release","lock",cite.(s,"Release requires lock."))
+    train=fact.("Release train","approval",cite.(s,"Release train requires approval."))
+    lease=fact.("Lease","rent",cite.(s,"Release requires lock."))
+    a=fact.("A","old",cite.(s,"Release requires lock."))
+    {:ok,expired}=E.fact(a |> Map.drop(~w(version fact_id)) |> Map.put("valid_to_ms",20))
+    {:ok,future}=E.fact(a |> Map.drop(~w(version fact_id)) |> Map.put("valid_from_ms",21))
+    for facts <- [[release,train,lease,expired],[future,lease,train,release]] do
+      assert {:ok,"Release train"}=E.graph_seed([s],facts,"A RELEASE train",20)
+      assert {:ok,"Release"}=E.graph_seed([s],facts,"A Release",20)
+      assert {:ok,"unmatched"}=E.graph_seed([s],facts,"unmatched",20)
+    end
+    for extra <- [%{"expires_at_ms"=>20},%{"observed_at_ms"=>21},%{"origin"=>Map.put(s["origin"],"historical",true)}] do
+      stale=source.("A requires old.",Map.put(extra,"source_id","stale"))
+      old=fact.("A","old",cite.(stale,"A requires old."))
+      assert {:ok,"Release"}=E.graph_seed([stale,s],[old,release],"A Release",20)
+    end
+    forged=put_in(release,["citations",Access.at(0),"quote"],"forged")
+    assert {:error,:invalid_fact}=E.graph_seed([s],[forged],"Release",20)
+    ''')
+  end
+
+  test "normalized lexical matches keep original UTF8 byte offsets" do
+    pure(~S'''
+    text=String.duplicate("x ",600)<>"İstanbul"
+    s=source.(text,%{})
+    for query <- ["İstanbul","i","stanbul"] do
+      {:ok,r}=E.rank_lexical([s],query,5,20)
+      [hit]=r["evidence"]
+      assert hit["citation"]["start_byte"]==1200
+      assert hit["citation"]["quote"]=="İstanbul"
+      assert E.valid_span?(s,hit["citation"])
+    end
+    later=source.(String.duplicate("é ",700)<>"İstanbul",%{})
+    {:ok,r}=E.rank_lexical([later],"stanbul",5,20)
+    [hit]=r["evidence"]
+    assert hit["citation"]["start_byte"]==2100
+    assert E.valid_span?(later,hit["citation"])
+    ''')
+  end
+
+  test "negative context remains attributable without reaching its object" do
+    pure(~S'''
+    s=source.("Release does not require lock. Lock requires exit.",%{})
+    negative=fact.("Release","lock",cite.(s,"Release does not require lock."))
+    {:ok,negative}=E.fact(negative |> Map.drop(~w(version fact_id)) |> Map.put("polarity","negative"))
+    descendant=fact.("lock","exit",cite.(s,"Lock requires exit."))
+    limits=%{"depth"=>2,"max_nodes"=>8,"max_edges"=>8,"top_k"=>1}
+    {:ok,rank}=E.traverse([s],[negative,descendant],"Release",limits,20)
+    result=E.query_scope(rank,[s],[],20)
+    assert result["status"]=="ok" and result["coverage"]["complete"]
+    assert result["coverage"]["edges"]==0 and result["coverage"]["nodes"]==1
+    assert result["coverage"]["seed"]=="Release"
+    assert result["coverage"]["negative_context"]==1
+    assert Enum.map(result["claims"],& &1["fact_id"])==[negative["fact_id"]]
+    assert hd(result["claims"])["basis"]==negative["citations"]
+    ''')
+  end
+
   test "every graph support is checked through suppression replacement and polarity" do
     pure(~S'''
     s=source.("Release requires quiescence. Quiescence requires worker exit.",%{})
@@ -214,7 +282,8 @@ defmodule Ipse.KnowledgeEvidenceTest do
     assert {:error,:invalid_fact}=E.validate_facts([s],[forged],20)
     {:ok,negative}=E.fact(first |> Map.drop(~w(version fact_id)) |> Map.put("polarity","negative"))
     {:ok,no_path}=E.traverse([s],[negative,second],"Release",limits,20)
-    assert no_path["evidence"]==[]
+    assert Enum.map(no_path["claims"],& &1["fact_id"])==[negative["fact_id"]]
+    assert no_path["coverage"]["edges"]==0
     ''')
   end
 
@@ -254,8 +323,10 @@ defmodule Ipse.KnowledgeEvidenceTest do
     assert E.public_claims(result["evidence"],result["claims"])==result["claims"]
     assert hd(result["evidence"])["citation"]==hd(positive["citations"])
     {:ok,no_path}=E.traverse([s],[negative],"Release",limits,20)
-    assert no_path["evidence"]==[] and hd(no_path["claims"])["label"]=="open"
-    assert no_path["coverage"]["edges"]==0 and no_path["coverage"]["context_facts"]==0
+    assert hd(no_path["claims"])["polarity"]=="negative"
+    assert hd(no_path["claims"])["basis"]==negative["citations"]
+    assert no_path["coverage"]["edges"]==0 and no_path["coverage"]["nodes"]==1
+    assert no_path["coverage"]["context_facts"]==1 and no_path["coverage"]["counterassertions"]==0
     ''')
   end
 
@@ -298,11 +369,18 @@ defmodule Ipse.KnowledgeEvidenceTest do
     old=source.(s["text"],%{"source_id"=>"old"})
     {:ok,replaced}=E.fact(Map.put(attrs,"citations",[cite.(old,"Release does not require lock.")]))
     limits=%{"depth"=>2,"max_nodes"=>128,"max_edges"=>256,"top_k"=>10}
-    for negative <- [unrelated,other_predicate,other_object,expired,future,replaced] do
+    for negative <- [unrelated,expired,future,replaced] do
       {:ok,result}=E.traverse([s,Map.put(old,"generation",2)],[positive,negative],"Release",limits,20)
       assert [%{"label"=>"supported","polarity"=>"positive","basis"=>basis}]=result["claims"]
       assert basis==positive["citations"]
       assert result["coverage"]["context_facts"]==1 and result["coverage"]["counterassertions"]==0
+    end
+    for negative <- [other_predicate,other_object] do
+      {:ok,result}=E.traverse([s],[positive,negative],"Release",limits,20)
+      assert Enum.map(result["claims"],& &1["fact_id"])==[positive["fact_id"],negative["fact_id"]]
+      assert Enum.all?(result["claims"],&(&1["label"]=="supported"))
+      assert result["coverage"]["context_facts"]==2 and result["coverage"]["counterassertions"]==0
+      assert result["coverage"]["negative_context"]==1
     end
     ''')
   end

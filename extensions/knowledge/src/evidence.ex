@@ -6,6 +6,10 @@ defmodule IpseKnowledge.Evidence do
   @chunk ~w(version source_key generation content_sha256 chunk_id start_byte end_byte text)
   @fact ~w(version fact_id subject predicate object polarity inferred valid_from_ms valid_to_ms extraction citations)
   @vector ~w(version chunk_id input_sha256 profile model dimensions encoding vector_sha256 values)
+  @max_store_records 256
+  @max_facts_per_manifest 32
+  @max_query_fact_rows @max_store_records * @max_facts_per_manifest
+  @max_claim_context 256
 
   def sha256(bytes) when is_binary(bytes),
     do: Base.encode16(:crypto.hash(:sha256, bytes), case: :lower)
@@ -359,24 +363,37 @@ defmodule IpseKnowledge.Evidence do
       scores =
         Enum.reduce(lists, %{}, fn list, all ->
           list
-          |> Enum.uniq_by(&candidate_key/1)
+          |> Enum.uniq_by(&fusion_key/1)
           |> Enum.with_index(1)
           |> Enum.reduce(all, fn {c, rank}, acc ->
             Map.update(
               acc,
-              candidate_key(c),
-              Map.merge(c, %{"score" => 1.0 / (60 + rank), "method" => "rrf"}),
-              &Map.update!(&1, "score", fn old -> old + 1.0 / (60 + rank) end)
+              fusion_key(c),
+              {rank, Map.merge(c, %{"score" => 1.0 / (60 + rank), "method" => "rrf"})},
+              fn {best_rank, prior} ->
+                representative = if rank < best_rank, do: c, else: prior
+
+                {min(rank, best_rank),
+                 Map.merge(representative, %{
+                   "score" => prior["score"] + 1.0 / (60 + rank),
+                   "method" => "rrf"
+                 })}
+              end
             )
           end)
         end)
 
       {:ok,
-       result(scores |> Map.values() |> order() |> Enum.take(top_k), [], [], %{
-         "method" => "rrf",
-         "lists" => length(lists),
-         "complete" => true
-       })}
+       result(
+         scores |> Map.values() |> Enum.map(&elem(&1, 1)) |> order() |> Enum.take(top_k),
+         [],
+         [],
+         %{
+           "method" => "rrf",
+           "lists" => length(lists),
+           "complete" => true
+         }
+       )}
     else
       {:error, :invalid_ranks}
     end
@@ -411,7 +428,9 @@ defmodule IpseKnowledge.Evidence do
 
   def validate_facts(sources, facts, now) do
     with :ok <- inputs(sources, 10, now),
-         true <- is_list(facts) and length(facts) <= 256 and Enum.all?(facts, &valid_fact?/1) do
+         true <-
+           is_list(facts) and length(facts) <= @max_query_fact_rows and
+             Enum.all?(facts, &valid_fact?/1) do
       by_id = Map.new(sources, &{&1["source_key"], &1})
 
       Enum.reduce_while(facts, {:ok, %{"facts" => [], "gaps" => []}}, fn f, {:ok, acc} ->
@@ -448,8 +467,7 @@ defmodule IpseKnowledge.Evidence do
               Map.update!(
                 acc,
                 "gaps",
-                &(&1 ++
-                    [%{"code" => "stale_fact", "source_id" => hd(f["citations"])["source_id"]}])
+                &[%{"code" => "stale_fact", "source_id" => hd(f["citations"])["source_id"]} | &1]
               )}}
 
           :excluded in checks or not fact_current?(f, now) ->
@@ -458,20 +476,30 @@ defmodule IpseKnowledge.Evidence do
               Map.update!(
                 acc,
                 "gaps",
-                &(&1 ++
-                    [
-                      %{
-                        "code" => "excluded_fact",
-                        "fact_id" => f["fact_id"],
-                        "source_id" => hd(f["citations"])["source_id"]
-                      }
-                    ])
+                &[
+                  %{
+                    "code" => "excluded_fact",
+                    "fact_id" => f["fact_id"],
+                    "source_id" => hd(f["citations"])["source_id"]
+                  }
+                  | &1
+                ]
               )}}
 
           true ->
-            {:cont, {:ok, Map.update!(acc, "facts", &(&1 ++ [f]))}}
+            {:cont, {:ok, Map.update!(acc, "facts", &[f | &1])}}
         end
       end)
+      |> case do
+        {:ok, validated} ->
+          {:ok,
+           validated
+           |> Map.update!("facts", &Enum.reverse/1)
+           |> Map.update!("gaps", &Enum.reverse/1)}
+
+        error ->
+          error
+      end
     else
       false -> {:error, :invalid_fact}
       error -> error
@@ -480,36 +508,37 @@ defmodule IpseKnowledge.Evidence do
 
   def traverse(sources, facts, seed, limits, now) do
     with true <- identifier?(seed, 256) and limits?(limits),
-         {:ok, valid} <- validate_facts(sources, facts, now) do
-      {selected, nodes, truncated} =
-        walk(
-          valid["facts"],
-          [String.downcase(seed)],
-          MapSet.new([String.downcase(seed)]),
-          [],
-          limits["depth"],
-          limits
-        )
-
-      context = claim_context(selected, valid["facts"])
-
-      evidence =
-        context
-        |> Enum.flat_map(& &1["citations"])
-        |> Enum.uniq_by(&span_key/1)
-        |> Enum.map(&%{"citation" => &1, "score" => 1.0, "method" => "graph"})
-        |> Enum.take(limits["top_k"])
-
-      {:ok, claims} = classify(evidence, context, seed)
-
+         {:ok, valid} <- validate_facts(sources, facts, now),
+         {selected, nodes, truncated} <-
+           walk(
+             valid["facts"],
+             [String.downcase(seed)],
+             MapSet.new([String.downcase(seed)]),
+             [],
+             limits["depth"],
+             limits
+           ),
+         {:ok, context} <- claim_context(selected, valid["facts"], nodes),
+         evidence =
+           context
+           |> Enum.flat_map(& &1["citations"])
+           |> Enum.uniq_by(&span_key/1)
+           |> Enum.map(&%{"citation" => &1, "score" => 1.0, "method" => "graph"})
+           |> Enum.take(limits["top_k"]),
+         {:ok, claims} <- classify(evidence, context, seed) do
       {:ok,
        result(evidence, claims, valid["gaps"], %{
          "as_of_ms" => now,
+         "seed" => seed,
          "method" => "graph",
          "nodes" => MapSet.size(nodes),
          "edges" => length(selected),
          "context_facts" => length(context),
-         "counterassertions" => length(context) - length(Enum.uniq_by(selected, & &1["fact_id"])),
+         "negative_context" => Enum.count(context, &(&1["polarity"] == "negative")),
+         "counterassertions" =>
+           Enum.count(context -- selected, fn fact ->
+             Enum.any?(selected, &conflicts?(&1, fact))
+           end),
          "complete" => not truncated
        })}
     else
@@ -518,9 +547,35 @@ defmodule IpseKnowledge.Evidence do
     end
   end
 
+  def graph_seed(sources, facts, query, now) do
+    with true <- text?(query, 1024),
+         {:ok, valid} <- validate_facts(sources, facts, now) do
+      normalized_query = String.downcase(query)
+
+      seed =
+        valid["facts"]
+        |> Enum.map(& &1["subject"])
+        |> Enum.uniq()
+        |> Enum.sort_by(&{-String.length(&1), String.downcase(&1), &1})
+        |> Enum.find(fn subject ->
+          pattern =
+            "(?<![\\p{L}\\p{N}])" <>
+              Regex.escape(String.downcase(subject)) <> "(?![\\p{L}\\p{N}])"
+
+          Regex.match?(Regex.compile!(pattern, "u"), normalized_query)
+        end)
+
+      {:ok, seed || query}
+    else
+      false -> {:error, :invalid_graph_query}
+      error -> error
+    end
+  end
+
   def classify(evidence, facts, query) do
     if is_list(evidence) and length(evidence) <= 128 and Enum.all?(evidence, &candidate?/1) and
-         is_list(facts) and length(facts) <= 256 and Enum.all?(facts, &valid_fact?/1) and
+         is_list(facts) and length(facts) <= @max_claim_context and
+         Enum.all?(facts, &valid_fact?/1) and
          text?(query, 1024) do
       claims =
         Enum.map(facts, fn f ->
@@ -561,18 +616,26 @@ defmodule IpseKnowledge.Evidence do
     end
   end
 
-  defp claim_context(selected, facts) do
+  defp claim_context(selected, facts, nodes) do
     selected = Enum.uniq_by(selected, & &1["fact_id"])
     selected_ids = MapSet.new(selected, & &1["fact_id"])
 
-    counterassertions =
+    additional =
       facts
       |> Enum.reject(&MapSet.member?(selected_ids, &1["fact_id"]))
-      |> Enum.filter(fn fact -> Enum.any?(selected, &conflicts?(&1, fact)) end)
+      |> Enum.filter(fn fact ->
+        (fact["polarity"] == "negative" and
+           MapSet.member?(nodes, String.downcase(fact["subject"]))) or
+          Enum.any?(selected, &conflicts?(&1, fact))
+      end)
       |> Enum.uniq_by(& &1["fact_id"])
       |> Enum.sort_by(& &1["fact_id"])
 
-    selected ++ counterassertions
+    context = selected ++ additional
+
+    if length(context) <= @max_claim_context,
+      do: {:ok, context},
+      else: {:error, :graph_context_limit}
   end
 
   defp conflicts?(fact, other) do
@@ -687,11 +750,9 @@ defmodule IpseKnowledge.Evidence do
 
   defp candidate(s, chunk, score, method, terms) do
     # Pick a bounded exact window around the first matching token, retaining byte coordinates.
-    matches = Regex.scan(~r/[\p{L}\p{N}]+/u, chunk["text"], return: :index)
-
     offset =
-      Enum.find_value(matches, 0, fn [{start, len}] ->
-        if String.downcase(binary_part(chunk["text"], start, len)) in terms, do: start
+      Enum.find_value(token_offsets(chunk["text"]), 0, fn {term, start} ->
+        if term in terms, do: start
       end)
 
     text = binary_part(chunk["text"], offset, byte_size(chunk["text"]) - offset)
@@ -715,10 +776,16 @@ defmodule IpseKnowledge.Evidence do
 
   defp candidate_key(c), do: span_key(c["citation"])
 
+  defp fusion_key(%{"citation" => c}),
+    do:
+      [c["origin"]["store_profile"], c["origin"]["partition_or_scope"]] ++
+        Enum.map(~w(source_key generation content_sha256 chunk_id), &c[&1])
+
   defp span_key(c),
     do: Enum.map(~w(source_key generation content_sha256 chunk_id start_byte end_byte), &c[&1])
 
-  defp order(candidates), do: Enum.sort_by(candidates, &{-&1["score"], candidate_key(&1)})
+  defp order(candidates),
+    do: Enum.sort_by(candidates, &{-&1["score"], candidate_key(&1), fusion_key(&1)})
 
   defp result(evidence, claims, gaps, coverage),
     do: %{"evidence" => evidence, "claims" => claims, "gaps" => gaps, "coverage" => coverage}
@@ -746,7 +813,17 @@ defmodule IpseKnowledge.Evidence do
         is_integer(l["max_edges"]) and l["max_edges"] in 1..256 and top?(l["top_k"])
 
   defp top?(k), do: is_integer(k) and k in 1..10
-  defp tokens(text), do: Regex.scan(~r/[\p{L}\p{N}]+/u, String.downcase(text)) |> List.flatten()
+  defp tokens(text), do: Enum.map(token_offsets(text), &elem(&1, 0))
+
+  defp token_offsets(text) do
+    Regex.scan(~r/[\p{L}\p{N}]+/u, text, return: :index)
+    |> Enum.flat_map(fn [{start, length}] ->
+      normalized = String.downcase(binary_part(text, start, length))
+
+      Regex.scan(~r/[\p{L}\p{N}]+/u, normalized)
+      |> Enum.map(fn [term] -> {term, start} end)
+    end)
+  end
 
   defp chunk_id(s, start, finish),
     do: id("chunk", [s["source_key"], s["generation"], s["content_sha256"], 1, start, finish])

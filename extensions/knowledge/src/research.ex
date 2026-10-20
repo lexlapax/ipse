@@ -292,13 +292,14 @@ defmodule IpseKnowledge.Research do
 
   defp advance(_, state), do: finish(state, refused(:invalid_operation_state))
 
-  defp next_fetch(state) do
-    cond do
-      remaining_ms(state.ctx) < 1000 ->
-        finish(state, refused(:time_limit))
+  defp next_fetch(%{ctx: %{remaining: []}} = state), do: rank(state)
 
-      state.ctx.remaining == [] ->
-        rank(state)
+  defp next_fetch(state) do
+    remaining = remaining_ms(state.ctx)
+
+    cond do
+      remaining < 1000 ->
+        finish(state, refused(:time_limit))
 
       true ->
         hit = hd(state.ctx.remaining)
@@ -307,7 +308,7 @@ defmodule IpseKnowledge.Research do
           Adapters.start(state.resolved, :fetch, %{
             "profile" => state.ctx.args["fetch"],
             "uri" => hit["uri"],
-            "timeout_ms" => remaining_ms(state.ctx)
+            "timeout_ms" => remaining
           }),
           %{state | phase: :fetch}
         )
@@ -330,7 +331,9 @@ defmodule IpseKnowledge.Research do
         if state.ctx.args["rerank"] == nil do
           publish(%{state | ctx: ctx})
         else
-          if remaining_ms(ctx) < 1000 do
+          remaining = remaining_ms(ctx)
+
+          if remaining < 1000 do
             finish(state, refused(:time_limit))
           else
             advance(
@@ -338,7 +341,7 @@ defmodule IpseKnowledge.Research do
                 "profile" => state.ctx.args["rerank"],
                 "query" => state.ctx.args["query"],
                 "candidates" => Enum.take(ranked["evidence"], 16),
-                "timeout_ms" => remaining_ms(ctx)
+                "timeout_ms" => remaining
               }),
               %{state | phase: :rerank, ctx: ctx}
             )

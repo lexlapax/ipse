@@ -37,7 +37,7 @@ defmodule Ipse.KnowledgeIndexAbortTest do
 
     state_profile = %{"kind" => "state", "scope" => "project", "partition" => "notes"}
     remote_profile = %{"kind" => "mcp_cas", "binding" => "storage", "partition" => "notes",
-      "contract" => "ipse-cas-v2"}
+      "contract" => "ipse-cas-v3"}
     embedding = %{"kind" => "embedding", "profile" => "encoder"}
     source = %{"source_id" => "manual:one", "generation" => 7, "expected_revision" => 0,
       "title" => "A manual", "text" => "Release requires quiescence.", "uri" => "local:manual",

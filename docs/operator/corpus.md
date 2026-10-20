@@ -76,6 +76,8 @@ and final revalidation. A complete search with no usable match returns `abstain`
 record it in coverage. Expired sources and sources observed after the selected
 time do not become current evidence. Exact quotation establishes recorded bytes;
 check whether they support your question before relying on an answer.
+Lexical excerpts begin at a matched token's original byte offset, including when
+Unicode downcasing changes its normalized spelling.
 
 Read `status` together with `coverage.complete`. Deliberately forgotten, expired,
 future-dated and historical sources stay excluded. Their diagnostics remain in
@@ -91,6 +93,15 @@ That also applies when no passage is returned: an incomplete search cannot claim
 that no usable evidence exists. Inspect the gap before publishing an answer or
 deciding on further work. Combined retrieval exposes each algorithm's coverage
 under `coverage.components`; fusion does not remove a component's limits.
+Graph and hybrid retrieval choose the longest complete entity name among facts
+eligible at `as_of_ms`. Their graph component reports `seed`; an ineligible fact
+or a substring such as `Lease` inside `Release` cannot choose that seed.
+Unrelated stored facts do not consume the graph's 256-fact claim-context bound.
+If the reached supporting assertions and negative context together exceed that
+bound, graph and hybrid retrieval refuse with `graph_context_limit` and return
+no claims. They do not omit counterassertions or silently return the lexical
+component. Use a more specific query or reduce the configured graph depth or
+edge limit, then inspect coverage again.
 
 ## Read a complete retrieval result
 
@@ -252,9 +263,10 @@ exact ID, then run one explicit indexing operation:
 
 Approve only the inspected source text, the selected `encoder` route and the
 shown State writes. A completed index publishes vectors for that source
-generation. Each indexing invocation selects one or two chunk IDs; a larger
-source needs separate explicit batches. Changing a source does not automatically
-reindex it. An interrupted projection needs inspection before new work.
+generation. State indexing selects one or two chunk IDs per invocation, so larger
+sources need separate explicit batches. MCP indexing selects exactly one chunk.
+Changing a source does not automatically reindex it. An interrupted projection
+needs inspection before new work.
 
 Stored vectors also identify the embedding configuration that produced them.
 Changing the selected provider, endpoint, model, dimensions, dimension mode or
@@ -302,6 +314,11 @@ Compare the three retrieval choices on the same source:
 
 Dense retrieval uses cosine similarity. Hybrid retrieval combines lexical and
 dense rankings with reciprocal rank fusion. Both send the query to `encoder`.
+The same chunk found by several components occupies one fused rank slot. Each
+component contributes once, and the best component rank supplies its displayed
+citation. Graph claims retain their own exact bases even when that representative
+quotes another span in the chunk. Fusion does not combine different source
+generations or Store partitions.
 Dense citations take at most the first 200 graphemes of a chunk, bounded again
 to 1024 UTF-8 bytes. A long combining sequence can end inside that visual cluster
 while retaining valid UTF-8 and exact byte coordinates. It does not become a
@@ -314,17 +331,20 @@ not a synthesized answer. A valid model response does not prove better relevance
 The selected `missing_embedding: "refuse"` policy refuses missing/incompatible
 projections. An explicit `lexical_with_gap` policy can return lexical evidence
 with a reported gap; it does not mean indexing succeeded. Providers and models
-never switch automatically. Budget exhaustion requires a reviewed new decision,
-not an automatic retry in a fresh Session. For attributed graph augmentation,
+never switch automatically. Lexical and graph failures keep their own error codes;
+they do not become a missing-embedding fallback. Budget exhaustion requires a
+reviewed new decision, not an automatic retry in a fresh Session. For attributed graph augmentation,
 follow the independent [Graph procedure](graph.md).
 
 ## Select a remote store
 
-Use an MCP store only with a configured server implementing the knowledge CAS
-contract and enforcing its partition permissions. To create new sources, select
-`ipse-cas-v2` explicitly. The client checks returned receipts; it cannot verify
-the server's internal transaction or access controls. No server is installed or
-chosen automatically.
+Use an MCP store with a reviewed server implementing the
+[knowledge CAS contract](../developer/knowledge-extensions.md#implement-a-compatible-remote-store)
+and enforcing its partition permissions. New record-adding work requires an
+explicit `ipse-cas-v3` selection. The server must atomically limit the partition
+to 88 retained records across every accepted writer route. Client receipt checks
+cannot prove the server's internal transaction or access controls. No server is
+installed or chosen automatically.
 
 For a lexical Corpus, save this complete options file as
 `$IPSE_CORPUS_ARTIFACTS/remote-options.json`:
@@ -332,7 +352,7 @@ For a lexical Corpus, save this complete options file as
 ```json
 {
   "version": 1,
-  "stores": {"notes": {"kind": "mcp_cas", "binding": "reviewed", "partition": "manual", "contract": "ipse-cas-v2"}},
+  "stores": {"notes": {"kind": "mcp_cas", "binding": "reviewed", "partition": "manual", "contract": "ipse-cas-v3"}},
   "search": {}, "fetch": {},
   "retrieval": {"words": {"kind": "bm25", "version": 1}},
   "embedding": {}, "rerank": {}, "extraction": {}
@@ -340,9 +360,9 @@ For a lexical Corpus, save this complete options file as
 ```
 
 Save `{"reviewed":"mcp__local__cas"}` as
-`$IPSE_CORPUS_ARTIFACTS/remote-bindings.json`, replacing `mcp__local__cas` with
-the exact tool ID from your separate [MCP configuration](mcp.md). The alias and
-partition appear in approvals. Build and configure a fresh artifact:
+`$IPSE_CORPUS_ARTIFACTS/remote-bindings.json`. Replace the example tool ID with
+the exact tool from your separate [MCP configuration](mcp.md), and allowlist it
+there. The selected alias and partition appear in approvals. Build and configure:
 
 ```sh
 elixir extensions/knowledge/build.exs \
@@ -358,69 +378,188 @@ elixir extensions/knowledge/config.exs \
 IPSE_HOME="$IPSE_CORPUS_HOME" ./bin/ipse extension import "$IPSE_CORPUS_ARTIFACTS/corpus-remote"
 ```
 
-Inspect the printed digest and validate the generated configuration as in the
-first procedure. Start chat with `--config` pointing to `operator-remote.json`
-and `--mcp-config` pointing to your reviewed MCP file. Use the earlier `source`
-and lexical `query` commands with the selected `notes` store. Expect separate
-MCP approvals and the same citation, coverage and revalidation fields.
+Inspect the printed digest and validate the configuration as in the first
+procedure. Replace `/private/path/knowledge-mcp.json` below with the reviewed
+server configuration:
 
-An existing `ipse-cas-v1` selection can still read and update existing sources.
-Creating a missing source refuses with `atomic_admission_unavailable` before
-its write. Stop older writers, verify the server's v2 support, then explicitly
-select v2 in a fresh reviewed configuration and Session. Changing the contract
-does not copy local State data to that server or change stored root/page formats.
+```sh
+IPSE_HOME="$IPSE_CORPUS_HOME" ./bin/ipse chat --provider demo \
+  --config "$IPSE_CORPUS_ARTIFACTS/operator-remote.json" --no-project-config \
+  --extension corpus --mcp-config /private/path/knowledge-mcp.json \
+  --cwd "$IPSE_CORPUS_WORKSPACE"
+```
+
+Use the earlier `source` and lexical `query` commands with `store: "notes"`.
+Expect separate MCP approvals and the same citation, coverage and revalidation
+fields. BM25 runs on the selected source snapshot; this selection grants no
+server-side ranking tool.
+
+For an existing service, close older Sessions and drain their admitted effects
+before changing writers. Qualify v3's atomic 88-record ceiling for all writer
+routes, including any v1/v2 clients or administrative write API. Retire routes
+that bypass it. Then explicitly select v3 in a fresh reviewed configuration and
+Session. V3 changes the inner envelope version to 3 but keeps v2's action fields
+and stored root/page bodies. It neither copies State data to the server nor
+falls back to v2 when a request fails.
+
+Legacy v1/v2 profiles retain reads and zero-record maintenance within their
+snapshot limits. Existing-root open claims, exact abort, forget and collection
+can still work. A replacement `put` creates immutable pages, as do append,
+publish and projection work. Such record additions refuse
+`atomic_capacity_unavailable` until v3 is selected. A v1 missing-root CAS also
+lacks atomic root admission and can report `atomic_admission_unavailable`.
+
+## Retrieve server-selected passages
+
+Use `mcp_query` when your reviewed service supplies ranked source/chunk
+references through `query-v1`. The selected store must be `mcp_cas`, and its
+partition must equal the retrieval partition. Search/fetch gateway contracts for
+[Research](research-extensions.md) are separate and cannot replace this route.
+
+Keep the imported `corpus-remote` artifact from the preceding procedure. Save
+these complete options as `$IPSE_CORPUS_ARTIFACTS/query-options.json`:
+
+```json
+{
+  "version": 1,
+  "stores": {"notes": {"kind": "mcp_cas", "binding": "reviewed", "partition": "manual", "contract": "ipse-cas-v3"}},
+  "search": {}, "fetch": {},
+  "retrieval": {"selected": {"kind": "mcp_query", "binding": "selected_query", "partition": "manual", "contract": "query-v1"}},
+  "embedding": {}, "rerank": {}, "extraction": {}
+}
+```
+
+Save this alias map as `$IPSE_CORPUS_ARTIFACTS/query-bindings.json`, replacing
+both tool IDs with the actual reviewed tools:
+
+```json
+{"reviewed":"mcp__local__cas","selected_query":"mcp__local__query"}
+```
+
+The configured server must allowlist both tools. Generate and inspect a new
+selection without rebuilding the compatible artifact:
+
+```sh
+elixir extensions/knowledge/config.exs \
+  --artifact "$IPSE_CORPUS_ARTIFACTS/corpus-remote" \
+  --package corpus --preset mcp-lexical --instance corpus \
+  --options "$IPSE_CORPUS_ARTIFACTS/query-options.json" \
+  --mcp-bindings "$IPSE_CORPUS_ARTIFACTS/query-bindings.json" \
+  --output "$IPSE_CORPUS_ARTIFACTS/operator-query.json"
+IPSE_HOME="$IPSE_CORPUS_HOME" ./bin/ipse config \
+  --config "$IPSE_CORPUS_ARTIFACTS/operator-query.json" --no-project-config \
+  --extension corpus
+IPSE_HOME="$IPSE_CORPUS_HOME" ./bin/ipse chat --provider demo \
+  --config "$IPSE_CORPUS_ARTIFACTS/operator-query.json" --no-project-config \
+  --extension corpus --mcp-config /private/path/knowledge-mcp.json \
+  --cwd "$IPSE_CORPUS_WORKSPACE"
+```
+
+In chat, query the remote sources already ingested through `notes`:
+
+```text
+/ext ext__corpus__query {"store":"notes","retrieval":"selected","rerank":null,"query":"lock files inode","top_k":5,"as_of_ms":1700000020000}
+```
+
+Review the query call and subsequent storage reads separately. The query request
+contains only version 1, `contract: "query-v1"`, partition, fresh request ID,
+query, `top_k` and `as_of_ms`. The complete
+[request/reply contract](../developer/knowledge-extensions.md#implement-selected-remote-retrieval)
+specifies every field and bound.
+
+Expect `method: "mcp_query"` candidates with locally validated citations,
+`score_provenance: "server_asserted"`, and remote algorithm, version, scan counts
+and store generation in coverage. Ipse reads only the returned sources/chunks
+at that generation and revalidates their roots. The server's scores remain its
+assertions. Wrong partitions, incomplete replies, stale generations or forged
+references refuse the whole result. An empty complete reference list returns
+`abstain` without reading the Store. No model or embedding is required.
+
+This route does not scan the partition directory or certify its total root count.
+It does not replace the server's capacity or access policy. Keep the same
+88-record guarantee for all writers even when selected queries read fewer records.
+
+## Export sources before migration
+
+To export the earlier source, run:
+
+```text
+/ext ext__corpus__source {"store":"notes","action":"export","args":{"source_id":"manual:locks","cursor":0,"limit":1}}
+```
+
+Read the export envelope in `coverage`. It includes source metadata, a contiguous
+`text` part, total `byte_count`, `cursor`, `next`, `complete` and projection
+coverage. If `next` is non-null, repeat the export with that returned byte cursor.
+Retain every part in order. This command returns JSON; it does not create a file.
+Use an ordinary approved workspace write to retain an export outside the journal.
+
+`limit` is 1..4. A part contains at most `limit * 4096` raw bytes, capped at 8192
+and reduced until the whole envelope fits 12000 encoded bytes. Escaped quotes,
+newlines and control bytes can make a part smaller. Byte cursors always retain
+valid UTF-8 boundaries. A complete offset-zero envelope may repeat `source.text`
+for compatibility when the duplication fits; readers must also accept metadata
+with the complete text only at the top level.
+
+Direct `import` requires a complete offset-zero envelope with no continuation,
+matching source bytes/hash and at most 8192 raw text bytes. A final fragment at a
+nonzero cursor is not a whole source even when `complete` is true. Migrate larger
+sources through explicit paged ingestion with the reviewed historical origin,
+not by importing one fragment. Projection contents are omitted and require
+explicit reindexing or extraction. Foreign source copies remain historical
+assertions and do not become current evidence through those operations.
+
+For a fresh current capture, inspect its destination root and explicitly ingest
+a newer generation with the actual revision and justified observation time.
+Omit `historical_import` for that fresh capture, then build required projections.
+Do not present an old export as a newly observed source.
 
 ## Keep stores bounded and recover from refusal
 
 Each partition permits 32 source roots, including unpublished drafts and
-suppression markers. An import for a new source needs an unused source slot.
-Use a separate reviewed partition
-for new sources when that limit is reached; collection retains existing roots.
-State allows 256 retained record slots and 1 MiB per namespace, including drafts,
-old pages and tombstones. Collection removes unreachable bodies but does not
-recover record slots. Plan exports and a reviewed migration before filling the
-store. Selected exports are paged. An incomplete export cannot be imported as a
-complete source. Foreign copies retain historical provenance and stay excluded
-from current queries after indexing or extraction. For a freshly verified current
-capture, inspect the root and repeat the ingestion procedure as an explicit
-replacement with a newer generation and current revision. Omit
-`historical_import` for that fresh capture, then build its required projections.
+suppression markers. An import for a new source needs an unused root slot.
+Collection retains roots and suppression. Use separate reviewed partitions for
+new sources when the root ceiling is reached.
 
-Concurrent creation can return `conflict` even when another writer changed a
-different source. The first write checks the store generation used to count
-available slots. Inspect before deciding on a new command; Ipse does not retry
-the failed creation. An unknown result may already have occupied its slot.
+State permits 256 retained records and 1 MiB per namespace. A qualified MCP v3
+partition permits 88 retained records and at most 1 MiB. Records include roots,
+pages, drafts' staged pages, old generations, orphan pages and tombstones.
+Collection removes unreachable bodies but retains their slots. Plan exports and
+reviewed migration before filling either store. An open draft does not reserve
+all future space, so a competing writer can make append/publication refuse.
+Inspect the retained draft before continuing or approving an exact abort.
 
-When updating artifacts that share a State binding, close older Sessions and
-wait for their admitted effects to finish before selecting the new writers.
-Retire their old writer configuration. The bound relies on every writer using
-the current admission check; older artifacts or direct trusted State writes can
-bypass it. Existing valid stores need no data conversion.
+Concurrent creation can return `conflict` even when another writer changes a
+different source. Inspect before deciding on a new command; Ipse does not retry
+failed creation. An unknown result may already have occupied its slot.
+For shared State bindings, drain older Sessions and their admitted effects and
+retire older writer configurations. Arbitrary trusted State writes that omit
+admission conditions can bypass the domain policy.
 
-If an older partition already exceeds 32 roots, a whole-store query refuses with
-`root_capacity_exceeded` once its snapshot completes. A selected remote query
-reads only the server-selected sources and does not check total root count.
-Keep the data and use `inspect` and paged `export` for each known source ID when
-the store fits the read limits below. Existing-source replacement and suppression
-remain available within the other store limits. Suppression still occupies its root,
-so it does not lower this count. Plan a reviewed migration into separate bounded
-partitions instead of deleting markers or editing the State file.
+A full MCP snapshot uses `1 + ceil(records / 8)` calls: one directory plus groups
+of at most eight records. Every MCP call consumes one of the invocation's 16
+effects, including read calls. At 88 records, the snapshot consumes 12 effects,
+leaving four for other work. Rechecks, writes and model calls can therefore
+produce `effect_limit` before the record ceiling is reached. Increasing a batch
+size or grant does not remove the selected contract's limits.
 
-An MCP full-store operation needs at most 12 calls to capture its snapshot.
-That permits 88 retained records, including pages and tombstones, in the selected
-server partition. At 89 records, `remote_snapshot_limit` refuses before the
-root-count check, even for `inspect`, `export` or existing-source maintenance.
-Use the configured server's reviewed administrative export/migration procedure
-to recover a larger store. Preserve source identities and suppression markers.
-Ipse's addressed commands cannot recover it through this bounded contract.
+If an inherited partition exceeds 32 roots, a whole-store query returns
+`root_capacity_exceeded` after its snapshot. Addressed inspect/export and
+zero-record maintenance can remain available within the other limits.
+Suppression retains its root and does not repair that count. If an inherited MCP
+partition exceeds 88 records, `remote_snapshot_limit` precedes the root check,
+even for addressed inspect, export or abort. Recover through the selected
+server's reviewed administrative export/migration procedure, preserving source
+identity and suppression. Ordinary Ipse addressed commands cannot bypass that
+full-snapshot bound.
 
-For a denied, unavailable or unknown action, read the result and coverage. Unknown
-work may already have happened. Inspect the source and draft before issuing new
-work; resume does not replay it. An effect or capacity refusal needs a smaller
-explicit batch or reviewed store change. Grants, providers and source/vector
-contents do not change automatically to make a refusal disappear.
+For a denied, unavailable or unknown action, read its result and coverage.
+Unknown work may already have happened. Inspect the source/draft and relevant
+service receipts before issuing new work; resume does not replay it. A definite
+effect or capacity refusal needs a smaller explicit batch or a reviewed store
+change. Providers, grants and stored source/vector bytes do not change
+automatically to make the refusal disappear.
 
-The example uses project scope and partition `manual`. Ipse supplies the actual
-workspace namespace. Sharing with Graph requires the same operator State binding
-and partition. A shared profile name alone does not share data. Operator scope
-deliberately shares across workspaces; session scope uses that session's identity.
+The State example uses project scope and partition `manual`. Ipse supplies the
+actual workspace namespace. Sharing with Graph requires the same operator State
+binding and partition. A shared profile name alone does not share data. Operator
+scope shares across workspaces; session scope uses that session's identity.

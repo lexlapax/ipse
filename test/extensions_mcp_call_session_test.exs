@@ -54,6 +54,49 @@ defmodule Ipse.Extensions.MCPCallSessionTest do
     %{root: root, home: home, dir: dir}
   end
 
+  test "MCP sources that cannot fit a journal record refuse before approval or dispatch", ctx do
+    selected = server(ctx, :http, :normal)
+
+    cfg =
+      config(ctx, selected)
+      |> Map.merge(%{approval: :ask, journal: %{"max_record_bytes" => 65_536}})
+
+    pid = start(ctx, cfg)
+    invoke(pid)
+    done(pid, :error)
+    assert Fixture.calls(ctx.root) == 0
+    assert Fixture.discoveries(ctx.root) == 0
+    refute_receive {:ipse, ^pid, {:approval, _, _, _}}
+    ev = events(ctx, pid)
+
+    refute Enum.any?(
+             ev,
+             &(&1["type"] in ~w(extension_action_intent extension_effect_result journal_limit_reached))
+           )
+
+    id = Session.info(pid).id
+    assert :ok = Session.close_confirmed(pid)
+    resumed = start(ctx, cfg, id)
+    assert Session.info(resumed).phase == :idle
+    assert Fixture.calls(ctx.root) == 0
+  end
+
+  test "MCP full response contract fits its exact existing source-record ceiling", ctx do
+    selected = server(ctx, :http, :normal)
+
+    cfg =
+      config(ctx, selected)
+      |> Map.put(:journal, %{"max_record_bytes" => 262_144})
+
+    pid = start(ctx, cfg)
+    invoke(pid)
+    done(pid)
+    assert Fixture.calls(ctx.root) == 1
+    ev = events(ctx, pid)
+    assert Enum.any?(ev, &(&1["type"] == "extension_effect_result"))
+    refute Enum.any?(ev, &(&1["type"] == "journal_limit_reached"))
+  end
+
   defp server(ctx, :stdio, mode) do
     parsed_server(ctx, Fixture.stdio_config(ctx.root, Atom.to_string(mode)))
   end

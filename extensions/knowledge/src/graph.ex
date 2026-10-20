@@ -102,6 +102,9 @@ defmodule IpseKnowledge.Graph do
         "max_items" => args["max_edges"]
       }
 
+      open =
+        if extraction["kind"] == "explicit", do: Map.put(open, "facts", args["facts"]), else: open
+
       advance(
         Store.start(args["store"], store_profile, :projection_open, open),
         %{state | phase: :extract_open, ctx: %{args: args, store_profile: store_profile}}
@@ -209,6 +212,9 @@ defmodule IpseKnowledge.Graph do
             }),
             %{state | phase: :query_revalidate, ctx: ctx}
           )
+
+        {:error, :graph_context_limit} ->
+          finish(state, refused(:graph_context_limit))
 
         _ ->
           finish(state, refused(:invalid_evidence))

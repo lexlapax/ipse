@@ -39,6 +39,13 @@ requires the selected descriptor to match that SDK and its compiled capability
 list. The operator generator rejects an SDK-1 artifact or a missing page grant.
 Changing options cannot upgrade an older artifact's protocol declaration.
 
+Trace `Profiles.compatible?/4` before adding a profile family. Corpus consumes
+stores, retrieval, embedding and rerank profiles. Graph consumes stores and
+extraction profiles, so its retrieval registry must be empty. Research consumes
+search, fetch, BM25 retrieval and optional rerank profiles. A well-formed
+`mcp_query`, dense, graph or hybrid profile is still invalid for Research.
+Reject unusable selections before `BuildSpec.operator/8` generates their grants.
+
 ## Verify independent memory and knowledge selections
 
 Build three independent artifacts and exercise each with explicit memory:
@@ -153,11 +160,41 @@ component claims, gaps and coverage alongside the fused order. A completed
 reciprocal-rank calculation does not prove that a bounded graph traversal
 completed. Every required component must be complete before the final result
 can claim complete coverage. Missing or replaced fact provenance and missing
-embeddings remain partial or refused. In `Evidence.validate_facts/3`, inspect
-the citation's generation, hash and span before applying source or fact time
-policy. A valid expired fact is excluded, while missing or replaced provenance
+embeddings remain partial or refused. Lexical and graph failures retain their
+own error codes. Only an actual missing-embedding condition can take the selected
+lexical fallback policy.
+
+Corpus chooses its graph seed through `Evidence.graph_seed/4`. That helper first
+validates facts at the query's `as_of_ms`, then matches complete entity names at
+Unicode letter/number boundaries. It prefers the longest matching subject, with
+stable spelling tie-breaks, and uses the query itself when no subject matches.
+`Lease` cannot match inside `Release`. Both graph and hybrid retrieval use this
+helper. Graph component coverage records the selected `seed`.
+
+In `Evidence.validate_facts/3`, inspect the citation's generation, hash and span
+before applying source or fact time policy. A valid expired fact is excluded, while missing or replaced provenance
 remains `stale_fact` even if the fact has also expired. An invalid span still
 refuses validation.
+
+Keep query population separate from claim context. A Store snapshot has at most
+256 retained records, and each distinct facts manifest decodes at most 32 facts.
+Evidence derives its conservative query-input ceiling from that product, 8192;
+the existing 1 MiB encoded snapshot bound still applies. A manifest belongs to
+one source generation and one profile. Its profile fixes the sole valid head
+ID, every predecessor must retain that profile, and the chain rejects repeated
+keys. It therefore cannot contribute twice through different valid heads or
+roots. Store also keeps its per-head 256-fact and per-extraction 32-fact bounds.
+
+Validate the complete input population before seed selection or traversal,
+including facts later excluded by time policy. Then retain every selected
+supporting assertion and relevant negative or conflicting assertion. This
+complete claim context remains bounded to 256 facts. Overflow returns
+`graph_context_limit` before classification, with no truncated claims. Graph,
+Corpus graph retrieval and hybrid retrieval preserve that named refusal. Run
+`mix test test/knowledge_graph_population_test.exs` for the 261-fact public
+lifecycle, unrelated expired sources, retained counterassertions and the
+256/257-context boundary. The isolated controls also keep unrelated forged
+spans fail-closed and enforce the finite population ceiling.
 
 At depth exhaustion, `Evidence.walk/6` checks whether its frontier still has an
 unselected positive outgoing fact. If so, the bounded result remains partial.
@@ -181,8 +218,8 @@ the passage and report partial coverage. Query again at the facts' expiry time
 with a wide traversal bound. Expect complete abstention with `excluded_fact`
 diagnostics. The pure Evidence suite separately checks that missing or replaced
 provenance still fails coverage at that same expiry boundary.
-The hybrid case allows a lexical
-fallback for missing vectors; one accounted synthetic query embedding does not
+The hybrid case allows a lexical fallback for missing vectors; one accounted
+synthetic query embedding does not
 turn that fallback into complete retrieval. These exercises measure status and
 provenance, not semantic answer quality.
 
@@ -204,15 +241,28 @@ contiguous chunks of at most 2048 bytes without splitting UTF8 sequences.
 Citation offsets are bytes in the complete source. Validation binds the exact
 source generation, content hash, chunk ID, quote, quote hash, URI, times and origin.
 
+BM25 uses `k1 = 1.2` and `b = 0.75`. Scoring and excerpt selection share
+`token_offsets/1`: each normalized token retains its original UTF-8 byte start.
+Downcasing can split one source token into several normalized terms, as with
+`İstanbul`. Those terms still refer to the original token's bytes. Never apply
+offsets from a downcased string to the captured source. The Unicode regression
+places the match after byte 1024 and requires the selected quotation to contain it.
+
 An exact quote proves which bytes were recorded. It does not prove that a claim
 follows from them. Facts retain every support citation and extraction identity.
-Conflicting assertions remain separate, with explicit polarity. Traversal still
-follows positive edges only. Before classification, `claim_context/2` adds each
-current validated assertion that contradicts a reached fact, without traversing
-its edge. The shared `conflicts?/2` predicate owns both selection and labels.
+Conflicting assertions remain separate, with explicit polarity. Traversal follows
+positive edges only. Before classification, `claim_context/3` retains eligible
+negative assertions whose subjects were reached, including the seed. It also
+retains assertions that contradict a selected positive fact. A negative object's
+name never enters the frontier through that assertion.
+The shared `conflicts?/2` predicate owns conflict selection and labels.
 Evidence comes from that bounded context before `top_k`; every attributed claim
 keeps its own exact citation basis even when its passage falls outside the rank.
-Coverage separates traversal edges from context facts and counterassertions.
+Coverage separates traversal `edges`, `context_facts`, `negative_context` and
+`counterassertions`. The last field counts additional assertions that conflict
+with a selected positive fact. An unrelated predicate on a reached subject can
+remain negative context without becoming a counterassertion. A negative-only
+query can return attributed evidence with zero traversed edges and one seed node.
 The conflict predicate compares object identifiers with the same case-insensitive
 matching used for traversal nodes. It preserves the original fields, fact IDs
 and citation bytes. A conflict requires the same subject, predicate and object
@@ -222,8 +272,8 @@ relationship use the same identity rule. The Evidence regressions exercise both
 input orders, compatible requirements and explicit opposites. Under a one-edge
 bound, an unvisited compatible requirement leaves coverage partial and stays
 outside conflict context.
-Lexical results without assessed facts
-remain open for semantic support. Research's provided ledger normalizes supplied
+Lexical results without assessed facts remain open for semantic support.
+Research's provided ledger normalizes supplied
 provenance and cannot manufacture the native [research ledger](research.md)'s
 receipt authority.
 
@@ -247,8 +297,8 @@ their exact spans and provenance. An escaped quote also exercises a citation
 larger than one 4096-byte transport fragment without raising the domain quote
 limit. The suite runs domain modules in a separate VM.
 
-By default, Research chooses its ranking time after capturing the bounded source set. A
-gateway can stamp a fetch at completion, so using the invocation's earlier time
+By default, Research chooses its ranking time after capturing the bounded source
+set. A gateway can stamp a fetch at completion, so using the invocation's earlier time
 would wrongly exclude that newly captured source. Follow `Research.rank/1` and
 `publish/1`: the selected time drives ranking and coverage, while each citation
 retains its own observation time. An explicit integer `as_of_ms` selects a fixed
@@ -256,6 +306,14 @@ time instead, allowing Research and Corpus to share an evaluation snapshot.
 Research accepts omission for current time; explicit null refuses. Provided and
 fetched routes both report the accumulated raw text bytes. Observations after
 the selected time and expiry at or before it remain excluded.
+For each fetch or model-rerank decision, Research samples `remaining_ms/1` once.
+It refuses values below 1000 as `time_limit` and passes an admitted value unchanged
+to the adapter. Sampling again between the guard and request can turn a valid
+1000 ms decision into `invalid_adapter_input` at 999 ms.
+`next_fetch/1` sends an empty queue directly to ranking before checking the
+allowance for another fetch. A valid empty search or final captured body must
+remain publishable when no further fetch is needed. Optional reranking retains
+its own admission check.
 
 ## Read a continuation at the host boundary
 
@@ -378,6 +436,14 @@ keep their existing formats. Follow the State and MCP controls in
 `test/knowledge_store_test.exs` through append, selection replacement, legacy
 decode, mixed-chain refusal and an attempted old-draft promotion.
 
+For explicit extraction, Graph passes the known facts into the draft preflight.
+Store packs their actual encoded pages before claiming the root. A maximum of
+32 facts is a count ceiling, not a reservation of 32 worst-case records. For
+model extraction, Store derives an affordable page allowance from the remaining
+effect and record capacity before approving inference. Commit packs the actual
+returned facts and checks that they fit that allowance. Oversized output leaves
+the draft available for inspection and exact abort.
+
 The extraction adapter sends `max_facts` alongside the selected chunks. Its fixed
 instruction specifies the closed fact fields and absolute half-open UTF8 byte
 offsets. The decoder separately enforces the requested fact count, selected
@@ -400,10 +466,19 @@ The reranker requires a complete candidate-ID permutation inside exactly one
 `order` object. A bare array, omitted candidate, duplicate or foreign ID refuses;
 none becomes an implicit successful lexical fallback. A candidate ID is the
 chunk digest followed by its absolute `start_byte` and `end_byte`, separated by
-colons. Chunk identity already binds source, generation and content; offsets
-distinguish lexical, dense or graph excerpts from that same chunk. Fusion keeps
-those distinct spans. Reranking changes their order without dropping either
-quote or its provenance.
+colons. These IDs identify the exact representative excerpts shown to the
+reranker. They remain separate from fusion identity.
+
+`Evidence.fuse/3` uses reciprocal rank fusion with constant 60 over chunk identity.
+Its key includes the Store-generated profile/partition namespace, source key,
+generation, content hash and chunk ID. Each component contributes once per chunk,
+even if graph facts cite several spans in it. A chunk ranked first by lexical
+and dense retrieval receives `1/61 + 1/61` and occupies one final rank slot.
+The best component rank chooses its exact representative citation. Earlier
+components win equal-rank ties. Corpus orders components lexical, dense, graph.
+Graph claims retain every original citation basis, including spans outside that
+representative or `top_k`. Do not replace persisted chunk IDs or the existing
+span/rerank ID format to change this accumulation key.
 
 For example, reverse two candidates with `Evidence.apply_rerank([a, b],
 [Evidence.candidate_id(b), Evidence.candidate_id(a)])`. Read the same-chunk
@@ -413,22 +488,26 @@ validator independently parses canonical IDs, checks the exact current chunk and
 span bounds, and recomputes the shown prefix. It loads no production domain
 module into the host. A quote occurring elsewhere in the chunk is insufficient.
 
-The named quote ceiling
-counts UTF8 bytes. Prefix selection preserves a code-point boundary, including
+The named quote ceiling counts UTF8 bytes. Prefix selection preserves a
+code-point boundary, including
 for a single grapheme with many combining characters. Exercise that byte-bound
 case before replacing it with a character-slicing function.
 
 Two 4096-coordinate vectors require 12 coordinate pages, one manifest and one
 final CAS. With one draft claim and one embedding call, that is 16 effects.
 Result reads use their separate allowance. MCP counts every call as an effect,
-including reads. It may require one chunk or a refusal. Metadata-heavy facts may
-also need smaller explicit batches. Do not dispatch inference if its result
-cannot fit the preflight plan.
+including reads. State indexing admits one or two selected chunks. MCP indexing
+admits exactly one chunk per invocation and can still refuse its capacity plan.
+Metadata-heavy facts may need smaller explicit batches. Do not dispatch inference
+if its result cannot fit the preflight plan.
 
 Host embedding input hashes are opaque. Bind result indices to their original
 inputs and require stable host hashes across pages. Keep raw input hashes
-separately. Verify descriptor identity, offsets, full dimensions, canonical
-Base64, float32 encoding and vector SHA256. The complete finite float32 range
+separately as receipt provenance. The host validates its typed input identity
+against the approved input. Comparing a raw hash with a second hash of the same
+local text does not authenticate a returned vector. Verify descriptor identity,
+offsets, full dimensions, canonical Base64, float32 encoding and vector SHA256.
+The complete finite float32 range
 is valid, including both signed maxima. The package regression also supplies
 infinity and NaN bit patterns and requires refusal. Never shorten a vector to
 fit a text response.
@@ -483,18 +562,34 @@ their writer configuration. Optional generic State conditions cannot constrain
 an arbitrary trusted writer that omits them. Valid format-1 stores with at most
 32 roots need no data migration.
 
-Collection removes unreachable bodies while retaining State tombstones. It does
-not recover the 256-record allowance. The 1 MiB ceiling includes old generations,
-drafts, orphan pages and tombstones. Selected exports are paged. Foreign copies
-become historical assertions. Extraction and indexing preserve that flag, so
+Collection removes unreachable bodies while retaining tombstones. It does not
+recover retained record slots: State allows 256 per namespace, while a qualified
+MCP partition allows 88. The 1 MiB ceiling includes old generations, drafts,
+orphan pages and tombstones.
+
+Follow `Store.export_source/1` and `export_prefix/5` before changing migration.
+An export takes a contiguous UTF-8 prefix bounded by `limit * 4096`, 8192 and
+the remaining source bytes. `limit` is 1..4. The packer shrinks the prefix until
+the complete envelope fits 12000 encoded bytes and the SDK object limits.
+Quotation marks, control bytes and newlines can require smaller parts.
+The legacy complete single-part form repeats `source.text` only when that whole
+envelope also fits. Otherwise metadata and the top-level `text` remain separate.
+Source import reconstructs those bytes, validates their content hash and requires
+cursor zero, no continuation, complete content and at most 8192 raw bytes.
+A complete final fragment at a nonzero cursor is not a complete import.
+Larger migrations use reviewed paged `open`/`append`/`publish` work while retaining
+historical import provenance. Projection heads are disclosed as metadata, but
+projection contents are omitted and need explicit rebuilding.
+
+Foreign copies become historical assertions. Extraction and indexing preserve that flag, so
 `Evidence.current?/2` still excludes them. Current evidence requires an explicit
 fresh source replacement with a newer generation and inspected root revision,
 without `historical_import`, followed by its required projections. Do not treat
 reindexing an imported record as promotion to current evidence.
 Suppression cannot erase journals, backups, prior transfers or independent stores.
 
-An explicitly aborted draft also invalidates delayed publication. `Store.abort`
-requires the inspected root revision and exact draft ID for source, fact or vector
+An explicitly aborted draft also invalidates delayed publication. Store's `:abort`
+operation requires the inspected root revision and exact draft ID for source, fact or vector
 work. `source_draft_current/1` adds the source-kind restriction for append/publish;
 clearing a fact draft cannot turn it into publishable source content. Work through
 `test/knowledge_store_test.exs` for State and MCP controls: wrong ID/revision,
@@ -525,62 +620,232 @@ files. Neither exercise measures semantic extraction quality.
 
 ## Implement a compatible remote store
 
-The selected `mcp_cas` profile fixes its contract. `ipse-cas-v2` uses inner envelope
-version 2; the surrounding `mcp.call` and result-window transport remain version 1.
-Every action echoes contract, version, partition, action and fresh request ID.
-Read `MCPCAS.envelope/4` and its write-size preflight together so a batch cannot
-be sized under a different contract from the one dispatched.
+Read `store/mcp_cas.ex` with the independent atomic owner in
+`test/support/knowledge_mcp_fixture.exs`. The fixture is the executable contract
+reference. A service must also enforce the selected partition's access policy.
+An exact receipt establishes what that service asserted, not how it implemented
+its transaction or authorized access internally.
 
-V2 `cas_root` arguments contain exactly `key`, `expected_revision`,
-`expected_generation`, `expected_source_generation`, `expected_content_sha256`,
-`draft_id` and `next_root`. Creation requires a non-null safe generation.
-Replacement uses null for that condition. The server checks the target revision,
-optional store generation and existing source/hash/draft conditions under one
-atomic owner. A missing-root request without its generation condition refuses
-before mutation. Permanent suppression still refuses replacement.
-The v2 owner also refuses a positive-revision tombstone at a root key; it is
-neither an available creation slot nor an existing source to replace.
+New record-adding work requires an explicit `ipse-cas-v3` profile. V3 uses inner
+envelope version 3 and the same action fields and persisted root/page bodies as
+v2. The surrounding `mcp.call` and `mcp.text` result-window transport remain
+version 1. Never infer or upgrade a selected contract from a server response.
 
-Successful conditioned CAS returns the exact next root at the next target
-revision and store generation `G+1`. A v2 conflict carries only a closed record
-summary with `key`, `revision`, `deleted`, `source_generation`, `content_sha256`
-and `draft_id`. The envelope carries current store generation. A missing record
-uses revision zero, deleted true and null source fields. A suppression has its
-positive source generation and null hash/draft. A live root reports its hash and
-nullable draft ID. The client requires at least one requested CAS condition to
-differ; a matching summary cannot claim conflict. No source body is disclosed.
-All v2 positive record receipts and conflict summaries require target revision
-no greater than store generation, including snapshot metadata and full reads,
-immutable writes and collection. A nullable replacement condition does not
-permit an intrinsically impossible successful receipt. Collection also requires
-the requested snapshot generation plus one, since its atomic owner checks that
-condition and advances generation exactly once.
-Revision-zero full records must have the canonical missing form, deleted true
-with a null value. A revision-zero object cannot claim to be a stored live root.
+### Bind requests and replies
 
-V1 profiles retain their version-1 wire format for reads and existing-root
-updates. New-root creation refuses locally with `atomic_admission_unavailable`,
-before dispatching CAS. Operators explicitly select a compatible v2 service and
-configuration; the client never falls back or upgrades a profile. Both contracts
-read the same persisted root/page format. Drain old v1 writers before relying on
-the new admission guarantee.
+Every CAS request contains exactly these fields. This is a complete empty-store
+snapshot request:
 
-Follow `test/support/knowledge_mcp_fixture.exs` into its independent atomic owner.
-It implements both contracts and supplies the public MCP exercises. Exact
-receipts establish what the selected server asserted. They do not verify a real
-server's internal transactions or enforce its partition ACL.
+```json
+{
+  "version": 3,
+  "contract": "ipse-cas-v3",
+  "partition": "manual",
+  "request_id": "11111111111111111111111111111111",
+  "action": "snapshot",
+  "args": {}
+}
+```
 
-Full MCP snapshots use one directory call and at most eleven groups of eight
-record reads. At 89 retained records the adapter returns `remote_snapshot_limit`
-before Store sees the partition, so even addressed inspect/export/maintenance
-cannot proceed. This bound precedes `root_capacity_exceeded`. The Store control
-seeds 33 roots and 56 tombstones to check that refusal, then removes one
-tombstone to verify the 88-record boundary still permits addressed reads while
-the whole snapshot refuses the root count. Recovery beyond that ceiling needs
-the selected server's administrative export/migration procedure. Do not widen
-the 16-effect allowance or promise that ordinary Ipse exports can bypass it.
-Corpus's selected remote-query route reads only bounded returned references; it
-does not count all roots or assert a whole-partition snapshot.
+A successful empty-store reply contains exactly these fields:
+
+```json
+{
+  "version": 3,
+  "contract": "ipse-cas-v3",
+  "partition": "manual",
+  "request_id": "11111111111111111111111111111111",
+  "action": "snapshot",
+  "status": "ok",
+  "generation": 0,
+  "value": {"records": [], "count": 0, "bytes": 2, "complete": true}
+}
+```
+
+The response echoes version, contract, partition, action and the fresh 32-digit
+lowercase hexadecimal request ID. `status` is `ok`, `conflict` or `refused`.
+`generation` is a nonnegative safe integer through 9007199254740991, and `value`
+is an object. Unknown fields or mismatched identity refuse as `store_response`.
+A failed action must not mutate the partition.
+
+The action-specific argument and success-value objects are also closed:
+
+| Action | Exact `args` fields | Exact successful `value` fields |
+| --- | --- | --- |
+| `snapshot` | Empty object | `records`, `count`, `bytes`, `complete: true` |
+| `get_many` | `keys`: 1..8 record-key hashes | `records` in requested key order, `complete: true` |
+| `put_immutable_many` | `pages`: 1..2 objects with `key`, `value`, `expected_revision: 0` | `records` in page order |
+| `cas_root` | `key`, `expected_revision`, `expected_generation`, `expected_source_generation`, `expected_content_sha256`, `draft_id`, `next_root` | `record` |
+| `collect` | `keys`: 1..12 distinct page keys, `snapshot_generation` | `records` in requested key order |
+
+Full records contain exactly `key`, `revision`, `deleted` and `value`. Keys are
+64-digit lowercase hexadecimal hashes. A missing record has revision zero,
+`deleted: true` and `value: null`. A live record has a positive revision and an
+object value. A tombstone retains its positive revision with `value: null`.
+Directory metadata contains exactly `key`, `revision`, `deleted` and `kind`, with
+positive revisions and kind `root`, `page` or `tombstone`. Directory keys are
+unique. The directory's declared count equals its row count, at most 256, and its
+reported encoded storage size is at most 1048576 bytes. Those transport bounds
+do not replace v3's stricter 88-record admission rule.
+
+Snapshot record groups must agree with the directory's revisions and deletion
+flags, and all replies must retain the captured generation. `get_many` reports
+missing keys explicitly rather than omitting rows. Immutable page writes require
+unused keys and return exact values at revision one. Collection checks its
+snapshot generation and every currently reachable root/draft reference under
+the atomic owner. It replaces only unprotected pages with tombstones and advances
+their revisions and the store generation once.
+
+Each complete CAS JSON text result is at most 60000 bytes. The adapter reads it
+in windows of at most 4096 bytes with exact operation/source identity and offsets.
+A request must fit the SDK object bound, 15000 encoded bytes and the adapter's
+32768-byte displayed-argument bound. `MCPCAS.write_batches/2` tests the actual
+selected contract envelope before choosing one or two immutable pages.
+
+### Enforce root conditions and the retained-record ceiling
+
+For a new root, `expected_revision` is zero and `expected_generation` is the
+completed snapshot's store generation. Existing-root updates use null for the
+store-generation condition and retain the exact revision, source generation,
+content hash and draft conditions. The server checks every supplied condition
+under one atomic owner before changing the root. Permanent suppression refuses
+replacement. A positive-revision tombstone at a root key is corrupt state, not
+a free creation slot.
+
+A successful root CAS returns the exact `next_root` at target revision plus one.
+A conditioned creation returns captured store generation plus one. V2 and v3
+positive record receipts and conflict summaries require record revision no
+greater than store generation. A `cas_root` conflict contains exactly
+`value: {"record": SUMMARY}`. The summary contains `key`, `revision`, `deleted`,
+`source_generation`, `content_sha256` and `draft_id`. Missing/deleted records use
+null source fields. A suppression retains its positive source generation and
+null hash/draft. A live root reports its hash and nullable draft ID. At least
+one requested condition must differ; an otherwise matching summary cannot claim
+conflict. No source body is disclosed.
+
+A qualified v3 owner atomically refuses any write that would exceed 88 retained
+keys in the partition, including roots, immutable pages, orphan pages and
+tombstones. It applies this ceiling to every accepted writer/version route,
+including v1 and v2 requests. A per-client snapshot count is insufficient:
+concurrent writers could otherwise both consume the last slot. Store also checks
+88 locally, along with 32 roots, encoded bytes and the invocation allowance.
+A draft claim does not reserve future slots. Competing writers can still make
+publication refuse, leaving an inspectable, exactly abortable draft.
+
+A full snapshot consumes `1 + ceil(records / 8)` MCP effects: one directory call
+and groups of at most eight full records. At 88 records it consumes 12 of the
+16 effects available to the invocation. Additional writes, rechecks or model
+calls must fit the remaining allowance, so `effect_limit` can refuse work before
+record capacity is exhausted. Result-window reads use their separate read
+allowance; MCP calls themselves are effects even when they read data.
+
+An inherited partition above 88 records returns `remote_snapshot_limit` before
+Store can inspect even one addressed source. Use the selected server's reviewed
+administrative export/migration procedure. Do not promise that Ipse's ordinary
+`inspect`, `export` or abort commands can bypass this full-snapshot ceiling.
+The atomic v3 rule prevents qualified writers from creating that unreadable state.
+
+### Cut over without changing stored bodies
+
+V1 and v2 profiles retain their original read envelopes and zero-record
+maintenance. Existing-root `open` claims, exact abort, forget and collection can
+remain available within the ordinary snapshot, byte and effect limits. A `put`
+replacement still creates immutable pages, so it needs v3 even if its root
+already exists. Append, publish and projection work that add records also refuse
+`atomic_capacity_unavailable` under legacy profiles. A v1 missing-root CAS
+additionally lacks atomic root admission and refuses `atomic_admission_unavailable`.
+
+To change a shared service, drain older Sessions and admitted effects, qualify
+its partition-wide atomic ceiling across every writer route, then explicitly
+select `ipse-cas-v3` in a fresh reviewed configuration and Session. Retire writer
+routes that bypass the guarantee. The contract choice neither copies local
+State data nor changes the persisted root/page body format. It has no fallback
+to v2 or a different service.
+
+## Implement selected remote retrieval
+
+`mcp_query` belongs to Corpus. It returns ranked source/chunk references through
+`query-v1`; Research continues to rank its captured source set with BM25. The
+selected Corpus store must be `mcp_cas`, and the store and retrieval profiles must
+name the same partition. Bind storage and query aliases separately, even when
+they resolve to the same reviewed server.
+
+For a runnable operator setup, use
+[Corpus remote retrieval](../operator/corpus.md#retrieve-server-selected-passages).
+Its complete options and binding examples build with `mcp-lexical` and require
+no embeddings or model service. Trace `Corpus.query/2` into
+`Adapters.run(:query_refs, ...)` and then `Store.snapshot_selected`.
+
+The query tool receives exactly this object:
+
+```json
+{
+  "version": 1,
+  "contract": "query-v1",
+  "partition": "manual",
+  "request_id": "22222222222222222222222222222222",
+  "query": "release quiescence",
+  "top_k": 5,
+  "as_of_ms": 1700000020000
+}
+```
+
+A complete empty result has this closed response shape:
+
+```json
+{
+  "version": 1,
+  "contract": "query-v1",
+  "partition": "manual",
+  "request_id": "22222222222222222222222222222222",
+  "status": "ok",
+  "generation": 0,
+  "algorithm": "fixture_terms",
+  "algorithm_version": 1,
+  "scanned_sources": 0,
+  "scanned_chunks": 0,
+  "complete": true,
+  "refs": []
+}
+```
+
+The response echoes version, contract, partition and request ID. `status` is `ok`
+or `refused`, but only `ok` with `complete: true` is accepted. `generation` is the
+captured store generation. Algorithm name is 1..64 ASCII letters, digits,
+underscores, dots or hyphens, and algorithm version is a positive safe integer.
+`scanned_sources` is 0..32 and `scanned_chunks` is 0..1024. Query text is
+1..1024 UTF-8 bytes, `top_k` is 1..10, and `as_of_ms` is a nonnegative safe integer.
+Each request gets a fresh 32-digit hexadecimal ID. The example IDs are fixed only
+to make request/reply correspondence visible.
+
+Each nonempty `refs` item contains exactly `source_id`, `source_key`, `generation`,
+`content_sha256`, `chunk_id` and `score`. Source IDs are 1..256 UTF-8 bytes without
+control characters, source keys equal raw SHA-256 of their source IDs, source
+generation is positive, and both content/chunk hashes are 64-digit lowercase
+hexadecimal. Scores are finite numbers. References are unique by source key and
+chunk ID, and count cannot exceed requested `top_k`. The result text is at most
+65536 bytes and uses the same bounded MCP text-window transport as search/fetch.
+
+Store reads only those selected roots and referenced pages at the reported store
+generation. It validates the actual source bytes, generation, chunk identity and
+eligibility at `as_of_ms`, then revalidates the roots before returning evidence.
+Stale, suppressed, historical, forged or wrong-partition selections refuse the
+whole result. Empty references produce complete abstention without Store reads.
+No full partition directory is scanned on this route, so coverage does not claim
+a whole-store root count check. Scores retain `score_provenance: "server_asserted"`.
+They are not local BM25 scores or a verified statement about the server's index.
+
+Run the public protocol control with an independently built MCP Corpus artifact:
+
+```sh
+mix run examples/knowledge/verify-mcp.exs /path/to/corpus-mcp-lexical
+```
+
+Follow `examples/knowledge/mcp-proof.exs` through selected-only reads, denied
+query dispatch, wrong partitions, incomplete results, forged hashes and stale
+generation. The empty-result control makes exactly one query call. The interrupted
+control resumes idle without replay. These fixture responses establish protocol
+behavior, not retrieval quality or a real service's access controls.
 
 ## Exercise delayed publication and interrupted inference
 
@@ -647,8 +912,8 @@ elixir examples/knowledge/verify-recovery-package.exs /path/to/ipse.tar.gz "$IPS
 elixir examples/knowledge/verify-recovery-package.exs /path/to/ipse.tar.gz "$IPSE_LIFECYCLE_ARTIFACTS/corpus" corpus
 ```
 
-The optional third argument selects the lifecycle cases. Omitting it preserves
-the earlier eight-check Graph abort exercise. Both installed routes hide the
+The optional third argument selects the lifecycle cases. Omitting it selects
+the eight-check Graph abort exercise. Both installed routes hide the
 development toolchain and check unchanged archive and host bytes.
 
 Exercise durable embedding identity with the same Corpus artifact:
@@ -687,7 +952,7 @@ suppression race from a fixture that never performed the competing mutation.
    test alone does not prove SDK behavior.
 
 ```sh
-mix test test/knowledge_evidence_test.exs test/knowledge_profiles_test.exs
+mix test test/knowledge_evidence_test.exs test/knowledge_profiles_test.exs test/knowledge_domain_regressions_test.exs
 mix test test/knowledge_store_test.exs test/knowledge_packages_test.exs
 mix test test/knowledge_build_spec_test.exs
 ```

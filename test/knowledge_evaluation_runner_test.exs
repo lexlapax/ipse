@@ -282,9 +282,10 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
         if scenario == :suppressed and ctx.selected_variant == "rerank" do
           ranked = Enum.find(events, &(&1["verb"] == "query" and &1["query_id"] == "Q1"))
           candidates = ranked["value"]["evidence"]
-          assert length(candidates) == 2
-          assert length(Enum.uniq_by(candidates, & &1["citation"]["chunk_id"])) == 1
-          assert length(Enum.uniq_by(candidates, & &1["citation"]["start_byte"])) == 2
+          assert length(candidates) == 1
+
+          assert length(Enum.uniq_by(candidates, & &1["citation"]["chunk_id"])) ==
+                   length(candidates)
         end
 
         assert Enum.all?(

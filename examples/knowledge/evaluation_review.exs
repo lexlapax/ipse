@@ -5,7 +5,8 @@ defmodule IpseKnowledgeExample.EvaluationReview do
   @moduledoc "Prepare label-bearing blind review only after verifying the complete first-prediction grid."
   alias IpseKnowledge.EvaluationScore, as: Score
   alias IpseKnowledgeExample.EvaluationInput, as: Input
-  @identity ~w(project source_id generation version sha256)
+  alias IpseKnowledge.EvaluationIntegrity, as: Integrity
+
   @instructions """
   # Independent knowledge review, protocol 2
 
@@ -86,28 +87,9 @@ defmodule IpseKnowledgeExample.EvaluationReview do
       {:ok, original} = Ipse.Extensions.Manifest.decode_json(context["queries"], 1_048_576)
       originals = Map.new(original["queries"], &{&1["query_id"], &1})
       query_map = Map.new(queries["queries"], &{&1["query_id"], &1})
-      sources = Map.new(corpus["documents"], &{unit(&1), &1})
-
-      integrity =
-        for row <- rows, span <- row["evidence"] ++ row["context_evidence"] do
-          %{
-            "prediction_id" => row["prediction_id"],
-            "span_id" => span["span_id"],
-            "verdict" =>
-              if(literal?(span, sources, row["project"]), do: "valid", else: "invalid"),
-            "reviewer_id" => "source-bytes-v1",
-            "independent" => true
-          }
-        end
-
-      references =
-        for q <- labels["queries"],
-            {span, i} <- Enum.with_index(q["relevance"], 1),
-            do: %{
-              "query_id" => q["query_id"],
-              "reference_index" => i,
-              "valid" => literal?(span, sources, q["project"])
-            }
+      {:ok, sources} = Integrity.sources(context["corpus"])
+      integrity = Integrity.predictions(rows, sources)
+      references = Integrity.references(labels["queries"], sources)
 
       review = %{
         "version" => 2,
@@ -129,8 +111,12 @@ defmodule IpseKnowledgeExample.EvaluationReview do
           end)
       }
 
-      {:ok, _unmeasured} =
-        Score.score(freeze, blobs, fn -> {:ok, labels} end, fn -> {:ok, review} end)
+      case Score.score(freeze, blobs, fn -> {:ok, labels} end, fn -> {:ok, review} end, fn ->
+             {:ok, context["corpus"]}
+           end) do
+        {:ok, _unmeasured} -> :ok
+        {:error, :invalid_reference_integrity} -> :ok
+      end
 
       reference_queries =
         Enum.map(labels["queries"], fn q ->
@@ -199,22 +185,6 @@ defmodule IpseKnowledgeExample.EvaluationReview do
     end
   end
 
-  defp literal?(span, sources, project) do
-    case sources[unit(span["source"])] do
-      %{"text" => body} ->
-        first = span["start_byte"]
-        last = span["end_byte"]
-
-        span["source"]["project"] == project and first >= 0 and last <= byte_size(body) and
-          last > first and
-          binary_part(body, first, last - first) == span["quote"]
-
-      _ ->
-        false
-    end
-  end
-
-  defp unit(source), do: Enum.map(@identity, &source[&1])
   defp sha(bytes), do: Base.encode16(:crypto.hash(:sha256, bytes), case: :lower)
   defp require!(true, _), do: :ok
   defp require!(_, code), do: throw({:review_packet, code})

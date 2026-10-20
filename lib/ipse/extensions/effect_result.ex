@@ -6,6 +6,9 @@ defmodule Ipse.Extensions.EffectResult do
   @window_keys ~w(version operation_id kind source_sha256 offset next complete text)
   @error {:error, :invalid_extension_effect_result}
   @refused {:failed, %{"code" => "result_refused"}}
+  @source_record_limit 262_144
+
+  def source_record_limit, do: @source_record_limit
 
   def operation?(request), do: is_map(request) and request["op"] == "effect.result.read"
 
@@ -326,7 +329,7 @@ defmodule Ipse.Extensions.EffectResult do
       Ipse.Provider.Embedding.valid_data?(event["data"]) and
       event["data_sha256"] == Ipse.Compaction.digest([event["data"]]) and
       event["source_sha256"] == Ipse.Compaction.digest([Map.delete(event, "source_sha256")]) and
-      byte_size(Jason.encode!(event)) <= 262_144
+      byte_size(Jason.encode!(event)) <= @source_record_limit
   rescue
     _ -> false
   end
@@ -343,7 +346,7 @@ defmodule Ipse.Extensions.EffectResult do
       event["data_sha256"] == Ipse.Compaction.digest([event["data"]]) and
       event["source_sha256"] ==
         Ipse.Compaction.digest([Map.delete(event, "source_sha256")]) and
-      byte_size(Jason.encode!(event)) <= 262_144
+      byte_size(Jason.encode!(event)) <= @source_record_limit
   rescue
     _ -> false
   end

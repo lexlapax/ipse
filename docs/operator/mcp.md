@@ -124,6 +124,11 @@ The reader consumes UTF-8 windows of at most 4096 bytes and displays only the
 complete byte count and hash. The complete source is bounded to 65536 bytes.
 It remains in the journal; a short displayed answer is not a privacy erasure.
 `host.results` reads only earlier successful sources in the same invocation.
+The encoded source can occupy 256 KiB because JSON escaping adds bytes. A custom
+operator `journal.max_record_bytes` below 262144 refuses an extension MCP call
+before discovery or approval, even when you expect a short reply. Remove that
+override or select a limit that supports the complete contract before starting a
+fresh invocation. Total journal byte/event limits still apply during execution.
 
 `host.actions.mixed` is a separate explicit grant for workflows that need many
 reads before taking an approved action. It permits up to 512 reads and 16 other

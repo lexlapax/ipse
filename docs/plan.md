@@ -69,7 +69,8 @@ is complete at `25f1d8e` after external and whole-milestone internal review,
 reproduced repairs and passing local and exact-source hosted checks. The
 [remediation record](archive/2026-10-19-p26-remediation/index.md) preserves the
 findings, failures and scoped acceptance. P27 research, graph and RAG development
-is resuming from its preserved continuation, with implementation and verification incomplete;
+is active, with external whole-milestone findings under repair and implementation
+and verification incomplete;
 media remains deferred to P28. External services remain configurable; no third-party
 engine, database or mandatory backend is selected.
 
@@ -79,7 +80,7 @@ engine, database or mandatory backend is selected.
 | [P24: architecture/security readiness](#p24-independent-architecture-validation-and-baseline-security) | Complete for supervised P25 at `375e607`; accepted limits recorded | Refresh affected validation after trial changes |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Complete within declared supervision/assistance at `3307563`; security findings triaged and corrected scopes verified | Preserve frozen evidence; select a later production increment separately |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Complete within explicit-note scope at `25f1d8e`; review repairs and local/hosted gates pass | Preserve lifecycle, authority and documented retention limits |
-| [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Active; architecture, implementation and validation incomplete | Resume the saved continuation, repair reproduced gaps and obtain similar review |
+| [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Active; external review returned findings; no engine selected | Verify repairs and independent whole-milestone review, then obtain corrected-source held-out quality and matched resource evidence |
 | [P28: voice and media](#p28-voice-and-realtime-media) | Deferred; unimplemented | Explicit media contracts and later device/service validation |
 | [Apache-2.0 transition](#license-transition) | Complete; local and hosted `7bb642b` checks pass | Preserve bundled identity/recovery and third-party license boundaries |
 
@@ -384,9 +385,10 @@ the milestone. Preserve current SDK bounds and existing operation authority.
 | P27H2 | Approved configured MCP actions from extensions; pinned descriptors, child denial, owned cancellation and unknown-outcome recovery | Complete at `2fe3583`; real stdio/HTTP, denial, cancellation and inert recovery pass; source/installed proofs pass on hosted Linux/macOS at `1f90178` |
 | P27H3 | Versioned embedding operation with selected profiles, bounded ordinary vectors, exact egress, operation-aware accounting/costs/shared budgets and no text-envelope substitution | Complete at `3e32051`; local source/macOS/installed gates and exact-source hosted Linux/macOS source/package/installed proofs pass with 768/4096-coordinate native fixtures |
 | P27H4 | Opt-in bounded complete-result publication for original top-level tools/commands, historical receipt reads, strict source closure and unchanged ordinary SDK bounds | Complete at `fb980a0`; whole-milestone review, local 1,248-test baseline, Serenity 1,265-test native-enabled suite, exact 4 MiB and complete-domain source/installed proofs pass. Exact-source hosted Ubuntu/macOS matrix passes |
-| P27A | Independent research and lexical corpus packages with named interchangeable profiles, cited evidence, explicit limits, partial failures, stale-index handling and suppression | Implementation present; controlled Graph/Corpus provider lifecycle and installed checks pass; final authority/platform and quality validation open |
-| P27B | Independent attributable graph, optional extraction, embedding/hybrid and rerank adapters; matched quality/resource comparisons before engine selection | Implementation present; accounted tuning embedding, extraction and revalidated rerank paths exercised; retained failures, full lifecycle gates and matched quality/resource comparisons remain open |
-| P27 verification | Frozen held-out workload, zero authority/isolation/replay/resurrection failures, measured retrieval/support/citation/resources, source/native/installed checks, coherent user and contributor manuals | Open; seven-variant public-Session fixtures and saved-prediction controls pass; full lifecycle, held-out quality and resource/selection gates remain |
+| P27A | Independent research and lexical corpus packages with named interchangeable profiles, cited evidence, explicit limits, partial failures, stale-index handling and suppression | Review repairs and corrected-source fixture/platform/installed checks pass; held-out quality acceptance remains open |
+| P27B | Independent attributable graph, optional extraction, embedding/hybrid and rerank adapters; matched quality/resource comparisons before engine selection | Implementation present; external review found hybrid merge and graph capacity defects; repaired-source matched comparisons and selection remain open |
+| P27 verification | Frozen held-out workload, zero authority/isolation/replay/resurrection failures, measured retrieval/support/citation/resources, source/native/installed checks, coherent user and contributor manuals | Open; external whole-milestone review returned code/manual findings; prior exposed 350-row result failed quality; corrected-source platform, held-out quality and resource/selection gates remain |
+| P27 structural readiness | Holistic redesign and consolidation of the entire codebase and all user/developer documentation for maintainability and ease of use; migrate callers, builds, tests, packaging and CI together | Open; authorized after feature and review remediation, before P27 completion |
 
 The [first host-contract record](archive/2026-10-19-p27-mcp-host-contracts/index.md)
 retains causal regressions, independent review corrections and local verification.
@@ -568,9 +570,24 @@ cleanup and passes admission to independent blinded review. Its
 [saved-output quality result](archive/2026-10-20-p27-historical-admission/quality.md)
 is negative: 28% support accuracy, 423/583 supported measured citation pairs and
 four unmeasured pairs. No engine is selected. Corrected-source quality/resource
-evidence, untouched held-out requirements and external whole-P27 review remain
-open. The older comparison does not establish quality for the new product
+evidence and untouched held-out requirements remain open. The
+[external whole-P27 review](archive/2026-10-20-p27-external-review-r1/index.md)
+of `b9370fb` reports no critical or high-severity safety defect, but returns twelve
+code findings and five documentation findings. Repairs address hybrid overlap,
+atomic remote readable capacity, corpus-grounded scoring, actual fact packing,
+encoded export, listener admission and the remaining bounded contract gaps.
+Two independent whole-milestone reviews found two further defects in graph query
+capacity and completed Research responses. Both are repaired, and both follow-up
+reviews report no new actionable finding. Integrated verification passes against
+the same frozen 460-file runtime/test inventory: macOS has 1,344 passing tests
+plus 30 focused native tests; Linux has 1,383 passing tests with native sandbox
+enabled. Both pass source, package and installed domain/host proofs. The repair
+record retains source and package hashes, controller recovery and coverage limits.
+The older comparison does not establish quality for the new product
 corrections; exposed inputs are now diagnostic material.
+Final validation uses a new independently authored private 50-question workload,
+with answers sealed until predictions are frozen. The earlier questions remain
+tuning data.
 The selected-runtime CPU compatibility proof passes two real explicit requests,
 with complete accounting and confirmed cleanup. It establishes no quality or
 exact memory result. The superseded `f2bfc8d` comparison was intentionally stopped
@@ -596,9 +613,9 @@ portable-foundation record retains both failures and their controlled repairs;
 the corrected `75b7077` [hosted run](https://github.com/lexlapax/ipse/actions/runs/39362693472)
 passes all source and installed steps on Ubuntu and macOS. The older
 append-timeout negative remains unexplained.
-Successful tuning and
-scripted provider responses do not establish quality. Held-out predictions,
-independent semantic review and the complete resource comparison remain unmeasured.
+Successful tuning and scripted provider responses do not establish quality.
+Corrected-source held-out predictions, independent semantic review and the complete
+resource comparison remain open.
 
 ## P28: voice and realtime media
 

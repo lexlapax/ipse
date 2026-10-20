@@ -22,6 +22,28 @@ fn separate_namespace() -> Result<(), String> {
 #[cfg(not(target_os = "linux"))]
 fn separate_namespace() -> Result<(), String> { Err("requires Linux user/network namespaces".into()) }
 
+#[cfg(target_os = "linux")]
+fn ipv6_only_listener(port: u16) -> TcpListener {
+    use std::os::fd::{AsRawFd, FromRawFd};
+    #[repr(C)]
+    struct Address { family: u16, port: u16, flow: u32, address: [u8; 16], scope: u32 }
+    extern "C" {
+        fn socket(domain: i32, kind: i32, protocol: i32) -> i32;
+        fn setsockopt(fd: i32, level: i32, option: i32, value: *const i32, size: u32) -> i32;
+        fn bind(fd: i32, address: *const Address, size: u32) -> i32;
+        fn listen(fd: i32, backlog: i32) -> i32;
+    }
+    let fd = unsafe { socket(10, 1 | 0x80000, 0) };
+    assert!(fd >= 0, "fixture IPv6 socket: {}", std::io::Error::last_os_error());
+    let listener = unsafe { TcpListener::from_raw_fd(fd) };
+    let one = 1_i32;
+    assert_eq!(unsafe { setsockopt(listener.as_raw_fd(), 41, 26, &one, 4) }, 0);
+    let address = Address { family: 10, port: port.to_be(), flow: 0, address: [0; 16], scope: 0 };
+    assert_eq!(unsafe { bind(listener.as_raw_fd(), &address, std::mem::size_of::<Address>() as u32) }, 0);
+    assert_eq!(unsafe { listen(listener.as_raw_fd(), 1) }, 0);
+    listener
+}
+
 fn main() {
     let args = std::env::args().collect::<Vec<_>>();
     let mode = args.get(1).expect("fixture mode");
@@ -42,7 +64,7 @@ fn main() {
             .args(["own", &args[2]]).stdin(Stdio::null()).spawn().unwrap();
         assert!(child.wait().unwrap().success()); return;
     }
-    assert!(["own", "occupied", "wildcard", "namespace"].contains(&mode.as_str()), "unknown fixture mode");
+    assert!(["own", "occupied", "wildcard", "ipv6-wildcard", "namespace"].contains(&mode.as_str()), "unknown fixture mode");
     if mode == "namespace" {
         if let Err(error) = separate_namespace() {
             eprintln!("namespace capability unavailable: {error}");
@@ -51,6 +73,8 @@ fn main() {
     }
 
     let port: u16 = args[2].parse().unwrap();
+    #[cfg(target_os = "linux")]
+    let _ipv6 = if mode == "ipv6-wildcard" { Some(ipv6_only_listener(port)) } else { None };
     let address = if mode == "wildcard" { "0.0.0.0" } else { "127.0.0.1" };
     let listener = match TcpListener::bind((address, port)) {
         Ok(listener) => listener,

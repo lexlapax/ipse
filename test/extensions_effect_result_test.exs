@@ -3,6 +3,29 @@ defmodule Ipse.Extensions.EffectResultTest do
   alias Ipse.Extensions.{EffectResult, MCPCall}
   alias Ipse.MCP.Config
 
+  test "MCP record capacity uses the attainable escaped source ceiling" do
+    {intent, _} = intent()
+    intent = Map.merge(intent, %{"step" => 1, "context_sha256" => nil, "service" => nil})
+    assert {:ok, capacity} = Ipse.Extensions.EffectCapacity.mcp(intent)
+    assert capacity.max_record_bytes == EffectResult.source_record_limit()
+
+    {:ok, empty} = EffectResult.source(intent, "mcp.text", %{"text" => ""})
+    target = capacity.max_record_bytes - byte_size(Jason.encode!(empty))
+    controls = div(target - 65_536 + 4, 5)
+    text = String.duplicate(<<0>>, controls) <> String.duplicate("x", target - controls * 6)
+    assert byte_size(text) <= 65_536
+    assert {:ok, source} = EffectResult.source(intent, "mcp.text", %{"text" => text})
+    assert byte_size(Jason.encode!(source)) == capacity.max_record_bytes
+
+    assert {:error, _} =
+             Ipse.Journal.Limits.encode(source, %{
+               "max_record_bytes" => capacity.max_record_bytes - 1
+             })
+
+    assert {:ok, _} =
+             Ipse.Journal.Limits.encode(source, %{"max_record_bytes" => capacity.max_record_bytes})
+  end
+
   test "complete source is private while its public descriptor stays within SDK bounds" do
     {intent, _server} = intent()
     text = String.duplicate("é🙂\n", 5000)

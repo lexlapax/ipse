@@ -810,6 +810,16 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
             options[:reviews] |> read!(33_554_432) |> Ipse.JSON.decode_unique()
 
           {:ok, reviews}
+        end,
+        fn ->
+          verified_data = verify_dataset!(options[:data_manifest], plan["data"])
+
+          [member] =
+            Enum.filter(verified_data["members"], &(&1["path"] == plan["data"]["corpus"]))
+
+          corpus = read!(Path.join(Path.dirname(options[:data_manifest]), member["path"]))
+          require!(sha(corpus) == member["sha256"], :corpus_member_hash)
+          {:ok, corpus}
         end
       )
 

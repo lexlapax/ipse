@@ -44,8 +44,8 @@ defmodule ListenerRegressionInstrument do
         source
         |> replace_once!("fn table(port: u16)", "fn table(pid: u32, port: u16)")
         |> replace_once!(
-          "File::open(\"/proc/self/net/tcp\")",
-          "File::open(format!(\"/proc/{pid}/net/tcp\"))"
+          "File::open(path)",
+          "File::open(path.replace(\"/proc/self/\", &format!(\"/proc/{pid}/\")))"
         )
         |> replace_once!("let Some(inode) = table(port)?", "let Some(inode) = table(pid, port)?")
         |> replace_once!("if table(port)? != Some(inode)", "if table(pid, port)? != Some(inode)")

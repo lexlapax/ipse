@@ -1,11 +1,13 @@
 Code.require_file("metrics.exs", __DIR__)
+Code.require_file("evaluation_integrity.exs", __DIR__)
 
 defmodule IpseKnowledge.EvaluationScore do
   @moduledoc """
   Scoring-only library for finalized first-attempt predictions.
 
-  `score/4` verifies all raw prediction hashes and closed JSONL rows before invoking
-  either arity-zero loader. Loaders return normalized string-keyed data; the root
+  `score/5` verifies all raw prediction hashes and closed JSONL rows before invoking
+  any arity-zero loader. Labels and reviews are normalized string-keyed data;
+  the corpus loader returns original dataset bytes. The root
   orchestrator owns file access, frozen identities and independent review. This
   boundary cannot prove that a caller has never previously exposed labels.
 
@@ -16,8 +18,10 @@ defmodule IpseKnowledge.EvaluationScore do
   trusting verdicts; a matching token is not proof of reviewer independence.
 
   Literal annotated-span coverage is coordinate-based and separate from semantic
-  support. Semantic verdicts and captured-source integrity are explicit independent
-  review inputs. `expected_refusal` comes from labels only after hash verification.
+  support. Semantic verdicts are independent review inputs. Literal integrity is
+  recomputed from hash-validated corpus bytes; reviewer integrity flags have no
+  scoring authority. Invalid reference bytes refuse scoring. `expected_refusal`
+  comes from labels only after hash verification.
   No predictor receives that annotation. Retrieval-only rows have no answer metrics.
 
   Limits are 16 variants, 1024 declared queries, 32 files, 64 MiB per file, 64 MiB
@@ -29,6 +33,7 @@ defmodule IpseKnowledge.EvaluationScore do
   This report does not measure authority, isolation, replay or platform gates.
   """
   alias IpseKnowledge.Metrics
+  alias IpseKnowledge.EvaluationIntegrity, as: Integrity
   @statuses ~w(ok partial failed refused timeout unavailable missing cancelled)
   @classes ~w(answer conflict open abstain)
   @source_keys ~w(project source_id generation version sha256)
@@ -57,10 +62,16 @@ defmodule IpseKnowledge.EvaluationScore do
     }
   end
 
-  def score(freeze, blobs, labels_loader, review_loader) do
+  def score(freeze, blobs, labels_loader, review_loader, corpus_loader) do
     try do
       require!(freeze?(freeze), :invalid_freeze)
-      require!(is_function(labels_loader, 0) and is_function(review_loader, 0), :invalid_loader)
+
+      require!(
+        is_function(labels_loader, 0) and is_function(review_loader, 0) and
+          is_function(corpus_loader, 0),
+        :invalid_loader
+      )
+
       verified = verified_predictions!(freeze, blobs)
       reviews = load!(review_loader, :review_failed)
       require!(reviews?(reviews, verified["rows"]), :invalid_reviews)
@@ -70,8 +81,24 @@ defmodule IpseKnowledge.EvaluationScore do
         :review_binding_mismatch
       )
 
+      corpus = load!(corpus_loader, :corpus_failed)
+      require!(is_binary(corpus), :invalid_corpus)
+
+      sources =
+        case Integrity.sources(corpus) do
+          {:ok, sources} -> sources
+          _ -> throw({:evaluation_score, :invalid_corpus})
+        end
+
+      reviews = Map.put(reviews, "integrity", Integrity.predictions(verified["rows"], sources))
       labels = load!(labels_loader, :labels_failed)
       require!(labels?(labels, freeze), :invalid_labels)
+
+      require!(
+        Enum.all?(Integrity.references(labels["queries"], sources), & &1["valid"]),
+        :invalid_reference_integrity
+      )
+
       build_report(freeze, verified["files"], verified["rows"], labels["queries"], reviews)
     rescue
       _ -> {:error, :scoring_failed}

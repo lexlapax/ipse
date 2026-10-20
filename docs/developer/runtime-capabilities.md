@@ -98,11 +98,12 @@ mix run scripts/verify-owned-listener.exs
 mix test test/owned_listener_test.exs test/stdio_runner_test.exs
 ```
 
-The Linux exercise reports seven checks, two metadata requests and zero inference
+The Linux exercise reports eight checks, two metadata requests and zero inference
 requests. Inspect its private `evidence` directory. The positive case checks the
 native fact before querying its owned fixture. The occupied-port case first
 proves refusal without a request, then queries the still-running ordinary fixture
-as a positive control. Wildcard and delegated-only listeners refuse. A child
+as a positive control. IPv4 wildcard, same-port IPv6 wildcard and delegated-only
+listeners refuse. Both caller-side TCP tables share a 1 MiB read bound. A child
 printing a forged proof remains opaque stdout, and a missing listener times out.
 Ordinary stdio emits no proof. Other platforms refuse the optional mode before
 the selected executable runs.

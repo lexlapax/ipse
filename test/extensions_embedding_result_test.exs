@@ -3,6 +3,135 @@ defmodule Ipse.Extensions.EmbeddingResultTest do
   alias Ipse.Extensions.{EmbeddingCall, EffectResult}
   alias Ipse.{EmbeddingProfiles, Usage}
 
+  test "record capacity follows selected vector shape and includes repeated request completion" do
+    for {dimensions, count} <- [{768, 1}, {4096, 1}, {4096, 4}] do
+      f = fixture(dimensions, count)
+      intent = Map.merge(f.intent, %{"step" => 1, "context_sha256" => nil, "service" => nil})
+
+      assert {:ok, capacity} =
+               Ipse.Extensions.EffectCapacity.embedding(intent, f.admission, f.execution)
+
+      assert capacity.max_record_bytes >= byte_size(Jason.encode!(f.source))
+      assert capacity.max_record_bytes >= byte_size(Jason.encode!(f.completion))
+      assert capacity.max_record_bytes > 65_536 == (count == 4)
+    end
+
+    f = fixture(1, 2)
+    request = %{f.request | "inputs" => List.duplicate(String.duplicate(<<0>>, 1024), 2)}
+    assert EmbeddingCall.validate(request) == :ok
+
+    intent =
+      f.intent
+      |> Map.merge(%{"step" => 1, "context_sha256" => nil, "service" => nil})
+      |> Map.put("request", request)
+      |> Map.put("request_sha256", digest(request))
+
+    assert {:ok, capacity} =
+             Ipse.Extensions.EffectCapacity.embedding(intent, f.admission, f.execution)
+
+    assert byte_size(Jason.encode!(f.source)) < 4096
+    assert capacity.max_record_bytes > byte_size(Jason.encode!(intent))
+    assert capacity.max_record_bytes > 12_288
+  end
+
+  test "parsed embedding receipts with maximal metering and legal model names fit the canonical capacity" do
+    limit = Usage.Normalizer.limit()
+    model = String.duplicate("a/@+:-._", 25)
+    assert byte_size(model) == 200
+    assert Ipse.RuntimeInfo.model_name(model) == model
+
+    for invalid <- [
+          String.duplicate("\"", 200),
+          String.duplicate("\\", 200),
+          String.duplicate("é", 100)
+        ] do
+      assert Ipse.RuntimeInfo.model_name(invalid) == nil
+    end
+
+    for provider <- [:openai, :ollama], counter <- [limit, "invalid"] do
+      f = fixture(768, 1, 2, provider)
+      request = %{f.request | "inputs" => [String.duplicate("\"\\\n", 1000)]}
+      assert EmbeddingCall.validate(request) == :ok
+
+      intent =
+        f.intent
+        |> Map.merge(%{"step" => 1, "context_sha256" => nil, "service" => nil})
+        |> Map.put("request", request)
+        |> Map.put("request_sha256", digest(request))
+
+      coordinates = [1.0 | List.duplicate(0.0, 767)]
+
+      native =
+        case provider do
+          :ollama ->
+            %{
+              "model" => model,
+              "embeddings" => [coordinates],
+              "prompt_eval_count" => counter,
+              "total_duration" => limit,
+              "output_tokens" => limit
+            }
+
+          :openai ->
+            %{
+              "model" => model,
+              "data" => [%{"index" => 0, "embedding" => coordinates}],
+              "usage" => %{
+                "prompt_tokens" => counter,
+                "completion_tokens" => limit,
+                "cached_tokens" => limit,
+                "reasoning_tokens" => limit
+              }
+            }
+        end
+
+      assert {:ok, payload, raw} =
+               Ipse.Provider.Embedding.parse(
+                 provider,
+                 Jason.encode!(native),
+                 f.runtime,
+                 request["inputs"]
+               )
+
+      completion = Usage.completion(f.admission, {:ok, payload, raw}, 9_007_199_254_740_991, nil)
+      assert Usage.Normalizer.valid?(completion["usage"], "embedding")
+
+      for field <- Usage.Normalizer.fields() -- ~w(input_tokens total_tokens provider_duration_ns) do
+        assert completion["usage"]["counts"][field] == nil
+      end
+
+      assert {:ok, source} = EmbeddingCall.response(intent, f.admission, completion, payload)
+
+      assert {:ok, value} =
+               EmbeddingCall.value_from_completion(intent, f.admission, completion, source)
+
+      assert {:ok, result} =
+               Ipse.Extensions.Actions.result(intent, %{"status" => "ok", "value" => value})
+
+      assert {:ok, capacity} =
+               Ipse.Extensions.EffectCapacity.embedding(intent, f.admission, f.execution)
+
+      records = [
+        intent,
+        f.admission,
+        EmbeddingCall.source(intent, f.admission, f.execution),
+        Usage.observation(f.admission, raw, 64),
+        source,
+        completion,
+        result
+      ]
+
+      for record <- records do
+        assert byte_size(Jason.encode!(record)) <= capacity.max_record_bytes
+
+        assert {:ok, _} =
+                 Ipse.Journal.Limits.encode(record, %{
+                   "max_record_bytes" => capacity.max_record_bytes
+                 })
+      end
+    end
+  end
+
   test "embedding operation authority stays separate from legacy text and SDK object bounds" do
     request = request()
     assert EmbeddingCall.validate(request) == :ok
@@ -348,14 +477,14 @@ defmodule Ipse.Extensions.EmbeddingResultTest do
       else: pages(source, index, page["next"], [page | acc])
   end
 
-  defp fixture(dimensions, count, version \\ 1) do
+  defp fixture(dimensions, count, version \\ 1, provider \\ :ollama) do
     request = %{request() | "inputs" => Enum.map(1..count, &"chunk #{&1}"), "version" => version}
 
     config = %{
       embedding_profiles: %{
         "vectors" => %{
           "operation" => "embedding",
-          "provider" => "ollama",
+          "provider" => to_string(provider),
           "model" => "fixture",
           "dimensions" => dimensions,
           "dimension_mode" => "native"
@@ -394,8 +523,22 @@ defmodule Ipse.Extensions.EmbeddingResultTest do
       "total_duration" => 500_000
     }
 
+    native =
+      if provider == :openai do
+        %{
+          "model" => native["model"],
+          "data" =>
+            Enum.with_index(native["embeddings"], fn vector, index ->
+              %{"index" => index, "embedding" => vector}
+            end),
+          "usage" => %{"prompt_tokens" => 17}
+        }
+      else
+        native
+      end
+
     {:ok, payload, raw} =
-      Ipse.Provider.Embedding.parse(:ollama, Jason.encode!(native), runtime, request["inputs"])
+      Ipse.Provider.Embedding.parse(provider, Jason.encode!(native), runtime, request["inputs"])
 
     completion = Usage.completion(admission, {:ok, payload, raw}, 3, nil)
     {:ok, source} = EmbeddingCall.response(intent, admission, completion, payload)
@@ -404,6 +547,7 @@ defmodule Ipse.Extensions.EmbeddingResultTest do
       request: request,
       scope: scope,
       execution: execution,
+      runtime: runtime,
       intent: intent,
       admission: admission,
       completion: completion,

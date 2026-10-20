@@ -57,6 +57,7 @@ Read these modules in order:
 | Module | Responsibility |
 | --- | --- |
 | `Ipse.Extensions.EmbeddingCall` | Closed request, route binding, source/result coherence |
+| `Ipse.Extensions.EffectCapacity` | Canonical per-record journal capacity before approval and dispatch |
 | `Ipse.Extensions.Inference` | Actual worker monitor, owned task, deadline and usage forwarding |
 | `Ipse.Provider.Request` | Fixed credential lookup after admission |
 | `Ipse.Provider.Embedding` | Exact OpenAI/Ollama wire route, bounded decode and float32 validation |
@@ -69,6 +70,15 @@ coordinator asks Session to admit the actual action, then uses the same owned
 TaskResources/HTTP profile chain and budget root as other inference. Worker death,
 deadline, cancellation or activation expiry stops the owned request. Confirmed
 process cleanup does not undo remote work.
+
+Before showing approval, Session compares the selected input count and vector
+width against the operator's `journal.max_record_bytes`. `EffectCapacity`
+constructs bounded canonical request, source, usage, completion and action-result
+records, including the request repeated in the result. It uses the selected
+shape and legal metadata limits. A known unrepresentable result refuses without
+provider dispatch or a sealed journal. Admission rechecks capacity immediately
+before embedding dispatch. This per-record check reserves no aggregate journal
+bytes or events; those limits still apply throughout execution.
 
 `Provider.Request.embed/3` resolves only `OPENAI_API_KEY` for OpenAI. Ollama gets
 no inherited authorization. The adapter makes one bounded nonstreaming POST:
@@ -191,6 +201,12 @@ tag in a fixture. Require refusal before tail repair and zero additional provide
 dispatch. In `test/extensions_embedding_call_session_test.exs`, change only a
 successful v2 selection hash and recompute the superficial outcome hash. Both
 standalone Actions validation and full Session recovery must refuse. In
+the same Session suite, select four 4096-coordinate vectors under a 65536-byte
+record ceiling. Require zero requests, no approval prompt and an unsealed
+resumable journal. The single-vector and normal-ceiling controls must still
+complete. `test/extensions_embedding_result_test.exs` compares real canonical
+record sizes with the capacity bound, including maximum legal metadata and
+escaped inputs. In
 `test/embedding_profiles_test.exs`, compare endpoints and models with identical
 dimensions, then change only a timeout. Only the latter keeps selection identity.
 Then test cancellation and a settlement failure after the response

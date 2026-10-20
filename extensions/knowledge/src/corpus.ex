@@ -386,8 +386,6 @@ defmodule IpseKnowledge.Corpus do
         )
 
       "graph" ->
-        seed = graph_seed(snapshot, args["query"])
-
         limits =
           Map.take(profile, ~w(depth max_nodes max_edges)) |> Map.put("top_k", args["top_k"])
 
@@ -401,6 +399,7 @@ defmodule IpseKnowledge.Corpus do
                  args["top_k"],
                  state.ctx.as_of_ms
                ),
+             {:ok, seed} <- graph_seed(snapshot, args["query"], state.ctx.as_of_ms),
              {:ok, graph} <-
                Evidence.traverse(
                  snapshot["sources"],
@@ -412,6 +411,7 @@ defmodule IpseKnowledge.Corpus do
              {:ok, ranked} <- fuse_ranks([{"lexical", lexical}, {"graph", graph}], args["top_k"]) do
           maybe_rerank(%{state | ctx: Map.put(state.ctx, :rank, ranked)})
         else
+          {:error, :graph_context_limit} -> finish(state, refused(:graph_context_limit))
           _ -> finish(state, refused(:invalid_evidence))
         end
 
@@ -462,7 +462,7 @@ defmodule IpseKnowledge.Corpus do
              )}
           end
 
-        {"hybrid", _} ->
+        {"hybrid", {:error, :missing_embedding}} ->
           if state.ctx.retrieval["missing_embedding"] == "lexical_with_gap" do
             with {:ok, result} <-
                    Evidence.rank_lexical(
@@ -491,7 +491,8 @@ defmodule IpseKnowledge.Corpus do
 
     case ranked do
       {:ok, result} -> maybe_rerank(%{state | ctx: Map.put(state.ctx, :rank, result)})
-      _ -> finish(state, refused(:missing_embedding))
+      {:error, code} -> finish(state, refused(code))
+      _ -> finish(state, refused(:invalid_evidence))
     end
   end
 
@@ -617,7 +618,8 @@ defmodule IpseKnowledge.Corpus do
       name ->
         with {:ok, profile} <- Profiles.lookup(state.resolved, "retrieval", name),
              true <- profile["kind"] == "graph",
-             seed = graph_seed(state.ctx.snapshot, state.ctx.args["query"]),
+             {:ok, seed} <-
+               graph_seed(state.ctx.snapshot, state.ctx.args["query"], state.ctx.as_of_ms),
              limits =
                Map.take(profile, ~w(depth max_nodes max_edges))
                |> Map.put("top_k", state.ctx.args["top_k"]),
@@ -631,6 +633,8 @@ defmodule IpseKnowledge.Corpus do
                ) do
           {:ok, result}
         else
+          {:error, :unknown_profile} -> {:error, :invalid_graph_profile}
+          {:error, code} -> {:error, code}
           _ -> {:error, :invalid_graph_profile}
         end
     end
@@ -639,10 +643,8 @@ defmodule IpseKnowledge.Corpus do
   defp all_facts(snapshot),
     do: Enum.flat_map(Map.values(snapshot["projections"]), &(&1["facts"] || []))
 
-  defp graph_seed(snapshot, query) do
-    subjects = Enum.map(all_facts(snapshot), & &1["subject"]) |> Enum.uniq() |> Enum.sort()
-    Enum.find(subjects, &String.contains?(String.downcase(query), String.downcase(&1))) || query
-  end
+  defp graph_seed(snapshot, query, as_of_ms),
+    do: Evidence.graph_seed(snapshot["sources"], all_facts(snapshot), query, as_of_ms)
 
   defp budgeted_index?(%{"kind" => "state"}, _, chunks), do: length(chunks) <= 2
   defp budgeted_index?(%{"kind" => "mcp_cas"}, _, chunks), do: length(chunks) == 1

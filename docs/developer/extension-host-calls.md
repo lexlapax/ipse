@@ -222,6 +222,16 @@ advisory locks protect CAS; synced temporary writes and same-directory rename
 publish updates. Corrupt, duplicate-key, oversized, symlinked, or permissive state
 refuses access without repair. Orphan `.pending-*` files remain inert.
 
+When a validated put or delete would exceed the record, encoded file or revision
+quota, State refuses before publication with a known `failed` receipt. Its value
+has exactly `code: "extension_state_quota"`, `generation` and the unchanged
+`record` summary without its value. The summary names the requested key and
+expected revision, and retains the previous writer's operation ID. A requested
+namespace generation must match. This receipt records a definite refusal; IO
+failures without that guarantee keep the ordinary unknown outcome. Run
+`mix test test/extensions_state_test.exs` and inspect the full tombstone store,
+near-full encoded file and exhausted-generation controls before changing limits.
+
 A filesystem completion owner retains the native lock through admitted read,
 validation, sync, and rename even after caller cancellation. Cancellation cannot
 undo that write. Cleanup may wait while the owner finishes, retaining the Session

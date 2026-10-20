@@ -61,11 +61,27 @@ defmodule Ipse.KnowledgeProfilesTest do
     remote=put_in(lexical,["stores","notes"],%{"kind"=>"mcp_cas","binding"=>"reviewed","partition"=>"project-a","contract"=>"ipse-cas-v1"})
     assert {:ok,_}=P.validate("corpus","mcp-lexical",remote)
     assert {:ok,_}=P.validate("corpus","mcp-lexical",put_in(remote,["stores","notes","contract"],"ipse-cas-v2"))
-    assert {:error,:invalid_profile}=P.validate("corpus","mcp-lexical",put_in(remote,["stores","notes","contract"],"ipse-cas-v3"))
+    assert {:ok,_}=P.validate("corpus","mcp-lexical",put_in(remote,["stores","notes","contract"],"ipse-cas-v3"))
+    assert {:error,:invalid_profile}=P.validate("corpus","mcp-lexical",put_in(remote,["stores","notes","contract"],"ipse-cas-v4"))
     assert {:error,:profile_authority_mismatch}=P.validate("corpus","state-lexical",remote)
     assert {:error,:invalid_profile}=P.validate("corpus","mcp-lexical",put_in(remote,["stores","notes","endpoint"],"https://unreviewed"))
     assert {:error,:invalid_options}=P.validate("corpus","state-lexical",Map.delete(lexical,"extraction"))
     assert {:error,:invalid_options}=P.validate("corpus","state-lexical",Map.put(lexical,"raw_request",%{}))
+    ''')
+  end
+
+  test "Graph and Research reject retrieval profiles their package cannot execute" do
+    pure(~S'''
+    words=%{"kind"=>"bm25","version"=>1}
+    remote=%{"kind"=>"mcp_query","binding"=>"unused","partition"=>"notes","contract"=>"query-v1"}
+    graph=Map.merge(empty,%{"stores"=>%{"notes"=>%{"kind"=>"mcp_cas","binding"=>"store","partition"=>"notes","contract"=>"ipse-cas-v2"}},"extraction"=>%{"asserted"=>%{"kind"=>"explicit","version"=>1}}})
+    assert {:ok,_}=P.validate("graph","mcp-explicit",graph)
+    for profile <- [words,remote] do
+      assert {:error,:profile_authority_mismatch}=P.validate("graph","mcp-explicit",put_in(graph,["retrieval","unused"],profile))
+    end
+    research=Map.merge(empty,%{"search"=>%{"s"=>%{"kind"=>"mcp","binding"=>"search","contract"=>"search-v1"}},"fetch"=>%{"f"=>%{"kind"=>"mcp","binding"=>"fetch","contract"=>"fetch-v1"}},"retrieval"=>%{"words"=>words}})
+    assert {:ok,_}=P.validate("research","mcp",research)
+    assert {:error,:profile_authority_mismatch}=P.validate("research","mcp",put_in(research,["retrieval","unused"],remote))
     ''')
   end
 

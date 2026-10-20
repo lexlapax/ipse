@@ -153,7 +153,8 @@ defmodule IpseKnowledge.Test.CASFixture do
     valid =
       keys?(envelope, ~w(version contract partition request_id action args)) and
         ((envelope["version"] === 1 and envelope["contract"] == "ipse-cas-v1") or
-           (envelope["version"] === 2 and envelope["contract"] == "ipse-cas-v2")) and
+           (envelope["version"] === 2 and envelope["contract"] == "ipse-cas-v2") or
+           (envelope["version"] === 3 and envelope["contract"] == "ipse-cas-v3")) and
         envelope["partition"] == state.partition and is_map(envelope["args"]) and
         hash?(envelope["request_id"], 32) and
         not MapSet.member?(state.seen, envelope["request_id"])
@@ -568,7 +569,7 @@ defmodule IpseKnowledge.Test.CASFixture do
     fields =
       ~w(key expected_revision expected_source_generation expected_content_sha256 draft_id next_root)
 
-    fields = if version == 2, do: ["expected_generation" | fields], else: fields
+    fields = if version in [2, 3], do: ["expected_generation" | fields], else: fields
 
     valid =
       keys?(args, fields) and hash?(key, 64) and is_map(root) and
@@ -583,13 +584,13 @@ defmodule IpseKnowledge.Test.CASFixture do
       not valid ->
         {"refused", %{}, state}
 
-      version == 2 and old["deleted"] and old["revision"] > 0 ->
+      version in [2, 3] and old["deleted"] and old["revision"] > 0 ->
         {"refused", %{}, state}
 
       old["revision"] != args["expected_revision"] ->
         root_conflict(state, old, version)
 
-      version == 2 and args["expected_generation"] != nil and
+      version in [2, 3] and args["expected_generation"] != nil and
           args["expected_generation"] != state.generation ->
         root_conflict(state, old, version)
 
@@ -624,7 +625,7 @@ defmodule IpseKnowledge.Test.CASFixture do
 
   defp root_conflict(state, _old, 1), do: {"conflict", %{}, state}
 
-  defp root_conflict(state, old, 2) do
+  defp root_conflict(state, old, version) when version in [2, 3] do
     summary = %{
       "key" => old["key"],
       "revision" => old["revision"],
@@ -703,7 +704,7 @@ defmodule IpseKnowledge.Test.CASFixture do
                 generation: state.generation + 1
             }
 
-            if quota?(next) and (row["deleted"] or byte_size(json(row["value"])) <= 6000),
+            if quota?(next, 256) and (row["deleted"] or byte_size(json(row["value"])) <= 6000),
               do:
                 {%{
                    "status" => "ok",
@@ -829,9 +830,9 @@ defmodule IpseKnowledge.Test.CASFixture do
   defp refs(list) when is_list(list), do: Enum.flat_map(list, &refs/1)
   defp refs(_), do: []
 
-  defp quota?(state),
+  defp quota?(state, limit \\ 88),
     do:
-      map_size(state.records) <= 256 and
+      map_size(state.records) <= limit and
         byte_size(
           json(%{
             "version" => 1,

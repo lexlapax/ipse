@@ -51,6 +51,13 @@ Every call requires mutation approval, including resources and read-only tools.
 The operation has no state namespace. A child, missing grant, invalid alias or
 unconfigured target refuses before discovery. Schema validation needs discovery;
 a user may therefore deny after discovery, with zero call dispatch.
+Session also requires the operator's journal record ceiling to fit the complete
+256 KiB encoded source contract before discovery. An insufficient source ceiling
+refuses with no discovery or effect request. After binding, canonical capacity
+checks include the intent and repeated action-result arguments; those checks can
+refuse after discovery, before approval and effect dispatch.
+This does not reserve aggregate bytes or events: their existing journal limits
+can still seal execution later.
 
 ## Read the successful source
 
@@ -134,6 +141,11 @@ the source. Session cases exercise actual isolated workers, exact approval,
 pre-discovery refusal, descriptor drift, mixed counters, question recovery and
 interruption. Keep the strict cleanup assertions. HTTP closure needs a confirmed
 local resource receipt after SDK owner death, not just a dead process.
+The journal-capacity control selects a 65536-byte record ceiling and requires
+zero discovery requests, zero call requests and an unsealed resumable journal.
+The source-size controls use a legal mix of escaped controls and ASCII to reach
+exactly 262144 encoded bytes; the exact ceiling succeeds and one byte less
+refuses. Compare encoded whole records, rather than raw text length.
 
 For a worker or runtime change, follow the example's extracted-package verifier
 and the [verification manual](testing.md). These fixtures establish transport and

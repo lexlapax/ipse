@@ -134,8 +134,6 @@ defmodule IpseKnowledge.Adapters do
              true <- Evidence.sha256(bytes) == page["vector_sha256"],
              {:ok, values} <- decode_float32(bytes),
              input = Enum.at(state.inputs, state.vector_index),
-             true <-
-               Evidence.sha256(input["text"]) == Enum.at(state.raw_hashes, state.vector_index),
              {:ok, vector} <-
                Evidence.vector(%{
                  "chunk_id" => input["chunk_id"],

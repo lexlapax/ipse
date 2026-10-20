@@ -68,9 +68,11 @@ The supplied options file contains this complete closed selection:
 ```
 
 Keep all seven registries, including empty ones. Search and fetch must use the
-same kind for an investigation. Current Research retrieval is BM25. It does not
-accept a Corpus dense/hybrid/graph retrieval profile as a substitute. Unknown
-options, unused authority, and missing selected profiles refuse explicitly.
+same kind for an investigation. Every Research retrieval profile must be BM25.
+Corpus's dense, hybrid, graph and `mcp_query` profiles are not Research algorithms;
+configuration rejects them before generating grants. For server-ranked passages
+already retained in a store, follow [Corpus remote retrieval](corpus.md#retrieve-server-selected-passages).
+Unknown options, unused profile families and missing selected profiles also refuse.
 
 ## Select it and investigate one supplied source
 
@@ -115,16 +117,19 @@ the extension leaves the question's claim open with
 in the same result's `evidence` array. For one returned passage, expect
 `"evidence_indexes": [0]`; inspect that passage's complete citation. These
 references avoid repeating quotation text and do not assess semantic support.
-No usable match returns `status: "abstain"`.
-Inspect source text and gaps before asking a model or writing a conclusion.
+No usable match returns `status: "abstain"`. Inspect source text and gaps before
+asking a model or writing a conclusion.
+
+Word matching ignores case, while quotations retain the original UTF-8 bytes.
+Case conversion during matching does not move the citation into a different
+part of the source. The byte offsets always address the supplied or captured text.
 
 ## Bound an investigation
 
 Every investigation names `search`, `fetch`, `retrieval`, `rerank`, `query`,
 `limits`, and `sources`. Optional `as_of_ms` is an integer from zero through
 9007199254740991 Unix milliseconds. Null, strings, and negative times refuse.
-`rerank` is
-null unless you explicitly select a configured profile. A supplied source has
+`rerank` is null unless you explicitly select a configured profile. A supplied source has
 exactly the eight fields in the example; do not add arbitrary metadata.
 
 | Input | Bound |
@@ -145,8 +150,13 @@ with every selected quote and its provenance intact. An invalid or over-limit
 aggregate returns `result_too_large`; journal capacity can also refuse publication.
 No partial document becomes a successful investigation. Retain the refusal
 before deciding whether to issue a smaller explicit investigation.
-Later fetch/rerank work refuses when less than 1000 ms of its allowance remains;
-individual host requests and cleanup retain their own deadlines. A larger body
+
+Before each later fetch or model rerank, Research checks its remaining allowance
+once. A value below 1000 ms returns `time_limit` without proposing that action.
+At or above 1000 ms, that same duration becomes the host request's timeout.
+When the capture queue is empty and no rerank is selected, Research ranks and
+returns the completed capture without requiring time for another fetch.
+Individual host requests and cleanup retain their own deadlines. A larger body
 limit does not grant longer execution or wider authority.
 
 ## Read a larger investigation
@@ -430,8 +440,10 @@ evidence and compare results for your task before relying on this optional step.
 
 ## Recover without replaying retrieval
 
-A refused result names a gap/error rather than silently changing services,
-profiles, limits, or algorithms. An unknown search, fetch, or model call may have
+A refused result names the actual failing operation or limit. It does not change
+services, profiles, limits or algorithms. A `time_limit` refusal needs a new
+explicit investigation with a reviewed allowance, not an automatic retry.
+An unknown search, fetch, or model call may have
 run remotely. Inspect its receipts and available service records before deciding
 whether to issue a new investigation. Local cancellation cannot prove remote work
 stopped.

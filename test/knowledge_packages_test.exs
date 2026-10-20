@@ -79,6 +79,53 @@ defmodule IpseKnowledge.PackagesIsolationTest do
       assert {:done,{:error,:invalid_model_output,%{}}}=Adapters.resume(continuation,%{"status"=>"ok","value"=>Map.put(good,"profile","other")})
     end
 
+    test "Graph publishes all32 bounded model proposals and exact-size explicit batches" do
+      alias IpseKnowledge.{Evidence,Graph,Store}
+      alias IpseKnowledge.Test.CASFixture,as: F
+      profiles=[%{"kind"=>"state","scope"=>"project","partition"=>"notes"},
+        %{"kind"=>"mcp_cas","binding"=>"storage","partition"=>"notes","contract"=>"ipse-cas-v3"}]
+      for profile<-profiles do
+        empty=Map.new(~w(stores search fetch retrieval embedding rerank extraction),&{&1,%{}})
+        options=Map.merge(empty,%{"version"=>1,"stores"=>%{"notes"=>profile},
+          "extraction"=>%{"model"=>%{"kind"=>"model_complete","profile"=>"host_extract","version"=>1},
+            "explicit"=>%{"kind"=>"explicit","version"=>1}}})
+        state=%{resolved: %{ "options"=>options},phase: :idle,ctx: nil,cont: nil,pending: nil}
+        text=Enum.map_join(1..32," ",&"A#{&1} p B.")
+        attrs=%{"source_id"=>"model32","generation"=>1,"expected_revision"=>0,"title"=>"Facts",
+          "text"=>text,"uri"=>"local:facts","observed_at_ms"=>10,"event_at_ms"=>nil,"expires_at_ms"=>nil}
+        {stored,state,db}=graph_command(state,F.new(),"source",%{"store"=>"notes","action"=>"put","args"=>attrs})
+        assert stored["status"]=="ok"
+        {inspected,state,db}=graph_command(state,db,"source",%{"store"=>"notes","action"=>"inspect","args"=>%{"source_id"=>"model32"}})
+        [chunk]=inspected["coverage"]["chunks"]
+        db=%{db|requests: []}
+        extract=%{"store"=>"notes","extraction"=>"model","source_id"=>"model32","generation"=>1,
+          "max_edges"=>32,"chunks"=>[chunk["chunk_id"]],"facts"=>[]}
+        {published,state,db}=graph_command(state,db,"extract",extract)
+        assert published["status"]=="ok"
+        requests=F.requests(db)
+        assert Enum.count(requests,&(&1["op"]=="model.complete"))==1
+        effects=Enum.count(requests,&(&1["op"] not in ~w(state.scan state.get effect.result.read)))
+        assert effects<=16
+        assert Enum.all?(requests,&(Ipse.Extension.validate(&1)==:ok))
+        drive=fn drive,result,db ->
+          case result do
+            {:call,request,cont}->{outcome,db}=F.host(db,request);drive.(drive,Store.resume(cont,outcome),db)
+            other->{other,db}
+          end
+        end
+        {{:done,{:ok,snapshot}},db}=drive.(drive,Store.start("notes",profile,:snapshot,%{}),db)
+        facts=hd(Map.values(snapshot["projections"]))["facts"]
+        assert length(facts)==32 and length(Enum.uniq_by(facts,& &1["fact_id"]))==32
+        assert Enum.all?(facts,&Evidence.valid_fact?/1)
+        assert hd(snapshot["sources"])["text"]==text
+        db=%{db|requests: []}
+        explicit=extract|>Map.put("extraction","explicit")|>Map.put("facts",Enum.take(facts,3))
+        {published,_,db}=graph_command(state,db,"extract",explicit)
+        assert published["status"]=="ok"
+        refute Enum.any?(F.requests(db),&(&1["op"]=="model.complete"))
+      end
+    end
+
     test "explicit Graph publication retains facts for their selected query time" do
       alias IpseKnowledge.{Evidence, Graph}
       alias IpseKnowledge.Test.CASFixture, as: F
@@ -650,6 +697,22 @@ defmodule IpseKnowledge.PackagesIsolationTest do
 
     defp graph_command(state,db,command,args),
       do: graph_drive(IpseKnowledge.Graph.handle("invoke.command",%{"id"=>command,"arguments"=>args},state),db)
+
+    defp graph_drive({:ok,%{"kind"=>"host_call","request"=>%{"op"=>"model.complete"}=request},state},db) do
+      input=JSON.decode!(request["input"])
+      [chunk]=input["chunks"]
+      facts=for i<-1..input["max_facts"] do
+        quote="A#{i} p B."
+        {offset,length}=:binary.match(chunk["text"],quote)
+        %{"subject"=>"A#{i}","predicate"=>"p","object"=>"B","chunk_id"=>chunk["chunk_id"],
+          "start_byte"=>chunk["start_byte"]+offset,"end_byte"=>chunk["start_byte"]+offset+length}
+      end
+      text=JSON.encode!(%{"facts"=>facts})
+      assert byte_size(text)<=request["max_output_bytes"]
+      db=%{db|requests: [request|db.requests]}
+      outcome=%{"status"=>"ok","value"=>%{"profile"=>request["profile"],"text"=>text,"usage"=>nil}}
+      graph_drive(IpseKnowledge.Graph.handle("host.actions",%{"outcome"=>outcome},state),db)
+    end
 
     defp graph_drive({:ok,%{"kind"=>"host_call","request"=>request},state},db) do
       {outcome,db}=IpseKnowledge.Test.CASFixture.host(db,request)

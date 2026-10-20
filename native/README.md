@@ -92,7 +92,7 @@ Success prints one plain JSON line, at most 2048 bytes, with `version: 1`, `byte
 `source` and `destination`. Each identity contains decimal-string `device`,
 `inode` and `nlink`; integer `bytes` and full Unix `mode`; signed decimal-string
 `mtime_seconds` and `ctime_seconds`; and integer nanosecond fields. Paths and
-hashes are absent. A direct failure emits the usual `E` frame and exits with1.
+hashes are absent. A direct failure emits the usual `E` frame and exits with 1.
 When invoked through `Runner.open_stdio/5`, these bytes belong to the selected
 child's stdout. Confirm its successful `X` result and native cleanup before
 parsing a success receipt.
@@ -619,13 +619,15 @@ process ID. An inherited ancestor procfs, missing identity or malformed status
 refuses. A nested PID namespace with its own procfs is supported. Ordinary
 `--stdio` keeps its existing frame stream and has no such capability requirement.
 
-The supervisor reads its own network namespace's bounded TCP table, finds the
+The supervisor reads its own network namespace's bounded IPv4 and IPv6 TCP tables, finds the
 exact LISTEN tuple and associates its unique positive socket inode with the
 retained direct child's FD links. It rereads the caller-side tuple after that
 association. A child that moved into another network namespace cannot substitute
 a private listener for the caller's endpoint. Wildcard bindings, ambiguous
 tuples, a listener owned only by a descendant, unavailable evidence and exceeded
-bounds refuse. A table read is at most 1 MiB; enumeration is at most 4096 FDs.
+bounds refuse. Any IPv6 LISTEN socket on the selected port also refuses, including
+an IPv6-only wildcard sharing the IPv4 port. Both table reads together are at
+most 1 MiB; enumeration is at most 4096 FDs.
 
 One background inspection runs at a time. The main wait owner keeps the child
 unreaped throughout that inspection, then checks its status before publishing.
@@ -665,7 +667,7 @@ rustc --edition=2021 --test -D warnings native/ipse-listener.rs \
 "$IPSE_LISTENER_TESTS/listener"
 ```
 
-Expect seven public live cases, six parser tests and a separate causal-regression
+Expect eight public live cases, seven parser tests and a separate causal-regression
 summary with `status: passed`. The regression command compiles diagnostic copies
 and compares each repair with its deliberate reversal. It leaves production
 source unchanged. Three additional controls require refusal before execution

@@ -121,6 +121,15 @@ price embedding input and reported duration. A text-only card does not price an
 embedding merely because provider/model names match. Unknown prices retain money
 reservations.
 
+If an embedding command refuses before approval and sends no request, check an
+operator `journal.max_record_bytes` override. The selected vector count and
+width, complete source and repeated result arguments must fit that ceiling.
+For example, four 4096-coordinate vectors cannot fit a 65536-byte record.
+Choose a smaller batch or an appropriate journal record limit in your explicit
+configuration, then start a fresh invocation. The normal 16 MiB record ceiling
+supports the documented vector bounds. Total journal byte/event limits still
+apply during execution.
+
 Cancel through the normal session controls if needed. Remote work may already
 have happened. Failed or unconfirmed budget settlement prevents readable vector
 publication and retains applicable liabilities. Diagnosis can retain genuine

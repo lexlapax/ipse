@@ -5,6 +5,13 @@ Historical investigation and correction record, 2026-10-20. Source is
 [testing](../../developer/testing.md#test-actual-os-enforcement), and acceptance
 remains in [the plan](../../plan.md#p27-optional-research-graph-and-rag).
 
+Later status: the then-uncommitted review-binding/resource-join correction named
+below was committed as `62aac9caa4bc3a61208d8007c2fed8cb14624f48`.
+The [subsequent admission record](../2026-10-20-p27-historical-admission/index.md)
+retains the green exact-source `b9370fb` matrix. The
+[external review and repair record](../2026-10-20-p27-external-review-r1/index.md)
+owns later findings. The body below preserves the earlier check boundaries.
+
 The macOS [job 118542455311](https://github.com/lexlapax/ipse/actions/runs/39397112612/job/118542455311)
 fails the native regular-file copy step. `existing_destinations_and_wrong_sizes_are_preserved`
 panics at fixture `Root::new`, line 130, when `create_dir` returns

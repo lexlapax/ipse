@@ -41,6 +41,9 @@ defmodule IpseKnowledge.Store do
       }
 
       cond do
+        legacy_addition?(state) ->
+          error(:atomic_capacity_unavailable)
+
         operation == :snapshot_selected ->
           start_selected(state)
 
@@ -58,7 +61,16 @@ defmodule IpseKnowledge.Store do
               | cache: token["cache"],
                 effects:
                   token["effects_before_model"] +
-                    if(operation == :projection_commit, do: 1, else: 0)
+                    if(operation == :projection_commit,
+                      do: Map.get(token, "model_effects", 1),
+                      else: 0
+                    ),
+                reads:
+                  Map.get(token, "reads_before_model", 0) +
+                    if(operation == :projection_commit,
+                      do: Map.get(token, "model_reads", 2),
+                      else: 0
+                    )
             }
 
             io(state, :get_many, %{"keys" => [token["root_key"]]}, :projection_checked)
@@ -75,6 +87,20 @@ defmodule IpseKnowledge.Store do
   rescue
     _ -> error(:invalid_store_arguments)
   end
+
+  defp legacy_addition?(%{
+         profile: %{"kind" => "mcp_cas", "contract" => contract},
+         operation: operation,
+         args: args
+       })
+       when contract != "ipse-cas-v3" do
+    operation in [:put, :append, :publish, :projection_open, :projection_commit] or
+      (operation in [:open, :forget] and args["expected_revision"] == 0) or
+      (operation == :import and
+         (get_in(args, ["export", "kind"]) == "source" or args["expected_revision"] == 0))
+  end
+
+  defp legacy_addition?(_), do: false
 
   def resume(state, outcome) do
     adapter = adapter(state.profile)
@@ -265,6 +291,11 @@ defmodule IpseKnowledge.Store do
       "profile" => state.args["profile"],
       "chunks" => state.args["chunks"],
       "effects_before_model" => state.effects,
+      "reads_before_model" => state.reads,
+      "model_effects" => state.plan["model_effects"],
+      "model_reads" => state.plan["model_reads"],
+      "max_items" => Map.get(state.args, "max_items", 1),
+      "prepared_sha256" => Map.get(state.plan, "prepared_sha256"),
       "reserved_pages" => state.plan["reserved_pages"],
       "cache" => cache
     }
@@ -810,7 +841,7 @@ defmodule IpseKnowledge.Store do
                  length(plan.pages) + if(record, do: 0, else: 1),
                  if(record, do: 0, else: 1)
                ),
-             :ok <- effect_plan(state, length(plan.pages) + 2, 0) do
+             :ok <- effect_plan(state, page_effects(state.profile, plan.pages) + 2, 0) do
           desired = active_root(source, plan.progress, plan.chunks, %{}, nil)
 
           cas(
@@ -863,8 +894,9 @@ defmodule IpseKnowledge.Store do
              }
            ),
          all = pages ++ [progress],
-         :ok <- capacity(state, length(all), 0),
-         :ok <- effect_plan(state, length(all) + 1, 0),
+         {:ok, publication_records} <- append_publication_records(state, record, draft, next),
+         :ok <- capacity(state, length(all) + publication_records, 0),
+         :ok <- effect_plan(state, page_effects(state.profile, all) + 1, 0),
          desired =
            put_in(record["value"], ["draft"], %{
              draft
@@ -897,7 +929,7 @@ defmodule IpseKnowledge.Store do
          {:ok, source} <- Evidence.source(attrs),
          {:ok, chunk_pages} <- chunk_pages(source, draft["id"]),
          :ok <- capacity(state, length(chunk_pages), 0),
-         :ok <- effect_plan(state, length(chunk_pages) + 1, 0) do
+         :ok <- effect_plan(state, page_effects(state.profile, chunk_pages) + 1, 0) do
       desired =
         active_root(source, draft["progress"], Enum.map(chunk_pages, &reference/1), %{}, nil)
 
@@ -926,36 +958,10 @@ defmodule IpseKnowledge.Store do
          true <-
            length(selected) == length(state.args["chunks"]) and
              length(Enum.uniq(state.args["chunks"])) == length(selected),
-         pages =
-           if(state.args["projection_kind"] == "vectors",
-             do: length(selected) * 6 + 1,
-             else: div(Map.get(state.args, "max_items", 1) * 12_000 + 2047, 2048) + 1
-           ),
-         :ok <- capacity(state, pages, 0),
-         :ok <-
-           effect_plan(
-             state,
-             pages + 2 + if(state.profile["kind"] == "mcp_cas", do: 1, else: 0),
-             1
-           ),
          draft = projection_draft(root, state.args),
          claimed = Map.put(root, "draft", draft),
-         true <- fits?(claimed) do
-      plan = %{
-        "effects_before_model" => state.effects + 1,
-        "effects_remaining" => 15 - state.effects,
-        "model_effects" => 1,
-        "commit_effects" => pages + 1 + if(state.profile["kind"] == "mcp_cas", do: 1, else: 0),
-        "commit_effects_worst_case" =>
-          pages + 1 + if(state.profile["kind"] == "mcp_cas", do: 1, else: 0),
-        "total_effects" =>
-          state.effects + pages + 3 + if(state.profile["kind"] == "mcp_cas", do: 1, else: 0),
-        "reserved_pages" => pages,
-        "maximum_dimensions" => 4096
-      }
-
-      plan = vector_contract(plan, state.args["projection_kind"])
-
+         true <- fits?(claimed),
+         {:ok, plan} <- projection_allowance(state, source, root, draft, selected) do
       cas(
         Map.merge(state, %{source: source, chunks: selected, plan: plan}),
         record,
@@ -1027,12 +1033,131 @@ defmodule IpseKnowledge.Store do
   defp perform(%{operation: :import} = state), do: import_source(state)
   defp perform(%{operation: :projection_abort} = state), do: perform_public_abort(state)
 
+  defp append_publication_records(state, record, draft, next) do
+    if next == draft["target"]["byte_count"] do
+      with {:ok, previous, _} <-
+             load_progress(
+               state,
+               record["value"]["source_key"],
+               draft["target"]["generation"],
+               draft["progress"],
+               MapSet.new()
+             ),
+           {:ok, source} <-
+             Evidence.source(
+               draft["target"]
+               |> Map.take(@source_fields)
+               |> Map.put("text", previous <> state.args["text"])
+             ),
+           {:ok, pages} <- chunk_pages(source, draft["id"]) do
+        {:ok, length(pages)}
+      end
+    else
+      {:ok, 0}
+    end
+  end
+
+  defp projection_allowance(state, source, root, draft, selected) do
+    known = Map.has_key?(state.args, "facts")
+    model = if known, do: 0, else: 1
+    model_reads = if state.args["projection_kind"] == "vectors", do: length(selected) * 6, else: 0
+    recheck = if state.profile["kind"] == "mcp_cas", do: 1, else: 0
+    recheck_reads = if recheck == 1, do: 15, else: 1
+
+    token = %{
+      "profile" => state.args["profile"],
+      "chunks" => state.args["chunks"],
+      "projection_kind" => state.args["projection_kind"],
+      "draft_id" => draft["id"],
+      "max_items" => Map.get(state.args, "max_items", 1)
+    }
+
+    planned =
+      cond do
+        known ->
+          with {:ok, pages, desired} <-
+                 prepare_projection(state, source, root, token, state.args["facts"]) do
+            with :ok <- publication_capacity(state, pages, desired) do
+              {:ok, length(pages), page_effects(state.profile, pages),
+               items_digest(state.args["facts"])}
+            end
+          end
+
+        state.args["projection_kind"] == "vectors" ->
+          pages = length(selected) * 6 + 1
+          with :ok <- capacity(state, pages, 0), do: {:ok, pages, pages, nil}
+
+        true ->
+          write_budget = 16 - state.effects - 2 - recheck - model
+          batch_size = if state.profile["kind"] == "mcp_cas", do: 2, else: 1
+
+          pages =
+            Enum.filter(1..15, fn count ->
+              capacity(state, count, 0, state.cache["bytes"]) == :ok and
+                count <= write_budget * batch_size
+            end)
+
+          case pages do
+            [] ->
+              case capacity(state, 1, 0, state.cache["bytes"]) do
+                :ok -> {:error, :effect_limit}
+                error -> error
+              end
+
+            _ ->
+              {:ok, List.last(pages), min(List.last(pages), write_budget), nil}
+          end
+      end
+
+    with {:ok, pages, writes, digest} <- planned,
+         :ok <- capacity(state, pages, 0, state.cache["bytes"]),
+         true <- allowance?(state, writes + 2 + recheck + model, recheck_reads + model_reads) do
+      commit = writes + 1 + recheck
+
+      {:ok,
+       vector_contract(
+         %{
+           "effects_before_model" => state.effects + 1,
+           "effects_remaining" => 15 - state.effects,
+           "model_effects" => model,
+           "model_reads" => model_reads,
+           "commit_effects" => commit,
+           "commit_effects_worst_case" => commit,
+           "total_effects" => state.effects + 1 + model + commit,
+           "reserved_pages" => pages,
+           "prepared_sha256" => digest,
+           "maximum_dimensions" => 4096
+         },
+         state.args["projection_kind"]
+       )}
+    else
+      false -> {:error, :effect_limit}
+      error -> error
+    end
+  end
+
   defp commit_projection(state, root, token) do
     kind = token["projection_kind"]
     items = state.args[kind]
 
     with {:ok, source} <- load_source(state, root),
-         :ok <- projection_items(kind, items, source, token),
+         true <-
+           token["prepared_sha256"] == nil or token["prepared_sha256"] == items_digest(items),
+         {:ok, all, desired} <- prepare_projection(state, source, root, token, items),
+         true <- length(all) <= token["reserved_pages"],
+         :ok <- publication_capacity(state, all, desired),
+         :ok <- effect_plan(state, page_effects(state.profile, all) + 1, 0) do
+      stage_pages(Map.merge(state, %{pages: all, desired: desired}))
+    else
+      false -> error(:projection_bounds)
+      error -> error_result(error)
+    end
+  end
+
+  defp prepare_projection(state, source, root, token, items) do
+    kind = token["projection_kind"]
+
+    with :ok <- projection_items(kind, items, source, token),
          projection_id = Evidence.id("projection", [kind, ordered(token["profile"])]),
          {:ok, previous} <- projection_previous(state, root, projection_id, kind, items),
          {:ok, pages, records} <- projection_pages(source, token["draft_id"], kind, items),
@@ -1052,10 +1177,7 @@ defmodule IpseKnowledge.Store do
              }
            ),
          all = pages ++ [manifest],
-         true <- length(all) <= token["reserved_pages"],
          true <- Enum.all?(all, &fits?(&1["value"])),
-         :ok <- capacity(state, length(all), 0),
-         :ok <- effect_plan(state, length(all) + 1, 0),
          head = %{
            "kind" => kind,
            "profile_sha256" => Evidence.id("profile", [ordered(token["profile"])]),
@@ -1065,14 +1187,19 @@ defmodule IpseKnowledge.Store do
          true <- map_size(projections) <= 8,
          desired = root |> Map.put("projections", projections) |> Map.put("draft", nil),
          true <- fits?(desired),
-         state = Map.merge(state, %{pages: all, desired: desired}),
          {:ok, _} <- load_projections(%{state | cache: staged_cache(state.cache, all)}, desired) do
-      stage_pages(state)
+      {:ok, all, desired}
     else
-      false -> error(:projection_bounds)
-      error -> error_result(error)
+      false -> {:error, :projection_bounds}
+      error -> error
     end
   end
+
+  defp page_effects(%{"kind" => "mcp_cas"} = profile, pages),
+    do: length(MCPCAS.write_batches(profile, pages))
+
+  defp page_effects(_, pages), do: length(pages)
+  defp items_digest(items), do: Evidence.id("projection-items", [ordered(items)])
 
   defp projection_items("vectors", vectors, source, token) do
     with true <- is_list(vectors) and length(vectors) == length(token["chunks"]),
@@ -1092,7 +1219,7 @@ defmodule IpseKnowledge.Store do
   end
 
   defp projection_items("facts", facts, source, token) do
-    if is_list(facts) and length(facts) <= 32 and
+    if is_list(facts) and length(facts) <= Map.get(token, "max_items", 32) and length(facts) <= 32 and
          Enum.all?(facts, fn fact ->
            Evidence.valid_fact?(fact) and
              Enum.all?(
@@ -1680,28 +1807,56 @@ defmodule IpseKnowledge.Store do
                offset <= byte_size(source["text"]) and
                  String.valid?(binary_part(source["text"], 0, offset)),
              remaining = binary_part(source["text"], offset, byte_size(source["text"]) - offset),
-             part = utf8_prefix(remaining, min(4096, byte_size(remaining))),
+             part =
+               export_prefix(
+                 source,
+                 record["value"]["projections"],
+                 offset,
+                 remaining,
+                 min(state.args["limit"] * 4096, min(8192, byte_size(remaining)))
+               ),
              next = offset + byte_size(part),
              single = offset == 0 and next == byte_size(source["text"]),
-             value = %{
-               "version" => 1,
-               "kind" => "source",
-               "source" => if(single, do: source, else: Map.delete(source, "text")),
-               "text" => part,
-               "byte_count" => byte_size(source["text"]),
-               "cursor" => offset,
-               "next" => if(next == byte_size(source["text"]), do: nil, else: next),
-               "complete" => next == byte_size(source["text"]),
-               "projection_coverage" => "omitted_reindex_required",
-               "projection_heads" => record["value"]["projections"]
-             },
-             true <- Ipse.Extension.validate(value) == :ok and byte_size(json(value)) <= 12_000 do
+             true <- part != "" or remaining == "",
+             value = export_envelope(source, record["value"]["projections"], offset, part),
+             duplicate = Map.put(value, "source", source),
+             value = if(single and export_fits?(duplicate), do: duplicate, else: value),
+             true <- export_fits?(value) do
           {:done, {:ok, value}}
         else
           _ -> error(:export_bounds)
         end
     end
   end
+
+  defp export_envelope(source, heads, offset, part) do
+    next = offset + byte_size(part)
+    complete = next == byte_size(source["text"])
+
+    %{
+      "version" => 1,
+      "kind" => "source",
+      "source" => Map.delete(source, "text"),
+      "text" => part,
+      "byte_count" => byte_size(source["text"]),
+      "cursor" => offset,
+      "next" => if(complete, do: nil, else: next),
+      "complete" => complete,
+      "projection_coverage" => "omitted_reindex_required",
+      "projection_heads" => heads
+    }
+  end
+
+  defp export_prefix(source, heads, offset, remaining, count) do
+    part = utf8_prefix(remaining, count)
+
+    if export_fits?(export_envelope(source, heads, offset, part)) or count == 0,
+      do: part,
+      else: export_prefix(source, heads, offset, remaining, div(count, 2))
+  end
+
+  defp export_fits?(value),
+    do: Ipse.Extension.validate(value) == :ok and byte_size(json(value)) <= 12_000
 
   defp import_source(state) do
     envelope = state.args["export"]
@@ -1738,7 +1893,12 @@ defmodule IpseKnowledge.Store do
         end
 
       envelope["kind"] == "source" ->
-        source = envelope["source"]
+        metadata = envelope["source"]
+
+        source =
+          if is_map(metadata) and not Map.has_key?(metadata, "text"),
+            do: Map.put(metadata, "text", envelope["text"]),
+            else: metadata
 
         if Evidence.valid_source?(source) and envelope["cursor"] === 0 and envelope["next"] == nil and
              envelope["byte_count"] == byte_size(source["text"]) and
@@ -1902,14 +2062,59 @@ defmodule IpseKnowledge.Store do
     end
   end
 
-  defp capacity(state, added, added_roots) do
+  defp capacity(state, added, added_roots, bytes \\ nil) do
     cond do
-      added_roots > 0 and length(roots(state)) + added_roots > 32 -> {:error, :source_limit}
-      map_size(state.cache["records"]) + added > 256 -> {:error, :record_limit}
-      state.cache["bytes"] + added * 6300 + 6000 > 1_048_576 -> {:error, :store_byte_limit}
-      true -> :ok
+      added > 0 and state.profile["kind"] == "mcp_cas" and
+          state.profile["contract"] != "ipse-cas-v3" ->
+        {:error, :atomic_capacity_unavailable}
+
+      added_roots > 0 and length(roots(state)) + added_roots > 32 ->
+        {:error, :source_limit}
+
+      map_size(state.cache["records"]) + added > record_limit(state.profile) ->
+        {:error, :record_limit}
+
+      (bytes || state.cache["bytes"] + added * 6300 + if(added > 0, do: 6000, else: 0)) >
+          1_048_576 ->
+        {:error, :store_byte_limit}
+
+      true ->
+        :ok
     end
   end
+
+  defp publication_capacity(state, pages, root) do
+    root_key = root_key(root["partition"], root["source_key"])
+    old = state.cache["records"][root_key]
+    state? = state.profile["kind"] == "state"
+
+    record = fn key, value, revision ->
+      row = %{"key" => key, "value" => value, "revision" => revision, "deleted" => false}
+      if state?, do: Map.put(row, "operation_id", String.duplicate("0", 32)), else: row
+    end
+
+    records =
+      Enum.reduce(pages, state.cache["records"], fn page, records ->
+        Map.put(records, page["key"], record.(page["key"], page["value"], 1))
+      end)
+
+    records = Map.put(records, root_key, record.(root_key, root, revision(old) + 2))
+
+    bytes =
+      byte_size(
+        json(%{
+          "version" => 1,
+          "namespace" => String.duplicate("0", 64),
+          "generation" => min(@safe, state.cache["generation"] + 16),
+          "records" => records
+        })
+      )
+
+    capacity(state, length(pages), 0, bytes)
+  end
+
+  defp record_limit(%{"kind" => "mcp_cas"}), do: 88
+  defp record_limit(_), do: 256
 
   defp snapshot_capacity(state) do
     if length(roots(state)) <= 32, do: :ok, else: {:error, :root_capacity_exceeded}
@@ -2299,7 +2504,7 @@ defmodule IpseKnowledge.Store do
   defp profile?(%{"kind" => "mcp_cas"} = p),
     do:
       keys?(p, ~w(kind binding partition contract)) and name?(p["binding"]) and
-        name?(p["partition"]) and p["contract"] in ~w(ipse-cas-v1 ipse-cas-v2)
+        name?(p["partition"]) and p["contract"] in ~w(ipse-cas-v1 ipse-cas-v2 ipse-cas-v3)
 
   defp profile?(_), do: false
   defp ref?(ref), do: keys?(ref, ~w(key sha256)) and hash?(ref["key"]) and hash?(ref["sha256"])
@@ -2382,7 +2587,7 @@ defmodule IpseKnowledge.Store do
       case operation do
         action when action in [:put, :open] -> ~w(historical_import)
         :forget -> ~w(suppressed_at_ms)
-        :projection_open -> ~w(max_items)
+        :projection_open -> ~w(max_items facts)
         :projection_commit -> ~w(vectors facts)
         :revalidate -> ~w(effects_used reads_used)
         _ -> []
@@ -2408,6 +2613,8 @@ defmodule IpseKnowledge.Store do
               is_list(args["chunks"]) and length(args["chunks"]) in 1..2 and
               Enum.all?(args["chunks"], &hash?/1) and
               Map.get(args, "max_items", 1) in 1..32)) and
+        (operation != :projection_open or not Map.has_key?(args, "facts") or
+           (args["projection_kind"] == "facts" and is_list(args["facts"]))) and
         (operation != :projection_commit or
            Map.has_key?(args, "vectors") != Map.has_key?(args, "facts")) and
         (operation != :revalidate or (is_list(args["tokens"]) and length(args["tokens"]) <= 32)) and

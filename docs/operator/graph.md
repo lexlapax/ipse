@@ -68,7 +68,9 @@ The supplied options file contains this complete closed selection:
 
 All seven registries must be present, including empty ones. Unknown fields,
 unused authority, missing profiles, and incompatible presets refuse before host
-work. Profile names select operator configuration, not modules, executables,
+work. Graph's `retrieval` registry must remain empty. Its query command uses the
+explicit traversal bounds below rather than a Corpus retrieval profile.
+Profile names select operator configuration, not modules, executables,
 endpoints, or arbitrary host requests supplied in command arguments.
 
 ## Prepare one explicit fact without a model
@@ -184,15 +186,22 @@ case. Two positive requirements such as `Release requires quiescence` and
 `Release requires tests` can coexist. Graph flags a conflict when current
 assertions give opposite polarities to the same subject, predicate and object.
 Both assertions remain separate claims with their supporting citations.
-Negative assertions supply that conflict context but are not traversal steps.
+Negative assertions whose subjects were reached remain attributable context,
+including when the seed has no positive outgoing relationship. They never count
+as traversal steps or make their objects into reached nodes.
 Object names use the same case-insensitive matching: `lock` and `LOCK` name the
 same traversal node. Claims keep the original recorded spelling and citations.
 Read both claims before treating a `conflict` as resolved.
 
-`coverage.edges` counts traversal steps. `context_facts` also counts the retained
-counterassertions; `counterassertions` counts those extra assertions. A conflicting
-alternative outside the path can therefore appear without adding a traversed
-edge or node. Bounds are depth 0..4, 1..128 nodes, 1..256 traversal edges, and
+`coverage.seed` records the requested starting entity. `edges` counts positive
+traversal steps. `context_facts` includes the selected facts and retained context,
+while `negative_context` counts negative assertions in that context.
+`counterassertions` counts additional assertions that conflict with selected
+positive facts. A negative assertion with a different predicate can remain
+context without being a counterassertion. A negative-only result can return
+`status: "ok"`, its exact supporting quotation, zero edges and one seed node.
+
+Bounds are depth 0..4, 1..128 nodes, 1..256 traversal edges, and
 1..10 returned passages. Depth zero follows no edge. Reaching the depth limit
 while an unvisited positive outgoing fact remains makes coverage incomplete,
 including at depth zero. Reaching a leaf or finishing a cycle does not leave
@@ -200,6 +209,13 @@ unfinished traversal work. `coverage.complete: false` means a traversal bound cu
 the path; the result is `partial`, and absent relationships have not been checked
 and disproved. An unpublished source also makes the result partial, including an
 empty result. Complete empty traversal returns `abstain`.
+
+The query examines the bounded store population before selecting a path; the
+256-edge limit does not cap unrelated stored facts. Supporting assertions and
+negative context for reached entities must together fit 256 facts. If that
+complete context is larger, the query refuses with `graph_context_limit` and
+returns no claims. It does not drop counterassertions to fit. Query a more
+specific entity or a smaller depth or edge limit, then inspect the new coverage.
 
 Forgotten and non-current sources remain excluded, with diagnostics in `gaps`
 and `coverage.exclusions`. Facts outside their validity interval also appear
@@ -219,10 +235,13 @@ attributed assertions; they do not establish semantic truth. Review the exact
 quoted source and the assertion before using the result for a decision.
 
 Extraction selects one or two chunks and at most 32 facts. MCP-backed extraction
-selects one chunk. Larger sources use the explicit source draft lifecycle in
+selects exactly one chunk. Explicit facts are packed and checked against actual
+encoded storage and effect costs before the draft is claimed. The count ceiling
+does not guarantee that every combination of large citations fits.
+Larger sources use the explicit source draft lifecycle in
 [Corpus](corpus.md#publish-a-larger-source), rather than hidden
-background extraction. Commands fit the ordinary 16-operation host allowance;
-state scans have their separate read bound. A plan that cannot fit refuses.
+background extraction. Each invocation has at most 16 effects and a separate
+read allowance. A plan that cannot fit refuses.
 Inspect the source and draft state before requesting a smaller explicit batch
 instead of widening grants to evade the refusal.
 The complete SDK request must fit 16 KiB. Legal individual field maxima do not
@@ -288,9 +307,11 @@ Each partition permits 32 source roots, including unpublished drafts and suppres
 a new suppression marker consumes a source slot just as ingestion does. A full
 partition needs a separate reviewed partition for new sources; collection retains
 its existing roots.
-State permits 256 retained slots and 1 MiB per namespace, including drafts,
-old pages, and tombstones. Collection removes unreachable bodies, but does not
-recover slots. Export and plan a reviewed migration before filling the store.
+State permits 256 retained slots and 1 MiB per namespace. A qualified MCP v3
+partition permits 88 retained records and at most 1 MiB. Both counts include old
+pages, drafts' staged pages and tombstones. Collection removes unreachable bodies
+but does not recover slots. Follow the [export procedure](corpus.md#export-sources-before-migration)
+and plan a reviewed migration before filling the store.
 Foreign imports preserve historical provenance and stay excluded from current
 queries even after extraction. To use a freshly verified capture as current
 evidence, inspect the root and explicitly replace the source through the earlier
@@ -313,8 +334,12 @@ existing-source maintenance remain available within other limits. Suppression
 retains a root and cannot reduce the count. Plan a deliberate migration into
 bounded partitions; do not delete suppression markers to make room.
 
-MCP stores also have an 88-retained-record full-snapshot ceiling, counting pages
-and tombstones. A larger store returns `remote_snapshot_limit` before the
+New MCP record additions require an explicit `ipse-cas-v3` selection and a server
+that enforces the atomic 88-record ceiling across all its writer routes.
+A full snapshot costs `1 + ceil(records / 8)` MCP calls. Each call consumes one
+of the invocation's 16 effects, so at 88 records the snapshot alone uses 12.
+Other work can therefore hit `effect_limit` before storage fills. An inherited
+larger store returns `remote_snapshot_limit` before the
 root-count check, including for addressed inspection, export and maintenance.
 Use the configured server's reviewed administrative export/migration procedure
 for recovery, preserving source identities and suppression markers. Follow the
@@ -424,26 +449,32 @@ of the instruction.
 Rendered extraction input is at most 4096 bytes and model output at most 8192
 bytes. Two full 2048-byte chunks plus JSON framing can exceed the input allowance;
 select a smaller batch when that happens. No source text is silently shortened.
-Start with the one-fact batch above. Before inference, the store reserves space
-for the maximum requested facts and their citations within the 16-effect limit.
-A larger `max_edges` can refuse with `effect_limit` even for a short source;
-it is an upper bound to reserve, not a promise that every batch size fits.
+Start with the one-fact batch above. Before inference, Store checks the remaining
+effect, read and record allowance and returns a bounded page plan for publication.
+The model still receives the requested `max_facts`, up to 32. The actual returned
+facts must fit both that count and the admitted page/encoded-byte plan.
+The plan is not a promise that every set of 32 large facts fits. A result that
+exceeds it refuses publication and leaves the draft available for inspection and
+exact abort. A competing writer can also consume capacity after the draft claim.
 Live optional model-extraction quality has not been measured. Do not infer that
 an accepted response is a validated knowledge graph.
 
 For remote storage, build `mcp-explicit` or `mcp-model` and select an `mcp_cas`
-store with a fixed `binding`, `partition`, and `contract: "ipse-cas-v2"`. Supply
+store with a fixed `binding`, `partition`, and `contract: "ipse-cas-v3"`. Supply
 exact MCP aliases through the configuration generator and select the separate
-MCP file at launch. The server must enforce partition access and atomic CAS.
+MCP file at launch. The server must enforce partition access, atomic CAS and the
+partition-wide 88-record ceiling across every accepted writer/version route.
 Approvals display that route; they cannot enforce remote namespace policy.
 Follow [the build guide](../../extensions/knowledge/README.md#choose-the-required-capabilities)
 and [MCP configuration](mcp.md). No service is installed or chosen automatically.
 The [remote Corpus procedure](corpus.md#select-a-remote-store) shows the complete
 store selection and binding files; retain Graph's extraction registry and preset
-when applying it here. V1 selections still read and update existing sources,
-but refuse missing-source creation with `atomic_admission_unavailable`. Verify
-server support and explicitly select v2 in a fresh configuration after draining
-older writers. Ipse never changes the selected contract automatically.
+when applying it here. Keep Graph's retrieval registry empty. Legacy v1/v2
+profiles retain reads and zero-record maintenance, including exact abort and
+forget, within snapshot limits. Replacement `put` and projection publication
+still add pages, so those operations require v3. Follow the explicit cutover
+procedure after draining older writers. Ipse never upgrades or falls back from
+the selected contract automatically.
 
 To share retained sources with Corpus, use the same Ipse home, canonical project
 workspace, logical State binding, and partition. A shared profile name alone does

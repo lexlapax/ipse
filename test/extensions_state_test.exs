@@ -431,13 +431,83 @@ defmodule Ipse.Extensions.StateTest do
     assert byte_size(File.read!(file)) > 32_768
     first = "key1" <> String.duplicate("x", 32)
     assert {:ok, _} = execute(ctx, get(first))
-    assert {:error, :extension_state_quota} = execute(ctx, delete("new", 0))
+    before_quota = File.read!(file)
+    request = delete("new", 0)
+    operation_id = Ipse.Usage.id()
+
+    assert {:failed, %{"code" => "extension_state_quota"} = failure} =
+             State.execute(ctx.root, ctx.namespace, request, operation_id)
+
+    assert State.valid_outcome?(request, "failed", failure, operation_id)
+    refute State.valid_outcome?(request, "unknown", failure, operation_id)
+    refute State.valid_outcome?(request, "failed", Map.put(failure, "extra", true), operation_id)
+
+    refute State.valid_outcome?(
+             request,
+             "failed",
+             put_in(failure, ["record", "operation_id"], operation_id),
+             operation_id
+           )
+
+    assert File.read!(file) == before_quota
     assert {:ok, _} = execute(ctx, put(first, 1, %{"fresh" => true}))
     bytes = File.read!(file)
     File.write!(file, String.replace(bytes, "\"version\":1", "\"version\":1,\"version\":1"))
     before = File.read!(file)
     assert {:error, _} = execute(ctx, get(first))
     assert File.read!(file) == before
+  end
+
+  test "generation and encoded file quotas are known failures before publication", ctx do
+    assert {:ok, _} = execute(ctx, get("new"))
+    file = Path.join([ctx.root, ctx.namespace, "state.json"])
+    empty = %{"version" => 1, "namespace" => ctx.namespace, "generation" => 128}
+
+    records =
+      Map.new(1..128, fn n ->
+        key = "key#{n}"
+
+        {key,
+         %{
+           "key" => key,
+           "revision" => 1,
+           "deleted" => false,
+           "value" => %{"text" => ""},
+           "operation_id" => Ipse.Usage.id()
+         }}
+      end)
+
+    base = Map.put(empty, "records", records)
+    width = div(1_048_576 - byte_size(Jason.encode!(base)), 128)
+
+    records =
+      Map.new(records, fn {key, record} ->
+        {key, put_in(record, ["value", "text"], String.duplicate("x", width))}
+      end)
+
+    exhausted =
+      base
+      |> Map.put("generation", 9_007_199_254_740_991)
+      |> put_in(["records", "key1", "revision"], 9_007_199_254_740_991 - 127)
+
+    for state <- [
+          exhausted,
+          Map.put(base, "records", records)
+        ] do
+      before = Jason.encode!(state)
+      assert byte_size(before) <= 1_048_576
+      File.write!(file, before)
+      File.chmod!(file, 0o600)
+      request = put("new", 0, %{"text" => String.duplicate("y", 8180)})
+      operation_id = Ipse.Usage.id()
+
+      assert {:failed, %{"code" => "extension_state_quota"} = failure} =
+               State.execute(ctx.root, ctx.namespace, request, operation_id)
+
+      assert State.valid_outcome?(request, "failed", failure, operation_id)
+      assert File.read!(file) == before
+      assert Path.wildcard(Path.join([ctx.root, ctx.namespace, ".pending-*"])) == []
+    end
   end
 
   test "closed requests, size limits, unsafe paths and corruption fail without repair", ctx do

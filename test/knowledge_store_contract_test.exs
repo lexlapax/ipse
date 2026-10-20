@@ -41,6 +41,20 @@ defmodule Ipse.KnowledgeStoreContractTest do
     assert {:done,{:error,:store_response,%{}}}=fake(call,"ok",2,%{"record"=>record})
     assert {:done,{:error,:store_response,%{}}}=fake(call,"ok",1,%{"record"=>record},&Map.put(&1,"version",1))
   end
+  test "v3 explicitly selects the same fenced CAS shape and rejects forged generations" do
+    a=args("v3",%{"expected_generation"=>0})
+    call={:call,request,_}=M.start(profile(3),:cas_root,a)
+    assert request["arguments"]["version"]===3
+    assert request["arguments"]["contract"]=="ipse-cas-v3"
+    assert map_size(request["arguments"]["args"])==7
+    assert {{:done,{:ok,%{"generation"=>1}}},db}=drive(call,F.new())
+    assert {{:done,{:ok,snapshot}},_}=drive(M.start(profile(3),:snapshot,%{}),db)
+    assert map_size(snapshot["records"])==1
+    assert {{:done,{:error,:conflict,%{}}},_}=drive(M.start(profile(3),:cas_root,a),db)
+    record=%{"key"=>a["key"],"revision"=>1,"deleted"=>false,"value"=>a["next_root"]}
+    assert {:done,{:error,:store_response,%{}}}=fake(call,"ok",2,%{"record"=>record})
+    assert {:done,{:error,:atomic_admission_unavailable,%{}}}=M.start(profile(3),:cas_root,Map.put(a,"expected_generation",nil))
+  end
   test "v1 creation refuses locally, legacy reads and updates keep wire shape" do
     assert {:done,{:error,:atomic_admission_unavailable,%{}}}=M.start(profile(1),:cas_root,args("legacy"))
     {reply,db}=F.handle(F.new(),envelope(1,args("legacy")))

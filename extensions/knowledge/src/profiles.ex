@@ -78,7 +78,7 @@ defmodule IpseKnowledge.Profiles do
       case package do
         "corpus" -> ~w(stores retrieval embedding rerank)
         "research" -> ~w(search fetch retrieval rerank)
-        "graph" -> ~w(stores retrieval extraction)
+        "graph" -> ~w(stores extraction)
       end
 
     empty_unused = Enum.all?(@families -- allowed, &(o[&1] == %{}))
@@ -107,7 +107,10 @@ defmodule IpseKnowledge.Profiles do
         (Enum.all?(o["search"], fn {_, p} -> p["kind"] == "provided" end) and
            Enum.all?(o["fetch"], fn {_, p} -> p["kind"] == "provided" end))
 
-    empty_unused and all_stores and required and authority and offline
+    retrieval =
+      package != "research" or Enum.all?(o["retrieval"], fn {_, p} -> p["kind"] == "bm25" end)
+
+    empty_unused and all_stores and required and authority and offline and retrieval
   end
 
   defp needs("stores", %{"kind" => "state"}), do: @state
@@ -132,7 +135,7 @@ defmodule IpseKnowledge.Profiles do
   defp profile?("stores", %{"kind" => "mcp_cas"} = p),
     do:
       exact?(p, ~w(kind binding partition contract)) and name?(p["binding"]) and
-        name?(p["partition"]) and p["contract"] in ~w(ipse-cas-v1 ipse-cas-v2)
+        name?(p["partition"]) and p["contract"] in ~w(ipse-cas-v1 ipse-cas-v2 ipse-cas-v3)
 
   defp profile?(f, %{"kind" => "provided"} = p) when f in ~w(search fetch),
     do: exact?(p, ~w(kind version)) and p["version"] == 1

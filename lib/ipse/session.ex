@@ -1144,13 +1144,13 @@ defmodule Ipse.Session do
       )
       when ref != nil and
              phase in [:tool, :extension_command, :extension_service, :extension_events] do
-    case extension_mcp_target(s, request) do
-      {:ok, server, tool_id} ->
-        {:reply, {:ok, server, tool_id, s.cwd, %{owner: self(), job_ref: ref}},
-         %{s | extension_mcp_context: nil}}
-
-      _ ->
-        {:reply, {:error, :extension_mcp_refused}, s}
+    with {:ok, limits} <- Ipse.Journal.Limits.normalize(s.config[:journal]),
+         true <- Ipse.Extensions.EffectResult.source_record_limit() <= limits["max_record_bytes"],
+         {:ok, server, tool_id} <- extension_mcp_target(s, request) do
+      {:reply, {:ok, server, tool_id, s.cwd, %{owner: self(), job_ref: ref}},
+       %{s | extension_mcp_context: nil}}
+    else
+      _ -> {:reply, {:error, :extension_mcp_refused}, s}
     end
   end
 
@@ -1228,7 +1228,8 @@ defmodule Ipse.Session do
              context_hash,
              service,
              effect_binding
-           ) do
+           ),
+         :ok <- extension_effect_record_capacity(s, intent) do
       cond do
         Ipse.Extensions.Operation.question?(request) ->
           record(s, intent)
@@ -1377,7 +1378,8 @@ defmodule Ipse.Session do
            not EmbeddingCall.operation?(intent["request"]) or
              (intent["effect_binding"]["execution"] === execution and
                 Ipse.Provider.destination(config) ==
-                  {:ok, intent["effect_binding"]["destination"]}) do
+                  {:ok, intent["effect_binding"]["destination"]}),
+         :ok <- extension_effect_record_capacity(s, intent) do
       admission =
         Ipse.Usage.admission(s.id, config, "extension", s.turn_id)
         |> Map.put("request_id", intent["operation_id"])
@@ -4896,6 +4898,38 @@ defmodule Ipse.Session do
     do: Ipse.EmbeddingProfiles.prepare(config, request)
 
   defp prepare_inference(config, request), do: ModelCall.prepare(config, request)
+
+  defp extension_effect_record_capacity(_s, %{"approval" => "denied"}), do: :ok
+
+  defp extension_effect_record_capacity(s, intent) do
+    request = intent["request"]
+
+    result =
+      cond do
+        EmbeddingCall.operation?(request) ->
+          with {:ok, config, execution} <- prepare_inference(s.config, request) do
+            admission =
+              Ipse.Usage.admission(s.id, config, "extension", s.turn_id)
+              |> Map.put("request_id", intent["operation_id"])
+
+            Ipse.Extensions.EffectCapacity.embedding(intent, admission, execution)
+          end
+
+        Ipse.Extensions.MCPCall.operation?(request) ->
+          Ipse.Extensions.EffectCapacity.mcp(intent)
+
+        true ->
+          {:ok, %{max_record_bytes: 0}}
+      end
+
+    with {:ok, capacity} <- result,
+         {:ok, limits} <- Ipse.Journal.Limits.normalize(s.config[:journal]),
+         true <- capacity.max_record_bytes <= limits["max_record_bytes"] do
+      :ok
+    else
+      _ -> {:error, :effect_record_capacity}
+    end
+  end
 
   defp extension_model_configuration(config, request) do
     if Ipse.Extensions.Operation.inference?(request) do

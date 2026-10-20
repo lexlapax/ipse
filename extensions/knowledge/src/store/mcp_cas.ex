@@ -119,7 +119,7 @@ defmodule IpseKnowledge.Store.MCPCAS do
            do: {:ok, legacy},
            else: {:error, :atomic_admission_unavailable}
 
-      "ipse-cas-v2" ->
+      contract when contract in ~w(ipse-cas-v2 ipse-cas-v3) ->
         args = Map.put_new(args, "expected_generation", nil)
 
         if keys?(args, ["expected_generation" | fields]) and
@@ -136,7 +136,7 @@ defmodule IpseKnowledge.Store.MCPCAS do
 
   defp envelope(profile, action, args, request_id),
     do: %{
-      "version" => if(profile["contract"] == "ipse-cas-v2", do: 2, else: 1),
+      "version" => contract_version(profile),
       "contract" => profile["contract"],
       "partition" => profile["partition"],
       "request_id" => request_id,
@@ -156,7 +156,7 @@ defmodule IpseKnowledge.Store.MCPCAS do
       "timeout_ms" => 30_000
     }
 
-    if state.profile["contract"] in ~w(ipse-cas-v1 ipse-cas-v2) and
+    if state.profile["contract"] in ~w(ipse-cas-v1 ipse-cas-v2 ipse-cas-v3) and
          bounded_request?(request) and state.calls < 16 do
       {:call, request,
        Map.merge(state, %{phase: :call, envelope: envelope, calls: state.calls + 1})}
@@ -195,10 +195,11 @@ defmodule IpseKnowledge.Store.MCPCAS do
   end
 
   defp conflict(
-         %{operation: :cas_root, profile: %{"contract" => "ipse-cas-v2"}} = state,
+         %{operation: :cas_root, profile: %{"contract" => contract}} = state,
          value,
          generation
-       ) do
+       )
+       when contract in ~w(ipse-cas-v2 ipse-cas-v3) do
     summary = value["record"]
     expected = state.expected
 
@@ -379,24 +380,35 @@ defmodule IpseKnowledge.Store.MCPCAS do
   defp write_next(%{pages: []} = state), do: {:done, {:ok, %{"records" => state.records}}}
 
   defp write_next(state) do
-    pair = Enum.take(state.pages, 2)
-    args = %{"pages" => Enum.map(pair, &Map.put(&1, "expected_revision", 0))}
-
-    pair_request = %{
-      "op" => "mcp.call",
-      "version" => 1,
-      "binding" => state.profile["binding"],
-      "timeout_ms" => 30_000,
-      "arguments" =>
-        envelope(state.profile, "put_immutable_many", args, String.duplicate("0", 32))
-    }
-
-    pages = if bounded_request?(pair_request), do: pair, else: Enum.take(pair, 1)
+    [pages | _] = write_batches(state.profile, state.pages)
 
     dispatch(state, "put_immutable_many", %{
       "pages" => Enum.map(pages, &Map.put(&1, "expected_revision", 0))
     })
   end
+
+  def write_batches(_profile, []), do: []
+
+  def write_batches(profile, pending) do
+    pair = Enum.take(pending, 2)
+    args = %{"pages" => Enum.map(pair, &Map.put(&1, "expected_revision", 0))}
+
+    pair_request = %{
+      "op" => "mcp.call",
+      "version" => 1,
+      "binding" => profile["binding"],
+      "timeout_ms" => 30_000,
+      "arguments" => envelope(profile, "put_immutable_many", args, String.duplicate("0", 32))
+    }
+
+    pages = if bounded_request?(pair_request), do: pair, else: Enum.take(pair, 1)
+
+    [pages | write_batches(profile, Enum.drop(pending, length(pages)))]
+  end
+
+  defp contract_version(%{"contract" => "ipse-cas-v3"}), do: 3
+  defp contract_version(%{"contract" => "ipse-cas-v2"}), do: 2
+  defp contract_version(_), do: 1
 
   defp rows(value, keys) do
     records = value["records"]

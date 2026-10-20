@@ -51,15 +51,18 @@ mod linux {
         u64::from_str_radix(text, 16).map_err(|_| "malformed listener TCP table".into())
     }
 
-    fn address(text: &str) -> Result<(u64, u64), String> {
+    fn address(text: &str, width: usize) -> Result<(&str, u64), String> {
         let (host, port) = text.split_once(':').ok_or("malformed listener TCP address")?;
-        Ok((hexadecimal(host, 8)?, hexadecimal(port, 4)?))
+        if host.len() != width || !host.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+            return Err("malformed listener TCP address".into());
+        }
+        Ok((host, hexadecimal(port, 4)?))
     }
 
-    fn listening_inode(text: &str, port: u16) -> Result<Option<u64>, String> {
+    fn listening_inode(text: &str, port: u16, ipv6: bool) -> Result<Option<u64>, String> {
         let mut lines = text.lines();
         if lines.next().map(|line| line.split_whitespace().take(4).collect::<Vec<_>>())
-            != Some(vec!["sl", "local_address", "rem_address", "st"]) {
+            != Some(vec!["sl", "local_address", if ipv6 { "remote_address" } else { "rem_address" }, "st"]) {
             return Err("malformed listener TCP header".into());
         }
         let mut found = None;
@@ -68,12 +71,14 @@ mod linux {
             if fields.len() < 10 { return Err("malformed listener TCP row".into()); }
             fields[0].strip_suffix(':').ok_or("malformed listener TCP row")?
                 .parse::<u32>().map_err(|_| "malformed listener TCP row")?;
-            let (host, local_port) = address(fields[1])?;
-            address(fields[2])?;
+            let width = if ipv6 { 32 } else { 8 };
+            let (host, local_port) = address(fields[1], width)?;
+            address(fields[2], width)?;
             let state = hexadecimal(fields[3], 2)?;
             let inode = fields[9].parse::<u64>().map_err(|_| "malformed listener socket inode")?;
             if state == 10 && local_port == u64::from(port) {
-                if host != u64::from(u32::from_ne_bytes([127, 0, 0, 1])) || inode == 0 || found.is_some() {
+                if ipv6 { return Err("IPv6 listener occupies the selected IPv4 port".into()); }
+                if hexadecimal(host, 8)? != u64::from(u32::from_ne_bytes([127, 0, 0, 1])) || inode == 0 || found.is_some() {
                     return Err("listener tuple is foreign or ambiguous".into());
                 }
                 found = Some(inode);
@@ -83,18 +88,25 @@ mod linux {
     }
 
     fn table(port: u16) -> Result<Option<u64>, String> {
-        let file = File::open("/proc/self/net/tcp")
-            .map_err(|_| "owned listener TCP table unavailable")?;
-        let mut bytes = Vec::new();
-        file.take((MAX_TCP + 1) as u64).read_to_end(&mut bytes)
-            .map_err(|_| "owned listener TCP table unavailable")?;
-        table_bytes(&bytes, port)
+        let mut remaining = MAX_TCP;
+        let mut found = None;
+        for (path, ipv6) in [("/proc/self/net/tcp6", true), ("/proc/self/net/tcp", false)] {
+            let file = File::open(path).map_err(|_| "owned listener TCP table unavailable")?;
+            let mut bytes = Vec::new();
+            file.take((remaining + 1) as u64).read_to_end(&mut bytes)
+                .map_err(|_| "owned listener TCP table unavailable")?;
+            if bytes.len() > remaining { return Err("owned listener TCP tables exceed bound".into()); }
+            remaining -= bytes.len();
+            let inode = table_bytes(&bytes, port, ipv6)?;
+            if !ipv6 { found = inode; }
+        }
+        Ok(found)
     }
 
-    fn table_bytes(bytes: &[u8], port: u16) -> Result<Option<u64>, String> {
+    fn table_bytes(bytes: &[u8], port: u16, ipv6: bool) -> Result<Option<u64>, String> {
         if bytes.len() > MAX_TCP { return Err("owned listener TCP table exceeds bound".into()); }
         let text = std::str::from_utf8(bytes).map_err(|_| "malformed listener TCP table")?;
-        listening_inode(text, port)
+        listening_inode(text, port, ipv6)
     }
 
     fn socket_inode(link: &str) -> Result<Option<u64>, String> {
@@ -191,32 +203,48 @@ mod linux {
         #[test]
         fn accepts_only_exact_loopback_listen_inode() {
             let own = HEADER.to_string() + &row("0100007F", 21434, "0A", "991");
-            assert_eq!(listening_inode(&own, 21434).unwrap(), Some(991));
-            assert_eq!(listening_inode(&own, 21435).unwrap(), None);
-            assert_eq!(listening_inode(&(HEADER.to_string() + &row("0100007F", 21434, "01", "991")), 21434).unwrap(), None);
+            assert_eq!(listening_inode(&own, 21434, false).unwrap(), Some(991));
+            assert_eq!(listening_inode(&own, 21435, false).unwrap(), None);
+            assert_eq!(listening_inode(&(HEADER.to_string() + &row("0100007F", 21434, "01", "991")), 21434, false).unwrap(), None);
             for host in ["00000000", "0200007F", "0100000A"] {
-                assert!(listening_inode(&(HEADER.to_string() + &row(host, 21434, "0A", "991")), 21434).is_err());
+                assert!(listening_inode(&(HEADER.to_string() + &row(host, 21434, "0A", "991")), 21434, false).is_err());
             }
         }
         #[test]
         fn rejects_ambiguous_and_malformed_required_records() {
             let own = row("0100007F", 21434, "0A", "991");
-            assert!(listening_inode(&(HEADER.to_string() + &own + &own), 21434).is_err());
+            assert!(listening_inode(&(HEADER.to_string() + &own + &own), 21434, false).is_err());
             for text in ["", "wrong header\n", "sl local_address rem_address st\nbroken\n"] {
-                assert!(listening_inode(text, 21434).is_err());
+                assert!(listening_inode(text, 21434, false).is_err());
             }
             for inode in ["0", "no", "18446744073709551616"] {
-                assert!(listening_inode(&(HEADER.to_string() + &row("0100007F", 21434, "0A", inode)), 21434).is_err());
+                assert!(listening_inode(&(HEADER.to_string() + &row("0100007F", 21434, "0A", inode)), 21434, false).is_err());
             }
             for host in ["010007F", "ZZ00007F"] {
-                assert!(listening_inode(&(HEADER.to_string() + &row(host, 21434, "0A", "991")), 21434).is_err());
+                assert!(listening_inode(&(HEADER.to_string() + &row(host, 21434, "0A", "991")), 21434, false).is_err());
             }
         }
         #[test]
         fn table_bytes_have_finite_and_utf8_bounds() {
-            assert!(table_bytes(&vec![b'x'; MAX_TCP + 1], 21434).is_err());
-            assert!(table_bytes(&[255], 21434).is_err());
-            assert_eq!(table_bytes(HEADER.as_bytes(), 21434).unwrap(), None);
+            assert!(table_bytes(&vec![b'x'; MAX_TCP + 1], 21434, false).is_err());
+            assert!(table_bytes(&[255], 21434, false).is_err());
+            assert_eq!(table_bytes(HEADER.as_bytes(), 21434, false).unwrap(), None);
+        }
+        #[test]
+        fn ipv6_listeners_cannot_hide_behind_an_ipv4_tuple() {
+            let header = HEADER.replace("rem_address", "remote_address");
+            let row6 = |host: &str, port: u16, state: &str| format!(
+                "0: {host}:{port:04X} 00000000000000000000000000000000:0000 {state} 00000000:00000000 00:00000000 00000000 1000 0 991 1\n"
+            );
+            for host in ["00000000000000000000000000000000", "00000000000000000000000001000000",
+                "0000000000000000FFFF00000100007F"] {
+                assert!(listening_inode(&(header.clone() + &row6(host, 21434, "0A")), 21434, true).is_err());
+                assert_eq!(listening_inode(&(header.clone() + &row6(host, 21435, "0A")), 21434, true).unwrap(), None);
+                assert_eq!(listening_inode(&(header.clone() + &row6(host, 21434, "01")), 21434, true).unwrap(), None);
+            }
+            assert!(listening_inode(&(header.clone() + &row6("0100007F", 21434, "0A")), 21434, true).is_err());
+            assert!(table_bytes(&[255], 21434, true).is_err());
+            assert_eq!(table_bytes(header.as_bytes(), 21434, true).unwrap(), None);
         }
         #[test]
         fn procfs_pid_namespace_must_name_only_the_current_process() {

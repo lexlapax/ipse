@@ -188,10 +188,10 @@ defmodule Ipse.Extensions.State do
         deadline_failure(state, old, checked_at)
 
       state["generation"] >= @max_revision or old["revision"] >= @max_revision ->
-        {:error, :extension_state_quota}
+        quota_failure(state, old)
 
       old["revision"] == 0 and map_size(state["records"]) >= @records ->
-        {:error, :extension_state_quota}
+        quota_failure(state, old)
 
       true ->
         record = %{
@@ -212,6 +212,7 @@ defmodule Ipse.Extensions.State do
           {:ok, %{"generation" => next["generation"], "record" => record}}
         else
           {:elapsed, checked_at} -> deadline_failure(state, old, checked_at)
+          {:error, :extension_state_quota} -> quota_failure(state, old)
           error -> error
         end
     end
@@ -284,6 +285,15 @@ defmodule Ipse.Extensions.State do
   end
 
   defp check_write_deadline(_), do: :ok
+
+  defp quota_failure(state, old),
+    do:
+      {:failed,
+       %{
+         "code" => "extension_state_quota",
+         "generation" => state["generation"],
+         "record" => Map.drop(old, ["value"])
+       }}
 
   defp deadline_failure(state, old, checked_at),
     do:
@@ -435,6 +445,21 @@ defmodule Ipse.Extensions.State do
          value["record"]["operation_id"] != operation_id) and
       (value["record"]["revision"] != request["expected_revision"] or
          not generation_matches?(request, value["generation"]))
+  end
+
+  defp outcome?(
+         %{"op" => op} = request,
+         "failed",
+         %{"code" => "extension_state_quota"} = value,
+         operation_id
+       )
+       when op in ~w(state.put state.delete) do
+    validate(request) == :ok and keys?(value, ~w(code generation record)) and
+      revision?(value["generation"]) and summary?(value["record"], value["generation"]) and
+      value["record"]["key"] == request["key"] and
+      value["record"]["operation_id"] != operation_id and
+      generation_matches?(request, value["generation"]) and
+      value["record"]["revision"] == request["expected_revision"]
   end
 
   defp outcome?(

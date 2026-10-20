@@ -28,7 +28,7 @@ Follow these owners in execution order:
 | Public Session | `examples/knowledge/evaluation_session.exs` | Invoke approved public commands and retain complete results and cleanup acknowledgments |
 | Input and answer projection | `evaluation_input.exs`, `evaluation_answer.exs` in the same directory | Keep labels outside predictor input and map shown answer spans back to complete evidence |
 | Inspection | `evaluation_inventory.exs`, `evaluation_resources.exs` | Verify storage reachability and reconcile canonical requests with conservative budget liability |
-| Review and score | `evaluation_review.exs`, `evaluation_score.exs`, `metrics.exs` | Blind saved predictions, inspect literal references and measure independent verdicts |
+| Review and score | `evaluation_review.exs`, `evaluation_integrity.exs`, `evaluation_score.exs`, `metrics.exs` | Blind saved predictions, recompute literal references from captured bytes and measure independent semantic verdicts |
 
 The Session driver imports artifacts through ordinary host APIs. It does not load
 production knowledge modules into the evaluator or call a provider directly.
@@ -950,6 +950,12 @@ labels cannot guarantee that a reviewer cannot infer one.
 
 The `source-bytes-v1` integrity rows compare the original corpus against complete
 project/source/generation/typed-version/hash identities and exact UTF8 byte spans.
+They help the reviewer inspect citations. At scoring time, the runner reloads
+the corpus member from the verified dataset, checks its member hash, and the
+scorer validates every complete document hash before recomputing all integrity
+rows. Values copied or edited in `reviews.json` cannot override those checks.
+Reference spans are checked against the same corpus; an invalid reference
+refuses scoring with `invalid_reference_integrity`.
 The semantic template remains `unmeasured` with `independent: false`, even when
 every byte check succeeds. The independent reviewer judges entailment and each
 claim/span pair, using their actual identity. The generating model cannot judge
@@ -990,7 +996,7 @@ mix test test/knowledge_evaluation_score_test.exs test/knowledge_metrics_test.ex
 ```
 
 Open `test/knowledge_evaluation_score_test.exs`. Follow its `inputs/3` fixture
-into `EvaluationScore.score/4`. The frozen declaration names variants, queries,
+into `EvaluationScore.score/5`. The frozen declaration names variants, queries,
 a baseline, an explicit classification mapping and prediction-file hashes.
 Its version-two `context_sha256` names verified experiment and reference policy.
 Runner supplies the verified execution-freeze hash. A direct pure caller owns
@@ -1000,7 +1006,10 @@ The raw JSONL blobs are supplied separately. The scorer first validates every
 expected raw hash and row. It then derives the review binding from the context,
 metric version and sorted file identities. Next it loads the review and checks
 its closed version-two envelope and binding. Only a matching review can reach
-the label callback. Execution-seal versions, prediction-row versions, scoring
+the corpus callback. That callback returns original corpus JSON bytes, separately
+from the review. The scorer validates source hashes and recomputes literal
+integrity before calling the label loader, then validates reference spans.
+Execution-seal versions, prediction-row versions, scoring
 declarations and review envelopes have separate version fields.
 
 Work through the first test as a change exercise:
@@ -1008,13 +1017,19 @@ Work through the first test as a change exercise:
 1. Replace the saved prediction bytes while retaining the original hash. Expect
    `:prediction_hash_mismatch` and no loader message.
 2. Restore the bytes, insert a duplicate JSON key and update the file hash.
-   Expect `:duplicate_prediction_key` before either loader runs.
+   Expect `:duplicate_prediction_key` before any loader runs.
 3. Submit two rows for the same variant/query or an `attempt` other than one.
    Expect refusal rather than a best-of-several prediction.
 4. Bind a valid review, change the answer and its raw file hash, and keep all IDs.
    Expect `:review_binding_mismatch` before the label callback runs.
 5. Change only `context_sha256`. Expect the same binding refusal.
-6. Run the suites again. Check that the valid control still reaches both loaders
+6. Bind a fabricated quote to its changed prediction bytes and mark its integrity
+   valid in the review. Expect an invalid literal receipt and a failed citation
+   gate. The valid-byte control must pass even if its review flag says invalid.
+7. Corrupt a corpus body without changing its declared hash. Expect
+   `:invalid_corpus` before the label callback. Change a reference offset instead;
+   expect `:invalid_reference_integrity` after label validation.
+8. Run the suites again. Check that the valid control reaches all three loaders
    and reports its measurements.
 
 The scorer bounds raw bytes, rows, nesting, strings and collections before
@@ -1037,14 +1052,14 @@ Read these report fields independently:
 | Measurement | What it establishes |
 | --- | --- |
 | Source Recall@5 and nDCG@10 | Ranked full source identities against source relevance grades |
-| Exact and contained span recall | Matching byte coordinates and UTF8 content against annotated spans, with independent literal integrity |
+| Exact and contained span recall | Matching byte coordinates and UTF8 content against annotated spans, with corpus-derived literal integrity |
 | Classification and confusion matrix | The frozen mapping of saved classes against expected classes, retaining execution failures |
 | Semantic support and citation precision | Explicit independent verdicts on actual saved responses and claim/span pairs |
 
 Several claims citing one span remain several claim/span pairs. A quote at the
 wrong byte coordinates cannot gain contained-span credit from substring overlap.
 Cross-project evidence is invalid even if a supplied integrity review calls it
-valid. Missing or non-independent review stays unmeasured. A retrieval-only row
+valid. Missing or non-independent semantic review stays unmeasured. A retrieval-only row
 has no supported-answer measurement.
 
 When the plan selects answers, an execution failure keeps `response_kind: "answer"`

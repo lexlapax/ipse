@@ -148,6 +148,50 @@ defmodule Ipse.Extensions.EmbeddingCallSessionTest do
     end
   end
 
+  test "unrecordable embeddings refuse before approval and leave a resumable unsealed journal",
+       ctx do
+    http = http(ctx, 4096)
+
+    cfg =
+      config(ctx, http.base, 4096)
+      |> Map.merge(%{approval: :ask, journal: %{"max_record_bytes" => 65_536}})
+
+    pid = start(ctx, cfg)
+    invoke(pid, request(4))
+    done(pid, :error)
+    assert calls(ctx) == []
+    refute_receive {:ipse, ^pid, {:approval, _, _, _}}
+    refute_receive {:embedding_http, _, _, _}
+    ev = events(ctx, pid)
+
+    refute Enum.any?(
+             ev,
+             &(&1["type"] in ~w(extension_action_intent request_admitted extension_effect_result request_finished journal_limit_reached))
+           )
+
+    assert_idle_resume(ctx, pid, cfg, http)
+  end
+
+  test "representable selected embedding dimensions and counts fit a 65536-byte record", ctx do
+    for dimensions <- [768, 4096] do
+      http = http(ctx, dimensions)
+
+      cfg =
+        config(ctx, http.base, dimensions) |> Map.put(:journal, %{"max_record_bytes" => 65_536})
+
+      pid = start(ctx, cfg)
+      invoke(pid, request())
+      assert_receive {:embedding_http, _, handler, _}, 5000
+      send(handler, :respond)
+      done(pid)
+      ev = events(ctx, pid)
+      assert_canonical_order(ev)
+      assert Enum.any?(ev, &(&1["type"] == "extension_effect_result"))
+      refute Enum.any?(ev, &(&1["type"] == "journal_limit_reached"))
+      assert_idle_resume(ctx, pid, cfg, http)
+    end
+  end
+
   test "denied exact egress performs no HTTP request, inference admission or source publication",
        ctx do
     http = http(ctx, 768)

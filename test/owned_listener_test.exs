@@ -82,7 +82,7 @@ defmodule Ipse.OwnedListenerTest do
              )
 
     result = OwnedListenerVerification.verify(fixture, ctx.root)
-    assert result["checks"] == 7
+    assert result["checks"] == 8
     assert result["inference_requests"] == 0
   end
 end
