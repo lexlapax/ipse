@@ -125,6 +125,38 @@ tuning observations, not independent final semantic verdicts. The
 the decode probe and limits. Future work needs new declarations and preserves
 this failed attempt.
 
+## Derive answer text from cited claims
+
+The retained tuning responses exposed a second source of disagreement: a model
+could write one answer and attach claims saying something else. The live answer
+adapter now accepts exactly `classification` and `claims`. For nonempty claims,
+it derives the saved answer by joining their unchanged text with one LF. Empty
+`open` and `abstain` decisions use documented fixed text. Invalid combinations
+refuse the first response without retry or classification repair. Historical
+prediction readers and scoring contracts remain unchanged. These mechanical
+checks cannot establish claim support, completeness or correct classification.
+
+Both independent adversarial reviews, [A](answer-review-a.md) and
+[B](answer-review-b.md), report no actionable finding. The focused regression
+fails before the repair and passes afterward. Decoder, measured-daemon and real
+Session/runner fixtures verify strict shape, byte limits, original Unicode,
+two claims sharing one evidence span with separate citation pairs, and a failed
+second response with exactly two requests and no retry. Their counts overlap
+the full suites. The whole evaluation chapter was reviewed, and its two literal
+JSON examples and documented focused CLI exercise pass against the real adapter.
+
+The same [461-file runtime/test inventory](answer-source.json) passes macOS's
+1,363-test suite, with one skip and 36 exclusions, and Linux's 1,402-test suite,
+with native sandbox enabled and 19 exclusions. Both pass build, formatting,
+strict compilation and demo. Linux also passes separate 350-row synthetic
+source and installed-package measured proofs, sealed scoring controls, package
+build and unchanged-inventory checks. The isolated Linux snapshot has matching
+runtime/test bytes; later editorial and archive documents differ. macOS native
+checks were not repeated for this increment. The
+[verification receipt](answer-verification.json) binds reviews, logs, inventory,
+synthetic audits, package identity and the coverage limits. No real model quality,
+matched resource comparison or new process-level answer-access trace is claimed.
+
 ## Commit independent validation inputs
 
 A fresh-context independent author committed fifty new questions across two

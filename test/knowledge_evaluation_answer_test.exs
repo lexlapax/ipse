@@ -30,9 +30,139 @@ defmodule Ipse.KnowledgeEvaluationAnswerTest do
   defp response(class \\ "answer", ids \\ ["e1"]) do
     %{
       "classification" => class,
-      "answer" => "Include checksums.",
       "claims" => [%{"text" => "Include checksums.", "citations" => ids}]
     }
+  end
+
+  @tag :answer_contract
+  test "one ordered cited body supplies the material answer independently of its classification" do
+    {:ok, bundle} = Answer.prepare("release", 1000, [candidate("a")])
+    texts = ["  Preserve café and é.\nA quoted \"line\".  ", "Path \\release requires checksums."]
+    claims = Enum.map(texts, &%{"text" => &1, "citations" => ["e1"]})
+
+    for class <- ~w(answer conflict open) do
+      wire = %{"classification" => class, "claims" => claims}
+      assert {:ok, decoded} = Answer.decode_answer(JSON.encode!(wire), bundle)
+      assert decoded["classification"] == class
+      assert decoded["answer"] == Enum.join(texts, "\n")
+      assert Enum.map(decoded["claims"], & &1["text"]) == texts
+      assert Enum.all?(decoded["claims"], &(Enum.sort(Map.keys(&1)) == ~w(citations text)))
+
+      for legacy_answer <- [nil, "A separate contradictory answer."] do
+        assert {:error, :invalid_answer_shape} =
+                 Answer.decode_answer(
+                   JSON.encode!(Map.put(wire, "answer", legacy_answer)),
+                   bundle
+                 )
+      end
+    end
+  end
+
+  test "empty decisions preserve the difference between shown, omitted and absent evidence" do
+    {:ok, shown} = Answer.prepare("release", 1000, [candidate("a")])
+    {:ok, absent} = Answer.prepare("release", 1000, [])
+
+    {:ok, omitted} =
+      Answer.prepare("release", 1000, [candidate("a", String.duplicate(<<0>>, 1024))])
+
+    assert absent["coverage"]["candidate_count"] == 0
+    assert omitted["coverage"]["candidate_count"] == 1
+
+    for bundle <- [shown, absent, omitted], class <- ~w(answer conflict open abstain) do
+      wire = JSON.encode!(%{"classification" => class, "claims" => []})
+
+      if class == "abstain" or (class == "open" and bundle == shown) do
+        assert {:ok, decoded} = Answer.decode_answer(wire, bundle)
+
+        assert decoded["answer"] ==
+                 if(class == "abstain",
+                   do: "I cannot answer from the shown evidence.",
+                   else: "The shown evidence leaves this question unresolved."
+                 )
+
+        assert decoded["claims"] == []
+        refute Map.has_key?(decoded, "supported")
+      else
+        assert {:error, :invalid_answer_shape} = Answer.decode_answer(wire, bundle)
+      end
+    end
+  end
+
+  test "decoded text and serialized output retain their existing separate byte limits" do
+    {:ok, bundle} = Answer.prepare("release", 1000, [candidate("a")])
+    assert byte_size(bundle["request"]["instruction"]) <= 2048
+    assert bundle["request"]["max_output_bytes"] == 8192
+    assert bundle["request"]["timeout_ms"] == 120_000
+
+    for text <- [String.duplicate("é", 512), String.duplicate(<<0>>, 1024)] do
+      wire = put_in(response(), ["claims", Access.at(0), "text"], text) |> JSON.encode!()
+      padded = wire <> String.duplicate(" ", 8192 - byte_size(wire))
+      assert {:ok, decoded} = Answer.decode_answer(padded, bundle)
+      assert decoded["answer"] == text
+      assert hd(decoded["claims"])["text"] == text
+      assert {:error, :answer_too_large} = Answer.decode_answer(padded <> " ", bundle)
+
+      oversized = put_in(response(), ["claims", Access.at(0), "text"], text <> "x")
+      assert {:error, :invalid_claim} = Answer.decode_answer(JSON.encode!(oversized), bundle)
+    end
+
+    eight = Map.put(response(), "claims", List.duplicate(hd(response()["claims"]), 8))
+    assert {:ok, decoded} = Answer.decode_answer(JSON.encode!(eight), bundle)
+    assert length(decoded["claims"]) == 8
+    assert decoded["answer"] == Enum.map_join(eight["claims"], "\n", & &1["text"])
+    nine = Map.update!(eight, "claims", &(&1 ++ [hd(&1)]))
+    assert {:error, :invalid_answer_shape} = Answer.decode_answer(JSON.encode!(nine), bundle)
+  end
+
+  test "each claim keeps its complete citation associations without text deduplication" do
+    evidence = [candidate("a"), candidate("b")]
+    {:ok, bundle} = Answer.prepare("release", 1000, evidence)
+    repeated = %{"text" => "Include checksums.", "citations" => ["e1", "e2"]}
+    wire = %{"classification" => "conflict", "claims" => [repeated, repeated]}
+    assert {:ok, decoded} = Answer.decode_answer(JSON.encode!(wire), bundle)
+    assert decoded["answer"] == "Include checksums.\nInclude checksums."
+    assert length(decoded["claims"]) == 2
+
+    for claim <- decoded["claims"] do
+      assert Enum.map(claim["citations"], & &1["candidate_id"]) == ~w(e1 e2)
+
+      assert Enum.map(claim["citations"], & &1["citation"]) ==
+               Enum.map(evidence, & &1["citation"])
+    end
+  end
+
+  test "invalid wire values refuse the whole answer without repairing a decision" do
+    {:ok, bundle} = Answer.prepare("release", 1000, [candidate("a")])
+
+    for value <- [
+          nil,
+          [],
+          "answer",
+          %{},
+          %{"classification" => "unknown", "claims" => []},
+          Map.put(response(), "claims", nil),
+          Map.put(response(), "extra", true),
+          put_in(response(), ["claims", Access.at(0), "text"], " \n"),
+          put_in(response(), ["claims", Access.at(0), "citations"], []),
+          put_in(response(), ["claims", Access.at(0), "citations"], [1]),
+          put_in(response(), ["claims", Access.at(0), "extra"], true)
+        ] do
+      assert {:error, _} = Answer.decode_answer(JSON.encode!(value), bundle)
+    end
+
+    assert {:error, :duplicate_json_key} =
+             Answer.decode_answer(
+               ~s({"classification":"answer","claims":[{"text":"a","text":"b","citations":["e1"]}]}),
+               bundle
+             )
+
+    assert {:error, _} =
+             Answer.decode_answer(
+               ~s({"classification":"answer","claims":[{"text":") <>
+                 <<255>> <>
+                 ~s(","citations":["e1"]}]}),
+               bundle
+             )
   end
 
   test "saved rank and complete citation identity survive deterministic preparation and mapping" do
@@ -143,7 +273,7 @@ defmodule Ipse.KnowledgeEvaluationAnswerTest do
 
     assert {:ok, _} =
              Answer.decode_answer(
-               ~s({"classification":"abstain","answer":"Insufficient evidence.","claims":[]}),
+               ~s({"classification":"abstain","claims":[]}),
                empty
              )
   end

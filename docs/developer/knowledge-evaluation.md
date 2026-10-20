@@ -1007,6 +1007,54 @@ retrieval result separately so answer-context limits cannot erase the retrieval
 measurement. A nonempty retrieval with no admitted candidate remains distinct
 from empty retrieval in coverage.
 
+After the public Session call completes, pass the saved response text and the
+same bundle to `decode_answer/2`. The model writes exactly `classification` and
+`claims`. It does not write an independent prose answer. Each claim contains only
+`text` and `citations`; its text is nonblank and at most 1024 UTF8 bytes. Its
+citation list contains one to ten unique shown IDs. Unknown or omitted IDs,
+extra or duplicate fields, invalid UTF8, trailing content and Markdown fences
+refuse the whole response. The raw JSON remains bounded to 8192 bytes.
+
+The decoder resolves each ID to its original shown citation and derives the
+material answer from the claim texts in order, joined by one LF. It preserves
+each decoded text exactly, including whitespace, Unicode and embedded newlines.
+It adds no classification-dependent prose to a nonempty answer. Changing a
+classification therefore cannot change those material statements, although the
+classification can still be wrong.
+
+| Classification | Claims | Derived answer |
+| --- | --- | --- |
+| `answer` | One to eight | Ordered claim texts joined by one LF |
+| `conflict` | One to eight | The same derivation; claims state the incompatible positions and their scope |
+| `open` | Zero to eight | The same derivation when nonempty; otherwise `The shown evidence leaves this question unresolved.` |
+| `abstain` | None | `I cannot answer from the shown evidence.` |
+
+Without any shown candidates, only `abstain` with no claims is valid. With shown
+evidence, an empty `open` or `abstain` can still be semantically incorrect. Neither
+receives support credit from output conformance. One source can contain an
+unresolved conflict; neither the decoder nor independent review requires two
+different sources.
+
+For example, this synthetic prepared model input contains a release condition
+and its exception:
+
+```json
+{"query":"Can the field kit ship before its checksum manifest is ready?","as_of_ms":1000,"candidates":[{"id":"e1","source_id":"kit-policy","generation":1,"observed_at_ms":100,"event_at_ms":null,"quote":"For the field kit, release requires a checksum manifest. This requirement is waived for local rehearsal copies."}]}
+```
+
+A response that preserves both facts is:
+
+```json
+{"classification":"answer","claims":[{"text":"The field kit requires a checksum manifest for release, except for local rehearsal copies.","citations":["e1"]}]}
+```
+
+The decoded `answer` is exactly that claim's text. The short ID resolves to the
+complete validated citation supplied to preparation; the model supplies no source
+hash or byte coordinates. Each cited span must support its whole associated
+claim. If support differs between factual points, the model must split them into
+separate claims. Matching words alone do not establish support, and the helper
+does not infer equivalence between differently named entities or procedures.
+
 Saved prediction rows use version two. `evidence` keeps the complete returned
 ranking; `context_evidence` holds only the spans actually cited by the answer,
 not every passage shown to the model. Each context span must be contained in an
@@ -1019,6 +1067,14 @@ its declared packing policy; comparing `evidence` with `context_evidence` measur
 citation use as well as visibility. Complete admitted quotes may already be
 partial source excerpts; this helper cannot recover upstream retrieval omissions.
 
+Claim IDs follow array order as `c1`, `c2` and so on. Cited context IDs are `a-e1`,
+`a-e2` and so on. Two claims citing the same span retain two distinct review pairs,
+such as `pair1-1` and `pair2-1`, while storing that context span once. Repeated
+claim text is not deduplicated. The version-two saved format still contains both
+`answer` and `claims`, and historical prediction readers remain unchanged. Only
+the live model response loses the redundant `answer` field. Old raw responses
+containing that field refuse, including `answer: null`.
+
 Both CLI readers and the scorer accept at most 64 MiB in one prediction file
 and 64 MiB across all declared files. Each JSONL row remains limited to 256 KiB.
 Count serialized bytes, including JSON escapes and repeated source identities;
@@ -1029,16 +1085,24 @@ decoder; manifests and dataset members retain their separate 1-MiB limits.
 A size refusal keeps the first predictions for inspection. Never drop rows or
 rerun model work to make a retained comparison fit a later consumer.
 
-After the public Session call completes, pass the saved response text and the
-same bundle to `decode_answer/2`. The decoder requires one complete JSON object
-with `classification`, `answer` and `claims`. Each claim references unique shown
-IDs. Unknown IDs, extra fields, duplicate fields and Markdown fences refuse.
-An abstention has no claims. An answer or conflict has at least one cited claim;
-one source can contain conflicting statements.
+To trace the change through real Session and worker execution, run the focused
+synthetic exercise from the repository root:
 
-The mapped result proves which shown span a claim cited. It does not establish
-that the span supports the claim. Keep that semantic judgment in independent
-review, alongside literal captured-source verification.
+```sh
+mix test test/knowledge_evaluation_answer_test.exs test/knowledge_evaluation_runner_test.exs --only answer_contract
+```
+
+The decoder exercise changes the class without changing the material answer.
+The runner exercise retains two claims sharing one span and verifies distinct
+pair IDs. It also returns an invalid response for the next query and checks that
+the saved first row stays failed, with no prose answer, claims or retry. Retrieval
+evidence remains available for inspection. The exercise uses a local scripted
+model server, not actual model inference or a quality workload.
+
+Derivation removes a second independently written prose body. It cannot establish
+that a claim follows from its citation, that a class is correct, that the answer
+is complete, or that two claims agree. Keep those semantic judgments in
+independent review, alongside literal captured-source verification.
 
 ## Prepare independent review from finalized predictions
 

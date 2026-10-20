@@ -137,13 +137,12 @@ defmodule MeasuredModelDaemon do
           {"rerank", %{"order" => Enum.map(input["candidates"], & &1["id"])}}
 
         input["candidates"] == [] or input["query"] == "absent mineral" ->
-          {"answer", %{"classification" => "abstain", "answer" => "No evidence.", "claims" => []}}
+          {"answer", %{"classification" => "abstain", "claims" => []}}
 
         true ->
           {"answer",
            %{
              "classification" => "answer",
-             "answer" => "Release requires quiescence.",
              "claims" => [
                %{
                  "text" => "Release requires quiescence.",

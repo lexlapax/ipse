@@ -387,7 +387,7 @@ the milestone. Preserve current SDK bounds and existing operation authority.
 | P27H4 | Opt-in bounded complete-result publication for original top-level tools/commands, historical receipt reads, strict source closure and unchanged ordinary SDK bounds | Complete at `fb980a0`; whole-milestone review, local 1,248-test baseline, Serenity 1,265-test native-enabled suite, exact 4 MiB and complete-domain source/installed proofs pass. Exact-source hosted Ubuntu/macOS matrix passes |
 | P27A | Independent research and lexical corpus packages with named interchangeable profiles, cited evidence, explicit limits, partial failures, stale-index handling and suppression | Review repairs and corrected-source fixture/platform/installed checks pass; held-out quality acceptance remains open |
 | P27B | Independent attributable graph, optional extraction, embedding/hybrid and rerank adapters; matched quality/resource comparisons before engine selection | Review defects and compact model contracts verified through source/platform/installed checks; corrected-source matched quality/resource comparisons and selection remain open |
-| P27 verification | Frozen held-out workload, zero authority/isolation/replay/resurrection failures, measured retrieval/support/citation/resources, source/native/installed checks, coherent user and contributor manuals | Open; review repairs, compact contracts and detached-answer evaluation pass their scoped reviews and checks, including synthetic measured source/installed proofs; prior exposed 350-row result failed quality; fresh held-out quality, resource/selection and structural-readiness gates remain |
+| P27 verification | Frozen held-out workload, zero authority/isolation/replay/resurrection failures, measured retrieval/support/citation/resources, source/native/installed checks, coherent user and contributor manuals | Open; review repairs, compact contracts, detached-answer evaluation and cited-claim answer derivation pass scoped reviews and checks, including synthetic measured source/installed proofs; prior exposed 350-row result failed quality; excerpt repair/tuning, fresh held-out quality, resource/selection and structural-readiness gates remain |
 | P27 structural readiness | Holistic redesign and consolidation of the entire codebase and all user/developer documentation for maintainability and ease of use; migrate callers, builds, tests, packaging and CI together | Open; whole-tree survey, two proposals and independent design review complete; [selected target](archive/2026-10-20-p27-structure-design/index.md) recorded, implementation follows quality repairs/tuning and precedes the final private-evaluation freeze |
 
 The [first host-contract record](archive/2026-10-19-p27-mcp-host-contracts/index.md)
@@ -613,6 +613,16 @@ passes macOS's 1,349-test suite and 30 focused native tests, and Linux's
 1,388-test native-enabled suite. Both source/package/installed proof sets pass;
 the quality-remediation record retains hashes and exclusions. These changes
 establish no new held-out quality or resource result.
+The subsequent [cited-claim answer repair](archive/2026-10-20-p27-quality-remediation/index.md#derive-answer-text-from-cited-claims)
+removes independently generated answer prose. The adapter derives material text
+from the unchanged ordered claims and preserves the model's classification.
+Both independent reviews report no actionable finding. Its frozen 461-file
+runtime/test inventory passes macOS's 1,363-test suite and Linux's 1,402-test
+native-enabled suite, plus Linux source and installed 350-row synthetic measured
+proofs. The record distinguishes matching implementation bytes from later
+editorial documents, overlapping focused tests and unchanged historical readers.
+Real quality, excerpt repair/tuning, structural implementation and final private
+evaluation remain open.
 The selected-runtime CPU compatibility proof passes two real explicit requests,
 with complete accounting and confirmed cleanup. It establishes no quality or
 exact memory result. The superseded `f2bfc8d` comparison was intentionally stopped

@@ -685,16 +685,22 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
           {"rerank", %{"order" => Enum.map(input["candidates"], & &1["id"])}}
 
         input["candidates"] == [] or input["query"] == "absent mineral" ->
-          {"answer", %{"classification" => "abstain", "answer" => "No evidence.", "claims" => []}}
+          {"answer", %{"classification" => "abstain", "claims" => []}}
+
+        input["query"] == "Release invalid shape fixture" ->
+          {"answer", %{"classification" => "open", "answer" => nil, "claims" => []}}
 
         true ->
           {"answer",
            %{
              "classification" => "answer",
-             "answer" => "Release requires quiescence.",
              "claims" => [
                %{
                  "text" => "Release requires quiescence.",
+                 "citations" => [hd(input["candidates"])["id"]]
+               },
+               %{
+                 "text" => "Quiescence is required for release.",
                  "citations" => [hd(input["candidates"])["id"]]
                }
              ]
@@ -1086,6 +1092,59 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
       assert overview["output_storage"]["preflight"]["bytes"] > 0
       assert overview["output_storage"]["store"]["bytes"] > 0
       refute overview["resource_evaluation_complete"]
+    after
+      stop_model_fixture(server)
+    end
+  end
+
+  @tag :answer_contract
+  test "derived claims reach saved pairs and an invalid first answer is retained without retry",
+       ctx do
+    {server, origin, tag} = model_fixture()
+    {paths, root} = cli_inputs(ctx, false)
+    matrix = matrix_plan(ctx, origin)
+    File.write!(paths["plan"], JSON.encode!(%{matrix | "variants" => [hd(matrix["variants"])]}))
+
+    queries = JSON.decode!(File.read!(paths["queries"]))
+    queries = put_in(queries, ["queries", Access.at(1), "query"], "Release invalid shape fixture")
+    File.write!(paths["queries"], JSON.encode!(queries))
+    output = Path.join(root, "results")
+
+    try do
+      assert {:ok, report} =
+               Runner.run(:verify,
+                 plan: paths["plan"],
+                 corpus: paths["corpus"],
+                 queries: paths["queries"],
+                 output: output
+               )
+
+      assert report["execution_complete"] and report["rows"] == 2 and report["failed_rows"] == 1
+      assert length(drain(tag, [])) == 2
+      [good, failed] = jsonl(Path.join(output, "predictions.jsonl"))
+      assert good["status"] == "ok" and good["attempt"] == 1
+      assert good["predicted_class"] == "answer" and good["response_kind"] == "answer"
+
+      assert good["claims"] == [
+               %{"claim_id" => "c1", "text" => "Release requires quiescence."},
+               %{"claim_id" => "c2", "text" => "Quiescence is required for release."}
+             ]
+
+      assert good["answer"] == Enum.map_join(good["claims"], "\n", & &1["text"])
+
+      assert good["citations"] == [
+               %{"citation_id" => "pair1-1", "claim_id" => "c1", "span_id" => "a-e1"},
+               %{"citation_id" => "pair2-1", "claim_id" => "c2", "span_id" => "a-e1"}
+             ]
+
+      assert [ranked] = good["evidence"]
+      assert [cited] = good["context_evidence"]
+      assert cited == Map.put(ranked, "span_id", "a-e1")
+      assert failed["status"] == "failed" and failed["attempt"] == 1
+      assert failed["answer"] == nil and failed["claims"] == [] and failed["citations"] == []
+      assert failed["context_evidence"] == [] and failed["evidence"] != []
+      [budget] = Enum.filter(jsonl(Path.join(output, "usage.jsonl")), &Map.has_key?(&1, "budget"))
+      assert budget["budget"]["request_count"] == 2
     after
       stop_model_fixture(server)
     end

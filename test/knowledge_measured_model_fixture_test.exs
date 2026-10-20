@@ -123,15 +123,17 @@ defmodule Ipse.KnowledgeMeasuredModelFixtureTest do
     assert answer(result) == %{"order" => ["b", "a"]}
     {"answer", result} = chat(%{"query" => "release", "candidates" => [%{"id" => "e1"}]}, models)
 
-    assert %{"classification" => "answer", "claims" => [%{"citations" => ["e1"]}]} =
-             answer(result)
+    assert answer(result) == %{
+             "classification" => "answer",
+             "claims" => [%{"text" => "Release requires quiescence.", "citations" => ["e1"]}]
+           }
 
     assert result["eval_count"] == 8 and result["prompt_eval_count"] == 8
 
     {"answer", result} =
       chat(%{"query" => "absent mineral", "candidates" => [%{"id" => "e1"}]}, models)
 
-    assert %{"classification" => "abstain", "claims" => []} = answer(result)
+    assert answer(result) == %{"classification" => "abstain", "claims" => []}
   end
 
   test "unselected model names and malformed request shapes never produce scripted inference" do
