@@ -713,22 +713,18 @@ defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
       :sequence_incomplete
     )
 
-    final = json!(Path.join(context.resolution["reports"], "finalized.json"))
-    predictions = read!(Path.join(context.resolution["reports"], "predictions.jsonl"))
+    reports = context.resolution["reports"]
 
-    originals =
+    cell_outputs =
       Enum.map(
         prepared.value["schedule"]["cells"],
-        &read!(
-          Path.join(
-            context.resolution["reports"],
-            "cells/" <> &1["id"] <> "/domain/predictions.jsonl"
-          )
-        )
+        &Path.join(reports, "cells/" <> &1["id"] <> "/domain")
       )
-      |> IO.iodata_to_binary()
 
-    require!(predictions == originals, :first_predictions_changed)
+    streams = EvaluationRunner.audit_merged_files(cell_outputs, reports)
+    merged_files = Map.new(streams, fn {name, bytes} -> {name, sha(bytes)} end)
+    final = json!(Path.join(reports, "finalized.json"))
+    predictions = Map.fetch!(streams, "predictions.jsonl")
     rows = jsonl(predictions)
 
     expected =
@@ -750,15 +746,14 @@ defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
     )
 
     resource = json!(Path.join(context.resolution["reports"], "resource-summary.json"))
-    reports = context.resolution["reports"]
 
     recomputed =
       EvaluationResources.summary(
         rows,
-        jsonl(read!(Path.join(reports, "timings.jsonl"))),
-        jsonl(read!(Path.join(reports, "request-resources.jsonl"))),
-        Enum.filter(jsonl(read!(Path.join(reports, "usage.jsonl"))), &Map.has_key?(&1, "budget")),
-        jsonl(read!(Path.join(reports, "resources.jsonl")))
+        jsonl(Map.fetch!(streams, "timings.jsonl")),
+        jsonl(Map.fetch!(streams, "request-resources.jsonl")),
+        Enum.filter(jsonl(Map.fetch!(streams, "usage.jsonl")), &Map.has_key?(&1, "budget")),
+        jsonl(Map.fetch!(streams, "resources.jsonl"))
       )
 
     require!(resource == recomputed, :resource_summary_changed)
@@ -782,6 +777,7 @@ defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
       "freeze_sha256" => context.sha,
       "prepared_sha256" => prepared_sha,
       "prediction_sha256" => sha(predictions),
+      "merged_files" => merged_files,
       "rows" => length(rows),
       "metric" => @metric,
       "whole_lifetime" => root,

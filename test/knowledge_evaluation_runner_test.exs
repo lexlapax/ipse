@@ -1228,7 +1228,8 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
     assert File.regular?(Path.join(output, "predictions.jsonl"))
   end
 
-  test "CLI creates a private blind review and reports unmeasured support", ctx do
+  @tag timeout: 120_000
+  test "CLI creates a bound private review and refuses stale verdicts before labels", ctx do
     {paths, root, manifest, sealed, frozen} = cli_frozen_inputs(ctx, :predictions)
     output = Path.join(root, "frozen-results")
     prediction = sealed["prediction"]
@@ -1303,6 +1304,48 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
 
     assert unmeasured["result"]["gates"]["support"]["status"] == "unmeasured"
     assert File.regular?(Path.join(root, "unmeasured-scores/scores.json"))
+
+    template = File.read!(Path.join(packet_path, "reviews-template.json")) |> JSON.decode!()
+    assert template["version"] == 2
+
+    assert template["review_binding_sha256"] ==
+             JSON.decode!(manifest_bytes)["review_binding_sha256"]
+
+    for {name, changed, code} <- [
+          {"wrong-binding", Map.put(template, "review_binding_sha256", String.duplicate("0", 64)),
+           "review_binding_mismatch"},
+          {"unbound", Map.delete(template, "review_binding_sha256"), "invalid_reviews"},
+          {"legacy", Map.put(template, "version", 1), "invalid_reviews"}
+        ] do
+      changed_path = Path.join(root, name <> ".json")
+      File.write!(changed_path, JSON.encode!(changed))
+      refused_output = Path.join(root, name)
+      unopened_labels = Path.join(root, "must-not-open-labels.json")
+
+      {refused, 1} =
+        cli(
+          ["--phase", "score"] ++
+            frozen ++
+            [
+              "--data-manifest",
+              manifest,
+              "--predictions",
+              prediction_path,
+              "--prediction-sha256",
+              prediction_hash,
+              "--labels",
+              unopened_labels,
+              "--reviews",
+              changed_path,
+              "--output",
+              refused_output
+            ]
+        )
+
+      assert refused["reason"]["code"] == code
+      refute File.exists?(refused_output)
+      refute File.exists?(unopened_labels)
+    end
   end
 
   test "CLI refuses an existing review output without replacing its manifest", ctx do

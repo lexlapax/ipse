@@ -405,7 +405,16 @@ IPSE_PREDICTION_SHA256=$(elixir -e 'r = File.read!(hd(System.argv())) |> String.
 Continue to review only after a successful audit. Audit joins the root M frame,
 collector exits, stage M/T frames, receipt bytes and recorded file identities,
 claim/scope identities, model-service cleanup, domain files, first predictions
-and recomputed resource summaries. The finalizer cannot observe the future outer
+and recomputed resource summaries. It verifies each closed cell's files, then
+`EvaluationRunner.audit_merged_files/2` compares all six merged streams with
+those cells in sealed schedule order. The comparison covers predictions,
+execution, usage, request resources, storage resources and timings. Each stream
+has a cumulative 64-MiB limit. Resource computation uses those exact checked
+bytes, and `report.merged_files` binds their hashes into the audit identity.
+Changing aggregate clocks or deleting requests cannot pass by recomputing a
+matching summary.
+
+The finalizer cannot observe the future outer
 root receipt; read-only post-exit audit supplies that check. Keep the audit hash
 outside both freeze and reports. Repeating `audit` performs inspection; repeating
 `measure` must refuse.
@@ -457,6 +466,15 @@ selected policy. The synthetic daemon verifies those values. They do not prove
 real Ollama CPU execution or every transient device allocation. An audited
 resource result also does not establish held-out quality or independent semantic
 review.
+
+For a change exercise, use the disposable synthetic measured population above.
+Inspect `verify_tamper_controls!/1` in
+`test/support/measured_knowledge_verification.exs`. It changes each merged stream
+and separately tests two coherent rewrites: zeroed clocks with a recomputed
+summary, and removed requests with a recomputed summary. Both summaries can still
+report completeness. The audit must return `merged_stream_changed`, leave the
+changed files untouched and accept again after the fixture restores its original
+bytes. Never run these mutation controls on an actual comparison's evidence.
 
 ### Exercise the version-one identity contract
 
@@ -858,6 +876,12 @@ complete variant/query grid before opening reference labels. It reuses
 cannot substitute for the scorer's row checks. Prediction IDs must be opaque
 `p-` plus SHA256 values before any label loader runs.
 
+Keep three identities separate. The execution-freeze hash selects the experiment
+and its reference data. `review_binding_sha256` binds that context, the metric
+version and every verified prediction-file ID and hash. The separately retained
+`packet_sha256` identifies the complete packet and its reviewer instructions.
+The review binding is opaque to a reviewer. It does not reveal strategy names.
+
 For the v2 seal above, prepare a private packet and then score a separate review:
 
 ```sh
@@ -872,7 +896,9 @@ cp "$IPSE_BENCHMARK/review-packet/reviews-template.json" "$IPSE_BENCHMARK/review
 ```
 
 The copied template remains unmeasured. Give the packet to an independent reviewer
-and keep their actual verdicts in `reviews.json`. After that review, run:
+and keep their actual verdicts in `reviews.json`. Preserve its version-two envelope
+and `review_binding_sha256` exactly. Fill the existing verdict rows without
+changing IDs. After that review, run:
 
 ```sh
 IPSE_LABELS=$(elixir -e '[manifest, plan] = System.argv(); p = JSON.decode!(File.read!(plan)); IO.puts(Path.join(Path.dirname(manifest), p["data"]["queries"]))' "$IPSE_DATA_MANIFEST" "$IPSE_BENCHMARK/frozen-measured/plan.json")
@@ -931,6 +957,14 @@ itself independently. Review flags cannot prove a reviewer's independence.
 Keep notes and disagreements bound to the retained packet hash. Preserve packet
 files; write completed verdicts to a separate `reviews.json`.
 
+Scoring rejects a missing, malformed or legacy version-one review envelope with
+`invalid_reviews`. A well-formed binding for another subject produces
+`review_binding_mismatch`. Both refusals happen before the label loader runs or
+the score directory is created. Do not copy a new binding onto old judgments.
+If prediction bytes or the experiment change, prepare a new packet and obtain
+new judgments, retaining the old packet and review as historical evidence.
+Reusing the same prediction IDs does not authorize reusing its verdicts.
+
 Run the synthetic boundary and CLI exercises before changing this workflow:
 
 ```sh
@@ -940,9 +974,11 @@ mix test test/knowledge_evaluation_review_test.exs test/knowledge_evaluation_sco
 Trace the false-claim fixture: its quotations match actual corpus bytes, but no
 semantic verdict is manufactured. Then compare identical bodies with reused
 integer/string version labels, a foreign project and a wrong reference offset.
-The hash/grid refusal cases must not invoke the label callback. The real CLI
-exercise checks private files, unchanged output after overwrite refusal and a
-nonzero score exit when the supplied review is still unmeasured.
+The hash/grid refusal cases must not invoke the label callback. The stale-review
+fixture changes an answer and its raw file hash while retaining prediction IDs.
+The old review must refuse before labels. The real CLI exercise checks missing,
+legacy and wrong bindings with an absent label path, private files, unchanged
+output after overwrite refusal and a nonzero exit for an unmeasured review.
 
 ## Verify the hash-before-label rule
 
@@ -956,9 +992,16 @@ mix test test/knowledge_evaluation_score_test.exs test/knowledge_metrics_test.ex
 Open `test/knowledge_evaluation_score_test.exs`. Follow its `inputs/3` fixture
 into `EvaluationScore.score/4`. The frozen declaration names variants, queries,
 a baseline, an explicit classification mapping and prediction-file hashes.
-The raw JSONL blobs are supplied separately. Labels and reviews arrive through
-zero-argument callbacks only after every expected raw hash and prediction row
-has passed validation.
+Its version-two `context_sha256` names verified experiment and reference policy.
+Runner supplies the verified execution-freeze hash. A direct pure caller owns
+the trustworthiness of that context value.
+
+The raw JSONL blobs are supplied separately. The scorer first validates every
+expected raw hash and row. It then derives the review binding from the context,
+metric version and sorted file identities. Next it loads the review and checks
+its closed version-two envelope and binding. Only a matching review can reach
+the label callback. Execution-seal versions, prediction-row versions, scoring
+declarations and review envelopes have separate version fields.
 
 Work through the first test as a change exercise:
 
@@ -968,7 +1011,10 @@ Work through the first test as a change exercise:
    Expect `:duplicate_prediction_key` before either loader runs.
 3. Submit two rows for the same variant/query or an `attempt` other than one.
    Expect refusal rather than a best-of-several prediction.
-4. Run the suites again. Check that the valid control still reaches both loaders
+4. Bind a valid review, change the answer and its raw file hash, and keep all IDs.
+   Expect `:review_binding_mismatch` before the label callback runs.
+5. Change only `context_sha256`. Expect the same binding refusal.
+6. Run the suites again. Check that the valid control still reaches both loaders
    and reports its measurements.
 
 The scorer bounds raw bytes, rows, nesting, strings and collections before

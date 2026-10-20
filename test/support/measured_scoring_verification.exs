@@ -35,6 +35,9 @@ defmodule MeasuredScoringVerification do
     packet_manifest = Path.join(packet, "manifest.json") |> File.read!() |> JSON.decode!()
     true = packet_manifest["execution_freeze_sha256"] == run.seal["sha256"]
     true = packet_manifest["data_manifest_sha256"] == verified["plan"]["data"]["manifest_sha256"]
+    template = Path.join(packet, "reviews-template.json") |> File.read!() |> JSON.decode!()
+    2 = template["version"]
+    true = template["review_binding_sha256"] == packet_manifest["review_binding_sha256"]
 
     score_options =
       common ++
@@ -50,6 +53,34 @@ defmodule MeasuredScoringVerification do
     "unmeasured" = score["result"]["gates"]["support"]["status"]
     true = File.regular?(Path.join(root, "score/scores.json"))
     true = snapshot!(run.root, root) == unchanged
+
+    binding_refusals =
+      for {name, code, changed} <- [
+            {"wrong-review-binding", "review_binding_mismatch",
+             Map.put(
+               template,
+               "review_binding_sha256",
+               different_hash(template["review_binding_sha256"])
+             )},
+            {"missing-review-binding", "invalid_reviews",
+             Map.delete(template, "review_binding_sha256")},
+            {"legacy-review", "invalid_reviews", Map.put(template, "version", 1)}
+          ] do
+        file = Path.join(root, name <> ".json")
+        save!(file, JSON.encode!(changed) <> "\n")
+        output = Path.join(root, name)
+        unopened = Path.join(root, "must-not-open-binding-labels.json")
+
+        options =
+          common ++ [labels: unopened, reviews: file, output: output]
+
+        {:error, %{"code" => actual}} = EvaluationRunner.run(:score, options)
+        true = actual == code
+        {:error, :enoent} = File.lstat(output)
+        {:error, :enoent} = File.lstat(unopened)
+        true = snapshot!(run.root, root) == unchanged
+        %{"case" => name, "code" => actual}
+      end
 
     unopened = %{
       labels: Path.join(root, "must-not-open-labels.json"),
@@ -97,6 +128,7 @@ defmodule MeasuredScoringVerification do
       "review_cli" => "passed",
       "score_cli" => "unmeasured_quality_refused",
       "refusals" => refused,
+      "review_binding_refusals" => binding_refusals,
       "unopened_label_and_review_inputs" => true,
       "evaluation_artifacts_and_model_request_logs_unchanged" => true,
       "new_model_work" => false

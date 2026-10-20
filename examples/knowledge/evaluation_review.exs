@@ -7,7 +7,7 @@ defmodule IpseKnowledgeExample.EvaluationReview do
   alias IpseKnowledgeExample.EvaluationInput, as: Input
   @identity ~w(project source_id generation version sha256)
   @instructions """
-  # Independent knowledge review, protocol 1
+  # Independent knowledge review, protocol 2
 
   Review saved outputs only. Do not run retrieval, regenerate an answer, inspect
   the predictor's private plan or infer strategy names. Declared strategy names,
@@ -21,6 +21,8 @@ defmodule IpseKnowledgeExample.EvaluationReview do
   annotations are comparison context, not permission to overlook faulty claims.
 
   Copy reviews-template.json to a separate reviews.json and work in that copy.
+  Preserve version and review_binding_sha256 exactly. The opaque binding names
+  this prediction population and judging context, not your verdict or identity.
   Set your actual reviewer_id and independent=true
   only after independent review. The predictor or its generating model cannot
   independently judge itself. Record identity, limitations, disagreements and
@@ -108,7 +110,8 @@ defmodule IpseKnowledgeExample.EvaluationReview do
             }
 
       review = %{
-        "version" => 1,
+        "version" => 2,
+        "review_binding_sha256" => verified["review_binding_sha256"],
         "integrity" => integrity,
         "semantic" =>
           Enum.map(rows, fn row ->
@@ -170,7 +173,8 @@ defmodule IpseKnowledgeExample.EvaluationReview do
 
       summary = %{
         "version" => 1,
-        "protocol" => "independent-knowledge-review-v1",
+        "protocol" => "independent-knowledge-review-v2",
+        "review_binding_sha256" => verified["review_binding_sha256"],
         "rows" => length(rows),
         "queries" => length(freeze["queries"]),
         "variant_count" => length(freeze["variants"]),

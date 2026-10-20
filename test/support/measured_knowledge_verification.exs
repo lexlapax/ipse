@@ -222,6 +222,11 @@ defmodule MeasuredKnowledgeVerification do
 
     for path <- [
           Path.join(run.reports, "predictions.jsonl"),
+          Path.join(run.reports, "execution.jsonl"),
+          Path.join(run.reports, "usage.jsonl"),
+          Path.join(run.reports, "request-resources.jsonl"),
+          Path.join(run.reports, "resources.jsonl"),
+          Path.join(run.reports, "timings.jsonl"),
           Path.join(run.reports, "cells/cell-000/domain/usage.jsonl"),
           Path.join(run.reports, "cells/cell-000/model-service/receipt.json"),
           Path.join(freeze, "native-root/prepared/population.json"),
@@ -237,6 +242,53 @@ defmodule MeasuredKnowledgeVerification do
         true = snapshot(run.root) == changed
       after
         File.write!(path, original)
+      end
+
+      true = snapshot(run.root) == before
+    end
+
+    for name <- ~w(timings.jsonl request-resources.jsonl) do
+      path = Path.join(run.reports, name)
+      summary_path = Path.join(run.reports, "resource-summary.json")
+      original = File.read!(path)
+      original_summary = File.read!(summary_path)
+      before = snapshot(run.root)
+
+      try do
+        changed =
+          if name == "timings.jsonl" do
+            original
+            |> jsonl()
+            |> Enum.map(&Map.put(&1, "elapsed_us", 0))
+            |> Enum.map_join("", &(JSON.encode!(&1) <> "\n"))
+          else
+            ""
+          end
+
+        true = changed != original
+        File.write!(path, changed)
+
+        read_rows = fn file -> File.read!(Path.join(run.reports, file)) |> jsonl() end
+
+        summary =
+          IpseKnowledgeExample.EvaluationResources.summary(
+            read_rows.("predictions.jsonl"),
+            read_rows.("timings.jsonl"),
+            read_rows.("request-resources.jsonl"),
+            Enum.filter(read_rows.("usage.jsonl"), &Map.has_key?(&1, "budget")),
+            read_rows.("resources.jsonl")
+          )
+
+        true = summary["complete"] and summary["storage_reachability_complete"]
+        true = summary != JSON.decode!(original_summary)
+        File.write!(summary_path, JSON.encode!(summary) <> "\n")
+        changed_snapshot = snapshot(run.root)
+        {:error, error} = EvaluationMeasuredExecution.audit(run.seal["path"], run.seal["sha256"])
+        "merged_stream_changed" = error["code"]
+        true = snapshot(run.root) == changed_snapshot
+      after
+        File.write!(path, original)
+        File.write!(summary_path, original_summary)
       end
 
       true = snapshot(run.root) == before
@@ -273,7 +325,8 @@ defmodule MeasuredKnowledgeVerification do
     save!(
       Path.join(run.root, "tamper-controls.json"),
       JSON.encode!(%{
-        "modified_files_refused" => 5,
+        "modified_files_refused" => 10,
+        "self_consistent_resource_rewrites_refused" => 2,
         "replaced_directories_refused" => 2,
         "read_only_audit" => true,
         "reentry_refused" => true,

@@ -188,6 +188,58 @@ defmodule Ipse.KnowledgeEvaluationMeasuredTest do
              {:evaluation_runner, :domain_files_changed}
   end
 
+  test "merged evidence must equal every closed cell stream in schedule order", %{root: root} do
+    cells = Enum.map(~w(first second), &Path.join(root, &1))
+    output = Path.join(root, "merged")
+    for directory <- cells ++ [output], do: File.mkdir!(directory)
+
+    names =
+      ~w(predictions.jsonl execution.jsonl usage.jsonl request-resources.jsonl resources.jsonl timings.jsonl)
+
+    for name <- names do
+      File.write!(Path.join(hd(cells), name), "first #{name}\n")
+      File.write!(Path.join(List.last(cells), name), "second #{name}\n")
+      File.write!(Path.join(output, name), "first #{name}\nsecond #{name}\n")
+    end
+
+    expected = Map.new(names, &{&1, File.read!(Path.join(output, &1))})
+    assert EvaluationRunner.audit_merged_files(cells, output) == expected
+
+    for name <- names do
+      path = Path.join(output, name)
+      original = File.read!(path)
+      changed = String.replace(original, "first", "other")
+      File.write!(path, changed)
+
+      code =
+        if name == "predictions.jsonl",
+          do: :first_predictions_changed,
+          else: :merged_stream_changed
+
+      assert catch_throw(EvaluationRunner.audit_merged_files(cells, output)) ==
+               {:evaluation_runner, code}
+
+      assert File.read!(path) == changed
+      assert File.read!(Path.join(hd(cells), name)) == "first #{name}\n"
+      File.write!(path, original)
+    end
+
+    path = Path.join(output, "request-resources.jsonl")
+    original = File.read!(path)
+    File.write!(path, "")
+
+    assert catch_throw(EvaluationRunner.audit_merged_files(cells, output)) ==
+             {:evaluation_runner, :merged_stream_changed}
+
+    assert File.read!(path) == ""
+    File.write!(path, original)
+
+    assert catch_throw(EvaluationRunner.audit_merged_files(Enum.reverse(cells), output)) ==
+             {:evaluation_runner, :first_predictions_changed}
+
+    assert EvaluationRunner.audit_merged_files(cells, output) == expected
+  end
+
   test "the current selected ERTS actually boots with exact paths and literal arguments" do
     {:ok, launch} = IpseKnowledgeExample.EvaluationFreeze.runtime_launch()
     supplied = ["untrusted \"quote\"; System.halt(99)", "雪\nsecond line"]

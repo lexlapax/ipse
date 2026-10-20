@@ -9,6 +9,12 @@ defmodule IpseKnowledge.EvaluationScore do
   orchestrator owns file access, frozen identities and independent review. This
   boundary cannot prove that a caller has never previously exposed labels.
 
+  Scoring declarations and review envelopes are version two. The caller supplies
+  context_sha256 for its verified reference data, as-of selection and policy.
+  Runner uses the verified execution-freeze hash. The scorer binds that context
+  and every verified prediction-file identity into an opaque review token before
+  trusting verdicts; a matching token is not proof of reviewer independence.
+
   Literal annotated-span coverage is coordinate-based and separate from semantic
   support. Semantic verdicts and captured-source integrity are explicit independent
   review inputs. `expected_refusal` comes from labels only after hash verification.
@@ -29,11 +35,10 @@ defmodule IpseKnowledge.EvaluationScore do
   @prediction_keys ~w(version prediction_id variant query_id project attempt status top_k predicted_class response_kind answer claims evidence context_evidence citations)
   @safe_integer 9_007_199_254_740_991
 
-  @doc "Verify closed first-attempt rows and raw hashes without loading labels or reviews."
+  @doc "Verify first-attempt rows and raw hashes, deriving review binding without loading references."
   def verified_predictions(freeze, blobs) do
     try do
-      {files, rows} = verified_predictions!(freeze, blobs)
-      {:ok, %{"files" => files, "rows" => rows}}
+      {:ok, verified_predictions!(freeze, blobs)}
     rescue
       _ -> {:error, :scoring_failed}
     catch
@@ -43,19 +48,31 @@ defmodule IpseKnowledge.EvaluationScore do
 
   defp verified_predictions!(freeze, blobs) do
     require!(freeze?(freeze), :invalid_freeze)
-    {verify_blobs!(freeze["files"], blobs), decode_predictions!(freeze, blobs)}
+    files = verify_blobs!(freeze["files"], blobs)
+
+    %{
+      "files" => files,
+      "rows" => decode_predictions!(freeze, blobs),
+      "review_binding_sha256" => review_binding(freeze, files)
+    }
   end
 
   def score(freeze, blobs, labels_loader, review_loader) do
     try do
       require!(freeze?(freeze), :invalid_freeze)
       require!(is_function(labels_loader, 0) and is_function(review_loader, 0), :invalid_loader)
-      {verified, saved} = verified_predictions!(freeze, blobs)
+      verified = verified_predictions!(freeze, blobs)
+      reviews = load!(review_loader, :review_failed)
+      require!(reviews?(reviews, verified["rows"]), :invalid_reviews)
+
+      require!(
+        reviews["review_binding_sha256"] == verified["review_binding_sha256"],
+        :review_binding_mismatch
+      )
+
       labels = load!(labels_loader, :labels_failed)
       require!(labels?(labels, freeze), :invalid_labels)
-      reviews = load!(review_loader, :review_failed)
-      require!(reviews?(reviews, saved), :invalid_reviews)
-      build_report(freeze, verified, saved, labels["queries"], reviews)
+      build_report(freeze, verified["files"], verified["rows"], labels["queries"], reviews)
     rescue
       _ -> {:error, :scoring_failed}
     catch
@@ -64,8 +81,12 @@ defmodule IpseKnowledge.EvaluationScore do
   end
 
   defp freeze?(f) do
-    exact?(f, ~w(version metric_version variants baseline queries files classification_map)) and
-      f["version"] === 1 and f["metric_version"] === Metrics.version() and
+    exact?(
+      f,
+      ~w(version context_sha256 metric_version variants baseline queries files classification_map)
+    ) and
+      f["version"] === 2 and hash?(f["context_sha256"]) and
+      f["metric_version"] === Metrics.version() and
       bounded_list?(f["variants"], 1, 16) and Enum.all?(f["variants"], &id?/1) and
       unique_values?(f["variants"]) and f["baseline"] in f["variants"] and
       bounded_list?(f["queries"], 1, 1024) and unique?(f["queries"], "query_id") and
@@ -80,6 +101,20 @@ defmodule IpseKnowledge.EvaluationScore do
       Enum.all?(f["classification_map"], fn {key, value} ->
         id?(key) and (is_nil(value) or value in @classes)
       end)
+  end
+
+  defp review_binding(freeze, files) do
+    identities = files |> Enum.sort_by(& &1["id"]) |> Enum.map(&[&1["id"], &1["sha256"]])
+
+    sha256(
+      JSON.encode!([
+        "ipse-knowledge-review-binding",
+        2,
+        freeze["context_sha256"],
+        freeze["metric_version"],
+        identities
+      ])
+    )
   end
 
   defp verify_blobs!(files, blobs) do
@@ -235,7 +270,8 @@ defmodule IpseKnowledge.EvaluationScore do
   end
 
   defp reviews?(reviews, saved) do
-    if exact?(reviews, ~w(version semantic integrity)) and reviews["version"] === 1 and
+    if exact?(reviews, ~w(version review_binding_sha256 semantic integrity)) and
+         reviews["version"] === 2 and hash?(reviews["review_binding_sha256"]) and
          bounded_list?(reviews["semantic"], 0, 16_384) and
          bounded_list?(reviews["integrity"], 0, 131_072) do
       predictions = Map.new(saved, &{&1["prediction_id"], &1})

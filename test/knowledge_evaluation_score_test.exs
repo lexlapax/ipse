@@ -55,7 +55,8 @@ defmodule Ipse.KnowledgeEvaluationScoreTest do
     bytes = Enum.map_join(rows, "\n", &JSON.encode!/1) <> "\n"
 
     freeze = %{
-      "version" => 1,
+      "version" => 2,
+      "context_sha256" => sha("synthetic scoring context"),
       "metric_version" => 1,
       "variants" => variants,
       "baseline" => "base",
@@ -132,7 +133,7 @@ defmodule Ipse.KnowledgeEvaluationScoreTest do
   defp reviews(extra \\ %{}) do
     Map.merge(
       %{
-        "version" => 1,
+        "version" => 2,
         "integrity" => [
           %{
             "prediction_id" => "prediction",
@@ -158,7 +159,113 @@ defmodule Ipse.KnowledgeEvaluationScoreTest do
 
   defp score(rows \\ [prediction()], label \\ labels(), review \\ reviews()) do
     {freeze, blobs} = inputs(rows)
+    review = bind_fixture_review(freeze, blobs, review)
     Score.score(freeze, blobs, fn -> {:ok, label} end, fn -> {:ok, review} end)
+  end
+
+  defp bind_fixture_review(freeze, blobs, review) do
+    {:ok, verified} = Score.verified_predictions(freeze, blobs)
+    Map.put(review, "review_binding_sha256", verified["review_binding_sha256"])
+  end
+
+  test "scoring requires a closed version-two declaration with caller-owned context" do
+    {freeze, blobs} = inputs()
+
+    unopened = fn ->
+      send(self(), :opened_data)
+      {:error, :must_not_open}
+    end
+
+    for invalid <- [
+          Map.put(freeze, "version", 1),
+          Map.delete(freeze, "context_sha256"),
+          Map.put(freeze, "context_sha256", nil),
+          Map.put(freeze, "context_sha256", "not-a-hash"),
+          Map.put(freeze, "extra", true)
+        ] do
+      assert {:error, :invalid_freeze} = Score.score(invalid, blobs, unopened, unopened)
+      refute_received :opened_data
+    end
+  end
+
+  test "review binding refuses changed predictions or context before opening labels" do
+    {freeze, blobs} = inputs()
+    review = bind_fixture_review(freeze, blobs, reviews())
+
+    loader = fn ->
+      send(self(), :labels_opened)
+      {:ok, labels()}
+    end
+
+    changed =
+      prediction(%{
+        "answer" => "Different answer.",
+        "claims" => [%{"claim_id" => "c", "text" => "Different answer."}]
+      })
+
+    {other, other_blobs} = inputs([changed])
+
+    for {declaration, values} <- [
+          {other, other_blobs},
+          {Map.put(freeze, "context_sha256", sha("different context")), blobs}
+        ] do
+      assert {:error, :review_binding_mismatch} =
+               Score.score(declaration, values, loader, fn -> {:ok, review} end)
+
+      refute_received :labels_opened
+    end
+
+    for invalid <- [
+          Map.delete(review, "review_binding_sha256"),
+          Map.put(review, "version", 1),
+          Map.put(review, "review_binding_sha256", "invalid"),
+          Map.put(review, "extra", true)
+        ] do
+      assert {:error, :invalid_reviews} =
+               Score.score(freeze, blobs, loader, fn -> {:ok, invalid} end)
+
+      refute_received :labels_opened
+    end
+
+    assert {:ok, report} = Score.score(freeze, blobs, loader, fn -> {:ok, review} end)
+    assert_received :labels_opened
+    assert report["quality_gates_passed"]
+    assert report["review"]["review_binding_sha256"] == review["review_binding_sha256"]
+  end
+
+  test "review bindings canonically cover every file identity" do
+    first = prediction()
+    second = prediction(%{"prediction_id" => "other", "variant" => "other"})
+
+    {freeze, _} =
+      inputs([first, second], [%{"query_id" => "q", "project" => "p"}], ~w(base other))
+
+    blobs = %{"a" => JSON.encode!(first) <> "\n", "b" => JSON.encode!(second) <> "\n"}
+    files = Enum.map(~w(a b), &%{"id" => &1, "sha256" => sha(blobs[&1])})
+    freeze = Map.put(freeze, "files", files)
+    assert {:ok, verified} = Score.verified_predictions(freeze, blobs)
+
+    assert {:ok, reordered} =
+             Score.verified_predictions(Map.put(freeze, "files", Enum.reverse(files)), blobs)
+
+    assert reordered["review_binding_sha256"] == verified["review_binding_sha256"]
+
+    renamed = put_in(freeze, ["files", Access.at(0), "id"], "renamed")
+
+    assert {:ok, different} =
+             Score.verified_predictions(
+               renamed,
+               blobs |> Map.put("renamed", blobs["a"]) |> Map.delete("a")
+             )
+
+    refute different["review_binding_sha256"] == verified["review_binding_sha256"]
+
+    changed_blobs =
+      Map.put(blobs, "b", JSON.encode!(Map.put(second, "answer", "Changed second file.")) <> "\n")
+
+    changed = put_in(freeze, ["files", Access.at(1), "sha256"], sha(changed_blobs["b"]))
+    assert {:ok, different} = Score.verified_predictions(changed, changed_blobs)
+    refute different["review_binding_sha256"] == verified["review_binding_sha256"]
   end
 
   test "a complete 350-row grid retains escaped citation quotes above sixteen MiB" do
@@ -367,7 +474,9 @@ defmodule Ipse.KnowledgeEvaluationScoreTest do
       )
 
     assert {:ok, report} =
-             Score.score(freeze, blobs, fn -> {:ok, label} end, fn -> {:ok, reviews()} end)
+             Score.score(freeze, blobs, fn -> {:ok, label} end, fn ->
+               {:ok, bind_fixture_review(freeze, blobs, reviews())}
+             end)
 
     [base, other] = report["variants"]
     assert report["semantic"]["support"]["total_n"] == 4
@@ -405,7 +514,9 @@ defmodule Ipse.KnowledgeEvaluationScoreTest do
 
     review = fn negative_count ->
       %{
-        "version" => 1,
+        "version" => 2,
+        "review_binding_sha256" =>
+          bind_fixture_review(freeze, blobs, reviews())["review_binding_sha256"],
         "integrity" =>
           Enum.map(rows, fn p ->
             %{hd(reviews()["integrity"]) | "prediction_id" => p["prediction_id"]}

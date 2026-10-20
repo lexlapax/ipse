@@ -62,7 +62,8 @@ defmodule Ipse.KnowledgeEvaluationReviewTest do
     bytes = Enum.map_join(rows, "\n", &JSON.encode!/1) <> "\n"
 
     freeze = %{
-      "version" => 1,
+      "version" => 2,
+      "context_sha256" => sha("synthetic review context"),
       "metric_version" => 1,
       "variants" => @variants,
       "baseline" => hd(@variants),
@@ -165,6 +166,11 @@ defmodule Ipse.KnowledgeEvaluationReviewTest do
 
     for label <- @variants ++ [@seed], do: refute(JSON.encode!(files) =~ label)
     review = JSON.decode!(files["reviews-template.json"])
+    assert review["version"] == 2
+    assert {:ok, verified} = IpseKnowledge.EvaluationScore.verified_predictions(freeze, blobs)
+    assert review["review_binding_sha256"] == verified["review_binding_sha256"]
+    assert packet["summary"]["review_binding_sha256"] == verified["review_binding_sha256"]
+    assert packet["summary"]["protocol"] == "independent-knowledge-review-v2"
 
     assert Enum.all?(
              review["semantic"],
