@@ -65,3 +65,18 @@ pass. The Linux-only constructor and full authority controls still require a
 Linux run. The existing hosted job runs them on a separate host, preserving the
 active Serenity comparison's CPU isolation. A passing earlier matrix or local
 extracted probe must not be reported as that future run's result.
+
+## Complete Bound confirmation
+
+Those pending checks complete in the exact `d97a765892cd68606501acf62f883827e897357d`
+[hosted run](https://github.com/lexlapax/ipse/actions/runs/39406193501).
+The run concludes successfully on 2026-10-20. Ubuntu and macOS both pass the
+complete workflow, including Bound authority controls, full source tests,
+platform native checks, packaging and independent source/installed knowledge
+proofs. Ubuntu executes the Linux constructor regression and authority cases;
+macOS executes its platform-independent Bound protocol controls.
+
+The retained result names that exact SHA. It covers these committed fixture
+repairs and preceding public changes. It excludes the eleven pending files for
+resource joins and review binding, the real comparison and final P27 acceptance.
+No extra Serenity workload was started to obtain this hosted confirmation.

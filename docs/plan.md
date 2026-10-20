@@ -539,7 +539,14 @@ the complete procedure a finite 45-minute budget. Its `1e31e5b` macOS job fails
 earlier at native-copy fixture directory creation. The separate
 [fixture identity repair](archive/2026-10-20-p27-native-fixture-identity/index.md)
 reproduces equal-clock collisions and adds a test-only atomic ordinal. It retains
-all native copy assertions. A complete corrected hosted result is still required.
+all native copy assertions. The exact `3605ac1`
+[hosted matrix](https://github.com/lexlapax/ipse/actions/runs/39399838296)
+passes Ubuntu and macOS. The same test-only naming repair also covers Bound's
+Linux fixture constructor at `d97a765`; its exact
+[hosted matrix](https://github.com/lexlapax/ipse/actions/runs/39406193501)
+passes both platforms, including native, package and independent installed
+proofs. These results cover the committed fixture repairs. Verification of the
+pending resource-join and review-binding corrections remains separate.
 The historical fixture slowdown cause remains unproven.
 The selected-runtime CPU compatibility proof passes two real explicit requests,
 with complete accounting and confirmed cleanup. It establishes no quality or
