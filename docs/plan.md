@@ -473,6 +473,12 @@ Six live Linux cases and six native protocol tests cover retained attempts,
 failed-but-closed stages, collector loss and writerless descriptor FIFOs.
 Complete evaluator/model integration and comparison coverage remain open.
 Charged memory, summed RSS and device memory must not be conflated.
+The user has reopened the memory quantity and Linux/systemd backend decision.
+Exact simultaneous aggregate peak remains required. Existing native controls
+establish their declared kernel counter behavior; they do not settle that design
+choice. Benchmark integration is paused pending clarification, while independent
+review and verification of existing implementation continue. Host configuration
+belongs to each run's provenance rather than a requirement to use Serenity.
 The inherited combined-fixture timeout is repaired with independent
 test units and unchanged deadlines/assertions; the exact-source `25f1d8e`
 [hosted matrix](https://github.com/lexlapax/ipse/actions/runs/39309132023)

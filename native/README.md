@@ -441,3 +441,71 @@ detached process can escape. It is separate from the native workspace sandbox
 and makes no filesystem or network isolation claim. A transport failure never
 proves that a server operation had no effects and must not automatically replay
 an interrupted request.
+
+### Observe an owned loopback listener
+
+On Linux, an explicit `owned_listener: {:ipv4_loopback, port}` option to
+`Ipse.Runner.open_stdio/6` selects:
+
+```text
+ipse-runner --stdio-listener CWD TIMEOUT_MS PORT -- ABSOLUTE_EXECUTABLE ARGS...
+```
+
+This mode uses sandbox `:off`, the same private launch environment, owned process
+group, I/O queues and lifetime watchdog. It observes only literal `127.0.0.1`
+with a port from 1 to 65535. Invalid options and unsupported platforms refuse
+before server launch. Ordinary `--stdio` keeps its existing frame stream.
+
+The supervisor reads its own network namespace's bounded TCP table, finds the
+exact LISTEN tuple and associates its unique positive socket inode with the
+retained direct child's FD links. It rereads the caller-side tuple after that
+association. A child that moved into another network namespace cannot substitute
+a private listener for the caller's endpoint. Wildcard bindings, ambiguous
+tuples, a listener owned only by a descendant, unavailable evidence and exceeded
+bounds refuse. A table read is at most 1 MiB; enumeration is at most 4096 FDs.
+
+One background inspection runs at a time. The main wait owner keeps the child
+unreaped throughout that inspection, then checks its status before publishing.
+Output delivery, cancellation and the independent watchdog continue. An output
+failure while inspection is pending skips direct-child reaping until helper
+teardown. A missing tuple can be observed again after 25 milliseconds within
+the existing lifetime deadline; this does not restart the server.
+
+Successful observation emits exactly one `P` frame with a 15-byte payload:
+
+| Bytes | Field |
+| --- | --- |
+| 0 | Version, unsigned byte `1` |
+| 1–4 | Retained direct-child PID, unsigned big-endian u32 |
+| 5–6 | Declared port, unsigned big-endian u16 |
+| 7–14 | Observed socket inode, unsigned big-endian u64 |
+
+The client validates this fact before opening the selected HTTP endpoint and
+continues handling `O`, `S`, `E`, `X` and Port loss. A fact is an observation,
+not an atomic promise of future availability. PID and inode are diagnostic
+identities; retain the Port for lifecycle authority. Printed child bytes remain
+`O`/`S` payloads and cannot create a native fact. After inspection fails, the caller
+must retain the failed attempt and its possible effects through the owning
+operation's journal. This generic protocol creates no durable attempt record.
+Failure never authorizes adoption of an existing server or automatic replay.
+
+The process-group cleanup and sandbox limits above still apply. In particular,
+this observation supplies neither confinement nor detached-descendant cleanup.
+Run its public API and pure native controls on a Linux host:
+
+```sh
+mix run scripts/verify-owned-listener.exs
+mix run scripts/verify-owned-listener-regressions.exs
+IPSE_LISTENER_TESTS=$(mktemp -d)
+rustc --edition=2021 --test -D warnings native/ipse-listener.rs \
+  -o "$IPSE_LISTENER_TESTS/listener"
+"$IPSE_LISTENER_TESTS/listener"
+```
+
+Expect seven public live cases, five parser tests and a separate causal-regression
+summary with `status: passed`. The regression command compiles diagnostic copies
+and compares each repair with its deliberate reversal. It leaves production
+source unchanged. Unavailable user/network namespaces produce incomplete coverage
+and exit status 2. No model service, systemd or cgroup hierarchy is required. The
+[runtime-contract exercise](../docs/developer/runtime-capabilities.md#check-a-directly-owned-local-listener)
+connects the fields to source, admission and cleanup.

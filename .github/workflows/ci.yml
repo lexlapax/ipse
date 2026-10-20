@@ -21,11 +21,13 @@ jobs:
       - run: ./scripts/build.sh
       - run: mix format --check-formatted
       - run: mix compile --warnings-as-errors
-      - name: Native measured descriptor protocol
+      - name: Native optional protocols
         if: runner.os == 'Linux'
         run: |
           rustc --edition=2021 --test -D warnings native/ipse-sequence.rs -o "$RUNNER_TEMP/ipse-sequence-tests"
           "$RUNNER_TEMP/ipse-sequence-tests"
+          rustc --edition=2021 --test -D warnings native/ipse-listener.rs -o "$RUNNER_TEMP/ipse-listener-tests"
+          "$RUNNER_TEMP/ipse-listener-tests"
       - run: elixir scripts/check-ci-policy.exs
       - run: elixir scripts/check-docs.exs
       - run: mix test

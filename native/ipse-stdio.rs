@@ -17,6 +17,8 @@ const DRAIN: Duration = Duration::from_millis(500);
 
 #[path = "ipse-environment.rs"]
 mod child_environment;
+#[path = "ipse-listener.rs"]
+mod listener;
 
 fn launch_environment() -> Result<Vec<(String, String)>, String> {
     #[repr(C)]
@@ -188,13 +190,20 @@ pub fn run(args: &[String]) -> Result<(), String> {
     if timeout == 0 || timeout > 86_400_000 {
         return Err("stdio timeout must be between 1 and 86400000 ms".into());
     }
-    if args.len() > 261 || args.iter().map(String::len).sum::<usize>() > 131072 {
+    let listener_mode = args[1] == "--stdio-listener";
+    if args.len() > (if listener_mode { 263 } else { 261 }) || args.iter().map(String::len).sum::<usize>() > 131072 {
         return Err("stdio launch arguments exceed limit".into());
     }
+    let mut listener = if listener_mode {
+        if args.len() < 7 || args[5] != "--" || !std::path::Path::new(&args[6]).is_absolute() {
+            return Err("usage: --stdio-listener CWD TIMEOUT_MS PORT -- ABSOLUTE_EXEC ARGS".into());
+        }
+        Some(listener::Listener::new(listener::port(&args[4])?)?)
+    } else { None };
     let selected = launch_environment()?;
     let (input_rx, failure, cancelled, slot) = input_reader();
-    let sandboxed = args[4] == "--sandbox";
-    let mut executable = 4;
+    let sandboxed = !listener_mode && args[4] == "--sandbox";
+    let mut executable = if listener_mode { 6 } else { 4 };
     if sandboxed {
         if args.len() < 7 {
             return Err("invalid stdio sandbox arguments".into());
@@ -349,9 +358,16 @@ pub fn run(args: &[String]) -> Result<(), String> {
     let mut cleanup_pending = false;
     loop {
         if status.is_none() {
-            status = child
-                .try_wait()
-                .map_err(|_| "cannot wait for stdio server")?;
+            let proof;
+            (status, proof) = match listener.as_mut() {
+                Some(listener) => listener.poll_child(&mut child)?,
+                None => (child.try_wait().map_err(|_| "cannot wait for stdio server")?, None),
+            };
+            if let Some(proof) = proof {
+                if !cancelled.load(Ordering::SeqCst) && !timed_out.load(Ordering::Acquire) {
+                    frame(b'P', &proof).map_err(|_| "stdio listener delivery failed")?;
+                }
+            }
             if status.is_some() {
                 cleanup_pending = signal_group(&slot);
                 drain_deadline = Some(Instant::now() + DRAIN);
@@ -370,7 +386,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
             Ok((kind, bytes)) => {
                 if frame(kind, &bytes).is_err() {
                     signal_group(&slot);
-                    let _ = child.wait();
+                    if !listener.as_ref().is_some_and(listener::Listener::inspection_pending) {
+                        let _ = child.wait();
+                    }
                     return Ok(());
                 }
                 if kind == b'E' {

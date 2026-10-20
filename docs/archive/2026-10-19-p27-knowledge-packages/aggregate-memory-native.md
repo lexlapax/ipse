@@ -51,6 +51,10 @@ reviewers distinguished source review from their local checks.
 
 ## Direct final-source evidence
 
+The recorded Linux controls used Serenity's installed systemd 262, distribution
+package `262-1-arch`. This is provenance for those runs, not a version allowlist
+or a requirement to use that host for another experiment.
+
 The strict Linux build uses `rustc --edition=2021 -D warnings` and passes.
 Final native source SHA-256 is
 `b5acb7f4e8327a0bc8beee393a5649f32e0d21bb4b28e4040ba047210cfdb8aa`.

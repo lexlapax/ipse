@@ -30,6 +30,7 @@ defmodule Ipse.StdioRunnerTest do
     assert stream(frames, ?S) == "diagnostic"
     assert completion(frames) == %{"exit_code" => 7, "timed_out" => false}
     refute Enum.any?(frames, &(elem(&1, 0) == ?E))
+    refute Enum.any?(frames, &(elem(&1, 0) == ?P))
   end
 
   test "arguments containing shell syntax are literal and the chosen cwd is used", %{cwd: cwd} do

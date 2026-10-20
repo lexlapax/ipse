@@ -172,6 +172,10 @@ support from literal quotation or transport success.
 
 ## Paused continuation
 
+The later [owned listener record](owned-listener.md) retains the generic native
+endpoint-identity review, causal repairs and synthetic public/installed checks.
+It does not settle the reopened resource-measurement design.
+
 The later [resumption record](resumption.md) follows P26 acceptance and preserves
 the interrupted-session audit, verified private evidence and current repair order.
 The [result transport proposal](result-transport-design.md) records the selected

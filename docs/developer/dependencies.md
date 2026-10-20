@@ -70,7 +70,7 @@ and its own license/dependency inventory.
 | PlugCrypto | Hex 2.2.0, locked | Plug cryptographic helpers | Apache-2.0 |
 | Telemetry | Hex 1.4.2, locked; developer approved on 2026-10-15 | Erlang/BEAM events used by Finch/Plug; adds no outside runtime service | Apache-2.0 with upstream NOTICE |
 | Rust toolchain and standard library | Rust 1.85+; `native/build.sh` invokes `rustc --edition=2021` | Build the OS helper; no third-party Cargo packages | MIT OR Apache-2.0 |
-| Ipse native helper | `native/ipse-runner.rs`, `native/ipse-process-group.rs`, `native/ipse-stdio.rs`, `native/ipse-linux-sandbox.rs`, `native/ipse-macos-sandbox.rs`, `native/ipse-measure.rs`, `native/ipse-sequence.rs`, compiled as `priv/ipse-runner` | Runtime anchored process groups, advisory locks, bidirectional OS pipes, optional Linux user/mount/network/PID namespaces, private descriptor procfs, Landlock/seccomp and macOS signed App Sandbox worker policies; optional owned cgroup measurement and serial measured process stages; used by tests | Apache-2.0 (project source) |
+| Ipse native helper | `native/ipse-runner.rs`, `native/ipse-process-group.rs`, `native/ipse-stdio.rs`, `native/ipse-linux-sandbox.rs`, `native/ipse-macos-sandbox.rs`, `native/ipse-measure.rs`, `native/ipse-sequence.rs`, `native/ipse-listener.rs`, compiled as `priv/ipse-runner` | Runtime anchored process groups, advisory locks, bidirectional OS pipes, optional Linux user/mount/network/PID namespaces, private descriptor procfs, Landlock/seccomp and macOS signed App Sandbox worker policies; optional owned cgroup measurement and serial measured process stages and direct-child loopback-listener observations; used by tests | Apache-2.0 (project source) |
 
 OTP libraries ship with OTP. The application starts `logger`, `inets` and `ssl`;
 authentication also uses crypto/public-key facilities. Req/Plug satisfy the SDK's
@@ -91,7 +91,7 @@ listener starts automatically. Ipse requires no Node, JavaScript or Python runti
 | `tar`, gzip support, `getconf` | Packaging archive and Linux libc identification | Host distribution; `getconf` is a libc utility. `getconf` failure falls back to `system-libc` naming |
 | Hex bootstrap | Documented `mix local.hex --force` setup step; fetch and verify locked MCP/schema packages | [Hex](https://github.com/hexpm/hex), Apache-2.0; Jason itself is fetched through Git |
 | Rebar3 | Build Telemetry's Erlang code during Mix dependency compilation; developer approved on 2026-10-15 | Standard BEAM build tool, [upstream](https://github.com/erlang/rebar3), Apache-2.0 |
-| systemd user-service tools | Optional Linux exact-memory benchmark launch and cleanup only; `systemd-run` starts fresh owned transient services inside the user's delegated hierarchy, and `systemctl --user` inspects or stops only those named services. Developer approved on 2026-10-19; Serenity's installed systemd 262, package `262-1-arch`, is the verified version. No installation, existing service changes, mandatory runtime or ordinary-test requirement | Host distribution, [systemd](https://github.com/systemd/systemd), LGPL-2.1-or-later; not bundled. Linux cgroup v2 memory-controller capabilities are checked separately |
+| systemd user-service tools | Optional Linux exact-memory benchmark launch and cleanup only; `systemd-run` starts fresh owned transient services inside the user's delegated hierarchy, and `systemctl --user` inspects or stops only those named services. Developer approved on 2026-10-19. No installation, existing service changes, mandatory runtime or ordinary-test requirement | Host distribution, [systemd](https://github.com/systemd/systemd), LGPL-2.1-or-later; not bundled. Linux cgroup v2 memory-controller capabilities are checked separately. Record the actual host version with each result; the [collector record](../archive/2026-10-19-p27-knowledge-packages/aggregate-memory-native.md#direct-final-source-evidence) retains the tested version |
 
 A bundled release contains ERTS, Elixir code, the locked runtime packages and the
 helper. It still needs compatible OS libraries and `/bin/sh`. On Linux, native
@@ -106,12 +106,13 @@ verification, respectively. The [preserved adoption record](../archive/2026-10-1
 contains the original approvals and one-off interoperability investigations.
 Those optional investigation tools are not mandatory runtime or CI requirements.
 
-The optional aggregate-memory benchmark uses the existing systemd user manager
-because an SSH child cannot enter Serenity's delegated hierarchy directly.
-A writable target directory does not grant cross-delegation migration. The
-approved user-service launcher supplies that entry without moving existing
-processes or changing ancestor controllers. Kernel accounting stays in Ipse's
-Rust helper; Elixir owns evaluation semantics. The
+The optional aggregate-memory verification uses an existing systemd user manager
+to start a fresh process inside a delegated hierarchy. A writable target directory
+alone does not grant cross-delegation migration. The approved user-service launcher
+supplies entry without moving existing processes or changing ancestor controllers.
+The native counter requires Linux capabilities, not a particular hostname or
+distribution package version. Kernel accounting stays in Ipse's Rust helper;
+Elixir owns evaluation semantics. The
 [design record](../archive/2026-10-19-p27-knowledge-packages/aggregate-memory-design.md)
 defines the selected process populations and the remaining implementation gates.
 

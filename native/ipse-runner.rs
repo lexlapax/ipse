@@ -111,7 +111,7 @@ fn run() -> Result<(), String> {
         }
     }
     if args.len() == 3 && args[1] == "--lock" { return lock_file(&args[2]); }
-    if args.get(1).is_some_and(|arg|arg=="--stdio") {return ipse_stdio::run(&args);}
+    if args.get(1).is_some_and(|arg|arg=="--stdio" || arg=="--stdio-listener") {return ipse_stdio::run(&args);}
     let (sandboxed, offset) = if args.len() == 8 && args[1] == "--sandbox" && args[2] == "macos-workspace-v1" {
         #[cfg(not(target_os = "macos"))]
         return Err("macos-workspace-v1 requires macOS".into());

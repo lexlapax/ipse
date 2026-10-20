@@ -79,6 +79,12 @@ The changed Elixir files also match Elixir 1.18 formatting. This unit changes
 external evaluation code and tests, with no new host/runtime dependency or native
 implementation. Exact-source hosted checks are recorded separately.
 
+The [hosted run for `aae6b1f8683e142e6fd5bdd098df34c265938d69`](https://github.com/lexlapax/ipse/actions/runs/39347154614)
+finishes successfully on Ubuntu and macOS. Both source jobs report 1,284 tests,
+zero failures and 33 exclusions. Ubuntu takes 654.4 seconds and macOS takes
+1,043.7 seconds. The macOS native suite reports 36 tests, zero failures and six
+exclusions. The package and installed-runtime gates pass on both platforms.
+
 The explicit caps remain finite. This repair does not promise that every maximum
 1,024-query/sixteen-variant declaration fits 64 MiB, or that every admitted
 prediction file fits the separate review-packet limits. Size refusal retains

@@ -159,11 +159,17 @@ defmodule Ipse.Runner do
   The returned Port emits native O/S/X/E frames; its owner must handle Port exits.
   Closing it or killing its owner stops the server's ordinary process group.
   The :sandbox option selects :off (default) or the fixed native workspace policy.
+  On Linux with sandbox :off, :owned_listener may be {:ipv4_loopback, port}.
+  It adds one native P frame after observing that the retained direct child owns
+  the caller's exact 127.0.0.1 listener. Its 15-byte payload is version 1, a u32
+  diagnostic child PID, u16 port and u64 socket inode, all unsigned big-endian.
+  This observation is not a promise of future availability or signaling authority.
   Selected values are installed only in the server's environment. The supervisor
   relays the private launch data without installing it in its own environment.
   """
   def open_stdio(executable, args, cwd, selected_env \\ %{}, timeout_ms \\ 120_000, opts \\ []) do
     valid_text = &valid_text?/1
+    listener = Keyword.get(opts, :owned_listener)
 
     valid_args =
       is_list(args) and length(args) <= 256 and Enum.all?(args, valid_text) and
@@ -195,10 +201,27 @@ defmodule Ipse.Runner do
       not is_integer(timeout_ms) or timeout_ms < 1 or timeout_ms > 86_400_000 ->
         {:error, "stdio timeout must be between 1 and 86400000 ms"}
 
+      listener != nil and
+          not match?(
+            {:ipv4_loopback, port} when is_integer(port) and port in 1..65_535,
+            listener
+          ) ->
+        {:error, "owned_listener must be an IPv4 loopback port from 1 to 65535"}
+
+      listener != nil and Keyword.get(opts, :sandbox, :off) != :off ->
+        {:error, "owned_listener requires sandbox :off"}
+
+      listener != nil and not match?({:unix, :linux}, :os.type()) ->
+        {:error, "owned_listener requires Linux"}
+
+      listener != nil and Path.type(executable) != :absolute ->
+        {:error, "owned_listener executable must be absolute"}
+
       true ->
         with {:ok, policy} <- Ipse.Sandbox.resolve(Keyword.get(opts, :sandbox, :off), cwd),
              {:ok, helper} <- selected_helper(policy.profile, policy.cwd),
-             {:ok, launch} <- stdio_launch_args(helper, policy, timeout_ms, executable, args) do
+             {:ok, launch} <-
+               stdio_launch_args(helper, policy, timeout_ms, executable, args, listener) do
           selected = Map.merge(%{"PATH" => "/usr/bin:/bin", "LANG" => "C.UTF-8"}, selected_env)
           supervisor = %{"PATH" => "/usr/bin:/bin", "LANG" => "C.UTF-8"}
           # Port env uses false to unset inherited values. No values are logged
@@ -340,11 +363,31 @@ defmodule Ipse.Runner do
       )
 
   defp stdio_launch_args(
+         _helper,
+         %{profile: nil, cwd: cwd},
+         timeout,
+         executable,
+         args,
+         {:ipv4_loopback, port}
+       ) do
+    {:ok,
+     [
+       "--stdio-listener",
+       cwd,
+       Integer.to_string(timeout),
+       Integer.to_string(port),
+       "--",
+       executable | args
+     ]}
+  end
+
+  defp stdio_launch_args(
          helper,
          %{profile: "macos-workspace-v1", cwd: cwd},
          timeout,
          executable,
-         args
+         args,
+         nil
        ) do
     with {:ok, policy} <- Ipse.MacOSSandbox.prepare(helper, cwd) do
       {:ok,
@@ -361,7 +404,7 @@ defmodule Ipse.Runner do
     end
   end
 
-  defp stdio_launch_args(_helper, %{profile: profile, cwd: cwd}, timeout, executable, args) do
+  defp stdio_launch_args(_helper, %{profile: profile, cwd: cwd}, timeout, executable, args, nil) do
     prefix = if profile, do: ["--sandbox", profile], else: []
     {:ok, ["--stdio", cwd, Integer.to_string(timeout)] ++ prefix ++ [executable | args]}
   end

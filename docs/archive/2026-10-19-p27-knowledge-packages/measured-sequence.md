@@ -94,9 +94,33 @@ refuses before reading the nonexistent bootstrap or executing application work.
 Archive SHA-256 is `fff10d037eb8f76ee98afc5e267e916fb2ff9797a32873585470ec6d9371ecc8`.
 
 The complete affected manuals were reviewed with the implementation and their
-exercise commands. Exact-commit full Linux and hosted gates remain to be recorded
-separately. The earlier collector's green platform gates do not cover this new
-sequence unit.
+exercise commands. The exact-commit Linux and hosted results follow. The earlier
+collector's green platform gates do not cover this sequence unit.
+
+## Exact-commit platform verification
+
+At `ee825bca020b53a08c5e055532c62f997a61881a`, the separate Linux checkout passes
+the complete native-enabled source suite: 1,271 tests pass and 15 are explicitly
+excluded in 665.5 seconds. Build, formatting, strict compilation, the six native
+sequence tests, CI policy, documentation links and the demo pass. The package and
+extracted-runtime verifier pass. The installed helper passes all ten collector
+controls, six sequence controls and the unsupported-entry admission check.
+
+The Linux package SHA-256 is
+`de9cef345f23e6699068a165859038e005f28765a51d612bc22b6ff8e30cfb7c`.
+The retained evidence archive SHA-256 is
+`5ed94ad72917296cd4df6d6257b9955070f09c143e359874f9391c96657cc2f5`.
+A separate read of the extracted evidence reconciles the exact sequence protocol
+frames, receipts and status records, including interrupted-stage omissions.
+No owned measurement service remains. The host's main checkout remains clean
+at `5e2d85ef4dffe38832c135648ccfc171078765b2`.
+
+The [hosted run for the exact commit](https://github.com/lexlapax/ipse/actions/runs/39349172664)
+finishes successfully on both platforms. Both source jobs report 1,286 tests,
+zero failures and 34 exclusions. Ubuntu takes 645.6 seconds and macOS takes
+814.3 seconds. The native protocol, package, installed-runtime and independent
+knowledge-proof gates also pass. These checks establish the implemented native
+unit's platform behavior, not full evaluator/model coverage or resource acceptance.
 
 
 ## Remaining application work

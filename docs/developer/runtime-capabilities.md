@@ -21,6 +21,7 @@ command, action, or resource already supplies the needed boundary.
 | Admitted completed answer | Lifecycle answer source | Distinct from transport end and presentation acknowledgment |
 | Bounded domain effects | Owned extension actions/jobs | Ordinary approval and intent/outcome receipts |
 | OS execution confinement | `Sandbox`, native helper | Independent of all SDK permissions and approval |
+| Observe a local listener's process owner | `Runner`, optional Linux stdio proof | Admit the endpoint after the native observation; retain transport ownership |
 
 An observer cannot enforce a budget after dispatch. A text acknowledgment cannot
 write state. A tool's read-like name cannot waive external-call approval. Keep
@@ -75,6 +76,61 @@ Usage and budget state survive failed/cancelled work. Optional diagnostics can b
 dropped; canonical accounting cannot. Out-of-band executable calls and arbitrary
 MCP service charges are outside covered host model accounting. Explain that limit
 when adding a backend rather than inferring coverage from a shared worker process.
+
+## Check a directly owned local listener
+
+A configured HTTP server can fail to bind while an existing server answers at
+the same address. A matching metadata response does not establish that the new
+process owns that endpoint. On Linux, `Runner.open_stdio/6` accepts
+`owned_listener: {:ipv4_loopback, port}` with sandbox `:off` and an absolute
+executable. It emits a native `P` fact after associating the caller's exact
+`127.0.0.1` listening socket with the retained direct child's descriptors.
+
+Exercise the public API from a built checkout:
+
+```sh
+mix run scripts/verify-owned-listener.exs
+mix test test/owned_listener_test.exs test/stdio_runner_test.exs
+```
+
+The Linux exercise reports seven checks, two metadata requests and zero inference
+requests. Inspect its private `evidence` directory. The positive case checks the
+native fact before querying its owned fixture. The occupied-port case first
+proves refusal without a request, then queries the still-running ordinary fixture
+as a positive control. Wildcard and delegated-only listeners refuse. A child
+printing a forged proof remains opaque stdout, and a missing listener times out.
+Ordinary stdio emits no proof. Other platforms refuse the optional mode before
+the selected executable runs.
+
+Exercise the two repaired identity races separately:
+
+```sh
+mix run scripts/verify-owned-listener-regressions.exs
+```
+
+This Linux control compiles temporary diagnostic copies of the native source.
+It compares current behavior with one deliberately reverted repair at a time.
+A real private-namespace listener must remain unproven in the caller's namespace.
+Closing supervisor stdout while inspection is pending must retain the unreaped
+child until helper teardown. Production source remains unchanged. Expect
+`status: passed` and retained private evidence. Unavailable user/network namespaces
+produce `status: incomplete` with exit status 2, which does not establish coverage.
+These synthetic controls use no model service, systemd or cgroup hierarchy.
+
+Follow `open_stdio/6` into `native/ipse-stdio.rs` and `native/ipse-listener.rs`.
+The sole wait owner retains the child unreaped while a background inspection
+uses its numeric proc paths. Both socket-table reads describe the supervisor's
+network namespace. Reading the child's namespace instead would admit a private
+listener that the HTTP caller cannot reach. On output loss, a pending inspection
+must keep that same unreaped identity until helper teardown.
+
+Treat `P` as one ownership observation. Continue draining and monitoring the Port
+while making bounded application-metadata requests; terminal or transport loss
+ends admission. Its PID and inode are diagnostic fields, not signaling handles.
+Cleanup still uses `Runner.close_stdio/2` and the ordinary process-group contract.
+Use the [native protocol](../../native/README.md#observe-an-owned-loopback-listener)
+for exact fields and bounds. Continue to use profile admission and canonical
+budgets for inference.
 
 ## Keep unsupported capabilities explicit
 
