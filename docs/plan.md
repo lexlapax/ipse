@@ -411,7 +411,10 @@ and approval policy now use declared finite bounds. Dataset URIs bind complete
 typed source identity; duplicate source generations refuse. Research obeys its
 body/time/output bounds. Knowledge packages now preserve complete SDK-2 results
 and consumers materialize them before use; invalid aggregates or insufficient
-journal capacity still refuse. The [domain-result record](archive/2026-10-19-p27-knowledge-packages/complete-domain-results.md)
+journal capacity still refuse. The [saved-comparison capacity repair](archive/2026-10-19-p27-knowledge-packages/serialized-capacity.md)
+aligns bounded prediction/review readers with valid complete synthetic grids;
+first attempts and hash-before-reference checks remain unchanged.
+The [domain-result record](archive/2026-10-19-p27-knowledge-packages/complete-domain-results.md)
 separates these checks from the remaining quality gates.
 Its [platform record](archive/2026-10-19-p27-knowledge-packages/platform-verification.md)
 binds local, native-enabled Serenity and hosted Ubuntu/macOS checks to `fb980a0`.

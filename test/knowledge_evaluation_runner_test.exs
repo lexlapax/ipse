@@ -1260,6 +1260,14 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
     assert rejected["reason"]["code"] == "output_exists"
     assert File.read!(Path.join(packet_path, "manifest.json")) == manifest_bytes
 
+    review_path = Path.join(root, "unmeasured-reviews.json")
+
+    File.write!(
+      review_path,
+      File.read!(Path.join(packet_path, "reviews-template.json")) <>
+        String.duplicate(" ", 1024 * 1024)
+    )
+
     {unmeasured, 1} =
       cli(
         ["--phase", "score"] ++
@@ -1274,7 +1282,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
             "--labels",
             paths["queries"],
             "--reviews",
-            Path.join(packet_path, "reviews-template.json"),
+            review_path,
             "--output",
             Path.join(root, "unmeasured-scores")
           ]
@@ -1291,7 +1299,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
        ctx do
     {paths, root, _manifest, _sealed, frozen} = cli_frozen_inputs(ctx)
     prediction_path = Path.join(root, "unparsed-predictions.jsonl")
-    File.write!(prediction_path, "not parsed before the hash check\n")
+    File.write!(prediction_path, String.duplicate("x", 16 * 1024 * 1024 + 1))
 
     {rejected, 1} =
       cli(

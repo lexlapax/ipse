@@ -26,6 +26,8 @@ combined-population choice, competing architectures and synthetic Linux evidence
 The [native collector record](aggregate-memory-native.md) follows its first
 implementation, adversarial repairs and synthetic lifecycle checks. Complete
 evaluator/model integration and the actual comparison remain open.
+The [serialized-capacity record](serialized-capacity.md) closes prediction and
+review file-limit mismatches with complete synthetic grids and retained bounds.
 
 ## Implementation and corrections
 

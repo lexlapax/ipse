@@ -632,7 +632,12 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
           require!(sha(labels) == member["sha256"], :label_member_hash)
           EvaluationInput.labels(labels, plan["data"]["split"])
         end,
-        fn -> {:ok, decode!(read!(options[:reviews]))} end
+        fn ->
+          {:ok, reviews} =
+            options[:reviews] |> read!(33_554_432) |> Ipse.JSON.decode_unique()
+
+          {:ok, reviews}
+        end
       )
 
     case result do
@@ -652,7 +657,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     {:ok, verified} = EvaluationFreeze.verify(options[:freeze], options[:freeze_sha256])
     plan = verified["plan"]
     :ok = checked(validate(plan))
-    bytes = read!(options[:predictions], 16_777_216)
+    bytes = read!(options[:predictions], 67_108_864)
     require!(sha(bytes) == options[:prediction_sha256], :prediction_hash_mismatch)
     saved = decode!(read!(Path.join(Path.dirname(options[:predictions]), "finalized.json")))
     require!(saved["prediction_sha256"] == options[:prediction_sha256], :prediction_hash_mismatch)
@@ -2340,7 +2345,10 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
   defp read!(path, limit \\ 1_048_576) do
     %{type: :regular, size: size} = File.lstat!(path)
     require!(size <= limit, :file_limit)
-    File.read!(path)
+    {:ok, bytes} = File.open(path, [:read, :binary], &IO.binread(&1, limit + 1))
+    bytes = if bytes == :eof, do: "", else: bytes
+    require!(is_binary(bytes) and byte_size(bytes) <= limit, :file_limit)
+    bytes
   end
 
   defp decode!(bytes) do

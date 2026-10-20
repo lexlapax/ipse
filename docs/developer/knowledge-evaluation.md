@@ -480,6 +480,16 @@ identity and bytes. Source and annotated-span retrieval metrics use `evidence`.
 Claim/span citation judgments can refer to the corresponding context spans.
 Do not replace a ranked passage with its answer excerpt to improve span scores.
 
+Both CLI readers and the scorer accept at most 64 MiB in one prediction file
+and 64 MiB across all declared files. Each JSONL row remains limited to 256 KiB.
+Count serialized bytes, including JSON escapes and repeated source identities;
+query count and raw quote lengths alone do not establish file capacity. Review
+packets have separate limits of 32 MiB per file and 64 MiB in total. The scoring
+CLI accepts a review JSON file up to 32 MiB through the host's duplicate-rejecting
+decoder; manifests and dataset members retain their separate 1-MiB limits.
+A size refusal keeps the first predictions for inspection. Never drop rows or
+rerun model work to make a retained comparison fit a later consumer.
+
 After the public Session call completes, pass the saved response text and the
 same bundle to `decode_answer/2`. The decoder requires one complete JSON object
 with `classification`, `answer` and `claims`. Each claim references unique shown

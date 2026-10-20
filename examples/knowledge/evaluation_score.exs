@@ -14,7 +14,7 @@ defmodule IpseKnowledge.EvaluationScore do
   review inputs. `expected_refusal` comes from labels only after hash verification.
   No predictor receives that annotation. Retrieval-only rows have no answer metrics.
 
-  Limits are 16 variants, 1024 declared queries, 32 files, 16 MiB per file, 64 MiB
+  Limits are 16 variants, 1024 declared queries, 32 files, 64 MiB per file, 64 MiB
   total prediction bytes, 16384 rows, 256 KiB per row, 8192 bytes per body string,
   64 claims, 128 evidence spans and 256 claim/span pairs per prediction. JSON depth
   is 12, objects have at most 128 keys and arrays at most 1024 elements. Normalized
@@ -93,7 +93,7 @@ defmodule IpseKnowledge.EvaluationScore do
         bytes = blobs[file["id"]]
 
         require!(
-          is_binary(bytes) and byte_size(bytes) <= 16 * 1024 * 1024,
+          is_binary(bytes) and byte_size(bytes) <= 64 * 1024 * 1024,
           :prediction_size_limit
         )
 

@@ -161,6 +161,81 @@ defmodule Ipse.KnowledgeEvaluationScoreTest do
     Score.score(freeze, blobs, fn -> {:ok, label} end, fn -> {:ok, review} end)
   end
 
+  test "a complete 350-row grid retains escaped citation quotes above sixteen MiB" do
+    variants = ~w(lexical graph_explicit graph_model dense hybrid rerank research)
+
+    queries =
+      for number <- 1..50,
+          do: %{
+            "query_id" => "q#{number}",
+            "project" => if(number <= 25, do: "alpha", else: "beta")
+          }
+
+    quote = "word" <> String.duplicate(<<1>>, 1020)
+
+    rows =
+      for variant <- variants, query <- queries do
+        evidence =
+          for number <- 1..10 do
+            %{
+              "span_id" => "r#{number}",
+              "source" =>
+                source(query["project"])
+                |> Map.put("source_id", Integer.to_string(number) <> String.duplicate("\"", 254))
+                |> Map.put("version", String.duplicate(<<1>>, 64))
+                |> Map.put("sha256", sha(quote)),
+              "start_byte" => 0,
+              "end_byte" => byte_size(quote),
+              "quote" => quote
+            }
+          end
+
+        prediction(%{
+          "prediction_id" => "p-" <> sha(variant <> query["query_id"]),
+          "variant" => variant,
+          "query_id" => query["query_id"],
+          "project" => query["project"],
+          "predicted_class" => "abstain",
+          "response_kind" => "abstention",
+          "answer" => "Insufficient evidence.",
+          "claims" => [],
+          "evidence" => evidence,
+          "citations" => []
+        })
+      end
+
+    {freeze, blobs} = inputs(rows, queries, variants)
+    freeze = Map.put(freeze, "baseline", "lexical")
+    assert byte_size(blobs["predictions"]) > 16 * 1024 * 1024
+    assert byte_size(blobs["predictions"]) < 64 * 1024 * 1024
+    assert {:ok, verified} = Score.verified_predictions(freeze, blobs)
+    assert verified["rows"] == rows
+
+    changed = Map.update!(blobs, "predictions", &(&1 <> " "))
+    assert {:error, :prediction_hash_mismatch} = Score.verified_predictions(freeze, changed)
+  end
+
+  test "single-file and combined prediction bounds refuse before reference loaders" do
+    {freeze, _} = inputs()
+
+    loader = fn ->
+      send(self(), :reference_opened)
+      {:error, :must_not_open}
+    end
+
+    for {count, size} <- [{1, 64 * 1024 * 1024 + 1}, {2, 32 * 1024 * 1024 + 1}] do
+      bytes = String.duplicate("x", size)
+      files = for number <- 1..count, do: %{"id" => "f#{number}", "sha256" => sha(bytes)}
+      bounded_freeze = Map.put(freeze, "files", files)
+      blobs = Map.new(files, &{&1["id"], bytes})
+
+      assert {:error, :prediction_size_limit} =
+               Score.score(bounded_freeze, blobs, loader, loader)
+
+      refute_received :reference_opened
+    end
+  end
+
   test "every raw hash and row is checked before either label or review loader" do
     {freeze, blobs} = inputs()
 
