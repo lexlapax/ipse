@@ -70,7 +70,7 @@ and its own license/dependency inventory.
 | PlugCrypto | Hex 2.2.0, locked | Plug cryptographic helpers | Apache-2.0 |
 | Telemetry | Hex 1.4.2, locked; developer approved on 2026-10-15 | Erlang/BEAM events used by Finch/Plug; adds no outside runtime service | Apache-2.0 with upstream NOTICE |
 | Rust toolchain and standard library | Rust 1.85+; `native/build.sh` invokes `rustc --edition=2021` | Build the OS helper; no third-party Cargo packages | MIT OR Apache-2.0 |
-| Ipse native helper | `native/ipse-runner.rs`, `native/ipse-process-group.rs`, `native/ipse-stdio.rs`, `native/ipse-linux-sandbox.rs`, `native/ipse-macos-sandbox.rs`, `native/ipse-measure.rs`, `native/ipse-sequence.rs`, `native/ipse-listener.rs`, compiled as `priv/ipse-runner` | Runtime anchored process groups, advisory locks, bidirectional OS pipes, optional Linux user/mount/network/PID namespaces, private descriptor procfs, Landlock/seccomp and macOS signed App Sandbox worker policies; optional owned cgroup measurement and serial measured process stages and direct-child loopback-listener observations; used by tests | Apache-2.0 (project source) |
+| Ipse native helper | `native/ipse-runner.rs`, `native/ipse-process-group.rs`, `native/ipse-stdio.rs`, `native/ipse-linux-sandbox.rs`, `native/ipse-macos-sandbox.rs`, `native/ipse-measure.rs`, `native/ipse-sequence.rs`, `native/ipse-listener.rs`, `native/ipse-file-copy.rs`, compiled as `priv/ipse-runner` | Runtime anchored process groups, advisory locks, bidirectional OS pipes, optional Linux user/mount/network/PID namespaces, private descriptor procfs, Landlock/seccomp and macOS signed App Sandbox worker policies; optional owned cgroup measurement and serial measured process stages and direct-child loopback-listener observations and bounded retained-descriptor regular-file copies; used by tests | Apache-2.0 (project source) |
 
 OTP libraries ship with OTP. The application starts `logger`, `inets` and `ssl`;
 authentication also uses crypto/public-key facilities. Req/Plug satisfy the SDK's
@@ -174,6 +174,15 @@ integrations, not silently installed dependencies. Configuration must make the
 service, endpoint, credentials and billing choice explicit. The deterministic demo
 and ordinary tests require no model service. A browser is needed for subscription
 sign-in; an operator's separate coding assistant is not part of Ipse's graph.
+
+The optional owned-model evaluation uses an operator-selected Ollama distribution
+and local model cache. It copies the declared executable, helper libraries and
+selected manifest/blob closure into fresh private files. No installation,
+download or service switch occurs. Ollama's source is
+[MIT-licensed](https://github.com/ollama/ollama/blob/main/LICENSE); record the exact
+runtime version, file hashes and model licenses with the execution. The synthetic
+service tests use a repository Rust fixture and need neither Ollama nor weights.
+The approved CPU-only comparison keeps this service optional and unbundled.
 
 For a new retrieval adapter, start with a synthetic source and the existing SDK.
 Measure the requirement before selecting a database, encoder or remote service.

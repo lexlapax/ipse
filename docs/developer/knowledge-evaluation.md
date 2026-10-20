@@ -18,6 +18,7 @@ The evaluation helpers have separate owners. Keep their inputs separate:
 | Declaration and freeze | `examples/knowledge/evaluation_freeze.exs` | Source and artifact content become a portable experiment; local bindings and runtime become a separate execution seal |
 | Dataset projection | `examples/knowledge/evaluation_input.exs` | Dataset bytes become separately validated corpus, label-free queries or scoring labels |
 | Orchestration | `examples/knowledge/evaluation_runner.exs` | A validated variant plan becomes public Session calls, first predictions and retained execution failures |
+| Owned model service | `examples/knowledge/evaluation_model_service.exs` | An explicit local runtime/cache selection becomes one private daemon lifetime and one guarded work callback |
 | Session driver | `examples/knowledge/evaluation_session.exs` | Explicit artifact/profile/budget selections and public commands become durable invocation receipts |
 | Answer preparation | `examples/knowledge/evaluation_answer.exs` | Saved ranked citations become a bounded request and an exact shown-span mapping |
 | Independent review preparation | `examples/knowledge/evaluation_review.exs` | A complete hashed prediction grid becomes blinded cases, literal checks and an unmeasured semantic template |
@@ -837,6 +838,104 @@ input tokens and later seven. Removing the sixty-token observation from the
 budget must fail reconciliation even though its final counters still match.
 Removing a refusal or concealing usage behind a refused admission must also fail.
 
+### Exercise ownership of a model service
+
+Use this exercise before connecting a cell to the native memory collector. The
+cell must own the service and create its cache inside the measured scope. A
+shared daemon can retain allocations from another cell, and a hardlinked cache
+can reuse charges established outside the scope.
+
+On Linux, build the native helper and run the synthetic service cases:
+
+```sh
+./scripts/build.sh
+mix test test/knowledge_evaluation_model_service_test.exs
+```
+
+The fixture is a Rust HTTP server compiled from
+`test/support/model_service_probe.rs`. It checks the selected environment and
+answers the small Ollama inventory protocol. It loads no model and performs no
+inference. The tests cover private cache contents and inodes, occupied ports,
+forged child output, bounded logs, inventory failures, callback exceptions,
+service loss and owner death. On macOS, the same test file checks pure selection
+validation and refusal before staging because listener ownership requires Linux.
+
+To retain the Linux case receipts outside ExUnit cleanup, compile the fixture
+and choose a fresh evidence directory:
+
+```sh
+IPSE_MODEL_PROOF=$(mktemp -d)
+rustc --edition=2021 -D warnings test/support/model_service_probe.rs -o "$IPSE_MODEL_PROOF/probe"
+mix run scripts/verify-model-service.exs -- "$IPSE_MODEL_PROOF/probe" "$IPSE_MODEL_PROOF/evidence"
+```
+
+Expect one JSON summary whose cases all report `status: "passed"`. Inspect each
+case's `verification.json` and the completed cases' `receipt.json`. Failed
+operations retain partial output. Preserve those files when diagnosing a failure;
+choose another output directory for another synthetic exercise. Reusing an
+operation's directory must refuse without replacing its receipt or running work.
+
+To repeat the cases with a bundled runtime, build a package and pass its archive
+to the installed verifier. This example requires exactly one archive in `dist`:
+
+```sh
+./scripts/package.sh
+set -- dist/ipse-*.tar.gz
+test "$#" -eq 1
+elixir scripts/verify-model-service-package.exs "$1" "$IPSE_MODEL_PROOF/probe" "$IPSE_MODEL_PROOF/installed"
+```
+
+Expect the same synthetic case results with `installed: true`. The verifier
+extracts the package and removes development executables from its PATH. On macOS,
+its result instead confirms refusal before effects. The service module and
+fixture are trusted evaluation code loaded from the checkout; Runner, HTTP and
+native execution use the bundled package.
+
+Trace `EvaluationModelService.run/3` through these ownership boundaries:
+
+1. `validate/1` checks a closed selection without IO. The selection names exact
+   runtime files, hashes, model manifests, a private loopback origin and finite
+   deadlines. It supplies no download, fallback or attempt-renewal authority.
+2. A guarded Task creates the fresh private output and copies the selected
+   runtime and complete manifest/blob closure. The native
+   [`--copy-regular` mode](../../native/README.md#copy-a-regular-file-through-a-retained-descriptor)
+   refuses unsafe source descriptors. Elixir hashes the new private files.
+   The owner always creates `runtime/lib/ollama`, keeping library discovery in
+   the selected distribution's private layout.
+3. The caller owns the native Port and drains its frames while the Task works.
+   One native listener observation must identify the selected direct child
+   before any inventory request. Child stdout remains opaque log data.
+4. The Task checks exact tags, model capabilities and empty initial residency,
+   then calls the work function once. It reports the work outcome before final
+   inventory and private runtime/manifest/config rechecks. Final resident models
+   must have selected digests and `size_vram: 0` under the explicit CPU policy.
+5. The caller waits for the Task and HTTP clients to stop, closes the daemon,
+   then persists bounded logs and the receipt. No log-file write runs in the
+   live Port receive loop. Bytes drained during native close are outside the
+   retained log prefix, as the receipt states.
+
+Compare the `changed_after` case with `normal`. Both preserve the callback's
+returned value, but changed final inventory makes the service receipt fail.
+`work_status`, `service_status` and `native_cleanup` describe separate facts.
+The owner-death case observes its known Task, Session and daemon stop separately;
+it produces no final service receipt. Task termination alone does not establish
+Session journal closure or canonical inference accounting.
+
+The fixed CPU environment selects a policy that hides CUDA, ROCm and Vulkan
+devices and disables cloud models. The synthetic fixture verifies those environment
+values; real runtime CPU execution still needs separate verification. The selected daemon defaults use one parallel request, retain selected
+models and cap loaded models at the selection count. These concrete values appear
+in the receipt. Final residency supplements this policy; it cannot prove every
+allocation throughout the interval. This module grants no OS sandbox and trusts
+the explicitly selected runtime. Ordinary process-group containment limits still
+apply.
+
+The service owner is an independently exercised evaluation component. The current
+version-two seal does not yet bind its selection or authorize measured execution.
+Complete cells must claim their attempts and establish kernel membership before
+calling it. Synthetic service receipts establish neither exact-memory coverage
+nor model quality.
+
 ### Exercise the native aggregate collector
 
 Use a Linux host with cgroup v2 memory accounting, `clone3(CLONE_INTO_CGROUP)`,
@@ -881,8 +980,9 @@ for lease, output and receipt rules.
 
 These controls verify the native collector only. The current evaluation runner
 still reports its sampled BEAM memory and incomplete resource evaluation. Its
-complete-cell execution, owned model service, model/cache identities and frozen
-aggregate receipt integration remain to be implemented and verified.
+complete-cell execution and frozen aggregate receipt integration remain to be
+implemented and verified. The service-owner exercise above verifies that
+component separately; it does not connect it to the runner's measured entry.
 
 ### Exercise complete measured sequences
 

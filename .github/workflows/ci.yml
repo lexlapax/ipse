@@ -28,6 +28,10 @@ jobs:
           "$RUNNER_TEMP/ipse-sequence-tests"
           rustc --edition=2021 --test -D warnings native/ipse-listener.rs -o "$RUNNER_TEMP/ipse-listener-tests"
           "$RUNNER_TEMP/ipse-listener-tests"
+      - name: Native regular-file copy controls
+        run: |
+          rustc --edition=2021 --test -D warnings native/ipse-file-copy.rs -o "$RUNNER_TEMP/ipse-file-copy-tests"
+          "$RUNNER_TEMP/ipse-file-copy-tests"
       - run: elixir scripts/check-ci-policy.exs
       - run: elixir scripts/check-docs.exs
       - run: mix test
@@ -42,6 +46,10 @@ jobs:
       - run: ./bin/ipse demo
       - run: ./scripts/package.sh
       - run: elixir scripts/verify-package.exs dist/ipse-*.tar.gz
+      - name: Independent installed model-service ownership proof
+        run: |
+          rustc --edition=2021 -D warnings test/support/model_service_probe.rs -o "$RUNNER_TEMP/ipse-model-service-probe"
+          elixir scripts/verify-model-service-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-model-service-probe" "$RUNNER_TEMP/ipse-model-service-installed"
       - name: Independent installed extension proof
         run: |
           elixir examples/extension-lab/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-extension-lab"

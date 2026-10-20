@@ -131,6 +131,16 @@ continuation evidence. Its pre-repair source and fixture hashes were
 `d6de4c2c461f1317f045d1fc5062f278bac85fecde2f33d0f576817617d41bc4`
 and `1f7f787b345fd8a09f3265614f46adad382adadd90c948863cb9e0a6c03cbd99`.
 
+## Completed hosted foundation gates
+
+The exact `75b707798592273bae105fbb9d715f78e5bf431a`
+[hosted run 39362693472](https://github.com/lexlapax/ipse/actions/runs/39362693472)
+completed successfully on Ubuntu and macOS. Both jobs passed their source,
+package and installed-proof steps. The completed metadata was read and retained
+with the later owned-model continuation evidence. This supersedes the pending
+corrected-source verdict above and preserves the earlier `21d710c` red run.
+It does not verify the later model-service implementation.
+
 ## Remaining integration
 
 Measured preparation must seal projected inputs and the full schedule. Native

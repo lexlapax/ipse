@@ -496,13 +496,20 @@ the complete fourteen-cell schedule with fixed original allowances. These inert
 identity operations do not claim attempts or start measured work. Version-two
 seals refuse the old prediction/review paths until complete measured integration
 is available.
+The [owned model-service component](archive/2026-10-19-p27-knowledge-packages/owned-model-service.md)
+adds fresh private runtime/cache copies, listener admission before HTTP, one
+guarded full-work callback and separate service/cleanup outcomes. Its synthetic
+Linux source and installed controls pass. Binding that selection to the execution
+seal and complete measured cells, actual selected-runtime CPU proof and the real
+comparison remain open.
 The inherited combined-fixture timeout is repaired with independent
 test units and unchanged deadlines/assertions; the exact-source `25f1d8e`
 [hosted matrix](https://github.com/lexlapax/ipse/actions/runs/39309132023)
 passes on both platforms. The later exact `21d710c` run passes Ubuntu and fails
 macOS in CLI aggregate-deadline and resumed MCP readiness assumptions. The
 portable-foundation record retains both failures and their controlled repairs;
-the corrected source still needs its own applicable platform proofs. The older
+the corrected `75b7077` [hosted run](https://github.com/lexlapax/ipse/actions/runs/39362693472)
+passes all source and installed steps on Ubuntu and macOS. The older
 append-timeout negative remains unexplained.
 Successful tuning and
 scripted provider responses do not establish quality. Held-out predictions,

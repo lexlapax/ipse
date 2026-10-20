@@ -35,6 +35,11 @@ The [portable experiment foundation](portable-experiment.md) records the selecte
 charged-RAM quantity, portable declaration/local execution split, full schedule
 and repaired hosted test assumptions. Complete measured execution remains open.
 
+The later [owned model-service record](owned-model-service.md) follows private
+runtime/cache staging, guarded callback ownership, bounded diagnostics and
+synthetic source/installed controls. It leaves complete measured integration and
+real CPU/model comparison open.
+
 ## Implementation and corrections
 
 Domain modules compile against the public SDK into separate worker artifacts.

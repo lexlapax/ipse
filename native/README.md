@@ -67,6 +67,48 @@ unreaped ownership after command exit, refused late signals and EOF-confirmed
 ordinary-child exit after abrupt owner death. They do not force PID wraparound
 or certify stronger descendant containment.
 
+## Copy a regular file through a retained descriptor
+
+Use `ipse-runner --copy-regular ABS_SOURCE ABS_DEST EXPECTED_BYTES` for evaluation
+staging on Linux or macOS. This mode copies bytes into a new destination file.
+The destination's parent must already be private and have one writer.
+It does not implement a filesystem sandbox or reject symlinks in every ancestor.
+
+The source opens with `O_NONBLOCK|O_NOFOLLOW`. Its retained descriptor must name
+a regular file of the exact declared length, at most 64 GiB, before reading.
+The descriptor and named path must agree before and after copying, including
+inode, device, length, mode, link count and nanosecond modification/change times.
+A writerless FIFO therefore refuses without waiting for a writer.
+
+The destination opens exclusively with mode `0600`. An explicit bounded loop
+copies the declared bytes and checks EOF, then syncs the file and its retained
+parent directory. The final destination must remain a regular file with one
+link, the expected size and a different device/inode pair from the source.
+The helper uses no hardlink, reflink or kernel clone. A failure leaves any partial
+destination in place and never retries, removes or replaces it. The caller must
+hash the new private destination against its independently selected digest.
+
+Success prints one plain JSON line, at most 2048 bytes, with `version: 1`, `bytes`,
+`source` and `destination`. Each identity contains decimal-string `device`,
+`inode` and `nlink`; integer `bytes` and full Unix `mode`; signed decimal-string
+`mtime_seconds` and `ctime_seconds`; and integer nanosecond fields. Paths and
+hashes are absent. A direct failure emits the usual `E` frame and exits with1.
+When invoked through `Runner.open_stdio/5`, these bytes belong to the selected
+child's stdout. Confirm its successful `X` result and native cleanup before
+parsing a success receipt.
+
+Run the focused OS checks without a model service:
+
+```sh
+rustc --edition=2021 --test -D warnings native/ipse-file-copy.rs -o /tmp/ipse-copy-tests
+/tmp/ipse-copy-tests
+```
+
+The six active controls include a bounded subprocess for a writerless FIFO.
+The child-only ignored test runs through that parent control. The
+[service-owner exercise](../docs/developer/knowledge-evaluation.md#exercise-ownership-of-a-model-service)
+checks private runtime/cache copies through the public Runner path.
+
 ## Optional exact aggregate memory scopes
 
 The Linux-only `--measure-cgroup root|cell TOKEN TIMEOUT_MS OUTPUT -- ABSOLUTE_COMMAND ARGS`
