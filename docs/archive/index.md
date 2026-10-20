@@ -7,6 +7,7 @@ preserved pre-rewrite chapters. Their dated bodies and verdicts are unchanged.
 
 | Snapshot | Provenance | Current guidance and retained records |
 | --- | --- | --- |
+| [2026-10-20 whole-codebase consolidation design](2026-10-20-p27-structure-design/index.md) | Whole-tree survey, competing proposals and independent design review; selected ownership and manual changes, implementation open | [Architecture training](../developer/architecture.md), [plan](../plan.md) |
 | [2026-10-20 sealed-answer evaluation](2026-10-20-p27-sealed-evaluation/index.md) | Detached answer commitments, repaired question-envelope downgrade, independent follow-ups and synthetic source/installed measured proofs; no model-quality acceptance | [Evaluation training](../developer/knowledge-evaluation.md), [plan](../plan.md) |
 | [2026-10-20 P27 quality remediation](2026-10-20-p27-quality-remediation/index.md) | Failure diagnostics, compact model contracts, whole admitted answer citations and scoped verification; quality, matched comparisons and selection remain open | [Evaluation training](../developer/knowledge-evaluation.md), [plan](../plan.md) |
 | [2026-10-20 external whole-P27 review](2026-10-20-p27-external-review-r1/index.md) | Independent review of `b9370fb`, repaired findings, internal follow-ups and verified source/native/package receipts | [Corpus](../operator/corpus.md), [knowledge training](../developer/knowledge-extensions.md), [evaluation training](../developer/knowledge-evaluation.md), [plan](../plan.md) |
