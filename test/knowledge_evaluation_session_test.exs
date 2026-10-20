@@ -5,6 +5,38 @@ defmodule Ipse.KnowledgeEvaluationSessionTest do
   use ExUnit.Case, async: false
   alias IpseKnowledgeExample.EvaluationSession, as: Evaluation
 
+  test "structured answer transport rejects mixed shapes before attempting a dispatch" do
+    request = %{
+      "op" => "model.complete",
+      "version" => 2,
+      "profile" => "p27_answer",
+      "instruction" => "Return an object.",
+      "input" => "input",
+      "max_output_bytes" => 8192,
+      "timeout_ms" => 120_000,
+      "response_schema" => %{"type" => "object"}
+    }
+
+    assert :ok = Ipse.Extensions.ModelCall.validate(request)
+    run = %{}
+
+    for params <- [
+          request,
+          %{"request" => Map.put(request, "version", 1)},
+          %{"request" => Map.put(request, "profile", "other")},
+          %{"request" => request, "extra" => true},
+          %{"request" => Map.put(request, "response_schema", %{"type" => "array"})}
+        ] do
+      assert {:error, :invalid_answer, ^run} = Evaluation.invoke(run, "answer", params)
+    end
+
+    byte_overflow = Map.put(request, "input", String.duplicate("é", 2050))
+    assert :ok = Ipse.Extensions.ModelCall.validate(byte_overflow)
+
+    assert {:error, :invalid_answer, ^run} =
+             Evaluation.invoke(run, "answer", %{"request" => byte_overflow})
+  end
+
   setup_all do
     root = Path.join(System.tmp_dir!(), "ipse-evaluation-fault-artifact-" <> Ipse.Usage.id())
     artifact = Path.join(root, "artifact")

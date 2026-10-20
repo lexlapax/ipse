@@ -96,6 +96,20 @@ defmodule IpseKnowledgeExample.EvaluationAnswer do
     _ -> {:error, :invalid_evidence}
   end
 
+  @doc "Prepare an explicitly selected structured request from the same shown evidence."
+  def prepare(query, as_of_ms, ranked_evidence, "json_schema_v2") do
+    with {:ok, bundle} <- prepare(query, as_of_ms, ranked_evidence),
+         request =
+           bundle["request"]
+           |> Map.put("version", 2)
+           |> Map.put("response_schema", response_schema(bundle["shown"])),
+         :ok <- Ipse.Extensions.ModelCall.validate(request) do
+      {:ok, %{bundle | "version" => 2, "request" => request}}
+    end
+  end
+
+  def prepare(_, _, _, _), do: {:error, :output_contract}
+
   @doc "Decode strict JSON and pair each referenced ID with its shown citation."
   def decode_answer(raw_json, bundle) do
     with :ok <- bundle_valid(bundle),
@@ -207,13 +221,13 @@ defmodule IpseKnowledgeExample.EvaluationAnswer do
 
     valid =
       exact?(bundle, ~w(version request context shown coverage context_sha256)) and
-        bundle["version"] == 1 and exact?(request, @request_keys) and
-        request["op"] == "model.complete" and request["version"] == 1 and
+        is_map(request) and request["op"] == "model.complete" and
         request["profile"] == "p27_answer" and request["instruction"] == @instruction and
         request["max_output_bytes"] == @output_bytes and request["timeout_ms"] == 120_000 and
         is_binary(request["input"]) and byte_size(request["input"]) <= @input_bytes and
         is_list(shown) and length(shown) <= @candidate_limit and
         Enum.all?(Enum.with_index(shown, 1), fn {item, rank} -> shown_valid?(item, rank) end) and
+        request_contract?(bundle["version"], request, shown) and
         exact?(saved_context, ~w(query as_of_ms candidates)) and
         query_valid(saved_context["query"]) == :ok and
         time_valid(saved_context["as_of_ms"]) == :ok and
@@ -222,6 +236,51 @@ defmodule IpseKnowledgeExample.EvaluationAnswer do
         bundle["context_sha256"] == sha256(request["input"]) and is_map(bundle["coverage"])
 
     if valid, do: :ok, else: {:error, :invalid_bundle}
+  end
+
+  defp request_contract?(version, request, _) when version == 1,
+    do: exact?(request, @request_keys) and request["version"] == 1
+
+  defp request_contract?(2, request, shown),
+    do:
+      exact?(request, @request_keys ++ ["response_schema"]) and request["version"] === 2 and
+        request["response_schema"] == response_schema(shown)
+
+  defp request_contract?(_, _, _), do: false
+
+  defp response_schema(shown) do
+    ids = Enum.map(shown, & &1["candidate_id"])
+    citation = if ids == [], do: %{"type" => "string"}, else: %{"type" => "string", "enum" => ids}
+
+    %{
+      "type" => "object",
+      "properties" => %{
+        "classification" => %{
+          "type" => "string",
+          "enum" => if(ids == [], do: ["abstain"], else: ~w(answer conflict open abstain))
+        },
+        "claims" => %{
+          "type" => "array",
+          "maxItems" => if(ids == [], do: 0, else: 8),
+          "items" => %{
+            "type" => "object",
+            "properties" => %{
+              "text" => %{"type" => "string", "minLength" => 1, "maxLength" => 1024},
+              "citations" => %{
+                "type" => "array",
+                "minItems" => 1,
+                "maxItems" => max(length(ids), 1),
+                "items" => citation
+              }
+            },
+            "required" => ~w(text citations),
+            "additionalProperties" => false
+          }
+        }
+      },
+      "required" => ~w(classification claims),
+      "additionalProperties" => false
+    }
   end
 
   defp shown_valid?(item, rank) do

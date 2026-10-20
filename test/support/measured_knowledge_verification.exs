@@ -3,7 +3,6 @@ defmodule MeasuredKnowledgeVerification do
   alias IpseKnowledgeExample.{
     EvaluationFreeze,
     EvaluationContract,
-    EvaluationRunner,
     EvaluationMeasuredExecution
   }
 
@@ -55,8 +54,16 @@ defmodule MeasuredKnowledgeVerification do
     )
   end
 
-  def prepare(root, repository, artifacts, fault \\ nil, contract \\ nil) do
+  def prepare(root, repository, artifacts, options \\ []) do
+    true =
+      Keyword.keyword?(options) and
+        Enum.all?(Keyword.keys(options), &(&1 in [:fault, :data_contract, :generation]))
+
+    fault = Keyword.get(options, :fault)
+    contract = Keyword.get(options, :data_contract)
+    generation = Keyword.get(options, :generation, 2)
     true = contract in [nil, "sealed_answers_v1"]
+    true = generation in [2, 3]
     File.mkdir!(root)
     File.chmod!(root, 0o700)
     {:ok, launch} = EvaluationFreeze.runtime_launch()
@@ -195,9 +202,22 @@ defmodule MeasuredKnowledgeVerification do
 
     spec =
       spec
-      |> Map.put("version", 2)
+      |> Map.put("version", generation)
       |> Map.put("model_origin", origin)
       |> Map.put("models", service["models"])
+
+    spec =
+      if generation == 3,
+        do:
+          Map.put(spec, "contracts", %{
+            "outputs" => %{
+              "answer" => "json_schema_v2",
+              "extract" => "json_schema_v2",
+              "rerank" => "json_schema_v2"
+            },
+            "selection" => "per_strategy_eligibility_v1"
+          }),
+        else: spec
 
     spec =
       if contract,
@@ -435,6 +455,57 @@ defmodule MeasuredKnowledgeVerification do
         end
 
       for operation <- required, do: true = Enum.any?(wire, &(&1["operation"] == operation))
+
+      if verified["plan"]["version"] == 3 do
+        for request <- wire, request["operation"] in ~w(answer extraction rerank) do
+          body = request["request"]
+          %{"type" => "object"} = schema = body["format"]
+          false = schema["additionalProperties"]
+          false = body["think"]
+          4096 = body["options"]["num_predict"]
+
+          input =
+            body["messages"]
+            |> List.last()
+            |> Map.fetch!("content")
+            |> String.split("\n", parts: 2)
+            |> List.last()
+            |> JSON.decode!()
+            |> Map.fetch!("input")
+            |> JSON.decode!()
+
+          case request["operation"] do
+            "extraction" ->
+              ["facts"] = schema["required"]
+              true = schema["properties"]["facts"]["maxItems"] == input["max_facts"]
+
+              true =
+                get_in(schema, ~w(properties facts items properties chunk enum)) ==
+                  Enum.map(input["chunks"], & &1["id"])
+
+            "rerank" ->
+              ["order"] = schema["required"]
+              true = get_in(schema, ~w(properties order minItems)) == input["required_count"]
+              true = get_in(schema, ~w(properties order maxItems)) == input["required_count"]
+              ids = Enum.map(input["candidates"], & &1["id"])
+
+              true =
+                get_in(schema, ~w(properties order items enum)) ==
+                  if(ids == [], do: nil, else: ids)
+
+            "answer" ->
+              ~w(classification claims) = schema["required"]
+              ids = Enum.map(input["candidates"], & &1["id"])
+
+              true =
+                get_in(schema, ~w(properties claims maxItems)) == if(ids == [], do: 0, else: 8)
+
+              true =
+                get_in(schema, ~w(properties claims items properties citations items enum)) ==
+                  if(ids == [], do: nil, else: ids)
+          end
+        end
+      end
     end
   end
 

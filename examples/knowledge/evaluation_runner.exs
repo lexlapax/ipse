@@ -115,7 +115,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
   def schedule(plan, queries) do
     try do
       :ok = checked(EvaluationContract.validate(plan))
-      require!(plan["version"] == 2, :measured_plan_required)
+      require!(plan["version"] in [2, 3], :measured_plan_required)
 
       require!(
         is_list(queries) and length(queries) == plan["data"]["expected_queries"],
@@ -476,6 +476,11 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
       "files" => [%{"id" => "predictions", "sha256" => options[:prediction_sha256]}],
       "classification_map" => Map.new(~w(answer conflict open abstain), &{&1, &1})
     }
+
+    freeze =
+      if plan["version"] == 3,
+        do: Map.merge(freeze, %{"version" => 3, "contracts" => plan["contracts"]}),
+        else: freeze
 
     checked_rows =
       case IpseKnowledge.EvaluationScore.verified_predictions(freeze, %{"predictions" => bytes}) do
@@ -1487,23 +1492,47 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     }
 
     if plan["answer"] and status == "ok" do
-      case EvaluationAnswer.prepare(query["query"], effective_time(plan), evidence) do
+      prepared =
+        if plan["version"] == 3,
+          do:
+            EvaluationAnswer.prepare(
+              query["query"],
+              effective_time(plan),
+              evidence,
+              plan["contracts"]["outputs"]["answer"]
+            ),
+          else: EvaluationAnswer.prepare(query["query"], effective_time(plan), evidence)
+
+      case prepared do
         {:ok, bundle} ->
           Process.put(:comparison_policy, %{
             Process.get(:comparison_policy)
             | answer: bundle["request"]
           })
 
-          append!(output, "execution.jsonl", %{
+          context_record = %{
             "phase" => "answer_context",
             "query_id" => query["query_id"],
             "variant" => variant["id"],
             "coverage" => bundle["coverage"],
             "context_sha256" => bundle["context_sha256"]
-          })
+          }
+
+          context_record =
+            if bundle["version"] == 2,
+              do:
+                Map.put(context_record, "request_sha256", Ipse.JSON.digest([bundle["request"]])),
+              else: context_record
+
+          append!(output, "execution.jsonl", context_record)
+
+          params =
+            if bundle["version"] == 2,
+              do: %{"request" => bundle["request"]},
+              else: Map.drop(bundle["request"], ~w(op version profile))
 
           {run, answer} =
-            invoke(run, "answer", Map.drop(bundle["request"], ~w(op version profile)), output)
+            invoke(run, "answer", params, output)
 
           text = get_in(answer || %{}, ["value", "value", "text"])
 
@@ -1791,6 +1820,11 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
 
             true = request["input"] == JSON.encode!(expected)
 
+            if policy.plan["version"] == 3 do
+              true = request["version"] === 2
+              true = request["response_schema"] == model_schema(:extract, expected)
+            end
+
           "query" ->
             true = policy.variant["id"] == "rerank"
             options = checked(EvaluationContract.selection(policy.variant, "query"))["options"]
@@ -1823,6 +1857,11 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
               Enum.all?(Enum.with_index(input["candidates"], 1), fn {candidate, index} ->
                 candidate["id"] == "e#{index}" and rerank_candidate?(candidate, chunks)
               end)
+
+            if policy.plan["version"] == 3 do
+              true = request["version"] === 2
+              true = request["response_schema"] == model_schema(:rerank, input)
+            end
         end
 
       "extension:mcp.call" ->
@@ -1872,6 +1911,52 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
       })
 
       :deny
+  end
+
+  defp model_schema(:extract, input) do
+    %{
+      "type" => "object",
+      "properties" => %{
+        "facts" => %{
+          "type" => "array",
+          "maxItems" => input["max_facts"],
+          "items" => %{
+            "type" => "object",
+            "properties" => %{
+              "subject" => %{"type" => "string", "minLength" => 1, "maxLength" => 256},
+              "predicate" => %{"type" => "string", "minLength" => 1, "maxLength" => 128},
+              "object" => %{"type" => "string", "minLength" => 1, "maxLength" => 256},
+              "polarity" => %{"type" => "string", "enum" => ~w(positive negative)},
+              "chunk" => %{"type" => "string", "enum" => Enum.map(input["chunks"], & &1["id"])},
+              "quote" => %{"type" => "string", "minLength" => 1, "maxLength" => 1024}
+            },
+            "required" => ~w(subject predicate object polarity chunk quote),
+            "additionalProperties" => false
+          }
+        }
+      },
+      "required" => ["facts"],
+      "additionalProperties" => false
+    }
+  end
+
+  defp model_schema(:rerank, input) do
+    ids = Enum.map(input["candidates"], & &1["id"])
+    item = if ids == [], do: %{"type" => "string"}, else: %{"type" => "string", "enum" => ids}
+
+    %{
+      "type" => "object",
+      "properties" => %{
+        "order" => %{
+          "type" => "array",
+          "minItems" => length(ids),
+          "maxItems" => length(ids),
+          "items" => item
+        }
+      },
+      "required" => ["order"],
+      "additionalProperties" => false
+    }
   end
 
   defp claim_effect!(kind, limit) do
@@ -2439,7 +2524,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
         key in ~w(max_requests max_input_tokens max_output_tokens) ->
           {key, div(value, projects)}
 
-        key == "money" and version == 2 ->
+        key == "money" and version in [2, 3] ->
           {key,
            Enum.map(value, &Map.update!(&1, "limit_nanos", fn cap -> div(cap, projects) end))}
 

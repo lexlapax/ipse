@@ -9,10 +9,19 @@ arguments =
     rest -> rest
   end
 
-{paths, contract} =
+{paths, contract, generation} =
   case arguments do
-    [repository, output] -> {[repository, output], nil}
-    [repository, output, "--sealed-answers"] -> {[repository, output], "sealed_answers_v1"}
+    [repository, output] ->
+      {[repository, output], nil, 2}
+
+    [repository, output, "--sealed-answers"] ->
+      {[repository, output], "sealed_answers_v1", 2}
+
+    [repository, output, "--structured"] ->
+      {[repository, output], nil, 3}
+
+    [repository, output, "--sealed-answers", "--structured"] ->
+      {[repository, output], "sealed_answers_v1", 3}
   end
 
 [repository, output] = Enum.map(paths, &Path.expand/1)
@@ -34,8 +43,8 @@ run =
     Path.join(output, "source"),
     repository,
     artifacts,
-    nil,
-    contract
+    data_contract: contract,
+    generation: generation
   )
 
 result = MeasuredKnowledgeVerification.verify(run)

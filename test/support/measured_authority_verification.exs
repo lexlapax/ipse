@@ -42,7 +42,7 @@ defmodule MeasuredAuthorityVerification do
             Path.join(root, kind),
             repository,
             artifacts,
-            :exit_on_answer
+            fault: :exit_on_answer
           ),
         else: MeasuredKnowledgeVerification.prepare(Path.join(root, kind), repository, artifacts)
 

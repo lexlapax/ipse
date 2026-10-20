@@ -27,6 +27,27 @@ defmodule Ipse.KnowledgeEvaluationScheduleTest do
     end)
   end
 
+  defp structured(plan) do
+    budgets = Map.new(plan["variants"], &{&1["id"], &1["budget"]})
+
+    spec =
+      plan
+      |> Map.drop(~w(variants answer))
+      |> Map.put("budgets", budgets)
+      |> Map.put("version", 3)
+      |> Map.put("contracts", %{
+        "outputs" => %{
+          "answer" => "json_schema_v2",
+          "extract" => "json_schema_v2",
+          "rerank" => "json_schema_v2"
+        },
+        "selection" => "per_strategy_eligibility_v1"
+      })
+
+    {:ok, plan} = EvaluationContract.build(spec)
+    plan
+  end
+
   defp queries do
     for index <- 1..50 do
       %{"query_id" => "Q#{index}", "project" => if(index <= 47, do: "beta", else: "alpha")}
@@ -129,32 +150,34 @@ defmodule Ipse.KnowledgeEvaluationScheduleTest do
         end)
       end)
 
-    assert :ok = EvaluationContract.validate(plan)
-    assert {:ok, schedule} = EvaluationRunner.schedule(plan, queries())
+    for plan <- [plan, structured(plan)] do
+      assert :ok = EvaluationContract.validate(plan)
+      assert {:ok, schedule} = EvaluationRunner.schedule(plan, queries())
 
-    for variant <- @variants do
-      cells = Enum.filter(schedule["cells"], &(&1["variant"] == variant))
-      assert length(cells) == 2
+      for variant <- @variants do
+        cells = Enum.filter(schedule["cells"], &(&1["variant"] == variant))
+        assert length(cells) == 2
 
-      for cell <- cells do
-        assert :ok = Ipse.Budget.Policy.validate(cell["budget"])
-        assert cell["budget"]["rate_card"] == card
+        for cell <- cells do
+          assert :ok = Ipse.Budget.Policy.validate(cell["budget"])
+          assert cell["budget"]["rate_card"] == card
 
-        assert cell["budget"]["money"] ==
-                 Enum.map(buckets, &Map.update!(&1, "limit_nanos", fn cap -> div(cap, 2) end))
-      end
+          assert cell["budget"]["money"] ==
+                   Enum.map(buckets, &Map.update!(&1, "limit_nanos", fn cap -> div(cap, 2) end))
+        end
 
-      for bucket <- buckets do
-        allocated =
-          Enum.sum(
-            for cell <- cells,
-                share <- cell["budget"]["money"],
-                share["basis"] == bucket["basis"],
-                do: share["limit_nanos"]
-          )
+        for bucket <- buckets do
+          allocated =
+            Enum.sum(
+              for cell <- cells,
+                  share <- cell["budget"]["money"],
+                  share["basis"] == bucket["basis"],
+                  do: share["limit_nanos"]
+            )
 
-        assert allocated <= bucket["limit_nanos"]
-        assert (bucket["limit_nanos"] - allocated) in 0..1
+          assert allocated <= bucket["limit_nanos"]
+          assert (bucket["limit_nanos"] - allocated) in 0..1
+        end
       end
     end
   end

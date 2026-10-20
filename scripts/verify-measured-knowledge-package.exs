@@ -4,13 +4,19 @@ arguments =
     rest -> rest
   end
 
-{paths, contract} =
+{paths, contract, generation} =
   case arguments do
     [archive, repository, artifact_file, output] ->
-      {[archive, repository, artifact_file, output], nil}
+      {[archive, repository, artifact_file, output], nil, 2}
 
     [archive, repository, artifact_file, output, "--sealed-answers"] ->
-      {[archive, repository, artifact_file, output], "sealed_answers_v1"}
+      {[archive, repository, artifact_file, output], "sealed_answers_v1", 2}
+
+    [archive, repository, artifact_file, output, "--structured"] ->
+      {[archive, repository, artifact_file, output], nil, 3}
+
+    [archive, repository, artifact_file, output, "--sealed-answers", "--structured"] ->
+      {[archive, repository, artifact_file, output], "sealed_answers_v1", 3}
   end
 
 [archive, repository, artifact_file, output] = Enum.map(paths, &Path.expand/1)
@@ -63,7 +69,7 @@ Code.require_file(#{inspect(Path.join(repository, "test/support/measured_model_f
 Code.require_file(#{inspect(Path.join(repository, "test/support/measured_knowledge_verification.exs"))})
 Code.require_file(#{inspect(Path.join(repository, "test/support/measured_scoring_verification.exs"))})
 artifacts = JSON.decode!(File.read!(#{inspect(artifact_file)}))
-run = MeasuredKnowledgeVerification.prepare(#{inspect(Path.join(output, "installed"))}, #{inspect(repository)}, artifacts, nil, #{inspect(contract)})
+run = MeasuredKnowledgeVerification.prepare(#{inspect(Path.join(output, "installed"))}, #{inspect(repository)}, artifacts, data_contract: #{inspect(contract)}, generation: #{inspect(generation)})
 result = MeasuredKnowledgeVerification.verify(run)
 scoring = MeasuredScoringVerification.verify(run, result, #{inspect(repository)})
 IO.puts(JSON.encode!(%{"synthetic" => true, "installed" => true, "model_quality_measured" => false, "result" => result, "scoring" => scoring}))

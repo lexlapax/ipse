@@ -371,7 +371,7 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
   defp portable_plan!(plan) do
     plan
     |> Map.drop(~w(artifacts search_port model_origin))
-    |> Map.put("version", 2)
+    |> Map.put("version", if(plan["version"] == 3, do: 3, else: 2))
     |> Map.update!("profiles", &without_origins!/1)
     |> Map.update!("embedding_profiles", &without_origins!/1)
   end

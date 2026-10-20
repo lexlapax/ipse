@@ -71,6 +71,95 @@ defmodule Ipse.KnowledgeEvaluationContractTest do
     )
   end
 
+  test "new generation requires every structured task and its individual qualification policy" do
+    contracts = %{
+      "outputs" => %{
+        "answer" => "json_schema_v2",
+        "extract" => "json_schema_v2",
+        "rerank" => "json_schema_v2"
+      },
+      "selection" => "per_strategy_eligibility_v1"
+    }
+
+    declared = sealed_spec() |> Map.put("version", 3) |> Map.put("contracts", contracts)
+    assert {:ok, plan} = EvaluationContract.build(declared)
+    assert plan["contracts"] == contracts
+    assert :ok = EvaluationContract.validate(plan)
+    assert :ok = EvaluationContract.validate_shape(plan, :execution)
+
+    profiles =
+      for variant <- plan["variants"],
+          entry <- variant["artifacts"],
+          family <- ~w(extraction rerank),
+          p <- Map.values(entry["options"][family] || %{}),
+          p["kind"] == "model_complete",
+          do: p
+
+    assert length(profiles) == 2
+    assert Enum.all?(profiles, &(&1["output_contract"] == "json_schema_v2"))
+
+    for changed <- [
+          Map.delete(declared, "contracts"),
+          Map.put(declared, "version", 2),
+          put_in(declared, ["contracts", "selection"], "complete_frozen_grid"),
+          put_in(declared, ["contracts", "outputs", "answer"], "text_v1"),
+          put_in(declared, ["contracts", "outputs", "extract"], "text_v1"),
+          put_in(declared, ["contracts", "outputs", "rerank"], "text_v1")
+        ] do
+      assert {:error, _} = EvaluationContract.build(changed)
+    end
+
+    changed =
+      update_in(plan, ["variants"], fn variants ->
+        Enum.map(variants, fn v ->
+          if v["id"] == "graph_model" do
+            update_in(v, ["artifacts"], fn entries ->
+              Enum.map(entries, fn e ->
+                if e["instance"] == "graph",
+                  do:
+                    update_in(
+                      e,
+                      ["options", "extraction", "chosen"],
+                      &Map.delete(&1, "output_contract")
+                    ),
+                  else: e
+              end)
+            end)
+          else
+            v
+          end
+        end)
+      end)
+
+    assert {:error, :output_contract} = EvaluationContract.validate(changed)
+
+    root = Path.join(System.tmp_dir!(), "ipse-structured-entry-" <> Ipse.Usage.id())
+    File.mkdir!(root)
+    on_exit(fn -> File.rm_rf!(root) end)
+    path = Path.join(root, "plan.json")
+    File.write!(path, JSON.encode!(plan))
+
+    for phase <- [:freeze, :verify, :tune] do
+      output = Path.join(root, Atom.to_string(phase))
+      options = [plan: path, output: output]
+
+      options =
+        if phase == :freeze,
+          do: options,
+          else:
+            options ++
+              [
+                corpus: Path.join(root, "absent-corpus"),
+                queries: Path.join(root, "absent-queries")
+              ]
+
+      assert {:error, %{"code" => "measured_entry_required"}} =
+               EvaluationRunner.run(phase, options)
+
+      refute File.exists?(output)
+    end
+  end
+
   defp trace_files(fun) do
     functions = [
       {File, :read!, 1},

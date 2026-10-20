@@ -39,6 +39,15 @@ defmodule IpseKnowledge.EvaluationScore do
   @source_keys ~w(project source_id generation version sha256)
   @prediction_keys ~w(version prediction_id variant query_id project attempt status top_k predicted_class response_kind answer claims evidence context_evidence citations)
   @safe_integer 9_007_199_254_740_991
+  @variants ~w(lexical graph_explicit graph_model dense hybrid rerank research)
+  @contracts %{
+    "outputs" => %{
+      "answer" => "json_schema_v2",
+      "extract" => "json_schema_v2",
+      "rerank" => "json_schema_v2"
+    },
+    "selection" => "per_strategy_eligibility_v1"
+  }
 
   @doc "Verify first-attempt rows and raw hashes, deriving review binding without loading references."
   def verified_predictions(freeze, blobs) do
@@ -108,11 +117,18 @@ defmodule IpseKnowledge.EvaluationScore do
   end
 
   defp freeze?(f) do
+    fields =
+      ~w(version context_sha256 metric_version variants baseline queries files classification_map)
+
+    fields = if is_map(f) and f["version"] == 3, do: ["contracts" | fields], else: fields
+
     exact?(
       f,
-      ~w(version context_sha256 metric_version variants baseline queries files classification_map)
+      fields
     ) and
-      f["version"] === 2 and hash?(f["context_sha256"]) and
+      (f["version"] === 2 or
+         (f["version"] === 3 and f["contracts"] == @contracts and f["variants"] == @variants and
+            is_list(f["queries"]) and length(f["queries"]) == 50)) and hash?(f["context_sha256"]) and
       f["metric_version"] === Metrics.version() and
       bounded_list?(f["variants"], 1, 16) and Enum.all?(f["variants"], &id?/1) and
       unique_values?(f["variants"]) and f["baseline"] in f["variants"] and
@@ -128,6 +144,11 @@ defmodule IpseKnowledge.EvaluationScore do
       Enum.all?(f["classification_map"], fn {key, value} ->
         id?(key) and (is_nil(value) or value in @classes)
       end)
+  end
+
+  defp review_binding(%{"version" => 3} = freeze, files) do
+    identities = files |> Enum.sort_by(& &1["id"]) |> Enum.map(&[&1["id"], &1["sha256"]])
+    Ipse.JSON.digest(["ipse-knowledge-review-binding", 3, freeze, identities])
   end
 
   defp review_binding(freeze, files) do
@@ -395,6 +416,14 @@ defmodule IpseKnowledge.EvaluationScore do
         literal_complete =
           Enum.all?(rows, fn row -> Enum.all?(row["integrity"], & &1["measured"]) end)
 
+        {support_value, review_complete} =
+          if freeze["version"] == 3 do
+            {semantic["support"]["correct_n"] / length(freeze["queries"]),
+             applicable_review_complete?(semantic, literal_complete)}
+          else
+            {semantic["support"]["accuracy"], semantic["review_complete"] and literal_complete}
+          end
+
         summaries = %{
           "recall_at_5" =>
             macro(rows, fn row -> row["retrieval"]["recall_at_5"] end, fn row ->
@@ -424,15 +453,15 @@ defmodule IpseKnowledge.EvaluationScore do
           "gates" => %{
             "support" =>
               gate(
-                semantic["support"]["accuracy"],
+                support_value,
                 0.90,
-                semantic["review_complete"] and literal_complete
+                review_complete
               ),
             "citation" =>
               gate(
                 semantic["citation"]["precision"],
                 0.95,
-                semantic["review_complete"] and literal_complete
+                review_complete
               )
           }
         }
@@ -472,27 +501,68 @@ defmodule IpseKnowledge.EvaluationScore do
         )
     }
 
-    {:ok,
-     %{
-       "version" => 1,
-       "metric_version" => Metrics.version(),
-       "verified_prediction_files" => verified,
-       "declarations" => freeze,
-       "variants" => variants,
-       "paired" => paired,
-       "review" => reviews,
-       "semantic" => semantic,
-       "literal_review_complete" => literal_complete,
-       "gates" => gates,
-       "quality_gate_scope" => "complete_frozen_grid",
-       "quality_gates_passed" => Enum.all?(gates, fn {_, gate} -> gate["status"] == "pass" end),
-       "thresholds" => %{"support" => 0.90, "citation" => 0.95},
-       "outside_scoring" =>
-         Map.new(
-           ~w(authority scope_isolation automatic_replay suppression_resurrection native installed platforms latency resources),
-           &{&1, "unmeasured"}
-         )
-     }}
+    report = %{
+      "version" => 1,
+      "metric_version" => Metrics.version(),
+      "verified_prediction_files" => verified,
+      "declarations" => freeze,
+      "variants" => variants,
+      "paired" => paired,
+      "review" => reviews,
+      "semantic" => semantic,
+      "literal_review_complete" => literal_complete,
+      "gates" => gates,
+      "quality_gate_scope" => "complete_frozen_grid",
+      "quality_gates_passed" => Enum.all?(gates, fn {_, gate} -> gate["status"] == "pass" end),
+      "thresholds" => %{"support" => 0.90, "citation" => 0.95},
+      "outside_scoring" =>
+        Map.new(
+          ~w(authority scope_isolation automatic_replay suppression_resurrection native installed platforms latency resources),
+          &{&1, "unmeasured"}
+        )
+    }
+
+    if freeze["version"] == 3 do
+      eligible =
+        Enum.filter(
+          variants,
+          &Enum.all?(&1["gates"], fn {_, gate} -> gate["status"] == "pass" end)
+        )
+
+      eligible_ids = Enum.map(eligible, & &1["variant"])
+
+      complete_first_grid =
+        length(saved) == length(freeze["variants"]) * length(freeze["queries"]) and
+          Enum.all?(saved, &(&1["status"] != "missing"))
+
+      complete_review = applicable_review_complete?(semantic, literal_complete)
+
+      {:ok,
+       Map.merge(report, %{
+         "version" => 2,
+         "contracts" => freeze["contracts"],
+         "quality_gate_scope" => freeze["contracts"]["selection"],
+         "complete_first_grid" => complete_first_grid,
+         "complete_review" => complete_review,
+         "eligible_variants" => eligible_ids,
+         "disqualified_variants" =>
+           Enum.map(
+             Enum.reject(variants, &(&1["variant"] in eligible_ids)),
+             &Map.take(&1, ~w(variant gates))
+           ),
+         "quality_gates_passed" => complete_first_grid and complete_review and eligible_ids != []
+       })}
+    else
+      {:ok, report}
+    end
+  end
+
+  defp applicable_review_complete?(semantic, literal_complete) do
+    semantic["review_complete"] and literal_complete and
+      semantic["citation"]["unmeasured_n"] == 0 and
+      Enum.all?(semantic["rows"], fn row ->
+        row["response_kind"] == "retrieval_only" or row["verdict"] != "unmeasured"
+      end)
   end
 
   defp semantic_projection(p, label, integrity) do

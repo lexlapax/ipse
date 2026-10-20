@@ -13,10 +13,17 @@ defmodule IpseKnowledgeExample.EvaluationContract do
   @fields ~w(version mode data as_of_ms artifacts profiles embedding_profiles models interval_ms search_port blind_seed budgets storage_policy)
 
   @plan_fields (@fields -- ["budgets"]) ++ ~w(variants answer)
+  @contracts %{
+    "outputs" => %{
+      "answer" => "json_schema_v2",
+      "extract" => "json_schema_v2",
+      "rerank" => "json_schema_v2"
+    },
+    "selection" => "per_strategy_eligibility_v1"
+  }
 
   def build(spec) do
-    fields =
-      if is_map(spec) and spec["version"] == 2, do: ["model_origin" | @fields], else: @fields
+    fields = execution_fields(@fields, spec)
 
     with true <- exact?(spec, fields),
          true <- exact?(spec["artifacts"], @artifacts),
@@ -29,7 +36,12 @@ defmodule IpseKnowledgeExample.EvaluationContract do
              &(&1["credential"] == "none")
            ),
          plan = spec |> Map.delete("budgets") |> Map.put("answer", true),
-         plan = Map.put(plan, "variants", Enum.map(@variants, &variant(&1, spec["budgets"][&1]))),
+         plan =
+           Map.put(
+             plan,
+             "variants",
+             Enum.map(@variants, &variant(&1, spec["budgets"][&1], spec["version"]))
+           ),
          :ok <- validate(plan) do
       {:ok, plan}
     else
@@ -40,8 +52,8 @@ defmodule IpseKnowledgeExample.EvaluationContract do
     _ -> {:error, :benchmark_spec}
   end
 
-  defp variant(id, budget) do
-    {prepare, artifact, options, preparation, query, bindings, extra} = selection(id)
+  defp variant(id, budget, version) do
+    {prepare, artifact, options, preparation, query, bindings, extra} = recipe(id, version)
     instance = if id == "research", do: "research", else: "corpus"
 
     %{
@@ -64,16 +76,20 @@ defmodule IpseKnowledgeExample.EvaluationContract do
       "state_binding" => if(instance in ~w(corpus graph), do: "evaluation")
     }
 
-  defp selection("lexical"),
+  defp recipe("lexical", _version),
     do: {"none", "lexical", common(), %{"store" => "notes"}, query("words"), bindings(), []}
 
-  defp selection(id) when id in ~w(graph_explicit graph_model) do
+  defp recipe(id, version) when id in ~w(graph_explicit graph_model) do
     kind = if id == "graph_explicit", do: "explicit", else: "model"
 
     extraction =
       if kind == "explicit",
         do: %{"kind" => "explicit", "version" => 1},
-        else: %{"kind" => "model_complete", "profile" => "p27_extract", "version" => 1}
+        else:
+          model_output(
+            %{"kind" => "model_complete", "profile" => "p27_extract", "version" => 1},
+            version
+          )
 
     graph =
       common()
@@ -96,7 +112,7 @@ defmodule IpseKnowledgeExample.EvaluationContract do
      [entry(kind, "graph", graph)]}
   end
 
-  defp selection(id) when id in ~w(dense hybrid rerank) do
+  defp recipe(id, version) when id in ~w(dense hybrid rerank) do
     vector =
       common()
       |> Map.put("embedding", %{
@@ -121,12 +137,16 @@ defmodule IpseKnowledgeExample.EvaluationContract do
       if id == "rerank",
         do:
           Map.put(vector, "rerank", %{
-            "chosen" => %{
-              "kind" => "model_complete",
-              "profile" => "p27_rerank",
-              "max_candidates" => 16,
-              "quote_bytes" => 128
-            }
+            "chosen" =>
+              model_output(
+                %{
+                  "kind" => "model_complete",
+                  "profile" => "p27_rerank",
+                  "max_candidates" => 16,
+                  "quote_bytes" => 128
+                },
+                version
+              )
           }),
         else: vector
 
@@ -139,7 +159,7 @@ defmodule IpseKnowledgeExample.EvaluationContract do
      Map.put(bindings(), "index", %{"instance" => "corpus", "id" => "index"}), []}
   end
 
-  defp selection("research") do
+  defp recipe("research", _version) do
     options =
       common()
       |> Map.put("stores", %{})
@@ -187,28 +207,37 @@ defmodule IpseKnowledgeExample.EvaluationContract do
 
   defp exact?(value, keys), do: is_map(value) and Enum.sort(Map.keys(value)) == Enum.sort(keys)
 
+  defp model_output(profile, 3), do: Map.put(profile, "output_contract", "json_schema_v2")
+  defp model_output(profile, _), do: profile
+
+  defp execution_fields(base, plan) do
+    cond do
+      is_map(plan) and plan["version"] == 3 -> ["contracts", "model_origin" | base]
+      is_map(plan) and plan["version"] == 2 -> ["model_origin" | base]
+      true -> base
+    end
+  end
+
   @doc "Admit a complete executable declaration under its original version rules."
   def validate(plan) do
     try do
-      fields = @plan_fields
-
-      require!(
-        exact?(plan, if(plan["version"] == 2, do: fields ++ ["model_origin"], else: fields)),
-        :plan_shape
-      )
+      require!(exact?(plan, execution_fields(@plan_fields, plan)), :plan_shape)
 
       require!(
         (plan["version"] === 1 and plan["mode"] in ~w(fixture tuning heldout)) or
-          (plan["version"] === 2 and plan["mode"] in ~w(fixture heldout)),
+          (plan["version"] in [2, 3] and plan["mode"] in ~w(fixture heldout)),
         :plan_version
       )
+
+      if plan["version"] == 3,
+        do: require!(plan["contracts"] == @contracts, :evaluation_contracts)
 
       origin = model_origin!(plan)
 
       if plan["mode"] == "tuning",
         do: require!(plan["search_port"] != URI.parse(origin).port, :model_origin)
 
-      if plan["version"] == 2 do
+      if plan["version"] in [2, 3] do
         require!(
           Enum.all?(
             Map.values(plan["profiles"]) ++ Map.values(plan["embedding_profiles"]),
@@ -231,7 +260,7 @@ defmodule IpseKnowledgeExample.EvaluationContract do
       if sealed,
         do:
           require!(
-            plan["version"] == 2 and plan["mode"] in ~w(fixture heldout) and
+            plan["version"] in [2, 3] and plan["mode"] in ~w(fixture heldout) and
               plan["data"]["split"] == "heldout",
             :data_contract
           )
@@ -309,7 +338,7 @@ defmodule IpseKnowledgeExample.EvaluationContract do
           :model_origin
         )
       else
-        if plan["version"] == 2 do
+        if plan["version"] in [2, 3] do
           selected =
             Enum.map(
               Map.values(plan["profiles"]) ++ Map.values(plan["embedding_profiles"]),
@@ -348,7 +377,7 @@ defmodule IpseKnowledgeExample.EvaluationContract do
         :variants
       )
 
-      if plan["version"] == 2,
+      if plan["version"] in [2, 3],
         do:
           require!(
             Enum.map(variants, & &1["id"]) == @variants and plan["answer"],
@@ -373,12 +402,6 @@ defmodule IpseKnowledgeExample.EvaluationContract do
           )
 
       if plan["mode"] == "heldout" do
-        require!(
-          Enum.map(variants, & &1["id"]) == @variants and plan["answer"] and
-            plan["data"]["expected_queries"] == 50,
-          :heldout_matrix
-        )
-
         require!(
           sealed or
             plan["data"]["manifest_sha256"] ==
@@ -424,18 +447,22 @@ defmodule IpseKnowledgeExample.EvaluationContract do
 
   @doc "Recognize Freeze's closed plan shape without admitting executable policy."
   def validate_shape(plan, :execution) do
-    keys =
-      if is_map(plan) and plan["version"] == 2,
-        do: ["model_origin" | @plan_fields],
-        else: @plan_fields
+    keys = execution_fields(@plan_fields, plan)
 
-    if is_map(plan) and plan["version"] in [1, 2] and exact?(plan, keys) and
+    if is_map(plan) and plan["version"] in [1, 2, 3] and exact?(plan, keys) and
          is_map(plan["artifacts"]) and is_map(plan["profiles"]) and
-         is_map(plan["embedding_profiles"]), do: :ok, else: {:error, :invalid_plan}
+         is_map(plan["embedding_profiles"]) and
+         (plan["version"] != 3 or plan["contracts"] == @contracts),
+       do: :ok,
+       else: {:error, :invalid_plan}
   end
 
   def validate_shape(plan, :portable) do
-    if exact?(plan, @plan_fields -- ~w(artifacts search_port)) and plan["version"] === 2 and
+    keys = @plan_fields -- ~w(artifacts search_port)
+    keys = if is_map(plan) and plan["version"] == 3, do: ["contracts" | keys], else: keys
+
+    if exact?(plan, keys) and plan["version"] in [2, 3] and
+         (plan["version"] != 3 or plan["contracts"] == @contracts) and
          Enum.all?(~w(profiles embedding_profiles), fn key ->
            is_map(plan[key]) and
              Enum.all?(plan[key], fn {id, profile} ->
@@ -474,7 +501,7 @@ defmodule IpseKnowledgeExample.EvaluationContract do
 
   defp model_origin!(%{"version" => 1}), do: "http://127.0.0.1:11434"
 
-  defp model_origin!(%{"version" => 2, "model_origin" => origin}) do
+  defp model_origin!(%{"version" => version, "model_origin" => origin}) when version in [2, 3] do
     require!(is_binary(origin) and byte_size(origin) <= 64, :model_origin)
 
     case Regex.run(~r/\Ahttp:\/\/127\.0\.0\.1:([0-9]{1,5})\z/, origin) do
@@ -561,6 +588,14 @@ defmodule IpseKnowledgeExample.EvaluationContract do
           if family == "embedding", do: plan["embedding_profiles"], else: plan["profiles"]
 
         require!(Map.has_key?(registry, profile["profile"]), :profile_reference)
+      end
+
+      if plan["version"] == 3 do
+        for family <- ~w(extraction rerank),
+            profile <- Map.values(selected["options"][family] || %{}),
+            profile["kind"] == "model_complete" do
+          require!(profile["output_contract"] == "json_schema_v2", :output_contract)
+        end
       end
     end)
 

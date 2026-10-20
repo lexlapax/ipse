@@ -189,6 +189,262 @@ defmodule Ipse.KnowledgeEvaluationScoreTest do
     Map.put(review, "review_binding_sha256", verified["review_binding_sha256"])
   end
 
+  defp qualification_inputs(support \\ 45, citations \\ 95) do
+    variants = ~w(lexical graph_explicit graph_model dense hybrid rerank research)
+    queries = for i <- 1..50, do: %{"query_id" => "q#{i}", "project" => "p"}
+
+    rows =
+      for variant <- variants, q <- queries do
+        prediction(%{
+          "prediction_id" => variant <> "-" <> q["query_id"],
+          "variant" => variant,
+          "query_id" => q["query_id"],
+          "claims" => [
+            %{"claim_id" => "c1", "text" => "A café."},
+            %{"claim_id" => "c2", "text" => "A café."}
+          ],
+          "citations" => [
+            %{"citation_id" => "pair1", "claim_id" => "c1", "span_id" => "s"},
+            %{"citation_id" => "pair2", "claim_id" => "c2", "span_id" => "s"}
+          ]
+        })
+      end
+
+    {old, blobs} = inputs(rows, queries, variants)
+
+    freeze =
+      old
+      |> Map.put("version", 3)
+      |> Map.put("baseline", "lexical")
+      |> Map.put("contracts", %{
+        "outputs" => %{
+          "answer" => "json_schema_v2",
+          "extract" => "json_schema_v2",
+          "rerank" => "json_schema_v2"
+        },
+        "selection" => "per_strategy_eligibility_v1"
+      })
+
+    label = %{
+      labels()
+      | "queries" =>
+          Enum.map(queries, &Map.put(hd(labels()["queries"]), "query_id", &1["query_id"]))
+    }
+
+    semantic =
+      for row <- rows do
+        index = row["query_id"] |> String.trim_leading("q") |> String.to_integer()
+
+        verdict =
+          if row["variant"] == "lexical" and index <= support,
+            do: "supported",
+            else: "unsupported"
+
+        pairs =
+          for pair <- 1..2 do
+            positive = row["variant"] == "lexical" and (index - 1) * 2 + pair <= citations
+
+            %{
+              "citation_id" => "pair#{pair}",
+              "verdict" => if(positive, do: "supported", else: "unsupported")
+            }
+          end
+
+        %{
+          hd(reviews()["semantic"])
+          | "prediction_id" => row["prediction_id"],
+            "verdict" => verdict,
+            "citations" => pairs
+        }
+      end
+
+    review =
+      reviews(%{"integrity" => [], "semantic" => semantic})
+      |> then(&bind_fixture_review(freeze, blobs, &1))
+
+    {freeze, blobs, label, review, rows}
+  end
+
+  test "individual qualification keeps all350 firsts and rejects weaker strategies at inclusive thresholds" do
+    {freeze, blobs, label, review, _} = qualification_inputs()
+
+    assert {:ok, report} =
+             score_with_corpus(freeze, blobs, fn -> {:ok, label} end, fn -> {:ok, review} end)
+
+    assert report["version"] == 2 and
+             report["quality_gate_scope"] == "per_strategy_eligibility_v1"
+
+    assert report["complete_first_grid"] and report["complete_review"] and
+             report["quality_gates_passed"]
+
+    assert report["eligible_variants"] == ["lexical"]
+    assert Enum.map(report["disqualified_variants"], & &1["variant"]) == tl(freeze["variants"])
+    assert Enum.sum(Enum.map(report["variants"], &length(&1["rows"]))) == 350
+    [lexical | _] = report["variants"]
+    assert lexical["gates"]["support"]["value"] == 0.90
+    assert lexical["gates"]["citation"]["value"] == 0.95
+    assert report["gates"]["support"]["status"] == "fail"
+    assert report["gates"]["citation"]["status"] == "fail"
+    refute Map.has_key?(report, "selected_variant")
+
+    old = freeze |> Map.put("version", 2) |> Map.delete("contracts")
+    old_review = bind_fixture_review(old, blobs, review)
+
+    assert {:ok, historical} =
+             score_with_corpus(old, blobs, fn -> {:ok, label} end, fn -> {:ok, old_review} end)
+
+    assert historical["version"] == 1 and
+             historical["quality_gate_scope"] == "complete_frozen_grid"
+
+    refute historical["quality_gates_passed"]
+
+    for {support, citations} <- [{44, 95}, {45, 94}] do
+      {freeze, blobs, label, review, _} = qualification_inputs(support, citations)
+
+      assert {:ok, failed} =
+               score_with_corpus(freeze, blobs, fn -> {:ok, label} end, fn -> {:ok, review} end)
+
+      assert failed["complete_first_grid"] and failed["complete_review"]
+      assert failed["eligible_variants"] == []
+      refute failed["quality_gates_passed"]
+    end
+  end
+
+  test "a qualifier cannot hide missing first outcomes or unmeasured weaker-strategy answers" do
+    {freeze, _, label, review, rows} = qualification_inputs()
+
+    for changed <- [
+          Enum.drop(rows, -1),
+          List.update_at(rows, -1, &Map.put(&1, "status", "missing"))
+        ] do
+      {declared, blobs} = inputs(changed, freeze["queries"], freeze["variants"])
+      declared = Map.merge(declared, Map.take(freeze, ~w(version contracts baseline)))
+      ids = MapSet.new(changed, & &1["prediction_id"])
+
+      filtered =
+        update_in(
+          review,
+          ["semantic"],
+          &Enum.filter(&1, fn row -> MapSet.member?(ids, row["prediction_id"]) end)
+        )
+
+      bound = bind_fixture_review(declared, blobs, filtered)
+
+      assert {:ok, report} =
+               score_with_corpus(declared, blobs, fn -> {:ok, label} end, fn -> {:ok, bound} end)
+
+      assert report["eligible_variants"] == ["lexical"]
+      refute report["complete_first_grid"] or report["quality_gates_passed"]
+      assert Enum.sum(Enum.map(report["variants"], &length(&1["rows"]))) == 350
+    end
+
+    {freeze, blobs, label, review, _} = qualification_inputs()
+
+    unmeasured =
+      update_in(review, ["semantic", Access.at(-1), "verdict"], fn _ -> "unmeasured" end)
+
+    assert {:ok, report} =
+             score_with_corpus(freeze, blobs, fn -> {:ok, label} end, fn -> {:ok, unmeasured} end)
+
+    assert report["eligible_variants"] == ["lexical"] and report["complete_first_grid"]
+    refute report["complete_review"] or report["quality_gates_passed"]
+  end
+
+  defp qualification_failures(count) do
+    {freeze, _, label, review, rows} = qualification_inputs(50, 100)
+
+    changed =
+      Enum.with_index(rows, fn row, index ->
+        if index < count do
+          Map.merge(row, %{
+            "status" => "failed",
+            "predicted_class" => nil,
+            "response_kind" => "retrieval_only",
+            "answer" => nil,
+            "claims" => [],
+            "citations" => [],
+            "context_evidence" => []
+          })
+        else
+          row
+        end
+      end)
+
+    {declared, blobs} = inputs(changed, freeze["queries"], freeze["variants"])
+    declared = Map.merge(declared, Map.take(freeze, ~w(version contracts baseline)))
+
+    review =
+      update_in(
+        review,
+        ["semantic"],
+        &Enum.with_index(&1, fn row, index ->
+          if index < count,
+            do: Map.merge(row, %{"verdict" => "unmeasured", "citations" => []}),
+            else: row
+        end)
+      )
+
+    {declared, blobs, label, bind_fixture_review(declared, blobs, review)}
+  end
+
+  test "reviewed first failures contribute zero support with the declared50 outcome denominator" do
+    for count <- [1, 5, 6] do
+      {declared, blobs, label, review} = qualification_failures(count)
+
+      assert {:ok, report} =
+               score_with_corpus(declared, blobs, fn -> {:ok, label} end, fn -> {:ok, review} end)
+
+      assert report["complete_first_grid"] and report["complete_review"]
+      assert report["eligible_variants"] == if(count <= 5, do: ["lexical"], else: [])
+      assert report["quality_gates_passed"] == count <= 5
+      [lexical | _] = report["variants"]
+      assert lexical["gates"]["support"]["value"] == (50 - count) / 50
+      assert lexical["semantic"]["support"]["accuracy"] == nil
+    end
+  end
+
+  test "failure support still requires independent review of every first and actual answer" do
+    {declared, blobs, label, review} = qualification_failures(5)
+
+    for changed <- [
+          update_in(review, ["semantic"], &tl/1),
+          put_in(review, ["semantic", Access.at(0), "independent"], false),
+          put_in(review, ["semantic", Access.at(5), "verdict"], "unmeasured")
+        ] do
+      assert {:ok, report} =
+               score_with_corpus(declared, blobs, fn -> {:ok, label} end, fn -> {:ok, changed} end)
+
+      assert report["complete_first_grid"]
+      refute report["complete_review"] or report["quality_gates_passed"]
+      assert report["eligible_variants"] == []
+      assert hd(report["variants"])["gates"]["support"]["status"] == "unmeasured"
+    end
+  end
+
+  test "new declaration identity cannot reuse a review after downgrade or query-order substitution" do
+    {freeze, blobs, _, review, _} = qualification_inputs()
+    owner = self()
+
+    unopened = fn ->
+      send(owner, :reference_opened)
+      {:error, :forbidden}
+    end
+
+    for changed <- [
+          freeze |> Map.put("version", 2) |> Map.delete("contracts"),
+          Map.update!(freeze, "queries", &Enum.reverse/1)
+        ] do
+      assert {:error, :review_binding_mismatch} =
+               Score.score(changed, blobs, unopened, fn -> {:ok, review} end, unopened)
+
+      refute_received :reference_opened
+    end
+
+    altered = put_in(freeze, ["contracts", "outputs", "answer"], "text_v1")
+    assert {:error, :invalid_freeze} = Score.score(altered, blobs, unopened, unopened, unopened)
+    refute_received :reference_opened
+  end
+
   test "reviewer flags cannot validate fabricated bytes or invalidate genuine bytes" do
     fabricated = put_in(prediction(), ["evidence", Access.at(0), "quote"], "a fake zz")
     assert {:ok, report} = score([fabricated])

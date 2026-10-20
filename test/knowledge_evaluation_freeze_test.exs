@@ -198,6 +198,50 @@ defmodule Ipse.KnowledgeEvaluationFreezeTest do
     assert :code.is_loaded(Independent.FrozenArtifact) == false
   end
 
+  test "new nested plan generation preserves its contracts through independent version-two seals",
+       ctx do
+    contracts = %{
+      "outputs" => %{
+        "answer" => "json_schema_v2",
+        "extract" => "json_schema_v2",
+        "rerank" => "json_schema_v2"
+      },
+      "selection" => "per_strategy_eligibility_v1"
+    }
+
+    plan =
+      plan_v2(ctx)
+      |> Map.put("version", 3)
+      |> Map.put("contracts", contracts)
+      |> Map.put("model_origin", "http://127.0.0.1:21434")
+
+    assert {:ok, experiment} =
+             Freeze.declare(ctx.repository, JSON.encode!(plan), %{"fixture" => ctx.artifact})
+
+    portable = JSON.decode!(experiment["bytes"])
+    assert portable["version"] == 2 and portable["plan"]["version"] == 3
+    assert portable["plan"]["contracts"] == contracts
+    assert {:ok, resolved} = Freeze.resolve_plan(experiment["bytes"], resolution(ctx))
+    assert resolved["version"] == 3 and resolved["contracts"] == contracts
+
+    assert {:ok, sealed} =
+             Freeze.create_v2(ctx.repository, experiment["bytes"], resolution(ctx), ctx.output)
+
+    assert {:ok, verified} = Freeze.verify(sealed["path"], sealed["sha256"])
+    assert verified["manifest"]["version"] == 2
+    assert verified["plan"]["version"] == 3 and verified["plan"]["contracts"] == contracts
+
+    changed = put_in(portable, ["plan", "contracts", "outputs", "answer"], "text_v1")
+
+    assert {:error, :invalid_experiment} =
+             Freeze.resolve_plan(JSON.encode!(changed), resolution(ctx))
+
+    changed = put_in(portable, ["plan", "version"], 2)
+
+    assert {:error, :invalid_experiment} =
+             Freeze.resolve_plan(JSON.encode!(changed), resolution(ctx))
+  end
+
   test "one portable declaration yields distinct immutable local execution seals", ctx do
     {:ok, experiment} = declare(ctx)
     relocated = Path.join(ctx.root, "relocated")

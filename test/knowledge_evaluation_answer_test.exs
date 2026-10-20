@@ -34,6 +34,69 @@ defmodule Ipse.KnowledgeEvaluationAnswerTest do
     }
   end
 
+  test "structured answer schemas bind only shown IDs and reject substituted schemas" do
+    evidence = for i <- 1..10, do: candidate("source#{i}", String.duplicate("x", 1024))
+    assert {:ok, old} = Answer.prepare("release", 1000, evidence)
+    assert {:ok, bundle} = Answer.prepare("release", 1000, evidence, "json_schema_v2")
+    assert Map.drop(bundle, ~w(version request)) == Map.drop(old, ~w(version request))
+    assert bundle["version"] == 2 and bundle["request"]["version"] == 2
+    assert bundle["coverage"]["omitted_count"] > 0
+    assert :ok = Ipse.Extensions.ModelCall.validate(bundle["request"])
+    schema = bundle["request"]["response_schema"]
+    shown_ids = Enum.map(bundle["shown"], & &1["candidate_id"])
+
+    assert get_in(schema, ~w(properties claims items properties citations items enum)) ==
+             shown_ids
+
+    assert {:ok, _} = Answer.decode_answer(JSON.encode!(response()), bundle)
+
+    forged = put_in(bundle, ["request", "response_schema", "additionalProperties"], true)
+    assert {:error, :invalid_bundle} = Answer.decode_answer(JSON.encode!(response()), forged)
+
+    forged =
+      put_in(
+        bundle,
+        [
+          "request",
+          "response_schema",
+          "properties",
+          "claims",
+          "items",
+          "properties",
+          "citations",
+          "items",
+          "enum"
+        ],
+        ["e1", "omitted"]
+      )
+
+    assert {:error, :invalid_bundle} = Answer.decode_answer(JSON.encode!(response()), forged)
+
+    assert {:ok, empty} = Answer.prepare("release", 1000, [], "json_schema_v2")
+    assert :ok = Ipse.Extensions.ModelCall.validate(empty["request"])
+
+    assert get_in(empty, ~w(request response_schema properties classification enum)) == [
+             "abstain"
+           ]
+
+    assert get_in(empty, ~w(request response_schema properties claims maxItems)) == 0
+
+    assert {:ok, _} =
+             Answer.decode_answer(
+               JSON.encode!(%{"classification" => "abstain", "claims" => []}),
+               empty
+             )
+
+    assert {:error, :invalid_answer_shape} =
+             Answer.decode_answer(
+               JSON.encode!(%{"classification" => "open", "claims" => []}),
+               empty
+             )
+
+    assert {:error, :duplicate_citation} =
+             Answer.decode_answer(JSON.encode!(response("answer", ["e1", "e1"])), bundle)
+  end
+
   @tag :answer_contract
   test "one ordered cited body supplies the material answer independently of its classification" do
     {:ok, bundle} = Answer.prepare("release", 1000, [candidate("a")])

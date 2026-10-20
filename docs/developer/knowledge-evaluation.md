@@ -74,7 +74,7 @@ Run it from a clean repository on the supported optional Linux backend:
 ```sh
 ./scripts/build.sh
 IPSE_MEASURED_PROOF=$(mktemp -d)
-mix run scripts/verify-measured-knowledge.exs -- "$PWD" "$IPSE_MEASURED_PROOF/source"
+mix run scripts/verify-measured-knowledge.exs -- "$PWD" "$IPSE_MEASURED_PROOF/source" --sealed-answers --structured
 ```
 
 A successful invocation reports `synthetic: true`, `model_quality_measured: false`,
@@ -83,18 +83,25 @@ fifty queries, two projects and seven strategies. Its fourteen cells each own a
 fresh daemon and complete public-Session lifecycle. The driver checks selected
 model calls, exclusion markers, canonical request counts, unchanged read-only
 audit, first-attempt refusal and changed-evidence refusal. Its scoring controls
-exercise actual v2 CLI review, an unmeasured score exit and refusal before label
+exercise actual CLI review, an unmeasured score exit and refusal before label
 or review input access. These are expected results to verify, not evidence that a
 particular source, host or package has passed.
 
-To exercise detached answers through the same measured path, add
-`--sealed-answers` after the output argument. The helper retains synthetic answers
+`--structured` selects plan three. The driver inspects each actual answer,
+extraction and rerank request for its exact task schema, shown IDs, counts,
+`think: false` and declared output-token limit. `--sealed-answers` selects
+detached answers. The helper retains synthetic answers
 in the outer test owner's memory. They are absent from disk during preparation,
 all fourteen cells, finalization and audit. After that audit, the scoring helper
 releases the exact committed bytes and supplies `--labels` to review and score.
 The plan remains `mode: "fixture"`, with fixture model identities and no quality
 claim. This format exercise does not substitute for an independently authored
 held-out workload.
+
+For historical compatibility exercises, omit `--structured` to select plan two.
+Omit `--sealed-answers` to use the combined fixture dataset. When selecting both,
+keep the argument order shown above. Neither switch changes the measured seal,
+saved prediction or review-envelope versions.
 
 Inspect `$IPSE_MEASURED_PROOF/source/source/freeze`, the adjacent `reports`, and
 the adjacent `scoring-controls` directory. A failed command
@@ -111,7 +118,7 @@ set -- dist/ipse-*.tar.gz
 test "$#" -eq 1
 elixir scripts/verify-measured-knowledge-package.exs \
   "$1" "$PWD" "$IPSE_MEASURED_PROOF/source/artifacts.json" \
-  "$IPSE_MEASURED_PROOF/installed"
+  "$IPSE_MEASURED_PROOF/installed" --sealed-answers --structured
 ```
 
 The installed driver extracts the archive, retains its hash and runs the same
@@ -125,7 +132,7 @@ A successful installed exercise is protocol evidence for that archive and host.
 It does not establish real Ollama CPU execution, held-out quality or complete
 failure/loss coverage. Keep actual evidence in [dated records](../archive/index.md)
 and acceptance criteria in [the plan](../plan.md#p27-optional-research-graph-and-rag).
-The installed helper accepts the same final `--sealed-answers` argument.
+The installed helper accepts the same optional arguments in the same order.
 
 ### Exercise authority and loss before accepting an execution change
 
@@ -261,7 +268,7 @@ digests; review the endpoint, installed model identities and budgets for your
 authorized run. There is no provider fallback or model download. The declared
 template retains the historical combined query/answer contract. Its exposed
 workload is suitable only for tuning and historical reproduction. For the new
-workload, set `version: 2`, `model_origin` to one canonical private IPv4-loopback
+workload, set `version: 3`, `model_origin` to one canonical private IPv4-loopback
 origin, and every profile's `base_url` to that same origin. Set `data` to:
 
 ```json
@@ -273,6 +280,69 @@ Replace the illustrative digest with the independently retained author receipt's
 review. The subsequent portable declaration removes local endpoint bindings and
 the execution resolution supplies them again. Generating a plan does not open
 the manifest, corpus, questions or answers. Their paths may still be absent.
+
+Plan three also requires this exact `contracts` object:
+
+```json
+{"outputs":{"answer":"json_schema_v2","extract":"json_schema_v2","rerank":"json_schema_v2"},"selection":"per_strategy_eligibility_v1"}
+```
+
+`EvaluationContract.build/1` adds the matching output-contract selections to
+extraction and rerank profiles. Full validation refuses a changed selection.
+All three text tasks use the host's schema-bound `model.complete` version-two
+request. The answer, extraction and rerank schemas differ and bind the IDs
+actually supplied to each task. Schema conformance does not establish factual
+support. Independent semantic review remains required.
+
+Keep format versions separate when tracing a run:
+
+| Object | New comparison version | Responsibility |
+| --- | --- | --- |
+| Executable and portable plan | 3 | Fix text output contracts and individual strategy qualification |
+| Experiment and local execution seal | 2 | Bind portable policy and one measured local resolution |
+| Answer preparation bundle and model request | 2 | Retain the complete schema-bound approved request |
+| Saved prediction row and independent review envelope | 2 | Preserve first outcomes and bound judgments |
+| Scoring declaration | 3 | Bind the complete validated declaration and prediction files to review |
+| Score report | 2 | Publish eligibility, disqualifications and complete-grid diagnostics |
+| Metric implementation | 1 | Retain the historical diagnostic definitions |
+
+Historical plans one and two keep their original closed fields and selection
+rules. Adding `contracts` to either refuses. Choose the new generation explicitly
+before freezing. An old experiment cannot acquire the new qualification policy
+through a scoring command or a changed review file.
+
+For example, convert the copied template without reading any dataset member:
+
+```sh
+export IPSE_DATA_MANIFEST_SHA256=ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+elixir -e '
+[path, manifest_sha256] = System.argv()
+origin = "http://127.0.0.1:47631"
+spec = JSON.decode!(File.read!(path))
+spec = Map.merge(spec, %{
+  "version" => 3, "model_origin" => origin,
+  "contracts" => %{
+    "outputs" => Map.new(~w(answer extract rerank), &{&1, "json_schema_v2"}),
+    "selection" => "per_strategy_eligibility_v1"
+  }
+})
+spec = Enum.reduce(~w(profiles embedding_profiles), spec, fn key, acc ->
+  Map.update!(acc, key, &Map.new(&1, fn {name, profile} ->
+    {name, Map.put(profile, "base_url", origin)}
+  end))
+end)
+spec = Map.update!(spec, "data", &Map.merge(&1, %{
+  "contract" => "sealed_answers_v1", "queries" => "queries.json",
+  "manifest_sha256" => manifest_sha256
+}))
+File.write!(path, JSON.encode!(spec) <> "\n")
+' "$IPSE_BENCHMARK/spec.json" "$IPSE_DATA_MANIFEST_SHA256"
+```
+
+The repeated `f` digest makes this a declaration exercise. For a real comparison,
+set the variable to the author's retained manifest hash before running it.
+This command changes only the private specification copy. Review its selected
+model identities and limits before proceeding.
 
 Generate the private plan:
 
@@ -312,7 +382,7 @@ origin from the profiles, including a canonical private port such as
 profile, malformed origin or collision with `search_port` refuses. The default
 port remains usable when explicitly selected. This does not change legacy
 version-one held-out policy or version-two measured resolution. V1 rejects the
-new sealed-answer contract. V2 permits it in `heldout` and explicitly synthetic
+new sealed-answer contract. Plans two and three permit it in `heldout` and explicitly synthetic
 `fixture` mode; the question/answer split remains `heldout` in either mode.
 Fixture mode requires fixture model names and inventory. It cannot satisfy the
 held-out model gates.
@@ -512,7 +582,7 @@ hash before producing cell tickets/descriptors; future descriptor hashes do not
 create a circular identity.
 
 `EvaluationRunner.schedule/2` derives fourteen cells in sorted-project and
-original-variant order. Version two divides every request, token and monetary
+original-variant order. Plans two and three divide every request, token and monetary
 cap by the original two-project count, rounding down. Reservations and the rate
 card remain unchanged. A share below its reservation refuses admission. Unused
 amounts cannot transfer or renew. Each Research share is its project's query
@@ -956,7 +1026,7 @@ Follow `run_variant/9`, `prepare/4`, `invoke/4` and `approve/1` in the runner:
    Session, gateway and sampler, with errors preserved in the output directory.
 
 The version-one controlled gateway uses one finite allowance across all projects.
-Version two assigns disjoint shares to the separately owned Research cells. The runner
+Plans two and three assign disjoint shares to the separately owned Research cells. The runner
 derives it from `expected_queries * (1 + max_sources)`: one search and at most
 the declared number of fetches per question. Fifty ten-source questions allow
 550 calls. Changing documents or beginning another question does not renew the
@@ -1019,6 +1089,14 @@ and at most ten saved candidates in their existing rank order. Each candidate
 has its complete `citation`. The result contains an exact `model.complete`
 request for `p27_answer`, a shown context, coverage and the context's SHA256.
 It executes nothing.
+
+For plan three, Runner calls `prepare/4` with `"json_schema_v2"`. Its version-two
+bundle retains the same six fields, including the complete version-two request.
+After fitting the input, the helper derives `response_schema` from only the
+shown evidence IDs. With no shown evidence, the schema permits only `abstain`
+and zero claims. Bundle validation reconstructs that schema, so adding an
+omitted ID or substituting another schema refuses before answer decoding.
+The existing `prepare/3` keeps its version-one request and bundle contract.
 
 The helper assigns short IDs such as `e1` to evidence and preserves each admitted
 citation's entire quote, offsets and hash, up to the existing 1024-byte citation
@@ -1128,6 +1206,22 @@ that a claim follows from its citation, that a class is correct, that the answer
 is complete, or that two claims agree. Keep those semantic judgments in
 independent review, alongside literal captured-source verification.
 
+Trace the structured request through `EvaluationSession.invoke/3`. Its new answer
+argument is exactly `%{"request" => request}`. The driver validates the request
+and evaluator byte limits, then forwards it unchanged. Historical four-field
+arguments still construct their version-one request. Mixed argument forms refuse.
+Runner records the canonical complete request hash beside `context_sha256`
+before dispatch. Approval binds the complete request, including its schema.
+For extraction and rerank, Runner independently derives the expected schema
+after checking the input and source identities. It does not load a producer's
+domain adapter to decide what to approve.
+
+The host validates the returned JSON against the approved schema before domain
+decoding. A completed invalid response retains its raw text and charged usage.
+The evaluator keeps the failed first outcome without repair, retry or fallback.
+The decoder still checks UTF8 byte limits, duplicate citations, attribution and
+class-specific rules. A schema's character limit cannot replace those byte checks.
+
 ## Prepare independent review from finalized predictions
 
 Use a completed v1 prediction or an audited v2 measured execution. Retain the
@@ -1143,7 +1237,12 @@ Keep three identities separate. The execution-freeze hash selects the experiment
 and its reference data. `review_binding_sha256` binds that context, the metric
 version and every verified prediction-file ID and hash. The separately retained
 `packet_sha256` identifies the complete packet and its reviewer instructions.
-The review binding is opaque to a reviewer. It does not reveal strategy names.
+For a plan-three comparison, scoring declaration three contributes its complete
+validated content to a distinct review-binding domain. Changing the output
+contracts, qualification policy or query order invalidates an old review, even
+when prediction IDs and bytes remain the same. Historical scoring declaration
+two retains its original binding. The review envelope remains version two in
+both cases. The binding is opaque to a reviewer. It does not reveal strategy names.
 
 For the v2 seal above, prepare a private packet and then score a separate review:
 
@@ -1342,14 +1441,45 @@ denominator. Intentional retrieval-only plans still produce `retrieval_only` row
 whose answer metrics remain unmeasured. Neither case invents a successful answer
 or a semantic review.
 
-The scorer's support and citation thresholds are 0.90 and 0.95. Its aggregate
-`semantic`, `gates` and `quality_gates_passed` fields cover the complete frozen
-variant/query grid, including missing rows. `quality_gate_scope` identifies that
-scope; each variant retains its own independent measurements and gates. A
-complete-workload pass does not promote a failing individual engine.
-Incomplete review cannot pass. The `score` CLI preserves `scores.json` and exits
-nonzero for failed or unmeasured aggregate gates. Semantic quality gates do not replace the separate native authority, cleanup,
-resource, installed-execution or source-suppression checks.
+For plan three, read the report's `contracts` and `quality_gate_scope` first.
+`per_strategy_eligibility_v1` applies the support threshold 0.90 and citation
+threshold 0.95 to each strategy separately. A strategy's support gate divides
+its independently supported or correct-abstention outcomes by all fifty declared
+first outcomes. A recorded failed outcome contributes zero. Its citation gate
+requires at least one reviewed pair and uses the supported fraction of all
+claim/span pairs, with corpus-derived literal checks. The thresholds are inclusive.
+
+`eligible_variants` lists strategies passing both gates. `disqualified_variants`
+retains every weaker strategy and its gate values. All seven strategies and
+350 report rows remain available in `variants`; a qualifier cannot hide a
+weaker result. Eligibility permits later selection, but the scorer chooses no
+engine and implements no tie-breaker. Resource, latency and other acceptance
+evidence still need assessment before an engine decision.
+
+`quality_gates_passed` additionally requires `complete_first_grid` and
+`complete_review`. Every declared pair must have a distinct saved attempt-one
+outcome. A materialized missing row is diagnostic, not a saved first outcome.
+Every first outcome needs an independent review entry, including a failed
+retrieval-only outcome whose applicable verdict is `unmeasured`. Every actual
+answer or abstention needs a measured verdict, and every cited pair needs a
+measured independent judgment and literal check. An eligible strategy cannot
+compensate for missing outcomes or unfinished reviews elsewhere in the grid.
+
+The aggregate `semantic` and `gates` fields remain diagnostics with the original
+metric definitions. In particular, a failed retrieval-only row leaves diagnostic
+support accuracy null while contributing zero to the new strategy gate's
+fifty-outcome denominator. Historical scoring declaration two produces report
+one with `quality_gate_scope: "complete_frozen_grid"`; its quality flag still
+uses aggregate gates. Do not reinterpret that historical flag as individual
+qualification.
+
+The `score` CLI preserves `scores.json` and exits nonzero when the declared
+quality policy fails or remains unmeasured. Run the score-suite qualification
+exercise: 45 supported firsts with five reviewed failures must meet 0.90;
+44 supported firsts must fail. Remove one failure's independent review entry
+or leave an actual answer unmeasured. Both must block a quality pass. Semantic
+quality gates do not replace the separate native authority, cleanup, resource,
+installed-execution or source-suppression checks.
 Follow the [plan](../plan.md#p27-optional-research-graph-and-rag) for the complete
 acceptance requirements. Passing these synthetic exercises establishes helper
 behavior, not held-out quality or a selected retrieval engine.

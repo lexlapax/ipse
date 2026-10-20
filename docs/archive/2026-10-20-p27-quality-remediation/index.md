@@ -330,6 +330,63 @@ The declaration, scorer and engine-selection implementation are still pending
 at this decision point. The [current plan](../../plan.md#p27-optional-research-graph-and-rag)
 owns the acceptance requirements.
 
+## Bind evaluation outputs and individual qualification
+
+The next increment over `3310605` carries the structured host contract and the
+acceptance decision through one explicit evaluator generation. Plan three fixes
+answer, extraction and rerank output to `json_schema_v2`, with selection policy
+`per_strategy_eligibility_v1`. Historical plans one and two keep their original
+closed fields, output behavior and score meaning. The public template remains
+historical; a worked conversion explicitly selects the new generation without
+opening dataset or artifact paths.
+
+Answer preparation derives the schema from the IDs actually shown after input
+fitting. Its version-two bundle retains the complete request, and Session forwards
+that same request. Runner independently checks task-specific extraction/rerank
+schemas and records the complete answer request hash before dispatch. Portable
+plan three, scoring declaration three and its distinct review binding retain the
+closed output and qualification selections. Experiment/seal two, prediction and
+review two, and metric one remain separate formats. Report two publishes every
+strategy and its individual eligibility without choosing an engine.
+
+Both runtime reviewers identified one public scoring-policy inconsistency. A saved
+failed retrieval-only outcome left historical support accuracy null, disqualifying
+49 supported firsts plus one reviewed failure. Ordinary Runner failures were
+already answer-shaped and counted correctly. The correction gives only the new
+policy its declared fifty-outcome denominator. Reviewed failures contribute zero;
+historical diagnostic nulls remain unchanged. Missing or non-independent failure
+reviews and unmeasured actual answers or citation pairs still prevent a quality pass.
+The regression fails before the correction. Independent pure controls confirm
+49/50 and inclusive 45/50 qualify, while 44/50 fails. The
+[combined reviews](evaluator-reviews.md) retain both original findings, the
+corrective probe, whole-manual reviews and lead disposition.
+
+All 129 focused tests pass on macOS and Linux. Both platforms reproduce the same
+8,738 historical declaration outcomes exactly. Build, formatting, strict compile
+and demo pass. The [verification receipt](evaluator-verification.json) binds the
+[462-file source inventory](evaluator-source.json), platform logs, package identity
+and complete Linux source/installed synthetic proofs. Each proof saves all 350
+first outcomes through fourteen cells and sixteen measured stages, confirms
+cleanup and retains a complete kernel charged-memory audit. Actual synthetic wire
+requests carry their task schemas, shown IDs, counts and selected token/thinking
+settings. Every answer context retains its request hash.
+
+Detached synthetic answers stay absent through execution and audit. Review and
+score CLI controls preserve the complete grid, refuse an unmeasured review under
+the new qualification policy, and reject changed authority or bindings before
+reference access. These are synthetic protocol checks with no model weights or
+quality measurement. They establish no matched real-model resource comparison.
+
+The complete evaluation chapter was reviewed by two independent readers. Root and
+one reviewer separately ran its literal converter and actual preparation CLI with
+dataset/artifact paths still absent and no model request. Installed measured
+helpers still load trusted source; stronger common precompiled isolation remains
+structural work. Full product/native suites and the hosted matrix were not repeated
+for this developer-evaluator-only increment, which changes no `lib/` runtime code.
+The private workload remains sealed. Remaining semantic repair, holistic structure
+and manuals, final freeze, independent quality/resource validation and engine
+selection still precede P27 completion.
+
 ## Remaining quality work
 
 The shared excerpt repair removes the separate dense-prefix and first-match

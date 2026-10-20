@@ -58,7 +58,7 @@ case result do
         do:
           Map.take(
             report,
-            ~w(path sha256 source_commit mode prediction_sha256 rows failed_rows execution_complete heldout_quality_complete packet_sha256 reference_integrity_complete quality_gates_passed quality_gate_scope gates)
+            ~w(path sha256 source_commit mode prediction_sha256 rows failed_rows execution_complete heldout_quality_complete packet_sha256 reference_integrity_complete quality_gates_passed quality_gate_scope gates contracts complete_first_grid complete_review eligible_variants disqualified_variants)
           ),
         else: %{}
 

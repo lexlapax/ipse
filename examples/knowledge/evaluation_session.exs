@@ -259,6 +259,15 @@ defmodule IpseKnowledgeExample.EvaluationSession do
        else: {:error, :invalid_research, run}
   end
 
+  def invoke(run, "answer", %{"request" => request} = params) do
+    if exact?(params, ["request"]) and is_map(request) and request["version"] === 2 and
+         request["profile"] == "p27_answer" and
+         Ipse.Extensions.ModelCall.validate(request) == :ok and
+         text?(request["instruction"], 2048) and text?(request["input"], 4096),
+       do: one(run, "answer", params),
+       else: {:error, :invalid_answer, run}
+  end
+
   def invoke(run, "answer", params) do
     if exact?(params, ~w(instruction input max_output_bytes timeout_ms)) and
          text?(params["instruction"], 2048) and text?(params["input"], 4096) and
