@@ -1,7 +1,7 @@
 defmodule IpseSavedResultsExample.Proof do
   @moduledoc false
   alias Ipse.{Journal, Session}
-  alias Ipse.Extensions.{Config, Invocation, Manifest, Registry, ResultReader, Store}
+  alias Ipse.Extensions.{Config, Invocation, Registry, ResultReader, Store}
 
   defmodule NoModel do
     def complete(_, _, _, _), do: raise("Saved-result proof unexpectedly called a model")
@@ -88,7 +88,7 @@ defmodule IpseSavedResultsExample.Proof do
       {:ok, original} = Session.materialize_result(session, delivery)
       "historical_receipt" = original.provenance
       4_194_304 = byte_size(original.bytes)
-      true = Manifest.sha256(original.bytes) == delivery["sha256"]
+      true = Ipse.JSON.sha256(original.bytes) == delivery["sha256"]
       true = original.value["items"] == List.duplicate(String.duplicate("x", 8192), 511)
       true = String.trim(original.value["pad"], "y") == ""
 
@@ -107,7 +107,7 @@ defmodule IpseSavedResultsExample.Proof do
       1 = length(String.split(loads, "\n", trim: true))
       1 = length(String.split(callbacks, "\n", trim: true))
       path = Path.join(state_dir, info.id <> ".jsonl")
-      journal_sha = Manifest.sha256(File.read!(path))
+      journal_sha = Ipse.JSON.sha256(File.read!(path))
       {:ok, ^original} = ResultReader.saved(state_dir, info.id, delivery["output_id"])
       resumed = start(config, cwd, state_dir, info.id)
       :idle = Session.info(resumed).phase
@@ -123,7 +123,7 @@ defmodule IpseSavedResultsExample.Proof do
       :ok = Session.close_confirmed(resumed)
       ^loads = File.read!(load_marker)
       ^callbacks = File.read!(callback_marker)
-      ^journal_sha = Manifest.sha256(File.read!(path))
+      ^journal_sha = Ipse.JSON.sha256(File.read!(path))
       unloaded!()
 
       %{

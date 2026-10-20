@@ -84,7 +84,7 @@ defmodule Ipse.Extensions.EmbeddingCall do
     |> Map.merge(%{
       "type" => "extension_embedding_request",
       "version" => 1,
-      "binding_sha256" => Ipse.Compaction.digest([intent["effect_binding"]]),
+      "binding_sha256" => Ipse.JSON.digest([intent["effect_binding"]]),
       "execution" => execution,
       "admission" => admission
     })
@@ -95,9 +95,9 @@ defmodule Ipse.Extensions.EmbeddingCall do
          true <- source["type"] == "extension_embedding_request" and source["version"] === 1,
          true <- intent["approval"] in ~w(approved session_allow) and intent["version"] === 2,
          true <- valid_binding?(intent["effect_binding"], intent["request"], scope),
-         true <- source["binding_sha256"] == Ipse.Compaction.digest([intent["effect_binding"]]),
+         true <- source["binding_sha256"] == Ipse.JSON.digest([intent["effect_binding"]]),
          true <- source["execution"] === intent["effect_binding"]["execution"],
-         true <- source["request_sha256"] == Ipse.Compaction.digest([intent["request"]]),
+         true <- source["request_sha256"] == Ipse.JSON.digest([intent["request"]]),
          true <-
            Map.take(source, ~w(operation_id parent_invocation_id identity_sha256 request_sha256)) ==
              Map.take(

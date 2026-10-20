@@ -9,7 +9,7 @@ defmodule Ipse.Skills do
       "type" => "skill_catalog_snapshot",
       "version" => 1,
       "skills" => skills,
-      "sha256" => Ipse.Compaction.digest(skills)
+      "sha256" => Ipse.JSON.digest(skills)
     }
 
   def restore(events, discovered) do
@@ -17,7 +17,7 @@ defmodule Ipse.Skills do
       %{"type" => "skill_catalog_snapshot"} = event, _ ->
         if Enum.sort(Map.keys(event)) == ~w(sha256 skills type version) and
              event["version"] === 1 and valid_catalog?(event["skills"]) and
-             event["sha256"] == Ipse.Compaction.digest(event["skills"]),
+             event["sha256"] == Ipse.JSON.digest(event["skills"]),
            do: {:cont, {:ok, event["skills"]}},
            else: {:halt, {:error, :invalid_skill_catalog_snapshot}}
 

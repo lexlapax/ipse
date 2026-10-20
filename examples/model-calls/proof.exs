@@ -1,7 +1,7 @@
 defmodule IpseModelExample.Proof do
   @moduledoc false
   alias Ipse.{Session, Journal, Usage, Budget}
-  alias Ipse.Extensions.{Store, Config, Registry, Manifest}
+  alias Ipse.Extensions.{Store, Config, Registry}
 
   def run(artifact, thinking \\ nil) when thinking in [nil, "none"] do
     {:ok, _} = Application.ensure_all_started(:ipse)
@@ -107,7 +107,7 @@ defmodule IpseModelExample.Proof do
             true = proposed["destination"]["origin"] == base
 
             true =
-              proposed["destination"]["target_sha256"] == Manifest.sha256(base <> "/api/chat")
+              proposed["destination"]["target_sha256"] == Ipse.JSON.sha256(base <> "/api/chat")
 
             ref
         after
@@ -231,7 +231,7 @@ defmodule IpseModelExample.Proof do
           "billing_mode" => "local",
           "basis" => "local_estimate",
           "model" => "fixture-reported",
-          "endpoint_sha256" => Ipse.Extensions.Manifest.sha256(base),
+          "endpoint_sha256" => Ipse.JSON.sha256(base),
           "from" => "2000-01-01",
           "until" => nil,
           "input_min" => 0,

@@ -289,7 +289,7 @@ defmodule Ipse.Extensions.Worker do
   defp response(%{pending: nil}, _bytes), do: :error
 
   defp response(state, bytes) do
-    with {:ok, message} <- Manifest.decode_json(bytes),
+    with {:ok, message} <- Ipse.JSON.decode_bounded(bytes),
          true <- is_map(message) and Enum.sort(Map.keys(message)) == ~w(id protocol result),
          true <- message["protocol"] === 1 and message["id"] === state.pending.id,
          :ok <- Ipse.Extension.validate(message["result"]),

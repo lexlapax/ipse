@@ -1,7 +1,7 @@
 defmodule Ipse.Extensions.ServicesTest do
   use ExUnit.Case, async: false
   alias Ipse.{Session, Journal}
-  alias Ipse.Extensions.{Services, Catalog, Config, Registry, Store, Manifest}
+  alias Ipse.Extensions.{Services, Catalog, Config, Registry, Store}
 
   setup_all do
     root = Path.join(System.tmp_dir!(), "ipse-services-#{Ipse.Usage.id()}")
@@ -169,7 +169,7 @@ defmodule Ipse.Extensions.ServicesTest do
       "files" =>
         Enum.map(["LICENSE", "ebin/Elixir.#{module}.beam"], fn path ->
           bytes = File.read!(Path.join(source, path))
-          %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Manifest.sha256(bytes)}
+          %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Ipse.JSON.sha256(bytes)}
         end)
     }
 
@@ -269,7 +269,7 @@ defmodule Ipse.Extensions.ServicesTest do
                "instance" => "retrieval",
                "name" => "ext__retrieval__query",
                "contract" => 1,
-               "target_sha256" => Ipse.Compaction.digest([target.identity])
+               "target_sha256" => Ipse.JSON.digest([target.identity])
              }
            ]
 
@@ -448,7 +448,7 @@ defmodule Ipse.Extensions.ServicesTest do
 
               event
               |> Map.put("outcome", value)
-              |> Map.put("outcome_sha256", Ipse.Compaction.digest([value]))
+              |> Map.put("outcome_sha256", Ipse.JSON.digest([value]))
             else
               event
             end

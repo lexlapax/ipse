@@ -160,7 +160,7 @@ defmodule Ipse.Extensions.Examples.CostReport do
          "groups" => groups,
          "rate_card" =>
            Map.take(card, ~w(id revision currency source published_on))
-           |> Map.put("sha256", Ipse.Compaction.digest([card])),
+           |> Map.put("sha256", Ipse.JSON.digest([card])),
          "currency_scale" => 9,
          "rounding" => "ceiling_per_request"
        }}

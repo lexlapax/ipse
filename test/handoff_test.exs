@@ -285,7 +285,7 @@ defmodule Ipse.HandoffTest do
         "type" => "context_compacted",
         "version" => 1,
         "covered_messages" => length(plan.prefix),
-        "prefix_sha256" => Ipse.Compaction.digest(plan.prefix),
+        "prefix_sha256" => Ipse.JSON.digest(plan.prefix),
         "checkpoint" => checkpoint
       })
 

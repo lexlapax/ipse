@@ -133,7 +133,7 @@ defmodule Ipse.ResearchSessionTest do
         "type" => "context_compacted",
         "version" => 1,
         "covered_messages" => length(plan.prefix),
-        "prefix_sha256" => Compaction.digest(plan.prefix),
+        "prefix_sha256" => Ipse.JSON.digest(plan.prefix),
         "checkpoint" => checkpoint,
         "before_bytes" => stats.before_bytes,
         "after_bytes" => stats.after_bytes

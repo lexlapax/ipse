@@ -83,7 +83,7 @@ defmodule Ipse.Extensions.Costs do
         "version" => 1,
         "card_id" => card["id"],
         "revision" => card["revision"],
-        "card_sha256" => Ipse.Compaction.digest([card]),
+        "card_sha256" => Ipse.JSON.digest([card]),
         "source" => card["source"],
         "published_on" => card["published_on"],
         "currency" => card["currency"],

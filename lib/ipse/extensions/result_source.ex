@@ -7,8 +7,7 @@ defmodule Ipse.Extensions.ResultSource do
   Full document validation belongs in the owned Host task or offline restore.
   """
 
-  alias Ipse.Extensions.{Invocation, Manifest, ResultDocument}
-  alias Ipse.Compaction
+  alias Ipse.Extensions.{Invocation, ResultDocument}
 
   defmodule Sealed do
     @moduledoc false
@@ -179,7 +178,7 @@ defmodule Ipse.Extensions.ResultSource do
          true <- is_integer(output["byte_count"]) and output["byte_count"] in 1..@byte_limit,
          true <- hash?(output["sha256"]),
          true <- Ipse.Extension.validate(offer) == :ok do
-      intent_hash = Compaction.digest([intent])
+      intent_hash = Ipse.JSON.digest([intent])
 
       binding = %{
         "intent_sha256" => intent_hash,
@@ -191,9 +190,9 @@ defmodule Ipse.Extensions.ResultSource do
         "type" => "extension_output_begin",
         "version" => 1,
         "invocation_id" => intent["invocation_id"],
-        "output_id" => Compaction.digest([binding]),
+        "output_id" => Ipse.JSON.digest([binding]),
         "intent_sha256" => intent_hash,
-        "schema_sha256" => Compaction.digest([intent["descriptor"]["result_schema"]]),
+        "schema_sha256" => Ipse.JSON.digest([intent["descriptor"]["result_schema"]]),
         "byte_count" => output["byte_count"],
         "sha256" => output["sha256"],
         "elapsed_ms" => elapsed_ms
@@ -273,7 +272,7 @@ defmodule Ipse.Extensions.ResultSource do
     with {:ok, event} <- seal_event(source, elapsed_ms),
          {:ok, _value} <-
            ResultDocument.decode(raw_bytes(source), source.intent["descriptor"]["result_schema"]) do
-      proof = %Sealed{begin_sha256: Compaction.digest([source.begin]), event: event}
+      proof = %Sealed{begin_sha256: Ipse.JSON.digest([source.begin]), event: event}
 
       {:ok, proof,
        %{
@@ -293,7 +292,7 @@ defmodule Ipse.Extensions.ResultSource do
 
   @doc "Accept only a trusted owned Host-task proof, without decoding the complete value again."
   def accept_verified(%__MODULE__{phase: :draining} = source, %Sealed{} = proof) do
-    with true <- proof.begin_sha256 == Compaction.digest([source.begin]),
+    with true <- proof.begin_sha256 == Ipse.JSON.digest([source.begin]),
          true <- keys?(proof.event, @seal_keys),
          {:ok, expected} <- seal_event(source, proof.event["elapsed_ms"]),
          true <- expected === proof.event do
@@ -335,7 +334,7 @@ defmodule Ipse.Extensions.ResultSource do
          delivery = descriptor(source),
          true <- valid_descriptor?(event["delivery"]) and event["delivery"] === delivery,
          true <- event["text"] === Jason.encode!(delivery),
-         true <- event["text_sha256"] === Manifest.sha256(event["text"]),
+         true <- event["text_sha256"] === Ipse.JSON.sha256(event["text"]),
          true <-
            elapsed?(event["elapsed_ms"]) and event["elapsed_ms"] >= source.seal["elapsed_ms"],
          true <-
@@ -397,7 +396,7 @@ defmodule Ipse.Extensions.ResultSource do
          bytes = raw_bytes(source),
          true <-
            byte_size(bytes) == delivery["byte_count"] and
-             Manifest.sha256(bytes) == delivery["sha256"],
+             Ipse.JSON.sha256(bytes) == delivery["sha256"],
          {:ok, value} <-
            ResultDocument.decode(bytes, source.intent["descriptor"]["result_schema"]) do
       {:ok, %{bytes: bytes, value: value, provenance: "historical_receipt"}}
@@ -463,7 +462,7 @@ defmodule Ipse.Extensions.ResultSource do
          true <- is_binary(event["data_base64"]) and byte_size(event["data_base64"]) <= 5464,
          {:ok, bytes} <- Base.decode64(event["data_base64"]),
          true <- byte_size(bytes) == count and Base.encode64(bytes) === event["data_base64"],
-         true <- event["sha256"] === Manifest.sha256(bytes),
+         true <- event["sha256"] === Ipse.JSON.sha256(bytes),
          true <- record_bytes(event) - 1 <= @record_limit do
       canonical =
         event |> Enum.sort_by(&elem(&1, 0)) |> Jason.OrderedObject.new() |> Jason.encode!()

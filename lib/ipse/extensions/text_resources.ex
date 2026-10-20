@@ -172,7 +172,7 @@ defmodule Ipse.Extensions.TextResources do
       "type" => type,
       "version" => 1,
       "resource_id" => intent["resource_id"],
-      "intent_sha256" => Ipse.Compaction.digest([intent])
+      "intent_sha256" => Ipse.JSON.digest([intent])
     }
 
   defp valid_intent?(event) do

@@ -50,7 +50,7 @@ defmodule Ipse.EmbeddingConfigTest do
     assert EmbeddingCall.valid_binding?(binding, request(), scope)
 
     assert binding["destination"]["target_sha256"] ==
-             Ipse.Extensions.Manifest.sha256("http://127.0.0.1:11434/api/embed")
+             Ipse.JSON.sha256("http://127.0.0.1:11434/api/embed")
 
     assert binding["execution"]["timeout_ms"] == 3000
 

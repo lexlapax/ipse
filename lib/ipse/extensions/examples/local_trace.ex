@@ -80,7 +80,7 @@ defmodule Ipse.Extensions.Examples.LocalTrace do
              {:ok, size} <- regular_size(path),
              true <- size > 0 and size <= 16_384,
              {:ok, bytes} <- bounded_read(path),
-             {:ok, value} <- Ipse.Extensions.Manifest.decode_json(bytes, 16_384),
+             {:ok, value} <- Ipse.JSON.decode_bounded(bytes, 16_384),
              true <- valid_catalog?(value, limits),
              do: {:ok, value}
 

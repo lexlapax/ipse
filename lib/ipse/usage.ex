@@ -49,7 +49,7 @@ defmodule Ipse.Usage do
       "billing_mode" => Normalizer.billing_mode(config.provider),
       "selected_profile" => profile(config[:execution]),
       "endpoint_sha256" =>
-        if(is_binary(config[:base_url]), do: Ipse.Extensions.Manifest.sha256(config.base_url)),
+        if(is_binary(config[:base_url]), do: Ipse.JSON.sha256(config.base_url)),
       "admitted_at_ms" => System.system_time(:millisecond)
     }
 

@@ -72,7 +72,7 @@ defmodule Ipse.Extensions.History do
              1
            ),
          true <- Map.take(source, @source_keys) == Map.take(snapshot, @source_keys),
-         true <- anchor?(anchor, snapshot, Ipse.Compaction.digest([context.identity])) do
+         true <- anchor?(anchor, snapshot, Ipse.JSON.digest([context.identity])) do
       read_page(context, request, snapshot)
     else
       _ -> failed("history_snapshot")
@@ -265,7 +265,7 @@ defmodule Ipse.Extensions.History do
           else: value["next"] || value["snapshot"]["byte_offset"]
 
       key =
-        {:row, view, Ipse.Compaction.digest([row]), finish,
+        {:row, view, Ipse.JSON.digest([row]), finish,
          if(budget, do: {value["snapshot"], value["cursor"], index})}
 
       result =

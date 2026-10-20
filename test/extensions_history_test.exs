@@ -2,7 +2,7 @@ defmodule Ipse.Extensions.HistoryTest do
   use ExUnit.Case, async: false
   alias Ipse.{Journal, Session}
   alias Ipse.Lifecycle.Answer
-  alias Ipse.Extensions.{History, Manifest, Config, Registry, Store, Catalog, Subscriptions}
+  alias Ipse.Extensions.{History, Config, Registry, Store, Catalog, Subscriptions}
 
   defmodule Model do
     def complete(config, _, _, emit) do
@@ -143,7 +143,7 @@ defmodule Ipse.Extensions.HistoryTest do
       "files" =>
         Enum.map(["LICENSE", "ebin/Elixir.#{module}.beam"], fn path ->
           bytes = File.read!(Path.join(root, path))
-          %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Manifest.sha256(bytes)}
+          %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Ipse.JSON.sha256(bytes)}
         end)
     }
 
@@ -187,7 +187,7 @@ defmodule Ipse.Extensions.HistoryTest do
       "version" => version,
       "operation_id" => Ipse.Usage.id(),
       "namespace" => context.history_session,
-      "identity_sha256" => Ipse.Compaction.digest([context.identity]),
+      "identity_sha256" => Ipse.JSON.digest([context.identity]),
       "approval" => "not_required",
       "request" => request
     }

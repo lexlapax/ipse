@@ -121,7 +121,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
         "created_at" => "2026-01-01T00:00:00Z",
         "observed_at" => "2026-03-01T00:00:00Z",
         "state" => "current",
-        "sha256" => Ipse.Extensions.Manifest.sha256(text),
+        "sha256" => Ipse.JSON.sha256(text),
         "byte_length" => byte_size(text),
         "media_type" => "text/plain"
       }
@@ -133,7 +133,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
           "title" => "Forgotten",
           "state" => "forgotten",
           "text" => "PRIVATE_FORGOTTEN requires silence.",
-          "sha256" => Ipse.Extensions.Manifest.sha256("PRIVATE_FORGOTTEN requires silence."),
+          "sha256" => Ipse.JSON.sha256("PRIVATE_FORGOTTEN requires silence."),
           "byte_length" => byte_size("PRIVATE_FORGOTTEN requires silence.")
       }
 
@@ -144,7 +144,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
           "title" => "Expired",
           "state" => "expired",
           "text" => "PRIVATE_EXPIRED requires silence.",
-          "sha256" => Ipse.Extensions.Manifest.sha256("PRIVATE_EXPIRED requires silence."),
+          "sha256" => Ipse.JSON.sha256("PRIVATE_EXPIRED requires silence."),
           "byte_length" => byte_size("PRIVATE_EXPIRED requires silence.")
       }
 
@@ -361,7 +361,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
           "created_at" => "2026-01-01T00:00:00Z",
           "observed_at" => "2026-03-01T00:00:00Z",
           "state" => "current",
-          "sha256" => Ipse.Extensions.Manifest.sha256(text),
+          "sha256" => Ipse.JSON.sha256(text),
           "byte_length" => byte_size(text),
           "media_type" => "text/plain"
         }
@@ -440,7 +440,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
 
                span["source"]["generation"] == 2 and
                  span["source"]["version"] === expected_version and
-                 span["source"]["sha256"] == Ipse.Extensions.Manifest.sha256(text) and
+                 span["source"]["sha256"] == Ipse.JSON.sha256(text) and
                  span["quote"] == text
              end)
 
@@ -802,7 +802,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
           "created_at" => "2026-01-01T00:00:00Z",
           "observed_at" => "2026-03-01T00:00:00Z",
           "state" => "current",
-          "sha256" => Ipse.Extensions.Manifest.sha256(text),
+          "sha256" => Ipse.JSON.sha256(text),
           "byte_length" => byte_size(text),
           "media_type" => "text/plain"
         }
@@ -885,7 +885,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
           name <- ~w(corpus queries),
           do: %{
             "path" => name <> ".json",
-            "sha256" => Ipse.Extensions.Manifest.sha256(File.read!(paths[name]))
+            "sha256" => Ipse.JSON.sha256(File.read!(paths[name]))
           }
         )
     }
@@ -898,7 +898,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
       put_in(
         plan(ctx),
         ["data", "manifest_sha256"],
-        Ipse.Extensions.Manifest.sha256(manifest_bytes)
+        Ipse.JSON.sha256(manifest_bytes)
       )
 
     repository = Path.join(root, "identity-fixture")
@@ -1362,7 +1362,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
     {packet, 0} = cli(review_args)
     assert packet["result"]["rows"] == 2 and packet["result"]["reference_integrity_complete"]
     manifest_bytes = File.read!(Path.join(packet_path, "manifest.json"))
-    assert packet["result"]["packet_sha256"] == Ipse.Extensions.Manifest.sha256(manifest_bytes)
+    assert packet["result"]["packet_sha256"] == Ipse.JSON.sha256(manifest_bytes)
     assert JSON.decode!(manifest_bytes)["execution_freeze_sha256"] == sealed["result"]["sha256"]
 
     assert Enum.all?(
@@ -1596,7 +1596,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
       for name <- ~w(corpus queries),
           do: %{
             "path" => name <> ".json",
-            "sha256" => Ipse.Extensions.Manifest.sha256(File.read!(paths[name]))
+            "sha256" => Ipse.JSON.sha256(File.read!(paths[name]))
           }
 
     bytes = JSON.encode!(%{"files" => members})
@@ -1604,7 +1604,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
     File.write!(manifest, bytes)
 
     declared =
-      put_in(plan(ctx), ["data", "manifest_sha256"], Ipse.Extensions.Manifest.sha256(bytes))
+      put_in(plan(ctx), ["data", "manifest_sha256"], Ipse.JSON.sha256(bytes))
 
     File.write!(paths["plan"], JSON.encode!(declared))
 
@@ -1687,7 +1687,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
       "created_at" => "2026-01-01T00:00:00Z",
       "observed_at" => "2026-03-01T00:00:00Z",
       "state" => "current",
-      "sha256" => Ipse.Extensions.Manifest.sha256(text),
+      "sha256" => Ipse.JSON.sha256(text),
       "byte_length" => byte_size(text),
       "media_type" => "text/plain"
     }

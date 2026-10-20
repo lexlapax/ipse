@@ -1,7 +1,7 @@
 defmodule Ipse.Extensions.EmbeddingCallSessionTest do
   use ExUnit.Case, async: false
   alias Ipse.{Session, Journal, Usage, Budget}
-  alias Ipse.Extensions.{Actions, Config, Registry, Store, Manifest, ChildUsage}
+  alias Ipse.Extensions.{Actions, Config, Registry, Store, ChildUsage}
 
   defmodule NoModel do
     def complete(config, _, _, _) do
@@ -84,7 +84,7 @@ defmodule Ipse.Extensions.EmbeddingCallSessionTest do
       assert proposed["effect_binding"]["execution"] == proposed["execution"]
 
       assert proposed["destination"]["target_sha256"] ==
-               Manifest.sha256(http.base <> "/api/embed")
+               Ipse.JSON.sha256(http.base <> "/api/embed")
 
       assert calls(ctx) == []
       assert :ok = Session.approve(pid, ref, true)
@@ -718,7 +718,7 @@ defmodule Ipse.Extensions.EmbeddingCallSessionTest do
   defp rehash(event),
     do: Map.put(event, "source_sha256", digest(Map.delete(event, "source_sha256")))
 
-  defp digest(value), do: Ipse.Compaction.digest([value])
+  defp digest(value), do: Ipse.JSON.digest([value])
   defp sha256(bytes), do: :crypto.hash(:sha256, bytes) |> Base.encode16(case: :lower)
 
   defp calls(ctx) do
@@ -960,7 +960,7 @@ defmodule Ipse.Extensions.EmbeddingCallSessionTest do
       "files" =>
         Enum.map(paths, fn path ->
           bytes = File.read!(Path.join(output, path))
-          %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Manifest.sha256(bytes)}
+          %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Ipse.JSON.sha256(bytes)}
         end)
     }
 

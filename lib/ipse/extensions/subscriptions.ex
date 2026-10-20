@@ -1,7 +1,7 @@
 defmodule Ipse.Extensions.Subscriptions do
   @moduledoc "Inert prompt/answer subscriptions and pure no-replay delivery receipts."
   alias Ipse.Journal
-  alias Ipse.Extensions.{Identity, Manifest, EventJob, Catalog}
+  alias Ipse.Extensions.{Identity, EventJob, Catalog}
   alias Ipse.Lifecycle.{Source, Event, Answer}
   @error {:error, :invalid_extension_subscription}
   @types ~w(extension_event_intent extension_event_result)
@@ -26,7 +26,7 @@ defmodule Ipse.Extensions.Subscriptions do
   end
 
   def digest(declarations),
-    do: Ipse.Compaction.digest([Enum.sort_by(declarations || [], & &1["id"])])
+    do: Ipse.JSON.digest([Enum.sort_by(declarations || [], & &1["id"])])
 
   def validate(declarations, capabilities) do
     declarations = declarations || []
@@ -120,7 +120,7 @@ defmodule Ipse.Extensions.Subscriptions do
       "version" => 1,
       "turn_id" => turn,
       "original" => text,
-      "original_sha256" => Manifest.sha256(text)
+      "original_sha256" => Ipse.JSON.sha256(text)
     }
 
   def committed(turn, text, message, received_source),
@@ -129,8 +129,8 @@ defmodule Ipse.Extensions.Subscriptions do
       "version" => 1,
       "turn_id" => turn,
       "text" => text,
-      "text_sha256" => Manifest.sha256(text),
-      "message_sha256" => Ipse.Compaction.digest([message]),
+      "text_sha256" => Ipse.JSON.sha256(text),
+      "message_sha256" => Ipse.JSON.digest([message]),
       "received_source" => received_source
     }
 
@@ -139,14 +139,14 @@ defmodule Ipse.Extensions.Subscriptions do
       keys?(record, ~w(type version turn_id original original_sha256)) and
         record["type"] == "lifecycle_prompt_received" and record["version"] === 1 and
         id?(record["turn_id"]) and text?(record["original"]) and
-        record["original_sha256"] == Manifest.sha256(record["original"])
+        record["original_sha256"] == Ipse.JSON.sha256(record["original"])
 
   def valid_committed?(record),
     do:
       keys?(record, ~w(type version turn_id text text_sha256 message_sha256 received_source)) and
         record["type"] == "lifecycle_prompt_committed" and record["version"] === 1 and
         id?(record["turn_id"]) and text?(record["text"]) and
-        record["text_sha256"] == Manifest.sha256(record["text"]) and
+        record["text_sha256"] == Ipse.JSON.sha256(record["text"]) and
         hash?(record["message_sha256"]) and
         Source.valid?(record["received_source"])
 
@@ -162,7 +162,7 @@ defmodule Ipse.Extensions.Subscriptions do
     }
 
     payload = payload(base, record)
-    {Map.put(base, "payload_sha256", if(payload, do: Ipse.Compaction.digest([payload]))), payload}
+    {Map.put(base, "payload_sha256", if(payload, do: Ipse.JSON.digest([payload]))), payload}
   end
 
   def payload(intent, record) do
@@ -187,7 +187,7 @@ defmodule Ipse.Extensions.Subscriptions do
       "type" => "extension_event_result",
       "version" => 1,
       "delivery_id" => intent["delivery_id"],
-      "intent_sha256" => Ipse.Compaction.digest([intent]),
+      "intent_sha256" => Ipse.JSON.digest([intent]),
       "outcome" => outcome,
       "cleanup_confirmed" => cleanup
     }
@@ -458,7 +458,7 @@ defmodule Ipse.Extensions.Subscriptions do
          event["turn_id"] == s.received["turn_id"] and
          Source.matches?(event["received_source"], s.received) and
          is_map(s.last) and s.last["role"] == "user" and s.last["content"] == event["text"] and
-         Ipse.Compaction.digest([s.last]) == event["message_sha256"] do
+         Ipse.JSON.digest([s.last]) == event["message_sha256"] do
       {:ok, %{s | marker: event, session: event["received_source"]["session_id"]}}
     else
       @error
@@ -567,7 +567,7 @@ defmodule Ipse.Extensions.Subscriptions do
              event["source"] == s.marker["received_source"],
          true <-
            event["payload_sha256"] ==
-             if(expected_payload, do: Ipse.Compaction.digest([expected_payload])) do
+             if(expected_payload, do: Ipse.JSON.digest([expected_payload])) do
       {:ok,
        %{
          s
@@ -661,8 +661,8 @@ defmodule Ipse.Extensions.Subscriptions do
          s.last["tool_calls"] in [nil, []] and
          s.active == nil and not s.unsafe and s.request == nil and not s.settling and
          is_binary(final) and
-         event["assistant_sha256"] == Ipse.Compaction.digest([s.last]) and
-         event["final_sha256"] == Manifest.sha256(final) do
+         event["assistant_sha256"] == Ipse.JSON.digest([s.last]) and
+         event["final_sha256"] == Ipse.JSON.sha256(final) do
       {:ok, %{s | settling: true}}
     else
       @error

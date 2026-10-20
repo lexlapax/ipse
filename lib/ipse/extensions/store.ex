@@ -10,7 +10,7 @@ defmodule Ipse.Extensions.Store do
          {:ok, manifest} <- Manifest.decode(bytes),
          {:ok, files} <- snapshot(source, manifest),
          :ok <- private_directory(root) do
-      digest = Manifest.sha256(bytes)
+      digest = Ipse.JSON.sha256(bytes)
 
       lock_path = Path.join(root, ".import-#{digest}.lock")
 
@@ -38,7 +38,7 @@ defmodule Ipse.Extensions.Store do
          path = Path.join(root, digest),
          :ok <- check_private_directory(path),
          {:ok, bytes} <- read_regular(path, "extension.json", 16_384),
-         true <- Manifest.sha256(bytes) == digest,
+         true <- Ipse.JSON.sha256(bytes) == digest,
          {:ok, manifest} <- Manifest.decode(bytes),
          {:ok, _files} <- snapshot(path, manifest),
          {:ok, inventory, _remaining} <- inventory(path, "", 1024),
@@ -101,7 +101,7 @@ defmodule Ipse.Extensions.Store do
     Enum.reduce_while(manifest["files"], {:ok, []}, fn file, {:ok, acc} ->
       with {:ok, bytes} <- read_regular(root, file["path"], file["bytes"]),
            true <- byte_size(bytes) == file["bytes"],
-           true <- Manifest.sha256(bytes) == file["sha256"] do
+           true <- Ipse.JSON.sha256(bytes) == file["sha256"] do
         {:cont, {:ok, [{file["path"], bytes} | acc]}}
       else
         _ -> {:halt, @invalid}

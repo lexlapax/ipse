@@ -122,7 +122,7 @@ defmodule Ipse.Provider.Embedding do
   @doc "Validate closed private float32 data without weakening the public SDK string or array bounds."
   def valid_data?(data, inputs, dimensions) do
     inputs?(inputs) and
-      valid_data_hashes?(data, Enum.map(inputs, &Ipse.Compaction.digest([&1])), dimensions)
+      valid_data_hashes?(data, Enum.map(inputs, &Ipse.JSON.digest([&1])), dimensions)
   rescue
     _ -> false
   end
@@ -192,7 +192,7 @@ defmodule Ipse.Provider.Embedding do
         {:ok, bytes} ->
           entry = %{
             "index" => index,
-            "input_sha256" => Ipse.Compaction.digest([input]),
+            "input_sha256" => Ipse.JSON.digest([input]),
             "vector_sha256" => sha256(bytes),
             "values" => Base.encode64(bytes)
           }

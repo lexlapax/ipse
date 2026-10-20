@@ -403,8 +403,8 @@ defmodule Ipse.Extensions.Host do
          drift = Ipse.WorkspaceContext.drift(updated) do
       GenServer.call(
         owner,
-        {:extension_tool_context_commit, job_ref, request, Ipse.Compaction.digest([snapshot]),
-         updated, drift}
+        {:extension_tool_context_commit, job_ref, request, Ipse.JSON.digest([snapshot]), updated,
+         drift}
       )
     end
   end

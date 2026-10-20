@@ -1,7 +1,6 @@
 defmodule ModelServiceVerification do
   @moduledoc false
   alias IpseKnowledgeExample.EvaluationModelService, as: Service
-  alias Ipse.Extensions.Manifest
 
   def cases do
     ~w(normal existing_output bad_blob source_symlink occupied_port forge forged_only flood traffic_limit bad_tags bad_show bad_thinking initial_resident changed_after gpu_after stall_tags wildcard exit_during_http callback_exception lifetime owner_death)
@@ -24,7 +23,7 @@ defmodule ModelServiceVerification do
     weights = "synthetic weights, no inference\n"
 
     descriptor = fn bytes, media ->
-      digest = Manifest.sha256(bytes)
+      digest = Ipse.JSON.sha256(bytes)
       File.write!(Path.join(cache, "blobs/sha256-" <> digest), bytes)
       %{"mediaType" => media, "digest" => "sha256:" <> digest, "size" => byte_size(bytes)}
     end
@@ -38,7 +37,7 @@ defmodule ModelServiceVerification do
       })
 
     model = if mode == "bad_thinking", do: "qwen3.5:9b", else: "fixture-model:latest"
-    digest = Manifest.sha256(manifest)
+    digest = Ipse.JSON.sha256(manifest)
     relative = "manifests/registry.ollama.ai/library/" <> String.replace(model, ":", "/")
     File.mkdir_p!(Path.dirname(Path.join(cache, relative)))
     File.write!(Path.join(cache, relative), manifest)
@@ -71,7 +70,7 @@ defmodule ModelServiceVerification do
         "source" => path,
         "path" => target,
         "bytes" => File.stat!(path).size,
-        "sha256" => Manifest.sha256(File.read!(path)),
+        "sha256" => Ipse.JSON.sha256(File.read!(path)),
         "executable" => executable?
       }
     end
@@ -317,7 +316,7 @@ defmodule ModelServiceVerification do
         )
 
         check(target.links == 1, "runtime file has multiple links")
-        check(Manifest.sha256(File.read!(private)) == file["sha256"], "private runtime changed")
+        check(Ipse.JSON.sha256(File.read!(private)) == file["sha256"], "private runtime changed")
       end
 
       for source <- Path.wildcard(Path.join(config["cache_source"], "**/*")),

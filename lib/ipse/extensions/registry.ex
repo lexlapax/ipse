@@ -165,14 +165,14 @@ defmodule Ipse.Extensions.Registry do
           "instance" => instance["instance"],
           "artifact" => instance["artifact"],
           "artifact_sha256" => artifact.digest,
-          "options_sha256" => Ipse.Compaction.digest([instance["options"]]),
+          "options_sha256" => Ipse.JSON.digest([instance["options"]]),
           "exports_sha256" => Ipse.Extensions.Catalog.digest(artifact.manifest["exports"]),
           "requires_sha256" => Ipse.Extensions.Services.digest(artifact.manifest["requires"]),
           "subscriptions_sha256" =>
             Ipse.Extensions.Subscriptions.digest(artifact.manifest["subscriptions"]),
           "services" => [],
           "scope" => instance["scope"],
-          "source_sha256" => Manifest.sha256(instance["source"]),
+          "source_sha256" => Ipse.JSON.sha256(instance["source"]),
           "sdk" => artifact.manifest["sdk"],
           "protocol" => 1,
           "capabilities" => capabilities,
@@ -274,7 +274,7 @@ defmodule Ipse.Extensions.Registry do
             entry.options,
             entry.identity["state_binding"]
           ) and
-          entry.identity["options_sha256"] == Ipse.Compaction.digest([entry.options]) and
+          entry.identity["options_sha256"] == Ipse.JSON.digest([entry.options]) and
           Ipse.Extensions.Subscriptions.validate(
             entry.subscriptions,
             entry.identity["capabilities"]
@@ -452,12 +452,12 @@ defmodule Ipse.Extensions.Registry do
     |> Enum.map(fn module ->
       %{"module" => Atom.to_string(module), "sha256" => beam_digest(module)}
     end)
-    |> Ipse.Compaction.digest()
+    |> Ipse.JSON.digest()
   end
 
   defp beam_digest(module) do
     path = :code.which(module)
-    if is_list(path), do: path |> File.read!() |> Manifest.sha256(), else: raise(ArgumentError)
+    if is_list(path), do: path |> File.read!() |> Ipse.JSON.sha256(), else: raise(ArgumentError)
   end
 
   defp builtin(reference, metadata) do
@@ -473,7 +473,7 @@ defmodule Ipse.Extensions.Registry do
     files =
       Enum.map(paths, fn path ->
         bytes = File.read!(Path.join(root, path))
-        %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Manifest.sha256(bytes)}
+        %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Ipse.JSON.sha256(bytes)}
       end)
 
     manifest = %{
@@ -498,7 +498,7 @@ defmodule Ipse.Extensions.Registry do
     manifest =
       if metadata[:exports], do: Map.put(manifest, "exports", metadata.exports), else: manifest
 
-    {:ok, %{digest: Ipse.Compaction.digest([manifest]), manifest: manifest, path: root}}
+    {:ok, %{digest: Ipse.JSON.digest([manifest]), manifest: manifest, path: root}}
   rescue
     _ -> @error
   end

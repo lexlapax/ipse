@@ -100,6 +100,7 @@ are needed for tests or the demo.
 | Application supervision | `lib/ipse/application.ex` |
 | Session state, turn loop, approval, cancellation | `lib/ipse/session.ex` |
 | Bounded context checkpoints | `lib/ipse/compaction.ex` |
+| Bounded host JSON, raw SHA-256 and canonical list digests | `lib/ipse/json.ex` |
 | Canonical usage and shared admission | `lib/ipse/usage.ex`, `lib/ipse/usage/`, `lib/ipse/budget.ex`, `lib/ipse/budget/` |
 | Profile-bound extension inference | `lib/ipse/extensions/model_call.ex`, `lib/ipse/provider/request.ex` |
 | Scoped workspace instruction snapshots | `lib/ipse/workspace_context.ex` |

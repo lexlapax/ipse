@@ -83,7 +83,7 @@ defmodule Ipse.Extensions.ModelCall do
            "model" => profile["model"],
            "billing_mode" => Ipse.Usage.Normalizer.billing_mode(@providers[profile["provider"]]),
            "endpoint_sha256" =>
-             if(profile["base_url"], do: Ipse.Extensions.Manifest.sha256(profile["base_url"])),
+             if(profile["base_url"], do: Ipse.JSON.sha256(profile["base_url"])),
            "reasoning_effort" => profile["reasoning_effort"],
            "max_output_tokens" => profile["max_output_tokens"],
            "timeout_ms" =>
@@ -181,7 +181,7 @@ defmodule Ipse.Extensions.ModelCall do
          true <- source["type"] == "extension_model_request" and source["version"] === 1,
          true <-
            operation?(intent["request"]) and intent["approval"] in ~w(approved session_allow),
-         true <- intent["request_sha256"] == Ipse.Compaction.digest([intent["request"]]),
+         true <- intent["request_sha256"] == Ipse.JSON.digest([intent["request"]]),
          true <-
            Map.take(source, ~w(operation_id parent_invocation_id identity_sha256 request_sha256)) ==
              Map.take(
@@ -329,7 +329,7 @@ defmodule Ipse.Extensions.ModelCall do
       "request_id" => admission["request_id"],
       "attempt_id" => admission["attempt_id"],
       "assistant" => assistant,
-      "assistant_sha256" => Ipse.Compaction.digest([assistant])
+      "assistant_sha256" => Ipse.JSON.digest([assistant])
     }
 
     if byte_size(Jason.encode!(event)) <= 262_144, do: {:ok, event}, else: @error

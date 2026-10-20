@@ -162,14 +162,14 @@ defmodule Ipse.Extensions.StateBindingTest do
     session = String.duplicate("1", 32)
 
     expected =
-      Ipse.Compaction.digest([
+      Ipse.JSON.digest([
         %{
           "version" => 1,
           "instance" => legacy["instance"],
           "artifact_sha256" => legacy["artifact_sha256"],
           "source_sha256" => legacy["source_sha256"],
           "scope" => "project",
-          "project" => Ipse.Extensions.Manifest.sha256("/fixture/project"),
+          "project" => Ipse.JSON.sha256("/fixture/project"),
           "session" => nil
         }
       ])

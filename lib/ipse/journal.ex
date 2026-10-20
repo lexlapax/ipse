@@ -228,7 +228,7 @@ defmodule Ipse.Journal do
           {:ok, %{records: Enum.reverse(records), next: cursor}}
         else
           with {:ok, record} <-
-                 Ipse.Extensions.Manifest.decode_json(line, Ipse.Lifecycle.Source.record_bytes()),
+                 Ipse.JSON.decode_bounded(line, Ipse.Lifecycle.Source.record_bytes()),
                true <- is_map(record),
                {:ok, source} <- Ipse.Lifecycle.Source.build(id, cursor, record) do
             read_sources(

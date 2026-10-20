@@ -453,7 +453,7 @@ defmodule Ipse.Lifecycle.Tool do
     do: Enum.all?(keys, &(Source.valid?(e[&1]) and e[&1]["session_id"] == e["session_id"]))
 
   defp bytes(data), do: byte_size(Jason.encode!(data))
-  defp digest(data), do: Ipse.Compaction.digest([data])
+  defp digest(data), do: Ipse.JSON.digest([data])
   defp keys?(e, keys), do: is_map(e) and Enum.sort(Map.keys(e)) == Enum.sort(keys)
   defp common?(e), do: e["version"] === 1 and id?(e["session_id"])
   defp id?(v), do: is_binary(v) and Regex.match?(~r/\A[0-9a-f]{32}\z/, v)

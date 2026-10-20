@@ -4,7 +4,7 @@ defmodule Ipse.Extensions.Services do
   @error {:error, :invalid_extension_services}
 
   def empty, do: %{"version" => 1, "services" => []}
-  def digest(requires), do: Ipse.Compaction.digest([requires || empty()])
+  def digest(requires), do: Ipse.JSON.digest([requires || empty()])
 
   def validate_requirements(requires, capabilities) do
     requires = requires || empty()
@@ -139,7 +139,7 @@ defmodule Ipse.Extensions.Services do
                   "instance" => edge.target,
                   "name" => edge.descriptor["name"],
                   "contract" => 1,
-                  "target_sha256" => Ipse.Compaction.digest([cache[edge.target].identity])
+                  "target_sha256" => Ipse.JSON.digest([cache[edge.target].identity])
                 }
               end)
               |> Enum.sort_by(& &1["alias"])
@@ -178,7 +178,7 @@ defmodule Ipse.Extensions.Services do
          Enum.all?(identity["services"], fn binding ->
            target = nodes[binding["instance"]]
 
-           target != nil and Ipse.Compaction.digest([target]) == binding["target_sha256"] and
+           target != nil and Ipse.JSON.digest([target]) == binding["target_sha256"] and
              Enum.any?(catalog["entries"], fn d ->
                d["stage"] == "invoke.service" and d["instance"] == binding["instance"] and
                  d["name"] == binding["name"]
@@ -214,7 +214,7 @@ defmodule Ipse.Extensions.Services do
          :ok <- validate_request(request),
          binding when is_map(binding) <-
            Enum.find(caller["services"], &(&1["alias"] == request["alias"])),
-         true <- binding["target_sha256"] == Ipse.Compaction.digest([context["identity"]]),
+         true <- binding["target_sha256"] == Ipse.JSON.digest([context["identity"]]),
          descriptor = context["descriptor"],
          true <-
            descriptor["stage"] == "invoke.service" and

@@ -8,7 +8,7 @@ defmodule Ipse.Budget.Ledger do
       "version" => 1,
       "root" => root,
       "policy" => policy,
-      "policy_sha256" => Ipse.Compaction.digest([policy])
+      "policy_sha256" => Ipse.JSON.digest([policy])
     }
 
   def restore([header | events], root, policy) do
@@ -222,7 +222,7 @@ defmodule Ipse.Budget.Ledger do
           end
         end),
       "overdrawn" => overdrawn?(state),
-      "policy_sha256" => Ipse.Compaction.digest([state.policy]),
+      "policy_sha256" => Ipse.JSON.digest([state.policy]),
       "dimensions" =>
         Enum.map(Enum.sort(totals), fn {key, value} ->
           %{

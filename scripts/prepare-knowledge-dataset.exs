@@ -61,7 +61,7 @@ result =
         & &1["valid"]
       )
 
-    sha = &Ipse.Extensions.Manifest.sha256/1
+    sha = &Ipse.JSON.sha256/1
 
     manifest = %{
       "contract" => "sealed_answers_v1",

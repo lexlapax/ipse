@@ -1106,7 +1106,7 @@ defmodule Ipse.Session do
       )
       when ref != nil and
              phase in [:tool, :extension_command, :extension_service, :extension_events] do
-    with true <- old_hash == Ipse.Compaction.digest([s.context_snapshot]),
+    with true <- old_hash == Ipse.JSON.digest([s.context_snapshot]),
          true <- WorkspaceContext.valid?(snapshot),
          true <-
            Map.take(snapshot, ~w(version cwd boundary)) ==
@@ -1117,10 +1117,10 @@ defmodule Ipse.Session do
          :ok <- Ipse.Extensions.ToolAction.validate(request) do
       if snapshot == s.context_snapshot do
         gate = %{
-          request: Ipse.Compaction.digest([request]),
+          request: Ipse.JSON.digest([request]),
           context: old_hash,
           job: ref,
-          identity: Ipse.Compaction.digest([s.extension_invocation["identity"]])
+          identity: Ipse.JSON.digest([s.extension_invocation["identity"]])
         }
 
         {:reply, :ok, %{s | extension_tool_context: gate, context_drift: drift}}
@@ -1175,8 +1175,8 @@ defmodule Ipse.Session do
            ),
          :ok <- Ipse.MCP.validate_call(descriptor, request["arguments"]) do
       gate = %{
-        request: Ipse.Compaction.digest([request]),
-        identity: Ipse.Compaction.digest([s.extension_invocation["identity"]]),
+        request: Ipse.JSON.digest([request]),
+        identity: Ipse.JSON.digest([s.extension_invocation["identity"]]),
         job: ref,
         descriptor: descriptor,
         binding: binding
@@ -1769,7 +1769,7 @@ defmodule Ipse.Session do
                     "type" => "extension_prompt_received",
                     "version" => 1,
                     "original" => original,
-                    "original_sha256" => Ipse.Extensions.Manifest.sha256(original)
+                    "original_sha256" => Ipse.JSON.sha256(original)
                   })
 
               s
@@ -3222,7 +3222,7 @@ defmodule Ipse.Session do
           "request_id" => s.last_request_id,
           "version" => 1,
           "covered_messages" => length(s.compaction.prefix),
-          "prefix_sha256" => Ipse.Compaction.digest(s.compaction.prefix),
+          "prefix_sha256" => Ipse.JSON.digest(s.compaction.prefix),
           "checkpoint" => checkpoint,
           "before_bytes" => stats.before_bytes,
           "after_bytes" => stats.after_bytes
@@ -3329,7 +3329,7 @@ defmodule Ipse.Session do
           with true <- s.extension_invocations < Invocation.limit(),
                {:ok, _, descriptor} <- Catalog.lookup(s.config, "invoke.tool", name),
                {:ok, ^args} <-
-                 Ipse.Extensions.Manifest.decode_json(get_in(call, ["function", "arguments"])),
+                 Ipse.JSON.decode_bounded(get_in(call, ["function", "arguments"])),
                true <-
                  Invocation.source_call_valid?(
                    Enum.find(Enum.reverse(s.messages), &(&1["role"] == "assistant")),
@@ -3779,8 +3779,8 @@ defmodule Ipse.Session do
         "type" => "lifecycle_turn_settling",
         "version" => 1,
         "turn_id" => s.turn_id,
-        "assistant_sha256" => Ipse.Compaction.digest([List.last(s.messages)]),
-        "final_sha256" => Ipse.Extensions.Manifest.sha256(s.final)
+        "assistant_sha256" => Ipse.JSON.digest([List.last(s.messages)]),
+        "final_sha256" => Ipse.JSON.sha256(s.final)
       })
 
       s =
@@ -4354,7 +4354,7 @@ defmodule Ipse.Session do
       metadata["provider_destination"] === provider_destination(config)
     else
       expected =
-        if is_binary(config[:base_url]), do: Ipse.Extensions.Manifest.sha256(config.base_url)
+        if is_binary(config[:base_url]), do: Ipse.JSON.sha256(config.base_url)
 
       requests =
         Enum.filter(
@@ -4469,7 +4469,7 @@ defmodule Ipse.Session do
         if event["version"] == 1 and is_integer(count) and count > 0 and
              count <= length(messages) and
              Ipse.Compaction.valid_checkpoint?(event["checkpoint"]) and
-             Ipse.Compaction.digest(Enum.take(messages, count)) == event["prefix_sha256"] do
+             Ipse.JSON.digest(Enum.take(messages, count)) == event["prefix_sha256"] do
           {:cont, {:ok, Enum.reverse([event["checkpoint"] | Enum.drop(messages, count)])}}
         else
           {:halt, {:error, :invalid_compaction_checkpoint}}
@@ -4591,7 +4591,7 @@ defmodule Ipse.Session do
             "arguments" => arguments,
             "steps" => s.steps,
             "covered_messages" => length(next.messages),
-            "prefix_sha256" => Ipse.Compaction.digest(next.messages)
+            "prefix_sha256" => Ipse.JSON.digest(next.messages)
           }
 
           source = record_wait_subject(next, event)
@@ -4704,8 +4704,8 @@ defmodule Ipse.Session do
         gate = s.extension_mcp_context
 
         if is_map(gate) and gate.job == s.job_ref and
-             gate.request == Ipse.Compaction.digest([request]) and
-             gate.identity == Ipse.Compaction.digest([s.extension_invocation["identity"]]),
+             gate.request == Ipse.JSON.digest([request]) and
+             gate.identity == Ipse.JSON.digest([s.extension_invocation["identity"]]),
            do: {:ok, gate.binding},
            else: {:error, :extension_mcp_not_bound}
 
@@ -4720,10 +4720,10 @@ defmodule Ipse.Session do
   defp extension_action_context(s, request) do
     if Ipse.Extensions.Operation.tool?(request) do
       expected = %{
-        request: Ipse.Compaction.digest([request]),
-        context: Ipse.Compaction.digest([s.context_snapshot]),
+        request: Ipse.JSON.digest([request]),
+        context: Ipse.JSON.digest([s.context_snapshot]),
         job: s.job_ref,
-        identity: Ipse.Compaction.digest([s.extension_invocation["identity"]])
+        identity: Ipse.JSON.digest([s.extension_invocation["identity"]])
       }
 
       if s.extension_tool_context == expected,
@@ -5028,7 +5028,7 @@ defmodule Ipse.Session do
              prefix = remove_question_placeholder(prefix, call["id"]),
              true <-
                length(prefix) == event["covered_messages"] and
-                 Ipse.Compaction.digest(prefix) == event["prefix_sha256"],
+                 Ipse.JSON.digest(prefix) == event["prefix_sha256"],
              true <-
                Enum.any?(prefix, fn m ->
                  m["role"] == "assistant" and call in (m["tool_calls"] || [])

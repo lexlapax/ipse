@@ -151,7 +151,7 @@ defmodule Ipse.Lifecycle.Ephemeral do
 
   defp identity(body, kind),
     do:
-      Ipse.Compaction.digest([
+      Ipse.JSON.digest([
         %{"domain" => "ipse.ephemeral.text.v1", "kind" => kind, "source" => body}
       ])
       |> binary_part(0, 32)

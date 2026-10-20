@@ -94,7 +94,7 @@ defmodule Ipse.Provider.EmbeddingTest do
     assert Embedding.valid_result?(result, execution(:openai, 4096), inputs)
 
     assert Enum.map(result["vectors"], & &1["input_sha256"]) ==
-             Enum.map(inputs, &Ipse.Compaction.digest([&1]))
+             Enum.map(inputs, &Ipse.JSON.digest([&1]))
 
     [first, second] = Enum.map(result["vectors"], &Base.decode64!(&1["values"]))
     assert <<1.25::float-little-size(32), _::binary>> = first

@@ -1,7 +1,7 @@
 defmodule Ipse.Extensions.ContributionsTest do
   use ExUnit.Case, async: false
   alias Ipse.{Session, Journal}
-  alias Ipse.Extensions.{Contributions, Config, Registry, Store, Manifest, Catalog, Actions}
+  alias Ipse.Extensions.{Contributions, Config, Registry, Store, Catalog, Actions}
 
   defmodule Model do
     def complete(config, messages, _tools, _emit) do
@@ -103,7 +103,7 @@ defmodule Ipse.Extensions.ContributionsTest do
       "files" =>
         Enum.map(["LICENSE", "ebin/Elixir.#{module}.beam"], fn path ->
           bytes = File.read!(Path.join(source, path))
-          %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Manifest.sha256(bytes)}
+          %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Ipse.JSON.sha256(bytes)}
         end)
     }
 
@@ -234,7 +234,7 @@ defmodule Ipse.Extensions.ContributionsTest do
         &(&1["type"] == "extension_action_result" and &1["request"]["op"] == "tool.call")
       )
 
-    assert item["provenance"]["source_action_sha256"] == Ipse.Compaction.digest([read])
+    assert item["provenance"]["source_action_sha256"] == Ipse.JSON.digest([read])
     assert item["source"]["operation_id"] == read["operation_id"]
     invoke(pid, "invalid")
 
@@ -357,7 +357,7 @@ defmodule Ipse.Extensions.ContributionsTest do
 
           event
           |> Map.put("outcome", outcome)
-          |> Map.put("outcome_sha256", Ipse.Compaction.digest([outcome]))
+          |> Map.put("outcome_sha256", Ipse.JSON.digest([outcome]))
         else
           event
         end
@@ -369,7 +369,7 @@ defmodule Ipse.Extensions.ContributionsTest do
           do:
             event
             |> Map.put("content", "replacement")
-            |> Map.put("content_sha256", Manifest.sha256("replacement")),
+            |> Map.put("content_sha256", Ipse.JSON.sha256("replacement")),
           else: event
       end)
 

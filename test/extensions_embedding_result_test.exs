@@ -582,6 +582,6 @@ defmodule Ipse.Extensions.EmbeddingResultTest do
   end
 
   defp id(char), do: String.duplicate(char, 32)
-  defp digest(value), do: Ipse.Compaction.digest([value])
+  defp digest(value), do: Ipse.JSON.digest([value])
   defp sha256(bytes), do: :crypto.hash(:sha256, bytes) |> Base.encode16(case: :lower)
 end

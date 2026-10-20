@@ -639,7 +639,7 @@ defmodule IpseKnowledgeExample.EvaluationSession do
         approval = %{
           "name" => name,
           "decision" => if(allowed, do: "approved", else: "denied"),
-          "proposal_sha256" => Ipse.Compaction.digest([safe_proposed]),
+          "proposal_sha256" => Ipse.JSON.digest([safe_proposed]),
           "binding" => get_in(safe_proposed, ["request", "binding"]),
           "profile" => get_in(safe_proposed, ["request", "profile"]),
           "execution_id" => get_in(safe_proposed, ["execution", "id"]),

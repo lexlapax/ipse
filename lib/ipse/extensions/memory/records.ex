@@ -5,7 +5,7 @@ defmodule Ipse.Extensions.Memory.Records do
   @string %{"type" => "string", "minLength" => 1, "maxLength" => 512}
   @integer %{"type" => "integer", "minimum" => 0, "maximum" => @safe}
 
-  def key(source), do: Ipse.Extensions.Manifest.sha256(source)
+  def key(source), do: Ipse.JSON.sha256(source)
 
   def schema do
     %{
@@ -167,7 +167,7 @@ defmodule Ipse.Extensions.Memory.Records do
         "provenance" => note["provenance"],
         "excerpt" => excerpt,
         "span" => %{"start_byte" => 0, "end_byte" => byte_size(excerpt)},
-        "text_sha256" => Ipse.Extensions.Manifest.sha256(note["text"])
+        "text_sha256" => Ipse.JSON.sha256(note["text"])
       }
     end)
   end

@@ -21,7 +21,7 @@ defmodule Ipse.Observability.Resources do
       "type" => "diagnostic_sink_" <> kind,
       "version" => 1,
       "resource_id" => intent["resource_id"],
-      "intent_sha256" => Ipse.Compaction.digest([intent]),
+      "intent_sha256" => Ipse.JSON.digest([intent]),
       "cleanup_confirmed" => cleanup
     }
   end

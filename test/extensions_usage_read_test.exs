@@ -79,7 +79,7 @@ defmodule Ipse.Extensions.UsageReadTest do
           do: %{
             "path" => path,
             "bytes" => byte_size(bytes),
-            "sha256" => Ipse.Extensions.Manifest.sha256(bytes)
+            "sha256" => Ipse.JSON.sha256(bytes)
           }
 
     File.write!(

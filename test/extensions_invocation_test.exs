@@ -3,7 +3,7 @@ Code.require_file("support/stdio_probe.exs", __DIR__)
 defmodule Ipse.Extensions.InvocationTest do
   use ExUnit.Case, async: false
   alias Ipse.{Session, Journal}
-  alias Ipse.Extensions.{Catalog, Config, Registry, Store, Manifest, Invocation}
+  alias Ipse.Extensions.{Catalog, Config, Registry, Store, Invocation}
 
   defmodule Model do
     def complete(config, messages, tools, _emit) do
@@ -188,7 +188,7 @@ defmodule Ipse.Extensions.InvocationTest do
       "files" =>
         Enum.map(["LICENSE", "ebin/Elixir.#{entrypoint}.beam"], fn path ->
           bytes = File.read!(Path.join(source, path))
-          %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Manifest.sha256(bytes)}
+          %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Ipse.JSON.sha256(bytes)}
         end)
     }
 
@@ -553,7 +553,7 @@ defmodule Ipse.Extensions.InvocationTest do
     assert proposed["destination"]["origin"] == base
 
     assert proposed["destination"]["target_sha256"] ==
-             Ipse.Extensions.Manifest.sha256(base <> "/api/chat")
+             Ipse.JSON.sha256(base <> "/api/chat")
 
     assert Ipse.Extensions.ModelCall.delegated_approval?("extension:model.complete", proposed)
     refute_receive {:model_http, _, _}, 20
@@ -1012,7 +1012,7 @@ defmodule Ipse.Extensions.InvocationTest do
 
               event
               |> Map.put("outcome", outcome)
-              |> Map.put("outcome_sha256", Ipse.Compaction.digest([outcome]))
+              |> Map.put("outcome_sha256", Ipse.JSON.digest([outcome]))
             else
               event
             end
@@ -1739,7 +1739,7 @@ defmodule Ipse.Extensions.InvocationTest do
         "files" =>
           Enum.map(["LICENSE", "ebin/Elixir.#{module}.beam"], fn path ->
             bytes = File.read!(Path.join(source, path))
-            %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Manifest.sha256(bytes)}
+            %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Ipse.JSON.sha256(bytes)}
           end)
       })
 
@@ -1972,7 +1972,7 @@ defmodule Ipse.Extensions.InvocationTest do
     {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
     intent = Enum.find(events, &(&1["type"] == "extension_action_intent"))
     snapshot = Enum.find(events, &(&1["type"] == "workspace_context_snapshot"))["snapshot"]
-    assert intent["context_sha256"] == Ipse.Compaction.digest([snapshot])
+    assert intent["context_sha256"] == Ipse.JSON.digest([snapshot])
     assert intent["namespace"] == nil
     assert :ok = Ipse.Extensions.Projection.validate_events(events)
   end

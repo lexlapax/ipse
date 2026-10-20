@@ -1,6 +1,5 @@
 defmodule Ipse.Extensions.Projection do
   @moduledoc "Deterministic, provenance-bound prompt/display projections; callbacks never run on restore."
-  alias Ipse.Extensions.Manifest
   @stages ~w(transform.prompt transform.presentation)
   @intent_keys ~w(type version request_id identity stage input_sha256 context_sha256 source_message_sha256)
   @invalid {:error, :invalid_extension_projection}
@@ -12,16 +11,16 @@ defmodule Ipse.Extensions.Projection do
       "request_id" => Base.encode16(:crypto.strong_rand_bytes(16), case: :lower),
       "identity" => identity,
       "stage" => stage,
-      "input_sha256" => Manifest.sha256(input),
-      "context_sha256" => Ipse.Compaction.digest(messages),
-      "source_message_sha256" => Ipse.Compaction.digest([List.last(messages)])
+      "input_sha256" => Ipse.JSON.sha256(input),
+      "context_sha256" => Ipse.JSON.digest(messages),
+      "source_message_sha256" => Ipse.JSON.digest([List.last(messages)])
     }
   end
 
   def build(intent, input, result) do
     with true <- intent_valid?(intent),
          :ok <- Ipse.Extension.validate(%{"text" => input}),
-         true <- Manifest.sha256(input) == intent["input_sha256"],
+         true <- Ipse.JSON.sha256(input) == intent["input_sha256"],
          :ok <- Ipse.MCP.Schema.validate_arguments(result_schema(intent["stage"]), result),
          true <- safe_frame?(intent["stage"], result),
          output = render(intent, input, result),
@@ -32,7 +31,7 @@ defmodule Ipse.Extensions.Projection do
           "input" => input,
           "output" => output,
           "result" => result,
-          "output_sha256" => Manifest.sha256(output)
+          "output_sha256" => Ipse.JSON.sha256(output)
         })
 
       if byte_size(Jason.encode!(event)) <= 65_536, do: {:ok, event}, else: @invalid
@@ -45,9 +44,9 @@ defmodule Ipse.Extensions.Projection do
 
   def apply(messages, event) do
     with true <- is_list(messages) and messages != [],
-         true <- event["context_sha256"] == Ipse.Compaction.digest(messages),
+         true <- event["context_sha256"] == Ipse.JSON.digest(messages),
          last = List.last(messages),
-         true <- event["source_message_sha256"] == Ipse.Compaction.digest([last]),
+         true <- event["source_message_sha256"] == Ipse.JSON.digest([last]),
          true <- valid_result?(event) do
       case event["stage"] do
         "transform.prompt" ->
@@ -68,8 +67,8 @@ defmodule Ipse.Extensions.Projection do
   end
 
   def validate_intent_context(messages, event) do
-    if messages != [] and event["context_sha256"] == Ipse.Compaction.digest(messages) and
-         event["source_message_sha256"] == Ipse.Compaction.digest([List.last(messages)]),
+    if messages != [] and event["context_sha256"] == Ipse.JSON.digest(messages) and
+         event["source_message_sha256"] == Ipse.JSON.digest([List.last(messages)]),
        do: :ok,
        else: @invalid
   end
@@ -216,7 +215,7 @@ defmodule Ipse.Extensions.Projection do
     if Enum.sort(Map.keys(event)) == ~w(original original_sha256 type version) and
          event["version"] === 1 and
          is_binary(event["original"]) and
-         Manifest.sha256(event["original"]) == event["original_sha256"],
+         Ipse.JSON.sha256(event["original"]) == event["original_sha256"],
        do: {:ok, state},
        else: @invalid
   end
@@ -254,8 +253,8 @@ defmodule Ipse.Extensions.Projection do
           nil
       end
 
-    is_binary(input) and Manifest.sha256(input) == event["input_sha256"] and
-      Ipse.Compaction.digest([state.last]) == event["source_message_sha256"]
+    is_binary(input) and Ipse.JSON.sha256(input) == event["input_sha256"] and
+      Ipse.JSON.digest([state.last]) == event["source_message_sha256"]
   end
 
   defp intent_valid?(event) do

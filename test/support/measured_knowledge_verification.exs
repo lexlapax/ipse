@@ -7,7 +7,6 @@ defmodule MeasuredKnowledgeVerification do
     EvaluationMeasuredExecution
   }
 
-  alias Ipse.Extensions.Manifest
   @variants ~w(lexical graph_explicit graph_model dense hybrid rerank research)
 
   def build_artifacts(root, repository) do
@@ -87,7 +86,7 @@ defmodule MeasuredKnowledgeVerification do
           "created_at" => "2026-01-01T00:00:00Z",
           "observed_at" => "2026-03-01T00:00:00Z",
           "state" => state,
-          "sha256" => Manifest.sha256(text),
+          "sha256" => Ipse.JSON.sha256(text),
           "byte_length" => byte_size(text),
           "media_type" => "text/plain"
         }
@@ -143,17 +142,17 @@ defmodule MeasuredKnowledgeVerification do
           "contract" => contract,
           "as_of_ms" => 1_800_000_000_000,
           "inputs" => %{
-            "corpus" => %{"path" => "corpus.json", "sha256" => Manifest.sha256(corpus)},
-            "queries" => %{"path" => "queries.json", "sha256" => Manifest.sha256(query_bytes)}
+            "corpus" => %{"path" => "corpus.json", "sha256" => Ipse.JSON.sha256(corpus)},
+            "queries" => %{"path" => "queries.json", "sha256" => Ipse.JSON.sha256(query_bytes)}
           },
-          "answers_sha256" => Manifest.sha256(answers)
+          "answers_sha256" => Ipse.JSON.sha256(answers)
         })
       else
         JSON.encode!(%{
           "as_of_ms" => 1_800_000_000_000,
           "files" => [
-            %{"path" => "corpus.json", "sha256" => Manifest.sha256(corpus)},
-            %{"path" => "queries.json", "sha256" => Manifest.sha256(query_bytes)}
+            %{"path" => "corpus.json", "sha256" => Ipse.JSON.sha256(corpus)},
+            %{"path" => "queries.json", "sha256" => Ipse.JSON.sha256(query_bytes)}
           ]
         })
       end
@@ -177,7 +176,7 @@ defmodule MeasuredKnowledgeVerification do
         "queries" => "queries.json",
         "split" => "fixture",
         "expected_queries" => 50,
-        "manifest_sha256" => Manifest.sha256(data)
+        "manifest_sha256" => Ipse.JSON.sha256(data)
       })
       |> Map.update!("profiles", fn profiles ->
         Map.new(profiles, fn {id, profile} ->
@@ -250,7 +249,7 @@ defmodule MeasuredKnowledgeVerification do
     350 = result["rows"]
     predictions = Path.join(run.reports, "predictions.jsonl")
     bytes = File.read!(predictions)
-    true = Manifest.sha256(bytes) == result["prediction_sha256"]
+    true = Ipse.JSON.sha256(bytes) == result["prediction_sha256"]
     rows = bytes |> String.split("\n", trim: true) |> Enum.map(&JSON.decode!/1)
     true = Enum.all?(rows, &(&1["status"] == "ok"))
     350 = MapSet.size(MapSet.new(rows, &{&1["variant"], &1["query_id"]}))
@@ -457,6 +456,6 @@ defmodule MeasuredKnowledgeVerification do
   defp snapshot(root) do
     Path.wildcard(Path.join(root, "**/*"))
     |> Enum.filter(&File.regular?/1)
-    |> Map.new(fn path -> {path, Manifest.sha256(File.read!(path))} end)
+    |> Map.new(fn path -> {path, Ipse.JSON.sha256(File.read!(path))} end)
   end
 end

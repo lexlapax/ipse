@@ -2,7 +2,7 @@ defmodule Ipse.LifecycleTest do
   use ExUnit.Case, async: false
   alias Ipse.{Journal, Session}
   alias Ipse.Lifecycle.{Source, Event}
-  alias Ipse.Extensions.{Config, Registry, Manifest}
+  alias Ipse.Extensions.{Config, Registry}
 
   defmodule Model do
     def complete(_config, _messages, _tools, _emit) do
@@ -153,7 +153,7 @@ defmodule Ipse.LifecycleTest do
       "type" => "extension_prompt_received",
       "version" => 1,
       "original" => text,
-      "original_sha256" => Manifest.sha256(text)
+      "original_sha256" => Ipse.JSON.sha256(text)
     }
 
     assert {:ok, source} = Journal.append_with_source(ctx.root, ctx.id, record)
@@ -167,7 +167,7 @@ defmodule Ipse.LifecycleTest do
 
     refute String.contains?(Jason.encode!(metadata), [
              text,
-             Manifest.sha256(text),
+             Ipse.JSON.sha256(text),
              source["record_sha256"]
            ])
 

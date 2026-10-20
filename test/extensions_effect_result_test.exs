@@ -554,7 +554,7 @@ defmodule Ipse.Extensions.EffectResultTest do
     }
 
   defp id(char), do: String.duplicate(char, 32)
-  defp digest(value), do: Ipse.Compaction.digest([value])
+  defp digest(value), do: Ipse.JSON.digest([value])
 
   defp rehash_source(source),
     do: Map.put(source, "source_sha256", digest(Map.delete(source, "source_sha256")))

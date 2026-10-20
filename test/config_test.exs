@@ -29,7 +29,7 @@ defmodule Ipse.ConfigTest do
     assert Config.legacy_compatible?(config)
 
     assert config.fingerprint ==
-             Ipse.Compaction.digest([
+             Ipse.JSON.digest([
                %{
                  "settings" => config.settings,
                  "sources" => config.sources,

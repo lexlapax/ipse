@@ -19,8 +19,8 @@ defmodule Ipse.Extensions.EffectCapacity do
         Enum.with_index(intent["request"]["inputs"], fn input, index ->
           %{
             "index" => index,
-            "input_sha256" => Ipse.Compaction.digest([input]),
-            "vector_sha256" => Ipse.Extensions.Manifest.sha256(bytes),
+            "input_sha256" => Ipse.JSON.digest([input]),
+            "vector_sha256" => Ipse.JSON.sha256(bytes),
             "values" => Base.encode64(bytes)
           }
         end),

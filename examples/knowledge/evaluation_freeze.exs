@@ -20,7 +20,7 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
   and attempt-registry paths. Its semantic launch recipe authorizes no execution
   and establishes no attempt claim. Version 1 seals keep their original contract.
   """
-  alias Ipse.Extensions.{Manifest, Store}
+  alias Ipse.Extensions.{Store}
 
   @completion_policy %{
     "completion_policy" => "bounded_natural_drain_v1",
@@ -75,7 +75,12 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
 
       bytes = JSON.encode!(experiment) <> "\n"
       _ = decode_experiment!(bytes)
-      %{"bytes" => bytes, "sha256" => Manifest.sha256(bytes), "source_commit" => source["commit"]}
+
+      %{
+        "bytes" => bytes,
+        "sha256" => Ipse.JSON.sha256(bytes),
+        "source_commit" => source["commit"]
+      }
     end)
   end
 
@@ -119,8 +124,8 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
       runtime = measured_runtime_snapshot()
       require!(source_snapshot(repository) == source, :source_changed)
       id = nonce()
-      experiment_digest = Manifest.sha256(experiment_bytes)
-      plan_digest = Manifest.sha256(plan_bytes)
+      experiment_digest = Ipse.JSON.sha256(experiment_bytes)
+      plan_digest = Ipse.JSON.sha256(plan_bytes)
 
       recipe =
         launch_recipe(id, experiment_digest, plan_digest, registry, registry_identity, resolution)
@@ -138,7 +143,7 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
         "attempt_registry" => registry,
         "attempt_registry_identity" => registry_identity,
         "launch_recipe" => recipe,
-        "recipe_sha256" => Manifest.sha256(JSON.encode!(recipe)),
+        "recipe_sha256" => Ipse.JSON.sha256(JSON.encode!(recipe)),
         "provenance" => %{
           "os" => :os.type() |> Tuple.to_list() |> Enum.map(&Atom.to_string/1),
           "architecture" => to_string(:erlang.system_info(:system_architecture)),
@@ -151,7 +156,7 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
       require!(byte_size(bytes) <= 1_048_576, :manifest_limit)
       path = Path.join(output, "manifest.json")
       write_private(path, bytes)
-      digest = Manifest.sha256(bytes)
+      digest = Ipse.JSON.sha256(bytes)
       write_private(Path.join(output, "manifest.sha256"), digest <> "\n")
 
       %{
@@ -201,7 +206,7 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
         "created_at" => DateTime.to_iso8601(DateTime.utc_now()),
         "source" => source,
         "runtime" => runtime,
-        "plan_sha256" => Manifest.sha256(plan_bytes),
+        "plan_sha256" => Ipse.JSON.sha256(plan_bytes),
         "artifacts" => copied
       }
 
@@ -209,7 +214,7 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
       require!(byte_size(bytes) <= 1_048_576, :manifest_limit)
       path = Path.join(output, "manifest.json")
       write_private(path, bytes)
-      digest = Manifest.sha256(bytes)
+      digest = Ipse.JSON.sha256(bytes)
       write_private(Path.join(output, "manifest.sha256"), digest <> "\n")
       %{"path" => path, "sha256" => digest, "source_commit" => source["commit"]}
     end)
@@ -219,8 +224,8 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
     protect(fn ->
       require!(hash?(expected_sha256), :invalid_manifest_hash)
       bytes = read_bounded!(path, 1_048_576)
-      require!(Manifest.sha256(bytes) == expected_sha256, :manifest_changed)
-      {:ok, manifest} = Manifest.decode_json(bytes, 1_048_576)
+      require!(Ipse.JSON.sha256(bytes) == expected_sha256, :manifest_changed)
+      {:ok, manifest} = Ipse.JSON.decode_bounded(bytes, 1_048_576)
       require!(is_map(manifest), :invalid_manifest)
       root = Path.dirname(Path.expand(path))
 
@@ -243,7 +248,7 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
     require!(source_snapshot(source["root"]) == source, :source_changed)
     require!(runtime_snapshot() == manifest["runtime"], :runtime_changed)
     plan_bytes = read_bounded!(Path.join(root, "plan.json"), 1_048_576)
-    require!(Manifest.sha256(plan_bytes) == manifest["plan_sha256"], :plan_changed)
+    require!(Ipse.JSON.sha256(plan_bytes) == manifest["plan_sha256"], :plan_changed)
     plan = decode_plan!(plan_bytes)
     store = Path.join(root, "artifacts")
 
@@ -294,7 +299,7 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
     experiment_bytes = read_bounded!(Path.join(root, "experiment.json"), 1_048_576)
 
     require!(
-      Manifest.sha256(experiment_bytes) == manifest["experiment_sha256"],
+      Ipse.JSON.sha256(experiment_bytes) == manifest["experiment_sha256"],
       :experiment_changed
     )
 
@@ -318,7 +323,7 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
     )
 
     plan_bytes = read_bounded!(Path.join(root, "plan.json"), 1_048_576)
-    require!(Manifest.sha256(plan_bytes) == manifest["plan_sha256"], :plan_changed)
+    require!(Ipse.JSON.sha256(plan_bytes) == manifest["plan_sha256"], :plan_changed)
     require!(decode_execution_plan!(plan_bytes) == plan, :plan_changed)
     require!(manifest["artifacts"] == experiment["artifacts"], :artifact_changed)
 
@@ -342,7 +347,7 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
 
     require!(
       manifest["launch_recipe"] == recipe and
-        manifest["recipe_sha256"] == Manifest.sha256(JSON.encode!(recipe)),
+        manifest["recipe_sha256"] == Ipse.JSON.sha256(JSON.encode!(recipe)),
       :recipe_changed
     )
 
@@ -356,7 +361,7 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
   end
 
   defp decode_execution_plan!(bytes) do
-    {:ok, plan} = Manifest.decode_json(bytes, 1_048_576)
+    {:ok, plan} = Ipse.JSON.decode_bounded(bytes, 1_048_576)
     require!(is_map(plan) and plan["version"] in [1, 2], :invalid_plan)
     keys = if plan["version"] == 2, do: ["model_origin" | @plan_keys], else: @plan_keys
     require!(exact?(plan, keys), :invalid_plan)
@@ -386,7 +391,7 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
   end
 
   defp decode_experiment!(bytes) do
-    {:ok, experiment} = Manifest.decode_json(bytes, 1_048_576)
+    {:ok, experiment} = Ipse.JSON.decode_bounded(bytes, 1_048_576)
 
     require!(
       exact?(experiment, ~w(version kind source plan artifacts policy)) and
@@ -728,7 +733,7 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
   end
 
   defp decode_plan!(bytes) do
-    case Manifest.decode_json(bytes, 1_048_576) do
+    case Ipse.JSON.decode_bounded(bytes, 1_048_576) do
       {:ok, %{"version" => 1} = plan} -> plan
       _ -> fail!(:invalid_plan)
     end

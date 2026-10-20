@@ -5,8 +5,10 @@ journal history or authorize repeated work. `Ipse.Compaction` prepares and valid
 pure checkpoint projections. Session owns summary inference, cancellation,
 durable commit, and replacement of its effective messages.
 
-Read `prepare/3`, `finish/4`, `restore_tool_results/2`, and `digest/1` in
-`lib/ipse/compaction.ex`. There are two reduction paths with different trade-offs.
+Read `prepare/3`, `finish/4`, and `restore_tool_results/2` in
+`lib/ipse/compaction.ex`. Shared canonical list digests belong to
+`Ipse.JSON.digest/1` in `lib/ipse/json.ex`. There are two reduction paths with
+different trade-offs.
 
 ## Follow the summary path
 
@@ -68,8 +70,12 @@ Session syncs `context_compacted` before changing its messages. Version 1 binds
 the checkpoint, covered effective-message count, canonical JSON prefix digest,
 and before/after sizes. `tool_results_compacted` instead binds original/projected
 digests and deterministic result indices. Original `message` events remain intact.
-Canonical digests sort JSON object keys recursively rather than depend on term
-serialization.
+`Ipse.JSON.digest/1` hashes a JSON list, sorting object keys recursively rather
+than depending on term serialization. It preserves list order and the maintained
+encoder's scalar representation. The same helper binds configuration, usage and
+extension records, so changing it changes persisted identities outside
+compaction. `Ipse.JSON.sha256/1` instead hashes original bytes without canonical
+encoding. Choose the operation required by the record's contract.
 
 Resume folds events in order, reconstructs unknown outcomes, validates covered
 prefixes and checkpoint metadata, and applies only the effective projection.
@@ -92,6 +98,7 @@ while an older approved settled result can become an excerpt.
 
 ```sh
 mix test test/compaction_test.exs test/tool_result_compaction_test.exs test/compaction_session_test.exs
+mix test test/json_test.exs
 ```
 
 The pure suites establish projections and validation; Session fixtures establish

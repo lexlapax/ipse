@@ -1,7 +1,7 @@
 defmodule IpseEmbeddingExample.Proof do
   @moduledoc false
   alias Ipse.{Session, Journal, Usage, Budget}
-  alias Ipse.Extensions.{Config, Registry, Store, Manifest}
+  alias Ipse.Extensions.{Config, Registry, Store}
 
   defmodule NoModel do
     def complete(_, _, _, _),
@@ -298,7 +298,7 @@ defmodule IpseEmbeddingExample.Proof do
         true =
           proposed["destination"] == %{
             "origin" => origin,
-            "target_sha256" => Manifest.sha256(origin <> path)
+            "target_sha256" => Ipse.JSON.sha256(origin <> path)
           }
 
         true = proposed["effect_binding"]["execution"] == proposed["execution"]
@@ -338,7 +338,7 @@ defmodule IpseEmbeddingExample.Proof do
     for {summary, index} <- Enum.with_index(value["vectors"]) do
       true = summary["index"] == index and summary["bytes"] == dimensions * 4
       true = summary["sha256"] == sha256(vector_bytes(dimensions, index))
-      true = summary["input_sha256"] == Ipse.Compaction.digest([Enum.at(inputs, index)])
+      true = summary["input_sha256"] == Ipse.JSON.digest([Enum.at(inputs, index)])
       true = summary["pages"] == div(dimensions + 767, 768)
     end
 

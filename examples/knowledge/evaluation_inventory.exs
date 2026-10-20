@@ -1,7 +1,7 @@
 defmodule IpseKnowledgeExample.EvaluationInventory do
   @moduledoc "Read-only State metadata audit in a separately loaded, verified domain artifact."
   import Bitwise
-  alias Ipse.Extensions.{Manifest, Registry, State}
+  alias Ipse.Extensions.{Registry, State}
   @compile {:no_warn_undefined, IpseKnowledgeExample.EvaluationMeasuredExecution}
   @bytes 1_048_576
 
@@ -12,7 +12,7 @@ defmodule IpseKnowledgeExample.EvaluationInventory do
         {:ok, []}
       else
         bytes = File.read!(path)
-        true = Manifest.sha256(bytes) == expected_sha256
+        true = Ipse.JSON.sha256(bytes) == expected_sha256
         :ok = validate_namespace!(bytes, path)
         state = JSON.decode!(bytes)
 
@@ -62,7 +62,7 @@ defmodule IpseKnowledgeExample.EvaluationInventory do
         true = (mode &&& 0o077) == 0
         bytes = File.read!(path)
         true = byte_size(bytes) <= @bytes
-        {:ok, Manifest.sha256(bytes)}
+        {:ok, Ipse.JSON.sha256(bytes)}
 
       _ ->
         {:error, :inventory_unavailable}
@@ -95,7 +95,7 @@ defmodule IpseKnowledgeExample.EvaluationInventory do
         bytes = File.read!(path)
         true = byte_size(bytes) <= @bytes
         validate_namespace!(bytes, path)
-        hash = Manifest.sha256(bytes)
+        hash = Ipse.JSON.sha256(bytes)
         result = Path.join(output, "storage-inventory-" <> Ipse.Usage.id() <> ".json")
         File.write!(result, "", [:exclusive])
         File.chmod!(result, 0o600)
@@ -107,11 +107,11 @@ defmodule IpseKnowledgeExample.EvaluationInventory do
           true = size <= 1_048_576
           bytes = File.read!(path)
           true = byte_size(bytes) <= 1_048_576
-          true = Ipse.Extensions.Manifest.sha256(bytes) == expected
+          true = Ipse.JSON.sha256(bytes) == expected
           state = JSON.decode!(bytes)
           {:ok, report} = IpseKnowledge.Store.inventory(
             Map.take(state, ~w(records generation)), partition)
-          true = Ipse.Extensions.Manifest.sha256(File.read!(path)) == expected
+          true = Ipse.JSON.sha256(File.read!(path)) == expected
           File.write!(output, JSON.encode!(report))
         rescue
           _ -> System.halt(2)
@@ -165,7 +165,7 @@ defmodule IpseKnowledgeExample.EvaluationInventory do
         {:ok, ^artifact} = Registry.lookup(store, digest)
         %{type: :regular, size: size} = File.lstat!(result)
         true = size <= @bytes
-        {:ok, inventory} = Manifest.decode_json(File.read!(result), @bytes)
+        {:ok, inventory} = Ipse.JSON.decode_bounded(File.read!(result), @bytes)
         true = :code.is_loaded(IpseKnowledge.Store) == false
 
         {:ok,
@@ -177,7 +177,7 @@ defmodule IpseKnowledgeExample.EvaluationInventory do
            "state_file_bytes" => byte_size(bytes),
            "inventory" => inventory,
            "inventory_path" => Path.basename(result),
-           "inventory_sha256" => Manifest.sha256(File.read!(result))
+           "inventory_sha256" => Ipse.JSON.sha256(File.read!(result))
          }}
 
       _ ->
@@ -190,7 +190,7 @@ defmodule IpseKnowledgeExample.EvaluationInventory do
   defp validate_namespace!(bytes, path) do
     namespace = path |> Path.dirname() |> Path.basename()
     true = Regex.match?(~r/\A[0-9a-f]{64}\z/, namespace)
-    {:ok, state} = Manifest.decode_json(bytes, @bytes)
+    {:ok, state} = Ipse.JSON.decode_bounded(bytes, @bytes)
     true = Enum.sort(Map.keys(state)) == ~w(generation namespace records version)
     true = state["version"] === 1 and state["namespace"] == namespace
     true = is_integer(state["generation"]) and state["generation"] in 0..9_007_199_254_740_991

@@ -542,7 +542,7 @@ defmodule Ipse.Extensions.Feeds do
     end
   end
 
-  defp digest(value), do: Ipse.Compaction.digest([value])
+  defp digest(value), do: Ipse.JSON.digest([value])
   defp common?(e), do: e["version"] === 1 and id?(e["resource_id"])
   defp keys?(e, keys), do: is_map(e) and Enum.sort(Map.keys(e)) == Enum.sort(keys)
   defp id?(v), do: is_binary(v) and Regex.match?(~r/\A[0-9a-f]{32}\z/, v)

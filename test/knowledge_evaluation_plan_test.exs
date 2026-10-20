@@ -171,11 +171,11 @@ defmodule Ipse.KnowledgeEvaluationPlanTest do
       "inputs" => %{
         "corpus" => %{
           "path" => "corpus.json",
-          "sha256" => Ipse.Extensions.Manifest.sha256(corpus)
+          "sha256" => Ipse.JSON.sha256(corpus)
         },
         "queries" => %{
           "path" => "queries.json",
-          "sha256" => Ipse.Extensions.Manifest.sha256(queries)
+          "sha256" => Ipse.JSON.sha256(queries)
         }
       },
       "answers_sha256" => String.duplicate("a", 64)
@@ -188,7 +188,7 @@ defmodule Ipse.KnowledgeEvaluationPlanTest do
       File.write!(path, bytes)
 
       declared =
-        put_in(sealed_spec(), ["data", "manifest_sha256"], Ipse.Extensions.Manifest.sha256(bytes))
+        put_in(sealed_spec(), ["data", "manifest_sha256"], Ipse.JSON.sha256(bytes))
 
       {:ok, plan} = EvaluationPlan.build(declared)
       plan
@@ -277,7 +277,7 @@ defmodule Ipse.KnowledgeEvaluationPlanTest do
     File.write!(Path.join(root, "queries.json"), legacy)
 
     legacy_manifest =
-      put_in(manifest, ["inputs", "queries", "sha256"], Ipse.Extensions.Manifest.sha256(legacy))
+      put_in(manifest, ["inputs", "queries", "sha256"], Ipse.JSON.sha256(legacy))
 
     legacy_plan = write_plan.(legacy_manifest)
     legacy_output = Path.join(root, "legacy-shaped")
@@ -366,7 +366,7 @@ defmodule Ipse.KnowledgeEvaluationPlanTest do
     manifest = File.read!(output)
 
     assert JSON.decode!(manifest)["answers_sha256"] ==
-             Ipse.Extensions.Manifest.sha256(File.read!(answers))
+             Ipse.JSON.sha256(File.read!(answers))
 
     {failed, 1} = System.cmd(System.find_executable("elixir"), args, stderr_to_stdout: true)
     assert JSON.decode!(String.trim(failed))["code"] == "invalid_dataset_or_output"
@@ -479,7 +479,7 @@ defmodule Ipse.KnowledgeEvaluationPlanTest do
       assert status == 0, message
       result = JSON.decode!(String.trim(message))
       assert result["status"] == "ok" and result["result"]["variants"] == 7
-      assert result["result"]["sha256"] == Ipse.Extensions.Manifest.sha256(File.read!(output))
+      assert result["result"]["sha256"] == Ipse.JSON.sha256(File.read!(output))
       plan = JSON.decode!(File.read!(output))
       refute message =~ plan["blind_seed"]
       assert :ok = EvaluationRunner.validate(plan)
@@ -547,7 +547,7 @@ defmodule Ipse.KnowledgeEvaluationPlanTest do
     assert status == 0, output
     bytes = File.read!(Path.join(artifact, "extension.json"))
     manifest = JSON.decode!(bytes)
-    digest = Ipse.Extensions.Manifest.sha256(bytes)
+    digest = Ipse.JSON.sha256(bytes)
     options = JSON.decode!(File.read!("extensions/knowledge/options/research-offline.json"))
 
     selection = %{

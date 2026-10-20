@@ -100,7 +100,7 @@ defmodule Ipse.EmbeddingProfiles do
            "model" => profile["model"],
            "billing_mode" => Ipse.Usage.Normalizer.billing_mode(@providers[profile["provider"]]),
            "endpoint_sha256" =>
-             if(profile["base_url"], do: Ipse.Extensions.Manifest.sha256(profile["base_url"])),
+             if(profile["base_url"], do: Ipse.JSON.sha256(profile["base_url"])),
            "dimensions" => profile["dimensions"],
            "dimension_mode" => profile["dimension_mode"],
            "timeout_ms" =>
@@ -179,7 +179,7 @@ defmodule Ipse.EmbeddingProfiles do
     if is_map(execution) and not Map.has_key?(execution, "destination") and
          public_profile?(Map.put(execution, "destination", destination)) do
       {:ok,
-       Ipse.Compaction.digest([
+       Ipse.JSON.digest([
          "ipse.embedding.selection",
          1,
          execution["id"],

@@ -58,7 +58,7 @@ defmodule Ipse.Extensions.Manifest do
 
   @doc "Decode bounded JSON with duplicate keys rejected at every nesting level."
   def decode(bytes) when is_binary(bytes) and byte_size(bytes) <= @limit do
-    with {:ok, manifest} <- decode_json(bytes),
+    with {:ok, manifest} <- Ipse.JSON.decode_bounded(bytes),
          :ok <- Schema.validate_arguments(@schema, manifest),
          true <- Enum.all?(~w(format protocol), &(manifest[&1] === 1)),
          true <-
@@ -109,17 +109,6 @@ defmodule Ipse.Extensions.Manifest do
 
   def decode(_), do: {:error, :invalid_extension_manifest}
 
-  @doc false
-  def decode_json(bytes, limit \\ 32_768)
-
-  def decode_json(bytes, limit)
-      when is_binary(bytes) and is_integer(limit) and limit in 1..1_048_576 and
-             byte_size(bytes) <= limit do
-    Ipse.JSON.decode_unique(bytes)
-  end
-
-  def decode_json(_, _), do: {:error, :invalid_json}
-
   @doc "Compatibility is explicit; admission must recheck it before activation."
   def compatible?(manifest) do
     Version.match?(System.version(), manifest["runtime"]["elixir"]) and
@@ -128,8 +117,6 @@ defmodule Ipse.Extensions.Manifest do
   rescue
     _ -> false
   end
-
-  def sha256(bytes), do: Base.encode16(:crypto.hash(:sha256, bytes), case: :lower)
 
   @doc "Allow portable relative file paths, excluding manifest and traversal."
   def safe_path?(path) when is_binary(path) do

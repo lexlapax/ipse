@@ -43,13 +43,13 @@ defmodule Ipse.Extensions.EffectResult do
       |> Map.merge(%{
         "type" => "extension_effect_result",
         "version" => 1,
-        "binding_sha256" => Ipse.Compaction.digest([intent["effect_binding"]]),
+        "binding_sha256" => Ipse.JSON.digest([intent["effect_binding"]]),
         "kind" => "mcp.text",
         "data" => data,
-        "data_sha256" => Ipse.Compaction.digest([data])
+        "data_sha256" => Ipse.JSON.digest([data])
       })
 
-    event = Map.put(event, "source_sha256", Ipse.Compaction.digest([event]))
+    event = Map.put(event, "source_sha256", Ipse.JSON.digest([event]))
     if valid_source?(event, intent), do: {:ok, event}, else: @error
   rescue
     _ -> @error
@@ -64,14 +64,14 @@ defmodule Ipse.Extensions.EffectResult do
       |> Map.merge(%{
         "type" => "extension_effect_result",
         "version" => 2,
-        "binding_sha256" => Ipse.Compaction.digest([intent["effect_binding"]]),
+        "binding_sha256" => Ipse.JSON.digest([intent["effect_binding"]]),
         "kind" => "embedding.f32le",
         "data" => data,
         "inference" => inference,
-        "data_sha256" => Ipse.Compaction.digest([data])
+        "data_sha256" => Ipse.JSON.digest([data])
       })
 
-    event = Map.put(event, "source_sha256", Ipse.Compaction.digest([event]))
+    event = Map.put(event, "source_sha256", Ipse.JSON.digest([event]))
     if valid_source?(event, intent), do: {:ok, event}, else: @error
   rescue
     _ -> @error
@@ -82,8 +82,8 @@ defmodule Ipse.Extensions.EffectResult do
       intent["version"] === 2 and intent["approval"] in ~w(approved session_allow) and
       Ipse.Extensions.EmbeddingCall.valid_binding?(intent["effect_binding"], intent["request"]) and
       id?(intent["namespace"]) and
-      intent["request_sha256"] == Ipse.Compaction.digest([intent["request"]]) and
-      event["binding_sha256"] == Ipse.Compaction.digest([intent["effect_binding"]]) and
+      intent["request_sha256"] == Ipse.JSON.digest([intent["request"]]) and
+      event["binding_sha256"] == Ipse.JSON.digest([intent["effect_binding"]]) and
       Map.take(event, ~w(parent_invocation_id operation_id identity_sha256 request_sha256)) ==
         Map.take(intent, ~w(parent_invocation_id operation_id identity_sha256 request_sha256)) and
       event["inference"]["request_id"] == event["operation_id"] and
@@ -103,8 +103,8 @@ defmodule Ipse.Extensions.EffectResult do
       Ipse.Extensions.MCPCall.operation?(intent["request"]) and
       Ipse.Extensions.MCPCall.validate(intent["request"]) == :ok and
       is_nil(intent["namespace"]) and
-      intent["request_sha256"] == Ipse.Compaction.digest([intent["request"]]) and
-      event["binding_sha256"] == Ipse.Compaction.digest([intent["effect_binding"]]) and
+      intent["request_sha256"] == Ipse.JSON.digest([intent["request"]]) and
+      event["binding_sha256"] == Ipse.JSON.digest([intent["effect_binding"]]) and
       valid_intent_binding?(intent) and
       Map.take(event, ~w(parent_invocation_id operation_id identity_sha256 request_sha256)) ==
         Map.take(intent, ~w(parent_invocation_id operation_id identity_sha256 request_sha256))
@@ -327,8 +327,8 @@ defmodule Ipse.Extensions.EffectResult do
       hash?(inference["provider_response_sha256"]) and
       Ipse.Usage.Normalizer.valid?(inference["usage"], "embedding") and
       Ipse.Provider.Embedding.valid_data?(event["data"]) and
-      event["data_sha256"] == Ipse.Compaction.digest([event["data"]]) and
-      event["source_sha256"] == Ipse.Compaction.digest([Map.delete(event, "source_sha256")]) and
+      event["data_sha256"] == Ipse.JSON.digest([event["data"]]) and
+      event["source_sha256"] == Ipse.JSON.digest([Map.delete(event, "source_sha256")]) and
       byte_size(Jason.encode!(event)) <= @source_record_limit
   rescue
     _ -> false
@@ -343,9 +343,9 @@ defmodule Ipse.Extensions.EffectResult do
         &hash?(event[&1])
       ) and event["kind"] == "mcp.text" and keys?(event["data"], ["text"]) and
       text?(event["data"]["text"], 65_536) and
-      event["data_sha256"] == Ipse.Compaction.digest([event["data"]]) and
+      event["data_sha256"] == Ipse.JSON.digest([event["data"]]) and
       event["source_sha256"] ==
-        Ipse.Compaction.digest([Map.delete(event, "source_sha256")]) and
+        Ipse.JSON.digest([Map.delete(event, "source_sha256")]) and
       byte_size(Jason.encode!(event)) <= @source_record_limit
   rescue
     _ -> false

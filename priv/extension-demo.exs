@@ -360,7 +360,7 @@ defmodule Ipse.ExtensionDemo do
           "version" => 1,
           "operation_id" => Ipse.Usage.id(),
           "namespace" => id,
-          "identity_sha256" => Ipse.Compaction.digest([identity]),
+          "identity_sha256" => Ipse.JSON.digest([identity]),
           "approval" => "not_required",
           "request" => request
         }

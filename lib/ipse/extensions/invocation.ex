@@ -1,6 +1,6 @@
 defmodule Ipse.Extensions.Invocation do
   @moduledoc "Pure intent/result receipts for owned tools, commands and typed services."
-  alias Ipse.Extensions.{Catalog, Identity, Manifest, ResultSource}
+  alias Ipse.Extensions.{Catalog, Identity, ResultSource}
 
   @intent_keys ~w(type version invocation_id identity descriptor payload payload_sha256 parent_call_id parent_request_id approval)
   @result_keys ~w(value text text_sha256 action_count actions_sha256)
@@ -41,7 +41,7 @@ defmodule Ipse.Extensions.Invocation do
       "identity" => identity,
       "descriptor" => descriptor,
       "payload" => payload,
-      "payload_sha256" => Ipse.Compaction.digest([payload]),
+      "payload_sha256" => Ipse.JSON.digest([payload]),
       "parent_call_id" => parent_call_id,
       "parent_request_id" => parent_request_id,
       "approval" => approval
@@ -61,9 +61,9 @@ defmodule Ipse.Extensions.Invocation do
              "type" => "extension_invocation_result",
              "value" => value,
              "action_count" => length(actions),
-             "actions_sha256" => Ipse.Compaction.digest(actions),
+             "actions_sha256" => Ipse.JSON.digest(actions),
              "text" => text,
-             "text_sha256" => Manifest.sha256(text)
+             "text_sha256" => Ipse.JSON.sha256(text)
            }),
          true <- valid_result?(event) do
       {:ok, event}
@@ -88,9 +88,9 @@ defmodule Ipse.Extensions.Invocation do
              "delivery" => delivery,
              "elapsed_ms" => elapsed_ms,
              "action_count" => length(actions),
-             "actions_sha256" => Ipse.Compaction.digest(actions),
+             "actions_sha256" => Ipse.JSON.digest(actions),
              "text" => text,
-             "text_sha256" => Manifest.sha256(text)
+             "text_sha256" => Ipse.JSON.sha256(text)
            }),
          true <- valid_saved_result?(event) do
       {:ok, event}
@@ -132,7 +132,7 @@ defmodule Ipse.Extensions.Invocation do
     with true <- Ipse.ToolCall.valid_id?(id),
          [call] <- Enum.filter(calls, &(&1["id"] == id)),
          true <- get_in(call, ["function", "name"]) == name,
-         {:ok, parsed} <- Manifest.decode_json(get_in(call, ["function", "arguments"])) do
+         {:ok, parsed} <- Ipse.JSON.decode_bounded(get_in(call, ["function", "arguments"])) do
       parsed == arguments
     else
       _ -> false
@@ -331,7 +331,7 @@ defmodule Ipse.Extensions.Invocation do
          true <-
            started["name"] == event["descriptor"]["name"] and
              started["approval"] == event["approval"],
-         {:ok, args} <- Manifest.decode_json(get_in(call, ["function", "arguments"])),
+         {:ok, args} <- Ipse.JSON.decode_bounded(get_in(call, ["function", "arguments"])),
          true <-
            source_call_valid?(
              state.assistant,
@@ -354,8 +354,8 @@ defmodule Ipse.Extensions.Invocation do
       delivery["identity"] == event["identity"] and
       delivery["declaration"]["handler"] == event["descriptor"]["id"] and
       trigger["delivery_id"] == delivery["delivery_id"] and
-      trigger["intent_sha256"] == Ipse.Compaction.digest([delivery]) and
-      Ipse.Compaction.digest([event["payload"]["arguments"]["event"]]) ==
+      trigger["intent_sha256"] == Ipse.JSON.digest([delivery]) and
+      Ipse.JSON.digest([event["payload"]["arguments"]["event"]]) ==
         delivery["payload_sha256"]
   end
 
@@ -381,7 +381,7 @@ defmodule Ipse.Extensions.Invocation do
       payload["api_version"] === 1 and payload["invocation_id"] == event["invocation_id"] and
       Enum.all?(~w(session_id turn_id), &id?(payload[&1])) and payload["id"] == descriptor["id"] and
       Catalog.validate_call(descriptor, payload["arguments"]) == :ok and
-      event["payload_sha256"] == Ipse.Compaction.digest([payload]) and
+      event["payload_sha256"] == Ipse.JSON.digest([payload]) and
       valid_parent?(event) and byte_size(Jason.encode!(event)) <= 65_536
   rescue
     _ -> false
@@ -426,8 +426,8 @@ defmodule Ipse.Extensions.Invocation do
              "value" => event["value"]
            }),
          true <-
-           is_binary(event["text"]) and Manifest.sha256(event["text"]) == event["text_sha256"],
-         {:ok, value} <- Manifest.decode_json(event["text"]),
+           is_binary(event["text"]) and Ipse.JSON.sha256(event["text"]) == event["text_sha256"],
+         {:ok, value} <- Ipse.JSON.decode_bounded(event["text"]),
          true <- value == event["value"],
          true <- byte_size(Jason.encode!(event)) <= 131_072 do
       true
@@ -454,7 +454,7 @@ defmodule Ipse.Extensions.Invocation do
            is_binary(event["actions_sha256"]) and
              Regex.match?(~r/\A[a-f0-9]{64}\z/, event["actions_sha256"]),
          true <- event["text"] == Jason.encode!(event["delivery"]),
-         true <- Manifest.sha256(event["text"]) == event["text_sha256"],
+         true <- Ipse.JSON.sha256(event["text"]) == event["text_sha256"],
          true <- byte_size(Jason.encode!(event)) <= 131_072 do
       true
     else

@@ -353,14 +353,14 @@ defmodule Ipse.CompactionTest do
 
     assert checkpoint["ipse_checkpoint"]["user_intents"] == ["original goal", "Turn one"]
 
-    assert Compaction.digest(messages) ==
-             Compaction.digest(:erlang.binary_to_term(:erlang.term_to_binary(messages)))
+    assert Ipse.JSON.digest(messages) ==
+             Ipse.JSON.digest(:erlang.binary_to_term(:erlang.term_to_binary(messages)))
 
-    assert Compaction.digest(messages) ==
-             Compaction.digest(Jason.decode!(Jason.encode!(messages)))
+    assert Ipse.JSON.digest(messages) ==
+             Ipse.JSON.digest(Jason.decode!(Jason.encode!(messages)))
 
-    assert Compaction.digest([%{"a" => 1, "b" => 2}]) ==
-             Compaction.digest([Map.new([{"b", 2}, {"a", 1}])])
+    assert Ipse.JSON.digest([%{"a" => 1, "b" => 2}]) ==
+             Ipse.JSON.digest([Map.new([{"b", 2}, {"a", 1}])])
 
     assert :skip ==
              Compaction.prepare(messages, %{context_bytes: 10_000, compact: false}, system())

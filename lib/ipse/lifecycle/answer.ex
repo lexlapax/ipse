@@ -1,6 +1,5 @@
 defmodule Ipse.Lifecycle.Answer do
   @moduledoc "A completed answer boundary, retaining bounded original and presented text views."
-  alias Ipse.Extensions.Manifest
   alias Ipse.Lifecycle.Source
 
   @keys ~w(type version turn_id request_id effective_source assistant_sha256 original original_bytes original_sha256 presented presented_bytes presented_sha256)
@@ -14,13 +13,13 @@ defmodule Ipse.Lifecycle.Answer do
       "turn_id" => turn,
       "request_id" => request,
       "effective_source" => effective_source,
-      "assistant_sha256" => Ipse.Compaction.digest([assistant]),
+      "assistant_sha256" => Ipse.JSON.digest([assistant]),
       "original" => bounded(original),
       "original_bytes" => byte_size(original),
-      "original_sha256" => Manifest.sha256(original),
+      "original_sha256" => Ipse.JSON.sha256(original),
       "presented" => bounded(presented),
       "presented_bytes" => byte_size(presented),
-      "presented_sha256" => Manifest.sha256(presented)
+      "presented_sha256" => Ipse.JSON.sha256(presented)
     }
   end
 
@@ -45,7 +44,7 @@ defmodule Ipse.Lifecycle.Answer do
   defp view?(text, bytes, hash) when is_binary(text),
     do:
       String.valid?(text) and byte_size(text) <= 8192 and bytes === byte_size(text) and
-        Manifest.sha256(text) == hash
+        Ipse.JSON.sha256(text) == hash
 
   defp view?(_, _, _), do: false
   defp id?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{32}\z/, value)

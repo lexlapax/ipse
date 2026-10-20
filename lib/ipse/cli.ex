@@ -670,7 +670,7 @@ defmodule Ipse.CLI do
         client_loop(s)
 
       {:input, "/result " <> json} ->
-        with {:ok, request} <- Ipse.Extensions.Manifest.decode_json(json),
+        with {:ok, request} <- Ipse.JSON.decode_bounded(json),
              {:ok, view} <- Ipse.Session.read_saved_result(s.pid, request) do
           Terminal.puts(Jason.encode!(view))
         else
@@ -686,7 +686,7 @@ defmodule Ipse.CLI do
       {:input, "/ext " <> input} ->
         case String.split(input, ~r/\s+/, parts: 2, trim: true) do
           [name, json] ->
-            with {:ok, arguments} <- Ipse.Extensions.Manifest.decode_json(json),
+            with {:ok, arguments} <- Ipse.JSON.decode_bounded(json),
                  true <- is_map(arguments),
                  :ok <- Ipse.Session.invoke_export(s.pid, :command, name, arguments) do
               client_loop(%{s | busy: true})

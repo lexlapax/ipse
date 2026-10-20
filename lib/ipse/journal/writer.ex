@@ -360,7 +360,7 @@ defmodule Ipse.Journal.Writer do
   end
 
   defp source(state, :source, _, encoded) do
-    with {:ok, decoded} <- Ipse.Extensions.Manifest.decode_json(encoded, Source.record_bytes()),
+    with {:ok, decoded} <- Ipse.JSON.decode_bounded(encoded, Source.record_bytes()),
          {:ok, reference} <- Source.build(state.id, state.offset, decoded) do
       {:ok, {:ok, reference}}
     end

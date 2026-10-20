@@ -3,7 +3,6 @@ Code.require_file("../examples/knowledge/evaluation_plan.exs", __DIR__)
 defmodule Ipse.KnowledgeEvaluationMeasuredTest do
   use ExUnit.Case, async: false
   alias IpseKnowledgeExample.{EvaluationMeasuredExecution, EvaluationRunner}
-  alias Ipse.Extensions.Manifest
 
   setup do
     root = Path.join(System.tmp_dir!(), "ipse-measured-boundary-" <> Ipse.Usage.id())
@@ -171,7 +170,7 @@ defmodule Ipse.KnowledgeEvaluationMeasuredTest do
 
     report = %{
       "files" => [
-        %{"path" => "journal.jsonl", "bytes" => 6, "sha256" => Manifest.sha256("first\n")}
+        %{"path" => "journal.jsonl", "bytes" => 6, "sha256" => Ipse.JSON.sha256("first\n")}
       ]
     }
 

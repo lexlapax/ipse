@@ -136,7 +136,7 @@ defmodule Ipse.Extensions.SessionTest do
           %{
             "path" => path,
             "bytes" => byte_size(bytes),
-            "sha256" => Ipse.Extensions.Manifest.sha256(bytes)
+            "sha256" => Ipse.JSON.sha256(bytes)
           }
         end)
     }

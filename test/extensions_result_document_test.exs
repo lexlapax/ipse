@@ -1,7 +1,7 @@
 defmodule Ipse.Extensions.ResultDocumentTest do
   use ExUnit.Case, async: true
 
-  alias Ipse.Extensions.{Manifest, ResultDocument}
+  alias Ipse.Extensions.{ResultDocument}
   alias Ipse.MCP.Schema
 
   @schema %{"type" => "object", "additionalProperties" => true}
@@ -55,7 +55,7 @@ defmodule Ipse.Extensions.ResultDocumentTest do
           ~S({"items":{"a":1,"\u0061":2}})
         ] do
       assert {:error, _} = ResultDocument.decode(bytes, @schema)
-      assert {:error, :duplicate_key} = Manifest.decode_json(bytes)
+      assert {:error, :duplicate_key} = Ipse.JSON.decode_bounded(bytes)
     end
 
     assert {:ok, %{"items" => [%{"a" => 1}, %{"a" => 2}]}} =
@@ -65,16 +65,16 @@ defmodule Ipse.Extensions.ResultDocumentTest do
   test "keeps the Manifest decode ceiling and depth behavior" do
     bytes = Jason.encode!(%{"items" => List.duplicate(String.duplicate("x", 8192), 129)})
     assert byte_size(bytes) > 1_048_576
-    assert {:error, :invalid_json} = Manifest.decode_json(bytes, byte_size(bytes))
+    assert {:error, :invalid_json} = Ipse.JSON.decode_bounded(bytes, byte_size(bytes))
     assert {:ok, _} = ResultDocument.decode(bytes, @schema)
 
     at_depth = Enum.reduce(1..16, 0, fn _, value -> [value] end) |> Jason.encode!()
-    assert {:ok, _} = Manifest.decode_json(at_depth)
-    assert {:error, :invalid_json} = Manifest.decode_json("[" <> at_depth <> "]")
-    assert {:error, %Jason.DecodeError{}} = Manifest.decode_json("not json")
+    assert {:ok, _} = Ipse.JSON.decode_bounded(at_depth)
+    assert {:error, :invalid_json} = Ipse.JSON.decode_bounded("[" <> at_depth <> "]")
+    assert {:error, %Jason.DecodeError{}} = Ipse.JSON.decode_bounded("not json")
     padded = String.duplicate(" ", 1_048_574) <> "{}"
-    assert {:ok, %{}} = Manifest.decode_json(padded, 1_048_576)
-    assert {:error, :invalid_json} = Manifest.decode_json(padded)
+    assert {:ok, %{}} = Ipse.JSON.decode_bounded(padded, 1_048_576)
+    assert {:error, :invalid_json} = Ipse.JSON.decode_bounded(padded)
   end
 
   test "enforces the inclusive 4-MiB received and re-encoded byte ceilings" do

@@ -19,7 +19,7 @@ defmodule Ipse.Extensions.CostSummary do
     admission =
       request
       |> Map.drop(~w(outcome finality duration_ms reported_model usage))
-      |> then(&Ipse.Compaction.digest([&1]))
+      |> then(&Ipse.JSON.digest([&1]))
 
     with true <- Usage.valid_request_record?(request),
          true <- map_size(state.requests) < state.limit or Map.has_key?(state.requests, key),
@@ -98,7 +98,7 @@ defmodule Ipse.Extensions.CostSummary do
       "legacy_unmetered" => legacy,
       "gap_count" => if(count, do: count - captured),
       "gap_reasons" => gaps,
-      "child_manifest_sha256" => Ipse.Compaction.digest([children]),
+      "child_manifest_sha256" => Ipse.JSON.digest([children]),
       "cost_estimate_complete" => report["cost_estimate_complete"] and unknown == 0
     })
   end
@@ -171,7 +171,7 @@ defmodule Ipse.Extensions.CostSummary do
       "groups" => groups,
       "rate_card" =>
         Map.take(state.card, ~w(id revision currency source published_on))
-        |> Map.put("sha256", Ipse.Compaction.digest([state.card])),
+        |> Map.put("sha256", Ipse.JSON.digest([state.card])),
       "currency_scale" => 9,
       "rounding" => "ceiling_per_request"
     }

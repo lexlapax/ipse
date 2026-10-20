@@ -48,7 +48,7 @@ defmodule Ipse.Extensions.Config do
       Enum.map(instances, fn instance ->
         instance
         |> Map.delete("options")
-        |> Map.put("options_sha256", Ipse.Compaction.digest([instance["options"]]))
+        |> Map.put("options_sha256", Ipse.JSON.digest([instance["options"]]))
       end)
     end)
   end

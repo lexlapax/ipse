@@ -1,6 +1,5 @@
 defmodule MeasuredModelFixture do
   @moduledoc "Synthetic model distribution for complete measured evaluation controls."
-  alias Ipse.Extensions.Manifest
 
   @models ~w(fixture-text:latest fixture-embedding:latest)
   @launch_keys ~w(executable boot root code_paths files)
@@ -21,7 +20,7 @@ defmodule MeasuredModelFixture do
     manifests =
       Map.new(@models, fn name ->
         descriptor = fn bytes, media ->
-          digest = Manifest.sha256(bytes)
+          digest = Ipse.JSON.sha256(bytes)
           path = Path.join(cache, "blobs/sha256-" <> digest)
           unless File.exists?(path), do: private_file(path, bytes)
           %{"mediaType" => media, "digest" => "sha256:" <> digest, "size" => byte_size(bytes)}
@@ -52,7 +51,7 @@ defmodule MeasuredModelFixture do
         relative = "manifests/registry.ollama.ai/library/" <> String.replace(name, ":", "/")
         File.mkdir_p!(Path.dirname(Path.join(cache, relative)))
         private_file(Path.join(cache, relative), manifest)
-        {name, %{path: relative, digest: Manifest.sha256(manifest)}}
+        {name, %{path: relative, digest: Ipse.JSON.sha256(manifest)}}
       end)
 
     models = Map.new(manifests, fn {name, value} -> {name, value.digest} end)
@@ -140,7 +139,7 @@ defmodule MeasuredModelFixture do
         true = absolute?(file["path"])
         %{type: :regular, size: size} = File.lstat!(file["path"])
         true = size == file["bytes"] and size <= 67_108_864
-        true = Manifest.sha256(File.read!(file["path"])) == file["sha256"]
+        true = Ipse.JSON.sha256(File.read!(file["path"])) == file["sha256"]
         file["path"]
       end)
 
@@ -152,7 +151,7 @@ defmodule MeasuredModelFixture do
       "source" => path,
       "path" => target,
       "bytes" => File.stat!(path).size,
-      "sha256" => Manifest.sha256(File.read!(path)),
+      "sha256" => Ipse.JSON.sha256(File.read!(path)),
       "executable" => executable
     }
 

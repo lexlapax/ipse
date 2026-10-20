@@ -69,8 +69,8 @@ is complete at `25f1d8e` after external and whole-milestone internal review,
 reproduced repairs and passing local and exact-source hosted checks. The
 [remediation record](archive/2026-10-19-p26-remediation/index.md) preserves the
 findings, failures and scoped acceptance. P27 research, graph and RAG development
-is active, with external whole-milestone findings under repair and implementation
-and verification incomplete;
+is active. External whole-milestone review repairs have scoped passing checks;
+quality evaluation, structural implementation and final verification remain open;
 media remains deferred to P28. External services remain configurable; no third-party
 engine, database or mandatory backend is selected.
 
@@ -80,7 +80,7 @@ engine, database or mandatory backend is selected.
 | [P24: architecture/security readiness](#p24-independent-architecture-validation-and-baseline-security) | Complete for supervised P25 at `375e607`; accepted limits recorded | Refresh affected validation after trial changes |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Complete within declared supervision/assistance at `3307563`; security findings triaged and corrected scopes verified | Preserve frozen evidence; select a later production increment separately |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Complete within explicit-note scope at `25f1d8e`; review repairs and local/hosted gates pass | Preserve lifecycle, authority and documented retention limits |
-| [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Active; external review returned findings; no engine selected | Verify repairs and independent whole-milestone review, then obtain corrected-source held-out quality and matched resource evidence |
+| [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Active; review repairs verified within their scopes; no engine selected | Complete quality remediation and structural consolidation, then corrected-source held-out quality and matched resource evidence |
 | [P28: voice and media](#p28-voice-and-realtime-media) | Deferred; unimplemented | Explicit media contracts and later device/service validation |
 | [Apache-2.0 transition](#license-transition) | Complete; local and hosted `7bb642b` checks pass | Preserve bundled identity/recovery and third-party license boundaries |
 
@@ -388,7 +388,7 @@ the milestone. Preserve current SDK bounds and existing operation authority.
 | P27A | Independent research and lexical corpus packages with named interchangeable profiles, cited evidence, explicit limits, partial failures, stale-index handling and suppression | Review repairs and corrected-source fixture/platform/installed checks pass; held-out quality acceptance remains open |
 | P27B | Independent attributable graph, optional extraction, embedding/hybrid and rerank adapters; matched quality/resource comparisons before engine selection | Review defects, compact model contracts and shared original-byte excerpts verified through source/platform/installed checks; corrected-source matched quality/resource comparisons and selection remain open |
 | P27 verification | Frozen held-out workload, zero authority/isolation/replay/resurrection failures, measured retrieval/support/citation/resources, source/native/installed checks, coherent user and contributor manuals | Open; review repairs, compact contracts, detached-answer evaluation, cited-claim answer derivation and shared excerpts pass scoped reviews and checks; prior exposed 350-row result failed quality; real tuning, fresh held-out quality, resource/selection and structural-readiness gates remain |
-| P27 structural readiness | Holistic redesign and consolidation of the entire codebase and all user/developer documentation for maintainability and ease of use; migrate callers, builds, tests, packaging and CI together | Open; whole-tree survey, two proposals and independent design review complete; [selected target](archive/2026-10-20-p27-structure-design/index.md) recorded, implementation follows quality repairs/tuning and precedes the final private-evaluation freeze |
+| P27 structural readiness | Holistic redesign and consolidation of the entire codebase and all user/developer documentation for maintainability and ease of use; migrate callers, builds, tests, packaging and CI together | Open; whole-tree survey, two proposals and independent design review complete; [selected target](archive/2026-10-20-p27-structure-design/index.md) recorded. Shared [JSON ownership implementation](archive/2026-10-20-p27-structure-implementation/index.md) passes two reviews, both platform suites and source/installed proofs with precompiled SDK artifacts. Remaining consolidation precedes the final private-evaluation freeze |
 
 The [first host-contract record](archive/2026-10-19-p27-mcp-host-contracts/index.md)
 retains causal regressions, independent review corrections and local verification.

@@ -113,7 +113,7 @@ defmodule Ipse.Extensions.ConfigTest do
     inspected = Config.inspect_config(config)
     refute Jason.encode!(inspected) =~ "private-synthetic-option"
     assert [%{"options_sha256" => digest}] = inspected["instances"]
-    assert digest == Ipse.Compaction.digest([instance()["options"]])
+    assert digest == Ipse.JSON.digest([instance()["options"]])
 
     changed =
       update_in(config, ["instances", Access.at(0), "options"], &Map.put(&1, "text", "changed"))

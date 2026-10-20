@@ -3,7 +3,7 @@ Code.require_file("support/stdio_probe.exs", __DIR__)
 defmodule Ipse.Extensions.FeedsTest do
   use ExUnit.Case, async: false
   alias Ipse.{Session, Journal}
-  alias Ipse.Extensions.{Feeds, Subscriptions, Store, Manifest, Registry, Config}
+  alias Ipse.Extensions.{Feeds, Subscriptions, Store, Registry, Config}
 
   defmodule Model do
     def complete(config, messages, _tools, _emit) do
@@ -309,7 +309,7 @@ defmodule Ipse.Extensions.FeedsTest do
           "files" =>
             Enum.map(["LICENSE", "ebin/Elixir.#{module}.beam"], fn path ->
               bytes = File.read!(Path.join(directory, path))
-              %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Manifest.sha256(bytes)}
+              %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Ipse.JSON.sha256(bytes)}
             end)
         }
 

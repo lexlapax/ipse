@@ -1633,7 +1633,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
         namespace =
           if entry,
             do:
-              Ipse.Compaction.digest([
+              Ipse.JSON.digest([
                 %{
                   "scope" => "project",
                   "project" => sha(cwd),
@@ -2487,7 +2487,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     result = Path.join(output, "projected-queries.json")
 
     expression =
-      "[path, split, output, digest] = System.argv(); %{type: :regular, size: size} = File.lstat!(path); true = size <= 1_048_576; bytes = File.read!(path); true = digest == \"\" or Ipse.Extensions.Manifest.sha256(bytes) == digest; {:ok, result} = IpseKnowledgeExample.EvaluationInput.queries(bytes, split); File.write!(output, JSON.encode!(result), [:exclusive])"
+      "[path, split, output, digest] = System.argv(); %{type: :regular, size: size} = File.lstat!(path); true = size <= 1_048_576; bytes = File.read!(path); true = digest == \"\" or Ipse.JSON.sha256(bytes) == digest; {:ok, result} = IpseKnowledgeExample.EvaluationInput.queries(bytes, split); File.write!(output, JSON.encode!(result), [:exclusive])"
 
     {command, arguments} =
       child_command([Path.join(__DIR__, "evaluation_input.exs")], expression, [
@@ -2979,7 +2979,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
   end
 
   defp decode!(bytes) do
-    {:ok, value} = Manifest.decode_json(bytes, 1_048_576)
+    {:ok, value} = Ipse.JSON.decode_bounded(bytes, 1_048_576)
     value
   end
 
@@ -3018,7 +3018,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
   defp name?(value), do: is_binary(value) and Regex.match?(~r/\A[a-z][a-z0-9_-]{0,63}\z/, value)
   defp hash?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{64}\z/, value)
   defp uint?(value), do: is_integer(value) and value in 0..@safe
-  defp sha(bytes), do: Manifest.sha256(bytes)
+  defp sha(bytes), do: Ipse.JSON.sha256(bytes)
   defp require!(true, _), do: :ok
   defp require!(_, code), do: fail!(code)
   defp fail!(code), do: throw({:evaluation_runner, code})

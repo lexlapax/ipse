@@ -8,7 +8,6 @@ defmodule IpseKnowledgeExample.EvaluationModelService do
   claim, measurement scope, provider fallback or retry is supplied by this module.
   """
   alias Ipse.{HTTPProfile, Runner, WorkspaceContext}
-  alias Ipse.Extensions.Manifest
 
   @gib 68_719_476_736
   @json 1_048_576
@@ -709,7 +708,7 @@ defmodule IpseKnowledgeExample.EvaluationModelService do
       end
 
     demand(terminal.result == %{"exit_code" => 0, "timed_out" => false}, :copy_failed)
-    {:ok, receipt} = Manifest.decode_json(terminal.stdout, 2048)
+    {:ok, receipt} = Ipse.JSON.decode_bounded(terminal.stdout, 2048)
     validate_copy_receipt(receipt, bytes)
     mkdir_private(Path.join(context.output, "copies"))
 
@@ -768,7 +767,7 @@ defmodule IpseKnowledgeExample.EvaluationModelService do
           %{state | result: :failed}
 
         ?X ->
-          {:ok, value} = Manifest.decode_json(payload, 8192)
+          {:ok, value} = Ipse.JSON.decode_bounded(payload, 8192)
           %{state | result: value}
       end
     end
@@ -983,7 +982,7 @@ defmodule IpseKnowledgeExample.EvaluationModelService do
            timeout
          ) do
       {:ok, 200, bytes} ->
-        case Manifest.decode_json(bytes, @json) do
+        case Ipse.JSON.decode_bounded(bytes, @json) do
           {:ok, value} when is_map(value) -> value
           _ -> fail(:metadata_json)
         end
@@ -1043,7 +1042,7 @@ defmodule IpseKnowledgeExample.EvaluationModelService do
     demand(source_size(path, @json) <= @json, :file_size)
     {:ok, bytes} = File.open(path, [:read, :binary], &IO.binread(&1, @json + 1))
     demand(is_binary(bytes) and byte_size(bytes) <= @json, :file_size)
-    {:ok, value} = Manifest.decode_json(bytes, @json)
+    {:ok, value} = Ipse.JSON.decode_bounded(bytes, @json)
     value
   end
 
@@ -1219,7 +1218,7 @@ defmodule IpseKnowledgeExample.EvaluationModelService do
   end
 
   defp now, do: System.monotonic_time(:millisecond)
-  defp sha(bytes), do: Manifest.sha256(bytes)
+  defp sha(bytes), do: Ipse.JSON.sha256(bytes)
   defp demand(true, _), do: :ok
   defp demand(_, code), do: fail(code)
   defp fail(code), do: throw({:model_service, code})

@@ -32,7 +32,7 @@ defmodule Ipse.Extensions.StoreTest do
       },
       "files" =>
         Enum.map(contents, fn {path, bytes} ->
-          %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Manifest.sha256(bytes)}
+          %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Ipse.JSON.sha256(bytes)}
         end)
     }
 
@@ -137,7 +137,7 @@ defmodule Ipse.Extensions.StoreTest do
   test "import copies declared inert bytes, is pinned, private and idempotent", c do
     File.write!(Path.join(c.source, "unlisted.exs"), "raise \"must never execute\"")
     assert {:ok, installed} = Store.import(c.source, c.store)
-    assert installed.digest == Manifest.sha256(c.bytes)
+    assert installed.digest == Ipse.JSON.sha256(c.bytes)
     assert installed.manifest == c.manifest
     assert {:ok, ^installed} = Store.lookup(c.store, installed.digest)
     assert {:ok, ^installed} = Store.import(c.source, c.store)
@@ -207,7 +207,7 @@ defmodule Ipse.Extensions.StoreTest do
     File.mkdir!(abandoned)
     File.write!(Path.join(abandoned, "extension.json"), c.bytes)
     assert {:error, :invalid_extension_artifact} = Store.lookup(c.store, "../.staging-abandoned")
-    lock_path = Path.join(c.store, ".import-#{Manifest.sha256(c.bytes)}.lock")
+    lock_path = Path.join(c.store, ".import-#{Ipse.JSON.sha256(c.bytes)}.lock")
     File.ln_s!(Path.join(c.source, "LICENSE"), lock_path)
     assert {:error, :invalid_extension_artifact} = Store.import(c.source, c.store)
     assert File.read!(Path.join(c.source, "LICENSE")) == "MIT fixture"
@@ -219,13 +219,13 @@ defmodule Ipse.Extensions.StoreTest do
   test "advisory lock refuses a concurrent publisher and preserves lock inode", c do
     File.mkdir_p!(c.store)
     File.chmod!(c.store, 0o700)
-    lock_path = Path.join(c.store, ".import-#{Manifest.sha256(c.bytes)}.lock")
+    lock_path = Path.join(c.store, ".import-#{Ipse.JSON.sha256(c.bytes)}.lock")
     assert {:ok, lock} = Ipse.Runner.lock(lock_path)
     inode = File.stat!(lock_path).inode
 
     try do
       assert {:error, _} = Store.import(c.source, c.store)
-      refute File.exists?(Path.join(c.store, Manifest.sha256(c.bytes)))
+      refute File.exists?(Path.join(c.store, Ipse.JSON.sha256(c.bytes)))
     after
       Ipse.Runner.unlock(lock)
     end

@@ -17,7 +17,7 @@ result =
     path = Path.expand(Keyword.fetch!(options, :spec))
     %{type: :regular, size: size} = File.lstat!(path)
     true = size <= 1_048_576
-    {:ok, spec} = Ipse.Extensions.Manifest.decode_json(File.read!(path), 1_048_576)
+    {:ok, spec} = Ipse.JSON.decode_bounded(File.read!(path), 1_048_576)
 
     spec =
       if options[:new_blind_seed] do
@@ -51,7 +51,7 @@ result =
     {:ok,
      %{
        "path" => output,
-       "sha256" => Ipse.Extensions.Manifest.sha256(bytes),
+       "sha256" => Ipse.JSON.sha256(bytes),
        "variants" => length(plan["variants"])
      }}
   rescue

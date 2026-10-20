@@ -1,7 +1,7 @@
 defmodule Ipse.Lifecycle.Event do
   @moduledoc "Typed host projections of journal facts; choosing a view is not a subscriber permission grant."
   alias Ipse.Lifecycle.Source
-  alias Ipse.Extensions.{Manifest, Projection}
+  alias Ipse.Extensions.{Projection}
 
   @doc "Project one supported occurrence into metadata or its explicit private view. No callbacks run."
   def project(source, record, view) do
@@ -50,7 +50,7 @@ defmodule Ipse.Lifecycle.Event do
   defp describe(%{"type" => "extension_prompt_received"} = record) do
     if Enum.sort(Map.keys(record)) == ~w(original original_sha256 type version) and
          record["version"] === 1 and text?(record["original"]) and
-         record["original_sha256"] == Manifest.sha256(record["original"]) do
+         record["original_sha256"] == Ipse.JSON.sha256(record["original"]) do
       {:ok, "prompt.received", "prompt.original", record["original"],
        %{"input_bytes" => byte_size(record["original"])}, %{}}
     else

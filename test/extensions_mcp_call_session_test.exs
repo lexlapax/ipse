@@ -228,7 +228,7 @@ defmodule Ipse.Extensions.MCPCallSessionTest do
   end
 
   defp action_results(events), do: Enum.filter(events, &(&1["type"] == "extension_action_result"))
-  defp digest(value), do: Ipse.Compaction.digest([value])
+  defp digest(value), do: Ipse.JSON.digest([value])
 
   for transport <- [:stdio, :http] do
     test "#{transport}: exact approval, durable source before descriptor and complete UTF8 windows without inference",

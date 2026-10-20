@@ -1,7 +1,7 @@
 defmodule Ipse.Extensions.ModelJobsTest do
   use ExUnit.Case, async: false
   alias Ipse.{Session, Journal, Usage, Budget}
-  alias Ipse.Extensions.{Catalog, Config, Registry, Manifest, Store, ChildUsage}
+  alias Ipse.Extensions.{Catalog, Config, Registry, Store, ChildUsage}
 
   defmodule Main do
     def complete(config, messages, _tools, _emit) do
@@ -123,7 +123,7 @@ defmodule Ipse.Extensions.ModelJobsTest do
       "files" =>
         Enum.map(["LICENSE", "ebin/Elixir.#{module}.beam"], fn path ->
           bytes = File.read!(Path.join(directory, path))
-          %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Manifest.sha256(bytes)}
+          %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Ipse.JSON.sha256(bytes)}
         end)
     }
 

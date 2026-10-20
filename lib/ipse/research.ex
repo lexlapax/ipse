@@ -1,6 +1,6 @@
 defmodule Ipse.Research do
   @moduledoc "Durable bounded evidence ledger bound to recorded external tool results."
-  alias Ipse.{Journal, MCP.Schema, Compaction}
+  alias Ipse.{Journal, MCP.Schema}
   @source_limit 16
   @claim_limit 32
   @ledger_bytes 65_536
@@ -304,7 +304,7 @@ defmodule Ipse.Research do
   defp digest(text), do: :crypto.hash(:sha256, text) |> Base.encode16(case: :lower)
 
   defp identity(prefix, entry),
-    do: prefix <> "_" <> String.slice(Compaction.digest([entry]), 0, 24)
+    do: prefix <> "_" <> String.slice(Ipse.JSON.digest([entry]), 0, 24)
 
   defp url?(url) do
     uri = URI.parse(url)

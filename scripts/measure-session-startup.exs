@@ -1,6 +1,6 @@
 # Run with MIX_ENV=test mix run scripts/measure-session-startup.exs.
 # Synthetic legacy histories exercise startup without inference or tool effects.
-alias Ipse.{Session, Journal, Compaction}
+alias Ipse.{Session, Journal}
 root = Path.join(System.tmp_dir!(), "ipse-startup-measure-#{Ipse.Usage.id()}")
 File.mkdir_p!(root)
 config = %{provider: :demo, model: "measure", approval: :ask, home: Path.join(root, "home")}
@@ -53,7 +53,7 @@ try do
         "arguments" => args,
         "steps" => 1,
         "covered_messages" => length(messages),
-        "prefix_sha256" => Compaction.digest(messages)
+        "prefix_sha256" => Ipse.JSON.digest(messages)
       }
 
       answer = %{

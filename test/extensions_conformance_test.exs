@@ -1,6 +1,6 @@
 defmodule Ipse.Extensions.ConformanceTest do
   use ExUnit.Case, async: false
-  alias Ipse.Extensions.{Conformance, Config, Manifest, Store}
+  alias Ipse.Extensions.{Conformance, Config, Store}
 
   setup_all do
     root = Path.join(System.tmp_dir!(), "ipse-conformance-artifact-#{Ipse.Usage.id()}")
@@ -107,7 +107,7 @@ defmodule Ipse.Extensions.ConformanceTest do
       "files" =>
         Enum.map(["LICENSE", "ebin/Elixir.#{module}.beam"], fn path ->
           bytes = File.read!(Path.join(root, "artifact/" <> path))
-          %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Manifest.sha256(bytes)}
+          %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Ipse.JSON.sha256(bytes)}
         end)
     }
 

@@ -8,7 +8,6 @@ defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
   }
 
   @compile {:no_warn_undefined, EvaluationRunner}
-  alias Ipse.Extensions.Manifest
   @metric "linux_memcg_charged_peak_bytes_v1"
   @limit 67_108_864
   @fds [
@@ -1039,7 +1038,7 @@ defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
 
   defp hash?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{64}\z/, value)
   defp positive?(value), do: is_integer(value) and value > 0
-  defp sha(bytes), do: Manifest.sha256(bytes)
+  defp sha(bytes), do: Ipse.JSON.sha256(bytes)
   defp started_ok({:ok, _}), do: :ok
   defp now, do: System.monotonic_time(:millisecond)
   defp require!(true, _), do: :ok

@@ -1,7 +1,7 @@
 defmodule Ipse.Extensions.Conformance do
   @moduledoc "Explicit synthetic SDK exercise through ordinary owned Sessions, never a provider replay."
   alias Ipse.{Session, Journal, MCP.Schema, DeveloperTrace}
-  alias Ipse.Extensions.{Manifest, Registry}
+  alias Ipse.Extensions.{Registry}
   @text %{"type" => "string", "maxLength" => 8192}
   @object %{"type" => "object"}
   @statuses ~w(ok error question cancelled refused timeout)
@@ -63,9 +63,9 @@ defmodule Ipse.Extensions.Conformance do
     with {:ok, file} <- File.open(path, [:read, :binary]) do
       try do
         with bytes when is_binary(bytes) <- IO.binread(file, 16_385),
-             {:ok, fixture} <- Manifest.decode_json(bytes, 16_384),
+             {:ok, fixture} <- Ipse.JSON.decode_bounded(bytes, 16_384),
              :ok <- validate(fixture) do
-          {:ok, fixture, Manifest.sha256(bytes)}
+          {:ok, fixture, Ipse.JSON.sha256(bytes)}
         else
           _ -> {:error, :invalid_conformance_fixture}
         end

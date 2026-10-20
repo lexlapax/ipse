@@ -4,7 +4,6 @@ Code.require_file("support/frozen_model_selection.exs", __DIR__)
 defmodule Ipse.KnowledgeEvaluationFreezeTest do
   use ExUnit.Case, async: false
   alias IpseKnowledgeExample.EvaluationFreeze, as: Freeze
-  alias Ipse.Extensions.Manifest
 
   setup do
     root = Path.join(System.tmp_dir!(), "ipse-evaluation-freeze-" <> Ipse.Usage.id())
@@ -43,7 +42,7 @@ defmodule Ipse.KnowledgeEvaluationFreezeTest do
       },
       "files" =>
         for {path, bytes} <- files do
-          %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Manifest.sha256(bytes)}
+          %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Ipse.JSON.sha256(bytes)}
         end
     }
 
@@ -155,7 +154,7 @@ defmodule Ipse.KnowledgeEvaluationFreezeTest do
 
     for bytes <- ["[]", "null", "1", "{}"] do
       File.write!(path, bytes)
-      assert {:error, :invalid_manifest} = Freeze.verify(path, Manifest.sha256(bytes))
+      assert {:error, :invalid_manifest} = Freeze.verify(path, Ipse.JSON.sha256(bytes))
     end
   end
 
@@ -176,7 +175,7 @@ defmodule Ipse.KnowledgeEvaluationFreezeTest do
              Freeze.declare(relocated, JSON.encode!(other_plan), %{"fixture" => copied_artifact})
 
     assert first["bytes"] == second["bytes"]
-    assert first["sha256"] == Manifest.sha256(second["bytes"])
+    assert first["sha256"] == Ipse.JSON.sha256(second["bytes"])
     experiment = JSON.decode!(first["bytes"])
     refute first["bytes"] =~ ctx.root
     refute Map.has_key?(experiment["source"], "root")
@@ -237,7 +236,7 @@ defmodule Ipse.KnowledgeEvaluationFreezeTest do
     assert left["manifest"]["launch_recipe"]["execution_id"] == first["execution_id"]
 
     assert left["manifest"]["recipe_sha256"] ==
-             Manifest.sha256(JSON.encode!(left["manifest"]["launch_recipe"]))
+             Ipse.JSON.sha256(JSON.encode!(left["manifest"]["launch_recipe"]))
 
     refute File.exists?(first["reports"])
     File.write!(Path.join(ctx.artifact, "LICENSE"), "changed original")

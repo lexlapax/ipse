@@ -85,13 +85,11 @@ defmodule Ipse.EmbeddingProfilesTest do
     assert EmbeddingProfiles.public_profile?(selected)
     assert selected["timeout_ms"] == 10_000
     assert selected["billing_mode"] == "api"
-    assert selected["endpoint_sha256"] == Ipse.Extensions.Manifest.sha256(profile["base_url"])
+    assert selected["endpoint_sha256"] == Ipse.JSON.sha256(profile["base_url"])
     assert selected["destination"]["origin"] == "https://proxy.example.invalid"
 
     assert selected["destination"]["target_sha256"] ==
-             Ipse.Extensions.Manifest.sha256(
-               "https://proxy.example.invalid/private-tenant/v1/embeddings"
-             )
+             Ipse.JSON.sha256("https://proxy.example.invalid/private-tenant/v1/embeddings")
 
     encoded = Jason.encode!(snapshot)
     refute encoded =~ "private-tenant"

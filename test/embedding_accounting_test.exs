@@ -59,7 +59,7 @@ defmodule Ipse.EmbeddingAccountingTest do
       "context_sha256" => nil,
       "service" => nil,
       "request" => request,
-      "request_sha256" => Ipse.Compaction.digest([request]),
+      "request_sha256" => Ipse.JSON.digest([request]),
       "approval" => "session_allow",
       "effect_binding" => binding
     }
@@ -306,7 +306,7 @@ defmodule Ipse.EmbeddingAccountingTest do
     changed =
       put_in(f.result, ["outcome", "value", "selection_sha256"], String.duplicate("b", 64))
 
-    changed = Map.put(changed, "outcome_sha256", Ipse.Compaction.digest([changed["outcome"]]))
+    changed = Map.put(changed, "outcome_sha256", Ipse.JSON.digest([changed["outcome"]]))
     assert Actions.valid_result?(changed)
     refute Actions.bound_effect?(changed, %{f.result["operation_id"] => f.response}, [])
     refute EmbeddingCall.valid_result_source?(changed, record, f.response)

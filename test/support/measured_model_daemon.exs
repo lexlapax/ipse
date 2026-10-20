@@ -311,7 +311,7 @@ defmodule MeasuredModelDaemon do
   end
 
   defp decode!(bytes) do
-    {:ok, value} = Ipse.Extensions.Manifest.decode_json(bytes, 1_048_576)
+    {:ok, value} = Ipse.JSON.decode_bounded(bytes, 1_048_576)
     value
   end
 

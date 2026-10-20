@@ -1,6 +1,6 @@
 defmodule Ipse.Extensions.Contributions do
   @moduledoc "Bounded session context with explicit assertions and receipt-bound excerpts."
-  alias Ipse.{Compaction, Extension}
+  alias Ipse.{Extension}
   @error {:error, :invalid_extension_context}
   @limit 16_384
 
@@ -25,7 +25,7 @@ defmodule Ipse.Extensions.Contributions do
          true <- Ipse.Extensions.Identity.valid?(identity) and id?(operation_id),
          {:ok, items} <- admit_items(request["items"], identity, actions, operation_id),
          next = replace(contexts, identity["instance"], items),
-         value = %{"items" => items, "snapshot_sha256" => Compaction.digest([next])},
+         value = %{"items" => items, "snapshot_sha256" => Ipse.JSON.digest([next])},
          true <- byte_size(render(next)) <= @limit,
          :ok <-
            Extension.validate(%{
@@ -116,9 +116,9 @@ defmodule Ipse.Extensions.Contributions do
       "type" => "extension_context_snapshot",
       "version" => 1,
       "request_id" => request["request_id"],
-      "context_sha256" => Compaction.digest([contexts]),
+      "context_sha256" => Ipse.JSON.digest([contexts]),
       "content" => content,
-      "content_sha256" => Ipse.Extensions.Manifest.sha256(content)
+      "content_sha256" => Ipse.JSON.sha256(content)
     }
   end
 
@@ -139,7 +139,7 @@ defmodule Ipse.Extensions.Contributions do
     do: %{
       "items" => Enum.sum(Enum.map(contexts, fn {_, items} -> length(items) end)),
       "bytes" => byte_size(render(contexts)),
-      "sha256" => Compaction.digest([contexts])
+      "sha256" => Ipse.JSON.digest([contexts])
     }
 
   defp admit_items(items, identity, actions, operation_id) do
@@ -148,7 +148,7 @@ defmodule Ipse.Extensions.Contributions do
         {:ok, source_hash} ->
           provenance = %{
             "instance" => identity["instance"],
-            "identity_sha256" => Compaction.digest([identity]),
+            "identity_sha256" => Ipse.JSON.digest([identity]),
             "operation_id" => operation_id,
             "source_action_sha256" => source_hash
           }
@@ -175,7 +175,7 @@ defmodule Ipse.Extensions.Contributions do
              end
            end),
          true <- String.contains?(value, text) do
-      {:ok, Compaction.digest([action])}
+      {:ok, Ipse.JSON.digest([action])}
     else
       _ -> @error
     end

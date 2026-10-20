@@ -1,6 +1,6 @@
 defmodule Ipse.Extensions.WorkerTest do
   use ExUnit.Case, async: false
-  alias Ipse.Extensions.{Manifest, Store, Worker, WorkerLease}
+  alias Ipse.Extensions.{Store, Worker, WorkerLease}
 
   setup_all do
     root = Path.join(System.tmp_dir!(), "ipse-worker-#{System.unique_integer([:positive])}")
@@ -80,7 +80,7 @@ defmodule Ipse.Extensions.WorkerTest do
       "files" =>
         Enum.map(["LICENSE", "ebin/Elixir.#{entrypoint}.beam"], fn path ->
           bytes = File.read!(Path.join(source, path))
-          %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Manifest.sha256(bytes)}
+          %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Ipse.JSON.sha256(bytes)}
         end)
     }
 

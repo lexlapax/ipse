@@ -4,7 +4,7 @@ defmodule Ipse.KnowledgeQueryCompletenessTest do
   use ExUnit.Case, async: false
   alias IpseKnowledgeExample.EvaluationSession
   alias Ipse.{Session, Usage}
-  alias Ipse.Extensions.{Manifest, State, EmbeddingCall}
+  alias Ipse.Extensions.{State, EmbeddingCall}
 
   defmodule NoModel do
     def complete(_, _, _, _), do: raise("Lexical completeness control attempted inference")
@@ -79,7 +79,7 @@ defmodule Ipse.KnowledgeQueryCompletenessTest do
         |> Map.delete("text")
         |> Map.merge(%{
           "byte_count" => 28,
-          "content_sha256" => Manifest.sha256("Release requires quiescence.")
+          "content_sha256" => Ipse.JSON.sha256("Release requires quiescence.")
         })
 
       assert source_call(run, policy, "open", pending)["status"] == "draft"
@@ -271,7 +271,7 @@ defmodule Ipse.KnowledgeQueryCompletenessTest do
         |> Map.delete("text")
         |> Map.merge(%{
           "byte_count" => 28,
-          "content_sha256" => Manifest.sha256("Release requires quiescence.")
+          "content_sha256" => Ipse.JSON.sha256("Release requires quiescence.")
         })
 
       assert source_call(run, policy, "open", pending)["status"] == "draft"
@@ -434,7 +434,7 @@ defmodule Ipse.KnowledgeQueryCompletenessTest do
       for {{instance, options}, order} <- Enum.with_index(selections) do
         path = ctx.artifacts[if(mode == :hybrid, do: "dense", else: instance)]
         bytes = File.read!(Path.join(path, "extension.json"))
-        digest = Manifest.sha256(bytes)
+        digest = Ipse.JSON.sha256(bytes)
         manifest = JSON.decode!(bytes)
 
         %{
@@ -503,10 +503,10 @@ defmodule Ipse.KnowledgeQueryCompletenessTest do
     {:ok, cwd} = Ipse.WorkspaceContext.canonical_path(Path.join(run.directory, "workspace"))
 
     namespace =
-      Ipse.Compaction.digest([
+      Ipse.JSON.digest([
         %{
           "scope" => "project",
-          "project" => Manifest.sha256(cwd),
+          "project" => Ipse.JSON.sha256(cwd),
           "session" => nil,
           "version" => 2,
           "binding" => "scope"

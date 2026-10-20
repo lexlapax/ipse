@@ -2,7 +2,7 @@ Code.require_file("../examples/knowledge/evaluation_inventory.exs", __DIR__)
 
 defmodule Ipse.KnowledgeEvaluationInventoryTest do
   use ExUnit.Case, async: false
-  alias Ipse.Extensions.{Manifest, State, Store}
+  alias Ipse.Extensions.{State, Store}
   alias IpseKnowledgeExample.EvaluationInventory, as: Inventory
 
   test "collection allowance binds suppressed partition bytes and exact page revisions" do
@@ -37,7 +37,7 @@ defmodule Ipse.KnowledgeEvaluationInventoryTest do
 
     put.("foreign-page", %{"kind" => "page", "partition" => "other"}, 0)
     put.("foreign-root", %{root_value | "partition" => "other"}, 0)
-    hash = fn -> Manifest.sha256(File.read!(path)) end
+    hash = fn -> Ipse.JSON.sha256(File.read!(path)) end
 
     assert {:error, :collection_unavailable} =
              Inventory.collection_requests(path, hash.(), "notes")
@@ -122,7 +122,7 @@ defmodule Ipse.KnowledgeEvaluationInventoryTest do
     original = File.read!(path)
     assert {:ok, report} = Inventory.snapshot(path, store, imported.digest, "notes", root)
     assert report["status"] == "verified"
-    assert report["state_sha256"] == Manifest.sha256(original)
+    assert report["state_sha256"] == Ipse.JSON.sha256(original)
     assert report["state_file_bytes"] == byte_size(original)
     assert report["inventory"]["namespace_slots"] == 1
     assert report["inventory"]["other_live_records"]["records"] == 1

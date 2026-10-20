@@ -1,7 +1,7 @@
 defmodule Ipse.ObservabilityTest do
   use ExUnit.Case, async: false
   alias Ipse.{Session, Journal}
-  alias Ipse.Extensions.{Registry, Store, Manifest}
+  alias Ipse.Extensions.{Registry, Store}
   alias Ipse.Observability.{Config, Resources}
 
   defmodule Model do
@@ -82,7 +82,7 @@ defmodule Ipse.ObservabilityTest do
       "files" =>
         Enum.map(["ebin/Elixir.#{module}.beam", "LICENSE"], fn path ->
           bytes = File.read!(Path.join(root, path))
-          %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Manifest.sha256(bytes)}
+          %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Ipse.JSON.sha256(bytes)}
         end)
     }
 

@@ -17,7 +17,7 @@ defmodule Ipse.KnowledgeEvaluationInputTest do
       "created_at" => "2026-01-01T00:00:00Z",
       "observed_at" => "2026-03-01T00:00:00Z",
       "state" => "current",
-      "sha256" => Ipse.Extensions.Manifest.sha256("A café."),
+      "sha256" => Ipse.JSON.sha256("A café."),
       "byte_length" => byte_size("A café."),
       "media_type" => "text/plain; charset=utf-8"
     }

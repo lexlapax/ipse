@@ -186,6 +186,7 @@ ask the provider to continue while idle. Read the
 | Change shared approval or cancellation behavior | Session and its behavioral tests |
 | Change file/process completion | `FileEffect`, `TaskResources`, `Session.Lock`, [native sandbox](sandbox.md) |
 | Change durable records or recovery | [Persistence](persistence.md), [lifecycle sources](lifecycle-events.md) |
+| Decode bounded host JSON or preserve raw/canonical digests | `Ipse.JSON`, `test/json_test.exs`, [checkpoint identities](context-compaction.md#commit-once-and-restore-deterministically) |
 | Add external tools | [MCP](mcp.md), [dependency policy](dependencies.md) |
 
 Keep domain logic outside Session. Use existing OTP, schema, journal and helper

@@ -62,12 +62,12 @@ defmodule Ipse.Extensions.RegistryTest do
     assert unchanged.identity == entry.identity
     assert Registry.valid_entries?(%{extensions: [entry]})
     assert entry.identity["artifact"] == "builtin:prompt-annotation:1"
-    assert entry.identity["options_sha256"] == Ipse.Compaction.digest([%{"text" => "note"}])
+    assert entry.identity["options_sha256"] == Ipse.JSON.digest([%{"text" => "note"}])
     assert byte_size(entry.identity["host_sha256"]) == 64
     assert entry.identity["scope"] == "operator"
 
     assert entry.identity["source_sha256"] ==
-             Ipse.Extensions.Manifest.sha256("/fixture/operator.json")
+             Ipse.JSON.sha256("/fixture/operator.json")
 
     assert entry.identity["exports_sha256"] == Ipse.Extensions.Catalog.digest(entry.exports)
 

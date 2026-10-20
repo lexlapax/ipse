@@ -11,7 +11,7 @@ defmodule Ipse.Provider.DestinationTest do
         ] do
       assert {:ok, facts} = Provider.destination(%{provider: provider})
       assert facts["origin"] == origin
-      assert facts["target_sha256"] == Ipse.Extensions.Manifest.sha256(target)
+      assert facts["target_sha256"] == Ipse.JSON.sha256(target)
       assert Provider.valid_destination?(facts)
     end
 
@@ -29,9 +29,7 @@ defmodule Ipse.Provider.DestinationTest do
     assert facts["origin"] == "https://proxy.example.invalid:8443"
 
     assert facts["target_sha256"] ==
-             Ipse.Extensions.Manifest.sha256(
-               "https://proxy.example.invalid:8443/private-tenant/responses"
-             )
+             Ipse.JSON.sha256("https://proxy.example.invalid:8443/private-tenant/responses")
 
     refute Jason.encode!(facts) =~ "private-tenant"
     refute Jason.encode!(facts) =~ "synthetic-private-key"

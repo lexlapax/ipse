@@ -112,8 +112,8 @@ defmodule Ipse.Compaction do
             "type" => "tool_results_compacted",
             "version" => 1,
             "covered_messages" => length(messages),
-            "prefix_sha256" => digest(messages),
-            "projection_sha256" => digest(projected),
+            "prefix_sha256" => Ipse.JSON.digest(messages),
+            "projection_sha256" => Ipse.JSON.digest(projected),
             "indices" => indices,
             "before_bytes" => before_bytes,
             "after_bytes" => after_bytes
@@ -136,12 +136,12 @@ defmodule Ipse.Compaction do
          true <- event["version"] == 1 and is_integer(count) and count > 0,
          true <- count <= length(messages),
          prefix = Enum.take(messages, count),
-         true <- digest(prefix) == event["prefix_sha256"],
+         true <- Ipse.JSON.digest(prefix) == event["prefix_sha256"],
          :ok <- check_calls(prefix),
          indices when indices != [] <- reducible_indices(prefix),
          true <- event["indices"] == indices,
          projected = excerpt_results(prefix, indices),
-         true <- digest(projected) == event["projection_sha256"] do
+         true <- Ipse.JSON.digest(projected) == event["projection_sha256"] do
       {:ok, projected ++ Enum.drop(messages, count)}
     else
       _ -> {:error, :invalid_tool_result_checkpoint}
@@ -233,12 +233,6 @@ defmodule Ipse.Compaction do
   end
 
   def finish(_, _, _, _), do: {:error, "Compaction could not produce a safe checkpoint."}
-
-  @doc "Returns a deterministic digest for a journaled effective-message projection."
-  def digest(messages) when is_list(messages) do
-    :crypto.hash(:sha256, canonical_json(messages))
-    |> Base.encode16(case: :lower)
-  end
 
   @doc "Unknown effect occurrences retained in both ordinary messages and compacted action ledgers."
   def unknown_call_ids(messages) do
@@ -542,25 +536,6 @@ defmodule Ipse.Compaction do
   defp to_text(value), do: Jason.encode!(value)
 
   defp encoded_bytes(value), do: value |> Jason.encode!() |> byte_size()
-
-  defp canonical_json(value) when is_map(value) do
-    pairs =
-      value
-      |> Enum.map(fn {key, item} -> {to_string(key), item} end)
-      |> Enum.sort_by(&elem(&1, 0))
-
-    fields =
-      Enum.map_join(pairs, ",", fn {key, item} ->
-        Jason.encode!(key) <> ":" <> canonical_json(item)
-      end)
-
-    "{" <> fields <> "}"
-  end
-
-  defp canonical_json(value) when is_list(value),
-    do: "[" <> Enum.map_join(value, ",", &canonical_json/1) <> "]"
-
-  defp canonical_json(value), do: Jason.encode!(value)
 
   defp positive(value, _default) when is_integer(value) and value > 0, do: value
   defp positive(_, default), do: default

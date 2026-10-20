@@ -1,7 +1,6 @@
 defmodule Ipse.Extensions.ChildUsage do
   @moduledoc "Explicit parent-bound discovery and frozen reads of registered child accounting."
   alias Ipse.{Usage, Journal, Runner, WorkspaceContext}
-  alias Ipse.Extensions.Manifest
   alias Ipse.Lifecycle.Source
   @limit 10_000
   @bytes 16_777_216
@@ -431,7 +430,7 @@ defmodule Ipse.Extensions.ChildUsage do
                    r.admission["parent_request_id"] == child["parent_request_id"]
                end),
              digest =
-               Ipse.Compaction.digest([
+               Ipse.JSON.digest([
                  Enum.map(Usage.order(ledger), &Usage.request_record(ledger.requests[&1]))
                ]),
              true <- snapshot == nil or snapshot["sha256"] == digest do
@@ -463,7 +462,7 @@ defmodule Ipse.Extensions.ChildUsage do
     |> String.split("\n")
     |> Enum.drop(-1)
     |> Enum.reduce_while({:ok, []}, fn line, {:ok, rows} ->
-      case Manifest.decode_json(line, Source.record_bytes()) do
+      case Ipse.JSON.decode_bounded(line, Source.record_bytes()) do
         {:ok, row} when is_map(row) -> {:cont, {:ok, [row | rows]}}
         _ -> {:halt, @error}
       end

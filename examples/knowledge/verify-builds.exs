@@ -56,13 +56,13 @@ records =
     for item <- manifest["files"] do
       file = Path.join(directory, item["path"])
       true = File.stat!(file).size == item["bytes"]
-      true = Ipse.Extensions.Manifest.sha256(File.read!(file)) == item["sha256"]
+      true = Ipse.JSON.sha256(File.read!(file)) == item["sha256"]
     end
 
     %{
       "package" => package,
       "preset" => preset,
-      "artifact_sha256" => Ipse.Extensions.Manifest.sha256(bytes),
+      "artifact_sha256" => Ipse.JSON.sha256(bytes),
       "catalog_entries" => expected + 1
     }
   end

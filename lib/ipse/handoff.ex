@@ -137,7 +137,7 @@ defmodule Ipse.Handoff do
       artifact = %{
         "version" => 1,
         "source_session_id" => id,
-        "source_events_sha256" => Ipse.Compaction.digest(events),
+        "source_events_sha256" => Ipse.JSON.digest(events),
         "note" => note,
         "requires_effect_review" => true,
         "unknown_tool_count" => length(unknown),

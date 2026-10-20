@@ -156,7 +156,7 @@ defmodule Ipse.Extensions.SubscriptionsTest do
           "files" =>
             Enum.map(["LICENSE", "ebin/Elixir.#{module}.beam"], fn path ->
               bytes = File.read!(Path.join(directory, path))
-              %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Manifest.sha256(bytes)}
+              %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Ipse.JSON.sha256(bytes)}
             end)
         }
 
@@ -360,7 +360,7 @@ defmodule Ipse.Extensions.SubscriptionsTest do
           e
           |> Map.put("presented", "forged")
           |> Map.put("presented_bytes", 6)
-          |> Map.put("presented_sha256", Manifest.sha256("forged"))
+          |> Map.put("presented_sha256", Ipse.JSON.sha256("forged"))
         else
           e
         end
@@ -722,7 +722,7 @@ defmodule Ipse.Extensions.SubscriptionsTest do
             record = if original?, do: received.record, else: changed_marker
             changed = Map.put(event, "source", source)
             payload = Subscriptions.payload(changed, record)
-            changed = Map.put(changed, "payload_sha256", Ipse.Compaction.digest([payload]))
+            changed = Map.put(changed, "payload_sha256", Ipse.JSON.digest([payload]))
             {changed, Map.put(intents, changed["delivery_id"], changed)}
 
           "extension_event_result" ->

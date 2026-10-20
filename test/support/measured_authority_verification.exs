@@ -1,7 +1,6 @@
 defmodule MeasuredAuthorityVerification do
   @moduledoc "Fresh-seal loss and live authority controls; never retries an interrupted attempt."
   alias Ipse.Runner
-  alias Ipse.Extensions.Manifest
   alias IpseKnowledgeExample.EvaluationMeasuredExecution, as: Measured
   @wait_ms 60_000
   @cleanup_ms 15_000
@@ -525,7 +524,7 @@ defmodule MeasuredAuthorityVerification do
   defp optional_json(path) do
     case bounded(path, @limit) do
       {:ok, bytes} ->
-        case Manifest.decode_json(bytes, @limit) do
+        case Ipse.JSON.decode_bounded(bytes, @limit) do
           {:ok, value} -> value
           _ -> nil
         end

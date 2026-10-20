@@ -105,12 +105,12 @@ defmodule Ipse.Extensions.Actions do
         "parent_invocation_id" => parent["invocation_id"],
         "operation_id" => Ipse.Usage.id(),
         "step" => step,
-        "identity_sha256" => Ipse.Compaction.digest([parent["identity"]]),
+        "identity_sha256" => Ipse.JSON.digest([parent["identity"]]),
         "namespace" => namespace,
         "context_sha256" => context_sha256,
         "service" => service,
         "request" => request,
-        "request_sha256" => Ipse.Compaction.digest([request]),
+        "request_sha256" => Ipse.JSON.digest([request]),
         "approval" => approval
       }
 
@@ -130,7 +130,7 @@ defmodule Ipse.Extensions.Actions do
       Map.merge(intent, %{
         "type" => "extension_action_result",
         "outcome" => outcome,
-        "outcome_sha256" => Ipse.Compaction.digest([outcome])
+        "outcome_sha256" => Ipse.JSON.digest([outcome])
       })
 
     if valid_result?(event), do: {:ok, event}, else: @error
@@ -159,7 +159,7 @@ defmodule Ipse.Extensions.Actions do
 
     keys?(event, intent_keys(event) ++ ~w(outcome outcome_sha256)) and
       event["type"] == "extension_action_result" and
-      event["outcome_sha256"] == Ipse.Compaction.digest([outcome]) and
+      event["outcome_sha256"] == Ipse.JSON.digest([outcome]) and
       keys?(outcome, ~w(status value)) and
       outcome["status"] in ~w(ok conflict denied unknown answered cancelled failed) and
       outcome["status"] == "denied" == (event["approval"] == "denied") and
@@ -186,13 +186,13 @@ defmodule Ipse.Extensions.Actions do
          true <-
            id?(event["operation_id"]) and is_integer(event["step"]) and
              event["step"] in 1..limit(parent["identity"], event["request"]),
-         true <- event["identity_sha256"] == Ipse.Compaction.digest([parent["identity"]]),
+         true <- event["identity_sha256"] == Ipse.JSON.digest([parent["identity"]]),
          {:ok, request} <-
            proposal(
              %{"api_version" => 1, "kind" => "host_call", "request" => event["request"]},
              parent["identity"]
            ),
-         true <- event["request_sha256"] == Ipse.Compaction.digest([request]),
+         true <- event["request_sha256"] == Ipse.JSON.digest([request]),
          true <- effect_binding?(event, parent["identity"]),
          {:ok, namespace} <-
            Operation.namespace(
@@ -297,7 +297,7 @@ defmodule Ipse.Extensions.Actions do
       "steps" => steps
     }
 
-    Map.put(event, "question_sha256", Ipse.Compaction.digest([event]))
+    Map.put(event, "question_sha256", Ipse.JSON.digest([event]))
   end
 
   def continuation(parent, result) do
@@ -307,7 +307,7 @@ defmodule Ipse.Extensions.Actions do
       "parent_invocation_id" => parent["invocation_id"],
       "operation_id" => result["operation_id"],
       "continuation_id" => Ipse.Usage.id(),
-      "result_sha256" => Ipse.Compaction.digest([result])
+      "result_sha256" => Ipse.JSON.digest([result])
     }
   end
 
@@ -363,7 +363,7 @@ defmodule Ipse.Extensions.Actions do
          is_nil(state.action) and not state.unknown and
          is_nil(state.resume_needed) and is_nil(state.question) and
          event["action_count"] == state.step and
-         event["actions_sha256"] == Ipse.Compaction.digest(Enum.reverse(state.results_rev)),
+         event["actions_sha256"] == Ipse.JSON.digest(Enum.reverse(state.results_rev)),
        do: {:ok, %{state | parent: nil}},
        else: @error
   end
@@ -486,7 +486,7 @@ defmodule Ipse.Extensions.Actions do
   defp validate_event(%{"type" => "extension_question"} = event, state, _) do
     if keys?(event, ~w(type version parent_invocation_id operation_id steps question_sha256)) and
          event["question_sha256"] ==
-           Ipse.Compaction.digest([Map.delete(event, "question_sha256")]) and
+           Ipse.JSON.digest([Map.delete(event, "question_sha256")]) and
          event["version"] === 1 and
          state.parent != nil and state.action != nil and is_nil(state.question) and
          Operation.question?(state.action["request"]) and
@@ -508,7 +508,7 @@ defmodule Ipse.Extensions.Actions do
          is_nil(state.action) and is_nil(state.question) and not state.unknown and
          event["parent_invocation_id"] == state.parent["invocation_id"] and
          event["operation_id"] == state.resume_needed["operation_id"] and
-         event["result_sha256"] == Ipse.Compaction.digest([state.resume_needed]) and
+         event["result_sha256"] == Ipse.JSON.digest([state.resume_needed]) and
          id?(event["continuation_id"]) and
          not MapSet.member?(state.seen, event["continuation_id"]) do
       {:ok, %{state | resume_needed: nil, seen: MapSet.put(state.seen, event["continuation_id"])}}
@@ -534,7 +534,7 @@ defmodule Ipse.Extensions.Actions do
 
   defp validate_event(%{"type" => "workspace_context_snapshot", "snapshot" => snapshot}, state, _) do
     if is_nil(state.question) and Ipse.WorkspaceContext.valid?(snapshot),
-      do: {:ok, %{state | context_sha256: Ipse.Compaction.digest([snapshot])}},
+      do: {:ok, %{state | context_sha256: Ipse.JSON.digest([snapshot])}},
       else: @error
   end
 

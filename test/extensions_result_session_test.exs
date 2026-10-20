@@ -6,7 +6,6 @@ defmodule Ipse.Extensions.ResultSessionTest do
     Conformance,
     Config,
     Invocation,
-    Manifest,
     Registry,
     ResultReader,
     ResultSource,
@@ -181,7 +180,7 @@ defmodule Ipse.Extensions.ResultSessionTest do
       "files" =>
         for path <- ["LICENSE", "ebin/Elixir.#{module}.beam"] do
           bytes = File.read!(Path.join(source, path))
-          %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Manifest.sha256(bytes)}
+          %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Ipse.JSON.sha256(bytes)}
         end
     }
 
@@ -289,7 +288,7 @@ defmodule Ipse.Extensions.ResultSessionTest do
            }
 
     assert byte_size(result.bytes) == delivery["byte_count"]
-    assert Manifest.sha256(result.bytes) == delivery["sha256"]
+    assert Ipse.JSON.sha256(result.bytes) == delivery["sha256"]
     assert {:ok, view} = Session.read_saved_result(session, read_request(delivery))
     assert view["historical_receipt"] == true
     assert view["complete"] == false
@@ -445,7 +444,7 @@ defmodule Ipse.Extensions.ResultSessionTest do
     assert :ok = Invocation.validate_events(events)
     assert {:ok, result} = Session.materialize_result(session, delivery)
     assert byte_size(result.bytes) == 4 * 1024 * 1024
-    assert Manifest.sha256(result.bytes) == delivery["sha256"]
+    assert Ipse.JSON.sha256(result.bytes) == delivery["sha256"]
     assert result.value["items"] == List.duplicate(String.duplicate("x", 8192), 511)
     assert File.read!(c.marker) == "loaded\n"
     assert length(String.split(File.read!(c.called), "\n", trim: true)) == 1
@@ -454,13 +453,13 @@ defmodule Ipse.Extensions.ResultSessionTest do
     loads = File.read!(c.marker)
     calls = File.read!(c.called)
     path = Path.join(c.dir, id <> ".jsonl")
-    journal_hash = Manifest.sha256(File.read!(path))
+    journal_hash = Ipse.JSON.sha256(File.read!(path))
     resumed = start(c, id)
     assert Session.info(resumed).extension_result["delivery"] == delivery
     assert {:ok, ^result} = Session.materialize_result(resumed, delivery)
     assert File.read!(c.marker) == loads
     assert File.read!(c.called) == calls
-    assert Manifest.sha256(File.read!(path)) == journal_hash
+    assert Ipse.JSON.sha256(File.read!(path)) == journal_hash
     assert :ok = Session.close_confirmed(resumed)
   end
 
@@ -642,7 +641,7 @@ defmodule Ipse.Extensions.ResultSessionTest do
     [result] = Enum.filter(records, &(&1["type"] == "extension_invocation_result"))
     assert result["version"] == 2
     assert result["action_count"] == 1
-    assert result["actions_sha256"] == Ipse.Compaction.digest([action])
+    assert result["actions_sha256"] == Ipse.JSON.digest([action])
     assert {:ok, %{value: value}} = Session.materialize_result(session, display["delivery"])
     assert value["items"] == List.duplicate(String.duplicate("雪", 2730), 3)
     assert :ok = Invocation.validate_events(records)

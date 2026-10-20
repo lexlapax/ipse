@@ -163,7 +163,7 @@ defmodule Ipse.MemoryMeasurement do
                     else: ""
                   )
 
-              match["text_sha256"] == Ipse.Extensions.Manifest.sha256(text) and
+              match["text_sha256"] == Ipse.JSON.sha256(text) and
                 binary_part(
                   text,
                   match["span"]["start_byte"],
@@ -211,7 +211,7 @@ defmodule Ipse.MemoryMeasurement do
       report = %{
         "version" => 1,
         "kind" => "synthetic_lexical_fixture_not_semantic_model_benchmark",
-        "corpus_sha256" => Ipse.Extensions.Manifest.sha256(corpus_bytes),
+        "corpus_sha256" => Ipse.JSON.sha256(corpus_bytes),
         "records" => 100,
         "questions" => 100,
         "projects" => 2,

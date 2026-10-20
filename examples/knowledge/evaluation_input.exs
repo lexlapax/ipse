@@ -10,7 +10,6 @@ defmodule IpseKnowledgeExample.EvaluationInput do
   Each JSON member is at most 1 MiB, using the host's duplicate-rejecting decoder.
   Larger workloads refuse visibly rather than dropping documents or questions.
   """
-  alias Ipse.Extensions.Manifest
 
   @document_fields ~w(document_id project source_id generation version title text created_at observed_at state sha256 byte_length media_type)
   @query_fields ~w(query_id project query)
@@ -275,7 +274,7 @@ defmodule IpseKnowledgeExample.EvaluationInput do
   end
 
   defp project(bytes, fun) do
-    case Manifest.decode_json(bytes, 1_048_576) do
+    case Ipse.JSON.decode_bounded(bytes, 1_048_576) do
       {:ok, data} -> {:ok, fun.(data)}
       {:error, code} -> {:error, code}
     end
@@ -299,7 +298,7 @@ defmodule IpseKnowledgeExample.EvaluationInput do
   end
 
   defp timestamp?(_), do: false
-  defp sha(bytes), do: Manifest.sha256(bytes)
+  defp sha(bytes), do: Ipse.JSON.sha256(bytes)
   defp require!(true, _), do: :ok
   defp require!(_, code), do: throw({:evaluation_input, code})
   defp name?(value), do: is_binary(value) and Regex.match?(~r/\A[a-z][a-z0-9_-]{0,63}\z/, value)

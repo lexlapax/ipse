@@ -82,13 +82,13 @@ defmodule Ipse.Budget.Store do
   def identity(root),
     do: %{
       "session_id" => root["session_id"],
-      "state_dir_sha256" => Ipse.Compaction.digest([root["state_dir"]])
+      "state_dir_sha256" => Ipse.JSON.digest([root["state_dir"]])
     }
 
   defp checkpoint(_config, _root, :inspect), do: {:ok, nil}
 
   defp checkpoint(config, root, :session) do
-    expected = Ipse.Compaction.digest([identity(root), config.budget])
+    expected = Ipse.JSON.digest([identity(root), config.budget])
 
     if config[:budget_root] == nil do
       table = :ets.new(:ipse_budget_checkpoint, [:set, :public])
@@ -107,7 +107,7 @@ defmodule Ipse.Budget.Store do
 
   defp check_prefix(table, root, policy, raw) do
     with [{:identity, expected}] <- :ets.lookup(table, :identity),
-         true <- expected == Ipse.Compaction.digest([identity(root), policy]) do
+         true <- expected == Ipse.JSON.digest([identity(root), policy]) do
       case :ets.lookup(table, :prefix) do
         [] ->
           :ok
@@ -283,7 +283,7 @@ defmodule Ipse.Budget.Store do
     |> Enum.drop(-1)
     |> Enum.reduce_while({:ok, []}, fn line, {:ok, events} ->
       with true <- System.monotonic_time(:millisecond) <= deadline,
-           {:ok, event} <- Ipse.Extensions.Manifest.decode_json(line, @record_bytes),
+           {:ok, event} <- Ipse.JSON.decode_bounded(line, @record_bytes),
            true <- is_map(event) do
         {:cont, {:ok, [event | events]}}
       else

@@ -3,7 +3,6 @@ Code.require_file("support/frozen_model_selection.exs", __DIR__)
 
 defmodule Ipse.KnowledgeEvaluationDeclarationCLITest do
   use ExUnit.Case, async: false
-  alias Ipse.Extensions.Manifest
   alias IpseKnowledgeExample.EvaluationPlan
 
   test "real CLI preserves a portable declaration and seals only an inert measured identity" do
@@ -53,7 +52,7 @@ defmodule Ipse.KnowledgeEvaluationDeclarationCLITest do
 
     experiment_bytes = File.read!(experiment_path)
     experiment_sha256 = declared["sha256"]
-    assert experiment_sha256 == Manifest.sha256(experiment_bytes)
+    assert experiment_sha256 == Ipse.JSON.sha256(experiment_bytes)
     assert declared["path"] == experiment_path
     assert private?(experiment_path)
     experiment = JSON.decode!(experiment_bytes)
@@ -113,7 +112,7 @@ defmodule Ipse.KnowledgeEvaluationDeclarationCLITest do
              ])
 
     manifest_bytes = File.read!(seal["path"])
-    assert seal["sha256"] == Manifest.sha256(manifest_bytes)
+    assert seal["sha256"] == Ipse.JSON.sha256(manifest_bytes)
     manifest = JSON.decode!(manifest_bytes)
     assert manifest["version"] == 2
     assert manifest["experiment_sha256"] == experiment_sha256
@@ -226,7 +225,7 @@ defmodule Ipse.KnowledgeEvaluationDeclarationCLITest do
       },
       "files" =>
         for {name, bytes} <- files do
-          %{"path" => name, "bytes" => byte_size(bytes), "sha256" => Manifest.sha256(bytes)}
+          %{"path" => name, "bytes" => byte_size(bytes), "sha256" => Ipse.JSON.sha256(bytes)}
         end
     }
 

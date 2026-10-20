@@ -1,6 +1,6 @@
 defmodule Ipse.Extensions.State do
   @moduledoc "Bounded scoped JSON state with cross-process CAS and retained deletion revisions."
-  alias Ipse.Extensions.{Identity, Manifest}
+  alias Ipse.Extensions.{Identity}
   import Bitwise, only: [band: 2]
   @error {:error, :extension_state_unavailable}
   @bytes 1_048_576
@@ -29,7 +29,7 @@ defmodule Ipse.Extensions.State do
          true <- id?(session_id) do
       base = %{
         "scope" => scope,
-        "project" => if(scope == "operator", do: nil, else: Manifest.sha256(cwd)),
+        "project" => if(scope == "operator", do: nil, else: Ipse.JSON.sha256(cwd)),
         "session" => if(scope == "session", do: session_id)
       }
 
@@ -47,7 +47,7 @@ defmodule Ipse.Extensions.State do
             Map.merge(base, %{"version" => 2, "binding" => binding["id"]})
         end
 
-      {:ok, Ipse.Compaction.digest([descriptor])}
+      {:ok, Ipse.JSON.digest([descriptor])}
     else
       _ -> @error
     end
@@ -238,7 +238,7 @@ defmodule Ipse.Extensions.State do
       {:ok, %{type: :regular, size: size, mode: mode}} when size <= @bytes ->
         with true <- band(mode, 0o077) == 0,
              {:ok, bytes} <- bounded_read(file),
-             {:ok, state} <- Manifest.decode_json(bytes, @bytes),
+             {:ok, state} <- Ipse.JSON.decode_bounded(bytes, @bytes),
              true <- valid_state?(state, namespace) do
           {:ok, state}
         else

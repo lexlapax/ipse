@@ -1,6 +1,6 @@
 defmodule Ipse.Config do
   @moduledoc "Bounded data-only operator and scoped project configuration."
-  alias Ipse.{MCP.Schema, WorkspaceContext, RuntimeInfo, Compaction}
+  alias Ipse.{MCP.Schema, WorkspaceContext, RuntimeInfo}
 
   @file_bytes 16_384
   @max_sources 17
@@ -136,7 +136,7 @@ defmodule Ipse.Config do
               do: identity,
               else: Map.put(identity, "embedding_profiles", embedding_profiles)
 
-          fingerprint = Compaction.digest([identity])
+          fingerprint = Ipse.JSON.digest([identity])
 
           {:ok,
            %{effective | settings: settings, provenance: provenance}
@@ -286,7 +286,7 @@ defmodule Ipse.Config do
            {:ok, canonical} <- WorkspaceContext.canonical_path(source.path),
            true <- is_nil(source.boundary) or within?(canonical, source.boundary),
            {:ok, raw} <- read_bounded(canonical),
-           {:ok, data} <- Ipse.Extensions.Manifest.decode_json(raw),
+           {:ok, data} <- Ipse.JSON.decode_bounded(raw),
            :ok <- Schema.validate_arguments(schema(), data),
            :ok <- Ipse.Profiles.validate(data["profiles"] || %{}, %{}),
            :ok <- Ipse.EmbeddingProfiles.validate(data["embedding_profiles"] || %{}),

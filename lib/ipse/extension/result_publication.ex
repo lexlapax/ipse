@@ -1,6 +1,6 @@
 defmodule Ipse.Extension.ResultPublication do
   @moduledoc "SDK-2 result preparation and bounded terminal byte transport."
-  alias Ipse.Extensions.{Manifest, ResultDocument}
+  alias Ipse.Extensions.{ResultDocument}
   @schema %{"type" => "object"}
   @bytes 4 * 1024 * 1024
   @stride 4096
@@ -22,7 +22,8 @@ defmodule Ipse.Extension.ResultPublication do
       if bounded?(inline) do
         {:ok, inline}
       else
-        {:ok, %Output{bytes: bytes, byte_count: byte_size(bytes), sha256: Manifest.sha256(bytes)}}
+        {:ok,
+         %Output{bytes: bytes, byte_count: byte_size(bytes), sha256: Ipse.JSON.sha256(bytes)}}
       end
     end
   end
@@ -46,7 +47,7 @@ defmodule Ipse.Extension.ResultPublication do
   @doc false
   def offer(%Output{bytes: bytes, byte_count: count, sha256: sha})
       when is_binary(bytes) and byte_size(bytes) == count and count in 2..@bytes do
-    if hash?(sha) and Manifest.sha256(bytes) == sha do
+    if hash?(sha) and Ipse.JSON.sha256(bytes) == sha do
       {:ok,
        %{
          "api_version" => 1,
@@ -119,7 +120,7 @@ defmodule Ipse.Extension.ResultPublication do
           "next" => bound.offset + size,
           "complete" => bound.offset + size == bound.byte_count,
           "data_base64" => Base.encode64(bytes),
-          "sha256" => Manifest.sha256(bytes)
+          "sha256" => Ipse.JSON.sha256(bytes)
         }
       }
 
@@ -149,7 +150,7 @@ defmodule Ipse.Extension.ResultPublication do
          true <- output["next"] === bound.offset + size,
          complete = bound.offset + size == bound.byte_count,
          true <- output["complete"] === complete,
-         true <- output["sha256"] === Manifest.sha256(bytes),
+         true <- output["sha256"] === Ipse.JSON.sha256(bytes),
          context = :crypto.hash_update(bound.hash_context, bytes),
          true <-
            not complete or

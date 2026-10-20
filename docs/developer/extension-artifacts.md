@@ -115,8 +115,12 @@ re-encoded JSON, with a map root, depth twelve, 8-KiB strings, 4,096 members per
 collection and 262,144 nodes including keys. Integer tokens retain Jason's
 1,024-byte limit, including a minus sign. A lexical resource guard runs before
 decoding; duplicate decoded keys refuse at every depth. Schema validation uses
-the same checked subset as the ordinary adapter. `Manifest.decode_json/2` keeps
-its separate 1-MiB maximum.
+the same checked subset as the ordinary adapter. General host inputs instead use
+`Ipse.JSON.decode_bounded/2`, with a default 32-KiB encoded limit and a maximum
+explicit limit of 1 MiB. It rejects duplicate decoded keys and nesting beyond
+sixteen levels. Manifest validation applies its own narrower 16-KiB limit before
+using this decoder. Complete result documents need their dedicated adapter;
+raising a general input limit cannot substitute for its resource checks.
 
 Run this exercise in `iex -S mix`:
 

@@ -238,7 +238,7 @@ defmodule Ipse.Extensions.Catalog do
   def digest(exports) do
     exports = normalize(exports)
     exports = if exports["jobs"] == [], do: Map.delete(exports, "jobs"), else: exports
-    Ipse.Compaction.digest([exports])
+    Ipse.JSON.digest([exports])
   end
 
   defp name(instance, id), do: "ext__" <> instance <> "__" <> id

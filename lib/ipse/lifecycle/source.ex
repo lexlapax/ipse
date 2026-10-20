@@ -1,6 +1,5 @@
 defmodule Ipse.Lifecycle.Source do
   @moduledoc "Stable private references to committed journal records; no delivery or effect authority."
-  alias Ipse.Extensions.Manifest
   @keys ~w(byte_offset event_id record_sha256 session_id version)
   @limit 1_048_576
   @error {:error, :invalid_lifecycle_source}
@@ -10,7 +9,7 @@ defmodule Ipse.Lifecycle.Source do
   def build(session, offset, record) when is_map(record) do
     with true <- id?(session) and offset?(offset),
          {:ok, encoded} <- Jason.encode(record),
-         {:ok, decoded} <- Manifest.decode_json(encoded, @limit),
+         {:ok, decoded} <- Ipse.JSON.decode_bounded(encoded, @limit),
          true <- decoded == record do
       {:ok,
        %{
@@ -18,7 +17,7 @@ defmodule Ipse.Lifecycle.Source do
          "session_id" => session,
          "byte_offset" => offset,
          "event_id" => event_id(session, offset),
-         "record_sha256" => Ipse.Compaction.digest([record])
+         "record_sha256" => Ipse.JSON.digest([record])
        }}
     else
       _ -> @error
@@ -68,7 +67,7 @@ defmodule Ipse.Lifecycle.Source do
   end
 
   defp event_id(session, offset) do
-    Manifest.sha256("ipse:journal:v1:" <> session <> ":" <> Integer.to_string(offset))
+    Ipse.JSON.sha256("ipse:journal:v1:" <> session <> ":" <> Integer.to_string(offset))
     |> binary_part(0, 32)
   end
 

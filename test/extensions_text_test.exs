@@ -1,7 +1,7 @@
 defmodule Ipse.Extensions.TextTest do
   use ExUnit.Case, async: false
   alias Ipse.{Session, Journal}
-  alias Ipse.Extensions.{Config, Registry, Store, Manifest, TextResources}
+  alias Ipse.Extensions.{Config, Registry, Store, TextResources}
 
   defmodule Model do
     def complete(config, messages, _, emit) do
@@ -95,7 +95,7 @@ defmodule Ipse.Extensions.TextTest do
       "files" =>
         Enum.map(["LICENSE", "ebin/Elixir.#{module}.beam"], fn path ->
           bytes = File.read!(Path.join(source, path))
-          %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Manifest.sha256(bytes)}
+          %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Ipse.JSON.sha256(bytes)}
         end)
     }
 
@@ -136,7 +136,7 @@ defmodule Ipse.Extensions.TextTest do
         "files" =>
           Enum.map(["LICENSE", "ebin/Elixir.#{events_module}.beam"], fn path ->
             bytes = File.read!(Path.join(events_source, path))
-            %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Manifest.sha256(bytes)}
+            %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Ipse.JSON.sha256(bytes)}
           end)
     }
 

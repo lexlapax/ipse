@@ -1,7 +1,6 @@
 defmodule OwnedListenerVerification do
   @moduledoc false
   alias Ipse.Runner
-  alias Ipse.Extensions.Manifest
   @traffic_limit 1_048_576
   @frame_limit 8192
 
@@ -286,7 +285,7 @@ defmodule OwnedListenerVerification do
   defp stdout(reader), do: for({?O, bytes} <- Enum.reverse(reader.frames), into: <<>>, do: bytes)
 
   defp completion!(%{terminal: {:complete, bytes}}) do
-    {:ok, value} = Manifest.decode_json(bytes, @frame_limit)
+    {:ok, value} = Ipse.JSON.decode_bounded(bytes, @frame_limit)
     value
   end
 
@@ -300,7 +299,7 @@ defmodule OwnedListenerVerification do
   defp metadata!(port) do
     request = Finch.build(:get, "http://127.0.0.1:#{port}/api/tags")
     {:ok, 200, bytes} = Ipse.HTTPProfile.bounded_request(request, 4096, 1_000)
-    {:ok, %{"models" => []}} = Manifest.decode_json(bytes, 4096)
+    {:ok, %{"models" => []}} = Ipse.JSON.decode_bounded(bytes, 4096)
     :ok
   end
 

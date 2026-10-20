@@ -298,7 +298,7 @@ defmodule Ipse.Extensions.ChildUsageTest do
     %{"status" => "ok", "value" => page} = command(pid, "child_usage", args)
     file = child_file(c, parent, child["child_id"])
     original = File.read!(file)
-    assert page["snapshot"]["sha256"] == Ipse.Compaction.digest([page["requests"]])
+    assert page["snapshot"]["sha256"] == Ipse.JSON.digest([page["requests"]])
 
     File.write!(
       file,

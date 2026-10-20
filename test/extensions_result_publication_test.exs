@@ -79,7 +79,7 @@ defmodule Ipse.Extensions.ResultPublicationTest do
               mode in ["raw_bad_offset", "raw_bad_hash", "raw_bad_count", "raw_bad_eof", "raw_bad_full", "raw_offer"] ->
                 bytes = if mode == "raw_bad_full", do: "{}", else: Jason.encode!(%{"items" => List.duplicate(String.duplicate("x", 8192), 3)})
                 offer = %{"api_version" => 1, "kind" => "result_producer", "output" =>
-                  %{"version" => 1, "byte_count" => byte_size(bytes), "sha256" => Ipse.Extensions.Manifest.sha256(bytes)}}
+                  %{"version" => 1, "byte_count" => byte_size(bytes), "sha256" => Ipse.JSON.sha256(bytes)}}
                 offer = if mode == "raw_bad_count", do: put_in(offer, ["output", "byte_count"], 0), else: offer
                 offer = if mode == "raw_bad_full", do: put_in(offer, ["output", "sha256"], String.duplicate("0", 64)), else: offer
                 wire(2, offer)
@@ -90,7 +90,7 @@ defmodule Ipse.Extensions.ResultPublicationTest do
                 response = %{"api_version" => 1, "kind" => "result_chunk", "output" =>
                   %{"version" => 1, "output_id" => request["payload"]["output_id"], "offset" => 0,
                     "next" => size, "complete" => size == byte_size(bytes), "data_base64" => Base.encode64(chunk),
-                    "sha256" => Ipse.Extensions.Manifest.sha256(chunk)}}
+                    "sha256" => Ipse.JSON.sha256(chunk)}}
                 response = case mode do
                   "raw_bad_offset" -> put_in(response, ["output", "offset"], 1)
                   "raw_bad_hash" -> put_in(response, ["output", "sha256"], String.duplicate("0", 64))
@@ -146,7 +146,7 @@ defmodule Ipse.Extensions.ResultPublicationTest do
           "files" =>
             for path <- ["LICENSE", "ebin/Elixir.#{module}.beam"] do
               bytes = File.read!(Path.join(source, path))
-              %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Manifest.sha256(bytes)}
+              %{"path" => path, "bytes" => byte_size(bytes), "sha256" => Ipse.JSON.sha256(bytes)}
             end
         }
 
@@ -221,7 +221,7 @@ defmodule Ipse.Extensions.ResultPublicationTest do
         ] do
       assert {:ok, %Output{} = output} = ResultPublication.prepare(value)
       assert output.byte_count == byte_size(output.bytes)
-      assert output.sha256 == Manifest.sha256(output.bytes)
+      assert output.sha256 == Ipse.JSON.sha256(output.bytes)
 
       assert {:ok, ^value} =
                Ipse.Extensions.ResultDocument.decode(output.bytes, %{"type" => "object"})
@@ -312,7 +312,7 @@ defmodule Ipse.Extensions.ResultPublicationTest do
 
     assert {:error, :invalid_result_document} = ResultPublication.request(next, payload)
 
-    small = %Output{bytes: "{}", byte_count: 2, sha256: Manifest.sha256("{}")}
+    small = %Output{bytes: "{}", byte_count: 2, sha256: Ipse.JSON.sha256("{}")}
     assert {:ok, small_offer} = ResultPublication.offer(small)
     assert {:ok, small_state} = ResultPublication.open(small_offer, @invocation)
     assert {:ok, final, ended} = ResultPublication.chunk(small, small_state, payload)
@@ -402,7 +402,7 @@ defmodule Ipse.Extensions.ResultPublicationTest do
       end)
 
     bytes = IO.iodata_to_binary(Enum.reverse(chunks))
-    assert Manifest.sha256(bytes) == offer["output"]["sha256"]
+    assert Ipse.JSON.sha256(bytes) == offer["output"]["sha256"]
 
     assert {:ok, %{"items" => items}} =
              Ipse.Extensions.ResultDocument.decode(bytes, %{"type" => "object"})

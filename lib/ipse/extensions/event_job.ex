@@ -22,7 +22,7 @@ defmodule Ipse.Extensions.EventJob do
          trigger = %{
            "version" => 1,
            "delivery_id" => delivery["delivery_id"],
-           "intent_sha256" => Ipse.Compaction.digest([delivery]),
+           "intent_sha256" => Ipse.JSON.digest([delivery]),
            "event_id" => delivery["source"]["event_id"],
            "schedule" => schedule(delivery["declaration"]),
            "sources" =>
@@ -51,7 +51,7 @@ defmodule Ipse.Extensions.EventJob do
            parent
            |> Map.put("event_trigger", trigger)
            |> Map.put("payload", public_payload)
-           |> Map.put("payload_sha256", Ipse.Compaction.digest([public_payload])),
+           |> Map.put("payload_sha256", Ipse.JSON.digest([public_payload])),
          :ok <- Invocation.validate_intent(parent),
          true <-
            matches?(
@@ -114,7 +114,7 @@ defmodule Ipse.Extensions.EventJob do
       parent["payload"]["session_id"] == delivery["source"]["session_id"] and
       trigger["delivery_id"] == delivery["delivery_id"] and
       trigger["event_id"] == delivery["source"]["event_id"] and
-      trigger["intent_sha256"] == Ipse.Compaction.digest([delivery]) and
+      trigger["intent_sha256"] == Ipse.JSON.digest([delivery]) and
       trigger["schedule"] == schedule(delivery["declaration"]) and
       trigger["sources"]["received"] == effective["received_source"] and
       Source.matches?(trigger["sources"]["received"], received) and

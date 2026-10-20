@@ -1,6 +1,20 @@
 defmodule Ipse.JSON do
   @moduledoc false
 
+  def decode_bounded(bytes, limit \\ 32_768)
+
+  def decode_bounded(bytes, limit)
+      when is_binary(bytes) and is_integer(limit) and limit in 1..1_048_576 and
+             byte_size(bytes) <= limit do
+    decode_unique(bytes)
+  end
+
+  def decode_bounded(_, _), do: {:error, :invalid_json}
+
+  def sha256(bytes), do: Base.encode16(:crypto.hash(:sha256, bytes), case: :lower)
+
+  def digest(values) when is_list(values), do: sha256(canonical_json(values))
+
   # Callers bound the encoded input before invoking the maintained JSON parser.
   # Ordered objects preserve duplicate decoded keys until we can reject them.
   def decode_unique(bytes, max_depth \\ 16)
@@ -47,4 +61,23 @@ defmodule Ipse.JSON do
   end
 
   defp unique_object(value, _depth, _max_depth), do: {:ok, value}
+
+  defp canonical_json(value) when is_map(value) do
+    pairs =
+      value
+      |> Enum.map(fn {key, item} -> {to_string(key), item} end)
+      |> Enum.sort_by(&elem(&1, 0))
+
+    fields =
+      Enum.map_join(pairs, ",", fn {key, item} ->
+        Jason.encode!(key) <> ":" <> canonical_json(item)
+      end)
+
+    "{" <> fields <> "}"
+  end
+
+  defp canonical_json(value) when is_list(value),
+    do: "[" <> Enum.map_join(value, ",", &canonical_json/1) <> "]"
+
+  defp canonical_json(value), do: Jason.encode!(value)
 end

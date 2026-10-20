@@ -11,7 +11,7 @@ defmodule IpseKnowledgeExample.EvaluationProof do
     root = Path.join(System.tmp_dir!(), "ipse-evaluation-proof-" <> Ipse.Usage.id())
     File.mkdir_p!(root)
     manifest = JSON.decode!(File.read!(Path.join(artifact, "extension.json")))
-    digest = Ipse.Extensions.Manifest.sha256(File.read!(Path.join(artifact, "extension.json")))
+    digest = Ipse.JSON.sha256(File.read!(Path.join(artifact, "extension.json")))
 
     options =
       JSON.decode!(

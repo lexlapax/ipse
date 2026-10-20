@@ -1,8 +1,7 @@
 defmodule Ipse.Extensions.ResultSourceTest do
   use ExUnit.Case, async: true
 
-  alias Ipse.Compaction
-  alias Ipse.Extensions.{Identity, Invocation, Manifest, ResultDocument, ResultSource}
+  alias Ipse.Extensions.{Identity, Invocation, ResultDocument, ResultSource}
   alias ResultSource.{Index, Sealed}
 
   @schema %{"type" => "object", "additionalProperties" => true}
@@ -11,15 +10,15 @@ defmodule Ipse.Extensions.ResultSourceTest do
     intent = intent()
     bytes = Jason.encode!(%{"quote" => "a complete quotation"})
     assert {:ok, begin, source} = ResultSource.open(intent, offer(bytes), 10)
-    assert begin["intent_sha256"] == Compaction.digest([intent])
-    assert begin["schema_sha256"] == Compaction.digest([@schema])
+    assert begin["intent_sha256"] == Ipse.JSON.digest([intent])
+    assert begin["schema_sha256"] == Ipse.JSON.digest([@schema])
 
     assert begin["output_id"] ==
-             Compaction.digest([
+             Ipse.JSON.digest([
                %{
-                 "intent_sha256" => Compaction.digest([intent]),
+                 "intent_sha256" => Ipse.JSON.digest([intent]),
                  "byte_count" => byte_size(bytes),
-                 "sha256" => Manifest.sha256(bytes)
+                 "sha256" => Ipse.JSON.sha256(bytes)
                }
              ])
 
@@ -84,7 +83,7 @@ defmodule Ipse.Extensions.ResultSourceTest do
     refute String.valid?(Base.decode64!(hd(chunks)["data_base64"]))
     assert {:error, _} = ResultSource.request(source)
     assert {:ok, proof, sealed} = ResultSource.seal(source, 20)
-    assert proof.event["chunks_sha256"] == Compaction.digest(chunks)
+    assert proof.event["chunks_sha256"] == Ipse.JSON.digest(chunks)
     assert proof.event["chunk_count"] == 2
     assert {:ok, same_event, accepted} = ResultSource.accept_verified(source, proof)
     assert same_event == proof.event
@@ -395,7 +394,7 @@ defmodule Ipse.Extensions.ResultSourceTest do
     {_, _, chunks, source} = drain(bytes, intent)
     assert length(chunks) == 1024
     {:ok, proof, sealed} = ResultSource.seal(source, 120_000)
-    assert proof.event["chunks_sha256"] == Compaction.digest(chunks)
+    assert proof.event["chunks_sha256"] == Ipse.JSON.digest(chunks)
     final = final(intent, sealed, 120_000)
     records = [begin] ++ chunks ++ [proof.event, final]
     assert estimate.bytes == Enum.sum(Enum.map(records, &record_bytes/1))
@@ -474,7 +473,7 @@ defmodule Ipse.Extensions.ResultSourceTest do
       "output" => %{
         "version" => 1,
         "byte_count" => byte_size(bytes),
-        "sha256" => Manifest.sha256(bytes)
+        "sha256" => Ipse.JSON.sha256(bytes)
       }
     }
 
@@ -492,7 +491,7 @@ defmodule Ipse.Extensions.ResultSourceTest do
         "next" => source.offset + count,
         "complete" => source.offset + count == byte_size(bytes),
         "data_base64" => Base.encode64(fragment),
-        "sha256" => Manifest.sha256(fragment)
+        "sha256" => Ipse.JSON.sha256(fragment)
       }
     }
   end
@@ -536,9 +535,9 @@ defmodule Ipse.Extensions.ResultSourceTest do
       "version" => 2,
       "delivery" => delivery,
       "text" => Jason.encode!(delivery),
-      "text_sha256" => Manifest.sha256(Jason.encode!(delivery)),
+      "text_sha256" => Ipse.JSON.sha256(Jason.encode!(delivery)),
       "action_count" => 0,
-      "actions_sha256" => Compaction.digest([]),
+      "actions_sha256" => Ipse.JSON.digest([]),
       "elapsed_ms" => elapsed
     })
   end
@@ -552,7 +551,7 @@ defmodule Ipse.Extensions.ResultSourceTest do
       "byte_count" => source.offset,
       "chunk_count" => length(chunks),
       "sha256" => source.begin["sha256"],
-      "chunks_sha256" => Compaction.digest(chunks),
+      "chunks_sha256" => Ipse.JSON.digest(chunks),
       "elapsed_ms" => elapsed
     }
 

@@ -123,7 +123,7 @@ defmodule Ipse.LifecycleToolTest do
       c.intent
       | "input" => data,
         "input_bytes" => byte_size(Jason.encode!(data)),
-        "input_sha256" => Ipse.Compaction.digest([data])
+        "input_sha256" => Ipse.JSON.digest([data])
     }
 
     assert Tool.valid?(forged)

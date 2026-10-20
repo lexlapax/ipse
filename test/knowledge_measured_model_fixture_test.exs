@@ -4,7 +4,6 @@ Code.require_file("support/measured_model_daemon.exs", __DIR__)
 
 defmodule Ipse.KnowledgeMeasuredModelFixtureTest do
   use ExUnit.Case, async: false
-  alias Ipse.Extensions.Manifest
   alias IpseKnowledgeExample.EvaluationModelService
 
   if :os.type() == {:unix, :linux} do
@@ -46,14 +45,14 @@ defmodule Ipse.KnowledgeMeasuredModelFixtureTest do
 
     for {name, digest} <- config["models"] do
       bytes = File.read!(Path.join(config["cache_source"], config["manifests"][name]))
-      assert Manifest.sha256(bytes) == digest
+      assert Ipse.JSON.sha256(bytes) == digest
       manifest = JSON.decode!(bytes)
 
       for descriptor <- [manifest["config"] | manifest["layers"]] do
         "sha256:" <> hash = descriptor["digest"]
         blob = File.read!(Path.join(config["cache_source"], "blobs/sha256-" <> hash))
         assert byte_size(blob) == descriptor["size"]
-        assert Manifest.sha256(blob) == hash
+        assert Ipse.JSON.sha256(blob) == hash
       end
     end
 
@@ -194,7 +193,7 @@ defmodule Ipse.KnowledgeMeasuredModelFixtureTest do
         %{
           "path" => path,
           "bytes" => File.stat!(path).size,
-          "sha256" => Manifest.sha256(File.read!(path))
+          "sha256" => Ipse.JSON.sha256(File.read!(path))
         }
       end
 
