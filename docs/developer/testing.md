@@ -30,6 +30,14 @@ regression fails for that reason, then repair the responsible owner and rerun it
 A test that only checks a helper's return shape will miss a write that happened
 before that helper failed.
 
+For expiry behavior, establish the stored record's actual wall-clock deadline
+before approving the pending write. Recheck that condition after sleeping;
+a timer's elapsed duration does not prove that wall time has reached the expiry.
+Bound the wait with a monotonic deadline, then retain the unchanged-record,
+failure-receipt and inert-resume assertions. The
+[`memory session fixture`](../../test/extensions_memory_session_test.exs)
+exercises both approval before expiry and rejection after expiry.
+
 ### Choose the closest fixture
 
 | Changed behavior | Start with |

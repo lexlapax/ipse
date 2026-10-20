@@ -509,8 +509,14 @@ accounting and distinct peak subjects before admitting labels. Complete syntheti
 source and installed 350-row exercises and five integrated loss controls pass;
 macOS passes 1,294 source and 30 native tests, and Linux passes 1,333 tests with
 native sandbox enforcement enabled. Package, installed, demo and manual checks
-pass locally. A new exact-source hosted result remains required. Actual selected
-runtime CPU proof and the real comparison remain open.
+pass locally. The exact-source
+[hosted run at `81a4387`](https://github.com/lexlapax/ipse/actions/runs/39375224043)
+passes Ubuntu, including the independent source and installed proofs. macOS fails
+a memory test's wall-clock expiry precondition before approval. The
+[retained failure and repair](archive/2026-10-19-p27-measured-integration/ci-expiry-wait.md)
+preserve the expiry assertions and bound the condition wait. A corrected-source
+hosted result remains required. Actual selected-runtime CPU proof and the real
+comparison remain open.
 The inherited combined-fixture timeout is repaired with independent
 test units and unchanged deadlines/assertions; the exact-source `25f1d8e`
 [hosted matrix](https://github.com/lexlapax/ipse/actions/runs/39309132023)

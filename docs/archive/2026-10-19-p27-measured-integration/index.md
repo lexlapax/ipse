@@ -13,3 +13,6 @@ component-only descriptions are historical.
 The [review and verification record](review-and-verification.md) distinguishes
 implemented integration, reproduced failures, synthetic checks and remaining
 real-model work. No scripted response establishes held-out inference quality.
+
+The later [hosted expiry-wait record](ci-expiry-wait.md) retains the exact
+`81a4387` matrix result, its failed test precondition and the bounded repair.

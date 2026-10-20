@@ -200,8 +200,7 @@ defmodule Ipse.Extensions.MemorySessionTest do
     assert System.system_time(:millisecond) < original["expires_at_ms"]
 
     if delayed do
-      # Wait for this record's real expiry, not a guessed scheduling delay.
-      Process.sleep(max(original["expires_at_ms"] - System.system_time(:millisecond), 0))
+      await_expiry(original["expires_at_ms"], System.monotonic_time(:millisecond) + 5000)
       assert System.system_time(:millisecond) >= original["expires_at_ms"]
     end
 
@@ -236,6 +235,16 @@ defmodule Ipse.Extensions.MemorySessionTest do
       assert updated["record"]["revision"] == 2
       assert updated["record"]["value"]["expires_at_ms"] > original["expires_at_ms"]
       assert :ok = Session.close_confirmed(writer)
+    end
+  end
+
+  defp await_expiry(expires_at_ms, deadline) do
+    remaining = expires_at_ms - System.system_time(:millisecond)
+
+    if remaining > 0 do
+      assert System.monotonic_time(:millisecond) < deadline
+      Process.sleep(remaining)
+      await_expiry(expires_at_ms, deadline)
     end
   end
 
