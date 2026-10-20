@@ -7,6 +7,7 @@ defmodule IpseKnowledge.PackagesIsolationTest do
     Code.require_file(Path.join("extensions/knowledge/src", file <> ".ex"))
   end
   Code.require_file("extensions/knowledge/spec.exs")
+  Code.require_file("test/support/knowledge_mcp_fixture.exs")
 
   defmodule DomainPackagesSuite do
     use ExUnit.Case, async: false
@@ -76,6 +77,67 @@ defmodule IpseKnowledge.PackagesIsolationTest do
       excessive=Map.put(good,"text",JSON.encode!(%{"facts"=>[proposal,proposal]}))
       assert {:done,{:error,:invalid_model_output,%{}}}=Adapters.resume(continuation,%{"status"=>"ok","value"=>excessive})
       assert {:done,{:error,:invalid_model_output,%{}}}=Adapters.resume(continuation,%{"status"=>"ok","value"=>Map.put(good,"profile","other")})
+    end
+
+    test "explicit Graph publication retains facts for their selected query time" do
+      alias IpseKnowledge.{Evidence, Graph}
+      alias IpseKnowledge.Test.CASFixture, as: F
+      future=System.system_time(:millisecond)+3_600_000
+      for {id,observed,from,until,inside,outside} <- [
+        {"future-fact",1,future,nil,future,future-1},
+        {"past-fact",1,nil,10,5,10},
+        {"future-source",future,nil,nil,future,future-1}
+      ] do
+        empty=Map.new(~w(stores search fetch retrieval embedding rerank extraction),&{&1,%{}})
+        options=Map.merge(empty,%{"version"=>1,
+          "stores"=>%{"notes"=>%{"kind"=>"state","scope"=>"project","partition"=>"notes"}},
+          "extraction"=>%{"asserted"=>%{"kind"=>"explicit","version"=>1}}})
+        {:ok,state}=Graph.init(options)
+        attrs=%{"source_id"=>id,"generation"=>1,"title"=>"Release","text"=>"Release requires quiescence.",
+          "uri"=>"local:release","observed_at_ms"=>observed,"event_at_ms"=>nil,"expires_at_ms"=>nil}
+        {stored,state,db}=graph_command(state,F.new(),"source",%{"store"=>"notes","action"=>"put",
+          "args"=>Map.put(attrs,"expected_revision",0)})
+        assert stored["status"]=="ok"
+        {:ok,source}=Evidence.source(Map.merge(attrs,%{"partition"=>"notes",
+          "origin"=>%{"kind"=>"provided","store_profile"=>"notes","partition_or_scope"=>"notes","receipt"=>nil,"historical"=>false}}))
+        {:ok,[chunk]}=Evidence.chunks(source)
+        {:ok,citation}=Evidence.citation(source,chunk,0,byte_size(source["text"]))
+        fact_args=%{"subject"=>"Release","predicate"=>"requires","object"=>"quiescence","polarity"=>"positive",
+          "inferred"=>false,"valid_from_ms"=>from,"valid_to_ms"=>until,
+          "extraction"=>%{"kind"=>"explicit","profile"=>nil,"version"=>1},"citations"=>[citation]}
+        {:ok,fact}=Evidence.fact(fact_args)
+        extract=%{"store"=>"notes","extraction"=>"asserted","source_id"=>id,"generation"=>1,
+          "max_edges"=>1,"chunks"=>[chunk["chunk_id"]],"facts"=>[fact]}
+        {published,state,db}=graph_command(state,db,"extract",extract)
+        assert published["status"]=="ok"
+        query=%{"store"=>"notes","entity"=>"Release","depth"=>2,"max_nodes"=>8,"max_edges"=>8,"top_k"=>5,"as_of_ms"=>outside}
+        {excluded,state,db}=graph_command(state,db,"query",query)
+        assert excluded["status"]=="abstain" and excluded["coverage"]["complete"]
+        assert Enum.any?(excluded["gaps"],&(&1["code"]=="excluded_fact"))
+        {included,state,db}=graph_command(state,db,"query",Map.put(query,"as_of_ms",inside))
+        assert included["status"]=="ok" and included["coverage"]["complete"]
+        assert Enum.any?(included["claims"],&(&1["fact_id"]==fact["fact_id"]))
+        {:ok,forged}=Evidence.fact(Map.put(fact_args,"citations",[Map.put(citation,"generation",2)]))
+        {refused,_,_}=graph_command(state,db,"extract",Map.put(extract,"facts",[forged]))
+        assert refused["status"]=="refused"
+      end
+    end
+
+    test "model extraction validates attribution without discarding future-observed sources" do
+      alias IpseKnowledge.{Adapters, Evidence}
+      {:ok,source}=Evidence.source(%{"source_id"=>"future-model","partition"=>"notes","generation"=>1,
+        "title"=>"Release","text"=>"Release requires quiescence.","uri"=>"local:release","observed_at_ms"=>30,
+        "event_at_ms"=>nil,"expires_at_ms"=>nil,"origin"=>%{"kind"=>"provided","store_profile"=>"notes",
+        "partition_or_scope"=>"notes","receipt"=>nil,"historical"=>false}})
+      {:ok,[chunk]}=Evidence.chunks(source)
+      resolved=%{"options"=>%{"extraction"=>%{"assisted"=>%{"kind"=>"model_complete","profile"=>"host_extract","version"=>1}}}}
+      args=%{"profile"=>"assisted","source"=>source,"chunks"=>[chunk],"max_edges"=>1,"as_of_ms"=>20}
+      {:call,_,cont}=Adapters.start(resolved,:extract,args)
+      proposal=%{"subject"=>"Release","predicate"=>"requires","object"=>"quiescence",
+        "chunk_id"=>chunk["chunk_id"],"start_byte"=>0,"end_byte"=>byte_size(source["text"])}
+      value=%{"profile"=>"host_extract","text"=>JSON.encode!(%{"facts"=>[proposal]}),"usage"=>%{}}
+      assert {:done,{:ok,%{"facts"=>[fact]}}}=Adapters.resume(cont,%{"status"=>"ok","value"=>value})
+      assert Evidence.valid_fact?(fact) and Evidence.valid_span?(source,hd(fact["citations"]))
     end
 
     test "model rerank requires the declared object and all candidate IDs exactly once" do
@@ -376,6 +438,32 @@ defmodule IpseKnowledge.PackagesIsolationTest do
         IpseKnowledge.Adapters.resume(state, %{"status" => "ok", "value" => page})
     end
 
+    test "embedding preserves finite float32 extremes and refuses non-finite bit patterns" do
+      alias IpseKnowledge.{Adapters, Evidence}
+      decode=fn bytes ->
+        resolved=%{"options"=>%{"embedding"=>%{"encoder"=>%{"kind"=>"embedding","profile"=>"host_encoder"}}}}
+        input=%{"chunk_id"=>Evidence.sha256("chunk"),"text"=>"synthetic"}
+        {:call,_,cont}=Adapters.start(resolved,:embed,%{"profile"=>"encoder","inputs"=>[input]})
+        descriptor=%{"version"=>2,"kind"=>"embedding.f32le","encoding"=>"float32le.base64",
+          "operation_id"=>String.duplicate("1",32),"source_sha256"=>Evidence.sha256("source"),
+          "vector_count"=>1,"dimensions"=>div(byte_size(bytes),4)}
+        inference=%{"version"=>2,"selection_sha256"=>Evidence.sha256("selection"),"result"=>descriptor,
+          "profile"=>"host_encoder","reported_model"=>"synthetic","usage"=>%{}}
+        {:call,_,reading}=Adapters.resume(cont,%{"status"=>"ok","value"=>inference})
+        page=Map.merge(Map.take(descriptor,~w(version kind encoding dimensions source_sha256 operation_id)),
+          %{"vector_index"=>0,"offset"=>0,"complete"=>true,"next"=>nil,
+            "input_sha256"=>Evidence.sha256("opaque"),"vector_sha256"=>Evidence.sha256(bytes),"values"=>Base.encode64(bytes)})
+        Adapters.resume(reading,%{"status"=>"ok","value"=>page})
+      end
+      bytes=for bits<-[0x7f7fffff,0xff7fffff,0,1],into: <<>>,do: <<bits::little-unsigned-size(32)>>
+      assert {:done,{:ok,%{"vectors"=>[vector]}}}=decode.(bytes)
+      assert vector["values"]==[3.4028234663852886e38,-3.4028234663852886e38,0.0,1.401298464324817e-45]
+      assert Evidence.valid_vector?(vector)
+      for bits<-[0x7f800000,0xff800000,0x7fc00000,0x7f800001] do
+        assert {:done,{:error,:invalid_embedding_result,%{}}}=decode.(<<bits::little-unsigned-size(32)>>)
+      end
+    end
+
     test "embedding initializes reader state and reconstructs two complete4096 vectors" do
       alias IpseKnowledge.{Adapters, Evidence}
       resolved=%{"options"=>%{"embedding"=>%{"encoder"=>%{"kind"=>"embedding","profile"=>"host_encoder"}}}}
@@ -559,6 +647,16 @@ defmodule IpseKnowledge.PackagesIsolationTest do
         "complete" => true, "next" => nil
       }})
     end
+
+    defp graph_command(state,db,command,args),
+      do: graph_drive(IpseKnowledge.Graph.handle("invoke.command",%{"id"=>command,"arguments"=>args},state),db)
+
+    defp graph_drive({:ok,%{"kind"=>"host_call","request"=>request},state},db) do
+      {outcome,db}=IpseKnowledge.Test.CASFixture.host(db,request)
+      graph_drive(IpseKnowledge.Graph.handle("host.actions",%{"outcome"=>outcome},state),db)
+    end
+
+    defp graph_drive({:ok,%{"kind"=>"result","value"=>value},state},db),do: {value,state,db}
 
     defp offline_options do
       %{"version" => 1, "stores" => %{},

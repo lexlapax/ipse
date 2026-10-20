@@ -180,8 +180,10 @@ milliseconds. Sources observed after that time, expired sources, historical
 imports, and facts outside their validity interval are not current evidence.
 
 Traversal follows outgoing positive relationships, matching entity names without
-case. Current assertions that contradict a reached relationship remain in the
-result as separate claims, with their own `polarity` and supporting citations.
+case. Two positive requirements such as `Release requires quiescence` and
+`Release requires tests` can coexist. Graph flags a conflict when current
+assertions give opposite polarities to the same subject, predicate and object.
+Both assertions remain separate claims with their supporting citations.
 Negative assertions supply that conflict context but are not traversal steps.
 Object names use the same case-insensitive matching: `lock` and `LOCK` name the
 same traversal node. Claims keep the original recorded spelling and citations.
@@ -208,7 +210,11 @@ coverage and supporting citations before drawing a conclusion from absence.
 
 Facts retain one to eight citations. Subject/object IDs are at most 256 bytes,
 predicates 128 bytes, and quotations 1024 bytes. Facts may be marked `inferred`
-and have optional validity times. Structural conflict/inference labels describe
+and have optional validity times. Extraction retains a correctly attributed fact
+even when its validity interval is in the future or past. Use `as_of_ms` to query
+inside that interval. The source must also be eligible at the selected time.
+Queries outside the interval report `excluded_fact` without deleting the fact.
+Structural conflict/inference labels describe
 attributed assertions; they do not establish semantic truth. Review the exact
 quoted source and the assertion before using the result for a decision.
 
@@ -278,6 +284,10 @@ not erase earlier conversation, journals, exports, backups, or provider transfer
 Close affected conversations and start fresh without forgotten text when that is
 your goal. Ordinary resume retains earlier committed results.
 
+Each partition permits 32 source roots, including unpublished drafts and suppression markers. Importing
+a new suppression marker consumes a source slot just as ingestion does. A full
+partition needs a separate reviewed partition for new sources; collection retains
+its existing roots.
 State permits 256 retained slots and 1 MiB per namespace, including drafts,
 old pages, and tombstones. Collection removes unreachable bodies, but does not
 recover slots. Export and plan a reviewed migration before filling the store.
@@ -288,6 +298,28 @@ ingestion procedure, using a newer generation and the current revision. Submit
 that fresh capture without `historical_import`, then extract new facts from it.
 Keep complete generation-consistent exports;
 a partial export is not a complete restorable source.
+
+Creation checks the store generation used to count available slots. A different
+source's concurrent write can therefore cause `conflict`; inspect before
+explicit new work. Unknown creation may already have occupied its slot.
+Before upgrading artifacts that share a binding, close older Sessions and wait
+for their admitted effects to finish, then retire their old writer configuration.
+The limit relies on all writers using the current admission check. Existing
+valid stored data needs no conversion.
+
+If a legacy partition already exceeds 32 roots, whole-store queries refuse with
+`root_capacity_exceeded`. Keep its data. Addressed inspection, paged export and
+existing-source maintenance remain available within other limits. Suppression
+retains a root and cannot reduce the count. Plan a deliberate migration into
+bounded partitions; do not delete suppression markers to make room.
+
+MCP stores also have an 88-retained-record full-snapshot ceiling, counting pages
+and tombstones. A larger store returns `remote_snapshot_limit` before the
+root-count check, including for addressed inspection, export and maintenance.
+Use the configured server's reviewed administrative export/migration procedure
+for recovery, preserving source identities and suppression markers. Follow the
+[store limits](corpus.md#keep-stores-bounded-and-recover-from-refusal) before filling
+a remote store.
 
 For conflict, inspect again. After a denied, failed or interrupted extraction,
 inspect its source before deciding whether to discard the unpublished draft:
@@ -400,12 +432,18 @@ Live optional model-extraction quality has not been measured. Do not infer that
 an accepted response is a validated knowledge graph.
 
 For remote storage, build `mcp-explicit` or `mcp-model` and select an `mcp_cas`
-store with a fixed `binding`, `partition`, and `contract: "ipse-cas-v1"`. Supply
+store with a fixed `binding`, `partition`, and `contract: "ipse-cas-v2"`. Supply
 exact MCP aliases through the configuration generator and select the separate
 MCP file at launch. The server must enforce partition access and atomic CAS.
 Approvals display that route; they cannot enforce remote namespace policy.
 Follow [the build guide](../../extensions/knowledge/README.md#choose-the-required-capabilities)
 and [MCP configuration](mcp.md). No service is installed or chosen automatically.
+The [remote Corpus procedure](corpus.md#select-a-remote-store) shows the complete
+store selection and binding files; retain Graph's extraction registry and preset
+when applying it here. V1 selections still read and update existing sources,
+but refuse missing-source creation with `atomic_admission_unavailable`. Verify
+server support and explicitly select v2 in a fresh configuration after draining
+older writers. Ipse never changes the selected contract automatically.
 
 To share retained sources with Corpus, use the same Ipse home, canonical project
 workspace, logical State binding, and partition. A shared profile name alone does

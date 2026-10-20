@@ -80,8 +80,9 @@ Do not reread and automatically overwrite a tombstone on behalf of stale work.
 
 ## Closed state requests
 
-Every request has `op`, `scope`, and exactly the operation's fields, with one
-optional deadline field for `state.put`. Scope is `operator`, `project`, or `session`.
+Every request has `op`, `scope`, and exactly the operation's fields. A `state.put`
+may also contain `expected_generation`, `write_before_ms`, or both. Scope is
+`operator`, `project`, or `session`.
 
 | Operation | Required fields | Successful value |
 | --- | --- | --- |
@@ -104,6 +105,40 @@ key, so an old captured revision cannot recreate it. An explicit write using the
 current deletion revision is allowed. Domain suppression policy must distinguish
 that deliberate write from a stale extraction result.
 
+## Bind a write to a namespace snapshot
+
+A per-record revision cannot protect a decision based on other records. For
+example, two writers can read one remaining source slot and insert different
+keys. Both target revisions are zero. Include the observed namespace generation
+when the prepared put depends on the complete snapshot:
+
+```elixir
+request = %{
+  "op" => "state.put", "scope" => "project", "key" => "new-source",
+  "expected_revision" => 0, "expected_generation" => snapshot_generation,
+  "value" => new_source
+}
+```
+
+State compares the target revision and then the namespace generation under its
+existing file lock. Either mismatch returns `conflict`, with the current
+generation and value-free target summary. A different key's write can cause this
+conflict. The host does not rescan or retry. The extension owns the domain policy
+that made the snapshot relevant; State treats the value as opaque JSON.
+
+The optional condition is a non-null integer from 0 through 2^53-1. Other
+operations reject it. Omitting it preserves ordinary per-record CAS. A successful
+conditioned put must report generation `expected_generation + 1`; a conflict must
+prove a revision or generation mismatch. Conditioned conflict summaries cannot
+name this action as their previous writer. These rules validate both live and
+saved receipts. The persisted state format and operation grants do not change.
+
+Exercise the serialized distinct-key test in `test/extensions_state_test.exs`.
+Both reads observe generation zero. The first put succeeds; the second conflicts
+even though its own key remains missing. The separate-process test exercises the
+actual native lock, where a competing process may instead receive the existing
+lock-contention refusal. Neither outcome authorizes replay.
+
 ## Bound a prepared write by time
 
 If a prepared put must expire while it waits for approval, include
@@ -123,7 +158,7 @@ Unix millisecond integer from 0 through 2^53-1. Explicit null, nonintegers, extr
 keys and this field on other operations refuse validation. Omitting it retains
 ordinary put behavior. The condition grants no authority or additional calls.
 
-Revision conflicts take precedence over deadline failures. State samples its clock
+Revision and optional generation conflicts take precedence over deadline failures. State samples its clock
 under the existing namespace lock and again after syncing temporary output,
 immediately before rename. At or after the deadline, the write returns a known
 `failed` outcome without changing the stored value, revision, generation or last writer's
@@ -137,6 +172,8 @@ must match the request key and expected revision. Its operation ID belongs to th
 previous successful write. Receipt validation requires a deadline-bearing put and
 a recorded checked time at or after its deadline. It compares recorded timestamps,
 not the current clock, so idle recovery never reinterprets or retries the failure.
+When `expected_generation` is present, this failed receipt must also retain that
+exact generation: both CAS conditions matched before the deadline refusal.
 Successful receipts keep their ordinary shape. Interrupted writes without a
 durable receipt remain unknown.
 

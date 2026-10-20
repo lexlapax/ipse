@@ -162,8 +162,7 @@ defmodule IpseKnowledge.Graph do
         "source" => opened["source"],
         "chunks" => opened["chunks"],
         "max_edges" => state.ctx.args["max_edges"],
-        "facts" => state.ctx.args["facts"],
-        "as_of_ms" => System.system_time(:millisecond)
+        "facts" => state.ctx.args["facts"]
       }
 
       advance(

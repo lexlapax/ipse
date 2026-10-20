@@ -78,6 +78,12 @@ server separately through Ipse's [MCP user manual](../../docs/operator/mcp.md).
 The store's partition is an operator selection that appears in approvals. The
 server must enforce its own partition access and atomic CAS contract. Ipse
 does not enforce a remote namespace or verify the server's internal transactions.
+Select `contract: "ipse-cas-v2"` for new source creation. The
+[remote-store procedure](../../docs/operator/corpus.md#select-a-remote-store)
+includes complete options and binding examples. V1 selections retain reads and
+existing-source updates, but missing-root creation refuses before CAS. Switching
+contracts requires an explicitly compatible service and fresh configuration.
+Drain older writers sharing the store before relying on atomic source admission.
 
 For inference presets, supply `--inference-config FILE`. The file accepts only
 `profiles`, `embedding_profiles` and an optional shared `budget`. It must contain

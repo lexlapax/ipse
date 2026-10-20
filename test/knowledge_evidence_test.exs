@@ -196,7 +196,7 @@ defmodule Ipse.KnowledgeEvidenceTest do
     ''')
   end
 
-  test "every graph support is checked through suppression replacement and conflicts" do
+  test "every graph support is checked through suppression replacement and polarity" do
     pure(~S'''
     s=source.("Release requires quiescence. Quiescence requires worker exit.",%{})
     first=fact.("Release","quiescence",cite.(s,"Release requires quiescence."))
@@ -210,14 +210,29 @@ defmodule Ipse.KnowledgeEvidenceTest do
     assert stale["evidence"]==[]
     {:ok,bounded}=E.traverse([s],[first,second],"Release",Map.put(limits,"depth",1),20)
     assert bounded["coverage"]["edges"]==1
-    contradictory=fact.("Release","other",cite.(s,"Release requires quiescence."))
-    {:ok,claims}=E.classify([],[first,contradictory],"Release")
-    assert Enum.all?(claims,&(&1["label"]=="conflict"))
     forged=put_in(first,["citations",Access.at(0),"quote"],"forged")
     assert {:error,:invalid_fact}=E.validate_facts([s],[forged],20)
     {:ok,negative}=E.fact(first |> Map.drop(~w(version fact_id)) |> Map.put("polarity","negative"))
     {:ok,no_path}=E.traverse([s],[negative,second],"Release",limits,20)
     assert no_path["evidence"]==[]
+    ''')
+  end
+
+  test "positive relationships can retain several compatible requirements" do
+    pure(~S'''
+    s=source.("Release requires quiescence. Release requires tests.",%{})
+    first=fact.("Release","quiescence",cite.(s,"Release requires quiescence."))
+    second=fact.("Release","tests",cite.(s,"Release requires tests."))
+    limits=%{"depth"=>2,"max_nodes"=>8,"max_edges"=>8,"top_k"=>10}
+    for facts <- [[first,second],[second,first]] do
+      {:ok,claims}=E.classify([],facts,"Release")
+      assert Enum.all?(claims,&(&1["label"]=="supported"))
+      {:ok,result}=E.traverse([s],facts,"Release",limits,20)
+      assert result["coverage"]["complete"] and result["coverage"]["edges"]==2
+      assert result["coverage"]["context_facts"]==2 and result["coverage"]["counterassertions"]==0
+      assert Enum.all?(result["claims"],&(&1["label"]=="supported"))
+      assert Map.new(result["claims"],&{&1["fact_id"],&1["basis"]})==Map.new(facts,&{&1["fact_id"],&1["citations"]})
+    end
     ''')
   end
 
@@ -292,22 +307,21 @@ defmodule Ipse.KnowledgeEvidenceTest do
     ''')
   end
 
-  test "graph context includes a cut positive alternative without traversing its descendants" do
+  test "a cut positive alternative stays outside conflict context and leaves coverage partial" do
     pure(~S'''
     s=source.("Release requires lock. Release requires quiescence. Lock requires exit. Quiescence requires exit.",%{})
     first=fact.("Release","lock",cite.(s,"Release requires lock."))
     second=fact.("Release","quiescence",cite.(s,"Release requires quiescence."))
     descendants=[fact.("lock","exit",cite.(s,"Lock requires exit.")),fact.("quiescence","exit",cite.(s,"Quiescence requires exit."))]
     selected=Enum.min_by([first,second],& &1["fact_id"])
-    extra=Enum.find([first,second],&(&1["fact_id"]!=selected["fact_id"]))
     limits=%{"depth"=>3,"max_nodes"=>128,"max_edges"=>1,"top_k"=>1}
     {:ok,result}=E.traverse([s],descendants++[second,first],"Release",limits,20)
     refute result["coverage"]["complete"]
     assert result["coverage"]["edges"]==1 and result["coverage"]["nodes"]==2
-    assert result["coverage"]["context_facts"]==2 and result["coverage"]["counterassertions"]==1
-    assert Enum.map(result["claims"],& &1["fact_id"])==[selected["fact_id"],extra["fact_id"]]
-    assert Enum.all?(result["claims"],&(&1["label"]=="conflict" and &1["polarity"]=="positive"))
-    assert Enum.map(result["claims"],& &1["basis"])==[selected["citations"],extra["citations"]]
+    assert result["coverage"]["context_facts"]==1 and result["coverage"]["counterassertions"]==0
+    assert Enum.map(result["claims"],& &1["fact_id"])==[selected["fact_id"]]
+    assert Enum.all?(result["claims"],&(&1["label"]=="supported" and &1["polarity"]=="positive"))
+    assert Enum.map(result["claims"],& &1["basis"])==[selected["citations"]]
     assert length(result["evidence"])==1
     assert E.query_scope(result,[s],[],20)["status"]=="partial"
     ''')

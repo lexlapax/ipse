@@ -37,6 +37,11 @@ defmodule IpseKnowledge.Store.State do
       "value" => args["next_root"]
     }
 
+    request =
+      if args["expected_generation"] == nil,
+        do: request,
+        else: Map.put(request, "expected_generation", args["expected_generation"])
+
     {:call, request, %{profile: profile, operation: :cas_root, request: request}}
   end
 
@@ -127,6 +132,8 @@ defmodule IpseKnowledge.Store.State do
     expected_value = if operation == :collect, do: nil, else: request["value"]
 
     if keys?(value, ~w(generation record)) and uint?(value["generation"]) and record?(record) and
+         (not Map.has_key?(request, "expected_generation") or
+            value["generation"] == request["expected_generation"] + 1) and
          record["key"] == request["key"] and
          record["revision"] == request["expected_revision"] + 1 and
          record["value"] === expected_value and record["deleted"] == (operation == :collect) do

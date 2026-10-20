@@ -152,7 +152,8 @@ defmodule IpseKnowledge.Test.CASFixture do
   def handle(state, envelope) do
     valid =
       keys?(envelope, ~w(version contract partition request_id action args)) and
-        envelope["version"] === 1 and envelope["contract"] == "ipse-cas-v1" and
+        ((envelope["version"] === 1 and envelope["contract"] == "ipse-cas-v1") or
+           (envelope["version"] === 2 and envelope["contract"] == "ipse-cas-v2")) and
         envelope["partition"] == state.partition and is_map(envelope["args"]) and
         hash?(envelope["request_id"], 32) and
         not MapSet.member?(state.seen, envelope["request_id"])
@@ -161,7 +162,7 @@ defmodule IpseKnowledge.Test.CASFixture do
 
     {status, value, next} =
       if valid,
-        do: apply_action(state, envelope["action"], envelope["args"]),
+        do: apply_action(state, envelope["action"], envelope["args"], envelope["version"]),
         else: {"refused", %{}, state}
 
     reply =
@@ -458,6 +459,9 @@ defmodule IpseKnowledge.Test.CASFixture do
       end)
   end
 
+  defp apply_action(state, "cas_root", args, version), do: root_cas(state, args, version)
+  defp apply_action(state, action, args, _version), do: apply_action(state, action, args)
+
   defp apply_action(state, "snapshot", args) when map_size(args) == 0 do
     rows =
       state.records
@@ -514,56 +518,6 @@ defmodule IpseKnowledge.Test.CASFixture do
     end
   end
 
-  defp apply_action(state, "cas_root", args) do
-    key = args["key"]
-    root = args["next_root"]
-    old = record(state, key)
-
-    valid =
-      keys?(
-        args,
-        ~w(key expected_revision expected_source_generation expected_content_sha256 draft_id next_root)
-      ) and hash?(key, 64) and is_map(root) and
-        root["kind"] == "root" and root["partition"] == state.partition and
-        byte_size(json(root)) <= 6000 and
-        key == digest("root", [state.partition, root["source_key"]])
-
-    cond do
-      not valid ->
-        {"refused", %{}, state}
-
-      old["revision"] != args["expected_revision"] ->
-        {"conflict", %{}, state}
-
-      args["expected_source_generation"] != get_in(old, ["value", "generation"]) or
-        args["expected_content_sha256"] != get_in(old, ["value", "content_sha256"]) or
-          args["draft_id"] != get_in(old, ["value", "draft", "id"]) ->
-        {"conflict", %{}, state}
-
-      old["value"] && old["value"]["state"] == "suppressed" ->
-        {"refused", %{}, state}
-
-      not selected_refs?(root, state.records) ->
-        {"refused", %{}, state}
-
-      true ->
-        row = %{
-          "key" => key,
-          "revision" => old["revision"] + 1,
-          "deleted" => false,
-          "value" => root
-        }
-
-        next = %{
-          state
-          | records: Map.put(state.records, key, row),
-            generation: state.generation + 1
-        }
-
-        if quota?(next), do: {"ok", %{"record" => row}, next}, else: {"refused", %{}, state}
-    end
-  end
-
   defp apply_action(
          state,
          "collect",
@@ -606,6 +560,83 @@ defmodule IpseKnowledge.Test.CASFixture do
 
   defp apply_action(state, _, _), do: {"refused", %{}, state}
 
+  defp root_cas(state, args, version) do
+    key = args["key"]
+    root = args["next_root"]
+    old = record(state, key)
+
+    fields =
+      ~w(key expected_revision expected_source_generation expected_content_sha256 draft_id next_root)
+
+    fields = if version == 2, do: ["expected_generation" | fields], else: fields
+
+    valid =
+      keys?(args, fields) and hash?(key, 64) and is_map(root) and
+        (version == 1 or
+           ((args["expected_generation"] == nil or uint?(args["expected_generation"])) and
+              (old["revision"] > 0 or uint?(args["expected_generation"])))) and
+        root["kind"] == "root" and root["partition"] == state.partition and
+        byte_size(json(root)) <= 6000 and
+        key == digest("root", [state.partition, root["source_key"]])
+
+    cond do
+      not valid ->
+        {"refused", %{}, state}
+
+      version == 2 and old["deleted"] and old["revision"] > 0 ->
+        {"refused", %{}, state}
+
+      old["revision"] != args["expected_revision"] ->
+        root_conflict(state, old, version)
+
+      version == 2 and args["expected_generation"] != nil and
+          args["expected_generation"] != state.generation ->
+        root_conflict(state, old, version)
+
+      args["expected_source_generation"] != get_in(old, ["value", "generation"]) or
+        args["expected_content_sha256"] != get_in(old, ["value", "content_sha256"]) or
+          args["draft_id"] != get_in(old, ["value", "draft", "id"]) ->
+        root_conflict(state, old, version)
+
+      old["value"] && old["value"]["state"] == "suppressed" ->
+        {"refused", %{}, state}
+
+      not selected_refs?(root, state.records) ->
+        {"refused", %{}, state}
+
+      true ->
+        row = %{
+          "key" => key,
+          "revision" => old["revision"] + 1,
+          "deleted" => false,
+          "value" => root
+        }
+
+        next = %{
+          state
+          | records: Map.put(state.records, key, row),
+            generation: state.generation + 1
+        }
+
+        if quota?(next), do: {"ok", %{"record" => row}, next}, else: {"refused", %{}, state}
+    end
+  end
+
+  defp root_conflict(state, _old, 1), do: {"conflict", %{}, state}
+
+  defp root_conflict(state, old, 2) do
+    summary = %{
+      "key" => old["key"],
+      "revision" => old["revision"],
+      "deleted" => old["deleted"],
+      "source_generation" => get_in(old, ["value", "generation"]),
+      "content_sha256" => get_in(old, ["value", "content_sha256"]),
+      "draft_id" => get_in(old, ["value", "draft", "id"])
+    }
+
+    {"conflict", %{"record" => summary}, state}
+  end
+
   defp state_host(state, request) do
     operation = request["op"]
     key = request["key"]
@@ -646,7 +677,15 @@ defmodule IpseKnowledge.Test.CASFixture do
 
       _ ->
         cond do
+          Map.has_key?(request, "expected_generation") and
+              not uint?(request["expected_generation"]) ->
+            {%{"status" => "denied", "value" => %{}}, state}
+
           old["revision"] != request["expected_revision"] ->
+            {%{"status" => "conflict", "value" => %{}}, state}
+
+          Map.has_key?(request, "expected_generation") and
+              request["expected_generation"] != state.generation ->
             {%{"status" => "conflict", "value" => %{}}, state}
 
           true ->
@@ -821,6 +860,7 @@ defmodule IpseKnowledge.Test.CASFixture do
   defp hash?(value, n),
     do: is_binary(value) and Regex.match?(Regex.compile!("\\A[0-9a-f]{#{n}}\\z"), value)
 
+  defp uint?(value), do: is_integer(value) and value in 0..9_007_199_254_740_991
   defp keys?(value, fields), do: is_map(value) and Enum.sort(Map.keys(value)) == Enum.sort(fields)
   defp json(value), do: JSON.encode!(value) |> IO.iodata_to_binary()
 

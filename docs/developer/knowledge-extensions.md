@@ -112,6 +112,23 @@ registers a source draft before immutable content and chunk pages are written.
 A final CAS selects those pages. Unselected pages are inert; a conflict or
 unknown effect never retries publication.
 
+Follow `Store.cas/4` through `root_admission/2` before changing source creation.
+A new root uses the actual missing target at revision zero and the completed
+snapshot's namespace generation. Store checks capacity again at this boundary.
+The State adapter includes the generic `state.put.expected_generation` condition;
+the host compares it under its existing namespace file lock. The first creator
+advances generation, so a second creator from that snapshot conflicts even at a
+different source key. Pages and existing-root updates omit the condition. They
+must survive their own earlier page and draft writes. A positive-revision
+tombstone at a root key refuses as corrupt store state, rather than becoming a
+free source slot.
+
+Keep the 32-root policy in Store. The host knows only revisions, generations and
+opaque values. Read the [conditional State contract](extension-host-calls.md#bind-a-write-to-a-namespace-snapshot)
+for precedence and exact receipts. The condition introduces no reservation
+record, extra host call or automatic retry. Unrelated namespace writes can
+conservatively invalidate admission.
+
 Storage revision and source generation have different meanings. Every root
 mutation advances its revision. A source generation identifies one complete
 source version. Drafts, pages and citations bind that generation and its raw
@@ -198,10 +215,13 @@ keeps its own exact citation basis even when its passage falls outside the rank.
 Coverage separates traversal edges from context facts and counterassertions.
 The conflict predicate compares object identifiers with the same case-insensitive
 matching used for traversal nodes. It preserves the original fields, fact IDs
-and citation bytes. Case variants of one positive relationship are not conflicting
-alternatives; opposite polarities still conflict when their object names differ
-only in case. The Evidence regression exercises classification and traversal in
-both input orders.
+and citation bytes. A conflict requires the same subject, predicate and object
+with opposite polarities. Two positive requirements can coexist because arbitrary
+predicates do not declare a single-value constraint. Case variants of one
+relationship use the same identity rule. The Evidence regressions exercise both
+input orders, compatible requirements and explicit opposites. Under a one-edge
+bound, an unvisited compatible requirement leaves coverage partial and stays
+outside conflict context.
 Lexical results without assessed facts
 remain open for semantic support. Research's provided ledger normalizes supplied
 provenance and cannot manufacture the native [research ledger](research.md)'s
@@ -362,8 +382,19 @@ The extraction adapter sends `max_facts` alongside the selected chunks. Its fixe
 instruction specifies the closed fact fields and absolute half-open UTF8 byte
 offsets. The decoder separately enforces the requested fact count, selected
 profile, chunk identity and exact spans. A prompt is not a substitute for those
-checks. Follow the valid and over-limit response controls in
-`test/knowledge_packages_test.exs` before changing the request or decoder.
+checks. Publication uses `Adapters.attributable_facts?/2` to validate shape and
+source spans, then Store validates the selected chunks and live draft again.
+`Evidence.validate_facts/3` owns query-time eligibility. Calling it during
+publication would silently discard future or past facts before a caller could
+query their validity interval.
+
+Run `mix test test/knowledge_packages_test.exs` and follow its public Graph
+exercise. Extract a future-valid fact, query before its interval and expect
+complete abstention with `excluded_fact`. Query inside the interval and expect
+the retained fact and its original basis. The same exercise covers a past
+interval, a future-observed source and refused attribution to another generation.
+The model adapter control retains future-observed attribution without making a
+model request. Existing controls still refuse over-limit model proposals.
 
 The reranker requires a complete candidate-ID permutation inside exactly one
 `order` object. A bare array, omitted candidate, duplicate or foreign ID refuses;
@@ -397,8 +428,10 @@ cannot fit the preflight plan.
 Host embedding input hashes are opaque. Bind result indices to their original
 inputs and require stable host hashes across pages. Keep raw input hashes
 separately. Verify descriptor identity, offsets, full dimensions, canonical
-Base64, float32 encoding and vector SHA256. Never shorten a vector to fit a text
-response.
+Base64, float32 encoding and vector SHA256. The complete finite float32 range
+is valid, including both signed maxima. The package regression also supplies
+infinity and NaN bit patterns and requires refusal. Never shorten a vector to
+fit a text response.
 
 ## Preserve suppression and migration
 
@@ -413,6 +446,42 @@ finish delayed extraction → refuse stale or suppressed commit
 Suppression roots retain hashes, generation and partition without source text,
 title or URI. Old imports and delayed drafts cannot restore them. Graph traversal
 validates every supporting source. Queries do not rebuild missing projections.
+
+All root creation, including suppression import, passes `Store.capacity/3`.
+Its callers supply the added record count and added root count from the actual
+destination record. A suppression export has no original `source_id`, so import
+uses its destination key instead of trying to reconstruct that ID. Each partition
+permits 32 roots. Snapshot revalidation has the same 32-token bound. The Store
+regression fills that capacity through ordinary imports, refuses another root
+without a write and still suppresses an existing live source at the ceiling.
+Separate State controls fill shared record and byte capacity with another
+partition's records and require refusal before a write.
+
+Counting alone does not make concurrent creation safe. The mixed-operation
+regression stages put, open, forget, source import and suppression import after
+their reads, then releases their first writes one at a time. Each creator gets a
+turn as the first writer. Exactly one can consume the last slot, and the resulting
+32 tokens must pass public revalidation. A separate control repeats the
+distinct-key race through canonical `State.execute/4`, rather than the synthetic
+adapter fixture. Run both Store and State suites when changing admission:
+
+```sh
+mix test test/knowledge_store_test.exs test/extensions_state_test.exs
+```
+
+Older stores can already contain more than 32 roots. Whole-store snapshots refuse
+with `root_capacity_exceeded` before emitting oversized token sets. Addressed
+inspection, paged export and existing-root maintenance remain available within
+the record, byte and invocation limits and the remote snapshot ceiling below.
+Adding another root refuses. Suppression
+retains a root and therefore cannot repair an overfull partition. Preserve the
+data for deliberate migration; do not truncate it or widen query token bounds.
+
+The bound assumes corrected writers. Before selecting new artifacts against a
+shared binding, drain older Sessions and their admitted effects, then retire
+their writer configuration. Optional generic State conditions cannot constrain
+an arbitrary trusted writer that omits them. Valid format-1 stores with at most
+32 roots need no data migration.
 
 Collection removes unreachable bodies while retaining State tombstones. It does
 not recover the 256-record allowance. The 1 MiB ceiling includes old generations,
@@ -454,9 +523,64 @@ Expect eight successful checks, zero model requests and confirmed cleanup. The
 installed exercise hides development tools and checks unchanged host/archive
 files. Neither exercise measures semantic extraction quality.
 
-The MCP store relies on the server's partition access and atomic CAS. Exact
-receipts establish what that selected server asserted. They do not verify its
-internal transactions or enforce a remote ACL.
+## Implement a compatible remote store
+
+The selected `mcp_cas` profile fixes its contract. `ipse-cas-v2` uses inner envelope
+version 2; the surrounding `mcp.call` and result-window transport remain version 1.
+Every action echoes contract, version, partition, action and fresh request ID.
+Read `MCPCAS.envelope/4` and its write-size preflight together so a batch cannot
+be sized under a different contract from the one dispatched.
+
+V2 `cas_root` arguments contain exactly `key`, `expected_revision`,
+`expected_generation`, `expected_source_generation`, `expected_content_sha256`,
+`draft_id` and `next_root`. Creation requires a non-null safe generation.
+Replacement uses null for that condition. The server checks the target revision,
+optional store generation and existing source/hash/draft conditions under one
+atomic owner. A missing-root request without its generation condition refuses
+before mutation. Permanent suppression still refuses replacement.
+The v2 owner also refuses a positive-revision tombstone at a root key; it is
+neither an available creation slot nor an existing source to replace.
+
+Successful conditioned CAS returns the exact next root at the next target
+revision and store generation `G+1`. A v2 conflict carries only a closed record
+summary with `key`, `revision`, `deleted`, `source_generation`, `content_sha256`
+and `draft_id`. The envelope carries current store generation. A missing record
+uses revision zero, deleted true and null source fields. A suppression has its
+positive source generation and null hash/draft. A live root reports its hash and
+nullable draft ID. The client requires at least one requested CAS condition to
+differ; a matching summary cannot claim conflict. No source body is disclosed.
+All v2 positive record receipts and conflict summaries require target revision
+no greater than store generation, including snapshot metadata and full reads,
+immutable writes and collection. A nullable replacement condition does not
+permit an intrinsically impossible successful receipt. Collection also requires
+the requested snapshot generation plus one, since its atomic owner checks that
+condition and advances generation exactly once.
+Revision-zero full records must have the canonical missing form, deleted true
+with a null value. A revision-zero object cannot claim to be a stored live root.
+
+V1 profiles retain their version-1 wire format for reads and existing-root
+updates. New-root creation refuses locally with `atomic_admission_unavailable`,
+before dispatching CAS. Operators explicitly select a compatible v2 service and
+configuration; the client never falls back or upgrades a profile. Both contracts
+read the same persisted root/page format. Drain old v1 writers before relying on
+the new admission guarantee.
+
+Follow `test/support/knowledge_mcp_fixture.exs` into its independent atomic owner.
+It implements both contracts and supplies the public MCP exercises. Exact
+receipts establish what the selected server asserted. They do not verify a real
+server's internal transactions or enforce its partition ACL.
+
+Full MCP snapshots use one directory call and at most eleven groups of eight
+record reads. At 89 retained records the adapter returns `remote_snapshot_limit`
+before Store sees the partition, so even addressed inspect/export/maintenance
+cannot proceed. This bound precedes `root_capacity_exceeded`. The Store control
+seeds 33 roots and 56 tombstones to check that refusal, then removes one
+tombstone to verify the 88-record boundary still permits addressed reads while
+the whole snapshot refuses the root count. Recovery beyond that ceiling needs
+the selected server's administrative export/migration procedure. Do not widen
+the 16-effect allowance or promise that ordinary Ipse exports can bypass it.
+Corpus's selected remote-query route reads only bounded returned references; it
+does not count all roots or assert a whole-partition snapshot.
 
 ## Exercise delayed publication and interrupted inference
 

@@ -7,6 +7,7 @@ preserved pre-rewrite chapters. Their dated bodies and verdicts are unchanged.
 
 | Snapshot | Provenance | Current guidance and retained records |
 | --- | --- | --- |
+| [2026-10-20 whole-source knowledge review](2026-10-20-p27-whole-source-review/index.md) | Whole-P27 internal review, reproduced capacity/time/vector/conflict defects, atomic admission and v1/v2 compatibility repairs | [Corpus](../operator/corpus.md), [Graph](../operator/graph.md), [knowledge training](../developer/knowledge-extensions.md), [State host calls](../developer/extension-host-calls.md), [plan](../plan.md) |
 | [2026-10-20 native fixture identity](2026-10-20-p27-native-fixture-identity/index.md) | Exact macOS copy-fixture failure; fixed-clock copy and Linux Bound constructor repairs, with green exact-source Ubuntu/macOS matrices | [Testing](../developer/testing.md#test-actual-os-enforcement), [plan](../plan.md) |
 | [2026-10-20 hosted job budget](2026-10-20-p27-ci-job-budget/index.md) | Exact `914bc0a` Ubuntu success and macOS 30-minute job cancellation; finite outer budget correction | [Testing](../developer/testing.md#measure-and-report-honestly), [plan](../plan.md) |
 | [2026-10-20 bounded CI fixture waits](2026-10-20-p27-ci-fixture-waits/index.md) | Test-only increment after `063de41`; retained hosted failures, controlled observer-budget regression and passing macOS/Linux affected modules | [Testing](../developer/testing.md#diagnose-worker-and-stdio-cleanup), [plan](../plan.md) |

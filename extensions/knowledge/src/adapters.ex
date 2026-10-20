@@ -382,11 +382,9 @@ defmodule IpseKnowledge.Adapters do
 
   defp run(:extract, %{"kind" => "explicit"}, args) do
     with true <- is_list(args["facts"]) and length(args["facts"]) <= args["max_edges"],
-         {:ok, checked} <-
-           Evidence.validate_facts([args["source"]], args["facts"], args["as_of_ms"]) do
+         true <- attributable_facts?(args["source"], args["facts"]) do
       {:done,
-       {:ok,
-        %{"facts" => checked["facts"], "coverage" => %{"kind" => "explicit"}, "usage" => nil}}}
+       {:ok, %{"facts" => args["facts"], "coverage" => %{"kind" => "explicit"}, "usage" => nil}}}
     else
       _ -> error(:invalid_adapter_input)
     end
@@ -637,18 +635,16 @@ defmodule IpseKnowledge.Adapters do
       if Enum.all?(converted, &match?({:ok, _}, &1)) do
         facts = Enum.map(converted, fn {:ok, f} -> f end)
 
-        case Evidence.validate_facts([s.args["source"]], facts, s.args["as_of_ms"]) do
-          {:ok, checked} ->
-            {:done,
-             {:ok,
-              %{
-                "facts" => checked["facts"],
-                "coverage" => %{"kind" => "model_complete"},
-                "usage" => value["usage"]
-              }}}
-
-          _ ->
-            error(:invalid_model_output)
+        if attributable_facts?(s.args["source"], facts) do
+          {:done,
+           {:ok,
+            %{
+              "facts" => facts,
+              "coverage" => %{"kind" => "model_complete"},
+              "usage" => value["usage"]
+            }}}
+        else
+          error(:invalid_model_output)
         end
       else
         error(:invalid_model_output)
@@ -691,6 +687,14 @@ defmodule IpseKnowledge.Adapters do
     end
   end
 
+  defp attributable_facts?(source, facts) do
+    Evidence.valid_source?(source) and
+      Enum.all?(facts, fn fact ->
+        Evidence.valid_fact?(fact) and
+          Enum.all?(fact["citations"], &Evidence.valid_span?(source, &1))
+      end)
+  end
+
   defp decode_float32(bytes) do
     values = for <<value::float-little-32 <- bytes>>, do: value
 
@@ -701,7 +705,7 @@ defmodule IpseKnowledge.Adapters do
     _ -> {:error, :invalid_embedding_result}
   end
 
-  defp finite?(x), do: is_float(x) and x == x and abs(x) <= 3.402823466e38
+  defp finite?(x), do: is_float(x) and x == x and abs(x) <= 3.4028234663852886e38
 
   defp decode_json(text) do
     try do

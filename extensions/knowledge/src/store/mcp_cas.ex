@@ -31,13 +31,19 @@ defmodule IpseKnowledge.Store.MCPCAS do
         calls: 0
       })
 
-  def start(profile, :cas_root, args),
-    do:
-      dispatch(
-        %{profile: profile, operation: :cas_root, expected: args, calls: 0},
-        "cas_root",
-        args
-      )
+  def start(profile, :cas_root, args) do
+    case root_arguments(profile, args) do
+      {:ok, args} ->
+        dispatch(
+          %{profile: profile, operation: :cas_root, expected: args, calls: 0},
+          "cas_root",
+          args
+        )
+
+      {:error, code} ->
+        error(code)
+    end
+  end
 
   def start(profile, :collect, %{"records" => records, "snapshot_generation" => generation}),
     do:
@@ -99,17 +105,48 @@ defmodule IpseKnowledge.Store.MCPCAS do
 
   def resume(_, _), do: error(:store_response)
 
-  defp dispatch(state, action, args) do
-    id = Base.encode16(:crypto.strong_rand_bytes(16), case: :lower)
+  defp root_arguments(profile, args) do
+    fields =
+      ~w(key expected_revision expected_source_generation expected_content_sha256 draft_id next_root)
 
-    envelope = %{
-      "version" => 1,
-      "contract" => "ipse-cas-v1",
-      "partition" => state.profile["partition"],
-      "request_id" => id,
+    case profile["contract"] do
+      "ipse-cas-v1" ->
+        legacy = Map.delete(args, "expected_generation")
+
+        if args["expected_generation"] == nil and keys?(legacy, fields) and
+             uint?(args["expected_revision"]) and
+             args["expected_revision"] > 0,
+           do: {:ok, legacy},
+           else: {:error, :atomic_admission_unavailable}
+
+      "ipse-cas-v2" ->
+        args = Map.put_new(args, "expected_generation", nil)
+
+        if keys?(args, ["expected_generation" | fields]) and
+             uint?(args["expected_revision"]) and
+             (uint?(args["expected_generation"]) or
+                (args["expected_generation"] == nil and args["expected_revision"] > 0)),
+           do: {:ok, args},
+           else: {:error, :atomic_admission_unavailable}
+
+      _ ->
+        {:error, :store_response}
+    end
+  end
+
+  defp envelope(profile, action, args, request_id),
+    do: %{
+      "version" => if(profile["contract"] == "ipse-cas-v2", do: 2, else: 1),
+      "contract" => profile["contract"],
+      "partition" => profile["partition"],
+      "request_id" => request_id,
       "action" => action,
       "args" => args
     }
+
+  defp dispatch(state, action, args) do
+    id = Base.encode16(:crypto.strong_rand_bytes(16), case: :lower)
+    envelope = envelope(state.profile, action, args, id)
 
     request = %{
       "op" => "mcp.call",
@@ -119,7 +156,8 @@ defmodule IpseKnowledge.Store.MCPCAS do
       "timeout_ms" => 30_000
     }
 
-    if bounded_request?(request) and state.calls < 16 do
+    if state.profile["contract"] in ~w(ipse-cas-v1 ipse-cas-v2) and
+         bounded_request?(request) and state.calls < 16 do
       {:call, request,
        Map.merge(state, %{phase: :call, envelope: envelope, calls: state.calls + 1})}
     else
@@ -141,18 +179,56 @@ defmodule IpseKnowledge.Store.MCPCAS do
 
   defp consume(state, envelope) do
     if keys?(envelope, ~w(version contract partition request_id action status generation value)) and
-         envelope["version"] === 1 and envelope["contract"] == "ipse-cas-v1" and
-         Enum.all?(~w(partition request_id action), &(envelope[&1] == state.envelope[&1])) and
+         Enum.all?(~w(version contract partition request_id action), fn field ->
+           envelope[field] === state.envelope[field]
+         end) and
          envelope["status"] in ~w(ok conflict refused) and uint?(envelope["generation"]) and
          is_map(envelope["value"]) do
       case envelope["status"] do
         "ok" -> accept(state, envelope["value"], envelope["generation"])
-        "conflict" -> error(:conflict)
+        "conflict" -> conflict(state, envelope["value"], envelope["generation"])
         _ -> error(:store_refused)
       end
     else
       error(:store_response)
     end
+  end
+
+  defp conflict(
+         %{operation: :cas_root, profile: %{"contract" => "ipse-cas-v2"}} = state,
+         value,
+         generation
+       ) do
+    summary = value["record"]
+    expected = state.expected
+
+    if keys?(value, ["record"]) and conflict_record?(summary, generation) and
+         summary["key"] == expected["key"] and
+         (summary["revision"] !== expected["expected_revision"] or
+            (expected["expected_generation"] != nil and
+               generation !== expected["expected_generation"]) or
+            summary["source_generation"] !== expected["expected_source_generation"] or
+            summary["content_sha256"] !== expected["expected_content_sha256"] or
+            summary["draft_id"] !== expected["draft_id"]),
+       do: error(:conflict),
+       else: error(:store_response)
+  end
+
+  defp conflict(_, _, _), do: error(:conflict)
+
+  defp conflict_record?(record, generation) do
+    keys?(record, ~w(key revision deleted source_generation content_sha256 draft_id)) and
+      hash?(record["key"]) and uint?(record["revision"]) and
+      record["revision"] <= generation and is_boolean(record["deleted"]) and
+      if record["deleted"] do
+        Enum.all?(~w(source_generation content_sha256 draft_id), &(record[&1] == nil))
+      else
+        record["revision"] > 0 and uint?(record["source_generation"]) and
+          record["source_generation"] > 0 and
+          ((record["content_sha256"] == nil and record["draft_id"] == nil) or
+             (hash?(record["content_sha256"]) and
+                (record["draft_id"] == nil or id?(record["draft_id"]))))
+      end
   end
 
   defp accept(%{operation: :snapshot, stage: :directory} = state, value, generation) do
@@ -161,7 +237,8 @@ defmodule IpseKnowledge.Store.MCPCAS do
     if keys?(value, ~w(records count bytes complete)) and value["complete"] === true and
          is_list(rows) and length(rows) <= 256 and value["count"] === length(rows) and
          uint?(value["bytes"]) and value["bytes"] <= 1_048_576 and
-         Enum.all?(rows, &metadata?/1) and length(Enum.uniq_by(rows, & &1["key"])) == length(rows) do
+         Enum.all?(rows, &(metadata?(&1) and valid_record_generation?(state, &1, generation))) and
+         length(Enum.uniq_by(rows, & &1["key"])) == length(rows) do
       groups = rows |> Enum.map(& &1["key"]) |> Enum.chunk_every(8)
 
       if length(groups) + 1 > 12 do
@@ -203,7 +280,8 @@ defmodule IpseKnowledge.Store.MCPCAS do
 
   defp accept(%{operation: :get_many} = state, value, generation) do
     with true <- state.generation == nil or state.generation == generation,
-         {:ok, records} <- rows(value, state.envelope["args"]["keys"]) do
+         {:ok, records} <- rows(value, state.envelope["args"]["keys"]),
+         true <- Enum.all?(records, &valid_record_generation?(state, &1, generation)) do
       get_next(%{
         state
         | groups: tl(state.groups),
@@ -215,7 +293,7 @@ defmodule IpseKnowledge.Store.MCPCAS do
     end
   end
 
-  defp accept(%{operation: :put_immutable_many} = state, value, _generation) do
+  defp accept(%{operation: :put_immutable_many} = state, value, generation) do
     count = length(state.envelope["args"]["pages"])
     expected = Enum.take(state.pages, count)
 
@@ -225,6 +303,7 @@ defmodule IpseKnowledge.Store.MCPCAS do
            Enum.zip(value["records"], expected)
            |> Enum.all?(fn {actual, page} ->
              record?(actual) and actual["key"] == page["key"] and actual["revision"] == 1 and
+               valid_record_generation?(state, actual, generation) and
                actual["deleted"] == false and actual["value"] === page["value"]
            end) do
       write_next(%{
@@ -241,9 +320,12 @@ defmodule IpseKnowledge.Store.MCPCAS do
     record = value["record"]
 
     if keys?(value, ["record"]) and record?(record) and
+         valid_record_generation?(state, record, generation) and
          record["key"] == state.expected["key"] and
          record["revision"] == state.expected["expected_revision"] + 1 and
-         record["deleted"] == false and record["value"] === state.expected["next_root"],
+         record["deleted"] == false and record["value"] === state.expected["next_root"] and
+         (state.expected["expected_generation"] == nil or
+            generation === state.expected["expected_generation"] + 1),
        do: {:done, {:ok, %{"record" => record, "generation" => generation}}},
        else: error(:store_response)
   end
@@ -252,16 +334,25 @@ defmodule IpseKnowledge.Store.MCPCAS do
     records = value["records"]
 
     if keys?(value, ["records"]) and is_list(records) and
+         (state.profile["contract"] == "ipse-cas-v1" or
+            generation == state.envelope["args"]["snapshot_generation"] + 1) and
          length(records) == length(state.expected) and
          Enum.zip(records, state.expected)
          |> Enum.all?(fn {record, old} ->
            record?(record) and record["key"] == old["key"] and
+             valid_record_generation?(state, record, generation) and
              record["revision"] == old["revision"] + 1 and record["deleted"] and
              record["value"] == nil
          end),
        do: {:done, {:ok, %{"records" => records, "generation" => generation}}},
        else: error(:store_response)
   end
+
+  defp valid_record_generation?(state, record, generation),
+    do:
+      state.profile["contract"] == "ipse-cas-v1" or
+        (record["revision"] <= generation and
+           (record["revision"] > 0 or record["deleted"]))
 
   defp snapshot_next(%{groups: []} = state),
     do:
@@ -296,14 +387,8 @@ defmodule IpseKnowledge.Store.MCPCAS do
       "version" => 1,
       "binding" => state.profile["binding"],
       "timeout_ms" => 30_000,
-      "arguments" => %{
-        "version" => 1,
-        "contract" => "ipse-cas-v1",
-        "partition" => state.profile["partition"],
-        "request_id" => String.duplicate("0", 32),
-        "action" => "put_immutable_many",
-        "args" => args
-      }
+      "arguments" =>
+        envelope(state.profile, "put_immutable_many", args, String.duplicate("0", 32))
     }
 
     pages = if bounded_request?(pair_request), do: pair, else: Enum.take(pair, 1)

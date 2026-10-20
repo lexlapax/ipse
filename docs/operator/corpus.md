@@ -318,8 +318,64 @@ never switch automatically. Budget exhaustion requires a reviewed new decision,
 not an automatic retry in a fresh Session. For attributed graph augmentation,
 follow the independent [Graph procedure](graph.md).
 
+## Select a remote store
+
+Use an MCP store only with a configured server implementing the knowledge CAS
+contract and enforcing its partition permissions. To create new sources, select
+`ipse-cas-v2` explicitly. The client checks returned receipts; it cannot verify
+the server's internal transaction or access controls. No server is installed or
+chosen automatically.
+
+For a lexical Corpus, save this complete options file as
+`$IPSE_CORPUS_ARTIFACTS/remote-options.json`:
+
+```json
+{
+  "version": 1,
+  "stores": {"notes": {"kind": "mcp_cas", "binding": "reviewed", "partition": "manual", "contract": "ipse-cas-v2"}},
+  "search": {}, "fetch": {},
+  "retrieval": {"words": {"kind": "bm25", "version": 1}},
+  "embedding": {}, "rerank": {}, "extraction": {}
+}
+```
+
+Save `{"reviewed":"mcp__local__cas"}` as
+`$IPSE_CORPUS_ARTIFACTS/remote-bindings.json`, replacing `mcp__local__cas` with
+the exact tool ID from your separate [MCP configuration](mcp.md). The alias and
+partition appear in approvals. Build and configure a fresh artifact:
+
+```sh
+elixir extensions/knowledge/build.exs \
+  --sdk _build/dev/lib/ipse/ebin \
+  --output "$IPSE_CORPUS_ARTIFACTS/corpus-remote" \
+  --package corpus --preset mcp-lexical
+elixir extensions/knowledge/config.exs \
+  --artifact "$IPSE_CORPUS_ARTIFACTS/corpus-remote" \
+  --package corpus --preset mcp-lexical --instance corpus \
+  --options "$IPSE_CORPUS_ARTIFACTS/remote-options.json" \
+  --mcp-bindings "$IPSE_CORPUS_ARTIFACTS/remote-bindings.json" \
+  --output "$IPSE_CORPUS_ARTIFACTS/operator-remote.json"
+IPSE_HOME="$IPSE_CORPUS_HOME" ./bin/ipse extension import "$IPSE_CORPUS_ARTIFACTS/corpus-remote"
+```
+
+Inspect the printed digest and validate the generated configuration as in the
+first procedure. Start chat with `--config` pointing to `operator-remote.json`
+and `--mcp-config` pointing to your reviewed MCP file. Use the earlier `source`
+and lexical `query` commands with the selected `notes` store. Expect separate
+MCP approvals and the same citation, coverage and revalidation fields.
+
+An existing `ipse-cas-v1` selection can still read and update existing sources.
+Creating a missing source refuses with `atomic_admission_unavailable` before
+its write. Stop older writers, verify the server's v2 support, then explicitly
+select v2 in a fresh reviewed configuration and Session. Changing the contract
+does not copy local State data to that server or change stored root/page formats.
+
 ## Keep stores bounded and recover from refusal
 
+Each partition permits 32 source roots, including unpublished drafts and
+suppression markers. An import for a new source needs an unused source slot.
+Use a separate reviewed partition
+for new sources when that limit is reached; collection retains existing roots.
 State allows 256 retained record slots and 1 MiB per namespace, including drafts,
 old pages and tombstones. Collection removes unreachable bodies but does not
 recover record slots. Plan exports and a reviewed migration before filling the
@@ -330,18 +386,41 @@ capture, inspect the root and repeat the ingestion procedure as an explicit
 replacement with a newer generation and current revision. Omit
 `historical_import` for that fresh capture, then build its required projections.
 
-The example uses project scope and partition `manual`. Ipse supplies the actual
-workspace namespace. Sharing with Graph requires the same operator State binding
-and partition. A shared profile name alone does not share data. Operator scope
-deliberately shares across workspaces; session scope uses that session's identity.
+Concurrent creation can return `conflict` even when another writer changed a
+different source. The first write checks the store generation used to count
+available slots. Inspect before deciding on a new command; Ipse does not retry
+the failed creation. An unknown result may already have occupied its slot.
 
-A named MCP store uses a fixed operator partition and selected binding. The server
-must enforce partition access and atomic CAS. Approvals show the selected route
-and arguments; they do not enforce a remote namespace. Configure the service
-using the [MCP manual](mcp.md).
+When updating artifacts that share a State binding, close older Sessions and
+wait for their admitted effects to finish before selecting the new writers.
+Retire their old writer configuration. The bound relies on every writer using
+the current admission check; older artifacts or direct trusted State writes can
+bypass it. Existing valid stores need no data conversion.
+
+If an older partition already exceeds 32 roots, a whole-store query refuses with
+`root_capacity_exceeded` once its snapshot completes. A selected remote query
+reads only the server-selected sources and does not check total root count.
+Keep the data and use `inspect` and paged `export` for each known source ID when
+the store fits the read limits below. Existing-source replacement and suppression
+remain available within the other store limits. Suppression still occupies its root,
+so it does not lower this count. Plan a reviewed migration into separate bounded
+partitions instead of deleting markers or editing the State file.
+
+An MCP full-store operation needs at most 12 calls to capture its snapshot.
+That permits 88 retained records, including pages and tombstones, in the selected
+server partition. At 89 records, `remote_snapshot_limit` refuses before the
+root-count check, even for `inspect`, `export` or existing-source maintenance.
+Use the configured server's reviewed administrative export/migration procedure
+to recover a larger store. Preserve source identities and suppression markers.
+Ipse's addressed commands cannot recover it through this bounded contract.
 
 For a denied, unavailable or unknown action, read the result and coverage. Unknown
 work may already have happened. Inspect the source and draft before issuing new
 work; resume does not replay it. An effect or capacity refusal needs a smaller
 explicit batch or reviewed store change. Grants, providers and source/vector
 contents do not change automatically to make a refusal disappear.
+
+The example uses project scope and partition `manual`. Ipse supplies the actual
+workspace namespace. Sharing with Graph requires the same operator State binding
+and partition. A shared profile name alone does not share data. Operator scope
+deliberately shares across workspaces; session scope uses that session's identity.

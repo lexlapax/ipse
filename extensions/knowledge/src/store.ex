@@ -659,7 +659,8 @@ defmodule IpseKnowledge.Store do
     do: %{"effects_used" => state.effects, "reads_used" => state.reads}
 
   defp perform(%{operation: :snapshot} = state) do
-    with {:ok, sources, projections, tokens, gaps} <- selected(state) do
+    with :ok <- snapshot_capacity(state),
+         {:ok, sources, projections, tokens, gaps} <- selected(state) do
       {:done,
        {:ok,
         %{
@@ -758,7 +759,7 @@ defmodule IpseKnowledge.Store do
            "suppressed_at_ms" =>
              Map.get(state.args, "suppressed_at_ms", System.system_time(:millisecond))
          },
-         :ok <- capacity(state, if(record, do: 0, else: 1), 0) do
+         :ok <- capacity(state, if(record, do: 0, else: 1), if(record, do: 0, else: 1)) do
       cas(state, record || missing(root_key(root["partition"], source_key)), root, :committed)
     else
       false -> error(:conflict)
@@ -797,13 +798,18 @@ defmodule IpseKnowledge.Store do
          claimed =
            if(record, do: Map.put(record["value"], "draft", draft), else: staging(source, draft)),
          true <- fits?(claimed),
-         :ok <- capacity(state, if(record, do: 0, else: 1), 0) do
+         :ok <- capacity(state, if(record, do: 0, else: 1), if(record, do: 0, else: 1)) do
       expected = record || missing(root_key(source["partition"], source["source_key"]))
       state = Map.merge(state, %{expected: expected, desired: nil, pages: [], source: source})
 
       if operation == :put do
         with {:ok, plan} <- source_plan(source, draft, nil, 0),
-             :ok <- capacity(state, length(plan.pages) + if(record, do: 0, else: 1), 0),
+             :ok <-
+               capacity(
+                 state,
+                 length(plan.pages) + if(record, do: 0, else: 1),
+                 if(record, do: 0, else: 1)
+               ),
              :ok <- effect_plan(state, length(plan.pages) + 2, 0) do
           desired = active_root(source, plan.progress, plan.chunks, %{}, nil)
 
@@ -1709,15 +1715,26 @@ defmodule IpseKnowledge.Store do
         key = root_key(state.profile["partition"], root["source_key"])
         current = state.cache["records"][key]
 
-        if valid_root?(root, root["partition"]) and root["state"] == "suppressed" and
-             revision(current) == state.args["expected_revision"] do
-          next = Map.put(root, "partition", state.profile["partition"])
-
-          if current && current["value"]["generation"] > next["generation"],
-            do: error(:stale_import),
-            else: cas(%{state | operation: :forget}, current || missing(key), next, :committed)
+        if current && current["deleted"] do
+          error(:store_corrupt)
         else
-          error(:invalid_import)
+          if valid_root?(root, root["partition"]) and root["state"] == "suppressed" and
+               revision(current) == state.args["expected_revision"] do
+            next = Map.put(root, "partition", state.profile["partition"])
+
+            if current && current["value"]["generation"] > next["generation"] do
+              error(:stale_import)
+            else
+              with :ok <-
+                     capacity(state, if(current, do: 0, else: 1), if(current, do: 0, else: 1)) do
+                cas(%{state | operation: :forget}, current || missing(key), next, :committed)
+              else
+                error -> error_result(error)
+              end
+            end
+          else
+            error(:invalid_import)
+          end
         end
 
       envelope["kind"] == "source" ->
@@ -1885,17 +1902,17 @@ defmodule IpseKnowledge.Store do
     end
   end
 
-  defp capacity(state, added, _bytes) do
-    creating =
-      state.operation in [:put, :open, :forget] and
-        find_root(state, state.args["source_id"]) == nil
-
+  defp capacity(state, added, added_roots) do
     cond do
-      length(roots(state)) + if(creating, do: 1, else: 0) > 32 -> {:error, :source_limit}
+      added_roots > 0 and length(roots(state)) + added_roots > 32 -> {:error, :source_limit}
       map_size(state.cache["records"]) + added > 256 -> {:error, :record_limit}
       state.cache["bytes"] + added * 6300 + 6000 > 1_048_576 -> {:error, :store_byte_limit}
       true -> :ok
     end
+  end
+
+  defp snapshot_capacity(state) do
+    if length(roots(state)) <= 32, do: :ok, else: {:error, :root_capacity_exceeded}
   end
 
   defp effect_plan(state, writes, model) do
@@ -1903,7 +1920,8 @@ defmodule IpseKnowledge.Store do
   end
 
   defp cas(state, record, next_root, stage) do
-    if fits?(next_root) and valid_root?(next_root, state.profile["partition"]) do
+    with true <- fits?(next_root) and valid_root?(next_root, state.profile["partition"]),
+         {:ok, expected_generation} <- root_admission(state, record) do
       old = record["value"]
 
       io(
@@ -1912,6 +1930,7 @@ defmodule IpseKnowledge.Store do
         %{
           "key" => record["key"],
           "expected_revision" => record["revision"],
+          "expected_generation" => expected_generation,
           "expected_source_generation" => if(old, do: old["generation"]),
           "expected_content_sha256" => if(old, do: old["content_sha256"]),
           "draft_id" =>
@@ -1921,7 +1940,29 @@ defmodule IpseKnowledge.Store do
         stage
       )
     else
-      error(:root_bounds)
+      false -> error(:root_bounds)
+      other -> error_result(other)
+    end
+  end
+
+  defp root_admission(state, record) do
+    actual = state.cache["records"][record["key"]]
+
+    cond do
+      actual && actual["deleted"] ->
+        {:error, :store_corrupt}
+
+      record["revision"] == 0 ->
+        with true <- actual == nil,
+             :ok <- capacity(state, 1, 1) do
+          {:ok, state.cache["generation"]}
+        else
+          false -> {:error, :conflict}
+          other -> other
+        end
+
+      true ->
+        {:ok, nil}
     end
   end
 
@@ -2258,7 +2299,7 @@ defmodule IpseKnowledge.Store do
   defp profile?(%{"kind" => "mcp_cas"} = p),
     do:
       keys?(p, ~w(kind binding partition contract)) and name?(p["binding"]) and
-        name?(p["partition"]) and p["contract"] == "ipse-cas-v1"
+        name?(p["partition"]) and p["contract"] in ~w(ipse-cas-v1 ipse-cas-v2)
 
   defp profile?(_), do: false
   defp ref?(ref), do: keys?(ref, ~w(key sha256)) and hash?(ref["key"]) and hash?(ref["sha256"])

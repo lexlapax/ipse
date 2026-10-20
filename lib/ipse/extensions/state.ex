@@ -112,8 +112,13 @@ defmodule Ipse.Extensions.State do
   end
 
   defp valid_operation?(%{"op" => "state.put"} = request) do
-    keys?(Map.delete(request, "write_before_ms"), ~w(op scope key expected_revision value)) and
+    keys?(
+      Map.drop(request, ~w(write_before_ms expected_generation)),
+      ~w(op scope key expected_revision value)
+    ) and
       (not Map.has_key?(request, "write_before_ms") or revision?(request["write_before_ms"])) and
+      (not Map.has_key?(request, "expected_generation") or
+         revision?(request["expected_generation"])) and
       key?(request["key"]) and
       revision?(request["expected_revision"]) and is_map(request["value"]) and
       value?(request["value"])
@@ -173,6 +178,9 @@ defmodule Ipse.Extensions.State do
 
     cond do
       request["expected_revision"] != old["revision"] ->
+        {:conflict, %{"record" => Map.drop(old, ["value"]), "generation" => state["generation"]}}
+
+      not generation_matches?(request, state["generation"]) ->
         {:conflict, %{"record" => Map.drop(old, ["value"]), "generation" => state["generation"]}}
 
       match?({:elapsed, _}, deadline_check) ->
@@ -344,6 +352,13 @@ defmodule Ipse.Extensions.State do
   defp id?(id), do: is_binary(id) and Regex.match?(~r/\A[a-f0-9]{32}\z/, id)
   defp revision?(revision), do: is_integer(revision) and revision in 0..@max_revision
 
+  defp generation_matches?(request, generation, increment \\ 0) do
+    case Map.fetch(request, "expected_generation") do
+      :error -> true
+      {:ok, expected} -> revision?(expected) and generation == expected + increment
+    end
+  end
+
   defp value?(value) do
     is_map(value) and byte_size(Jason.encode!(value)) <= 8192 and
       Ipse.Extension.validate(%{"result" => %{"outcome" => %{"record" => %{"value" => value}}}}) ==
@@ -351,7 +366,8 @@ defmodule Ipse.Extensions.State do
   end
 
   def valid_outcome?(request, status, value, operation_id) do
-    is_map(value) and Ipse.Extension.validate(value) == :ok and
+    (not Map.has_key?(request, "expected_generation") or validate(request) == :ok) and
+      is_map(value) and Ipse.Extension.validate(value) == :ok and
       outcome?(request, status, value, operation_id)
   rescue
     _ -> false
@@ -397,6 +413,7 @@ defmodule Ipse.Extensions.State do
         if(record["deleted"], do: is_nil(record["value"]), else: value?(record["value"]))
       else
         record["revision"] == request["expected_revision"] + 1 and
+          generation_matches?(request, value["generation"], 1) and
           record["operation_id"] == operation_id and
           record["deleted"] == (request["op"] == "state.delete") and
           record["value"] == if(request["op"] == "state.put", do: request["value"])
@@ -409,12 +426,15 @@ defmodule Ipse.Extensions.State do
       not is_nil(request["generation"]) and request["generation"] != value["generation"]
   end
 
-  defp outcome?(%{"op" => op} = request, "conflict", value, _)
+  defp outcome?(%{"op" => op} = request, "conflict", value, operation_id)
        when op in ~w(state.put state.delete) do
     keys?(value, ~w(generation record)) and revision?(value["generation"]) and
       summary?(value["record"], value["generation"]) and
       value["record"]["key"] == request["key"] and
-      value["record"]["revision"] != request["expected_revision"]
+      (not Map.has_key?(request, "expected_generation") or
+         value["record"]["operation_id"] != operation_id) and
+      (value["record"]["revision"] != request["expected_revision"] or
+         not generation_matches?(request, value["generation"]))
   end
 
   defp outcome?(
@@ -429,6 +449,7 @@ defmodule Ipse.Extensions.State do
       summary?(value["record"], value["generation"]) and
       value["record"]["key"] == request["key"] and
       value["record"]["operation_id"] != operation_id and
+      generation_matches?(request, value["generation"]) and
       value["record"]["revision"] == request["expected_revision"]
   end
 

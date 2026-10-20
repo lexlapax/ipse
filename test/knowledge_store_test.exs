@@ -50,7 +50,7 @@ defmodule Ipse.KnowledgeStoreTest do
       defp ordered(value),do: value
     end
     state=%{"kind"=>"state","scope"=>"project","partition"=>"notes"}
-    remote=%{"kind"=>"mcp_cas","binding"=>"storage","partition"=>"notes","contract"=>"ipse-cas-v1"}
+    remote=%{"kind"=>"mcp_cas","binding"=>"storage","partition"=>"notes","contract"=>"ipse-cas-v2"}
     invoke=fn db,profile,op,args -> Driver.run(S.start("notes",profile,op,args),db) end
     put=fn text,extra -> Map.merge(%{"source_id"=>"manual:one","generation"=>1,"expected_revision"=>0,"title"=>"A manual","text"=>text,"uri"=>"local:manual","observed_at_ms"=>10,"event_at_ms"=>nil,"expires_at_ms"=>nil},extra) end
     success=fn result -> assert {:done,{:ok,value}}=result; value end
@@ -375,6 +375,267 @@ defmodule Ipse.KnowledgeStoreTest do
     {r,db}=invoke.(db,Map.put(state,"partition","migration"),:import,%{"expected_revision"=>0,"export"=>first}); assert {:done,{:error,:incomplete_import,%{}}}=r
     {r,_}=invoke.(db,state,:export,%{"source_id"=>"manual:one","cursor"=>first["next"],"limit"=>4}); last=success.(r)
     assert last["complete"]; assert first["text"]<>last["text"]==String.duplicate("x",5000)
+    ''')
+  end
+
+  test "suppression imports respect source capacity and preserve replacement at the ceiling" do
+    isolated(~S'''
+    writes=fn db -> F.requests(db) |> Enum.count(&(&1["op"]=="state.put" or get_in(&1,["arguments","action"])=="cas_root")) end
+    for profile <- [state,remote] do
+      {r,db}=invoke.(F.new(),profile,:put,put.("retained live source",%{})); success.(r)
+      {db,exports}=Enum.reduce(1..31,{db,[]},fn index,{db,exports} ->
+        source_id="suppressed:#{index}"
+        {r,donor}=invoke.(F.new(),profile,:forget,%{"source_id"=>source_id,"expected_revision"=>0,"suppressed_at_ms"=>20}); success.(r)
+        {r,_}=invoke.(donor,profile,:export,%{"source_id"=>source_id,"cursor"=>nil,"limit"=>1}); exported=success.(r)
+        {r,db}=invoke.(db,profile,:import,%{"expected_revision"=>0,"export"=>exported}); success.(r)
+        {db,[exported|exports]}
+      end)
+      {snap,db}=snapshot.(db,profile)
+      assert length(snap["tokens"])==32
+      {r,db}=invoke.(db,profile,:revalidate,%{"tokens"=>snap["tokens"]}); assert success.(r)["valid"]
+      extra=hd(exports) |> put_in(["root","source_key"],E.sha256("suppressed:33"))
+      {r,unchanged}=invoke.(db,profile,:import,%{"expected_revision"=>0,"export"=>extra})
+      assert {:done,{:error,:source_limit,%{}}}=r
+      assert unchanged.records==db.records
+      assert writes.(unchanged)==writes.(db)
+      {r,donor}=invoke.(F.new(),profile,:forget,%{"source_id"=>"manual:one","expected_revision"=>0,"suppressed_at_ms"=>20}); success.(r)
+      {r,_}=invoke.(donor,profile,:export,%{"source_id"=>"manual:one","cursor"=>nil,"limit"=>1}); exported=success.(r)
+      key=S.root_key(profile["partition"],exported["root"]["source_key"])
+      replacement=put_in(exported,["root","generation"],2)
+      {r,replaced}=invoke.(db,profile,:import,%{"expected_revision"=>db.records[key]["revision"],"export"=>replacement}); success.(r)
+      assert map_size(replaced.records)==map_size(db.records)
+      assert replaced.records[key]["value"]["generation"]==2
+    end
+    ''')
+  end
+
+  test "concurrent root creators share one atomic admission at the source ceiling" do
+    isolated(~S'''
+    defmodule RootAdmissionHold do
+      def run({:call,%{"op"=>"state.put"},_}=pending,db),do: {pending,db}
+      def run({:call,%{"op"=>"mcp.call","arguments"=>%{"action"=>"cas_root"}},_}=pending,db),do: {pending,db}
+      def run({:call,request,continuation},db) do
+        {outcome,db}=IpseKnowledge.Test.CASFixture.host(db,request)
+        run(IpseKnowledge.Store.resume(continuation,outcome),db)
+      end
+    end
+    for profile <- [state,remote] do
+      {seed,exported}=Enum.reduce(1..31,{F.new(),nil},fn index,{db,_} ->
+        source_id="seed:#{index}"
+        {r,donor}=invoke.(F.new(),profile,:forget,%{"source_id"=>source_id,"expected_revision"=>0,"suppressed_at_ms"=>20}); success.(r)
+        {r,_}=invoke.(donor,profile,:export,%{"source_id"=>source_id,"cursor"=>nil,"limit"=>1}); exported=success.(r)
+        {r,db}=invoke.(db,profile,:import,%{"expected_revision"=>0,"export"=>exported}); success.(r)
+        {db,exported}
+      end)
+      {r,donor}=invoke.(F.new(),profile,:put,put.("A new source.",%{"source_id"=>"contender:source_import"})); success.(r)
+      {r,_}=invoke.(donor,profile,:export,%{"source_id"=>"contender:source_import","cursor"=>nil,"limit"=>1}); source_export=success.(r)
+      creators=[:put,:open,:forget,:import,:source_import]
+      for winner <- creators do
+        order=[winner|creators--[winner]]
+        {pending,db}=Enum.map_reduce(order,seed,fn operation,db ->
+          id="contender:#{operation}"
+          args=case operation do
+            :put -> put.("A new source.",%{"source_id"=>id})
+            :open -> put.("A new source.",%{"source_id"=>id}) |> Map.delete("text") |> Map.merge(%{"byte_count"=>13,"content_sha256"=>E.sha256("A new source.")})
+            :forget -> %{"source_id"=>id,"expected_revision"=>0,"suppressed_at_ms"=>20}
+            :import -> %{"expected_revision"=>0,"export"=>put_in(exported,["root","source_key"],E.sha256(id))}
+            :source_import -> %{"expected_revision"=>0,"export"=>source_export}
+          end
+          operation=if operation==:source_import,do: :import,else: operation
+          {held,db}=RootAdmissionHold.run(S.start("notes",profile,operation,args),db)
+          {:call,request,_}=held
+          condition=if profile["kind"]=="state",do: request["expected_generation"],else: request["arguments"]["args"]["expected_generation"]
+          assert condition==seed.generation
+          {held,db}
+        end)
+        {results,db}=Enum.map_reduce(pending,db,fn held,db -> Driver.run(held,db) end)
+        assert Enum.count(results,&match?({:done,{:ok,_}},&1))==1
+        assert match?({:done,{:ok,_}},hd(results))
+        assert Enum.all?(tl(results),&match?({:done,{:error,:conflict,%{}}},&1))
+        {snap,db}=snapshot.(db,profile)
+        assert length(snap["tokens"])==32
+        {r,_}=invoke.(db,profile,:revalidate,%{"tokens"=>snap["tokens"]}); assert success.(r)["valid"]
+      end
+    end
+    ''')
+  end
+
+  test "suppression imports reserve shared State namespace records and bytes before a write" do
+    isolated(~S'''
+    {r,donor}=invoke.(F.new(),state,:forget,%{"source_id"=>"suppressed:quota","expected_revision"=>0,"suppressed_at_ms"=>20}); success.(r)
+    {r,_}=invoke.(donor,state,:export,%{"source_id"=>"suppressed:quota","cursor"=>nil,"limit"=>1}); exported=success.(r)
+    seed=fn count,padding ->
+      records=Map.new(1..count,fn index ->
+        key=E.sha256("other-record-#{index}")
+        {key,%{"key"=>key,"revision"=>1,"deleted"=>false,"operation_id"=>String.duplicate("1",32),
+          "value"=>%{"partition"=>"other","text"=>String.duplicate("x",padding)}}}
+      end)
+      %{F.new()|records: records,generation: count}
+    end
+    encoded_size=fn db -> byte_size(JSON.encode!(%{"version"=>1,"namespace"=>String.duplicate("0",64),
+      "generation"=>db.generation,"records"=>db.records})) end
+    padding=div(1_048_576-10_000-encoded_size.(seed.(180,0)),180)
+    near_bytes=seed.(180,padding)
+    assert encoded_size.(near_bytes)<1_048_576
+    assert encoded_size.(near_bytes)+12_300>1_048_576
+    for {db,code} <- [{seed.(256,0),:record_limit},{near_bytes,:store_byte_limit}] do
+      {r,unchanged}=invoke.(db,state,:import,%{"expected_revision"=>0,"export"=>exported})
+      assert {:done,{:error,^code,%{}}}=r
+      assert unchanged.records==db.records
+      refute Enum.any?(F.requests(unchanged),&(&1["op"]=="state.put"))
+    end
+    ''')
+  end
+
+  test "canonical State binds distinct source creations to the same observed namespace" do
+    isolated(~S'''
+    defmodule CanonicalAdmissionDriver do
+      def run({:call,request,continuation},root,namespace,hold) do
+        if hold and request["op"]=="state.put" do
+          {:held,request,continuation}
+        else
+          operation=Ipse.Usage.id()
+          {status,value}=Ipse.Extensions.State.execute(root,namespace,request,operation)
+          status=Atom.to_string(status)
+          assert Ipse.Extensions.State.valid_outcome?(request,status,value,operation)
+          run(IpseKnowledge.Store.resume(continuation,%{"status"=>status,"value"=>value}),root,namespace,hold)
+        end
+      end
+      def run(result,_,_,_),do: result
+      def release({:held,request,continuation},root,namespace),
+        do: run({:call,request,continuation},root,namespace,false)
+    end
+    seed=Enum.reduce(1..31,F.new(),fn n,db ->
+      {r,db}=invoke.(db,state,:forget,%{"source_id"=>"seed:#{n}","expected_revision"=>0}); success.(r); db
+    end)
+    root=Path.join(System.tmp_dir!(),"ipse-domain-admission-"<>Ipse.Usage.id())
+    namespace=String.duplicate("a",64)
+    try do
+      path=Path.join(root,namespace)
+      File.mkdir_p!(path); File.chmod!(root,0o700); File.chmod!(path,0o700)
+      File.write!(Path.join(path,"state.json"),JSON.encode!(%{"version"=>1,"namespace"=>namespace,"generation"=>seed.generation,"records"=>seed.records}))
+      File.chmod!(Path.join(path,"state.json"),0o600)
+      held=for id <- ["first","second","third"] do
+        pending=S.start("notes",state,:forget,%{"source_id"=>id,"expected_revision"=>0})
+        {:held,request,_}=result=CanonicalAdmissionDriver.run(pending,root,namespace,true)
+        assert request["expected_generation"]==31
+        result
+      end
+      [winner|losers]=Enum.map(held,&CanonicalAdmissionDriver.release(&1,root,namespace))
+      success.(winner)
+      assert Enum.all?(losers,&match?({:done,{:error,:conflict,%{}}},&1))
+      result=CanonicalAdmissionDriver.run(S.start("notes",state,:snapshot,%{}),root,namespace,false)
+      assert length(success.(result)["tokens"])==32
+      file=JSON.decode!(File.read!(Path.join(path,"state.json")))
+      assert file["generation"]==32
+      assert map_size(file["records"])==32
+    after
+      File.rm_rf!(root)
+    end
+    ''')
+  end
+
+  test "legacy remote profiles retain reads and replacements but refuse every missing-root creator" do
+    isolated(~S'''
+    legacy=Map.put(remote,"contract","ipse-cas-v1")
+    {r,seed}=invoke.(F.new(),remote,:put,put.("legacy selected bytes",%{})); stored=success.(r)
+    {snap,seed}=snapshot.(seed,legacy); assert hd(snap["sources"])["text"]=="legacy selected bytes"
+    {r,seed}=invoke.(seed,legacy,:put,put.("updated legacy bytes",%{"generation"=>2,"expected_revision"=>stored["revision"]})); stored=success.(r)
+    {r,seed}=invoke.(seed,legacy,:inspect,%{"source_id"=>"manual:one"}); assert success.(r)["revision"]==stored["revision"]
+    {r,seed}=invoke.(seed,legacy,:export,%{"source_id"=>"manual:one","cursor"=>nil,"limit"=>1}); source_export=success.(r)
+    {r,donor}=invoke.(F.new(),remote,:forget,%{"source_id"=>"another","expected_revision"=>0}); success.(r)
+    {r,_}=invoke.(donor,remote,:export,%{"source_id"=>"another","cursor"=>nil,"limit"=>1}); suppression=success.(r)
+    args=put.("new bytes",%{"source_id"=>"another"})
+    source_export=source_export |> put_in(["source","source_id"],"another") |> put_in(["source","source_key"],E.sha256("another"))
+    for {operation,arguments} <- [
+      {:put,args},
+      {:open,args |> Map.delete("text") |> Map.merge(%{"byte_count"=>9,"content_sha256"=>E.sha256("new bytes")})},
+      {:forget,%{"source_id"=>"another","expected_revision"=>0}},
+      {:import,%{"expected_revision"=>0,"export"=>suppression}},
+      {:import,%{"expected_revision"=>0,"export"=>source_export}}
+    ] do
+      before=length(F.requests(seed))
+      {result,unchanged}=invoke.(seed,legacy,operation,arguments)
+      assert {:done,{:error,:atomic_admission_unavailable,%{}}}=result
+      assert unchanged.records==seed.records
+      refute F.requests(unchanged) |> Enum.drop(before) |> Enum.any?(&(get_in(&1,["arguments","action"])=="cas_root"))
+    end
+    assert F.requests(seed) |> Enum.any?(&(get_in(&1,["arguments","contract"])=="ipse-cas-v1"))
+    ''')
+  end
+
+  test "overfull legacy stores refuse whole queries and retain addressed recovery and maintenance" do
+    isolated(~S'''
+    for profile <- [state,remote] do
+      {r,db}=invoke.(F.new(),profile,:put,put.("preserved recovery bytes",%{})); stored=success.(r)
+      db=Enum.reduce(1..32,db,fn n,db ->
+        source_key=E.sha256("legacy:#{n}"); key=S.root_key("notes",source_key)
+        root=%{"format"=>1,"kind"=>"root","partition"=>"notes","source_key"=>source_key,"generation"=>1,"state"=>"suppressed","suppressed_at_ms"=>20}
+        row=%{"key"=>key,"revision"=>1,"deleted"=>false,"value"=>root,"operation_id"=>String.duplicate("1",32)}
+        row=if profile["kind"]=="mcp_cas",do: Map.delete(row,"operation_id"),else: row
+        %{db|records: Map.put(db.records,key,row),generation: db.generation+1}
+      end)
+      {r,db}=invoke.(db,profile,:snapshot,%{}); assert {:done,{:error,:root_capacity_exceeded,%{}}}=r
+      {r,db}=invoke.(db,profile,:inspect,%{"source_id"=>"manual:one"}); assert success.(r)["revision"]==stored["revision"]
+      {r,db}=invoke.(db,profile,:export,%{"source_id"=>"manual:one","cursor"=>nil,"limit"=>1}); assert success.(r)["source"]["text"]=="preserved recovery bytes"
+      {r,db}=invoke.(db,profile,:put,put.("updated recovery bytes",%{"generation"=>2,"expected_revision"=>stored["revision"]})); stored=success.(r)
+      {r,unchanged}=invoke.(db,profile,:forget,%{"source_id"=>"new","expected_revision"=>0}); assert {:done,{:error,:source_limit,%{}}}=r
+      assert unchanged.records==db.records
+      {r,db}=invoke.(db,profile,:forget,%{"source_id"=>"manual:one","expected_revision"=>stored["revision"]}); success.(r)
+      {r,db}=invoke.(db,profile,:export,%{"source_id"=>"manual:one","cursor"=>nil,"limit"=>1}); assert success.(r)["kind"]=="suppression"
+      {r,_}=invoke.(db,profile,:snapshot,%{}); assert {:done,{:error,:root_capacity_exceeded,%{}}}=r
+    end
+    ''')
+  end
+
+  test "positive-revision root tombstones cannot be reused as a free source slot" do
+    isolated(~S'''
+    for profile <- [state,remote] do
+      key=S.root_key("notes",E.sha256("manual:one"))
+      tombstone=%{"key"=>key,"revision"=>2,"deleted"=>true,"value"=>nil,"operation_id"=>String.duplicate("1",32)}
+      tombstone=if profile["kind"]=="mcp_cas",do: Map.delete(tombstone,"operation_id"),else: tombstone
+      db=%{F.new()|records: %{key=>tombstone},generation: 2}
+      for {operation,args} <- [{:put,put.("new bytes",%{})},{:forget,%{"source_id"=>"manual:one","expected_revision"=>0}}] do
+        {result,unchanged}=invoke.(db,profile,operation,args)
+        assert {:done,{:error,:store_corrupt,%{}}}=result
+        assert unchanged.records==db.records
+        refute Enum.any?(F.requests(unchanged),&(&1["op"]=="state.put" or get_in(&1,["arguments","action"])=="cas_root"))
+      end
+    end
+    ''')
+  end
+
+  test "remote snapshot ceiling also bounds addressed recovery before root-count diagnostics" do
+    isolated(~S'''
+    roots=Map.new(1..33,fn n ->
+      source_key=E.sha256("legacy:#{n}"); key=S.root_key("notes",source_key)
+      value=%{"format"=>1,"kind"=>"root","partition"=>"notes","source_key"=>source_key,"generation"=>1,"state"=>"suppressed","suppressed_at_ms"=>20}
+      {key,%{"key"=>key,"revision"=>1,"deleted"=>false,"value"=>value}}
+    end)
+    tombstones=Map.new(1..56,fn n ->
+      key=E.sha256("retained:#{n}")
+      {key,%{"key"=>key,"revision"=>2,"deleted"=>true,"value"=>nil}}
+    end)
+    records=Map.merge(roots,tombstones)
+    assert map_size(records)==89
+    db=%{F.new()|records: records,generation: 145}
+    operations=[{:snapshot,%{}},{:inspect,%{"source_id"=>"legacy:1"}},
+      {:export,%{"source_id"=>"legacy:1","cursor"=>nil,"limit"=>1}},
+      {:forget,%{"source_id"=>"legacy:1","expected_revision"=>1}}]
+    for contract <- ["ipse-cas-v1","ipse-cas-v2"] do
+      profile=Map.put(remote,"contract",contract)
+      for {operation,args} <- operations do
+        {result,unchanged}=invoke.(db,profile,operation,args)
+        assert {:done,{:error,:remote_snapshot_limit,%{}}}=result
+        assert unchanged.records==db.records and unchanged.generation==db.generation
+        assert Enum.map(F.requests(unchanged) |> Enum.filter(&(&1["op"]=="mcp.call")),& &1["arguments"]["action"])==["snapshot"]
+      end
+      bounded=%{db|records: Map.delete(db.records,E.sha256("retained:56"))}
+      {result,bounded}=invoke.(bounded,profile,:snapshot,%{})
+      assert {:done,{:error,:root_capacity_exceeded,%{}}}=result
+      {result,bounded}=invoke.(bounded,profile,:inspect,%{"source_id"=>"legacy:1"}); assert success.(result)["state"]=="suppressed"
+      {result,_}=invoke.(bounded,profile,:export,%{"source_id"=>"legacy:1","cursor"=>nil,"limit"=>1}); assert success.(result)["kind"]=="suppression"
+    end
     ''')
   end
 

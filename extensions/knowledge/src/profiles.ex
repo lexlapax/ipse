@@ -132,7 +132,7 @@ defmodule IpseKnowledge.Profiles do
   defp profile?("stores", %{"kind" => "mcp_cas"} = p),
     do:
       exact?(p, ~w(kind binding partition contract)) and name?(p["binding"]) and
-        name?(p["partition"]) and p["contract"] == "ipse-cas-v1"
+        name?(p["partition"]) and p["contract"] in ~w(ipse-cas-v1 ipse-cas-v2)
 
   defp profile?(f, %{"kind" => "provided"} = p) when f in ~w(search fetch),
     do: exact?(p, ~w(kind version)) and p["version"] == 1

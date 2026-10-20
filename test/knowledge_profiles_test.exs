@@ -60,6 +60,8 @@ defmodule Ipse.KnowledgeProfilesTest do
     assert {:error,:invalid_profile}=P.validate("corpus","state-lexical",put_in(lexical,["retrieval","words","module"],"Elixir.File"))
     remote=put_in(lexical,["stores","notes"],%{"kind"=>"mcp_cas","binding"=>"reviewed","partition"=>"project-a","contract"=>"ipse-cas-v1"})
     assert {:ok,_}=P.validate("corpus","mcp-lexical",remote)
+    assert {:ok,_}=P.validate("corpus","mcp-lexical",put_in(remote,["stores","notes","contract"],"ipse-cas-v2"))
+    assert {:error,:invalid_profile}=P.validate("corpus","mcp-lexical",put_in(remote,["stores","notes","contract"],"ipse-cas-v3"))
     assert {:error,:profile_authority_mismatch}=P.validate("corpus","state-lexical",remote)
     assert {:error,:invalid_profile}=P.validate("corpus","mcp-lexical",put_in(remote,["stores","notes","endpoint"],"https://unreviewed"))
     assert {:error,:invalid_options}=P.validate("corpus","state-lexical",Map.delete(lexical,"extraction"))

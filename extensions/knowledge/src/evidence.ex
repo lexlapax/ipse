@@ -581,8 +581,7 @@ defmodule IpseKnowledge.Evidence do
     other["fact_id"] != fact["fact_id"] and
       String.downcase(other["subject"]) == String.downcase(fact["subject"]) and
       String.downcase(other["predicate"]) == String.downcase(fact["predicate"]) and
-      ((other["polarity"] == "positive" and fact["polarity"] == "positive" and not same_object) or
-         (same_object and other["polarity"] != fact["polarity"])) and
+      same_object and other["polarity"] != fact["polarity"] and
       overlaps?(fact, other)
   end
 
