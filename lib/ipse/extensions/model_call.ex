@@ -26,6 +26,7 @@ defmodule Ipse.Extensions.ModelCall do
       validate(proposed["request"]) == :ok and valid_profile?(proposed["execution"]) and
       proposed["execution"]["id"] == proposed["request"]["profile"] and
       proposed["execution"]["provider"] in ~w(chatgpt openai ollama anthropic) and
+      supported_response?(proposed["request"], proposed["execution"]["provider"]) and
       Ipse.Provider.valid_destination?(proposed["destination"]) and
       id?(proposed["namespace"])
   rescue
@@ -35,11 +36,13 @@ defmodule Ipse.Extensions.ModelCall do
   def delegated_approval?(_, _), do: false
 
   def validate(request) do
+    version = if is_map(request), do: request["version"]
+
     schema = %{
       "type" => "object",
       "properties" => %{
         "op" => %{"type" => "string", "enum" => ["model.complete"]},
-        "version" => %{"type" => "integer", "enum" => [1]},
+        "version" => %{"type" => "integer", "enum" => [1, 2]},
         "profile" => %{"type" => "string", "minLength" => 1, "maxLength" => 64},
         "instruction" => %{"type" => "string", "maxLength" => 2048},
         "input" => %{"type" => "string", "minLength" => 1, "maxLength" => 4096},
@@ -50,11 +53,21 @@ defmodule Ipse.Extensions.ModelCall do
       "additionalProperties" => false
     }
 
+    schema =
+      if version === 2 do
+        schema
+        |> put_in(["properties", "response_schema"], %{"type" => "object"})
+        |> Map.update!("required", &(&1 ++ ["response_schema"]))
+      else
+        schema
+      end
+
     with :ok <- Ipse.MCP.Schema.validate_arguments(schema, request),
-         true <- request["version"] === 1,
+         true <- version === 1 or version === 2,
+         :ok <- validate_response_schema(request),
          true <- Regex.match?(~r/\A[A-Za-z][A-Za-z0-9_-]{0,63}\z/, request["profile"]),
          true <- is_integer(request["timeout_ms"]) and is_integer(request["max_output_bytes"]),
-         true <- byte_size(Jason.encode!(request)) <= 8192,
+         true <- byte_size(Jason.encode!(request)) <= if(version == 2, do: 12_288, else: 8192),
          :ok <- Ipse.Extension.validate(request) do
       :ok
     else
@@ -100,6 +113,7 @@ defmodule Ipse.Extensions.ModelCall do
          true <-
            profile["id"] == request["profile"] and
              profile["provider"] in ~w(chatgpt openai ollama anthropic),
+         true <- supported_response?(request, profile["provider"]),
          cap =
            Ipse.Provider.Limits.narrow(scope["max_output_tokens"], profile["max_output_tokens"]),
          cap =
@@ -146,6 +160,11 @@ defmodule Ipse.Extensions.ModelCall do
           max_response_bytes: @wire_bytes,
           timeout_ms: execution["timeout_ms"]
         })
+
+      runtime =
+        if request["version"] == 2,
+          do: Map.put(runtime, :extension_response_schema, request["response_schema"]),
+          else: runtime
 
       runtime =
         if profile["base_url"],
@@ -224,6 +243,7 @@ defmodule Ipse.Extensions.ModelCall do
       keys?(value, ~w(version request_id attempt_id profile reported_model text usage)) and
       value["version"] === 1 and value["request_id"] == operation and id?(value["attempt_id"]) and
       value["profile"] == request["profile"] and text?(value["text"], request["max_output_bytes"]) and
+      matches_response?(request, value["text"]) and
       (is_nil(value["reported_model"]) or
          Ipse.RuntimeInfo.model_name(value["reported_model"]) == value["reported_model"]) and
       Ipse.Usage.Normalizer.valid?(value["usage"])
@@ -350,7 +370,8 @@ defmodule Ipse.Extensions.ModelCall do
   def value_from_record(request, admission, record, assistant) do
     if is_map(assistant) and assistant["role"] == "assistant" and
          assistant["tool_calls"] in [nil, []] and
-         text?(assistant["content"], request["max_output_bytes"]) do
+         text?(assistant["content"], request["max_output_bytes"]) and
+         matches_response?(request, assistant["content"]) do
       value = %{
         "version" => 1,
         "request_id" => admission["request_id"],
@@ -379,6 +400,33 @@ defmodule Ipse.Extensions.ModelCall do
 
   defp text?(text, limit),
     do: is_binary(text) and String.valid?(text) and byte_size(text) <= limit
+
+  defp validate_response_schema(%{"version" => 1}), do: :ok
+
+  defp validate_response_schema(%{
+         "version" => 2,
+         "response_schema" => %{"type" => "object"} = schema
+       }),
+       do: Ipse.MCP.Schema.validate_schema(schema)
+
+  defp validate_response_schema(_), do: @error
+
+  defp supported_response?(request, provider),
+    do: request["version"] == 1 or provider == "ollama"
+
+  defp matches_response?(%{"version" => 1}, _text), do: true
+
+  defp matches_response?(%{"version" => 2} = request, text) do
+    with {:ok, object} <- Ipse.JSON.decode_bounded(text, request["max_output_bytes"]),
+         :ok <- Ipse.MCP.Schema.validate_object(object),
+         :ok <- Ipse.MCP.Schema.validate_result(request["response_schema"], object) do
+      true
+    else
+      _ -> false
+    end
+  end
+
+  defp matches_response?(_, _), do: false
 
   defp id?(id), do: is_binary(id) and Regex.match?(~r/\A[0-9a-f]{32}\z/, id)
   defp keys?(value, keys), do: is_map(value) and Enum.sort(Map.keys(value)) == Enum.sort(keys)

@@ -3,7 +3,8 @@ defmodule IpseModelExample.Proof do
   alias Ipse.{Session, Journal, Usage, Budget}
   alias Ipse.Extensions.{Store, Config, Registry}
 
-  def run(artifact, thinking \\ nil) when thinking in [nil, "none"] do
+  def run(artifact, thinking \\ nil, output \\ :text)
+      when thinking in [nil, "none"] and output in [:text, :json_schema] do
     {:ok, _} = Application.ensure_all_started(:ipse)
     root = Path.join(System.tmp_dir!(), "ipse-model-proof-#{Usage.id()}")
     File.mkdir_p!(root)
@@ -95,6 +96,26 @@ defmodule IpseModelExample.Proof do
         "max_output_bytes" => 1024
       }
 
+      request =
+        if output == :json_schema,
+          do:
+            Map.merge(request, %{
+              "version" => 2,
+              "response_schema" => %{
+                "type" => "object",
+                "properties" => %{
+                  "names" => %{
+                    "type" => "array",
+                    "items" => %{"type" => "string"},
+                    "maxItems" => 1
+                  }
+                },
+                "required" => ["names"],
+                "additionalProperties" => false
+              }
+            }),
+          else: request
+
       pid = start(config, cwd, dir)
       :ok = Session.invoke_export(pid, :command, "ext__model__complete", %{"request" => request})
 
@@ -114,7 +135,8 @@ defmodule IpseModelExample.Proof do
           5000 -> raise "Model approval was not displayed"
         end
 
-      server = serve_fixture(listener, self())
+      expected_text = if output == :json_schema, do: ~s({"names":["Ada"]}), else: "entities"
+      server = serve_fixture(listener, self(), expected_text)
       Process.put(:model_proof_server, server)
       :ok = Session.approve(pid, ref, true)
       done(pid, :ok)
@@ -131,6 +153,10 @@ defmodule IpseModelExample.Proof do
       true = wire["model"] == "fixture-extract" and wire["tools"] == []
       true = wire["options"] == %{"num_predict" => 32}
 
+      if output == :json_schema,
+        do: true = wire["format"] == request["response_schema"],
+        else: false = Map.has_key?(wire, "format")
+
       if thinking == "none" do
         true = wire["think"] === false
       else
@@ -139,7 +165,7 @@ defmodule IpseModelExample.Proof do
 
       false = String.contains?(String.downcase(headers), "authorization")
       result = Session.info(pid).extension_result["value"]
-      true = result["status"] == "ok" and result["value"]["text"] == "entities"
+      true = result["status"] == "ok" and result["value"]["text"] == expected_text
       true = result["value"]["usage"]["counts"]["total_tokens"] == 10
       false = Jason.encode!(result) =~ "private-fixture"
 
@@ -199,6 +225,7 @@ defmodule IpseModelExample.Proof do
       %{
         "version" => 1,
         "thinking_selection" => thinking || "default",
+        "output_contract" => if(output == :json_schema, do: "json_schema_v2", else: "text_v1"),
         "checks" =>
           Map.new(
             ~w(independent_artifact full_approval explicit_profile private_native_receipt bounded_text canonical_usage accounted_report shared_refusal inert_resume),
@@ -273,7 +300,7 @@ defmodule IpseModelExample.Proof do
     {"http://127.0.0.1:#{port}", listener}
   end
 
-  defp serve_fixture(listener, owner) do
+  defp serve_fixture(listener, owner, text) do
     Task.async(fn ->
       {:ok, socket} = :gen_tcp.accept(listener, 5000)
       {headers, body} = read_request(socket, "")
@@ -291,7 +318,7 @@ defmodule IpseModelExample.Proof do
         framing <>
           Jason.encode!(%{
             "done" => true,
-            "message" => %{"content" => "entities", "thinking" => "private-fixture"},
+            "message" => %{"content" => text, "thinking" => "private-fixture"},
             "model" => "fixture-reported",
             "prompt_eval_count" => 7,
             "eval_count" => 3

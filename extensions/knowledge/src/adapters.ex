@@ -343,7 +343,7 @@ defmodule IpseKnowledge.Adapters do
 
   defp run(
          :rerank,
-         %{"kind" => "model_complete", "profile" => host, "quote_bytes" => quote_bytes},
+         %{"kind" => "model_complete", "quote_bytes" => quote_bytes} = profile,
          args
        ) do
     with true <-
@@ -366,7 +366,7 @@ defmodule IpseKnowledge.Adapters do
          true <- byte_size(input) <= 4096 do
       model(
         :rerank,
-        host,
+        profile,
         @rerank_instruction,
         input,
         args
@@ -386,7 +386,7 @@ defmodule IpseKnowledge.Adapters do
     end
   end
 
-  defp run(:extract, %{"kind" => "model_complete", "profile" => host}, args) do
+  defp run(:extract, %{"kind" => "model_complete"} = profile, args) do
     chunks = args["chunks"]
 
     with true <-
@@ -404,7 +404,7 @@ defmodule IpseKnowledge.Adapters do
          true <- byte_size(input) <= 4096 do
       model(
         :extract,
-        host,
+        profile,
         @extract_instruction,
         input,
         args
@@ -429,19 +429,89 @@ defmodule IpseKnowledge.Adapters do
      %{phase: :mcp_call, operation: operation, args: args, profile: profile, effects: 0}}
   end
 
-  defp model(operation, host, instruction, input, args) do
+  defp model(operation, profile, instruction, input, args) do
     request = %{
       "op" => "model.complete",
       "version" => 1,
-      "profile" => host,
+      "profile" => profile["profile"],
       "instruction" => instruction,
       "input" => input,
       "max_output_bytes" => 8192,
       "timeout_ms" => args["timeout_ms"] || 120_000
     }
 
-    {:call, request,
-     %{phase: :model, operation: operation, host_profile: host, args: args, effects: 0}}
+    request =
+      if profile["output_contract"] == "json_schema_v2",
+        do:
+          Map.merge(request, %{
+            "version" => 2,
+            "response_schema" => response_schema(operation, args)
+          }),
+        else: request
+
+    if byte_size(JSON.encode!(request)) <= if(request["version"] == 2, do: 12_288, else: 8192) do
+      {:call, request,
+       %{
+         phase: :model,
+         operation: operation,
+         host_profile: profile["profile"],
+         args: args,
+         effects: 0
+       }}
+    else
+      error(:invalid_adapter_input)
+    end
+  end
+
+  defp response_schema(:extract, args) do
+    properties = %{
+      "subject" => %{"type" => "string", "minLength" => 1, "maxLength" => 256},
+      "predicate" => %{"type" => "string", "minLength" => 1, "maxLength" => 128},
+      "object" => %{"type" => "string", "minLength" => 1, "maxLength" => 256},
+      "polarity" => %{"type" => "string", "enum" => ~w(positive negative)},
+      "chunk" => %{
+        "type" => "string",
+        "enum" => Enum.map(indexed(args["chunks"], "c"), &elem(&1, 0))
+      },
+      "quote" => %{"type" => "string", "minLength" => 1, "maxLength" => 1024}
+    }
+
+    %{
+      "type" => "object",
+      "properties" => %{
+        "facts" => %{
+          "type" => "array",
+          "maxItems" => args["max_edges"],
+          "items" => %{
+            "type" => "object",
+            "properties" => properties,
+            "required" => ~w(subject predicate object polarity chunk quote),
+            "additionalProperties" => false
+          }
+        }
+      },
+      "required" => ["facts"],
+      "additionalProperties" => false
+    }
+  end
+
+  defp response_schema(:rerank, args) do
+    ids = Enum.map(indexed(args["candidates"], "e"), &elem(&1, 0))
+    item = if ids == [], do: %{"type" => "string"}, else: %{"type" => "string", "enum" => ids}
+
+    %{
+      "type" => "object",
+      "properties" => %{
+        "order" => %{
+          "type" => "array",
+          "minItems" => length(ids),
+          "maxItems" => length(ids),
+          "items" => item
+        }
+      },
+      "required" => ["order"],
+      "additionalProperties" => false
+    }
   end
 
   defp read_text(s) do

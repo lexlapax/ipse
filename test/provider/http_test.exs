@@ -510,6 +510,62 @@ defmodule Ipse.Provider.HTTPTest do
     refute Map.has_key?(request, "think")
   end
 
+  test "native structured format preserves independently selected reasoning and output ceiling" do
+    schema = %{
+      "type" => "object",
+      "properties" => %{"name" => %{"type" => "string"}},
+      "required" => ["name"],
+      "additionalProperties" => false
+    }
+
+    body =
+      Jason.encode!(%{"message" => %{"content" => ~s({"name":"Ada"})}, "done" => true}) <> "\n"
+
+    for reasoning <- [nil, "none"] do
+      {base, server} = fixture(body)
+
+      assert {:ok, _, _} =
+               Provider.complete(
+                 %{
+                   provider: :ollama,
+                   model: "test",
+                   base_url: base,
+                   timeout_ms: 5000,
+                   reasoning_effort: reasoning,
+                   max_output_tokens: 5000,
+                   extension_response_schema: schema
+                 },
+                 [],
+                 [],
+                 fn _ -> :ok end
+               )
+
+      {_, wire} = Task.await(server)
+      assert wire["format"] == schema
+      assert wire["options"] == %{"num_predict" => 5000}
+      assert wire["stream"] == true and wire["tools"] == [] and wire["model"] == "test"
+
+      if reasoning == "none",
+        do: assert(wire["think"] === false),
+        else: refute(Map.has_key?(wire, "think"))
+    end
+  end
+
+  test "structured runtime cannot be silently ignored or replaced by summary policy" do
+    for config <- [
+          %{provider: :openai, model: "test", extension_response_schema: %{}},
+          %{provider: :anthropic, model: "test", extension_response_schema: %{}},
+          %{provider: :chatgpt, model: "test", extension_response_schema: %{}},
+          %{provider: :ollama, model: "test", extension_response_schema: nil},
+          %{provider: :ollama, model: "test", extension_response_schema: %{}, summary_schema: %{}}
+        ] do
+      assert {:error, reason} =
+               Provider.complete(config, [], [], fn _ -> flunk("unexpected provider IO") end)
+
+      assert reason =~ "Structured extension output requires native Ollama"
+    end
+  end
+
   test "Anthropic streams tools and preserves native blocks" do
     body =
       [

@@ -36,6 +36,132 @@ defmodule Ipse.Extensions.ModelCallTest do
     }
   end
 
+  defp structured do
+    Map.merge(request(), %{
+      "version" => 2,
+      "response_schema" => %{
+        "type" => "object",
+        "properties" => %{
+          "names" => %{"type" => "array", "maxItems" => 1, "items" => %{"type" => "string"}}
+        },
+        "required" => ["names"],
+        "additionalProperties" => false
+      }
+    })
+  end
+
+  test "structured requests use a closed v2 variant within the unchanged whole-request bounds" do
+    assert :ok = ModelCall.validate(structured())
+
+    for invalid <- [
+          Map.delete(structured(), "response_schema"),
+          Map.put(structured(), "version", 1),
+          Map.put(structured(), "version", 2.0),
+          Map.put(structured(), "version", 3),
+          Map.put(structured(), "response_schema", nil),
+          Map.put(structured(), "response_schema", %{
+            "type" => "array",
+            "items" => %{"type" => "string"}
+          }),
+          put_in(structured(), ["response_schema", "type"], ["object", "null"]),
+          put_in(structured(), ["response_schema", "$ref"], "https://example.invalid/schema"),
+          put_in(structured(), ["response_schema", "properties", "names", "uniqueItems"], true),
+          put_in(structured(), ["response_schema", "description"], String.duplicate("x", 8193)),
+          Map.put(structured(), "response_format", "json")
+        ],
+        do: assert({:error, _} = ModelCall.validate(invalid))
+
+    # V2 holds schema alongside input; v1 retains its original ceiling.
+    padded =
+      structured()
+      |> put_in(["response_schema", "description"], String.duplicate("x", 5000))
+      |> Map.put("input", String.duplicate("x", 4096))
+      |> Map.put("instruction", String.duplicate("x", 1900))
+
+    assert :ok = ModelCall.validate(padded)
+    room = 12_288 - byte_size(Jason.encode!(padded))
+
+    exact =
+      update_in(padded, ["response_schema", "description"], &(&1 <> String.duplicate("x", room)))
+
+    assert byte_size(Jason.encode!(exact)) == 12_288
+    assert :ok = ModelCall.validate(exact)
+
+    assert {:error, _} =
+             ModelCall.validate(
+               update_in(exact, ["response_schema", "description"], &(&1 <> "x"))
+             )
+  end
+
+  test "structured output is an explicit native selection, never an inherited owner setting" do
+    owner =
+      config()
+      |> Map.put(:extension_response_schema, %{"type" => "string"})
+      |> Map.put(:summary_schema, %{})
+
+    assert {:ok, text, original} = ModelCall.prepare(owner, request())
+    refute Map.has_key?(text, :extension_response_schema)
+    refute Map.has_key?(text, :summary_schema)
+    assert {:ok, json, ^original} = ModelCall.prepare(owner, structured())
+    assert json.extension_response_schema == structured()["response_schema"]
+    assert Map.delete(json, :extension_response_schema) == text
+
+    for provider <- ~w(chatgpt openai anthropic) do
+      profile = %{"provider" => provider, "model" => "fixture"}
+
+      selected =
+        config() |> Map.delete(:max_output_tokens) |> put_in([:profiles, "extract"], profile)
+
+      assert {:ok, _, _} = ModelCall.prepare(selected, request())
+      scope = %{"model_profiles" => ModelCall.snapshot(selected)}
+      assert {:error, _} = ModelCall.execution(scope, structured())
+      assert {:error, _} = ModelCall.prepare(selected, structured())
+    end
+  end
+
+  test "raw structured results are independently checked by live derivation and outcome validation" do
+    admission = %{"request_id" => Ipse.Usage.id(), "attempt_id" => Ipse.Usage.id()}
+    record = %{"reported_model" => nil, "usage" => Ipse.Usage.Normalizer.normalize(:ollama, %{})}
+
+    result = fn text ->
+      ModelCall.value_from_record(structured(), admission, record, %{
+        "role" => "assistant",
+        "content" => text
+      })
+    end
+
+    raw = " \n{\"names\":[\"Ada\"]}\n"
+    assert {:ok, value} = result.(raw)
+    assert value["text"] == raw
+    assert value["version"] == 1
+    assert ModelCall.valid_outcome?(structured(), "ok", value, admission["request_id"])
+
+    for raw <- [
+          "",
+          "[]",
+          "null",
+          "{names:[]}",
+          ~s({"names":[]}{"names":[]}),
+          ~s({"names":[],"names":["Ada"]}),
+          ~S({"na\u006des":[],"names":[]}),
+          ~s({"names":["Ada","Grace"]}),
+          ~s({"names":[1]}),
+          ~s({"other":[]}),
+          ~s({"names":[],"extra":true}),
+          String.duplicate("[", 20) <> String.duplicate("]", 20),
+          <<255>>
+        ] do
+      assert {:failed, %{"code" => "model_response"}} = result.(raw)
+
+      refute ModelCall.valid_outcome?(
+               structured(),
+               "ok",
+               Map.put(value, "text", raw),
+               admission["request_id"]
+             )
+    end
+  end
+
   test "closed request rejects unsupported operations and direct routing or credential overrides" do
     assert :ok = ModelCall.validate(request())
     assert Operation.mutating?(request())

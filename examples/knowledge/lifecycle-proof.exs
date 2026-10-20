@@ -485,7 +485,8 @@ defmodule IpseKnowledgeExample.LifecycleProof do
           "assisted" => %{
             "kind" => "model_complete",
             "profile" => "fixture_extract",
-            "version" => 1
+            "version" => 1,
+            "output_contract" => "json_schema_v2"
           }
         })
       else
@@ -898,8 +899,12 @@ defmodule IpseKnowledgeExample.LifecycleProof do
       |> Map.fetch!("input")
       |> JSON.decode!()
 
-  defp assert_request("graph", body),
-    do: %{"max_facts" => 1, "chunks" => [%{"text" => @text}]} = task_input(body)
+  defp assert_request("graph", body) do
+    %{"max_facts" => 1, "chunks" => [%{"text" => @text}]} = task_input(body)
+    "object" = body["format"]["type"]
+    ["facts"] = body["format"]["required"]
+    1 = body["format"]["properties"]["facts"]["maxItems"]
+  end
 
   defp assert_request("corpus", body), do: [@text] = body["input"]
 

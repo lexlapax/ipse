@@ -4,8 +4,10 @@ defmodule IpseModelExample.PackageProof do
 
   def run([archive, artifact]), do: run([archive, artifact, "default"])
 
-  def run([archive, artifact, selection]) when selection in ["default", "none"] do
-    thinking = if selection == "none", do: "none", else: nil
+  def run([archive, artifact, selection])
+      when selection in ["default", "none", "json", "json-none"] do
+    thinking = if selection in ["none", "json-none"], do: "none", else: nil
+    output_contract = if selection in ["json", "json-none"], do: :json_schema, else: :text
     archive = Path.expand(archive)
     artifact = Path.expand(artifact)
     original = digest(archive)
@@ -62,7 +64,7 @@ defmodule IpseModelExample.PackageProof do
         not (name == "erl" and canonical.(path) in bundled), do: {name, path}
       unless found == [], do: raise("Unexpected system development toolchain")
       Code.require_file(#{inspect(Path.join(__DIR__, "proof.exs"))})
-      IO.puts(:json.encode(IpseModelExample.Proof.run(#{inspect(artifact)}, #{inspect(thinking)})))
+      IO.puts(:json.encode(IpseModelExample.Proof.run(#{inspect(artifact)}, #{inspect(thinking)}, #{inspect(output_contract)})))
       """
 
       {output, status} =

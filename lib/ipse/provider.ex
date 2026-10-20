@@ -7,7 +7,8 @@ defmodule Ipse.Provider do
 
     if adapter do
       try do
-        with :ok <-
+        with :ok <- response_contract(config),
+             :ok <-
                Ipse.Profiles.reasoning(
                  to_string(config[:provider]),
                  config[:model],
@@ -27,6 +28,16 @@ defmodule Ipse.Provider do
       end
     else
       {:error, "Unknown provider. Choose chatgpt, openai, ollama, or anthropic."}
+    end
+  end
+
+  defp response_contract(config) do
+    if not Map.has_key?(config, :extension_response_schema) or
+         (config[:provider] == :ollama and is_map(config[:extension_response_schema]) and
+            not Map.has_key?(config, :summary_schema)) do
+      :ok
+    else
+      {:error, "Structured extension output requires native Ollama without a summary schema."}
     end
   end
 

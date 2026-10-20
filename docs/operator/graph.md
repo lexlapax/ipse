@@ -380,14 +380,22 @@ such as:
   "version": 1,
   "stores": {"notes": {"kind": "state", "scope": "project", "partition": "manual"}},
   "search": {}, "fetch": {}, "retrieval": {}, "embedding": {}, "rerank": {},
-  "extraction": {"assisted": {"kind": "model_complete", "profile": "extractor", "version": 1}}
+  "extraction": {"assisted": {"kind": "model_complete", "profile": "extractor", "version": 1, "output_contract": "json_schema_v2"}}
 }
 ```
 
-Save them as `$IPSE_GRAPH_ARTIFACTS/graph-model-options.json`. Supply a separate
-inference file with the exact
+Save them as `$IPSE_GRAPH_ARTIFACTS/graph-model-options.json`.
+`output_contract: "json_schema_v2"` asks the host to send a task-specific schema
+and accept only matching JSON. It requires a host supporting `model.complete`
+version 2 and a compatible native Ollama service. Other providers refuse before
+model approval or dispatch. Omit `output_contract` to retain the original text
+contract for other providers. There is no automatic fallback between these modes.
+Keep `version: 1` in the extraction profile. `output_contract` selects version 2
+of the host model request; it does not change Graph's profile version.
+
+Supply a separate inference file with the exact
 referenced host profile. This complete example expects an already available
-local tool-capable model; it downloads nothing. This profile explicitly requests
+compatible local model; it downloads nothing. This profile explicitly requests
 disabled thinking. Check that the model's `/api/show` response permits `false`,
 or select a supported model/profile before using it:
 
@@ -454,11 +462,17 @@ separate full model-egress approval and the State writes that publish its result
 Its supporting quote must match exactly once in the selected source chunk;
 malformed JSON, invented chunk IDs, or invalid attribution refuse. This establishes byte
 attribution, not that the relationship accurately interprets the quotation.
-The model receives the explicit `max_facts` bound and must return only the closed
-fact schema. The decoder validates that bound and the cited byte spans independently
-of the instruction.
+The model receives the explicit `max_facts` bound. In the structured mode selected
+above, the host also sends a schema requiring the closed fact shape and that
+count limit. Invalid JSON or a schema mismatch fails the model action while
+retaining its completed usage. No repair request follows.
+Graph then checks the count, UTF-8 byte limits, unique supporting quote and cited
+source spans independently. Schema validity does not prove that a quotation
+supports the relationship.
 Rendered extraction input is at most 4096 bytes and model output at most 8192
-bytes. Two full 2048-byte chunks plus JSON framing can exceed the input allowance;
+bytes. The complete structured request, including schema and JSON escaping, is
+at most 12 KiB. The adapter checks that bound before emitting a model action.
+Two full 2048-byte chunks plus JSON framing can exceed the input allowance;
 select a smaller batch when that happens. No source text is silently shortened.
 Start with the one-fact batch above. Before inference, Store checks the remaining
 effect, read and record allowance and returns a bounded page plan for publication.

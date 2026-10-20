@@ -70,6 +70,25 @@ defmodule Ipse.KnowledgeProfilesTest do
     ''')
   end
 
+  test "native structured output is a closed opt-in on existing model authority" do
+    pure(~S'''
+    model=%{"kind"=>"model_complete","profile"=>"judge","max_candidates"=>16,"quote_bytes"=>128}
+    for family<-~w(rerank extraction) do
+      {package,preset,options,profile}=if family=="rerank",
+        do: {"corpus","state-rerank",lexical,model},
+        else: {"graph","state-model",Map.merge(empty,%{"stores"=>lexical["stores"]}),%{"kind"=>"model_complete","profile"=>"extractor","version"=>1}}
+      options=put_in(options,[family,"chosen"],profile)
+      assert {:ok,_}=P.validate(package,preset,options)
+      selected=put_in(options,[family,"chosen","output_contract"],"json_schema_v2")
+      assert {:ok,_}=P.validate(package,preset,selected)
+      for invalid<-[nil,"json","json_schema_v1","text",true] do
+        assert {:error,:invalid_profile}=P.validate(package,preset,put_in(selected,[family,"chosen","output_contract"],invalid))
+      end
+      assert {:error,:invalid_profile}=P.validate(package,preset,put_in(selected,[family,"chosen","response_schema"],%{"type"=>"object"}))
+    end
+    ''')
+  end
+
   test "Graph and Research reject retrieval profiles their package cannot execute" do
     pure(~S'''
     words=%{"kind"=>"bm25","version"=>1}

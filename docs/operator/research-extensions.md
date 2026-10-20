@@ -380,7 +380,7 @@ artifact with preset `mcp-model`. In a new complete options file, retain the MCP
 registries above and set `rerank` to:
 
 ```json
-{"ordered":{"kind":"model_complete","profile":"reranker","max_candidates":16,"quote_bytes":128}}
+{"ordered":{"kind":"model_complete","profile":"reranker","max_candidates":16,"quote_bytes":128,"output_contract":"json_schema_v2"}}
 ```
 
 This object is the `rerank` registry, not a standalone options file. Supply a
@@ -401,6 +401,13 @@ Save the inference file as `$IPSE_RESEARCH_ARTIFACTS/rerank-inference.json` and 
 complete model-enabled options as
 `$IPSE_RESEARCH_ARTIFACTS/mcp-model-options.json`. The options must still contain
 `version` and all seven registries, not just the rerank fragment above.
+
+Structured output requires a host supporting `model.complete` version 2 and a
+compatible native Ollama service. The host constrains the JSON order shape and
+candidate IDs; Research independently checks complete, duplicate-free coverage.
+Invalid output fails without a repair call and retains completed usage. To use
+the original text contract with another provider, omit `output_contract`.
+Unsupported structured profiles refuse before model approval or dispatch.
 
 This expects an already available local model. Select your actual provider/model
 explicitly using [model profiles](model-profiles.md); no model is downloaded and

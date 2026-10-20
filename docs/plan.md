@@ -375,6 +375,15 @@ then separate opt-in live evidence from credential-free source/package fixtures.
 No framework, database or provider is mandated. P25's findings determine delivery
 order and any justified generic host enhancement before implementation selection.
 
+The user fixed final quality acceptance on 2026-10-20: select a strategy that
+individually meets at least 90% answer support and 95% citation support. Publish
+all seven strategies and all 350 first outcomes; strategies below either target
+do not qualify for selection. Aggregate results remain diagnostic and cannot
+substitute for the selected strategy's scores. This direction does not change
+historical scores or waive safety, resource, structural or documentation gates.
+The scorer's declared selection policy and engine decision still need implementation
+before the new private workload is released.
+
 Delivery keeps the complete acceptance above. Generic API work must precede the
 domain operations that need it; a successful lexical fixture alone cannot close
 the milestone. Preserve current SDK bounds and existing operation authority.
@@ -385,6 +394,7 @@ the milestone. Preserve current SDK bounds and existing operation authority.
 | P27H2 | Approved configured MCP actions from extensions; pinned descriptors, child denial, owned cancellation and unknown-outcome recovery | Complete at `2fe3583`; real stdio/HTTP, denial, cancellation and inert recovery pass; source/installed proofs pass on hosted Linux/macOS at `1f90178` |
 | P27H3 | Versioned embedding operation with selected profiles, bounded ordinary vectors, exact egress, operation-aware accounting/costs/shared budgets and no text-envelope substitution | Complete at `3e32051`; local source/macOS/installed gates and exact-source hosted Linux/macOS source/package/installed proofs pass with 768/4096-coordinate native fixtures |
 | P27H4 | Opt-in bounded complete-result publication for original top-level tools/commands, historical receipt reads, strict source closure and unchanged ordinary SDK bounds | Complete at `fb980a0`; whole-milestone review, local 1,248-test baseline, Serenity 1,265-test native-enabled suite, exact 4 MiB and complete-domain source/installed proofs pass. Exact-source hosted Ubuntu/macOS matrix passes |
+| P27H5 | Explicit schema-bound extension inference, native provider admission, approval and saved-result validation, plus independently selected domain output contracts | Scoped implementation and two corrective reviews pass; corrected-source macOS and native-enabled Linux suites, source/package/installed proofs, unchanged precompiled SDK-1 modes and three actual synthetic native requests pass. Evaluator declaration integration and semantic quality remain open |
 | P27A | Independent research and lexical corpus packages with named interchangeable profiles, cited evidence, explicit limits, partial failures, stale-index handling and suppression | Review repairs and corrected-source fixture/platform/installed checks pass; held-out quality acceptance remains open |
 | P27B | Independent attributable graph, optional extraction, embedding/hybrid and rerank adapters; matched quality/resource comparisons before engine selection | Review defects, compact model contracts and shared original-byte excerpts verified through source/platform/installed checks; corrected-source matched quality/resource comparisons and selection remain open |
 | P27 verification | Frozen held-out workload, zero authority/isolation/replay/resurrection failures, measured retrieval/support/citation/resources, source/native/installed checks, coherent user and contributor manuals | Open; scoped repair reviews/checks pass. The fresh exposed diagnostic completes twelve first rows but retains five failed/partial rows and classification defects. Further quality repair, fresh held-out quality, resource/selection and structural-readiness gates remain |
@@ -634,6 +644,17 @@ then completes all twelve first rows with confirmed service cleanup: seven `ok`,
 four `partial` and one `failed`. Output-shape refusals, extraction deadlines and
 classification defects remain. Further quality repair, structural implementation
 and final private evaluation remain open.
+The subsequent [structured model-call contract](archive/2026-10-20-p27-quality-remediation/index.md#bind-structured-output-to-approved-model-actions)
+preserves text version 1 and adds explicitly selected schema-bound version 2.
+Knowledge extraction and rerank opt in separately. Both corrective reviews are
+clear after a quote-heavy request-bound repair. The same frozen 462-file inventory
+passes macOS's 1,383-test suite and Linux's 1,422-test native-enabled suite, five
+knowledge source/installed proof pairs and all four model-call modes using an
+unchanged precompiled SDK-1 artifact. Three synthetic native first requests pass
+with retained usage and confirmed cleanup. These checks establish compatibility,
+not semantic quality or a resource comparison. Frozen evaluator plans still use
+their original text contract; explicit evaluator schema and qualification-policy
+integration precede the final private workload release.
 The selected-runtime CPU compatibility proof passes two real explicit requests,
 with complete accounting and confirmed cleanup. It establishes no quality or
 exact memory result. The superseded `f2bfc8d` comparison was intentionally stopped

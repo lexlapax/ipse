@@ -129,6 +129,64 @@ defmodule IpseKnowledge.PackagesIsolationTest do
       assert {:done,{:error,:invalid_model_output,%{}}}=Adapters.resume(continuation,%{"status"=>"ok","value"=>Map.put(good,"profile","other")})
     end
 
+    test "structured adapters derive bounded schemas while quote and permutation validation stays independent" do
+      alias IpseKnowledge.{Adapters, Evidence}
+      {:ok, source}=Evidence.source(%{"source_id"=>"schema:release","partition"=>"notes","generation"=>1,
+        "title"=>"Release","text"=>"Release requires quiescence.","uri"=>"local:release","observed_at_ms"=>1,
+        "event_at_ms"=>nil,"expires_at_ms"=>nil,"origin"=>%{"kind"=>"provided","store_profile"=>"notes",
+          "partition_or_scope"=>"notes","receipt"=>nil,"historical"=>false}})
+      {:ok,[chunk]}=Evidence.chunks(source)
+      profile=%{"kind"=>"model_complete","profile"=>"extractor","version"=>1,"output_contract"=>"json_schema_v2"}
+      resolved=%{"options"=>%{"extraction"=>%{"assisted"=>profile}}}
+      args=%{"profile"=>"assisted","source"=>source,"chunks"=>[chunk],"max_edges"=>1}
+      {:call,request,cont}=Adapters.start(resolved,:extract,args)
+      assert request["version"]==2
+      assert request["response_schema"]["properties"]["facts"]["maxItems"]==1
+      assert :ok=Ipse.Extensions.ModelCall.validate(request)
+      proposal=%{"subject"=>"Release","predicate"=>"requires","object"=>"quiescence","polarity"=>"positive","chunk"=>"c1","quote"=>source["text"]}
+      for {quote,valid}<- [{source["text"],true},{"invented supporting quote",false}] do
+        object=%{"facts"=>[Map.put(proposal,"quote",quote)]}
+        assert :ok=Ipse.MCP.Schema.validate_result(request["response_schema"],object)
+        response=%{"status"=>"ok","value"=>%{"profile"=>"extractor","text"=>JSON.encode!(object),"usage"=>nil}}
+        if valid, do: assert(match?({:done,{:ok,_}},Adapters.resume(cont,response))),
+          else: assert({:done,{:error,:invalid_model_output,%{}}}==Adapters.resume(cont,response))
+      end
+      legacy=put_in(resolved,["options","extraction","assisted"],Map.delete(profile,"output_contract"))
+      {:call,old,_}=Adapters.start(legacy,:extract,args)
+      assert old==Map.delete(Map.put(request,"version",1),"response_schema")
+
+      # Large ordinary input and quote-heavy input fit without changing their bytes.
+      chunks=for _<-1..2,do: Map.put(chunk,"text",String.duplicate("x",1950))
+      {:call,large,_}=Adapters.start(resolved,:extract,Map.merge(args,%{"chunks"=>chunks,"max_edges"=>32}))
+      assert byte_size(large["input"])<=4096
+      assert :ok=Ipse.Extensions.ModelCall.validate(large)
+      escaped=Map.put(chunk,"text",String.duplicate("\"",1700))
+      for selection<-[resolved,legacy] do
+        {:call,r,_}=Adapters.start(selection,:extract,Map.put(args,"chunks",[escaped]))
+        assert :ok=Ipse.Extensions.ModelCall.validate(r)
+        assert JSON.decode!(r["input"])["chunks"]==[%{"id"=>"c1","text"=>escaped["text"]}]
+      end
+      too_large=Map.put(chunk,"text",String.duplicate("\"",2048))
+      assert {:done,{:error,:invalid_adapter_input,%{}}}=Adapters.start(resolved,:extract,Map.put(args,"chunks",[too_large]))
+
+      candidates=for i<-1..2,do: %{"citation"=>%{"chunk_id"=>Evidence.sha256("chunk#{i}"),"start_byte"=>0,"end_byte"=>5,"quote"=>"same!"}}
+      rank=%{"options"=>%{"rerank"=>%{"chosen"=>%{"kind"=>"model_complete","profile"=>"ranker","max_candidates"=>16,"quote_bytes"=>128,"output_contract"=>"json_schema_v2"}}}}
+      for xs<-[[],candidates] do
+        {:call,r,continuation}=Adapters.start(rank,:rerank,%{"profile"=>"chosen","query"=>"same","candidates"=>xs})
+        assert r["version"]==2 and :ok==Ipse.Extensions.ModelCall.validate(r)
+        ids=Enum.with_index(xs,1)|>Enum.map(fn {_,i}->"e#{i}" end)
+        object=%{"order"=>Enum.reverse(ids)}
+        assert :ok=Ipse.MCP.Schema.validate_result(r["response_schema"],object)
+        response=fn object -> %{"status"=>"ok","value"=>%{"profile"=>"ranker","text"=>JSON.encode!(object),"usage"=>nil}} end
+        assert {:done,{:ok,_}}=Adapters.resume(continuation,response.(object))
+        if ids != [] do
+          duplicated=%{"order"=>["e1","e1"]}
+          assert :ok=Ipse.MCP.Schema.validate_result(r["response_schema"],duplicated)
+          assert {:done,{:error,:invalid_model_output,%{}}}=Adapters.resume(continuation,response.(duplicated))
+        end
+      end
+    end
+
     test "Graph publishes all32 bounded model proposals and exact-size explicit batches" do
       alias IpseKnowledge.{Evidence,Graph,Store}
       alias IpseKnowledge.Test.CASFixture,as: F

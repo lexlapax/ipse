@@ -492,6 +492,27 @@ effect and record capacity before approving inference. Commit packs the actual
 returned facts and checks that they fit that allowance. Oversized output leaves
 the draft available for inspection and exact abort.
 
+Model extraction and rerank profiles can explicitly add
+`"output_contract": "json_schema_v2"` to their existing fields. `Profiles` accepts
+only that value; omission keeps the original version-1 text request. The compiled
+preset and `host.model` grant still determine authority. For example, select:
+
+```json
+{"kind":"model_complete","profile":"extractor","version":1,"output_contract":"json_schema_v2"}
+```
+
+The profile's version describes the extraction recipe. Its output contract selects
+a version-2 host request with a task-specific `response_schema`. `Adapters.model/5`
+constructs that schema and preflights the complete encoded request. Version 1
+retains its 8 KiB limit; version 2 allows 12 KiB under the unchanged SDK limits.
+The adapter also bounds its separately encoded task input at 4096 bytes. That
+domain limit is independent of the generic host field's 4096-character ceiling.
+The extra room holds the schema beside escaped input. Neither path shortens the
+source or changes providers. The host refuses structured requests unless the
+selected operator profile uses native Ollama. Follow
+[the model-call exercise](extension-model-calls.md) through approval, charged
+failure and saved-source validation before changing this boundary.
+
 The extraction adapter sends `max_facts` alongside selected chunk text, assigning
 local IDs `c1` and `c2` in selection order. The model returns only `facts`, whose
 items have exactly `subject`, `predicate`, `object`, `polarity`, `chunk` and
@@ -940,6 +961,13 @@ Open `examples/knowledge/lifecycle-proof.exs`. Each package runs seven cases thr
 real public Sessions and its independently built worker. An owned loopback server
 returns scripted text or two-coordinate vectors. No model weights or external
 service are used, and these responses measure no retrieval quality.
+
+Graph explicitly selects `output_contract: "json_schema_v2"`. Follow its
+`assert_request/2` check: the actual wire body must contain an object schema with
+required `facts` and `maxItems: 1`. The quota case completes a real structured
+host action before refusing the next request. Domain quote and publication checks
+still run after the host accepts the JSON. Corpus uses its separate embedding
+contract in these cases.
 
 Follow the `forget` case through `interrupted/5`. The first Session registers a
 projection draft, obtains egress approval and dispatches its provider request.

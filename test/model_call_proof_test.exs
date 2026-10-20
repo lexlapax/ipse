@@ -29,5 +29,13 @@ defmodule Ipse.ModelCallProofTest do
     assert quiet["thinking_selection"] == "none"
     assert map_size(quiet["checks"]) == 9
     assert Enum.all?(quiet["checks"], fn {_, passed} -> passed end)
+
+    for thinking <- [nil, "none"] do
+      structured = IpseModelExample.Proof.run(root, thinking, :json_schema)
+      assert structured["output_contract"] == "json_schema_v2"
+      assert structured["thinking_selection"] == (thinking || "default")
+      assert map_size(structured["checks"]) == 9
+      assert Enum.all?(structured["checks"], fn {_, passed} -> passed end)
+    end
   end
 end

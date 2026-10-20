@@ -39,6 +39,11 @@ defmodule Ipse.Provider.Ollama do
     body = if config[:reasoning_effort] == "none", do: Map.put(body, "think", false), else: body
 
     body =
+      if is_map(config[:extension_response_schema]),
+        do: Map.put(body, "format", config.extension_response_schema),
+        else: body
+
+    body =
       if is_map(config[:summary_schema]) do
         Map.merge(body, %{
           "format" => config.summary_schema,

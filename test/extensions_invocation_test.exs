@@ -607,6 +607,203 @@ defmodule Ipse.Extensions.InvocationTest do
     refute_receive {:model_http, _, _}, 20
   end
 
+  test "structured inference binds full approval and native format to live and saved results",
+       ctx do
+    {base, server} = model_fixture(self(), text: ~s({"names":["Ada"]}))
+    config = model_config(ctx.config, base)
+    pid = start(%{ctx | config: config})
+
+    request =
+      structured_model_request()
+      |> Map.put("input", String.duplicate("x", 4096))
+      |> Map.put("instruction", String.duplicate("x", 1900))
+      |> put_in(["response_schema", "description"], "")
+
+    padding = 12_288 - byte_size(Jason.encode!(request))
+    request = put_in(request, ["response_schema", "description"], String.duplicate("x", padding))
+    assert byte_size(Jason.encode!(request)) == 12_288
+    :ok = host_command(pid, request)
+    assert_receive {:ipse, ^pid, {:approval, ref, "extension:model.complete", proposed}}, 3000
+    assert proposed["request"] == request
+    assert Ipse.Extensions.ModelCall.delegated_approval?("extension:model.complete", proposed)
+
+    for provider <- ~w(openai chatgpt anthropic) do
+      facts =
+        proposed["execution"]
+        |> Map.put("provider", provider)
+        |> Map.put(
+          "billing_mode",
+          Ipse.Usage.Normalizer.billing_mode(String.to_existing_atom(provider))
+        )
+
+      refute Ipse.Extensions.ModelCall.delegated_approval?(
+               "extension:model.complete",
+               Map.put(proposed, "execution", facts)
+             )
+    end
+
+    refute_receive {:model_http, _, _}, 20
+    :ok = Session.approve(pid, ref, true)
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+    assert :ok = Task.await(server)
+    assert_receive {:model_http, _, wire}
+    assert wire["format"] == request["response_schema"]
+    assert wire["options"] == %{"num_predict" => 32}
+    refute Map.has_key?(wire, "think")
+    assert %{"status" => "ok", "value" => value} = host_outcome(pid)
+    assert value["text"] == ~s({"names":["Ada"]})
+    id = Session.info(pid).id
+    {:ok, events} = Journal.load(ctx.dir, id)
+    assert {:ok, _} = Ipse.Usage.restore(events, id)
+    assert {:ok, []} = Session.restore_context(events)
+    :ok = Session.close(pid)
+
+    forged_text = ~s({"names":[1]})
+    source = Enum.find(events, &(&1["type"] == "extension_model_request"))
+
+    forged =
+      Enum.map(events, fn event ->
+        case event["type"] do
+          "extension_model_response" ->
+            assistant =
+              event["assistant"]
+              |> Map.put("content", forged_text)
+              |> put_in(["provider_data", "message", "content"], forged_text)
+
+            {:ok, changed} = Ipse.Extensions.ModelCall.response(source["admission"], assistant)
+            changed
+
+          "extension_action_result" ->
+            outcome = put_in(event["outcome"], ["value", "text"], forged_text)
+
+            event
+            |> Map.put("outcome", outcome)
+            |> Map.put("outcome_sha256", Ipse.JSON.digest([outcome]))
+
+          _ ->
+            event
+        end
+      end)
+
+    changed_schema =
+      Enum.map(events, fn event ->
+        if event["type"] in ~w(extension_action_intent extension_action_result),
+          do: put_in(event, ["request", "response_schema", "properties", "names", "maxItems"], 0),
+          else: event
+      end)
+
+    for corrupt <- [forged, changed_schema] do
+      assert {:error, _} = Ipse.Usage.restore(corrupt, id)
+      path = Path.join(ctx.dir, id <> ".jsonl")
+      bytes = Enum.map_join(corrupt, "", &(Jason.encode!(&1) <> "\n")) <> "{partial"
+      File.write!(path, bytes)
+
+      assert {:error, _} =
+               DynamicSupervisor.start_child(
+                 Ipse.Sessions,
+                 {Session,
+                  config: config, cwd: ctx.root, state_dir: ctx.dir, subscriber: self(), id: id}
+               )
+
+      assert File.read!(path) == bytes
+    end
+
+    File.write!(
+      Path.join(ctx.dir, id <> ".jsonl"),
+      Enum.map_join(events, "", &(Jason.encode!(&1) <> "\n"))
+    )
+
+    resumed = start(%{ctx | config: config}, id)
+    assert Session.info(resumed).phase == :idle
+    assert Session.info(resumed).accounting["request_count"] == 1
+    refute_receive {:model_http, _, _}, 20
+  end
+
+  test "unsupported structured profiles refuse before approval, admission or provider IO", ctx do
+    for provider <- ~w(openai chatgpt anthropic) do
+      profile = %{"provider" => provider, "model" => "fixture"}
+
+      config =
+        model_config(ctx.config, "http://127.0.0.1:1")
+        |> Map.delete(:max_output_tokens)
+        |> put_in([:profiles, "extract"], profile)
+
+      pid = start(%{ctx | config: config})
+      :ok = host_command(pid, structured_model_request())
+      assert_receive {:ipse, ^pid, {:done, :error}}, 3000
+      refute_receive {:ipse, ^pid, {:approval, _, _, _}}, 20
+      assert Session.info(pid).accounting["request_count"] == 0
+      {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+
+      refute Enum.any?(
+               events,
+               &(&1["type"] in ~w(extension_action_intent extension_model_request request_admitted))
+             )
+
+      :ok = Session.close(pid)
+    end
+  end
+
+  test "malformed or schema-invalid completed inference stays charged without repair or replay",
+       ctx do
+    for text <- [
+          ~s({names:[]}),
+          ~s({"names":["Ada","Grace"]}),
+          ~s({"names":[],"names":["Ada"]}),
+          "[]"
+        ] do
+      {base, server} = model_fixture(self(), text: text)
+
+      config =
+        model_config(ctx.config, base)
+        |> Map.merge(%{approval: :allow, budget: %{"version" => 1, "max_requests" => 1}})
+
+      pid = start(%{ctx | config: config})
+      :ok = host_command(pid, structured_model_request())
+      assert_receive {:ipse, ^pid, {:done, :ok}}, 3000
+      assert :ok = Task.await(server)
+      assert_receive {:model_http, _, _}
+
+      assert host_outcome(pid) == %{
+               "status" => "failed",
+               "value" => %{"code" => "model_response"}
+             }
+
+      [record] = Session.info(pid).accounting["requests"]
+      assert record["outcome"] == "completed"
+      assert record["usage"]["counts"]["total_tokens"] == 10
+      id = Session.info(pid).id
+      assert {:ok, budget} = Ipse.Budget.saved(ctx.dir, id)
+      assert budget["request_count"] == 1
+      {:ok, events} = Journal.load(ctx.dir, id)
+      native = Enum.find(events, &(&1["type"] == "extension_model_response"))
+      assert native["assistant"]["content"] == text
+      assert {:ok, []} = Session.restore_context(events)
+      assert {:ok, _} = Ipse.Usage.restore(events, id)
+      :ok = Session.close(pid)
+      bytes = File.read!(Path.join(ctx.dir, id <> ".jsonl"))
+      resumed = start(%{ctx | config: config}, id)
+      assert Session.info(resumed).accounting["request_count"] == 1
+      assert File.read!(Path.join(ctx.dir, id <> ".jsonl")) == bytes
+      refute_receive {:model_http, _, _}, 20
+      :ok = Session.close(resumed)
+    end
+  end
+
+  defp structured_model_request do
+    Map.merge(model_request(), %{
+      "version" => 2,
+      "response_schema" => %{
+        "type" => "object",
+        "properties" => %{
+          "names" => %{"type" => "array", "maxItems" => 1, "items" => %{"type" => "string"}}
+        },
+        "required" => ["names"],
+        "additionalProperties" => false
+      }
+    })
+  end
+
   test "denied extension inference never dispatches or consumes shared quota", ctx do
     {base, _} = model_fixture(self())
 

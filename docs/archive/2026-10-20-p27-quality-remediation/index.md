@@ -259,6 +259,77 @@ observations guide further investigation; they are not the independent final
 semantic review or a measured quality improvement. No parser repair, automatic
 classification change, retry or threshold change was made.
 
+## Bind structured output to approved model actions
+
+The complete exposed diagnostic motivated a generic host contract rather than
+parser repair in the benchmark. The increment starts at
+`7e4c638be75c8d151ccc3519f22492d8c58485c4`. Model-call version 1 retains its exact
+seven fields, 8 KiB encoded bound and existing providers. Version 2 requires an
+object-root `response_schema`, admits a complete request through 12 KiB under
+unchanged SDK bounds, and initially uses native Ollama. The full approved request
+hash binds the schema. Live completion and saved-source reconstruction apply the
+same duplicate-key, object-bound and schema checks to the original returned text.
+An invalid completed response remains charged and retained; no repair, retry,
+truncation or provider fallback follows.
+
+Two independent designs and a cross-judge selected the versioned contract with a
+direct schema field and private helpers in the existing ModelCall owner. No new
+runtime module or dependency was added. Knowledge extraction and rerank profiles
+explicitly select `output_contract: "json_schema_v2"`; omission keeps the text
+contract. Adapters derive task cardinality and short-ID schemas, while their exact
+quotation, source attribution, UTF-8 byte and candidate-permutation checks remain
+independent. Old frozen evaluation plans have not been changed to select this mode.
+
+The first review reproduced an escaping regression: a valid 1700-quote chunk
+produced 3448 bytes of task input, a valid 7848-byte legacy request and an
+8460-byte structured request that exceeded the provisional 8 KiB limit. The
+correction gives only the new request variant bounded schema room and adds full
+encoded-request preflight in the independent adapter. Both modes now preserve
+that source exactly. Boundary tests include exact 12 KiB approval, native wire
+and saved recovery; an independent 1800-quote probe covers legacy preflight.
+The [combined review record](structured-reviews.md) retains the original finding,
+corrective reviews, manual reviews and lead dispositions.
+
+The [verification receipt](structured-model.json) binds the corrected
+[source inventory](structured-source.json), full platform results, five knowledge
+source/installed proof pairs and all four model-call combinations using an
+unchanged precompiled SDK-1 artifact. Graph's structured lifecycle proof covers
+seven source and seven installed cases. Installed SDK-1 and Graph harnesses still
+load trusted proof source; stronger common installed isolation remains structural
+work. macOS-specific native suites and the separate measured 350-row synthetic
+comparison were not repeated for this increment.
+
+A fresh owned CPU-only service on the approved runtime completed three synthetic
+first requests for names, facts and order through the actual extension action.
+Their original text passed host schema validation, usage remained recorded and
+native plus staging cleanup was confirmed. This proves compatibility for the
+selected runtime and those schemas. It establishes no held-out semantic quality,
+matched latency, exact charged-memory comparison or engine choice.
+
+Whole relevant manuals were reviewed and corrected. Their literal Graph, Corpus
+and Research options/inference examples pass actual artifact builds, configuration
+generation, import and CLI configuration inspection without a model or MCP call.
+The CI installed model-call step includes both structured combinations alongside
+its existing text selections; no new hosted result is claimed here.
+
+The initial platform verification was deliberately stopped for the review repair.
+SIGTERM produced process status zero without an ExUnit terminal summary. Neither
+initial suite counts as passed. The fresh corrected controllers require an actual
+complete summary as well as successful process status. Final evidence in the
+receipt applies to that corrected source only.
+
+## Fix acceptance scope before private inputs
+
+On 2026-10-20 the user selected the individually qualified strategy rule from
+the pending acceptance-scope question. The final selected strategy must reach
+90% answer support and 95% citation support. All seven strategies and 350 first
+outcomes remain published; a weaker strategy does not qualify for selection.
+The [decision receipt](acceptance-direction.json) records this direction before
+any new private workload release. Historical aggregate scores remain unchanged.
+The declaration, scorer and engine-selection implementation are still pending
+at this decision point. The [current plan](../../plan.md#p27-optional-research-graph-and-rag)
+owns the acceptance requirements.
+
 ## Remaining quality work
 
 The shared excerpt repair removes the separate dense-prefix and first-match

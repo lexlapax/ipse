@@ -211,7 +211,7 @@ cat > "$IPSE_CORPUS_ARTIFACTS/semantic-options.json" <<'JSON'
     }
   },
   "embedding": {"vectors": {"kind": "embedding", "profile": "encoder"}},
-  "rerank": {"ordered": {"kind": "model_complete", "profile": "ranker", "max_candidates": 16, "quote_bytes": 128}},
+  "rerank": {"ordered": {"kind": "model_complete", "profile": "ranker", "max_candidates": 16, "quote_bytes": 128, "output_contract": "json_schema_v2"}},
   "extraction": {}
 }
 JSON
@@ -247,6 +247,14 @@ elixir extensions/knowledge/config.exs \
   --output "$IPSE_CORPUS_ARTIFACTS/operator-semantic.json"
 IPSE_HOME="$IPSE_CORPUS_HOME" ./bin/ipse extension import "$IPSE_CORPUS_ARTIFACTS/corpus-semantic"
 ```
+
+The reranker explicitly selects structured output through native Ollama.
+The host sends a schema for the supplied short candidate IDs and required count.
+Corpus still checks that every candidate appears exactly once. Malformed or
+schema-invalid output fails without a repair request and retains completed usage.
+Use a host supporting `model.complete` version 2 and a compatible native Ollama
+service. For another provider, omit `output_contract` to select the original text
+contract; the host never silently changes modes or providers.
 
 Inspect the actual printed digest as before. Review the generated trust, both
 inference routes and the six-request shared budget. Validate, then start a fresh chat:

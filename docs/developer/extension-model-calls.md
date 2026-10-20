@@ -1,6 +1,6 @@
 # Make an approved extension model call
 
-`model.complete` runs one bounded text request through a named operator profile.
+`model.complete` runs one bounded request through a named operator profile.
 Use it for helper inference inside an invocation or prompt/answer job. Session
 owns provider selection, exact egress approval, shared budgets, canonical usage,
 and recovery. The extension supplies instruction/input and receives bounded text
@@ -28,13 +28,51 @@ Return this outer protocol:
 }
 ```
 
-All seven request fields are required. Unknown fields or versions refuse.
+Version 1 requires exactly these seven fields and returns plain text. Version 2
+adds a required `response_schema` and accepts only a matching JSON object.
+Unknown fields or versions refuse.
 Profile IDs start with an ASCII letter and contain at most 64 letters, digits,
 underscores, or hyphens. Instruction allows at most 2,048 characters; input is
 nonempty and at most 4,096 characters. The complete encoded request is at most
-8 KiB, with additional SDK bounds. `max_output_bytes` is 1–8,192 and `timeout_ms`
+8 KiB for version 1 or 12 KiB for version 2, with the unchanged SDK object bounds.
+The additional version-2 room holds the schema and escaped input together.
+`max_output_bytes` is 1–8,192 and `timeout_ms`
 1,000–120,000. Direct provider/model/endpoint/key overrides, tools, embeddings,
 audio, and continuation are unavailable.
+
+For structured output, select a native Ollama profile and send this complete
+request inside the same `host_call` envelope:
+
+```json
+{
+  "op": "model.complete", "version": 2, "profile": "extract",
+  "instruction": "Return a JSON object with a names array containing names from the input.",
+  "input": "Ada", "max_output_bytes": 1024, "timeout_ms": 5000,
+  "response_schema": {
+    "type": "object",
+    "properties": {"names": {"type": "array", "maxItems": 1, "items": {"type": "string"}}},
+    "required": ["names"], "additionalProperties": false
+  }
+}
+```
+
+The schema root must have `type: "object"`. It uses the same bounded JSON Schema
+subset as [MCP tool validation](mcp.md), without references or loaders. The complete
+request and its SDK envelope still have to fit their own bounds. A schema adds no
+allowance to the input, instruction, deadline or returned-text limits.
+
+`ModelCall.prepare/2` derives the native `format` from this approved request.
+It preserves the profile's reasoning and token settings. It never uses the
+internal summary contract, which changes generation settings. Other providers
+refuse structured requests before approval or admission. Existing version-1
+requests keep their provider behavior. There is no fallback without a schema.
+
+On completion, `value_from_record/4` checks UTF-8 and raw bytes, then decodes one
+duplicate-key-free JSON object. It checks SDK object bounds and the declared
+schema before returning the original text. A schema can constrain fields and
+counts; the domain still has to check meaning, exact quotations and attribution.
+For example, `{"names":["invented"]}` matches the schema above. Schema validation
+does not prove that the name appears in the input.
 
 For native vector generation, use [embedding actions](extension-embedding-actions.md)
 with its distinct profile, typed result and accounting operation. A text response
@@ -70,7 +108,8 @@ fallback. The provider/billing mode never changes silently.
 unsupported subscription output caps refuse. It narrows the operation/profile/
 owner deadlines to at most 120 seconds. Each helper request consumes an owner
 model step and ordinary action step. Extended read allowances do not enlarge
-these limits. Independently bounded input fits below minimum configured context.
+these limits. Helper input uses the request bounds above, independently of the
+main conversation's context limit. The model service enforces its own context window.
 
 Host configuration supplies only the selected profile's public settings and
 private budget/origin references. `Provider.Request` resolves the normal credential
@@ -118,7 +157,9 @@ framing. Keep this separate from the returned text ceiling of at most 8 KiB.
 A stream can carry many framing bytes for a small final answer. This wire bound
 does not bound every HTTP buffer or process heap. Private `extension_model_response` retains
 the original assistant/native data with exact IDs/digest, up to 256 KiB encoded.
-The worker sees only bounded text and own-call normalized usage:
+Both request versions use the same version-1 result envelope. Structured output
+remains the original JSON string in `text`. The worker sees only bounded text and
+own-call normalized usage:
 
 ```json
 {
@@ -135,7 +176,7 @@ The worker sees only bounded text and own-call normalized usage:
 Missing counters remain null under [usage semantics](usage-accounting.md#normalize-units-without-inventing-measurements).
 The result is at most 12,000 encoded bytes before its continuation envelope and
 contains no auth, hidden reasoning, or raw native fields. Returned tool calls,
-invalid/oversized text, or unavailable bounded native receipts produce
+invalid or oversized text, schema-invalid JSON, or unavailable bounded native receipts produce
 `model_response`; nothing is silently truncated or executed. A rejected text
 result can still represent completed metered inference.
 
@@ -155,7 +196,8 @@ usage when the returned text exceeds the extension's requested ceiling.
 Metadata pins the nonsecret profile catalog and owner policy. Changed profiles
 refuse before tail repair. Accounting checks helper admission against its approved
 source; action validation also binds invocation session/turn. Successful cached
-results must match retained response and canonical completion. Registered-child
+results must match retained response and canonical completion. Version-2 restore
+also reapplies the original approved schema to the retained text. Registered-child
 reads validate these sources before using their facts.
 
 Idle resume restores committed results without workers, model calls, or effects.
@@ -168,11 +210,15 @@ Build and run the local HTTP proof after building Ipse:
 elixir examples/model-calls/build.exs --sdk _build/dev/lib/ipse/ebin --output /tmp/ipse-model-artifact
 mix run examples/model-calls/verify.exs /tmp/ipse-model-artifact
 mix run examples/model-calls/verify.exs /tmp/ipse-model-artifact none
+mix run examples/model-calls/verify.exs /tmp/ipse-model-artifact json
+mix run examples/model-calls/verify.exs /tmp/ipse-model-artifact json none
 mix test test/extensions_model_call_test.exs test/extensions_model_jobs_test.exs
 ```
 
-The two runs check omitted and explicit Ollama thinking selection on the wire
-and in the restored execution record. Both check actual loopback routing,
+The four runs cover text and structured output, each with omitted or explicit
+Ollama thinking selection on the wire and in the restored execution record.
+The structured runs check the exact native schema without changing the token
+ceiling. All four check actual loopback routing,
 complete approval, private response, canonical usage, budgets, and unchanged
 idle-resume state. Tests add limits,
 parallel children, cancellation, worker death, and corruption. Use the package

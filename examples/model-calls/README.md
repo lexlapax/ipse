@@ -12,6 +12,8 @@ Build from the repository root after `./scripts/build.sh`:
 elixir examples/model-calls/build.exs --sdk _build/dev/lib/ipse/ebin --output /tmp/ipse-model-artifact
 mix run examples/model-calls/verify.exs /tmp/ipse-model-artifact
 mix run examples/model-calls/verify.exs /tmp/ipse-model-artifact none
+mix run examples/model-calls/verify.exs /tmp/ipse-model-artifact json
+mix run examples/model-calls/verify.exs /tmp/ipse-model-artifact json none
 ```
 
 The build compiles reviewed repository source into an inert artifact; it does not
@@ -24,16 +26,21 @@ explicit profile, private native receipt, bounded text, canonical usage, shared
 configured cost aggregation, main/helper refusal and unchanged journal/budget
 bytes on idle resume. Temporary state is removed; fixture rates are synthetic.
 
-Run both selections. The first leaves thinking at the backend default and checks
+Run all four selections. The first leaves thinking at the backend default and checks
 that no `think` field is sent. The second explicitly selects an Ollama profile
 with `reasoning_effort: "none"`, checks native `think: false`, and restores the
-same execution fact on idle resume. Both use the synthetic HTTP fixture.
+same execution fact on idle resume. The last two select version-2 structured
+output and check the exact native JSON Schema, once with each thinking selection.
+The response keeps the same text/usage envelope. All four use the synthetic HTTP
+fixture, with unchanged output ceilings and no repair or retry.
 
 After packaging, run against a single archive:
 
 ```sh
 elixir examples/model-calls/verify-package.exs dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz /tmp/ipse-model-artifact
 elixir examples/model-calls/verify-package.exs dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz /tmp/ipse-model-artifact none
+elixir examples/model-calls/verify-package.exs dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz /tmp/ipse-model-artifact json
+elixir examples/model-calls/verify-package.exs dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz /tmp/ipse-model-artifact json-none
 ```
 
 Replace the archive path with the actual host's archive. The verifier extracts a

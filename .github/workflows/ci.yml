@@ -65,6 +65,8 @@ jobs:
           elixir examples/model-calls/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-model-calls"
           elixir examples/model-calls/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-model-calls"
           elixir examples/model-calls/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-model-calls" none
+          elixir examples/model-calls/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-model-calls" json
+          elixir examples/model-calls/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-model-calls" json-none
       - name: Independent source and installed MCP-call proof
         run: |
           elixir examples/mcp-actions/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-mcp-actions"

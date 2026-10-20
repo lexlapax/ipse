@@ -176,16 +176,21 @@ defmodule IpseKnowledge.Profiles do
 
   defp profile?("rerank", %{"kind" => "model_complete"} = p),
     do:
-      exact?(p, ~w(kind profile max_candidates quote_bytes)) and name?(p["profile"]) and
+      model_contract?(p, ~w(kind profile max_candidates quote_bytes)) and name?(p["profile"]) and
         p["max_candidates"] == 16 and p["quote_bytes"] == 128
 
   defp profile?("extraction", %{"kind" => "explicit"} = p),
     do: exact?(p, ~w(kind version)) and p["version"] == 1
 
   defp profile?("extraction", %{"kind" => "model_complete"} = p),
-    do: exact?(p, ~w(kind profile version)) and p["version"] == 1 and name?(p["profile"])
+    do: model_contract?(p, ~w(kind profile version)) and p["version"] == 1 and name?(p["profile"])
 
   defp profile?(_, _), do: false
+
+  defp model_contract?(p, keys),
+    do:
+      exact?(p, keys) or
+        (exact?(p, keys ++ ["output_contract"]) and p["output_contract"] == "json_schema_v2")
 
   defp references?(o) do
     Enum.all?(o["retrieval"], fn {name, p} ->
