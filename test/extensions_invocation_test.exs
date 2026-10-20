@@ -120,6 +120,7 @@ defmodule Ipse.Extensions.InvocationTest do
       def describe, do: %{"sdk" => 1, "capabilities" => #{inspect(capabilities)}, "exports" => #{inspect(exports)}}
       def init(options), do: {:ok, options}
       def handle("host.actions", payload, state) do
+        if get_in(payload, ["checkpoint", "test_delay_ms"]) == 4000, do: Process.sleep(4000)
         File.write!(#{inspect(called)}, Jason.encode!(payload) <> "\\n", [:append])
         response = if get_in(payload, ["checkpoint", "write_request"]),
           do: %{"api_version" => 1, "kind" => "host_call", "request" => payload["checkpoint"]["write_request"]},
@@ -1454,8 +1455,18 @@ defmodule Ipse.Extensions.InvocationTest do
 
   test "pending extension question resumes inertly and only an explicit answer starts continuation",
        ctx do
+    if System.get_env("IPSE_TEST_STDIO_PROBE") == "1" do
+      probe =
+        Ipse.Test.StdioProbe.start(
+          [Process.whereis(Ipse.Sessions), Process.whereis(Ipse.Tasks)],
+          "pending-extension-question-resume"
+        )
+
+      on_exit(fn -> Ipse.Test.StdioProbe.stop(probe) end)
+    end
+
     pid = start(ctx)
-    :ok = host_command(pid, question_request())
+    :ok = host_command(pid, question_request(%{"next" => "finish", "test_delay_ms" => 4000}))
     assert_receive {:ipse, ^pid, {:question, id, _}}, 3000
     session_id = Session.info(pid).id
     monitor = Process.monitor(pid)
@@ -1469,7 +1480,7 @@ defmodule Ipse.Extensions.InvocationTest do
     assert File.read!(path) == before
     assert File.read!(ctx.called) == calls
     :ok = Session.answer(resumed, id, answers())
-    assert_receive {:ipse, ^resumed, {:done, :ok}}, 3000
+    assert_receive {:ipse, ^resumed, {:done, :ok}}, 20_000
     assert host_outcome(resumed)["status"] == "answered"
     assert length(String.split(File.read!(ctx.called), "\n", trim: true)) == 2
   end

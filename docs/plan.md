@@ -525,8 +525,13 @@ source suites, native and installed checks on macOS and Linux, with current
 manuals and no remaining findings in bounded internal follow-up reviews.
 The earlier green matrix does not cover these corrections. Their exact `93f71ad`
 [hosted run](https://github.com/lexlapax/ipse/actions/runs/39384645172) fails two
-macOS fixture waits and cancels Ubuntu through fail-fast. A separate test-budget
-correction is being verified; the hosted slowdown cause remains unproven.
+macOS fixture waits and cancels Ubuntu through fail-fast. The separate
+[fixture-budget correction](archive/2026-10-20-p27-ci-fixture-waits/index.md)
+reproduces a legal callback exceeding the three-second observer and gives the
+combined CLI scenario an explicit two-minute test watchdog. Runtime deadlines and
+behavior assertions remain intact. All 77 affected tests pass on macOS and Linux;
+the two changed paths pass again in the main checkout. New exact-source hosted
+verification remains pending, and the historical slowdown cause remains unproven.
 The selected-runtime CPU compatibility proof passes two real explicit requests,
 with complete accounting and confirmed cleanup. It establishes no quality or
 exact memory result. The superseded `f2bfc8d` comparison was intentionally stopped

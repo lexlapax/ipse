@@ -177,11 +177,36 @@ before changing cache cleanup.
 
 ## Diagnose worker and stdio cleanup
 
+Give a completion observation enough time for the bounded operation it observes.
+An extension continuation starts a fresh worker, initializes it, runs its callback
+and closes its resources before Session reports `done`. A three-second assertion
+cannot cover even one callback admitted under a five-second protocol deadline.
+The pending-question recovery fixture deliberately takes four seconds in that
+callback and uses a finite twenty-second completion wait. It still requires inert
+resume, unchanged journal/callback bytes before the answer, exactly two callbacks
+and the final completion notification. Runtime deadlines stay unchanged.
+
+Exercise that continuation and the public evaluation CLI cases together:
+
+```sh
+IPSE_TEST_STDIO_PROBE=1 mix test test/extensions_invocation_test.exs test/knowledge_evaluation_runner_test.exs --seed 77259
+```
+
+Expect the controlled continuation to finish and the CLI rejection assertions to
+pass. The mode/hash-before-label scenario has an explicit two-minute test budget
+for its fixture VM and four fresh CLI processes. It preserves hash rejection
+before unavailable label/review paths are opened. The opt-in
+`synthetic_evaluation_cli_phase` records contain only a fixed phase name, start or
+finish event and elapsed milliseconds. They distinguish fixture freezing and
+individual CLI waits, including compilation, runtime identity checks and exit.
+They do not identify the child operation responsible for a long wait. Inspect
+the original incomplete phase before changing a runtime limit or retrying work.
+
 Attach return tracing only to synthetic fixtures:
 
 ```sh
 IPSE_TEST_STDIO_PROBE=1 mix test test/stdio_probe_test.exs test/extensions_feeds_test.exs test/mcp/session_test.exs
-IPSE_TEST_STDIO_PROBE=1 mix test test/extensions_invocation_test.exs:1547 --repeat-until-failure 100
+IPSE_TEST_STDIO_PROBE=1 mix test test/extensions_invocation_test.exs:1558 --repeat-until-failure 100
 ```
 
 The second command selects the diagnostic-question recovery test; verify its

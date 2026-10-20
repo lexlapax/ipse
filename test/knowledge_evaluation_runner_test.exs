@@ -1332,6 +1332,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
     assert File.read!(Path.join(packet_path, "manifest.json")) == manifest_bytes
   end
 
+  @tag timeout: 120_000
   test "CLI refuses mode changes and verifies prediction hashes before labels or review inputs",
        ctx do
     {paths, root, _manifest, _sealed, frozen} = cli_frozen_inputs(ctx)
@@ -1494,6 +1495,9 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
     IO.puts(JSON.encode!(%{"status" => "ok", "result" => sealed, "prediction" => prediction}))
     """
 
+    started = System.monotonic_time(:millisecond)
+    phase_timing("freeze_fixture", "started", nil)
+
     {output, status} =
       System.cmd(
         System.find_executable("elixir"),
@@ -1513,6 +1517,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
         cd: repository
       )
 
+    phase_timing("freeze_fixture", "finished", System.monotonic_time(:millisecond) - started)
     assert status == 0, output
     output |> String.split("\n", trim: true) |> List.last() |> JSON.decode!()
   end
@@ -1568,15 +1573,40 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
   end
 
   defp cli(arguments, cwd \\ File.cwd!()) do
-    {output, status} =
-      System.cmd(
-        System.find_executable("elixir"),
-        cli_code_paths() ++ [Path.expand("scripts/evaluate-knowledge.exs") | arguments],
-        stderr_to_stdout: true,
-        cd: cwd
-      )
+    phase =
+      case arguments do
+        ["--phase", phase | _] when phase in ~w(freeze predict review score tune verify-frozen) ->
+          phase
 
-    {output |> String.split("\n", trim: true) |> List.last() |> JSON.decode!(), status}
+        _ ->
+          "other"
+      end
+
+    started = System.monotonic_time(:millisecond)
+    phase_timing(phase, "started", nil)
+
+    try do
+      {output, status} =
+        System.cmd(
+          System.find_executable("elixir"),
+          cli_code_paths() ++ [Path.expand("scripts/evaluate-knowledge.exs") | arguments],
+          stderr_to_stdout: true,
+          cd: cwd
+        )
+
+      {output |> String.split("\n", trim: true) |> List.last() |> JSON.decode!(), status}
+    after
+      phase_timing(phase, "finished", System.monotonic_time(:millisecond) - started)
+    end
+  end
+
+  defp phase_timing(phase, event, elapsed) do
+    if System.get_env("IPSE_TEST_STDIO_PROBE") == "1" do
+      IO.puts(
+        :stderr,
+        JSON.encode!(%{synthetic_evaluation_cli_phase: phase, event: event, elapsed_ms: elapsed})
+      )
+    end
   end
 
   defp cli_code_paths do
