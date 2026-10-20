@@ -845,19 +845,28 @@ has its complete `citation`. The result contains an exact `model.complete`
 request for `p27_answer`, a shown context, coverage and the context's SHA256.
 It executes nothing.
 
-The helper assigns short IDs such as `e1` to evidence. It crops each quote to at
-most 512 UTF8 bytes and removes lowest-ranked candidates until the encoded input
-fits 4096 bytes. A cropped quote gets an adjusted end offset and quote hash.
-The mapping retains source identity, provenance, times and the original captured
-span. Coverage lists omissions and cropping. Preserve the full retrieval result
-separately so answer-context limits cannot erase the retrieval measurement.
+The helper assigns short IDs such as `e1` to evidence and preserves each admitted
+citation's entire quote, offsets and hash, up to the existing 1024-byte citation
+limit. It takes the longest rank prefix whose exactly encoded input fits 4096
+bytes. Coverage lists every omitted candidate and its original rank; it reports
+no additional quote cropping. An oversized earlier candidate can exclude later
+ones even when a later short quote might fit. This simple policy does not claim
+optimal packing or that every contradiction reached the model. Preserve the full
+retrieval result separately so answer-context limits cannot erase the retrieval
+measurement. A nonempty retrieval with no admitted candidate remains distinct
+from empty retrieval in coverage.
 
 Saved prediction rows use version two. `evidence` keeps the complete returned
-ranking; `context_evidence` holds the cited answer spans after cropping. Each
-context span must be contained in an original ranked span with identical source
+ranking; `context_evidence` holds only the spans actually cited by the answer,
+not every passage shown to the model. Each context span must be contained in an
+original ranked span with identical source
 identity and bytes. Source and annotated-span retrieval metrics use `evidence`.
 Claim/span citation judgments can refer to the corresponding context spans.
 Do not replace a ranked passage with its answer excerpt to improve span scores.
+For context-omission analysis, inspect the saved preparation bundle or reconstruct
+its declared packing policy; comparing `evidence` with `context_evidence` measures
+citation use as well as visibility. Complete admitted quotes may already be
+partial source excerpts; this helper cannot recover upstream retrieval omissions.
 
 Both CLI readers and the scorer accept at most 64 MiB in one prediction file
 and 64 MiB across all declared files. Each JSONL row remains limited to 256 KiB.

@@ -438,10 +438,21 @@ Wait for each command to finish and replace `CHUNK_ID_FROM_INSPECT` with its act
 `facts: []`; it does not accept a blend of supplied and generated facts. Model
 profiles and billing remain explicit. See [profile configuration](model-profiles.md).
 
+The extractor sees short chunk IDs and copies exact supporting quotations.
+Ipse derives their byte positions and retains the canonical source/chunk hashes.
+Continue using the inspected 64-character IDs in your `/ext` command; short IDs
+exist only inside that model request.
+An explicitly denied relationship can carry `negative` polarity. Repeated text
+must have a unique supporting quote within the selected chunk; ambiguous or
+altered quotes refuse the entire model response. No automatic correction call
+follows. Inspect the retained draft after `invalid_model_output` before deciding
+whether to abort it or request new work. Valid source attribution still requires
+you to review whether the quotation supports the proposed relationship.
+
 First review the State writes that claim the extraction draft. Then review the
 separate full model-egress approval and the State writes that publish its result.
-Its proposed span must match a selected source chunk; malformed
-JSON, invented chunk IDs, or invalid spans refuse. This establishes byte
+Its supporting quote must match exactly once in the selected source chunk;
+malformed JSON, invented chunk IDs, or invalid attribution refuse. This establishes byte
 attribution, not that the relationship accurately interprets the quotation.
 The model receives the explicit `max_facts` bound and must return only the closed
 fact schema. The decoder validates that bound and the cited byte spans independently

@@ -424,8 +424,8 @@ reviewed `--mcp-config` file. The generator accepts only explicit `profiles`,
 does not read your ordinary home configuration for a missing profile.
 
 Invoke `investigate` with `rerank: "ordered"`. Reranking sends the query and up to
-16 supplied candidate IDs with excerpts of at most 128 UTF-8 bytes
-to that named model. A separate full model-egress approval is required. Its JSON
+16 short candidate IDs, canonical source-span references and excerpts of at most
+128 UTF-8 bytes to that named model. A separate full model-egress approval is required. Its JSON
 must return one `order` object naming every supplied ID exactly once. Missing,
 duplicate or invented IDs and malformed output refuse. Put irrelevant candidates
 last rather than dropping them. The call consumes ordinary accounting

@@ -103,9 +103,18 @@ defmodule Ipse.KnowledgeMeasuredModelFixtureTest do
     assert vectors == [[1.0, 0.0], [0.0, 1.0]]
 
     {"extraction", result} =
-      chat(%{"chunks" => [%{"chunk_id" => "chunk", "start_byte" => 0, "end_byte" => 27}]}, models)
+      chat(%{"chunks" => [%{"id" => "c1", "text" => "Release requires quiescence."}]}, models)
 
-    assert %{"facts" => [%{"chunk_id" => "chunk", "predicate" => "requires", "end_byte" => 27}]} =
+    assert %{
+             "facts" => [
+               %{
+                 "chunk" => "c1",
+                 "predicate" => "requires",
+                 "polarity" => "positive",
+                 "quote" => "Release requires quiescence."
+               }
+             ]
+           } =
              answer(result)
 
     {"rerank", result} =

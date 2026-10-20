@@ -49,7 +49,20 @@ defmodule Ipse.KnowledgeEvaluationAnswerTest do
     assert conflict["classification"] == "conflict"
   end
 
-  test "UTF8 cropping adjusts coordinates and hashes and omissions preserve saved ranks" do
+  test "an admitted citation retains a complete qualification after byte 512" do
+    quote = String.duplicate("A", 520) <> ". The trial does not establish production safety."
+    evidence = [candidate("trial", quote)]
+
+    assert {:ok, bundle} =
+             Answer.prepare("Does the trial establish production safety?", 1000, evidence)
+
+    assert [shown] = bundle["shown"]
+    assert shown["citation"] == hd(evidence)["citation"]
+    assert hd(bundle["context"]["candidates"])["quote"] == quote
+    assert bundle["coverage"]["cropped"] == []
+  end
+
+  test "whole UTF8 citations retain coordinates and hashes while omissions preserve saved ranks" do
     quote = String.duplicate("a", 511) <> "é" <> String.duplicate("z", 200)
     evidence = Enum.map(1..10, &candidate("source-#{&1}", quote))
     assert {:ok, bundle} = Answer.prepare("release", 1000, evidence)
@@ -58,10 +71,10 @@ defmodule Ipse.KnowledgeEvaluationAnswerTest do
     assert bundle["coverage"]["shown_count"] + bundle["coverage"]["omitted_count"] == 10
 
     for item <- bundle["shown"] do
-      assert item["cropped"]
+      refute item["cropped"]
       assert String.valid?(item["citation"]["quote"])
-      assert byte_size(item["citation"]["quote"]) == 511
-      assert item["citation"]["end_byte"] == 517
+      assert item["citation"]["quote"] == quote
+      assert item["citation"]["end_byte"] == 6 + byte_size(quote)
       assert item["citation"]["quote_sha256"] == sha(item["citation"]["quote"])
       assert item["captured_span"]["end_byte"] == 6 + byte_size(quote)
     end
@@ -71,6 +84,36 @@ defmodule Ipse.KnowledgeEvaluationAnswerTest do
 
     assert {:error, :unknown_citation} =
              Answer.decode_answer(JSON.encode!(response("answer", [omitted_id])), bundle)
+  end
+
+  test "prefix packing records an omitted contradiction and later short candidate without claiming completeness" do
+    long = String.duplicate("a", 1000)
+    contradiction = "The policy does not permit release. " <> String.duplicate("b", 960)
+
+    evidence =
+      Enum.map(1..3, &candidate("source-#{&1}", long)) ++
+        [candidate("contradiction", contradiction), candidate("short", "A short statement.")]
+
+    assert {:ok, bundle} = Answer.prepare("release", 1000, evidence)
+    assert bundle["coverage"]["shown_ids"] == ~w(e1 e2 e3)
+    assert Enum.map(bundle["coverage"]["omitted"], & &1["candidate_id"]) == ~w(e4 e5)
+    assert bundle["coverage"]["cropped"] == []
+    refute bundle["request"]["input"] =~ "does not permit"
+
+    assert {:error, :unknown_citation} =
+             Answer.decode_answer(JSON.encode!(response("conflict", ["e4"])), bundle)
+  end
+
+  test "escaped text that cannot fit is omitted whole and remains distinct from empty retrieval" do
+    evidence = [candidate("escaped", String.duplicate(<<0>>, 1024))]
+    assert {:ok, bundle} = Answer.prepare("release", 1000, evidence)
+    assert bundle["coverage"]["candidate_count"] == 1
+    assert bundle["coverage"]["shown_count"] == 0
+    assert bundle["coverage"]["omitted_count"] == 1
+    assert bundle["shown"] == [] and bundle["coverage"]["cropped"] == []
+    assert byte_size(bundle["request"]["input"]) <= 4096
+    assert {:ok, empty} = Answer.prepare("release", 1000, [])
+    assert empty["coverage"]["candidate_count"] == 0
   end
 
   test "strict answers reject duplicate or unknown references, fenced JSON and duplicate fields" do

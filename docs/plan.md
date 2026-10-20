@@ -386,8 +386,8 @@ the milestone. Preserve current SDK bounds and existing operation authority.
 | P27H3 | Versioned embedding operation with selected profiles, bounded ordinary vectors, exact egress, operation-aware accounting/costs/shared budgets and no text-envelope substitution | Complete at `3e32051`; local source/macOS/installed gates and exact-source hosted Linux/macOS source/package/installed proofs pass with 768/4096-coordinate native fixtures |
 | P27H4 | Opt-in bounded complete-result publication for original top-level tools/commands, historical receipt reads, strict source closure and unchanged ordinary SDK bounds | Complete at `fb980a0`; whole-milestone review, local 1,248-test baseline, Serenity 1,265-test native-enabled suite, exact 4 MiB and complete-domain source/installed proofs pass. Exact-source hosted Ubuntu/macOS matrix passes |
 | P27A | Independent research and lexical corpus packages with named interchangeable profiles, cited evidence, explicit limits, partial failures, stale-index handling and suppression | Review repairs and corrected-source fixture/platform/installed checks pass; held-out quality acceptance remains open |
-| P27B | Independent attributable graph, optional extraction, embedding/hybrid and rerank adapters; matched quality/resource comparisons before engine selection | Implementation present; external review found hybrid merge and graph capacity defects; repaired-source matched comparisons and selection remain open |
-| P27 verification | Frozen held-out workload, zero authority/isolation/replay/resurrection failures, measured retrieval/support/citation/resources, source/native/installed checks, coherent user and contributor manuals | Open; external whole-milestone review returned code/manual findings; prior exposed 350-row result failed quality; corrected-source platform, held-out quality and resource/selection gates remain |
+| P27B | Independent attributable graph, optional extraction, embedding/hybrid and rerank adapters; matched quality/resource comparisons before engine selection | Review defects and compact model contracts verified through source/platform/installed checks; corrected-source matched quality/resource comparisons and selection remain open |
+| P27 verification | Frozen held-out workload, zero authority/isolation/replay/resurrection failures, measured retrieval/support/citation/resources, source/native/installed checks, coherent user and contributor manuals | Open; review repairs and compact contracts pass platform/installed checks; prior exposed 350-row result failed quality; fresh held-out quality, resource/selection and structural-readiness gates remain |
 | P27 structural readiness | Holistic redesign and consolidation of the entire codebase and all user/developer documentation for maintainability and ease of use; migrate callers, builds, tests, packaging and CI together | Open; authorized after feature and review remediation, before P27 completion |
 
 The [first host-contract record](archive/2026-10-19-p27-mcp-host-contracts/index.md)
@@ -592,6 +592,13 @@ The [quality-remediation record](archive/2026-10-20-p27-quality-remediation/inde
 tracks subsequent work. Its diagnostic increment retains bounded Session failure
 codes without error text; nine Session and 24 runner fixtures pass. It does not
 establish the cause of old timeouts or any new model-quality result.
+Subsequent changes use exact unique extraction quotes, short model output IDs and
+whole admitted answer citations with explicit omission coverage. Both independent
+reviews report no new actionable finding. The same frozen runtime/test inventory
+passes macOS's 1,349-test suite and 30 focused native tests, and Linux's
+1,388-test native-enabled suite. Both source/package/installed proof sets pass;
+the quality-remediation record retains hashes and exclusions. These changes
+establish no new held-out quality or resource result.
 The selected-runtime CPU compatibility proof passes two real explicit requests,
 with complete accounting and confirmed cleanup. It establishes no quality or
 exact memory result. The superseded `f2bfc8d` comparison was intentionally stopped

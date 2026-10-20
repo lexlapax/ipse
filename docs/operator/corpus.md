@@ -323,10 +323,14 @@ Dense citations take at most the first 200 graphemes of a chunk, bounded again
 to 1024 UTF-8 bytes. A long combining sequence can end inside that visual cluster
 while retaining valid UTF-8 and exact byte coordinates. It does not become a
 missing-vector diagnostic.
-The last command also sends candidate IDs and excerpts to `ranker`; its output
-must list every supplied ID exactly once. Inspect each egress approval, citation,
-coverage and revalidation result. The example expects the retained locks passage,
-not a synthesized answer. A valid model response does not prove better relevance.
+The last command sends short candidate IDs, canonical source-span references and
+at most 128 UTF8 bytes per excerpt to `ranker`. The model returns every short ID
+exactly once; Ipse maps the order back to the original citations. Missing,
+duplicate or foreign IDs refuse the response without an automatic repair request.
+Those prefixes can omit relevant qualifications later in a source. Inspect each
+egress approval, original citation, coverage and revalidation result before relying
+on the order. Expect the retained locks passage. A valid model response does not
+prove better relevance or produce a synthesized answer.
 
 The selected `missing_embedding: "refuse"` policy refuses missing/incompatible
 projections. An explicit `lexical_with_gap` policy can return lexical evidence

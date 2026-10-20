@@ -17,7 +17,7 @@ defmodule IpseKnowledgeExample.EvaluationAnswer do
   @input_bytes 4096
   @instruction_bytes 2048
   @output_bytes 8192
-  @quote_bytes 512
+  @quote_bytes 1024
   @candidate_limit 10
   @citation_bytes 16_384
   @safe 9_007_199_254_740_991
@@ -69,10 +69,7 @@ defmodule IpseKnowledgeExample.EvaluationAnswer do
               "reason" => "input_bytes"
             }
           end),
-        "cropped" =>
-          shown
-          |> Enum.filter(& &1["cropped"])
-          |> Enum.map(&Map.take(&1, ~w(candidate_id original_quote_bytes shown_quote_bytes))),
+        "cropped" => [],
         "quote_cap_bytes" => @quote_bytes,
         "input_bytes" => byte_size(input),
         "input_limit_bytes" => @input_bytes,
@@ -146,23 +143,14 @@ defmodule IpseKnowledgeExample.EvaluationAnswer do
         citation = if is_map(candidate), do: candidate["citation"]
 
         if citation_valid?(citation) do
-          quote = utf8_prefix(citation["quote"], @quote_bytes)
-
-          shown_citation =
-            Map.merge(citation, %{
-              "quote" => quote,
-              "end_byte" => citation["start_byte"] + byte_size(quote),
-              "quote_sha256" => sha256(quote)
-            })
-
           item = %{
             "candidate_id" => "e#{rank}",
             "rank" => rank,
-            "citation" => shown_citation,
+            "citation" => citation,
             "captured_span" => Map.take(citation, ~w(start_byte end_byte quote_sha256)),
             "original_quote_bytes" => byte_size(citation["quote"]),
-            "shown_quote_bytes" => byte_size(quote),
-            "cropped" => byte_size(quote) < byte_size(citation["quote"])
+            "shown_quote_bytes" => byte_size(citation["quote"]),
+            "cropped" => false
           }
 
           {:cont, {:ok, acc ++ [item]}}
@@ -247,13 +235,11 @@ defmodule IpseKnowledgeExample.EvaluationAnswer do
     exact?(item, @shown_keys) and item["candidate_id"] == "e#{rank}" and
       item["rank"] == rank and citation_valid?(citation) and
       exact?(captured, ~w(start_byte end_byte quote_sha256)) and
-      captured["start_byte"] == citation["start_byte"] and uint?(captured["end_byte"]) and
-      captured["end_byte"] >= citation["end_byte"] and hash?(captured["quote_sha256"]) and
-      item["original_quote_bytes"] == captured["end_byte"] - captured["start_byte"] and
+      captured == Map.take(citation, ~w(start_byte end_byte quote_sha256)) and
+      item["original_quote_bytes"] == byte_size(citation["quote"]) and
       item["shown_quote_bytes"] == byte_size(citation["quote"]) and
       item["shown_quote_bytes"] <= @quote_bytes and
-      item["cropped"] == item["original_quote_bytes"] > item["shown_quote_bytes"] and
-      (item["cropped"] or captured["quote_sha256"] == citation["quote_sha256"])
+      item["cropped"] === false
   end
 
   defp decode_json(raw) when is_binary(raw) and byte_size(raw) <= @output_bytes do
@@ -335,14 +321,6 @@ defmodule IpseKnowledgeExample.EvaluationAnswer do
       if(text?(query, 1024) and String.trim(query) != "", do: :ok, else: {:error, :invalid_query})
 
   defp time_valid(time), do: if(uint?(time), do: :ok, else: {:error, :invalid_as_of_ms})
-  defp utf8_prefix(text, limit) when byte_size(text) <= limit, do: text
-  defp utf8_prefix(text, limit), do: valid_prefix(binary_part(text, 0, limit))
-
-  defp valid_prefix(text) do
-    if String.valid?(text),
-      do: text,
-      else: valid_prefix(binary_part(text, 0, byte_size(text) - 1))
-  end
 
   defp encode(value) when is_map(value) do
     pairs =

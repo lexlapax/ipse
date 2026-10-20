@@ -32,15 +32,68 @@ initially blocked Mix's loopback lock; compilation passed with the required
 loopback access. The [receipt](diagnostics.json) retains log hashes and scope.
 These are credential-free fixtures, with no real model or memory comparison.
 
+## Simplify model output and preserve admitted citations
+
+The next repair assigns short per-request chunk IDs to extraction input. The
+model returns an exact unique supporting quote and explicit polarity; the adapter
+derives absolute byte coordinates and rechecks the original source. Ambiguous
+repeats, changed bytes, duplicate JSON fields and invalid proposals refuse the
+whole response. Reranking retains canonical span references in its input but
+returns a complete permutation of short candidate IDs. Host operation/request
+binding, independent approval and Store publication remain authoritative.
+
+Answer preparation now preserves each admitted citation whole, within its
+existing 1024-byte limit. It admits the longest rank prefix whose exactly encoded
+input fits 4096 bytes and records all omissions. It does not skip an oversized
+earlier candidate to admit a later one. An omitted contradiction remains omitted;
+this policy does not establish semantic completeness. `context_evidence` records
+only answer-cited spans, so comparing it with retrieval output cannot isolate
+formatter losses.
+
+The [first independent review](compact-review-a.md) reports no new actionable
+finding and six passing synthetic probes. The [second review](compact-review-b.md)
+also reports no new actionable finding. Both are bounded reviews of this repair
+and its surrounding ownership paths, not P27 acceptance. The second report's
+phrase "encoded request bytes" means the encoded model input. Its statement that
+the independent held-out set "remains sealed" is imprecise: that new workload has
+not yet been authored. The original reports are retained unchanged.
+
+Focused and integration checks exercise exact Unicode attribution, overlapping
+quote ambiguity, explicit negative polarity, whole-output refusal, canonical
+rerank mapping, publication/recovery and whole-citation packing. They establish
+no live quality, latency or resource improvement.
+
+Final verification passes against the same [460-file runtime/test inventory](compact-source.json)
+on both platforms. macOS has 1,349 passing tests, one skip and 36 exclusions,
+plus 30 passing focused native tests and six exclusions. Linux has 1,388 passing
+tests and 19 exclusions with native sandbox tests included. Both pass builds,
+formatting, strict compilation, demo, native Rust controls, all fifteen presets,
+nine source and nine installed knowledge scenarios, generic package checks and
+host embedding/MCP installed controls. The five affected manuals were reviewed
+as whole chapters; 22 literal JSON examples and eight real CLI build/config/import
+and selection configurations pass with synthetic data. The
+[verification receipt](compact-verification.json) binds source/package identities,
+original and archived review hashes, log hashes and coverage limits. No actual
+model inference or new charged-memory comparison ran in these checks.
+
 ## Remaining quality work
 
-Model extraction still asks for absolute UTF8 offsets and canonical chunk hashes;
-reranking asks for long canonical span identifiers. Dense retrieval uses a
-200-character prefix, and answer preparation crops passages again. Compact model
-contracts and complete evidence windows are under design. Their quality and
-latency benefits remain hypotheses until measured on exposed tuning inputs.
-The current comparison's one-fact-per-chunk preparation is another explicit limit.
-No engine is selected.
+Dense retrieval still uses a 200-grapheme prefix, reranking sees at most 128 UTF8
+bytes of each excerpt, and lexical windows begin at a matched query token. Whole
+answer citations cannot recover context omitted upstream. The comparison's
+one-fact-per-chunk preparation and narrow explicit-fact author remain limits.
+No engine is selected. Compact output's quality and latency benefits remain
+hypotheses until measured on exposed tuning inputs.
+
+An offline excerpt diagnostic considers each positively annotated old source
+chunk independently of retrieval rank. Of 73 exact reference spans, the current
+dense prefix contains 19 and the first-match lexical window contains 63. A
+query-aware, punctuation-aligned window prototype contains 73. Original source
+hashes, reference bytes and constructed citation spans are checked. This is a
+literal containment upper bound on exposed material, with no model call,
+eligibility assertion, ranking measurement or semantic-quality result. The
+prototype is not part of the repaired runtime. Its
+[diagnostic receipt](excerpt-diagnostic.json) retains that scope.
 
 The earlier workload stays exposed tuning material. Final validation requires a
 new independently authored private 50-question workload with answers sealed until

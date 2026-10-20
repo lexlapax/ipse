@@ -125,9 +125,9 @@ defmodule MeasuredModelDaemon do
                  "subject" => "Release",
                  "predicate" => "requires",
                  "object" => "quiescence",
-                 "chunk_id" => chunk["chunk_id"],
-                 "start_byte" => chunk["start_byte"],
-                 "end_byte" => chunk["end_byte"]
+                 "polarity" => "positive",
+                 "chunk" => chunk["id"],
+                 "quote" => chunk["text"]
                }
              ]
            }}

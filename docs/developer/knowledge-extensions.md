@@ -444,15 +444,40 @@ effect and record capacity before approving inference. Commit packs the actual
 returned facts and checks that they fit that allowance. Oversized output leaves
 the draft available for inspection and exact abort.
 
-The extraction adapter sends `max_facts` alongside the selected chunks. Its fixed
-instruction specifies the closed fact fields and absolute half-open UTF8 byte
-offsets. The decoder separately enforces the requested fact count, selected
-profile, chunk identity and exact spans. A prompt is not a substitute for those
-checks. Publication uses `Adapters.attributable_facts?/2` to validate shape and
+The extraction adapter sends `max_facts` alongside selected chunk text, assigning
+local IDs `c1` and `c2` in selection order. The model returns only `facts`, whose
+items have exactly `subject`, `predicate`, `object`, `polarity`, `chunk` and
+`quote`. It copies a short chunk ID and an exact supporting quote of at most
+1024 UTF8 bytes. It does not calculate offsets or supply canonical hashes.
+`negative` polarity means an explicitly denied relationship, never missing evidence.
+
+Follow `Adapters.proposal_fact/2` and `quote_span/2`. The quote must occur exactly
+once inside that selected chunk, counting overlapping matches. Normalized Unicode,
+changed whitespace, absent text and ambiguous repeats refuse. A match in another
+chunk does not select that chunk. The adapter derives absolute half-open byte
+offsets, constructs the existing citation and checks its bytes against the
+proposal. The decoder also enforces fact count, profile, closed fields and
+duplicate-key rejection. Any invalid proposal refuses the whole response.
+Publication uses `Adapters.attributable_facts?/2` to validate shape and
 source spans, then Store validates the selected chunks and live draft again.
 `Evidence.validate_facts/3` owns query-time eligibility. Calling it during
 publication would silently discard future or past facts before a caller could
 query their validity interval.
+
+For example, select a chunk beginning at byte 2048 with text
+`Éclair does not require β.`. Its model input contains
+`{"id":"c1","text":"Éclair does not require β."}`. A valid response is:
+
+```json
+{"facts":[{"subject":"Éclair","predicate":"requires","object":"β","polarity":"negative","chunk":"c1","quote":"Éclair does not require β."}]}
+```
+
+The decoder finds local offset zero and derives the absolute range from 2048 to
+`2048 + byte_size(quote)`. It preserves both multibyte characters. If that quote
+occurs twice in the selected chunk, the same response refuses. The model must
+select a longer unique supporting quote within the limit or return no fact.
+Use the corresponding package regression to follow this example through real
+citation validation, including the same quote in two separately selected chunks.
 
 Run `mix test test/knowledge_packages_test.exs` and follow its public Graph
 exercise. Extract a future-valid fact, query before its interval and expect
@@ -462,12 +487,19 @@ interval, a future-observed source and refused attribution to another generation
 The model adapter control retains future-observed attribution without making a
 model request. Existing controls still refuse over-limit model proposals.
 
-The reranker requires a complete candidate-ID permutation inside exactly one
-`order` object. A bare array, omitted candidate, duplicate or foreign ID refuses;
-none becomes an implicit successful lexical fallback. A candidate ID is the
-chunk digest followed by its absolute `start_byte` and `end_byte`, separated by
-colons. These IDs identify the exact representative excerpts shown to the
-reranker. They remain separate from fusion identity.
+The reranker assigns short IDs `e1` through `e16` in candidate order. Each model
+input entry has `id`, `ref` and a bounded `quote`. The model returns exactly one
+`order` object containing every short ID once. A bare array, omitted candidate,
+duplicate, extra field or foreign ID refuses; none becomes an implicit successful
+lexical fallback. The adapter translates the accepted permutation to canonical
+candidate IDs before returning it to Corpus or Research.
+
+The input's `ref` retains the canonical chunk digest and absolute `start_byte`
+and `end_byte`, separated by colons. It allows independent approval to check the
+exact source span even when two candidates have identical displayed prefixes.
+The model copies only `id` in its output. Canonical span IDs remain separate from
+fusion identity. The immutable continuation and host's operation/request binding
+own response identity; there is no extra model-echo nonce or retry.
 
 `Evidence.fuse/3` uses reciprocal rank fusion with constant 60 over chunk identity.
 Its key includes the Store-generated profile/partition namespace, source key,
@@ -484,8 +516,9 @@ For example, reverse two candidates with `Evidence.apply_rerank([a, b],
 [Evidence.candidate_id(b), Evidence.candidate_id(a)])`. Read the same-chunk
 regression in `test/knowledge_evidence_test.exs`, then the real Session rerank
 fixture in `test/knowledge_evaluation_runner_test.exs`. The evaluation approval
-validator independently parses canonical IDs, checks the exact current chunk and
-span bounds, and recomputes the shown prefix. It loads no production domain
+validator independently parses canonical `ref` values, checks deterministic short
+IDs, unique references, the exact current chunk and span bounds, and recomputes
+the shown prefix. It loads no production domain
 module into the host. A quote occurring elsewhere in the chunk is insufficient.
 
 The named quote ceiling counts UTF8 bytes. Prefix selection preserves a

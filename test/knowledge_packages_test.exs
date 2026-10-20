@@ -54,6 +54,56 @@ defmodule IpseKnowledge.PackagesIsolationTest do
         IpseKnowledge.Corpus.handle("invoke.command", %{"id" => "source", "arguments" => args}, state)
     end
 
+    test "model quote selection resolves exact Unicode bytes and preserves explicit negative polarity" do
+      alias IpseKnowledge.{Adapters,Evidence}
+      quote="Éclair does not require β."
+      text=quote<>String.duplicate("x",2048-byte_size(quote))<>quote<>" A p B. A p B. aaaa"
+      {:ok,source}=Evidence.source(%{"source_id"=>"quoted","partition"=>"notes","generation"=>1,
+        "title"=>"Quoted","text"=>text,"uri"=>"local:quoted","observed_at_ms"=>1,"event_at_ms"=>nil,
+        "expires_at_ms"=>nil,"origin"=>%{"kind"=>"provided","store_profile"=>"notes",
+          "partition_or_scope"=>"notes","receipt"=>nil,"historical"=>false}})
+      {:ok,[first_chunk,chunk]}=Evidence.chunks(source)
+      resolved=%{"options"=>%{"extraction"=>%{"model"=>%{"kind"=>"model_complete","profile"=>"model","version"=>1}}}}
+      {:call,request,cont}=Adapters.start(resolved,:extract,%{"profile"=>"model","source"=>source,"chunks"=>[chunk],"max_edges"=>1})
+      assert JSON.decode!(request["input"])["chunks"]==[%{"id"=>"c1","text"=>chunk["text"]}]
+      proposal=%{"subject"=>"Éclair","predicate"=>"requires","object"=>"β","polarity"=>"negative","chunk"=>"c1","quote"=>quote}
+      respond=fn raw -> Adapters.resume(cont,%{"status"=>"ok","value"=>%{"profile"=>"model","text"=>raw,"usage"=>nil}}) end
+      assert {:done,{:ok,%{"facts"=>[fact]}}}=respond.(JSON.encode!(%{"facts"=>[proposal]}))
+      assert fact["polarity"]=="negative"
+      assert [citation]=fact["citations"]
+      assert citation["start_byte"]==2048 and citation["end_byte"]==2048+byte_size(quote)
+      assert citation["quote"]==quote and Evidence.valid_span?(source,citation)
+      {:call,_,two_chunks}=Adapters.start(resolved,:extract,%{"profile"=>"model","source"=>source,"chunks"=>[first_chunk,chunk],"max_edges"=>1})
+      selected=Map.put(proposal,"chunk","c2")
+      assert {:done,{:ok,%{"facts"=>[second_fact]}}}=Adapters.resume(two_chunks,%{"status"=>"ok","value"=>%{"profile"=>"model","text"=>JSON.encode!(%{"facts"=>[selected]}),"usage"=>nil}})
+      assert hd(second_fact["citations"])["start_byte"]==2048
+      for bad <- [Map.put(proposal,"quote","A p B."),Map.put(proposal,"quote","aaa"),
+        Map.put(proposal,"quote","Éclair does not require β."),Map.put(proposal,"chunk","c2"),
+        Map.put(proposal,"polarity","unknown"),Map.delete(proposal,"polarity"),Map.put(proposal,"start_byte",2048)] do
+        assert {:done,{:error,:invalid_model_output,%{}}}=respond.(JSON.encode!(%{"facts"=>[bad]}))
+      end
+      duplicate=JSON.encode!(%{"facts"=>[proposal]}) |> String.replace(~s("polarity":"negative"),~s("polarity":"positive","polarity":"negative"))
+      assert {:done,{:error,:invalid_model_output,%{}}}=respond.(duplicate)
+    end
+
+    test "model rerank manipulates short IDs while canonical references remain independently checkable" do
+      alias IpseKnowledge.{Adapters,Evidence}
+      candidates=for i<-1..3,do: %{"citation"=>%{"chunk_id"=>Evidence.sha256("chunk#{i}"),"start_byte"=>0,"end_byte"=>5,"quote"=>"same!"}}
+      resolved=%{"options"=>%{"rerank"=>%{"model"=>%{"kind"=>"model_complete","profile"=>"model","max_candidates"=>16,"quote_bytes"=>128}}}}
+      {:call,request,cont}=Adapters.start(resolved,:rerank,%{"profile"=>"model","query"=>"same","candidates"=>candidates})
+      input=JSON.decode!(request["input"])
+      assert Enum.map(input["candidates"],& &1["id"])==~w(e1 e2 e3)
+      canonical=Enum.map(candidates,&Evidence.candidate_id/1)
+      assert Enum.map(input["candidates"],& &1["ref"])==canonical
+      respond=fn raw -> Adapters.resume(cont,%{"status"=>"ok","value"=>%{"profile"=>"model","text"=>raw,"usage"=>nil}}) end
+      assert {:done,{:ok,%{"order"=>order}}}=respond.(~s({"order":["e3","e1","e2"]}))
+      assert order==[Enum.at(canonical,2),hd(canonical),Enum.at(canonical,1)]
+      for bad <- [[],~w(e1 e2),~w(e1 e1 e3),~w(e1 e2 e4),canonical] do
+        assert {:done,{:error,:invalid_model_output,%{}}}=respond.(JSON.encode!(%{"order"=>bad}))
+      end
+      assert {:done,{:error,:invalid_model_output,%{}}}=respond.(~s({"order":[],"order":["e1","e2","e3"]}))
+    end
+
     test "extraction gives the model its fact bound and enforces that bound on returned proposals" do
       alias IpseKnowledge.{Adapters, Evidence}
       {:ok, source} = Evidence.source(%{"source_id"=>"dev:release", "partition"=>"notes", "generation"=>1,
@@ -68,10 +118,10 @@ defmodule IpseKnowledge.PackagesIsolationTest do
       assert input["max_facts"]==1
       assert Enum.sort(Map.keys(input))==~w(chunks max_facts)
       assert request["instruction"] =~ "max_facts"
-      assert request["instruction"] =~ "UTF-8 byte offsets"
+      assert request["instruction"] =~ "unique exact supporting quote"
       assert request["profile"]=="host_extract"
       proposal=%{"subject"=>"Release","predicate"=>"requires","object"=>"quiescence",
-        "chunk_id"=>chunk["chunk_id"],"start_byte"=>0,"end_byte"=>byte_size(source["text"])}
+        "polarity"=>"positive","chunk"=>"c1","quote"=>source["text"]}
       good=%{"profile"=>"host_extract","text"=>JSON.encode!(%{"facts"=>[proposal]}),"usage"=>%{}}
       assert {:done,{:ok,%{"facts"=>[_]}}}=Adapters.resume(continuation,%{"status"=>"ok","value"=>good})
       excessive=Map.put(good,"text",JSON.encode!(%{"facts"=>[proposal,proposal]}))
@@ -181,7 +231,7 @@ defmodule IpseKnowledge.PackagesIsolationTest do
       args=%{"profile"=>"assisted","source"=>source,"chunks"=>[chunk],"max_edges"=>1,"as_of_ms"=>20}
       {:call,_,cont}=Adapters.start(resolved,:extract,args)
       proposal=%{"subject"=>"Release","predicate"=>"requires","object"=>"quiescence",
-        "chunk_id"=>chunk["chunk_id"],"start_byte"=>0,"end_byte"=>byte_size(source["text"])}
+        "polarity"=>"positive","chunk"=>"c1","quote"=>source["text"]}
       value=%{"profile"=>"host_extract","text"=>JSON.encode!(%{"facts"=>[proposal]}),"usage"=>%{}}
       assert {:done,{:ok,%{"facts"=>[fact]}}}=Adapters.resume(cont,%{"status"=>"ok","value"=>value})
       assert Evidence.valid_fact?(fact) and Evidence.valid_span?(source,hd(fact["citations"]))
@@ -198,7 +248,7 @@ defmodule IpseKnowledge.PackagesIsolationTest do
       assert request["instruction"] =~ ~s({"order":[)
       assert JSON.decode!(request["input"])["required_count"]==2
       assert request["instruction"] =~ "do not filter or omit"
-      good=%{"profile"=>"host_rank","text"=>JSON.encode!(%{"order"=>Enum.reverse(ids)}),"usage"=>%{}}
+      good=%{"profile"=>"host_rank","text"=>JSON.encode!(%{"order"=>~w(e2 e1)}),"usage"=>%{}}
       assert {:done,{:ok,%{"order"=>order}}}=Adapters.resume(continuation,%{"status"=>"ok","value"=>good})
       assert order==Enum.reverse(ids)
       for bad <- [ids,%{"order"=>[]},%{"order"=>Enum.take(ids,1)},%{"order"=>[hd(ids),hd(ids)]},%{"order"=>[Evidence.sha256("foreign"),hd(ids)]}] do
@@ -278,7 +328,7 @@ defmodule IpseKnowledge.PackagesIsolationTest do
       ids=Enum.map(rank["evidence"], &Evidence.candidate_id/1) |> Enum.reverse()
       resolved=%{"options"=>%{"rerank"=>%{"ordered"=>%{"kind"=>"model_complete","profile"=>"host_rank","max_candidates"=>16,"quote_bytes"=>128}}}}
       {:call,_,cont}=Adapters.start(resolved,:rerank,%{"profile"=>"ordered","query"=>"release","candidates"=>rank["evidence"]})
-      outcome=%{"status"=>"ok","value"=>%{"profile"=>"host_rank","text"=>JSON.encode!(%{"order"=>ids}),"usage"=>%{}}}
+      outcome=%{"status"=>"ok","value"=>%{"profile"=>"host_rank","text"=>JSON.encode!(%{"order"=>~w(e2 e1)}),"usage"=>%{}}}
       snapshot=%{"tokens"=>[],"coverage"=>%{"fixture"=>"captured snapshot"},"gaps"=>[],"sources"=>sources}
       ctx=%{args: %{"store"=>"notes","query"=>"release"},store_profile: %{"kind"=>"state","scope"=>"project","partition"=>"notes"},snapshot: snapshot,rank: rank,as_of_ms: 20}
       state=%{resolved: resolved,phase: :query_rerank,pending: :adapter,cont: cont,ctx: ctx}
@@ -703,9 +753,8 @@ defmodule IpseKnowledge.PackagesIsolationTest do
       [chunk]=input["chunks"]
       facts=for i<-1..input["max_facts"] do
         quote="A#{i} p B."
-        {offset,length}=:binary.match(chunk["text"],quote)
-        %{"subject"=>"A#{i}","predicate"=>"p","object"=>"B","chunk_id"=>chunk["chunk_id"],
-          "start_byte"=>chunk["start_byte"]+offset,"end_byte"=>chunk["start_byte"]+offset+length}
+        %{"subject"=>"A#{i}","predicate"=>"p","object"=>"B","polarity"=>"positive",
+          "chunk"=>chunk["id"],"quote"=>quote}
       end
       text=JSON.encode!(%{"facts"=>facts})
       assert byte_size(text)<=request["max_output_bytes"]
