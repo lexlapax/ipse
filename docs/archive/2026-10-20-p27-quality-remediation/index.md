@@ -125,6 +125,26 @@ tuning observations, not independent final semantic verdicts. The
 the decode probe and limits. Future work needs new declarations and preserves
 this failed attempt.
 
+## Commit independent validation inputs
+
+A fresh-context independent author committed fifty new questions across two
+projects and 22 source documents. The author validated the detached-answer
+contract, typed joins and literal references. A separate fresh-context reviewer
+then read every question and answer against the complete corpus, checking source
+and time eligibility, qualifications, contradictions and unanswerable cases.
+The reviewer reports no findings across all fifty cases and unchanged committed
+hashes. The [metadata-only receipt](private-workload.json) retains input hashes,
+counts and the independent validation metadata identities.
+
+The implementer received only metadata. The corpus, questions and answers remain
+private during development and tuning. Corpus and questions may be released only
+after final code and configuration are frozen; answers remain withheld until all
+first predictions and the measured audit are frozen. Private semantic rationale
+is retained separately. Custody is procedural, with no claim of OS isolation or
+protection against disclosure outside the workflow. Relevance-grade review checks
+the existing ordinal consistency; the contract provides no named prose grade
+taxonomy. This preparation establishes no model-quality or resource result.
+
 ## Remaining quality work
 
 Dense retrieval still uses a 200-grapheme prefix, reranking sees at most 128 UTF8
@@ -144,8 +164,8 @@ eligibility assertion, ranking measurement or semantic-quality result. The
 prototype is not part of the repaired runtime. Its
 [diagnostic receipt](excerpt-diagnostic.json) retains that scope.
 
-The earlier workload stays exposed tuning material. Final validation requires a
-new independently authored private 50-question workload with answers sealed until
-first predictions are frozen, followed by matched exact charged-memory/resource
-comparison and independent semantic review. Whole-codebase and documentation
-consolidation remains a separate required readiness phase before P27 completion.
+The earlier workload stays exposed tuning material. Final validation must use the
+new private commitment after final code and configuration are frozen, followed by
+matched exact charged-memory/resource comparison and independent semantic review.
+Whole-codebase and documentation consolidation remains a required readiness phase
+before that final freeze and P27 completion.

@@ -594,7 +594,14 @@ clear independent follow-ups. The frozen implementation passes macOS's
 1,357-test suite, 93 focused Linux integration tests and separate 350-row
 synthetic source and installed-package measured proofs. Linux's full suite was
 not rerun for that increment. The authoring and audit-access controls establish
-no real-model quality result, and the new private workload is not yet authored.
+no real-model quality result. A new independently authored private workload now
+has a [metadata-only commitment](archive/2026-10-20-p27-quality-remediation/private-workload.json):
+fifty questions across two projects and 22 documents. A separate independent
+semantic review checks all fifty with no findings and unchanged hashes. The
+implementer has received no corpus, questions or answers. Release remains gated
+on the final code/configuration freeze, and answers stay withheld through the
+first-prediction and measured-audit freeze. Tuning, whole-codebase consolidation
+and final quality/resource acceptance remain open.
 The [quality-remediation record](archive/2026-10-20-p27-quality-remediation/index.md)
 tracks subsequent work. Its diagnostic increment retains bounded Session failure
 codes without error text; nine Session and 24 runner fixtures pass. It does not
