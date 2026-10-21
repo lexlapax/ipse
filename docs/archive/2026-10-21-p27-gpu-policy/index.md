@@ -132,6 +132,28 @@ preserving role load order and every identity check. The synthetic proof also
 needs the public reopen path before another private admission; the earlier proof
 started measurement directly in its existing VM and missed that transition.
 
-The repair's platform and complete synthetic verification remain open. A later
-actual comparison requires a fresh source/configuration seal, all 350 first
+The repair is committed at `7bffee05e4ec9fa4730d608e0fa0cc7297b5a815`.
+Local proofs used the same 439 runtime/tooling files, inventory SHA-256
+`0caed5ca6e918f624130dff43bcdde5bfd33f39d5c04e62002f933f08b8f4cfe`.
+Their documentation receipts can predate that commit; hosted CI checks its exact
+checkout.
+Both source and installed public-reopen proofs pass all 350 scripted rows,
+complete native audits, scoring controls and refused replay. Their prediction
+hashes match. The macOS baseline passes 1451 tests, with one skipped and 36
+excluded, plus build, formatting, strict compile, demo and documentation checks.
+The supported Elixir 1.18/OTP 27 exercise passes after repairing its isolated
+snapshot's missing Git metadata; the failed setup receipt remains retained.
+
+The native-enabled Linux full suite passes 1499 tests with 19 excluded in 957.7
+seconds, followed by an unchanged source inventory. The
+[exact-commit hosted checks](https://github.com/lexlapax/ipse/actions/runs/39656829334)
+pass Ubuntu and macOS, including their applicable native, package and installed
+proofs.
+
+A fresh inert source/configuration seal was prepared without dataset members or
+inference. After all gates passed, only the same committed corpus, questions and
+manifest were installed for one new admission. Its seal SHA-256 is
+`aa17f45e1a272c8b82cab45b14d075383546ece5e09fd91e4e4662e3e2f1b582`.
+Native preparation admitted and completed; the first cell is running. Reference
+answers remain sealed. The actual comparison still requires all 350 first
 outcomes, complete charged-RAM audit and subsequent independent semantic review.
