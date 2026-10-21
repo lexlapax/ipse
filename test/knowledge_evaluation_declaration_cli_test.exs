@@ -169,6 +169,7 @@ defmodule Ipse.KnowledgeEvaluationDeclarationCLITest do
              ])
   end
 
+  @tag timeout: 120_000
   test "real CLI preserves a portable declaration and seals only an inert measured identity" do
     root = Path.join(System.tmp_dir!(), "ipse-declaration-cli-" <> Ipse.Usage.id())
     repository = Path.join(root, "repository")
@@ -343,6 +344,72 @@ defmodule Ipse.KnowledgeEvaluationDeclarationCLITest do
     refute File.exists?(refused)
     assert File.read!(experiment_path) == experiment_bytes
     assert :code.is_loaded(Independent.DeclarationCLIArtifact) == false
+
+    gpu_resolution =
+      update_in(resolution["model_service"], fn service ->
+        service
+        |> Map.delete("cpu_policy")
+        |> Map.merge(%{
+          "version" => 2,
+          "device_selection" => %{
+            "policy" => "nvidia_visible_mixed_v1",
+            "uuid" => "GPU-00000000-0000-0000-0000-000000000001"
+          }
+        })
+      end)
+
+    gpu_path = Path.join(root, "gpu-resolution.json")
+    private!(gpu_path, JSON.encode!(gpu_resolution))
+    gpu_experiment = Path.join(root, "gpu-experiment.json")
+
+    assert {0, %{"status" => "ok"}} =
+             cli(repository, [
+               "--phase",
+               "declare",
+               "--plan",
+               plan_path,
+               "--resolution",
+               gpu_path,
+               "--output",
+               gpu_experiment
+             ])
+
+    projected = JSON.decode!(File.read!(gpu_experiment))
+    assert projected["policy"]["device"] == "nvidia_visible_mixed_v1"
+    refute File.read!(gpu_experiment) =~ "GPU-"
+    refute File.exists?(Path.dirname(missing_dataset))
+
+    duplicate_output = Path.join(root, "duplicate-must-not-exist")
+
+    assert {1, %{"status" => "failed", "reason" => %{"code" => "invalid_options"}}} =
+             plain_cli(repository, [
+               "--phase",
+               "declare",
+               "--plan",
+               plan_path,
+               "--resolution",
+               gpu_path,
+               "--resolution",
+               gpu_path,
+               "--output",
+               duplicate_output
+             ])
+
+    refute File.exists?(duplicate_output)
+
+    for phase <- ~w(audit measure) do
+      assert {1, %{"status" => "failed", "reason" => %{"code" => "option_shape"}}} =
+               cli(repository, [
+                 "--phase",
+                 phase,
+                 "--freeze",
+                 seal["path"],
+                 "--freeze-sha256",
+                 seal["sha256"],
+                 "--resolution",
+                 gpu_path
+               ])
+    end
   end
 
   defp cli(repository, args) do

@@ -429,14 +429,22 @@ version-three allowance uses the existing SDK-1 answer helper; extraction,
 reranking and SDK-2 deadlines remain unchanged. Independent source and manual
 reviews found no remaining implementation defect. One combined exposed diagnostic
 completed in 7.6 minutes on CPU, with no further batch or production-prompt change.
-The user now chooses to wait for GPU repair. The bounded-answer increment's
+The user chose to wait for GPU repair. The bounded-answer increment's
 [platform verification](archive/2026-10-21-p27-long-answers/index.md#retain-completed-platform-verification)
 passes full macOS and native-enabled Linux suites, package checks and both
 350-row synthetic measured populations. A formatter-only correction passes both
 supported formatters and its affected tests. Its hosted macOS suite later
 failed one multi-CLI test's 60-second watchdog; the bounded observation repair
-and fresh hosted gate remain separate from those platform results. Final device
-policy, inference configuration and the private freeze remain open. The private
+then passed hosted Ubuntu and macOS at `bfc388f`. The subsequent
+[explicit NVIDIA increment](archive/2026-10-21-p27-gpu-policy/index.md)
+binds the portable device policy to a sealed physical UUID. After the user's
+reboot, one exposed request with the unchanged production prompt decoded in
+28.6 seconds, with partial GPU residency and confirmed cleanup. This is viability
+evidence, not held-out quality or a runtime forecast. Scoped implementation and
+whole-manual reviews are complete. Broader verification found and repaired a
+stale outer service-case count; both corrected public service proofs pass, while
+the complete Linux synthetic audits and full suite are running. Final device-policy
+verification, inference configuration and the private freeze remain open. The private
 workload stays sealed until the final source and usable configuration are frozen.
 
 The [first host-contract record](archive/2026-10-19-p27-mcp-host-contracts/index.md)
@@ -534,7 +542,10 @@ Charged memory, summed RSS and device memory must not be conflated.
 After reconsidering the measurement design, the user selected exact
 workload-charged RAM with an optional Linux benchmark backend. This includes
 cache and kernel charges under the declared `linux_memcg_charged_peak_bytes_v1`
-subject. The fresh comparison uses the approved CPU-only policy. Existing
+subject. The earlier exposed trials used the approved CPU-only policy; the user
+subsequently waited for repair and reported a completed reboot. The explicit GPU
+selection now has one successful exposed viability observation; its complete
+verification, usable final configuration and fresh private comparison remain open. Existing
 synthetic native controls establish counter behavior; complete integration is
 verified below, while the real comparison remains open. The experiment
 specification must remain portable. Resolved paths, runtime identities and observed host configuration

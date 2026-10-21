@@ -40,10 +40,26 @@ defmodule Ipse.Development.Evaluation.Freeze do
   def completion_policy, do: @completion_policy
 
   @doc "Declare portable source, artifact and experiment identities without opening evaluation inputs."
-  def declare(repository, plan_bytes, artifacts) do
+  def declare(repository, plan_bytes, artifacts, resolution \\ nil) do
     protect(fn ->
       {:ok, _} = Application.ensure_all_started(:ipse)
       plan = decode_execution_plan!(plan_bytes)
+
+      device =
+        case resolution do
+          nil ->
+            "cpu_only"
+
+          selection ->
+            validate_resolution!(selection)
+            require!(selection["model_service"]["models"] == plan["models"], :model_selection)
+
+            {:ok, device} =
+              Ipse.Development.Evaluation.ModelService.device_policy(selection["model_service"])
+
+            device
+        end
+
       validate_artifact_paths!(artifacts)
 
       require!(
@@ -71,7 +87,7 @@ defmodule Ipse.Development.Evaluation.Freeze do
         "source" => Map.delete(source, "root"),
         "plan" => portable_plan!(plan),
         "artifacts" => digests,
-        "policy" => @policy
+        "policy" => Map.put(@policy, "device", device)
       }
 
       bytes = JSON.encode!(experiment) <> "\n"
@@ -101,6 +117,7 @@ defmodule Ipse.Development.Evaluation.Freeze do
       {:ok, _} = Application.ensure_all_started(:ipse)
       experiment = decode_experiment!(experiment_bytes)
       validate_resolution!(resolution)
+      require_device!(experiment, resolution)
       repository = canonical!(repository)
       output = canonical!(output)
       resolution = normalize_resolution!(resolution)
@@ -389,7 +406,7 @@ defmodule Ipse.Development.Evaluation.Freeze do
     require!(
       exact?(experiment, ~w(version kind source plan artifacts policy)) and
         experiment["version"] === 2 and experiment["kind"] == "knowledge_experiment" and
-        experiment["policy"] == @policy,
+        experiment["policy"] in [@policy, Map.put(@policy, "device", "nvidia_visible_mixed_v1")],
       :invalid_experiment
     )
 
@@ -439,6 +456,7 @@ defmodule Ipse.Development.Evaluation.Freeze do
 
   defp resolved_plan!(experiment, resolution) do
     validate_resolution!(resolution)
+    require_device!(experiment, resolution)
 
     require!(
       resolution["model_service"]["models"] == experiment["plan"]["models"],
@@ -455,6 +473,13 @@ defmodule Ipse.Development.Evaluation.Freeze do
     |> Map.put("model_origin", resolution["model_origin"])
     |> Map.update!("profiles", &with_origin(&1, resolution["model_origin"]))
     |> Map.update!("embedding_profiles", &with_origin(&1, resolution["model_origin"]))
+  end
+
+  defp require_device!(experiment, resolution) do
+    {:ok, device} =
+      Ipse.Development.Evaluation.ModelService.device_policy(resolution["model_service"])
+
+    require!(device == experiment["policy"]["device"], :device_selection)
   end
 
   defp with_origin(profiles, origin),

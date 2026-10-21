@@ -155,12 +155,13 @@ Retained files do not authorize retrying an interrupted effect.
 | `knowledge-mcp` | Corpus `mcp-lexical` artifact | Default |
 | `knowledge-research` | Research `mcp` artifact | Default |
 | `model-service` | Compiled `dev/fixtures/model_service_probe.rs` | Fresh output |
-| `measured-knowledge` | JSON map of seven prebuilt artifact directories | Clean repository, fresh output; five selections |
+| `measured-knowledge` | JSON map of seven prebuilt artifact directories | Clean repository, fresh output; six selections |
 | `measured-authority` | Same artifact map | Clean repository, fresh output; Linux backend |
 
 Measured-knowledge selections are `default`, `sealed`, `structured` and
 `sealed-structured`, plus `sealed-long-answers` for the explicit longer-answer
-policy. Cases other than `model` and `measured-knowledge` accept
+policy and `sealed-gpu-answers` for its scripted NVIDIA-policy equivalent.
+Cases other than `model` and `measured-knowledge` accept
 only default. Follow the
 [complete measured exercise](knowledge-evaluation.md#run-a-complete-synthetic-measured-population)
 for artifact maps, retained paths and Linux prerequisites. Measured cases refuse

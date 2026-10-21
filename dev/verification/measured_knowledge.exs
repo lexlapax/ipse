@@ -19,13 +19,15 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge do
         "structured" -> {nil, 3}
         "sealed-structured" -> {"sealed_answers_v1", 3}
         "sealed-long-answers" -> {"sealed_answers_v1", 3}
+        "sealed-gpu-answers" -> {"sealed_answers_v1", 3}
       end
 
     run =
       prepare(Path.join(output, "run"), repository, artifacts,
         data_contract: contract,
         generation: generation,
-        long_answers: selection == "sealed-long-answers"
+        long_answers: selection in ~w(sealed-long-answers sealed-gpu-answers),
+        gpu: selection == "sealed-gpu-answers"
       )
 
     result = verify(run)
@@ -47,13 +49,15 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge do
       Keyword.keyword?(options) and
         Enum.all?(
           Keyword.keys(options),
-          &(&1 in [:fault, :data_contract, :generation, :long_answers])
+          &(&1 in [:fault, :data_contract, :generation, :long_answers, :gpu])
         )
 
     fault = Keyword.get(options, :fault)
     contract = Keyword.get(options, :data_contract)
     generation = Keyword.get(options, :generation, 2)
     long_answers = Keyword.get(options, :long_answers, false)
+    gpu = Keyword.get(options, :gpu, false)
+    true = is_boolean(gpu)
     true = is_boolean(long_answers) and (not long_answers or generation == 3)
     true = contract in [nil, "sealed_answers_v1"]
     true = generation in [2, 3]
@@ -65,7 +69,7 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge do
     true = search_port != URI.parse(origin).port
 
     service =
-      Ipse.Development.Fixtures.ModelService.configuration(root, launch, origin, fault, true)
+      Ipse.Development.Fixtures.ModelService.configuration(root, launch, origin, fault, true, gpu)
 
     data_root = Path.join(root, "data")
     File.mkdir!(data_root)
@@ -247,7 +251,6 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge do
     {:ok, plan} = Contract.build(spec)
 
     :ok = Contract.validate(plan)
-    {:ok, experiment} = Freeze.declare(repository, JSON.encode!(plan), artifacts)
 
     resolution = %{
       "artifacts" => artifacts,
@@ -257,6 +260,8 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge do
       "data_manifest" => data_path,
       "model_service" => service
     }
+
+    {:ok, experiment} = Freeze.declare(repository, JSON.encode!(plan), artifacts, resolution)
 
     {:ok, seal} =
       Freeze.create_v2(

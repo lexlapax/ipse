@@ -278,7 +278,7 @@ defmodule Ipse.Development.Verification.Scenarios do
   def selection!("measured-authority", "default"), do: :ok
 
   def selection!("measured-knowledge", selection)
-      when selection in ~w(default sealed structured sealed-structured sealed-long-answers) do
+      when selection in ~w(default sealed structured sealed-structured sealed-long-answers sealed-gpu-answers) do
     :ok
   end
 
@@ -310,8 +310,8 @@ defmodule Ipse.Development.Verification.Scenarios do
 
     if :os.type() == {:unix, :linux} do
       rows = report["cases"]
-      21 = length(rows)
-      21 = MapSet.size(MapSet.new(rows, & &1["case"]))
+      26 = length(rows)
+      true = MapSet.size(MapSet.new(rows, & &1["case"])) == length(rows)
       for row <- rows, do: true = row["synthetic"] and row["status"] == "passed"
     else
       true = report["unsupported_before_effects"]

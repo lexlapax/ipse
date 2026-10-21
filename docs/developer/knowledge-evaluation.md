@@ -148,6 +148,14 @@ cap. The scripted server answers promptly. This exercises transport, exact
 approvals, accounting, freeze/audit and scoring admission, not actual reasoning
 quality or sustained eight-minute generation.
 
+Use `--selection sealed-gpu-answers` with another fresh output to exercise the
+same longer-answer policy plus the explicit NVIDIA selection. Its daemon is
+still scripted: it checks a synthetic CUDA UUID and reports simulated partial
+GPU residency after actual protocol requests. It needs the optional Linux
+measurement backend, but no physical GPU or model weights. The audit rechecks
+the selected configuration, exact environment and normalized observations.
+This proof establishes neither real GPU use nor exact peak VRAM.
+
 For compatibility controls, `structured` uses combined fixture data with plan
 three, `sealed` uses detached answers with plan two, and `default` uses combined
 data with plan two. These are closed selections, not positional switches.
@@ -182,7 +190,7 @@ does not compile or require its source files. Follow the
 for compiler, input and lifetime ownership.
 
 A successful installed proof establishes the exercised protocols for that archive
-and host. It does not establish real Ollama CPU execution, held-out quality or
+and host. It does not establish real Ollama device placement, held-out quality or
 all failure/loss behavior. Keep results in [dated records](../archive/index.md)
 and acceptance criteria in [the plan](../plan.md#p27-optional-research-graph-and-rag).
 
@@ -529,26 +537,20 @@ the source index as a side effect.
 ### Separate the experiment from its local execution
 
 Use the complete plan and seven artifacts prepared above. Keep the checkout
-clean, including untracked files. Store receipts separately from authoritative
-freeze data and retained first-prediction reports:
+clean, including untracked files. Prepare the local resolution below before
+declaring a GPU experiment. Declaration projects its device policy while leaving
+the exact GPU UUID, ports and local paths in the execution seal.
 
-```sh
-IPSE_RETAINED=$(mktemp -d)
-mix run scripts/evaluate-knowledge.exs -- --phase declare \
-  --plan "$IPSE_BENCHMARK/plan.json" \
-  --output "$IPSE_BENCHMARK/experiment.json" \
-  > "$IPSE_RETAINED/declaration.json"
-IPSE_EXPERIMENT_SHA256=$(elixir -e 'r = File.read!(hd(System.argv())) |> String.split("\n", trim: true) |> List.last() |> JSON.decode!(); IO.puts(r["result"]["sha256"])' "$IPSE_RETAINED/declaration.json")
-```
+The declared policy selects `linux_memcg_charged_peak_bytes_v1`, fresh private
+cache inodes per cell, two projects and the optional `linux_cgroup_v2_v2` backend.
+`cpu_only` hides accelerator devices and requires zero reported final VRAM.
+`nvidia_visible_mixed_v1` selects one physical NVIDIA GPU and permits partial
+CPU/GPU placement. Every final resident model must report positive VRAM; an empty
+final set or any resident CPU-only model refuses. A GPU embedding model cannot
+mask a resident CPU-only answer model. Neither policy proves placement of models
+absent from that final snapshot or of every earlier request.
 
-Expect `status: "ok"`, the experiment path/hash and the source commit.
-`Freeze.declare/3` removes source/artifact paths, profile origins and
-the search port. The private blind seed remains part of the experiment. Keep
-that declaration away from the independent reviewer.
-
-The declared policy selects `linux_memcg_charged_peak_bytes_v1`, CPU-only model
-execution, fresh private cache inodes per cell, two projects and the optional
-`linux_cgroup_v2_v2` backend. Its fixed `bounded_natural_drain_v1` completion
+The fixed `bounded_natural_drain_v1` completion
 policy permits at most 2000 ms after leader reap, within the original workload
 deadline. That policy belongs to the declaration alongside the memory quantity;
 changing it requires a fresh experiment and execution seal. Local runtime/version
@@ -559,8 +561,8 @@ is not relocatable or renewable.
 
 A resolution contains exactly `artifacts`, `model_origin`, `search_port`, `reports`,
 `data_manifest` and `model_service`. The service selection is the existing closed
-`ModelService.validate/1` schema. Its origin and exact model map must
-match the resolved plan. The shared model port 11434 is forbidden; the search
+`ModelService.validate/1` schema. Its origin, exact model map and device policy
+must match the experiment. The shared model port 11434 is forbidden; the search
 port must differ. Sealing proves neither port availability nor listener ownership.
 
 For an already authorized real comparison, select a reviewed local Ollama
@@ -609,6 +611,49 @@ resolution = %{
 File.write!(Path.join(root, "resolution.json"), JSON.encode!(resolution), [:exclusive])
 File.chmod!(Path.join(root, "resolution.json"), 0o600)
 '
+```
+
+This creates the legacy version-one CPU selection. For an authorized GPU
+comparison, first check `nvidia-smi -L` and set `IPSE_MODEL_GPU_UUID` to one complete
+physical GPU UUID it reports. Then replace the proposed service selection before
+declaration:
+
+```sh
+# Replace this placeholder with the complete UUID from nvidia-smi -L.
+export IPSE_MODEL_GPU_UUID='GPU-REPLACE-WITH-THE-REPORTED-UUID'
+mix run -r dev/evaluation/model_service.exs -e '
+path = Path.join(System.fetch_env!("IPSE_BENCHMARK"), "resolution.json")
+resolution = JSON.decode!(File.read!(path))
+service = resolution["model_service"] |> Map.delete("cpu_policy") |> Map.merge(%{
+  "version" => 2,
+  "device_selection" => %{
+    "policy" => "nvidia_visible_mixed_v1",
+    "uuid" => System.fetch_env!("IPSE_MODEL_GPU_UUID")
+  }
+})
+:ok = Ipse.Development.Evaluation.ModelService.validate(service)
+File.write!(path, JSON.encode!(Map.put(resolution, "model_service", service)))
+'
+```
+
+The UUID must contain the full `GPU-` prefix and canonical lowercase hexadecimal
+groups. Indices, abbreviated IDs, MIG IDs, lists and unknown policy fields refuse.
+Validation checks the selection's shape; it does not discover hardware. The new
+policy changes only CUDA visibility. ROCm and Vulkan remain disabled, as do cloud
+models. It grants no GPU-only execution guarantee or model/provider fallback.
+
+### Declare and seal the selected policy
+
+Store receipts separately from authoritative freeze data and first predictions:
+
+```sh
+IPSE_RETAINED=$(mktemp -d)
+mix run scripts/evaluate-knowledge.exs -- --phase declare \
+  --plan "$IPSE_BENCHMARK/plan.json" \
+  --resolution "$IPSE_BENCHMARK/resolution.json" \
+  --output "$IPSE_BENCHMARK/experiment.json" \
+  > "$IPSE_RETAINED/declaration.json"
+IPSE_EXPERIMENT_SHA256=$(elixir -e 'r = File.read!(hd(System.argv())) |> String.split("\n", trim: true) |> List.last() |> JSON.decode!(); IO.puts(r["result"]["sha256"])' "$IPSE_RETAINED/declaration.json")
 elixir scripts/evaluate-knowledge.exs --phase freeze-measured \
   --sdk _build/dev/lib/ipse/ebin --repository "$PWD" \
   --experiment "$IPSE_BENCHMARK/experiment.json" \
@@ -618,6 +663,19 @@ elixir scripts/evaluate-knowledge.exs --phase freeze-measured \
   > "$IPSE_RETAINED/freeze.json"
 IPSE_FREEZE_SHA256=$(elixir -e 'r = File.read!(hd(System.argv())) |> String.split("\n", trim: true) |> List.last() |> JSON.decode!(); IO.puts(r["result"]["sha256"])' "$IPSE_RETAINED/freeze.json")
 ```
+
+Expect `status: "ok"`, each path/hash and the source commit. The declaration's
+`Freeze.declare/4` validates the complete resolution without opening its paths,
+then projects only the finite device policy. UUID changes preserve portable
+experiment identity and require a fresh local seal. Device-policy changes require
+a fresh declaration too. A CPU/GPU mismatch refuses before freeze output exists.
+`measure` and `audit` reject a new `--resolution`; they use the sealed selection.
+
+`Freeze.declare/3`, or the declaration command without `--resolution`, retains the
+legacy CPU default. An explicit CPU resolution produces the same declaration
+bytes for the same source, plan and artifacts. Both forms remove source/artifact
+paths, profile origins and search port. The private blind seed remains in the
+experiment. Keep that declaration away from the independent reviewer.
 
 Use the actual reviewed distribution layout when building a selection. Missing
 libraries, symlinks or a changed manifest must refuse; do not omit required files
@@ -824,9 +882,13 @@ A service's process-group cleanup cannot substitute for that population receipt.
 If forced cleanup was required, retain the failure even when the scope later
 empties. Inspect it under the failed seal; do not replay that execution.
 
-CPU visibility environment values and zero-VRAM residency checks express the
-selected policy. The synthetic daemon verifies those values. They do not prove
-real Ollama CPU execution or every transient device allocation. An audited
+Selected visibility values and final residency checks express the device policy.
+CPU observations retain integer-zero VRAM. GPU observations retain each selected
+resident model's reported `size` and positive `size_vram`, with
+`placement_history_proven: false`. These are after-callback snapshots, not peaks,
+CPU byte accounting or evidence for an absent model. Keep them separate from
+the kernel charged-RAM metric. The synthetic daemon verifies protocol values;
+it cannot establish real placement. An audited
 resource result also does not establish held-out quality or independent semantic
 review.
 
@@ -1803,7 +1865,7 @@ elixir scripts/verify.exs installed model-service \
   --output "$IPSE_MODEL_PROOF/installed"
 ```
 
-Expect the same 21 synthetic cases with `verification.mode: "installed"`.
+Expect the same 26 synthetic cases with `verification.mode: "installed"`.
 The common verifier compiles the two trusted proof modules before host launch.
 Runner, HTTP and native execution use the selected package. The proof child's
 PATH contains declared utilities and bundled Erlang, with no development commands.
@@ -1836,7 +1898,9 @@ cannot switch verification off later.
 4. The Task checks exact tags, model capabilities and empty initial residency,
    then calls the work function once. A returned callback outcome precedes final
    inventory and private runtime/manifest/config rechecks. Final resident models
-   must have selected digests and `size_vram: 0` under the explicit CPU policy.
+   must have selected digests. CPU requires integer-zero `size_vram`; GPU requires
+   a nonempty final set and `0 < size_vram <= size` on every row, with safe integer
+   bounds. Partial placement passes. Missing or malformed observations fail.
    A callback exception preserves the raised outcome and reports `callback_raised`;
    it proceeds directly to cleanup without further HTTP inventory.
 5. The caller waits for the Task and HTTP clients to stop, closes the daemon,
@@ -1851,9 +1915,10 @@ The owner-death case observes its known Task, Session and daemon stop separately
 it produces no final service receipt. Task termination alone does not establish
 Session journal closure or canonical inference accounting.
 
-The fixed CPU environment selects a policy that hides CUDA, ROCm and Vulkan
-devices and disables cloud models. The synthetic fixture verifies those environment
-values; real runtime CPU execution still needs separate verification. The selected
+The legacy CPU environment hides CUDA, ROCm and Vulkan devices. The explicit
+NVIDIA environment changes only `CUDA_VISIBLE_DEVICES` to the selected UUID.
+Both disable cloud models. The synthetic fixture verifies those environment
+values; real runtime placement still needs separate verification. The selected
 daemon defaults use one parallel request, retain selected
 models and cap loaded models at the selection count. These concrete values appear
 in the receipt. Final residency supplements this policy; it cannot prove every
@@ -1865,6 +1930,16 @@ The v2 resolution binds this service selection. Measured stage admission claims
 the attempt and establishes kernel membership before calling the owner. A service
 receipt alone still establishes neither the complete native population nor model
 quality; the post-exit audit joins the cell and native evidence.
+
+GPU service receipts use version two and normalized inventories. During measured
+audit, `ModelService.verify_receipt/4` reads the known service directory's existing
+`started.json`, matches its configuration digest against the frozen selection,
+reconstructs the complete expected environment and validates the same capability
+and residency rows as live admission. Its verified environment constructor is
+deterministic and read-only. Receipt data cannot choose it or override visibility.
+CPU receipts and their existing audit behavior remain unchanged. To exercise
+these boundaries, follow `nvidia_partial` and `nvidia_cpu` in the service fixture,
+then the malformed-capability and masked-CPU-answer mutations in its test file.
 
 ### Exercise the native aggregate collector
 

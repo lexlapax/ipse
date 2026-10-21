@@ -100,7 +100,302 @@ defmodule Ipse.KnowledgeEvaluationModelServiceTest do
     end
   end
 
+  test "GPU selection is explicit, closed and uses one complete physical UUID", c do
+    root = Path.join(c.root, "gpu-selection")
+    File.mkdir!(root)
+    config = ModelServiceVerification.configuration(c.fixture, root, "nvidia_partial")
+    assert Service.validate(config) == :ok
+    assert Service.device_policy(config) == {:ok, "nvidia_visible_mixed_v1"}
+
+    for invalid <-
+          [
+            Map.put(config, "cpu_policy", "visibility_v1"),
+            Map.put(config, "version", 1),
+            Map.delete(config, "device_selection"),
+            put_in(config, ["device_selection", "policy"], "gpu_only"),
+            put_in(config, ["device_selection", "extra"], true)
+          ] ++
+            for(
+              uuid <- [
+                nil,
+                0,
+                "0",
+                "-1",
+                "GPU-00000000",
+                "MIG-GPU-00000000",
+                "GPU-00000000-0000-0000-0000-00000000000A",
+                "GPU-00000000-0000-0000-0000-000000000001,0",
+                ["GPU-00000000-0000-0000-0000-000000000001"]
+              ],
+              do: put_in(config, ["device_selection", "uuid"], uuid)
+            ) do
+      assert {:error, :configuration} = Service.validate(invalid)
+      assert {:error, :configuration} = Service.device_policy(invalid)
+    end
+  end
+
+  test "saved GPU evidence rechecks frozen visibility and observed placement", c do
+    root = Path.join(c.root, "gpu-evidence")
+    File.mkdir!(root)
+    config = ModelServiceVerification.configuration(c.fixture, root, "nvidia_partial")
+    output = Path.join(root, "output")
+    File.mkdir!(output)
+    started = Path.join(output, "started.json")
+
+    bytes =
+      JSON.encode!(%{
+        "version" => 1,
+        "configuration_sha256" => Ipse.JSON.sha256(JSON.encode!(config))
+      })
+
+    File.write!(started, bytes)
+    [{model, digest}] = Map.to_list(config["models"])
+
+    inventory = %{
+      "models" => [%{"name" => model, "digest" => digest, "capabilities" => ["completion"]}],
+      "resident" => [],
+      "placement_history_proven" => false
+    }
+
+    row = %{"name" => model, "digest" => digest, "size" => 8, "size_vram" => 4}
+
+    environment = %{
+      "PATH" => Path.join(output, "runtime/bin") <> ":/usr/bin:/bin",
+      "LANG" => "C.UTF-8",
+      "HOME" => Path.join(output, "home"),
+      "TMPDIR" => Path.join(output, "tmp"),
+      "OLLAMA_MODELS" => Path.join(output, "models"),
+      "OLLAMA_HOST" => config["origin"],
+      "LD_LIBRARY_PATH" => Path.join(output, "runtime/lib/ollama"),
+      "OLLAMA_NO_CLOUD" => "1",
+      "CUDA_VISIBLE_DEVICES" => config["device_selection"]["uuid"],
+      "ROCR_VISIBLE_DEVICES" => "-1",
+      "OLLAMA_VULKAN" => "0",
+      "GGML_VK_VISIBLE_DEVICES" => "-1",
+      "OLLAMA_NUM_PARALLEL" => "1",
+      "OLLAMA_MAX_LOADED_MODELS" => "1",
+      "OLLAMA_KEEP_ALIVE" => "-1"
+    }
+
+    receipt = %{
+      "version" => 2,
+      "status" => "ok",
+      "code" => nil,
+      "work_status" => "returned",
+      "service_status" => "admitted",
+      "native_cleanup" => "confirmed",
+      "staging_cleanup" => "confirmed",
+      "evidence" => output,
+      "environment" => environment,
+      "inventory_before" => inventory,
+      "inventory_after" => Map.put(inventory, "resident", [row])
+    }
+
+    before = File.read!(started)
+    assert Service.verify_receipt(config, output, receipt) == :ok
+
+    malformed_rows = [
+      [],
+      [Map.put(row, "size_vram", 0)],
+      [Map.put(row, "size_vram", 4.0)],
+      [Map.put(row, "size_vram", "4")],
+      [Map.put(row, "size_vram", -1)],
+      [Map.put(row, "size_vram", 9)],
+      [Map.delete(row, "size")],
+      [Map.put(row, "size", 8.0)],
+      [Map.put(row, "size", 0)],
+      [Map.put(row, "size", 9_007_199_254_740_992)],
+      [Map.put(row, "digest", String.duplicate("0", 64))],
+      [Map.put(row, "name", "unknown:latest")],
+      [row, row],
+      [Map.put(row, "extra", true)]
+    ]
+
+    for rows <- malformed_rows do
+      changed = put_in(receipt, ["inventory_after", "resident"], rows)
+      assert {:error, :service_evidence} = Service.verify_receipt(config, output, changed)
+    end
+
+    [model_row] = inventory["models"]
+
+    malformed_models =
+      [Map.delete(model_row, "capabilities"), Map.put(model_row, "extra", true)] ++
+        for caps <- [
+              nil,
+              [],
+              123,
+              ["tools"],
+              ["completion", "completion"],
+              [String.duplicate("x", 65)]
+            ],
+            do: Map.put(model_row, "capabilities", caps)
+
+    for field <- ~w(inventory_before inventory_after), model_row <- malformed_models do
+      changed = put_in(receipt, [field, "models"], [model_row])
+      assert {:error, :service_evidence} = Service.verify_receipt(config, output, changed)
+    end
+
+    for changed <- [
+          put_in(receipt, ["environment", "CUDA_VISIBLE_DEVICES"], "-1"),
+          put_in(
+            receipt,
+            ["environment", "CUDA_VISIBLE_DEVICES"],
+            "GPU-00000000-0000-0000-0000-000000000002"
+          ),
+          put_in(receipt, ["environment", "HTTP_PROXY"], "http://127.0.0.1:9"),
+          put_in(receipt, ["environment", "PATH"], "/unselected/bin"),
+          put_in(receipt, ["inventory_before", "resident"], [row]),
+          put_in(receipt, ["inventory_after", "placement_history_proven"], true),
+          put_in(
+            receipt,
+            ["inventory_before", "models", Access.at(0), "digest"],
+            String.duplicate("0", 64)
+          ),
+          Map.put(receipt, "version", 1),
+          Map.put(receipt, "evidence", root),
+          Map.put(receipt, "native_cleanup", "unconfirmed")
+        ] do
+      assert {:error, :service_evidence} = Service.verify_receipt(config, output, changed)
+    end
+
+    constructor = fn home, tmp ->
+      %{
+        "PATH" => "/verified/bin",
+        "LANG" => "C.UTF-8",
+        "HOME" => home,
+        "IPSE_HOME" => Path.join(home, ".ipse"),
+        "TMPDIR" => tmp
+      }
+    end
+
+    changed =
+      receipt
+      |> put_in(["environment", "PATH"], "/verified/bin")
+      |> put_in(["environment", "IPSE_HOME"], Path.join(output, "home/.ipse"))
+
+    assert Service.verify_receipt(config, output, changed, constructor) == :ok
+    assert File.read!(started) == before
+
+    File.write!(
+      started,
+      JSON.encode!(%{"version" => 1, "configuration_sha256" => String.duplicate("0", 64)})
+    )
+
+    assert {:error, :service_evidence} = Service.verify_receipt(config, output, receipt)
+    File.write!(started, bytes)
+
+    qwen =
+      config
+      |> Map.put("models", %{"qwen3.5:9b" => digest})
+      |> Map.put("manifests", %{"qwen3.5:9b" => "manifests/registry.ollama.ai/library/qwen3.5/9b"})
+
+    File.write!(
+      started,
+      JSON.encode!(%{
+        "version" => 1,
+        "configuration_sha256" => Ipse.JSON.sha256(JSON.encode!(qwen))
+      })
+    )
+
+    qwen_row = %{
+      "name" => "qwen3.5:9b",
+      "digest" => digest,
+      "capabilities" => ["completion", "tools"]
+    }
+
+    qwen_receipt =
+      receipt
+      |> put_in(["inventory_before", "models"], [qwen_row])
+      |> put_in(["inventory_after", "models"], [qwen_row])
+      |> put_in(["inventory_after", "resident", Access.at(0), "name"], "qwen3.5:9b")
+
+    assert Service.verify_receipt(qwen, output, qwen_receipt) == :ok
+
+    for caps <- [nil, [], ["embedding"], ["completion"], 123] do
+      changed =
+        put_in(qwen_receipt, ["inventory_before", "models", Access.at(0), "capabilities"], caps)
+
+      assert {:error, :service_evidence} = Service.verify_receipt(qwen, output, changed)
+    end
+
+    embedding = "fixture-embedding:latest"
+    embedding_digest = String.duplicate("e", 64)
+
+    config =
+      config
+      |> put_in(["models", embedding], embedding_digest)
+      |> put_in(
+        ["manifests", embedding],
+        "manifests/registry.ollama.ai/library/fixture-embedding/latest"
+      )
+
+    File.write!(
+      started,
+      JSON.encode!(%{
+        "version" => 1,
+        "configuration_sha256" => Ipse.JSON.sha256(JSON.encode!(config))
+      })
+    )
+
+    embedding_model = %{
+      "name" => embedding,
+      "digest" => embedding_digest,
+      "capabilities" => ["embedding"]
+    }
+
+    receipt =
+      receipt
+      |> put_in(["environment", "OLLAMA_MAX_LOADED_MODELS"], "2")
+      |> update_in(
+        ["inventory_before", "models"],
+        &Enum.sort_by(&1 ++ [embedding_model], fn row -> row["name"] end)
+      )
+      |> update_in(
+        ["inventory_after", "models"],
+        &Enum.sort_by(&1 ++ [embedding_model], fn row -> row["name"] end)
+      )
+
+    embedding_row = %{
+      "name" => embedding,
+      "digest" => embedding_digest,
+      "size" => 8,
+      "size_vram" => 8
+    }
+
+    masked_cpu =
+      put_in(receipt, ["inventory_after", "resident"], [
+        Map.put(row, "size_vram", 0),
+        embedding_row
+      ])
+
+    assert {:error, :service_evidence} = Service.verify_receipt(config, output, masked_cpu)
+    all_partial = put_in(receipt, ["inventory_after", "resident"], [row, embedding_row])
+    assert Service.verify_receipt(config, output, all_partial) == :ok
+  end
+
   if match?({:unix, :linux}, :os.type()) do
+    test "the public service proof accepts its complete population and rejects missing or duplicate cases" do
+      alias Ipse.Development.Verification.Scenarios
+      spec = Scenarios.fetch!("model-service")
+
+      rows =
+        for name <- ModelServiceVerification.cases(),
+            do: %{"case" => name, "synthetic" => true, "status" => "passed"}
+
+      assert Scenarios.validate!(spec, %{"synthetic" => true, "cases" => rows}, "default") == :ok
+
+      for invalid <- [
+            Enum.take(rows, 21),
+            tl(rows),
+            [hd(rows) | tl(tl(rows))] ++ [hd(rows)],
+            List.replace_at(rows, 0, Map.put(hd(rows), "status", "failed"))
+          ] do
+        assert_raise MatchError, fn ->
+          Scenarios.validate!(spec, %{"synthetic" => true, "cases" => invalid}, "default")
+        end
+      end
+    end
+
     test "the environment constructor runs once and receipt retains the launched map", c do
       root = Path.join(c.root, "environment-once")
       File.mkdir!(root)

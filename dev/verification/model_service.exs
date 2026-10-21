@@ -20,7 +20,7 @@ defmodule Ipse.Development.Verification.ModelService do
   end
 
   def cases do
-    ~w(normal existing_output bad_blob source_symlink occupied_port forge forged_only flood traffic_limit bad_tags bad_show bad_thinking initial_resident changed_after gpu_after stall_tags wildcard exit_during_http callback_exception lifetime owner_death)
+    ~w(normal existing_output bad_blob source_symlink occupied_port forge forged_only flood traffic_limit bad_tags bad_show bad_thinking initial_resident changed_after gpu_after stall_tags wildcard exit_during_http callback_exception lifetime owner_death nvidia_full nvidia_partial nvidia_cpu nvidia_empty nvidia_malformed)
   end
 
   def configuration(fixture, root, mode \\ "normal") do
@@ -71,6 +71,25 @@ defmodule Ipse.Development.Verification.ModelService do
       ]
     }
 
+    gpu = String.starts_with?(mode, "nvidia_")
+
+    resident =
+      if gpu do
+        row = resident["models"] |> hd() |> Map.put("size", 8)
+
+        vram =
+          case mode do
+            "nvidia_full" -> 8
+            "nvidia_partial" -> 4
+            "nvidia_malformed" -> "4"
+            _ -> 0
+          end
+
+        %{"models" => if(mode == "nvidia_empty", do: [], else: [Map.put(row, "size_vram", vram)])}
+      else
+        resident
+      end
+
     changed = put_in(tags, ["models", Access.at(0), "digest"], String.duplicate("0", 64))
     control = Path.join(source, "control.txt")
 
@@ -92,7 +111,7 @@ defmodule Ipse.Development.Verification.ModelService do
       }
     end
 
-    %{
+    selection = %{
       "version" => 1,
       "origin" => "http://127.0.0.1:#{unused_port()}",
       "models" => %{model => digest},
@@ -108,6 +127,20 @@ defmodule Ipse.Development.Verification.ModelService do
       "limits" => %{"ready_ms" => 5000, "lifetime_ms" => 20000, "metadata_ms" => 1000},
       "cpu_policy" => "visibility_v1"
     }
+
+    if gpu do
+      selection
+      |> Map.delete("cpu_policy")
+      |> Map.merge(%{
+        "version" => 2,
+        "device_selection" => %{
+          "policy" => "nvidia_visible_mixed_v1",
+          "uuid" => "GPU-00000000-0000-0000-0000-000000000001"
+        }
+      })
+    else
+      selection
+    end
   end
 
   def verify_case(name, fixture, root) do
@@ -245,8 +278,10 @@ defmodule Ipse.Development.Verification.ModelService do
     )
 
     File.write!(Path.join(Path.dirname(output), "receipt.json"), encoded)
-    positive? = name in ~w(normal forge flood)
-    returned? = positive? or name in ~w(changed_after gpu_after)
+    positive? = name in ~w(normal forge flood nvidia_full nvidia_partial)
+
+    returned? =
+      positive? or name in ~w(changed_after gpu_after nvidia_cpu nvidia_empty nvidia_malformed)
 
     if returned? do
       check(
@@ -264,6 +299,13 @@ defmodule Ipse.Development.Verification.ModelService do
       receipt["status"] == if(positive?, do: "ok", else: "failed"),
       "wrong overall status: #{inspect(receipt)}"
     )
+
+    if positive? do
+      check(Service.verify_receipt(config, output, receipt) == :ok, "service evidence refused")
+    end
+
+    if name in ~w(nvidia_cpu nvidia_empty),
+      do: check(receipt["code"] == "gpu_use_not_observed", "GPU absence was not reported")
 
     if name == "callback_exception",
       do:

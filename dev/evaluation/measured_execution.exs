@@ -1254,6 +1254,16 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
         :cell_incomplete
       )
 
+      require!(
+        ModelService.verify_receipt(
+          context.resolution["model_service"],
+          Path.join(output, "model-service"),
+          result["service"],
+          environment_constructor(context.execution)
+        ) == :ok,
+        :service_evidence
+      )
+
       domain = json!(Path.join(output, "domain/domain-result.json"))
 
       require!(

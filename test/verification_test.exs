@@ -68,7 +68,8 @@ defmodule Ipse.Development.VerificationTest do
     end
 
     for mode <- ~w(source installed),
-        selection <- ~w(default sealed structured sealed-structured) do
+        selection <-
+          ~w(default sealed structured sealed-structured sealed-long-answers sealed-gpu-answers) do
       origin = if mode == "source", do: "--sdk", else: "--archive"
 
       assert {"measured-knowledge", options} =

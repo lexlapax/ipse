@@ -96,8 +96,11 @@ fn main() {
     assert_eq!(lines.len(), 4);
     let home = PathBuf::from(std::env::var("HOME").unwrap());
     let root = std::env::current_dir().unwrap();
+    let cuda = if lines[0].starts_with("nvidia_") {
+        "GPU-00000000-0000-0000-0000-000000000001"
+    } else { "-1" };
     let selected = [
-        ("CUDA_VISIBLE_DEVICES", "-1"), ("ROCR_VISIBLE_DEVICES", "-1"),
+        ("CUDA_VISIBLE_DEVICES", cuda), ("ROCR_VISIBLE_DEVICES", "-1"),
         ("OLLAMA_VULKAN", "0"), ("GGML_VK_VISIBLE_DEVICES", "-1"),
         ("OLLAMA_NO_CLOUD", "1"),
     ];

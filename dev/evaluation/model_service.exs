@@ -15,13 +15,14 @@ defmodule Ipse.Development.Evaluation.ModelService do
   @logs 16_777_216
   @receipt_limit 4_194_304
   @config_keys ~w(version origin models manifests cache_source runtime limits cpu_policy)
+  @gpu_policy "nvidia_visible_mixed_v1"
+  @safe_integer 9_007_199_254_740_991
   @meta_keys ~w(device inode nlink bytes mode mtime_seconds mtime_nanoseconds ctime_seconds ctime_nanoseconds)
 
   @doc "Validate the closed selection without filesystem, process or network IO."
   def validate(config) do
     try do
-      demand(exact?(config, @config_keys), :configuration)
-      demand(config["version"] === 1 and config["cpu_policy"] == "visibility_v1", :configuration)
+      _ = device!(config)
       uri = URI.parse(config["origin"] || "")
 
       demand(
@@ -96,6 +97,72 @@ defmodule Ipse.Development.Evaluation.ModelService do
       _ -> {:error, :configuration}
     catch
       {:model_service, code} -> {:error, code}
+    end
+  end
+
+  @doc "Project a validated service selection into its portable device policy."
+  def device_policy(config) do
+    with :ok <- validate(config) do
+      {:ok, if(config["version"] === 1, do: "cpu_only", else: @gpu_policy)}
+    end
+  end
+
+  @doc "Verify GPU service evidence against the selected configuration without contacting a daemon."
+  def verify_receipt(config, output, receipt, constructor \\ nil) do
+    try do
+      :ok = validate(config)
+
+      if config["version"] === 2 do
+        demand(
+          receipt["version"] === 2 and receipt["status"] == "ok" and
+            receipt["code"] == nil and receipt["work_status"] == "returned" and
+            receipt["service_status"] == "admitted" and
+            receipt["native_cleanup"] == "confirmed" and
+            receipt["staging_cleanup"] == "confirmed" and receipt["evidence"] == output,
+          :service_evidence
+        )
+
+        demand(
+          read_json(Path.join(output, "started.json")) == %{
+            "version" => 1,
+            "configuration_sha256" => sha(JSON.encode!(config))
+          },
+          :service_evidence
+        )
+
+        demand(
+          receipt["environment"] == environment(config, paths(output), constructor),
+          :service_evidence
+        )
+
+        for {field, initial} <- [{"inventory_before", true}, {"inventory_after", false}] do
+          inventory = receipt[field]
+
+          demand(
+            exact?(inventory, ~w(models resident placement_history_proven)),
+            :service_evidence
+          )
+
+          demand(inventory["placement_history_proven"] === false, :service_evidence)
+          models = inventory["models"]
+
+          demand(
+            is_list(models) and length(models) == map_size(config["models"]) and
+              Map.new(models, &{&1["name"], &1["digest"]}) == config["models"] and
+              Enum.sort_by(Enum.map(models, &model_row!(config, &1)), & &1["name"]) == models,
+            :service_evidence
+          )
+
+          rows = resident_rows!(config, inventory["resident"], initial)
+          demand(rows == inventory["resident"], :service_evidence)
+        end
+      end
+
+      :ok
+    rescue
+      _ -> {:error, :service_evidence}
+    catch
+      _, _ -> {:error, :service_evidence}
     end
   end
 
@@ -578,13 +645,7 @@ defmodule Ipse.Development.Evaluation.ModelService do
     File.chmod!(output, 0o700)
     send(owner, {token, :output_created})
 
-    paths = %{
-      runtime: Path.join(output, "runtime"),
-      home: Path.join(output, "home"),
-      models: Path.join(output, "models"),
-      tmp: Path.join(output, "tmp"),
-      executable: Path.join(output, "runtime/bin/ollama")
-    }
+    paths = paths(output)
 
     for path <- [
           paths.runtime,
@@ -922,24 +983,18 @@ defmodule Ipse.Development.Evaluation.ModelService do
         details = request(config, :post, "/api/show", %{"model" => name}, owner, token, deadline)
         caps = details["capabilities"]
 
-        demand(
-          is_list(caps) and length(caps) in 1..32 and Enum.all?(caps, &text?(&1, 64)) and
-            length(Enum.uniq(caps)) == length(caps) and
-            Enum.any?(caps, &(&1 in ["completion", "embedding"])),
-          :model_capabilities
-        )
+        row =
+          model_row!(config, %{"name" => name, "digest" => item["digest"], "capabilities" => caps})
 
         if name == "qwen3.5:9b",
           do:
             demand(
-              "completion" in caps and "tools" in caps and
-                is_list(get_in(details, ["thinking", "values"])) and
+              is_list(get_in(details, ["thinking", "values"])) and
                 false in details["thinking"]["values"],
               :thinking_control
             )
 
-        if name == "embeddinggemma:latest", do: demand("embedding" in caps, :model_capabilities)
-        %{"name" => name, "digest" => item["digest"], "capabilities" => caps}
+        row
       end)
 
     demand(
@@ -955,26 +1010,74 @@ defmodule Ipse.Development.Evaluation.ModelService do
       :resident_inventory
     )
 
-    if initial, do: demand(resident["models"] == [], :initial_resident)
+    rows = resident_rows!(config, resident["models"], initial)
+
+    inventory = %{
+      "models" => Enum.sort_by(models, & &1["name"]),
+      "resident" => rows
+    }
+
+    if config["version"] === 1,
+      do: Map.put(inventory, "cpu_history_proven", false),
+      else: Map.put(inventory, "placement_history_proven", false)
+  end
+
+  defp model_row!(config, row) do
+    demand(exact?(row, ~w(name digest capabilities)), :model_inventory)
+    name = row["name"]
+    caps = row["capabilities"]
+
+    demand(
+      Map.has_key?(config["models"], name) and row["digest"] == config["models"][name],
+      :model_inventory
+    )
+
+    demand(
+      is_list(caps) and length(caps) in 1..32 and Enum.all?(caps, &text?(&1, 64)) and
+        length(Enum.uniq(caps)) == length(caps) and
+        Enum.any?(caps, &(&1 in ["completion", "embedding"])),
+      :model_capabilities
+    )
+
+    if name == "qwen3.5:9b",
+      do: demand("completion" in caps and "tools" in caps, :thinking_control)
+
+    if name == "embeddinggemma:latest", do: demand("embedding" in caps, :model_capabilities)
+    row
+  end
+
+  defp resident_rows!(config, items, initial) do
+    demand(is_list(items) and length(items) <= map_size(config["models"]), :resident_inventory)
+    if initial, do: demand(items == [], :initial_resident)
 
     rows =
-      Enum.map(resident["models"], fn item ->
+      Enum.map(items, fn item ->
         demand(
           Map.has_key?(config["models"], item["name"]) and
-            item["digest"] == config["models"][item["name"]] and item["size_vram"] === 0,
+            item["digest"] == config["models"][item["name"]],
           :resident_inventory
         )
 
-        Map.take(item, ~w(name digest size_vram))
+        if config["version"] === 1 do
+          demand(item["size_vram"] === 0, :resident_inventory)
+          Map.take(item, ~w(name digest size_vram))
+        else
+          demand(
+            positive?(item["size"], @safe_integer) and uint?(item["size_vram"], item["size"]),
+            :resident_inventory
+          )
+
+          demand(item["size_vram"] > 0, :gpu_use_not_observed)
+          Map.take(item, ~w(name digest size size_vram))
+        end
       end)
 
     demand(length(Enum.uniq_by(rows, & &1["name"])) == length(rows), :resident_inventory)
 
-    %{
-      "models" => Enum.sort_by(models, & &1["name"]),
-      "resident" => rows,
-      "cpu_history_proven" => false
-    }
+    if config["version"] === 2 and not initial,
+      do: demand(rows != [], :gpu_use_not_observed)
+
+    rows
   end
 
   defp request(config, method, path, body, owner, token, deadline) do
@@ -1084,7 +1187,11 @@ defmodule Ipse.Development.Evaluation.ModelService do
         "OLLAMA_HOST" => config["origin"],
         "LD_LIBRARY_PATH" => Path.join(paths.runtime, "lib/ollama"),
         "OLLAMA_NO_CLOUD" => "1",
-        "CUDA_VISIBLE_DEVICES" => "-1",
+        "CUDA_VISIBLE_DEVICES" =>
+          case device!(config) do
+            :cpu_only -> "-1"
+            {:nvidia, uuid} -> uuid
+          end,
         "ROCR_VISIBLE_DEVICES" => "-1",
         "OLLAMA_VULKAN" => "0",
         "GGML_VK_VISIBLE_DEVICES" => "-1",
@@ -1095,6 +1202,47 @@ defmodule Ipse.Development.Evaluation.ModelService do
       selected
     )
   end
+
+  defp device!(%{"version" => 1, "cpu_policy" => "visibility_v1"} = config) do
+    demand(exact?(config, @config_keys), :configuration)
+    :cpu_only
+  end
+
+  defp device!(%{"version" => 2, "device_selection" => selection} = config) do
+    demand(
+      exact?(config, List.delete(@config_keys, "cpu_policy") ++ ["device_selection"]),
+      :configuration
+    )
+
+    demand(
+      exact?(selection, ~w(policy uuid)) and selection["policy"] == @gpu_policy,
+      :configuration
+    )
+
+    uuid = selection["uuid"]
+
+    demand(
+      is_binary(uuid) and
+        Regex.match?(
+          ~r/\AGPU-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/,
+          uuid
+        ),
+      :configuration
+    )
+
+    {:nvidia, uuid}
+  end
+
+  defp device!(_), do: fail(:configuration)
+
+  defp paths(output),
+    do: %{
+      runtime: Path.join(output, "runtime"),
+      home: Path.join(output, "home"),
+      models: Path.join(output, "models"),
+      tmp: Path.join(output, "tmp"),
+      executable: Path.join(output, "runtime/bin/ollama")
+    }
 
   defp result(state, code, output, started) do
     work_status =
@@ -1108,7 +1256,7 @@ defmodule Ipse.Development.Evaluation.ModelService do
     code = code || if(work_status == "raised", do: :callback_raised)
 
     receipt = %{
-      "version" => 1,
+      "version" => if(get_in(state, [:config, "version"]) === 2, do: 2, else: 1),
       "status" => if(code == nil, do: "ok", else: "failed"),
       "code" => if(code, do: Atom.to_string(code)),
       "work_status" => work_status,

@@ -4,10 +4,12 @@ defmodule Ipse.Development.Fixtures.ModelService do
   alias __MODULE__.Daemon
   @models ~w(fixture-text:latest fixture-embedding:latest)
   @launch_keys ~w(executable boot root code_paths files)
+  @gpu_uuid "GPU-00000000-0000-0000-0000-000000000001"
 
-  def configuration(root, launch, origin, fault \\ nil, verification \\ false) do
+  def configuration(root, launch, origin, fault \\ nil, verification \\ false, gpu \\ false) do
     true = fault in [nil, :exit_on_answer]
     true = verification in [false, true]
+    true = is_boolean(gpu)
     true = Path.type(root) == :absolute
     {:ok, ^root} = Ipse.WorkspaceContext.canonical_path(root)
     private_root(root)
@@ -96,15 +98,19 @@ defmodule Ipse.Development.Fixtures.ModelService do
         {[], []}
       end
 
-    control_bytes =
-      JSON.encode!(%{
-        "version" => 1,
-        "models" => models,
-        "launch" => launch,
-        "daemon" => daemon_identity,
-        "verification_environment" => verification,
-        "fault" => if(fault, do: Atom.to_string(fault), else: nil)
-      }) <> "\n"
+    control_values = %{
+      "version" => 1,
+      "models" => models,
+      "launch" => launch,
+      "daemon" => daemon_identity,
+      "verification_environment" => verification,
+      "fault" => if(fault, do: Atom.to_string(fault), else: nil)
+    }
+
+    control_values =
+      if gpu, do: Map.put(control_values, "cuda_visible_devices", @gpu_uuid), else: control_values
+
+    control_bytes = JSON.encode!(control_values) <> "\n"
 
     true = byte_size(control_bytes) <= 1_048_576
     private_file(control, control_bytes)
@@ -118,7 +124,7 @@ defmodule Ipse.Development.Fixtures.ModelService do
 
     File.chmod!(wrapper, 0o500)
 
-    %{
+    config = %{
       "version" => 1,
       "origin" => origin,
       "models" => models,
@@ -136,6 +142,17 @@ defmodule Ipse.Development.Fixtures.ModelService do
       "limits" => %{"ready_ms" => 15_000, "lifetime_ms" => 180_000, "metadata_ms" => 5_000},
       "cpu_policy" => "visibility_v1"
     }
+
+    if gpu do
+      config
+      |> Map.delete("cpu_policy")
+      |> Map.merge(%{
+        "version" => 2,
+        "device_selection" => %{"policy" => "nvidia_visible_mixed_v1", "uuid" => @gpu_uuid}
+      })
+    else
+      config
+    end
   end
 
   defp wrapper(launch, modules, verification) do
@@ -248,6 +265,8 @@ defmodule Ipse.Development.Fixtures.ModelService.Daemon do
 
   def main(control_path, verification) when is_boolean(verification) do
     control = decode_file!(control_path)
+    cuda = Map.get(control, "cuda_visible_devices", "-1")
+    true = cuda in ["-1", "GPU-00000000-0000-0000-0000-000000000001"]
     ^verification = control["verification_environment"]
     %{"version" => 1, "models" => models, "launch" => launch} = control
     true = Enum.sort(Map.keys(models)) == ~w(fixture-embedding:latest fixture-text:latest)
@@ -273,7 +292,7 @@ defmodule Ipse.Development.Fixtures.ModelService.Daemon do
     end
 
     for {key, value} <- [
-          {"CUDA_VISIBLE_DEVICES", "-1"},
+          {"CUDA_VISIBLE_DEVICES", cuda},
           {"ROCR_VISIBLE_DEVICES", "-1"},
           {"OLLAMA_VULKAN", "0"},
           {"GGML_VK_VISIBLE_DEVICES", "-1"},
@@ -319,6 +338,8 @@ defmodule Ipse.Development.Fixtures.ModelService.Daemon do
       requests: 0,
       log_bytes: 0,
       counts: %{},
+      gpu: cuda != "-1",
+      resident: MapSet.new(),
       fault: control["fault"]
     })
   end
@@ -437,6 +458,23 @@ defmodule Ipse.Development.Fixtures.ModelService.Daemon do
       try do
         {method, path, body} = request(socket, <<>>, System.monotonic_time(:millisecond) + 5_000)
         {kind, value} = response(method, path, body, state.models)
+
+        value =
+          if state.gpu and path == "/api/ps" do
+            rows =
+              for name <- Enum.sort(state.resident),
+                  do: %{
+                    "name" => name,
+                    "digest" => state.models[name],
+                    "size" => 16,
+                    "size_vram" => 8
+                  }
+
+            %{"models" => rows}
+          else
+            value
+          end
+
         bytes = JSON.encode!(value) <> "\n"
         true = byte_size(bytes) <= @body_limit
         {:ok, method, path, body, kind, bytes}
@@ -449,6 +487,11 @@ defmodule Ipse.Development.Fixtures.ModelService.Daemon do
         case next do
           {:ok, method, path, body, kind, bytes} ->
             recorded = record(state, method, path, body, kind)
+
+            recorded =
+              if state.gpu and kind in ~w(embedding extraction rerank answer),
+                do: %{recorded | resident: MapSet.put(recorded.resident, body["model"])},
+                else: recorded
 
             if state.fault == "exit_on_answer" and kind == "answer", do: System.halt(86)
 

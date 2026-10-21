@@ -182,7 +182,24 @@ download or service switch occurs. Ollama's source is
 [MIT-licensed](https://github.com/ollama/ollama/blob/main/LICENSE); record the exact
 runtime version, file hashes and model licenses with the execution. The synthetic
 service tests use a repository Rust fixture and need neither Ollama nor weights.
-The approved CPU-only comparison keeps this service optional and unbundled.
+CPU and explicit NVIDIA benchmark selections keep this service optional and
+unbundled. A GPU selection uses the operator's existing compatible driver and
+the declared Ollama libraries; Ipse installs no driver or CUDA toolkit.
+
+The optional NVIDIA benchmark also uses the existing NVIDIA driver and its
+`nvidia-smi` inspection utility to identify a physical GPU. The source is the
+operator's installed NVIDIA or distribution driver package. There is no pinned
+project-wide driver version: record the exact package version, running driver
+version and inspection-tool version with the execution. The binary driver and
+utilities use the package's NVIDIA license and third-party notices; retain those
+exact notices rather than assigning Ollama's MIT license to them. NVIDIA publishes
+its [Linux driver license](https://www.nvidia.com/en-in/drivers/nvidia-license/linux/).
+These host components remain outside Ipse's distribution. The user authorized
+using the repaired existing GPU for the comparison on 2026-10-21; installing or
+adding other external tooling still requires approval.
+
+Report real placement separately from the kernel charged-RAM metric, which
+excludes VRAM.
 
 For a new retrieval adapter, start with a synthetic source and the existing SDK.
 Measure the requirement before selecting a database, encoder or remote service.

@@ -62,6 +62,11 @@ defmodule Ipse.Development.Evaluation.Runner do
           do: Map.update!(expected, :review, &[:labels | &1]),
           else: expected
 
+      expected =
+        if phase == :declare and Keyword.has_key?(options, :resolution),
+          do: Map.update!(expected, :declare, &[:resolution | &1]),
+          else: expected
+
       if phase in [:predict, :verify_frozen] and Keyword.has_key?(options, :labels),
         do: fail!(:labels_forbidden)
 
@@ -176,7 +181,8 @@ defmodule Ipse.Development.Evaluation.Runner do
     plan = decode!(bytes)
     :ok = checked(Contract.validate(plan))
     require!(plan["mode"] in ~w(heldout fixture), :freeze_mode)
-    {:ok, declaration} = Freeze.declare(File.cwd!(), bytes, plan["artifacts"])
+    resolution = if options[:resolution], do: options[:resolution] |> read!() |> decode!()
+    {:ok, declaration} = Freeze.declare(File.cwd!(), bytes, plan["artifacts"], resolution)
     output = Path.expand(options[:output])
     private_file!(output, declaration["bytes"])
     {:ok, declaration |> Map.delete("bytes") |> Map.put("path", output)}

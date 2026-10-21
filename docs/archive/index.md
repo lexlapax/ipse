@@ -7,6 +7,7 @@ preserved pre-rewrite chapters. Their dated bodies and verdicts are unchanged.
 
 | Snapshot | Provenance | Current guidance and retained records |
 | --- | --- | --- |
+| [2026-10-21 explicit NVIDIA evaluation policy](2026-10-21-p27-gpu-policy/index.md) | Increment after `bfc388f`; portable/local device binding, scoped reviews, exposed GPU trial and retained verification limits | [Evaluation training](../developer/knowledge-evaluation.md), [dependencies](../developer/dependencies.md), [plan](../plan.md) |
 | [2026-10-21 bounded final answers](2026-10-21-p27-long-answers/index.md) | Increment after `fad2856`; explicit SDK-1 model-call allowance, answers-only evaluation policy, scoped reviews and retained exposed deadline failures | [Configuration](../operator/configuration.md), [model effects](../developer/extension-effects.md), [evaluation training](../developer/knowledge-evaluation.md), [plan](../plan.md) |
 | [2026-10-21 P27 readiness review and repairs](2026-10-21-p27-readiness-repair/index.md) | Whole-milestone review of `166914a`, four repair dispositions and scoped verification | [Knowledge training](../developer/knowledge-extensions.md), [evaluation training](../developer/knowledge-evaluation.md), [plan](../plan.md) |
 | [2026-10-21 manuals before topic consolidation](2026-10-21-p27-manual-consolidation/index.md) | Source `d35287a`, original manuals/navigation preserved with hashes and replacement ownership | [User manual](../operator/index.md), [developer training](../developer/index.md) |

@@ -508,6 +508,72 @@ defmodule Ipse.KnowledgeEvaluationFreezeTest do
     refute File.exists?(ctx.output)
   end
 
+  test "device policy projects from one local selection without leaking its UUID", ctx do
+    plan = JSON.encode!(plan_v2(ctx))
+    artifacts = %{"fixture" => ctx.artifact}
+    cpu = resolution(ctx)
+    assert {:ok, original} = Freeze.declare(ctx.repository, plan, artifacts)
+    assert {:ok, explicit} = Freeze.declare(ctx.repository, plan, artifacts, cpu)
+    assert original == explicit
+
+    gpu = update_in(cpu["model_service"], &gpu_service/1)
+    assert {:ok, declared} = Freeze.declare(ctx.repository, plan, artifacts, gpu)
+    experiment = JSON.decode!(declared["bytes"])
+    assert experiment["policy"]["device"] == "nvidia_visible_mixed_v1"
+    refute declared["bytes"] =~ "GPU-"
+    refute declared["bytes"] =~ ctx.root
+    assert {:ok, _} = Freeze.resolve_plan(declared["bytes"], gpu)
+
+    other =
+      put_in(
+        gpu,
+        ["model_service", "device_selection", "uuid"],
+        "GPU-00000000-0000-0000-0000-000000000002"
+      )
+
+    assert {:ok, same} = Freeze.declare(ctx.repository, plan, artifacts, other)
+    assert same == declared
+
+    for {declaration, selection} <- [{original, gpu}, {declared, cpu}] do
+      assert {:error, :device_selection} = Freeze.resolve_plan(declaration["bytes"], selection)
+
+      assert {:error, :device_selection} =
+               Freeze.create_v2(ctx.repository, declaration["bytes"], selection, ctx.output)
+
+      refute File.exists?(ctx.output)
+    end
+
+    assert {:ok, seal} = Freeze.create_v2(ctx.repository, declared["bytes"], gpu, ctx.output)
+    assert {:ok, verified} = Freeze.verify(seal["path"], seal["sha256"])
+    assert verified["manifest"]["resolution"]["model_service"] == gpu["model_service"]
+    manifest = JSON.decode!(File.read!(seal["path"]))
+
+    changed =
+      put_in(
+        manifest,
+        ["resolution", "model_service", "device_selection", "uuid"],
+        other["model_service"]["device_selection"]["uuid"]
+      )
+
+    File.write!(seal["path"], JSON.encode!(changed) <> "\n")
+    assert {:error, _} = Freeze.verify(seal["path"], seal["sha256"])
+    refute File.exists?(gpu["data_manifest"])
+    refute File.exists?(gpu["model_service"]["cache_source"])
+  end
+
+  test "declaration refuses an incomplete resolution before artifact or dataset access", ctx do
+    assert {:error, :invalid_resolution} =
+             Freeze.declare(
+               ctx.repository,
+               JSON.encode!(plan_v2(ctx)),
+               %{"fixture" => Path.join(ctx.root, "missing-artifact")},
+               %{"model_service" => %{}}
+             )
+
+    refute File.exists?(ctx.output)
+    refute File.exists?(resolution(ctx)["data_manifest"])
+  end
+
   test "v2 binds the actual ordered launcher and refuses a replacement registry", ctx do
     {:ok, experiment} = declare(ctx)
 
@@ -559,6 +625,18 @@ defmodule Ipse.KnowledgeEvaluationFreezeTest do
 
   defp declare(ctx),
     do: Freeze.declare(ctx.repository, JSON.encode!(plan_v2(ctx)), %{"fixture" => ctx.artifact})
+
+  defp gpu_service(config),
+    do:
+      config
+      |> Map.delete("cpu_policy")
+      |> Map.merge(%{
+        "version" => 2,
+        "device_selection" => %{
+          "policy" => "nvidia_visible_mixed_v1",
+          "uuid" => "GPU-00000000-0000-0000-0000-000000000001"
+        }
+      })
 
   defp resolution(ctx),
     do: %{
