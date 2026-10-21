@@ -468,7 +468,11 @@ defmodule IpseKnowledgeExample.EvaluationContract do
              Enum.all?(plan[key], fn {id, profile} ->
                name?(id) and is_map(profile) and !Map.has_key?(profile, "base_url")
              end)
-         end), do: :ok, else: {:error, :invalid_experiment}
+         end) do
+      :ok
+    else
+      {:error, :invalid_experiment}
+    end
   end
 
   @doc "Resolve the declared selected artifact without inspecting its files."

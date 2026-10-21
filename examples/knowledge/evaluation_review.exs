@@ -90,12 +90,10 @@ defmodule IpseKnowledgeExample.EvaluationReview do
       sealed = queries["contract"] == "sealed_answers_v1"
       require!(Map.has_key?(context, "answers") == sealed, :invalid_context)
 
-      if sealed,
-        do:
-          require!(
-            Enum.map(queries["queries"], &Map.take(&1, ~w(query_id project))) == freeze["queries"],
-            :query_order
-          )
+      if sealed do
+        query_order = Enum.map(queries["queries"], &Map.take(&1, ~w(query_id project)))
+        require!(query_order == freeze["queries"], :query_order)
+      end
 
       {:ok, reference} =
         checked(

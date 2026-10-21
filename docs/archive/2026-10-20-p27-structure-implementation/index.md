@@ -158,6 +158,16 @@ demo, package and installed-package checks. These local runs use OTP 29 with
 Elixir 1.20.3 on macOS and 1.20.4 on Linux. A new hosted OTP-27/Elixir-1.18 run is
 not part of this receipt.
 
+The subsequent [hosted run for `240e416`](https://github.com/lexlapax/ipse/actions/runs/39521623611)
+failed formatting on both platforms after successful builds. Elixir 1.18 requests
+different wrapping in `dev/evaluation/contract.exs` and
+`examples/knowledge/evaluation_review.exs`; later steps were skipped. The follow-up
+uses an explicit `if` block and a local query-order value to keep both formatter
+versions stable. The complete Elixir 1.20.3 and isolated Elixir 1.18.5 formatting
+checks pass, as do all sixteen focused plan/review tests. These local checks do
+not turn the failed hosted run into a passing receipt. No command, declaration,
+query-order condition or evaluation policy changes.
+
 Each platform runs all five artifact proofs through source and installed hosts:
 all four model selections retain nine assertions each, embedding and MCP retain
 twelve each, saved results retain exactly 4 MiB and 1,024 fragments with exact
