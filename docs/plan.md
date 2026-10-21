@@ -400,7 +400,7 @@ the milestone. Preserve current SDK bounds and existing operation authority.
 | P27H5 | Explicit schema-bound extension inference, native provider admission, approval and saved-result validation, plus independently selected domain output contracts | Host contract and domain selections verified; corrected-source macOS/native-enabled Linux suites, source/package/installed proofs, unchanged precompiled SDK-1 modes and three actual synthetic native requests pass. Plan-three evaluator integration and individual qualification pass both scoped platform checks and complete source/installed synthetic comparisons. Semantic quality remains open |
 | P27A | Independent research and lexical corpus packages with named interchangeable profiles, cited evidence, explicit limits, partial failures, stale-index handling and suppression | Review repairs and corrected-source fixture/platform/installed checks pass; held-out quality acceptance remains open |
 | P27B | Independent attributable graph, optional extraction, embedding/hybrid and rerank adapters; matched quality/resource comparisons before engine selection | Review defects, compact model contracts and shared original-byte excerpts verified through source/platform/installed checks; corrected-source matched quality/resource comparisons and selection remain open |
-| P27 verification | Frozen held-out workload, zero authority/isolation/replay/resurrection failures, measured retrieval/support/citation/resources, source/native/installed checks, coherent user and contributor manuals | Open; the exposed diagnostic retains failed/partial rows and classification defects. [Whole-milestone review and boundary checks](archive/2026-10-21-p27-readiness-repair/index.md) found six further readiness defects; repairs pass full macOS/Linux suites, supported-toolchain and package checks, both native 350-row scripted proofs and exact-commit hosted CI. Final inference policy, fresh held-out quality, independent semantic review, matched resources and engine selection remain |
+| P27 verification | Frozen held-out workload, zero authority/isolation/replay/resurrection failures, measured retrieval/support/citation/resources, source/native/installed checks, coherent user and contributor manuals | Open; the exposed diagnostic retains failed/partial rows and classification defects. [Whole-milestone review and boundary checks](archive/2026-10-21-p27-readiness-repair/index.md) found six further readiness defects; repairs pass full macOS/Linux suites, supported-toolchain and package checks, both native 350-row scripted proofs and exact-commit hosted CI. A usable configuration for the selected 9B reasoning policy, fresh held-out quality, independent semantic review, matched resources and engine selection remain |
 | P27 structural readiness | Holistic consolidation of the entire codebase and all user/developer documentation; migrate callers, builds, tests, packaging and CI together | Complete at runtime commit `18af42e`; selected implementation units, [whole-manual consolidation](archive/2026-10-21-p27-manual-consolidation/editorial-review.md), whole review and six repairs pass platform/package/native gates and hosted Ubuntu/macOS CI. The final evaluation configuration and fresh private freeze remain separate |
 
 The [shared verification change](archive/2026-10-20-p27-shared-verification/index.md)
@@ -418,6 +418,14 @@ output succeeds, but semantic and citation errors persist. A general instruction
 revision produced mixed results and was reverted. No quality gain or private
 acceptance is claimed; inference-policy investigation remains open. Structural
 work now passes the readiness gate above.
+
+The user selected the existing 9B model with reasoning enabled for the final CPU
+comparison. Its [default-reasoning diagnostic](archive/2026-10-20-p27-quality-remediation/index.md#retain-the-default-reasoning-deadline-result)
+retains eight first-request deadline cancellations and confirmed cleanup.
+Independent design review shows that extending only the model request cannot
+extend the enclosing SDK-2 invocation. An advisory concise-reasoning trial keeps
+all existing bounds before considering a generic API change. The private
+workload remains sealed until a usable configuration is frozen.
 
 The [first host-contract record](archive/2026-10-19-p27-mcp-host-contracts/index.md)
 retains causal regressions, independent review corrections and local verification.

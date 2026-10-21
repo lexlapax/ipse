@@ -418,6 +418,34 @@ grades, isolated causal estimates or a measured quality improvement. There were
 no retries, classification repairs, scoring changes, model downloads or private
 workload access. Shared warm state prevents a matched resource comparison.
 
+## Retain the default-reasoning deadline result
+
+On 2026-10-21, the user selected the existing `qwen3.5:9b` with reasoning enabled
+for the final CPU comparison. A fresh owned service first verified that the
+pinned model supports thinking and defaults to enabled thinking. The diagnostic
+then submitted all eight previously exposed fixed-context requests, with their
+original instructions, inputs, response schemas and limits. It removed the
+explicit `reasoning_effort: "none"` setting. No model or provider changed.
+
+All eight first requests were cancelled at the existing 120-second deadline;
+none produced a decoded answer. Canonical accounting retains eight distinct
+attempts with partial usage. Session, native-process and staging cleanup are
+confirmed. The unchanged 439-file runtime inventory matches the tested readiness
+snapshot. The [metadata receipt](2026-10-21-reasoning-deadline.json) binds the
+declaration, prepared contexts, controller, first outcomes and source identities.
+This is a failed operating-policy diagnostic, not a semantic-quality result or
+matched resource comparison. No request was retried and no private input opened.
+
+Two independent source reviews rejected a model-request-only timeout extension.
+SDK-2 knowledge invocations also retain aggregate output and read deadlines,
+with durable elapsed-time validation. A longer model request alone would still
+fail those boundaries. Both reviews recommend a bounded advisory-brevity trial
+before expanding the generic invocation contract. That trial keeps the selected
+9B model and enabled reasoning, and changes only the trusted instruction. Its
+request for concise reasoning is advisory, with no token or runtime guarantee.
+No host API or SDK bound has changed. The final configuration and private
+evaluation freeze remain open.
+
 ## Remaining quality work
 
 The shared excerpt repair removes the separate dense-prefix and first-match
