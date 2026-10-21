@@ -320,3 +320,27 @@ The first sandboxed test launch could not acquire Mix's loopback filesystem
 lock; tests pass with the required local socket access. No model calls or private
 evaluation inputs were used. This scoped record does not claim a full suite,
 Linux rerun or installed-package proof; final integrated gates remain open.
+
+## Give pure saved reconstruction one owner
+
+S12 implementation record, 2026-10-21, over `a5186e6`. `Session.Saved` owns
+pure context and resume-fact reconstruction from loaded events. The public
+`Session.restore_context/1` keeps its narrow message-list result. Session retains
+locked source validation, permitted tail repair and reload, page-dependent
+question recovery, workspace/skill discovery, and writer startup. The new helper
+is included in Registry's host identity. `Questions.tool_result/3` supplies one
+shared frame for live question results and saved-answer validation.
+
+An AST comparison confirms all fifteen moved reconstruction clauses, plus the
+shared question-result body, after explicit ownership/name/visibility changes
+and replacing two tool-phase predicates with the equivalent admitted descriptor
+stage test. The first strict compile catches a guarded message-restoration
+clause missed by the move script. That clause moves before the successful
+strict compilation, AST audit and 161 focused recovery/invocation tests.
+Both source-only adversarial reviews find no defect and read the full affected
+[persistence chapter](../../developer/persistence.md). Its literal synthetic
+reconstruction exercise and the real CLI demo pass on macOS; documentation links
+pass. A final private fact-field name correction is checked by strict compile,
+the exercise and demo after the focused run. No full-suite, Linux or package
+rerun is claimed for this scoped extraction. Those integrated gates, the remaining
+invocation model, whole manuals and P27 evaluation remain open.

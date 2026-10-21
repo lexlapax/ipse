@@ -11,6 +11,45 @@ Start with `lib/ipse/journal/writer.ex`, `file_effect.ex`, and `session/lock.ex`
 Follow a synced tool intent into execution before attempting a storage refactor.
 The timing of the receipt is part of correctness, not an implementation detail.
 
+## Separate reconstruction from recovery IO
+
+`Ipse.Session.Saved` rebuilds facts from an already loaded event list. Its
+`context/1` function retains the narrow message-list contract exposed by
+`Ipse.Session.restore_context/1`. It validates durable context records and restores
+unknown tool outcomes without executing a tool. `Saved.restore/2` additionally
+reconstructs accounting, extension action state, saved-result indexes, research
+validation, pending questions and the last recorded model/request facts. It
+returns those facts without starting a Session or reading source pages.
+
+The owner still controls recovery order: acquire the session lock, reload and
+validate the locked journal and its sources, repair only a permitted torn tail,
+reload, then reconstruct pure facts. Afterward, event/subscription question
+recovery resolves its source pages. Workspace/skill discovery and writer startup
+remain owner-held IO. A successful pure reconstruction alone does not certify
+those external sources or authorize a pending effect.
+
+Try the boundary in `iex -S mix` with a synthetic empty journal:
+
+```elixir
+scratch = Path.join(System.tmp_dir!(), "ipse-saved-exercise-" <> Ipse.Usage.id())
+File.mkdir_p!(scratch)
+{:ok, id} = Ipse.Journal.create(scratch, %{"provider" => "demo", "model" => "scripted"})
+{:ok, events} = Ipse.Journal.load(scratch, id)
+path = Path.join(scratch, id <> ".jsonl")
+before = File.read!(path)
+{:ok, []} = Ipse.Session.restore_context(events)
+{:ok, saved} = Ipse.Session.Saved.restore(events, id)
+nil = saved.question
+true = before == File.read!(path)
+File.rm_rf!(scratch)
+```
+
+Then follow the interrupted-write case in `test/tool_recovery_test.exs` and the
+pending-question cases in `test/question_session_test.exs`. Verify that an idle
+resume preserves the journal and workspace, and that a saved question still
+requires a fresh explicit answer. `Questions.tool_result/3` supplies the same
+message shape to live question handling and saved-checkpoint validation.
+
 ## Follow an active append
 
 Session validates configuration and recovery sources, repairs only an allowed

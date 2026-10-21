@@ -1,6 +1,14 @@
 defmodule Ipse.Questions do
-  @moduledoc "Bounded operator clarification schemas and explicit answer validation."
+  @moduledoc "Bounded operator clarification schemas, answer validation and tool-result messages."
   alias Ipse.MCP.Schema
+
+  def tool_result(call, content, status),
+    do: %{
+      "role" => "tool",
+      "tool_call_id" => call["id"],
+      "content" => content,
+      "ipse_tool_outcome" => %{"status" => status, "approval" => "not_required"}
+    }
 
   def definition do
     %{

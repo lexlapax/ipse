@@ -432,6 +432,7 @@ defmodule Ipse.Extensions.Registry do
       Ipse.HTTPProxy,
       Ipse.TaskResources,
       Ipse.Session.Lock,
+      Ipse.Session.Saved,
       Ipse.FileEffect,
       Ipse.Lifecycle.Source,
       Ipse.Lifecycle.Event,

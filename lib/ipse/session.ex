@@ -3,6 +3,7 @@ defmodule Ipse.Session do
   use GenServer
   alias Ipse.{Journal, Skills, Tools, WorkspaceContext, Questions, ToolCall}
   alias Ipse.Journal.Writer
+  alias Ipse.Session.Saved
   @prompt_bytes 1_048_576
 
   alias Ipse.Extensions.{
@@ -159,13 +160,14 @@ defmodule Ipse.Session do
          :ok <- Ipse.Budget.validate_sources(config, id, locked_events),
          :ok <- Journal.repair_tail(dir, id, config[:journal]),
          {:ok, events} <- Journal.load(dir, id, config[:journal]),
-         {:ok, accounting} <- Ipse.Usage.restore(events, id),
-         {:ok, extension_state} <- Actions.restore(events),
-         {:ok, result_sources} <- ResultSource.restore(events),
-         {:ok, messages} <- restore(events),
-         {:ok, _research} <- Ipse.Research.restore(events),
-         {:ok, question, messages} <- restore_question(events, messages),
-         {:ok, question, messages} <- restore_extension_question(events, messages, question),
+         {:ok, saved} <- Saved.restore(events, id),
+         %{
+           accounting: accounting,
+           extension_state: extension_state,
+           result_sources: result_sources,
+           messages: messages,
+           question: question
+         } = saved,
          :ok <- question_available(question, config),
          {:ok, event_question} <- EventJob.restore_question(question, dir, id, events),
          {:ok, event_question} <-
@@ -193,7 +195,7 @@ defmodule Ipse.Session do
         context_snapshot: context_snapshot,
         context_drift: WorkspaceContext.drift(context_snapshot),
         reported_model: nil,
-        historical_model: historical_model(events),
+        historical_model: saved.historical_model,
         subscriber: Keyword.fetch!(opts, :subscriber),
         skills: skills,
         skills_saved: skills_saved,
@@ -228,11 +230,11 @@ defmodule Ipse.Session do
         child_usage: extension_state.child_usage,
         active_request: nil,
         extension_model: nil,
-        last_request_id: saved_request(events, "request_id"),
+        last_request_id: saved.last_request_id,
         turn_id:
           if(question && question[:kind] == :extension,
             do: question.parent["payload"]["turn_id"],
-            else: saved_request(events, "turn_id") || Ipse.Usage.id()
+            else: saved.turn_id || Ipse.Usage.id()
           ),
         text_stream: nil,
         text_stream_monitor: nil,
@@ -253,7 +255,7 @@ defmodule Ipse.Session do
         event_cleanup_failed: false,
         final:
           if(event_question && event_question.schedule == "after_turn",
-            do: saved_event_final(events, messages),
+            do: Saved.event_final(events, messages),
             else: Projection.presentation(events)
           ),
         extension_intent: nil,
@@ -336,7 +338,7 @@ defmodule Ipse.Session do
               state,
               question,
               Ipse.Lifecycle.Runtime.question_source(events, question),
-              saved_request(events, "turn_id")
+              saved.turn_id
             ),
           else: state
 
@@ -1941,7 +1943,7 @@ defmodule Ipse.Session do
         s = enroll_feeds(s)
 
         message =
-          question_result(
+          Questions.tool_result(
             question.call,
             Jason.encode!(%{
               "answers" => answers,
@@ -3919,19 +3921,6 @@ defmodule Ipse.Session do
     end
   end
 
-  defp saved_event_final(events, messages) do
-    presentation = Projection.presentation(events)
-
-    if presentation != "",
-      do: presentation,
-      else:
-        Enum.reverse(messages)
-        |> Enum.find_value("", fn message ->
-          if message["role"] == "assistant" and message["tool_calls"] in [nil, []],
-            do: message["content"]
-        end)
-  end
-
   defp append_message(s, message) do
     event = %{"type" => "message", "message" => message}
 
@@ -4173,15 +4162,6 @@ defmodule Ipse.Session do
     put_in(s, [:feeds, :resources, id], %{r | closed: true, cleanup: cleanup})
   end
 
-  defp saved_request(events, field) do
-    events
-    |> Enum.reverse()
-    |> Enum.find_value(fn
-      %{"type" => "request_admitted", "kind" => "model"} = event -> event[field]
-      _ -> nil
-    end)
-  end
-
   defp admit_request(s, config, kind) do
     event = Ipse.Usage.admission(s.id, config, kind, s.turn_id)
     s = account(s, event)
@@ -4392,132 +4372,8 @@ defmodule Ipse.Session do
 
   defp reported_model(_), do: nil
 
-  defp historical_model(events) do
-    events
-    |> Enum.reverse()
-    |> Enum.find_value(fn
-      %{"type" => "message", "message" => %{"role" => "assistant"} = message} ->
-        {:found, reported_model(message)}
-
-      _ ->
-        nil
-    end)
-    |> case do
-      {:found, model} -> model
-      nil -> nil
-    end
-  end
-
-  defp restore(events) do
-    restore_context(events)
-  end
-
   @doc "Validate saved effective context without starting inference, tools or a session."
-  def restore_context(events) do
-    with :ok <- Ipse.Journal.Limits.validate_events(events),
-         :ok <- Ipse.Handoff.validate_events(events),
-         :ok <- Skills.validate_events(events),
-         {:ok, _} <- Ipse.Lifecycle.Runtime.restore(events),
-         {:ok, _} <- Ipse.Lifecycle.Tool.restore(events),
-         {:ok, _} <- Ipse.Lifecycle.Child.restore(events),
-         :ok <- Ipse.Observability.Resources.validate(events),
-         {:ok, _} <- Feeds.validate(events),
-         {:ok, _} <- Ipse.Usage.restore(events),
-         :ok <- Projection.validate_events(events) do
-      restore_validated_context(events)
-    end
-  end
-
-  defp restore_validated_context(events) do
-    Enum.reduce_while(events, {:ok, []}, fn
-      %{"type" => "extension_invocation_result", "descriptor" => %{"stage" => "invoke.tool"}} =
-          event,
-      {:ok, messages} ->
-        {:cont, {:ok, [Invocation.tool_message(event) | messages]}}
-
-      %{"type" => "message", "message" => %{"ipse_extension_result" => _} = message},
-      {:ok, messages} ->
-        if List.first(messages) == message,
-          do: {:cont, {:ok, messages}},
-          else: {:halt, {:error, :invalid_extension_invocation}}
-
-      %{"type" => "extension_transform_intent"} = event, {:ok, messages} ->
-        messages = restore_messages(Enum.reverse(messages))
-
-        case Projection.validate_intent_context(messages, event) do
-          :ok -> {:cont, {:ok, Enum.reverse(messages)}}
-          error -> {:halt, error}
-        end
-
-      %{"type" => "extension_transform_result"} = event, {:ok, messages} ->
-        case Projection.apply(restore_messages(Enum.reverse(messages)), event) do
-          {:ok, projected} -> {:cont, {:ok, Enum.reverse(projected)}}
-          error -> {:halt, error}
-        end
-
-      %{"type" => "handoff_imported", "message" => message}, {:ok, messages} ->
-        {:cont, {:ok, [message | messages]}}
-
-      %{"type" => type, "message" => message}, {:ok, messages}
-      when type in ["message", "operator_answer", "operator_question_closed"] and is_map(message) ->
-        {:cont, {:ok, [message | messages]}}
-
-      %{"type" => "context_compacted"} = event, {:ok, messages} ->
-        messages = restore_messages(Enum.reverse(messages))
-        count = event["covered_messages"]
-
-        if event["version"] == 1 and is_integer(count) and count > 0 and
-             count <= length(messages) and
-             Ipse.Compaction.valid_checkpoint?(event["checkpoint"]) and
-             Ipse.JSON.digest(Enum.take(messages, count)) == event["prefix_sha256"] do
-          {:cont, {:ok, Enum.reverse([event["checkpoint"] | Enum.drop(messages, count)])}}
-        else
-          {:halt, {:error, :invalid_compaction_checkpoint}}
-        end
-
-      %{"type" => "tool_results_compacted"} = event, {:ok, messages} ->
-        case Ipse.Compaction.restore_tool_results(restore_messages(Enum.reverse(messages)), event) do
-          {:ok, projected} -> {:cont, {:ok, Enum.reverse(projected)}}
-          error -> {:halt, error}
-        end
-
-      _, acc ->
-        {:cont, acc}
-    end)
-    |> case do
-      {:ok, messages} -> {:ok, restore_messages(Enum.reverse(messages))}
-      error -> error
-    end
-  end
-
-  defp restore_messages([]), do: []
-
-  defp restore_messages([%{"role" => "assistant", "tool_calls" => calls} = message | rest])
-       when is_list(calls) do
-    {results, tail} = Enum.split_while(rest, &(&1["role"] == "tool"))
-    by_id = Enum.group_by(results, & &1["tool_call_id"])
-
-    {ordered, _remaining} =
-      Enum.map_reduce(calls, by_id, fn call, pending ->
-        case Map.get(pending, call["id"], []) do
-          [result | remaining] ->
-            {result, Map.put(pending, call["id"], remaining)}
-
-          [] ->
-            {%{
-               "role" => "tool",
-               "tool_call_id" => call["id"],
-               "content" =>
-                 "Outcome unknown: session interrupted before a result was recorded. Inspect the workspace before retrying.",
-               "ipse_tool_outcome" => %{"status" => "unknown", "approval" => "historical_unknown"}
-             }, pending}
-        end
-      end)
-
-    [message | ordered] ++ restore_messages(tail)
-  end
-
-  defp restore_messages([message | rest]), do: [message | restore_messages(rest)]
+  defdelegate restore_context(events), to: Ipse.Session.Saved, as: :context
 
   defp lifecycle_records(s, {context, records}) do
     Enum.each(records, &record(s, &1))
@@ -4610,7 +4466,7 @@ defmodule Ipse.Session do
           }
         else
           message =
-            question_result(
+            Questions.tool_result(
               call,
               "Operator clarification unavailable in headless or child sessions. Provide the missing information in the task; no default answer was selected.",
               "error"
@@ -4630,14 +4486,6 @@ defmodule Ipse.Session do
     end
   end
 
-  defp question_result(call, content, status),
-    do: %{
-      "role" => "tool",
-      "tool_call_id" => call["id"],
-      "content" => content,
-      "ipse_tool_outcome" => %{"status" => status, "approval" => "not_required"}
-    }
-
   defp close_question(%{question: nil} = s), do: s
 
   defp close_question(%{question: %{kind: :extension} = question} = s) do
@@ -4654,7 +4502,7 @@ defmodule Ipse.Session do
 
   defp close_question(s) do
     message =
-      question_result(
+      Questions.tool_result(
         s.question.call,
         "Clarification cancelled without an answer. No action was authorized.",
         "not_started"
@@ -4967,98 +4815,6 @@ defmodule Ipse.Session do
     end
   end
 
-  defp restore_extension_question(events, messages, native) do
-    with {:ok, state} <- Actions.restore(events) do
-      if state.question do
-        with true <- is_nil(native),
-             parent = state.parent,
-             call =
-               if(invocation_phase(parent) == :tool,
-                 do:
-                   Enum.find_value(Enum.reverse(messages), fn message ->
-                     Enum.find(
-                       message["tool_calls"] || [],
-                       &(&1["id"] == parent["parent_call_id"])
-                     )
-                   end)
-               ),
-             true <- invocation_phase(parent) != :tool or is_map(call) do
-          question = %{
-            kind: :extension,
-            id: state.action["operation_id"],
-            arguments: state.action["request"]["arguments"],
-            parent: parent,
-            action: state.action,
-            results: state.results,
-            steps: state.question["steps"],
-            call: call
-          }
-
-          messages =
-            if call, do: remove_question_placeholder(messages, call["id"]), else: messages
-
-          {:ok, question, messages}
-        else
-          _ -> {:error, :invalid_extension_question}
-        end
-      else
-        {:ok, native, messages}
-      end
-    end
-  end
-
-  defp restore_question(events, messages) do
-    # The whole history has already passed restore_context/1. Project each
-    # prefix for its checkpoint hash without repeating every durable reducer.
-    events
-    |> Enum.with_index()
-    |> Enum.reduce_while({:ok, nil}, fn
-      {%{"type" => "operator_question"} = event, index}, {:ok, nil} ->
-        call = event["call"]
-
-        with true <- event["version"] == 1 and is_map(call),
-             true <-
-               event["id"] == call["id"] and ToolCall.valid_id?(call["id"]),
-             true <- get_in(call, ["function", "name"]) == "ask_operator",
-             {:ok, args} <- Jason.decode(get_in(call, ["function", "arguments"])),
-             {:ok, ^args} <- Questions.validate(event["arguments"]),
-             true <-
-               is_integer(event["steps"]) and event["steps"] >= 0 and event["steps"] <= 100_000,
-             {:ok, prefix} <- restore_validated_context(Enum.take(events, index)),
-             prefix = remove_question_placeholder(prefix, call["id"]),
-             true <-
-               length(prefix) == event["covered_messages"] and
-                 Ipse.JSON.digest(prefix) == event["prefix_sha256"],
-             true <-
-               Enum.any?(prefix, fn m ->
-                 m["role"] == "assistant" and call in (m["tool_calls"] || [])
-               end) do
-          {:cont, {:ok, %{id: call["id"], call: call, arguments: args, steps: event["steps"]}}}
-        else
-          _ -> {:halt, {:error, :invalid_operator_question_checkpoint}}
-        end
-
-      {%{"type" => type} = event, _}, {:ok, question}
-      when type in ["operator_answer", "operator_question_closed"] ->
-        if valid_question_end?(event, question),
-          do: {:cont, {:ok, nil}},
-          else: {:halt, {:error, :invalid_operator_question_checkpoint}}
-
-      {%{"type" => "operator_question"}, _}, _ ->
-        {:halt, {:error, :invalid_operator_question_checkpoint}}
-
-      _, state ->
-        {:cont, state}
-    end)
-    |> case do
-      {:ok, nil} -> {:ok, nil, messages}
-      {:ok, question} -> {:ok, question, remove_question_placeholder(messages, question.id)}
-      error -> error
-    end
-  rescue
-    _ -> {:error, :invalid_operator_question_checkpoint}
-  end
-
   defp checkpoint_event_question(s, question) do
     if s.event_committed != nil and s.event_intent == nil do
       record(
@@ -5071,43 +4827,6 @@ defmodule Ipse.Session do
         )
       )
     end
-  end
-
-  defp valid_question_end?(_, nil), do: false
-
-  defp valid_question_end?(event, question) do
-    message = event["message"]
-
-    expected_status =
-      if event["type"] == "operator_answer", do: "result_recorded", else: "not_started"
-
-    valid =
-      event["version"] == 1 and event["id"] == question.id and is_map(message) and
-        Map.delete(message, "content") ==
-          Map.delete(question_result(question.call, "", expected_status), "content")
-
-    if valid and event["type"] == "operator_answer" do
-      case Jason.decode(message["content"]) do
-        {:ok,
-         %{"answers" => answers, "notice" => "Clarification only; no action permission."} = result}
-        when map_size(result) == 2 ->
-          match?({:ok, _}, Questions.validate_answers(question.arguments, answers))
-
-        _ ->
-          false
-      end
-    else
-      valid and
-        message["content"] ==
-          "Clarification cancelled without an answer. No action was authorized."
-    end
-  end
-
-  defp remove_question_placeholder(messages, id) do
-    Enum.reject(messages, fn m ->
-      m["role"] == "tool" and m["tool_call_id"] == id and
-        get_in(m, ["ipse_tool_outcome", "approval"]) == "historical_unknown"
-    end)
   end
 
   defp owned_task(fun, failure_status \\ :error) do
