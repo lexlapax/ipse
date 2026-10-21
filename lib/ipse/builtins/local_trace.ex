@@ -1,4 +1,4 @@
-defmodule Ipse.Extensions.Examples.LocalTrace do
+defmodule Ipse.Builtins.LocalTrace do
   @moduledoc "Default-off owner-only rotating JSONL sink for allowlisted diagnostic metadata."
   @behaviour Ipse.Extension
   @impl true

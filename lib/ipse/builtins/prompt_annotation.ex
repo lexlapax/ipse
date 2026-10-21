@@ -1,4 +1,4 @@
-defmodule Ipse.Extensions.Examples.PromptAnnotation do
+defmodule Ipse.Builtins.PromptAnnotation do
   @moduledoc "Opt-in attributed prompt context; no external effects."
   @behaviour Ipse.Extension
   @impl true

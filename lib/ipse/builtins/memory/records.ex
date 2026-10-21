@@ -1,4 +1,4 @@
-defmodule Ipse.Extensions.Memory.Records do
+defmodule Ipse.Builtins.Memory.Records do
   @moduledoc "Explicit note versions, irreversible source suppression and bounded lexical ranking."
   alias Ipse.MCP.Schema
   @safe 9_007_199_254_740_991

@@ -260,3 +260,32 @@ Current procedures belong to [evaluation training](../../developer/knowledge-eva
 [verification training](../../developer/testing.md) and
 [artifact construction](../../developer/extension-artifacts.md). Remaining core
 consolidation, whole-manual work and final integrated P27 gates remain open.
+
+## Separate usage arithmetic from bundled behavior
+
+S09/S10 implementation record, 2026-10-21, over `423c3e3`. Pure fixed-point
+cost arithmetic and aggregation now belong to `Ipse.Usage.Costs` and
+`Ipse.Usage.CostSummary`. Bundled memory, reporting, trace and transform behavior
+belongs to `Ipse.Builtins`. Ten files and eleven modules move with every active
+caller, Registry closure, fixture and manual reference. Old implementations and
+compatibility aliases are absent. Public `Ipse.Extension`, generic host
+`Ipse.Extensions` and independently built `extensions/knowledge` retain distinct
+roles. The [architecture chapter](../../developer/architecture.md#find-extension-code-by-its-role)
+teaches how to find each owner.
+
+All eight inert builtin descriptors are identical before and after on both
+platforms, including IDs, contracts and options. The exact 97-member host identity
+set is unchanged. Both source-only reviews find one stale current-manual cost
+owner and no runtime defect; the reference is corrected. The affected chapters
+were read as whole documents, including their examples and source ownership.
+This scoped editorial check does not complete the remaining all-manual rewrite.
+
+The [verification receipt](usage-builtins-verification.json) binds the same
+437-file implementation inventory on macOS and Linux. Each platform passes
+110 focused tests, strict compilation, formatting and a fresh package. Previously
+compiled SDK-1/2 model-call, saved-result and laboratory artifacts pass three
+source and four installed checks on each platform without rebuilding those
+artifacts. The checks preserve approval, accounting, memory and hook behavior.
+Documentation links pass. No full suite was repeated for this ownership move;
+final integrated native/platform/package gates remain open. No private inputs
+or actual model calls were used, and P27 remains incomplete.

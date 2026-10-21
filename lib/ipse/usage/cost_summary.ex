@@ -1,6 +1,6 @@
-defmodule Ipse.Extensions.CostSummary do
+defmodule Ipse.Usage.CostSummary do
   @moduledoc "Pure request-keyed cumulative aggregation; no model, storage or budget authority."
-  alias Ipse.Extensions.Costs
+  alias Ipse.Usage.Costs
   alias Ipse.Usage
   alias Ipse.Usage.Normalizer
 

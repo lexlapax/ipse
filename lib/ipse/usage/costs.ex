@@ -1,5 +1,5 @@
-defmodule Ipse.Extensions.Costs do
-  @moduledoc "Pure extension-side estimates from explicit rate cards; no invoice, IO or request admission."
+defmodule Ipse.Usage.Costs do
+  @moduledoc "Pure estimates from explicit rate cards; no invoice, IO or request admission."
   alias Ipse.MCP.Schema
   alias Ipse.Usage.Normalizer
   @scale 1_000_000_000

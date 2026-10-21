@@ -65,6 +65,25 @@ have stopped. `TaskResources` retains OS-helper receipts across task completion.
 exits during IO. These processes solve different completion problems. Replacing
 them with a task monitor alone would release ownership too early.
 
+### Find extension code by its role
+
+An extension calls the public SDK inside its worker. Host contracts admit those
+calls and preserve approval, persistence and process ownership. Bundled behavior
+uses that SDK too; its location reflects how Ipse distributes it.
+
+| Role | Source | Change here when you need to |
+| --- | --- | --- |
+| Public worker SDK | `lib/ipse/extension.ex`, `lib/ipse/extension/` | Change callbacks, value validation or result publication |
+| Generic host contracts | `lib/ipse/extensions/` | Admit and execute extension actions or manage workers |
+| Bundled domain behavior | `lib/ipse/builtins/` | Change shipped Memory, reports, prompt annotation or answer formatting |
+| Independent packages | `extensions/knowledge/` | Build Corpus, Graph or Research outside the host application |
+
+For example, follow a note write from `Ipse.Builtins.Memory` into the generic
+State action and Session's approval flow. The [memory exercise](memory.md) traces
+that complete continuation. Rate-card arithmetic belongs to `Ipse.Usage.Costs`;
+the bundled reports obtain canonical records through the same host read contracts
+available to an imported extension.
+
 ## Trace prompt admission
 
 The public calls live at the top of

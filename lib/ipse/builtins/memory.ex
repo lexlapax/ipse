@@ -1,7 +1,7 @@
-defmodule Ipse.Extensions.Memory do
+defmodule Ipse.Builtins.Memory do
   @moduledoc "Default-off explicit note tools implemented entirely through the public state SDK."
   @behaviour Ipse.Extension
-  alias Ipse.Extensions.Memory.Records
+  alias Ipse.Builtins.Memory.Records
   alias Ipse.MCP.Schema
 
   @caps ~w(invoke.tool invoke.command host.actions host.state.read host.state.scan host.state.write)
@@ -542,16 +542,16 @@ defmodule Ipse.Extensions.Memory do
   end
 end
 
-defmodule Ipse.Extensions.WorkingMemory do
+defmodule Ipse.Builtins.WorkingMemory do
   @moduledoc "Independently selected session/task notes; no automatic promotion."
   @behaviour Ipse.Extension
   def describe,
     do: %{
       "sdk" => 1,
-      "capabilities" => Ipse.Extensions.Memory.capabilities(),
-      "exports" => Ipse.Extensions.Memory.exports()
+      "capabilities" => Ipse.Builtins.Memory.capabilities(),
+      "exports" => Ipse.Builtins.Memory.exports()
     }
 
-  def init(options), do: Ipse.Extensions.Memory.initialize(options, ["session"])
-  defdelegate handle(stage, payload, state), to: Ipse.Extensions.Memory
+  def init(options), do: Ipse.Builtins.Memory.initialize(options, ["session"])
+  defdelegate handle(stage, payload, state), to: Ipse.Builtins.Memory
 end

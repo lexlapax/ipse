@@ -1,7 +1,9 @@
-defmodule Ipse.Extensions.MemoryTest do
+defmodule Ipse.Builtins.MemoryTest do
   use ExUnit.Case, async: false
-  alias Ipse.Extensions.{Memory, State, WorkingMemory}
-  alias Ipse.Extensions.Memory.Records
+  alias Ipse.Builtins.Memory
+  alias Ipse.Extensions.State
+  alias Ipse.Builtins.WorkingMemory
+  alias Ipse.Builtins.Memory.Records
 
   setup do
     root = Path.join(System.tmp_dir!(), "ipse-memory-" <> Ipse.Usage.id())

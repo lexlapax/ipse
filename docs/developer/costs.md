@@ -1,11 +1,13 @@
 # Calculating and reporting configured costs
 
-Cost reporting is extension behavior. `Ipse.Extensions.Costs` is a pure calculator
-that receives a validated rate card and one canonical cumulative request record.
-It performs no IO, pricing lookup, inference, mutation, subscription, or admission.
-No rates are enabled by default. [Shared budgets](budgets.md) enforce separately.
+Use `Ipse.Usage.Costs` to estimate one canonical request and
+`Ipse.Usage.CostSummary` to aggregate cumulative request snapshots. These pure
+modules own arithmetic and coverage. Bundled reports under `Ipse.Builtins` obtain
+the records through approved extension reads. [Shared budgets](budgets.md) own
+admission and reservations. No rates are enabled by default, and calculation
+performs no IO or pricing lookup.
 
-Begin with `lib/ipse/extensions/costs.ex` and the synthetic `card/0` and `request/2`
+Begin with `lib/ipse/usage/costs.ex` and the synthetic `card/0` and `request/2`
 helpers in `test/extensions_costs_test.exs`. These helpers make the entire pricing
 input visible. Avoid using a live price service to test arithmetic.
 
@@ -97,15 +99,15 @@ zero, and a changed card creates a new estimate without rewriting request facts.
 
 ## Follow the report family
 
-`Examples.CostReport` reads at most four requests per explicit page using
+`Ipse.Builtins.CostReport` reads at most four requests per explicit page using
 `host.actions` and `host.usage`. It has no model tool, transcript grant, or write
 permission. Its totals describe that page, not the whole session.
-`Examples.CostSummary` adds `host.usage.scan`, follows one captured snapshot, and
-uses the pure `Ipse.Extensions.CostSummary` accumulator. The accumulator keys by
+`Ipse.Builtins.CostSummary` adds `host.usage.scan`, follows one captured snapshot, and
+uses the pure `Ipse.Usage.CostSummary` accumulator. The accumulator keys by
 session/request/attempt and replaces cumulative revisions instead of adding them.
 Admission identity must remain fixed; callers supply authoritative revision order.
 
-`Examples.CostTree` separately requires `host.usage.children`. It combines a
+`Ipse.Builtins.CostTree` separately requires `host.usage.children`. It combines a
 parent cut, a frozen registered-child list, and each child's fixed accounting
 prefix. These are separate captured cuts, not a globally atomic timestamp.
 Unavailable children remain gaps. The tree accumulator permits 40,000 attempts;

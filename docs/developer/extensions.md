@@ -26,7 +26,7 @@ idle resume. The example is useful because those values are deliberately differe
 An extension's displayed text must not replace the provider's saved continuation.
 
 The annotation worker in
-`lib/ipse/extensions/examples/prompt_annotation.ex` implements the complete
+`lib/ipse/builtins/prompt_annotation.ex` implements the complete
 callback contract:
 
 ```elixir

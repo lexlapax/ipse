@@ -7,7 +7,7 @@ selected sink workers. Mandatory journal/accounting and separately granted priva
 feeds keep their own guarantees when capture stops or drops data.
 
 Read `lib/ipse/observability/config.ex`, `resources.ex`, `channel.ex`, and
-`event.ex`, followed by `lib/ipse/extensions/examples/local_trace.ex`. The
+`event.ex`, followed by `lib/ipse/builtins/local_trace.ex`. The
 [operator manual](../operator/observability.md) owns configuration and stop procedures.
 
 ## Trace a sample and its lease

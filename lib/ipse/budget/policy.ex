@@ -30,7 +30,7 @@ defmodule Ipse.Budget.Policy do
         "reserve_input_tokens" => positive,
         "reserve_output_tokens" => integer(1, Ipse.Provider.Limits.maximum()),
         "money" => %{"type" => "array", "minItems" => 1, "maxItems" => 3, "items" => money},
-        "rate_card" => Ipse.Extensions.Costs.schema()
+        "rate_card" => Ipse.Usage.Costs.schema()
       },
       "required" => ["version"],
       "additionalProperties" => false
@@ -68,7 +68,7 @@ defmodule Ipse.Budget.Policy do
            ),
          :ok <-
            if(policy["rate_card"],
-             do: Ipse.Extensions.Costs.validate(policy["rate_card"]),
+             do: Ipse.Usage.Costs.validate(policy["rate_card"]),
              else: :ok
            ) do
       :ok
@@ -217,7 +217,7 @@ defmodule Ipse.Budget.Policy do
 
     fields = if record["version"] == 2, do: fields ++ ["operation"], else: fields
 
-    case Ipse.Extensions.Costs.estimate(policy["rate_card"], Map.take(record, fields)) do
+    case Ipse.Usage.Costs.estimate(policy["rate_card"], Map.take(record, fields)) do
       {:ok, value} -> value
       _ -> nil
     end

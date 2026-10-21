@@ -2,7 +2,7 @@ defmodule Ipse.Development.Experiments.Memory do
   @moduledoc "Fixed synthetic lexical-memory experiment, independent of command-line output."
   alias Ipse.{Session, Journal}
   alias Ipse.Extensions.{Config, Registry, State}
-  alias Ipse.Extensions.Memory.Records
+  alias Ipse.Builtins.Memory.Records
 
   def run(corpus_path) do
     {:ok, _} = Application.ensure_all_started(:ipse)
@@ -33,7 +33,7 @@ defmodule Ipse.Development.Experiments.Memory do
         "extension_trust" => [
           %{
             "artifact" => "builtin:persistent-memory:1",
-            "capabilities" => Ipse.Extensions.Memory.describe()["capabilities"],
+            "capabilities" => Ipse.Builtins.Memory.describe()["capabilities"],
             "allow_project" => false,
             "allow_children" => false,
             "state_bindings" => [

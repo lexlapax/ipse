@@ -1,9 +1,12 @@
 Code.require_file("../priv/cost-report-demo.exs", __DIR__)
 
-defmodule Ipse.Extensions.CostSummaryTest do
+defmodule Ipse.Usage.CostSummaryTest do
   use ExUnit.Case, async: false
   alias Ipse.{Session, Usage, Journal}
-  alias Ipse.Extensions.{CostSummary, Actions, Catalog, Invocation}
+  alias Ipse.Usage.CostSummary
+  alias Ipse.Extensions.Actions
+  alias Ipse.Extensions.Catalog
+  alias Ipse.Extensions.Invocation
 
   defp record(
          session,

@@ -1,4 +1,4 @@
-defmodule Ipse.Extensions.Examples.AnswerFormat do
+defmodule Ipse.Builtins.AnswerFormat do
   @moduledoc "Opt-in completed presentation wrapper; provider messages remain unchanged."
   @behaviour Ipse.Extension
   @impl true

@@ -1,14 +1,14 @@
 # Developing the explicit note extensions
 
 The memory extensions are a worked example of domain behavior built through the
-public worker SDK. `Ipse.Extensions.Memory` owns explicit invocations and
+public worker SDK. `Ipse.Builtins.Memory` owns explicit invocations and
 continuations; `Memory.Records` owns note validation, suppression, and lexical
-ranking. `Ipse.Extensions.WorkingMemory` restricts initialization to session scope.
+ranking. `Ipse.Builtins.WorkingMemory` restricts initialization to session scope.
 Persistent memory supports project/operator scope and requires an operator logical
 storage binding. Neither extension captures prompts or runs inference automatically.
 
-Read `lib/ipse/extensions/memory.ex` with
-`lib/ipse/extensions/memory/records.ex`. The host sees ordinary state proposals,
+Read `lib/ipse/builtins/memory.ex` with
+`lib/ipse/builtins/memory/records.ex`. The host sees ordinary state proposals,
 not a special memory operation. Registry supplies inert built-in metadata and
 pins helper BEAM identity. Selection and user commands are documented in the
 [operator memory manual](../operator/memory.md).

@@ -1,8 +1,12 @@
-defmodule Ipse.Extensions.MemorySessionTest do
+defmodule Ipse.Builtins.MemorySessionTest do
   use ExUnit.Case, async: false
   alias Ipse.{Session, Journal}
-  alias Ipse.Extensions.{Catalog, Config, Memory, Registry, State}
-  alias Ipse.Extensions.Memory.Records
+  alias Ipse.Extensions.Catalog
+  alias Ipse.Extensions.Config
+  alias Ipse.Builtins.Memory
+  alias Ipse.Extensions.Registry
+  alias Ipse.Extensions.State
+  alias Ipse.Builtins.Memory.Records
 
   defmodule Model do
     def complete(config, messages, tools, _emit) do

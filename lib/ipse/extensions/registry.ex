@@ -6,72 +6,72 @@ defmodule Ipse.Extensions.Registry do
   @text %{"type" => "string", "maxLength" => 4096}
   @builtins %{
     "builtin:working-memory:1" => %{
-      module: Ipse.Extensions.WorkingMemory,
+      module: Ipse.Builtins.WorkingMemory,
       modules: [
-        Ipse.Extensions.WorkingMemory,
-        Ipse.Extensions.Memory,
-        Ipse.Extensions.Memory.Records
+        Ipse.Builtins.WorkingMemory,
+        Ipse.Builtins.Memory,
+        Ipse.Builtins.Memory.Records
       ],
-      capabilities: Ipse.Extensions.Memory.capabilities(),
+      capabilities: Ipse.Builtins.Memory.capabilities(),
       state_scope_option: "scope",
-      exports: Ipse.Extensions.Memory.exports(),
-      schema: Ipse.Extensions.Memory.options_schema(["session"])
+      exports: Ipse.Builtins.Memory.exports(),
+      schema: Ipse.Builtins.Memory.options_schema(["session"])
     },
     "builtin:persistent-memory:1" => %{
-      module: Ipse.Extensions.Memory,
-      modules: [Ipse.Extensions.Memory, Ipse.Extensions.Memory.Records],
-      capabilities: ["host.state.bound" | Ipse.Extensions.Memory.capabilities()],
+      module: Ipse.Builtins.Memory,
+      modules: [Ipse.Builtins.Memory, Ipse.Builtins.Memory.Records],
+      capabilities: ["host.state.bound" | Ipse.Builtins.Memory.capabilities()],
       state_scope_option: "scope",
-      exports: Ipse.Extensions.Memory.exports(),
-      schema: Ipse.Extensions.Memory.options_schema(~w(project operator))
+      exports: Ipse.Builtins.Memory.exports(),
+      schema: Ipse.Builtins.Memory.options_schema(~w(project operator))
     },
     "builtin:cost-tree:1" => %{
-      module: Ipse.Extensions.Examples.CostTree,
+      module: Ipse.Builtins.CostTree,
       modules: [
-        Ipse.Extensions.Examples.CostTree,
-        Ipse.Extensions.CostSummary,
-        Ipse.Extensions.Costs
+        Ipse.Builtins.CostTree,
+        Ipse.Usage.CostSummary,
+        Ipse.Usage.Costs
       ],
       capabilities:
         ~w(invoke.command host.actions host.usage host.usage.scan host.usage.children),
-      exports: Ipse.Extensions.Examples.CostTree.exports(),
+      exports: Ipse.Builtins.CostTree.exports(),
       schema: %{
         "type" => "object",
         "additionalProperties" => false,
         "required" => ["rate_card"],
-        "properties" => %{"rate_card" => Ipse.Extensions.Costs.schema()}
+        "properties" => %{"rate_card" => Ipse.Usage.Costs.schema()}
       }
     },
     "builtin:cost-summary:1" => %{
-      module: Ipse.Extensions.Examples.CostSummary,
+      module: Ipse.Builtins.CostSummary,
       modules: [
-        Ipse.Extensions.Examples.CostSummary,
-        Ipse.Extensions.CostSummary,
-        Ipse.Extensions.Costs
+        Ipse.Builtins.CostSummary,
+        Ipse.Usage.CostSummary,
+        Ipse.Usage.Costs
       ],
       capabilities: ~w(invoke.command host.actions host.usage host.usage.scan),
-      exports: Ipse.Extensions.Examples.CostSummary.exports(),
+      exports: Ipse.Builtins.CostSummary.exports(),
       schema: %{
         "type" => "object",
         "additionalProperties" => false,
         "required" => ["rate_card"],
-        "properties" => %{"rate_card" => Ipse.Extensions.Costs.schema()}
+        "properties" => %{"rate_card" => Ipse.Usage.Costs.schema()}
       }
     },
     "builtin:cost-report:1" => %{
-      module: Ipse.Extensions.Examples.CostReport,
-      modules: [Ipse.Extensions.Examples.CostReport, Ipse.Extensions.Costs],
+      module: Ipse.Builtins.CostReport,
+      modules: [Ipse.Builtins.CostReport, Ipse.Usage.Costs],
       capabilities: ~w(invoke.command host.actions host.usage),
-      exports: Ipse.Extensions.Examples.CostReport.exports(),
+      exports: Ipse.Builtins.CostReport.exports(),
       schema: %{
         "type" => "object",
         "additionalProperties" => false,
         "required" => ["rate_card"],
-        "properties" => %{"rate_card" => Ipse.Extensions.Costs.schema()}
+        "properties" => %{"rate_card" => Ipse.Usage.Costs.schema()}
       }
     },
     "builtin:local-trace:1" => %{
-      module: Ipse.Extensions.Examples.LocalTrace,
+      module: Ipse.Builtins.LocalTrace,
       capabilities: ["observe.local"],
       schema: %{
         "type" => "object",
@@ -84,7 +84,7 @@ defmodule Ipse.Extensions.Registry do
       }
     },
     "builtin:prompt-annotation:1" => %{
-      module: Ipse.Extensions.Examples.PromptAnnotation,
+      module: Ipse.Builtins.PromptAnnotation,
       capabilities: ["transform.prompt"],
       schema: %{
         "type" => "object",
@@ -94,7 +94,7 @@ defmodule Ipse.Extensions.Registry do
       }
     },
     "builtin:answer-format:1" => %{
-      module: Ipse.Extensions.Examples.AnswerFormat,
+      module: Ipse.Builtins.AnswerFormat,
       capabilities: ["transform.presentation"],
       schema: %{
         "type" => "object",

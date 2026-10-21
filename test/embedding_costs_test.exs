@@ -2,7 +2,7 @@ defmodule Ipse.EmbeddingCostsTest do
   use ExUnit.Case, async: true
   alias Ipse.Usage
   alias Ipse.Usage.Normalizer
-  alias Ipse.Extensions.Costs
+  alias Ipse.Usage.Costs
   alias Ipse.Budget.{Policy, Ledger}
 
   defp row(operation \\ "embedding") do
@@ -390,9 +390,9 @@ defmodule Ipse.EmbeddingCostsTest do
       Usage.request_record(%{admission: text, completion: text_finish, observation: nil})
 
     rates = card([row(), row("text")])
-    {:ok, state} = Ipse.Extensions.CostSummary.new(rates)
-    {:ok, state} = Ipse.Extensions.CostSummary.put(state, vector_record)
-    {:ok, state} = Ipse.Extensions.CostSummary.put(state, text_record)
+    {:ok, state} = Ipse.Usage.CostSummary.new(rates)
+    {:ok, state} = Ipse.Usage.CostSummary.put(state, vector_record)
+    {:ok, state} = Ipse.Usage.CostSummary.put(state, text_record)
 
     snapshot = %{
       "request_count" => 2,
@@ -400,7 +400,7 @@ defmodule Ipse.EmbeddingCostsTest do
       "source" => %{"session_id" => session}
     }
 
-    report = Ipse.Extensions.CostSummary.report(state, snapshot, true)
+    report = Ipse.Usage.CostSummary.report(state, snapshot, true)
     assert report["cost_estimate_complete"]
     assert length(report["groups"]) == 2
     vector_group = Enum.find(report["groups"], &(&1["operation"] == "embedding"))
@@ -410,7 +410,7 @@ defmodule Ipse.EmbeddingCostsTest do
     assert vector_group["counts"]["output_tokens"]["total"] == nil
 
     assert {:ok, page} =
-             Ipse.Extensions.Examples.CostReport.report(
+             Ipse.Builtins.CostReport.report(
                rates,
                %{
                  "requests" => [vector_record, text_record],

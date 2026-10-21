@@ -15,7 +15,7 @@ command, action, or resource already supplies the needed boundary.
 | --- | --- | --- |
 | Request facts and normalized counters | `Usage`, Session journal | Available with tracing disabled; unknown stays unknown |
 | Request admission across children | `Budget` and protected ledger | Reserve before dispatch; interrupted liability remains |
-| Cost reporting | `Extensions.Costs` and report family | Configured rates, exact basis, no billing authority |
+| Cost reporting | `Usage.Costs` and `Builtins` reports | Configured rates, exact basis, no billing authority |
 | Metadata diagnosis | `Observability.Channel` | Bounded sampled delivery; gaps/drop counts allowed |
 | Ordered visible provider text | `TextStream` | Private grant, acknowledgments, bounded pressure |
 | Admitted completed answer | Lifecycle answer source | Distinct from transport end and presentation acknowledgment |

@@ -103,6 +103,10 @@ are needed for tests or the demo.
 | Bounded host JSON, raw SHA-256 and canonical list digests | `lib/ipse/json.ex` |
 | Canonical usage and shared admission | `lib/ipse/usage.ex`, `lib/ipse/usage/`, `lib/ipse/budget.ex`, `lib/ipse/budget/` |
 | Profile-bound extension inference | `lib/ipse/extensions/model_call.ex`, `lib/ipse/provider/request.ex` |
+| Public worker SDK and result publication | `lib/ipse/extension.ex`, `lib/ipse/extension/` |
+| Generic extension admission, workers and host contracts | `lib/ipse/extensions/` |
+| Bundled memory, reports and transforms | `lib/ipse/builtins/` |
+| Independently built knowledge packages | `extensions/knowledge/` |
 | Scoped workspace instruction snapshots | `lib/ipse/workspace_context.ex` |
 | Allowlisted application/provider/model facts | `lib/ipse/runtime_info.ex` |
 | Terminal client, option parsing and display escaping | `lib/ipse/cli.ex`, `lib/ipse/cli/terminal.ex` |

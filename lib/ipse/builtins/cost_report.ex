@@ -1,7 +1,7 @@
-defmodule Ipse.Extensions.Examples.CostReport do
+defmodule Ipse.Builtins.CostReport do
   @moduledoc "Default-off accounting report through granted host reads and explicit rate-card estimates."
   @behaviour Ipse.Extension
-  alias Ipse.Extensions.Costs
+  alias Ipse.Usage.Costs
 
   @fields ~w(operation provider billing_mode model reported_model endpoint_sha256 admitted_at_ms outcome finality usage)
   @safe 9_007_199_254_740_991

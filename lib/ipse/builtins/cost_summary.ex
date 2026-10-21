@@ -1,7 +1,8 @@
-defmodule Ipse.Extensions.Examples.CostSummary do
+defmodule Ipse.Builtins.CostSummary do
   @moduledoc "Default-off full own-session summary through bounded accounting pages."
   @behaviour Ipse.Extension
-  alias Ipse.Extensions.{CostSummary, UsageRead}
+  alias Ipse.Usage.CostSummary, as: Accumulator
+  alias Ipse.Extensions.UsageRead
 
   def exports do
     %{
@@ -33,7 +34,7 @@ defmodule Ipse.Extensions.Examples.CostSummary do
 
   @impl true
   def handle("invoke.command", %{"id" => "summary"}, options) do
-    case CostSummary.new(options["rate_card"]) do
+    case Accumulator.new(options["rate_card"]) do
       {:ok, accumulator} -> read(0, nil, %{accumulator: accumulator, snapshot: nil, cursor: 0})
       _ -> result(%{"status" => "invalid_rate_card"}, options)
     end
@@ -45,7 +46,7 @@ defmodule Ipse.Extensions.Examples.CostSummary do
     with true <- UsageRead.valid_outcome?(request, "ok", page, page["snapshot"]["operation_id"]),
          {:ok, accumulator} <- accumulate(state.accumulator, page["requests"]) do
       if page["next"] == nil do
-        value = CostSummary.report(accumulator, page["snapshot"], true)
+        value = Accumulator.report(accumulator, page["snapshot"], true)
 
         if Ipse.Extension.validate(value) == :ok do
           result(value, state)
@@ -65,7 +66,7 @@ defmodule Ipse.Extensions.Examples.CostSummary do
 
   defp accumulate(state, requests) do
     Enum.reduce_while(requests, {:ok, state}, fn request, {:ok, current} ->
-      case CostSummary.put(current, request) do
+      case Accumulator.put(current, request) do
         {:ok, next} -> {:cont, {:ok, next}}
         error -> {:halt, error}
       end

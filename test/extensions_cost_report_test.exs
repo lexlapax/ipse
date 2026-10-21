@@ -3,7 +3,7 @@ Code.require_file("../priv/cost-report-demo.exs", __DIR__)
 defmodule Ipse.Extensions.CostReportTest do
   use ExUnit.Case, async: false
   alias Ipse.{Session, Usage}
-  alias Ipse.Extensions.Examples.CostReport
+  alias Ipse.Builtins.CostReport
 
   test "the shipped cost report works through actual Session callbacks with synthetic accounting" do
     assert :ok = Ipse.CostReportDemo.run()

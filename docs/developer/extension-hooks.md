@@ -9,7 +9,7 @@ model context, and durable history.
 
 ## Trace a prompt annotation
 
-Open `lib/ipse/extensions/examples/prompt_annotation.ex` and its inert descriptor
+Open `lib/ipse/builtins/prompt_annotation.ex` and its inert descriptor
 in `Registry.builtins/0`. The callback returns the option `text` as `append`:
 
 ```elixir

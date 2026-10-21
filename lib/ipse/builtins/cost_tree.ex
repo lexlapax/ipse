@@ -1,7 +1,9 @@
-defmodule Ipse.Extensions.Examples.CostTree do
+defmodule Ipse.Builtins.CostTree do
   @moduledoc "Default-off parent/child accounting reports through explicitly granted SDK reads."
   @behaviour Ipse.Extension
-  alias Ipse.Extensions.{CostSummary, UsageRead, ChildUsage}
+  alias Ipse.Usage.CostSummary
+  alias Ipse.Extensions.UsageRead
+  alias Ipse.Extensions.ChildUsage
 
   def exports do
     paging = %{

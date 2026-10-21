@@ -1,6 +1,6 @@
-defmodule Ipse.Extensions.CostsTest do
+defmodule Ipse.Usage.CostsTest do
   use ExUnit.Case, async: true
-  alias Ipse.Extensions.Costs
+  alias Ipse.Usage.Costs
   alias Ipse.Usage.Normalizer
 
   defp card do
