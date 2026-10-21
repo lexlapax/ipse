@@ -113,7 +113,7 @@ defmodule Ipse.Development.Evaluation.Answer do
   @doc "Prepare a version-three answer with an explicitly declared, bounded deadline."
   def prepare(query, as_of_ms, ranked_evidence, "json_schema_v3", timeout_ms) do
     with {:ok, bundle} <- prepare(query, as_of_ms, ranked_evidence, "json_schema_v2"),
-         request = bundle["request"] |> Map.put("version", 3) |> Map.put("timeout_ms", timeout_ms),
+         request = Map.merge(bundle["request"], %{"version" => 3, "timeout_ms" => timeout_ms}),
          :ok <- Ipse.Extensions.ModelCall.validate(request) do
       {:ok, %{bundle | "version" => 3, "request" => request}}
     end
