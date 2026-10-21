@@ -191,7 +191,10 @@ children retain the [documented sandbox limits](sandbox.md).
 
 On resume, Session acquires ownership, loads and validates canonical records,
 checks receipts and source links, then repairs only a permissible torn tail.
-It restores retained messages, pending questions and committed projections.
+`Session.Saved` reconstructs pure facts after reload; Session retains recovery
+that reads source pages and starts owned resources. The current invocation's
+parent, pending action and recorded outcomes share `Session.Invocation`.
+Session retains lifecycle phase, approval callers, timers and writer reservations.
 It does not replay an interrupted tool, initialize an old unfinished callback or
 ask the provider to continue while idle. Read the
 [journal chapter](persistence.md) before changing restore order.

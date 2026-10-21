@@ -162,6 +162,42 @@ The elapsed checks guard admission to each boundary. They do not promise that a
 filesystem sync finishes before a realtime deadline. A durably committed final
 receipt remains committed after a later timer fires.
 
+## Follow current facts through the owner
+
+`Ipse.Extensions.Invocation` validates the durable invocation protocol.
+`Ipse.Session.Invocation`, aliased as `CurrentInvocation` in Session, holds only
+the current parent/request, action, step, bound effect sources, results and
+interrupted-outcome flag. It is a value inside Session, not another process or
+an admission authority. Session installs proposed facts only after the required
+intent or result append succeeds.
+
+Read these transitions in `lib/ipse/session.ex` alongside the value definition
+in `lib/ipse/session/invocation.ex`:
+
+| Transition | Current facts | Session's retained responsibility |
+| --- | --- | --- |
+| Operator export request | Exact stage, name and arguments | Own the worker and fence its messages |
+| Parent admission | Fresh parent and empty action history | Validate identity/catalog and sync intent before installing it |
+| Approval needed | Proposed action; step not yet consumed | Keep the reply caller, approval reference and return phase |
+| Approval or denial | Recorded action and incremented step | Sync the decision before replying; denial dispatches no effect |
+| Effect/usage source | Source bound to the current operation | Validate and commit the source before exposing it |
+| Action result | Append result, clear action, mark an unknown outcome interrupted | Commit usage/context changes and refuse further effects or publication after unknown outcomes |
+| Question suspension/resume | Parent, action step, prior results and sources | Own the question/wait; require an explicit answer before continuation |
+| Output publication | Retain the parent and complete action results | Own the output index, reservation token and deadline; final receipt publishes the value |
+| Completion/cancel/timeout | Clear current facts when returning idle | Release publication capacity, stop owned work and retain unknown-effect evidence |
+
+Publication resources and pending action facts are separate dimensions. Do not
+add a second lifecycle enum to the value or assume that one boolean summarizes
+all owner states. Session's existing phase and resource checks remain the
+authority. Recovered extension questions construct current facts from validated
+records; they never reconstruct an approval caller, timer or reservation token.
+
+For a worked change exercise, follow the approval, unknown-result, question-resume
+and output-deadline cases in `test/extensions_invocation_test.exs` and
+`test/extensions_result_session_test.exs`. Trace each append before its state
+update. A change to the value should preserve these refusal and cleanup paths,
+not merely the successful callback result.
+
 ## Keep wire bounds separate from document bounds
 
 Saved output does not enlarge ordinary callback objects or model messages:

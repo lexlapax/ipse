@@ -4,6 +4,7 @@ defmodule Ipse.Session do
   alias Ipse.{Journal, Skills, Tools, WorkspaceContext, Questions, ToolCall}
   alias Ipse.Journal.Writer
   alias Ipse.Session.Saved
+  alias Ipse.Session.Invocation, as: CurrentInvocation
   @prompt_bytes 1_048_576
 
   alias Ipse.Extensions.{
@@ -262,22 +263,9 @@ defmodule Ipse.Session do
         extension_result_sources: result_sources,
         extension_output: nil,
         extension_output_clock: nil,
-        extension_invocation: if(question && question[:kind] == :extension, do: question.parent),
-        extension_action:
-          if(question && question[:kind] == :extension, do: %{intent: question.action}),
-        extension_actions:
-          if(question && question[:kind] == :extension, do: question.action["step"], else: 0),
-        extension_action_unknown: false,
+        invocation: CurrentInvocation.restore(question, extension_state.effect_sources),
         extension_tool_context: nil,
         extension_mcp_context: nil,
-        extension_effect_sources:
-          if(question && question[:kind] == :extension,
-            do: extension_state.effect_sources,
-            else: %{}
-          ),
-        extension_action_results:
-          if(question && question[:kind] == :extension, do: question.results, else: []),
-        extension_request: nil,
         extension_result: Invocation.latest_display(events),
         extension_catalog: extension_catalog(config),
         extension_invocations: Invocation.count(events),
@@ -480,14 +468,9 @@ defmodule Ipse.Session do
             {:reply, {:job, intent, entry, parent},
              %{
                s
-               | extension_invocation: parent,
+               | invocation: %CurrentInvocation{parent: parent},
                  extension_invocations: s.extension_invocations + 1,
-                 extension_actions: 0,
-                 extension_effect_sources: %{},
-                 extension_mcp_context: nil,
-                 extension_action_results: [],
-                 extension_action_unknown: false,
-                 extension_action: nil
+                 extension_mcp_context: nil
              }}
 
           _ ->
@@ -509,7 +492,7 @@ defmodule Ipse.Session do
       when ref != nil and intent != nil do
     if Subscriptions.valid_result?(result, intent) and
          result["outcome"] not in ~w(completed failed) and
-         (result["outcome"] != "not_started" or is_nil(s.extension_invocation)) and
+         (result["outcome"] != "not_started" or is_nil(s.invocation.parent)) and
          (result["outcome"] != "acknowledged" or
             Ipse.Extensions.Registry.live?(intent["identity"])) do
       record(s, result)
@@ -871,7 +854,15 @@ defmodule Ipse.Session do
       task = owned_task(fn -> Host.invoke_export(stage, name, arguments, owner, job_ref) end)
       request = %{stage: stage, name: name, arguments: arguments}
       phase = if kind == :command, do: :extension_command, else: :extension_service
-      {:reply, :ok, %{s | phase: phase, task: task, job_ref: job_ref, extension_request: request}}
+
+      {:reply, :ok,
+       %{
+         s
+         | phase: phase,
+           task: task,
+           job_ref: job_ref,
+           invocation: %CurrentInvocation{request: request}
+       }}
     else
       _ -> {:reply, {:error, :invalid_extension_call}, s}
     end
@@ -883,7 +874,7 @@ defmodule Ipse.Session do
   def handle_call(
         {:extension_invoke_begin, ref, stage, name, arguments},
         {caller, _},
-        %{job_ref: ref, task: %{pid: caller}, extension_invocation: nil, phase: phase} = s
+        %{job_ref: ref, task: %{pid: caller}, invocation: %{parent: nil}, phase: phase} = s
       )
       when ref != nil and
              phase in [:tool, :extension_command, :extension_service, :extension_events] do
@@ -900,7 +891,7 @@ defmodule Ipse.Session do
           _ -> :error
         end
       else
-        if s.extension_request == %{stage: stage, name: name, arguments: arguments},
+        if s.invocation.request == %{stage: stage, name: name, arguments: arguments},
           do: {:ok, nil, nil, "operator_request"},
           else: :error
       end
@@ -928,14 +919,10 @@ defmodule Ipse.Session do
       {:reply, {:ok, intent, entry},
        %{
          s
-         | extension_invocation: intent,
+         | invocation: %CurrentInvocation{parent: intent, request: s.invocation.request},
            extension_output_clock: clock,
            extension_invocations: s.extension_invocations + 1,
-           extension_actions: 0,
-           extension_action_unknown: false,
-           extension_effect_sources: %{},
-           extension_mcp_context: nil,
-           extension_action_results: []
+           extension_mcp_context: nil
        }}
     else
       _ -> {:reply, {:error, :extension_admission_refused}, s}
@@ -952,20 +939,20 @@ defmodule Ipse.Session do
       )
       when ref != nil and phase in [:tool, :extension_command] do
     with true <- output_timely?(s) and s.extension_output_clock != nil,
-         true <- is_nil(s.extension_action) and not s.extension_action_unknown,
-         true <- Ipse.Extensions.Registry.live?(s.extension_invocation["identity"]),
+         true <- is_nil(s.invocation.action) and not s.invocation.interrupted,
+         true <- Ipse.Extensions.Registry.live?(s.invocation.parent["identity"]),
          {:ok, event, source, index} <-
            ResultSource.index_open(
              s.extension_result_sources,
-             s.extension_invocation,
+             s.invocation.parent,
              offer,
              output_elapsed(s)
            ),
          {:ok, final} <-
            Invocation.build_saved_result(
-             s.extension_invocation,
+             s.invocation.parent,
              ResultSource.descriptor(source),
-             s.extension_action_results,
+             s.invocation.results,
              120_000
            ),
          {:ok, capacity} <- ResultSource.reservation_size(source, final),
@@ -1005,7 +992,7 @@ defmodule Ipse.Session do
       )
       when ref != nil do
     with true <- output_timely?(s),
-         true <- Ipse.Extensions.Registry.live?(s.extension_invocation["identity"]) do
+         true <- Ipse.Extensions.Registry.live?(s.invocation.parent["identity"]) do
       {:ok, current} = ResultSource.source(s.extension_result_sources, output_id)
 
       if ResultSource.acknowledged?(current, reply) do
@@ -1038,7 +1025,7 @@ defmodule Ipse.Session do
       )
       when ref != nil and active != nil do
     with true <- output_timely?(s),
-         true <- Ipse.Extensions.Registry.live?(s.extension_invocation["identity"]),
+         true <- Ipse.Extensions.Registry.live?(s.invocation.parent["identity"]),
          {:ok, event, _source, index} <-
            ResultSource.index_accept_verified(s.extension_result_sources, active.id, proof) do
       record_output(s, event)
@@ -1080,11 +1067,11 @@ defmodule Ipse.Session do
   def handle_call(
         {:extension_tool_context, ref, request},
         {caller, _},
-        %{job_ref: ref, task: %{pid: caller}, extension_action: nil, phase: phase} = s
+        %{job_ref: ref, task: %{pid: caller}, invocation: %{action: nil}, phase: phase} = s
       )
       when ref != nil and
              phase in [:tool, :extension_command, :extension_service, :extension_events] do
-    with parent when is_map(parent) <- s.extension_invocation,
+    with parent when is_map(parent) <- s.invocation.parent,
          true <- Ipse.Extensions.Registry.live?(parent["identity"]),
          {:ok, _} <-
            Actions.proposal(
@@ -1104,7 +1091,7 @@ defmodule Ipse.Session do
   def handle_call(
         {:extension_tool_context_commit, ref, request, old_hash, snapshot, drift},
         {caller, _},
-        %{job_ref: ref, task: %{pid: caller}, extension_action: nil, phase: phase} = s
+        %{job_ref: ref, task: %{pid: caller}, invocation: %{action: nil}, phase: phase} = s
       )
       when ref != nil and
              phase in [:tool, :extension_command, :extension_service, :extension_events] do
@@ -1122,7 +1109,7 @@ defmodule Ipse.Session do
           request: Ipse.JSON.digest([request]),
           context: old_hash,
           job: ref,
-          identity: Ipse.JSON.digest([s.extension_invocation["identity"]])
+          identity: Ipse.JSON.digest([s.invocation.parent["identity"]])
         }
 
         {:reply, :ok, %{s | extension_tool_context: gate, context_drift: drift}}
@@ -1142,7 +1129,7 @@ defmodule Ipse.Session do
   def handle_call(
         {:extension_mcp_prepare, ref, request},
         {caller, _},
-        %{job_ref: ref, task: %{pid: caller}, extension_action: nil, phase: phase} = s
+        %{job_ref: ref, task: %{pid: caller}, invocation: %{action: nil}, phase: phase} = s
       )
       when ref != nil and
              phase in [:tool, :extension_command, :extension_service, :extension_events] do
@@ -1162,7 +1149,7 @@ defmodule Ipse.Session do
   def handle_call(
         {:extension_mcp_bound, ref, request, descriptor, binding},
         {caller, _},
-        %{job_ref: ref, task: %{pid: caller}, extension_action: nil, phase: phase} = s
+        %{job_ref: ref, task: %{pid: caller}, invocation: %{action: nil}, phase: phase} = s
       )
       when ref != nil and
              phase in [:tool, :extension_command, :extension_service, :extension_events] do
@@ -1173,12 +1160,12 @@ defmodule Ipse.Session do
            Ipse.Extensions.MCPCall.valid_binding?(
              binding,
              request,
-             s.extension_invocation["identity"]
+             s.invocation.parent["identity"]
            ),
          :ok <- Ipse.MCP.validate_call(descriptor, request["arguments"]) do
       gate = %{
         request: Ipse.JSON.digest([request]),
-        identity: Ipse.JSON.digest([s.extension_invocation["identity"]]),
+        identity: Ipse.JSON.digest([s.invocation.parent["identity"]]),
         job: ref,
         descriptor: descriptor,
         binding: binding
@@ -1196,7 +1183,7 @@ defmodule Ipse.Session do
   def handle_call(
         {:extension_action_begin, ref, request},
         from = {caller, _},
-        %{job_ref: ref, task: %{pid: caller}, extension_action: nil, phase: phase} = s
+        %{job_ref: ref, task: %{pid: caller}, invocation: %{action: nil}, phase: phase} = s
       )
       when ref != nil and
              phase in [:tool, :extension_command, :extension_service, :extension_events] do
@@ -1208,13 +1195,13 @@ defmodule Ipse.Session do
         do: if(mode == :deny, do: "denied", else: "session_allow"),
         else: "not_required"
 
-    with parent when is_map(parent) <- s.extension_invocation,
+    with parent when is_map(parent) <- s.invocation.parent,
          true <- output_timely?(s),
-         true <- not s.extension_action_unknown,
+         true <- not s.invocation.interrupted,
          true <- Ipse.Extensions.Registry.live?(parent["identity"]),
-         true <- Actions.allowed?(parent["identity"], request, s.extension_action_results),
+         true <- Actions.allowed?(parent["identity"], request, s.invocation.results),
          true <-
-           Actions.readable?(request, s.extension_effect_sources, s.extension_action_results),
+           Actions.readable?(request, s.invocation.effect_sources, s.invocation.results),
          true <- not Ipse.Extensions.Operation.question?(request) or questions_enabled?(s.config),
          {:ok, context_hash} <- extension_action_context(s, request),
          {:ok, service} <- extension_service_context(s, request),
@@ -1224,7 +1211,7 @@ defmodule Ipse.Session do
            Actions.intent(
              parent,
              request,
-             s.extension_actions + 1,
+             s.invocation.step + 1,
              approval,
              s.cwd,
              context_hash,
@@ -1242,7 +1229,14 @@ defmodule Ipse.Session do
               else: {:error, :extension_action_expired}
 
           {:reply, reply,
-           %{s | extension_action: %{intent: intent}, extension_actions: s.extension_actions + 1}}
+           %{
+             s
+             | invocation: %{
+                 s.invocation
+                 | action: %{intent: intent},
+                   step: s.invocation.step + 1
+               }
+           }}
 
         mutation and mode == :ask ->
           approval_ref = make_ref()
@@ -1281,9 +1275,9 @@ defmodule Ipse.Session do
            %{
              s
              | phase: :extension_approval,
-               approval: {:extension, approval_ref},
+               approval: {:extension, approval_ref, from, phase},
                extension_tool_context: nil,
-               extension_action: %{intent: intent, from: from, phase: phase}
+               invocation: %{s.invocation | action: %{intent: intent}}
            }}
 
         true ->
@@ -1312,12 +1306,15 @@ defmodule Ipse.Session do
           {:reply, reply,
            %{
              s
-             | extension_action: %{
-                 intent: intent,
-                 usage_read: context[:usage_read],
-                 child_usage: context[:child_usage]
+             | invocation: %{
+                 s.invocation
+                 | action: %{
+                     intent: intent,
+                     usage_read: context[:usage_read],
+                     child_usage: context[:child_usage]
+                   },
+                   step: s.invocation.step + 1
                },
-               extension_actions: s.extension_actions + 1,
                extension_tool_context: nil
            }}
       end
@@ -1332,21 +1329,29 @@ defmodule Ipse.Session do
   def handle_call(
         {:extension_effect_source, ref, intent, kind, data},
         {caller, _},
-        %{job_ref: ref, task: %{pid: caller}, extension_action: %{intent: intent}, phase: phase} =
+        %{
+          job_ref: ref,
+          task: %{pid: caller},
+          invocation: %{action: %{intent: intent}},
+          phase: phase
+        } =
           s
       )
       when ref != nil and
              phase in [:tool, :extension_command, :extension_service, :extension_events] do
-    with true <- Ipse.Extensions.Registry.live?(s.extension_invocation["identity"]),
-         true <- not Map.has_key?(s.extension_effect_sources, intent["operation_id"]),
+    with true <- Ipse.Extensions.Registry.live?(s.invocation.parent["identity"]),
+         true <- not Map.has_key?(s.invocation.effect_sources, intent["operation_id"]),
          {:ok, source} <- Ipse.Extensions.EffectResult.source(intent, kind, data) do
       record(s, source)
 
       {:reply, {:ok, source},
        %{
          s
-         | extension_effect_sources:
-             Map.put(s.extension_effect_sources, intent["operation_id"], source)
+         | invocation: %{
+             s.invocation
+             | effect_sources:
+                 Map.put(s.invocation.effect_sources, intent["operation_id"], source)
+           }
        }}
     else
       _ -> {:reply, {:error, :extension_effect_source_refused}, s}
@@ -1362,7 +1367,7 @@ defmodule Ipse.Session do
         %{
           job_ref: ref,
           task: %{pid: caller},
-          extension_action: %{intent: intent},
+          invocation: %{action: %{intent: intent}},
           extension_model: nil,
           phase: phase
         } = s
@@ -1372,7 +1377,7 @@ defmodule Ipse.Session do
     with true <- inference_begin?(message, intent["request"]),
          true <- output_timely?(s),
          true <- intent["approval"] in ~w(approved session_allow),
-         true <- Ipse.Extensions.Registry.live?(s.extension_invocation["identity"]),
+         true <- Ipse.Extensions.Registry.live?(s.invocation.parent["identity"]),
          true <- s.steps < Map.get(s.config, :max_steps, 30),
          true <- Ipse.Usage.capacity?(s.accounting),
          {:ok, config, execution} <- prepare_inference(s.config, intent["request"]),
@@ -1466,7 +1471,7 @@ defmodule Ipse.Session do
         %{
           job_ref: ref,
           task: %{pid: caller},
-          extension_action: %{intent: intent},
+          invocation: %{action: %{intent: intent}},
           extension_model: %{admission: admission}
         } = s
       )
@@ -1506,7 +1511,7 @@ defmodule Ipse.Session do
         %{
           job_ref: ref,
           task: %{pid: caller},
-          extension_action: %{intent: intent},
+          invocation: %{action: %{intent: intent}},
           extension_model: %{admission: admission, started: started}
         } = s
       )
@@ -1540,8 +1545,11 @@ defmodule Ipse.Session do
 
           {%{
              s
-             | extension_effect_sources:
-                 Map.put(s.extension_effect_sources, intent["operation_id"], source)
+             | invocation: %{
+                 s.invocation
+                 | effect_sources:
+                     Map.put(s.invocation.effect_sources, intent["operation_id"], source)
+               }
            }, source}
         else
           {s, nil}
@@ -1574,15 +1582,20 @@ defmodule Ipse.Session do
   def handle_call(
         {:extension_action_commit, ref, event},
         {caller, _},
-        %{job_ref: ref, task: %{pid: caller}, extension_action: %{intent: intent}, phase: phase} =
+        %{
+          job_ref: ref,
+          task: %{pid: caller},
+          invocation: %{action: %{intent: intent}},
+          phase: phase
+        } =
           s
       )
       when ref != nil and
              phase in [:tool, :extension_command, :extension_service, :extension_events] do
     with true <- Actions.result_intent(event) == intent and Actions.valid_result?(event),
          true <-
-           Actions.bound_effect?(event, s.extension_effect_sources, s.extension_action_results),
-         true <- Ipse.Extensions.Registry.live?(s.extension_invocation["identity"]),
+           Actions.bound_effect?(event, s.invocation.effect_sources, s.invocation.results),
+         true <- Ipse.Extensions.Registry.live?(s.invocation.parent["identity"]),
          true <-
            is_nil(intent["service"]) or
              Ipse.Extensions.Registry.live?(intent["service"]["identity"]),
@@ -1591,8 +1604,8 @@ defmodule Ipse.Session do
          {:ok, contributions} <-
            Ipse.Extensions.Contributions.apply_result(
              s.extension_contributions,
-             s.extension_invocation,
-             s.extension_action_results,
+             s.invocation.parent,
+             s.invocation.results,
              event
            ) do
       s = record_extension_action(s, event)
@@ -1603,13 +1616,16 @@ defmodule Ipse.Session do
       {:reply, {:ok, Actions.resume(event)},
        %{
          s
-         | extension_action: nil,
+         | invocation: %{
+             s.invocation
+             | action: nil,
+               interrupted: event["outcome"]["status"] == "unknown",
+               results: s.invocation.results ++ [event]
+           },
            extension_mcp_context: nil,
            usage_reads: usage_reads,
            child_usage: child_usage,
-           extension_contributions: contributions,
-           extension_action_unknown: event["outcome"]["status"] == "unknown",
-           extension_action_results: s.extension_action_results ++ [event]
+           extension_contributions: contributions
        }}
     else
       _ -> {:reply, {:error, :invalid_extension_action}, s}
@@ -1832,12 +1848,16 @@ defmodule Ipse.Session do
   def handle_call(
         {:approve, ref, allowed},
         _from,
-        %{approval: {:extension, ref}, extension_action: action, phase: :extension_approval} = s
+        %{
+          approval: {:extension, ref, caller, phase},
+          invocation: %{action: action},
+          phase: :extension_approval
+        } = s
       ) do
     intent =
       Map.put(action.intent, "approval", if(allowed == true, do: "approved", else: "denied"))
 
-    if output_timely?(s) and Ipse.Extensions.Registry.live?(s.extension_invocation["identity"]) do
+    if output_timely?(s) and Ipse.Extensions.Registry.live?(s.invocation.parent["identity"]) do
       s = record_extension_action(s, intent)
       s = finish_wait(s, if(allowed == true, do: "approved", else: "denied"))
 
@@ -1848,7 +1868,7 @@ defmodule Ipse.Session do
           true -> {:denied, intent}
         end
 
-      GenServer.reply(action.from, reply)
+      GenServer.reply(caller, reply)
 
       if match?({:ok, _, _}, reply) and Ipse.Extensions.Operation.tool?(intent["request"]),
         do: notify(s, {:tool, "extension:tool.call", intent["request"]})
@@ -1857,14 +1877,13 @@ defmodule Ipse.Session do
        %{
          s
          | approval: nil,
-           phase: action.phase,
-           extension_action: %{intent: intent},
-           extension_actions: s.extension_actions + 1
+           phase: phase,
+           invocation: %{s.invocation | action: %{intent: intent}, step: s.invocation.step + 1}
        }}
     else
       s = finish_wait(s, "expired")
-      GenServer.reply(action.from, {:error, :extension_action_expired})
-      {:reply, :ok, %{s | approval: nil, phase: action.phase, extension_action: nil}}
+      GenServer.reply(caller, {:error, :extension_action_expired})
+      {:reply, :ok, %{s | approval: nil, phase: phase, invocation: %{s.invocation | action: nil}}}
     end
   end
 
@@ -1921,11 +1940,14 @@ defmodule Ipse.Session do
            phase: phase,
            task: task,
            job_ref: job_ref,
-           extension_invocation: question.parent,
-           extension_action: nil,
-           extension_actions: question.action["step"],
-           extension_action_results: results,
-           extension_action_unknown: false,
+           invocation: %{
+             s.invocation
+             | parent: question.parent,
+               action: nil,
+               step: question.action["step"],
+               results: results,
+               interrupted: false
+           },
            tool_decision: question.parent["approval"]
        }}
     else
@@ -2085,13 +2107,8 @@ defmodule Ipse.Session do
           job_ref: nil,
           compaction: nil,
           extension_intent: nil,
-          extension_invocation: nil,
-          extension_action: nil,
-          extension_effect_sources: %{},
+          invocation: %CurrentInvocation{},
           extension_mcp_context: nil,
-          extension_action_results: [],
-          extension_action_unknown: false,
-          extension_request: nil,
           event_intent: nil,
           event_received: nil,
           event_committed: nil,
@@ -2228,12 +2245,12 @@ defmodule Ipse.Session do
 
       {invocation_phase, {:extension_question, action}}
       when invocation_phase in [:tool, :extension_command, :extension_service, :extension_events] ->
-        with %{intent: ^action} <- s.extension_action,
+        with %{intent: ^action} <- s.invocation.action,
              true <- output_timely?(s),
              true <- questions_enabled?(s.config),
-             true <- Ipse.Extensions.Registry.live?(s.extension_invocation["identity"]) do
+             true <- Ipse.Extensions.Registry.live?(s.invocation.parent["identity"]) do
           s = release_output(s)
-          parent = s.extension_invocation
+          parent = s.invocation.parent
 
           next =
             if invocation_phase == :tool,
@@ -2252,7 +2269,7 @@ defmodule Ipse.Session do
             arguments: action["request"]["arguments"],
             parent: parent,
             action: action,
-            results: s.extension_action_results,
+            results: s.invocation.results,
             steps: s.steps,
             call: call
           }
@@ -2306,16 +2323,16 @@ defmodule Ipse.Session do
 
       {invocation_phase, {:extension_saved_result, delivery}}
       when invocation_phase in [:tool, :extension_command] ->
-        with intent when is_map(intent) <- s.extension_invocation,
+        with intent when is_map(intent) <- s.invocation.parent,
              true <- s.extension_output != nil and s.extension_output_clock != nil,
-             true <- output_timely?(s) and is_nil(s.extension_action),
-             true <- not s.extension_action_unknown,
+             true <- output_timely?(s) and is_nil(s.invocation.action),
+             true <- not s.invocation.interrupted,
              true <- Ipse.Extensions.Registry.live?(intent["identity"]),
              {:ok, event} <-
                Invocation.build_saved_result(
                  intent,
                  delivery,
-                 s.extension_action_results,
+                 s.invocation.results,
                  output_elapsed(s)
                ),
              {:ok, index} <- ResultSource.publish(s.extension_result_sources, event) do
@@ -2328,10 +2345,10 @@ defmodule Ipse.Session do
 
       {invocation_phase, {:extension_invocation_result, event}}
       when invocation_phase in [:tool, :extension_command, :extension_service, :extension_events] ->
-        with intent when is_map(intent) <- s.extension_invocation,
+        with intent when is_map(intent) <- s.invocation.parent,
              true <- output_timely?(s) and is_nil(s.extension_output),
-             true <- is_nil(s.extension_action),
-             true <- not s.extension_action_unknown,
+             true <- is_nil(s.invocation.action),
+             true <- not s.invocation.interrupted,
              {:ok, expected} <-
                Invocation.build_result(
                  intent,
@@ -2340,7 +2357,7 @@ defmodule Ipse.Session do
                    "kind" => "result",
                    "value" => event["value"]
                  },
-                 s.extension_action_results
+                 s.invocation.results
                ),
              true <- expected == event and Ipse.Extensions.Registry.live?(intent["identity"]) do
           record(s, event)
@@ -3826,13 +3843,8 @@ defmodule Ipse.Session do
           job_ref: nil,
           compaction: nil,
           extension_intent: nil,
-          extension_invocation: nil,
-          extension_action: nil,
-          extension_effect_sources: %{},
+          invocation: %CurrentInvocation{},
           extension_mcp_context: nil,
-          extension_action_results: [],
-          extension_action_unknown: false,
-          extension_request: nil,
           event_received: nil,
           event_committed: nil,
           event_answer: nil,
@@ -3846,9 +3858,9 @@ defmodule Ipse.Session do
   end
 
   defp commit_event_job(s, event) do
-    with parent when is_map(parent) <- s.extension_invocation,
+    with parent when is_map(parent) <- s.invocation.parent,
          delivery when is_map(delivery) <- s.event_intent,
-         true <- is_nil(s.extension_action) and not s.extension_action_unknown,
+         true <- is_nil(s.invocation.action) and not s.invocation.interrupted,
          true <-
            EventJob.matches?(
              parent,
@@ -3862,11 +3874,11 @@ defmodule Ipse.Session do
            Invocation.build_result(
              parent,
              %{"api_version" => 1, "kind" => "result", "value" => event["value"]},
-             s.extension_action_results
+             s.invocation.results
            ),
          true <- expected == event do
       record(s, event)
-      outcome = EventJob.outcome(s.extension_action_results)
+      outcome = EventJob.outcome(s.invocation.results)
       record(s, Subscriptions.result(delivery, outcome, true))
 
       if outcome == "failed" and not delivery["declaration"]["required"],
@@ -3880,14 +3892,8 @@ defmodule Ipse.Session do
       {:ok,
        %{
          s
-         | extension_invocation: nil,
-           extension_request: nil,
-           extension_effect_sources: %{},
+         | invocation: %CurrentInvocation{},
            extension_mcp_context: nil,
-           extension_action_results: [],
-           extension_action: nil,
-           extension_action_unknown: false,
-           extension_actions: 0,
            event_intent: nil
        }, outcome}
     else
@@ -4045,7 +4051,7 @@ defmodule Ipse.Session do
 
   defp complete_invocation_result(s, event) do
     s = release_output(s)
-    s = %{s | extension_invocation: nil, extension_request: nil}
+    s = %{s | invocation: %{s.invocation | parent: nil, request: nil}}
 
     if s.phase == :tool do
       accept_tool_result(s, hd(s.calls), Invocation.tool_message(event))
@@ -4528,15 +4534,15 @@ defmodule Ipse.Session do
   end
 
   defp extension_mcp_target(s, request) do
-    with parent when is_map(parent) <- s.extension_invocation,
-         true <- not s.extension_action_unknown,
+    with parent when is_map(parent) <- s.invocation.parent,
+         true <- not s.invocation.interrupted,
          true <- Ipse.Extensions.Registry.live?(parent["identity"]),
          {:ok, ^request} <-
            Actions.proposal(
              %{"api_version" => 1, "kind" => "host_call", "request" => request},
              parent["identity"]
            ),
-         true <- Actions.allowed?(parent["identity"], request, s.extension_action_results) do
+         true <- Actions.allowed?(parent["identity"], request, s.invocation.results) do
       Ipse.Extensions.MCPCall.target(s.config, parent["identity"], request)
     else
       _ -> {:error, :extension_mcp_refused}
@@ -4553,7 +4559,7 @@ defmodule Ipse.Session do
 
         if is_map(gate) and gate.job == s.job_ref and
              gate.request == Ipse.JSON.digest([request]) and
-             gate.identity == Ipse.JSON.digest([s.extension_invocation["identity"]]),
+             gate.identity == Ipse.JSON.digest([s.invocation.parent["identity"]]),
            do: {:ok, gate.binding},
            else: {:error, :extension_mcp_not_bound}
 
@@ -4571,7 +4577,7 @@ defmodule Ipse.Session do
         request: Ipse.JSON.digest([request]),
         context: Ipse.JSON.digest([s.context_snapshot]),
         job: s.job_ref,
-        identity: Ipse.JSON.digest([s.extension_invocation["identity"]])
+        identity: Ipse.JSON.digest([s.invocation.parent["identity"]])
       }
 
       if s.extension_tool_context == expected,
@@ -4587,7 +4593,7 @@ defmodule Ipse.Session do
       with {:ok, entry, context} <-
              Ipse.Extensions.Services.lookup(
                s.config,
-               s.extension_invocation["identity"],
+               s.invocation.parent["identity"],
                request
              ),
            true <- Ipse.Extensions.Registry.live?(entry.identity) do
@@ -4607,8 +4613,8 @@ defmodule Ipse.Session do
       sandbox: Map.get(s.config, :sandbox, :off),
       parallel_child: Map.get(s.config, :parallel_child, false),
       contributions: s.extension_contributions,
-      identity: s.extension_invocation["identity"],
-      actions: s.extension_action_results
+      identity: s.invocation.parent["identity"],
+      actions: s.invocation.results
     }
 
     context =
@@ -4636,8 +4642,8 @@ defmodule Ipse.Session do
         {:ok, effect_source} =
           Actions.effect_source(
             intent["request"],
-            s.extension_effect_sources,
-            s.extension_action_results
+            s.invocation.effect_sources,
+            s.invocation.results
           )
 
         Map.put(context, :effect_source, effect_source)
@@ -4797,7 +4803,7 @@ defmodule Ipse.Session do
           s.usage_reads,
           intent,
           event,
-          s.extension_action.usage_read
+          s.invocation.action.usage_read
         ),
       else: {:ok, s.usage_reads}
   end
@@ -4808,7 +4814,7 @@ defmodule Ipse.Session do
         s.child_usage,
         intent,
         event,
-        s.extension_action.child_usage.source
+        s.invocation.action.child_usage.source
       )
     else
       {:ok, s.child_usage}

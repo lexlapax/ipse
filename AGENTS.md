@@ -101,6 +101,7 @@ are needed for tests or the demo.
 | Scoped settings and admitted session runtime policy | `lib/ipse/config.ex` |
 | Session state, turn loop, approval, cancellation | `lib/ipse/session.ex` |
 | Pure reconstruction from loaded journal events | `lib/ipse/session/saved.ex` |
+| Current invocation facts, excluding owner resources | `lib/ipse/session/invocation.ex` |
 | Bounded context checkpoints | `lib/ipse/compaction.ex` |
 | Bounded host JSON, raw SHA-256 and canonical list digests | `lib/ipse/json.ex` |
 | Canonical usage and shared admission | `lib/ipse/usage.ex`, `lib/ipse/usage/`, `lib/ipse/budget.ex`, `lib/ipse/budget/` |

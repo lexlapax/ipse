@@ -433,6 +433,7 @@ defmodule Ipse.Extensions.Registry do
       Ipse.TaskResources,
       Ipse.Session.Lock,
       Ipse.Session.Saved,
+      Ipse.Session.Invocation,
       Ipse.FileEffect,
       Ipse.Lifecycle.Source,
       Ipse.Lifecycle.Event,

@@ -344,3 +344,30 @@ pass. A final private fact-field name correction is checked by strict compile,
 the exercise and demo after the focused run. No full-suite, Linux or package
 rerun is claimed for this scoped extraction. Those integrated gates, the remaining
 invocation model, whole manuals and P27 evaluation remain open.
+
+## Consolidate current invocation facts
+
+S13 implementation record, 2026-10-21, over `cdebac7`. Seven independent Session
+fields become one `Session.Invocation` value for the current parent/request,
+action, step, bound sources, results and interrupted flag. Recovered questions
+construct the same facts. The owner keeps its actual lifecycle phase, pending
+approval caller/reference/return phase, worker fences, timers, output indexes
+and writer reservations. Registry pins the added helper. The existing durable
+`Extensions.Invocation` contract remains separate, with an explicit distinct
+alias for the current value.
+
+The lifecycle mapping in [invocation training](../../developer/extension-invocations.md#follow-current-facts-through-the-owner)
+covers admission, action begin, approval/denial/expiry, source and result commit,
+questions, publication, cancellation and deadlines. A competing lifecycle enum
+was deliberately avoided: publication resources and action facts are separate
+dimensions. Append ordering and host gates remain owner-held. Idle reset clears
+all current facts, including the prior private step counter; the public
+cumulative invocation count and journal format are unchanged.
+
+macOS strict compilation and 187 focused invocation, event, publication, model,
+embedding, MCP, memory, cost, service and question tests pass. Both source-only
+adversarial reviews find no defect; their whole-chapter checks cover architecture
+and invocation training. Formatting and documentation links pass. No full-suite,
+Linux or installed proof is claimed by this scoped record. The next integrated
+checks cover the coherent core changes; whole-manual consolidation and P27's
+held-out quality/resource/selection gates remain open.
