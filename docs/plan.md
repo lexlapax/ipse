@@ -429,10 +429,14 @@ version-three allowance uses the existing SDK-1 answer helper; extraction,
 reranking and SDK-2 deadlines remain unchanged. Independent source and manual
 reviews found no remaining implementation defect. One combined exposed diagnostic
 completed in 7.6 minutes on CPU, with no further batch or production-prompt change.
-The user now chooses to wait for GPU repair. Verification continues, while final
-device policy, inference configuration and the private freeze remain open. The
-private workload stays sealed until the final source and usable configuration
-are frozen.
+The user now chooses to wait for GPU repair. The bounded-answer increment's
+[platform verification](archive/2026-10-21-p27-long-answers/index.md#retain-completed-platform-verification)
+passes full macOS and native-enabled Linux suites, package checks and both
+350-row synthetic measured populations. A formatter-only correction passes both
+supported formatters and its affected tests; exact corrected-commit hosted CI
+remains pending. Final device policy, inference configuration and the private
+freeze remain open. The private workload stays sealed until the final source
+and usable configuration are frozen.
 
 The [first host-contract record](archive/2026-10-19-p27-mcp-host-contracts/index.md)
 retains causal regressions, independent review corrections and local verification.

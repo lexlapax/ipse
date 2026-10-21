@@ -90,3 +90,41 @@ Final operating-policy selection and the new private evaluation freeze remain
 open. A repaired GPU will still need an explicit benchmark device policy;
 the current owned-service selection deliberately forces CPU execution. No engine
 has been selected, and the private workload remains sealed.
+
+## Retain completed platform verification
+
+The [verification receipt](verification.json) records completed checks for
+`fda3841290cf4042698c42202ba2b539f063108f`. Its runtime inventory contains
+439 files with SHA-256
+`480a2d6adc8bfdb1268da6bf9540b95056086ef5245827bfa2335d77caf91787`.
+Both platforms preserve that inventory after their package proofs.
+
+| Check | Result and scope |
+| --- | --- |
+| macOS build, format, strict compile, full suite and demo | Passed; 1,446 tests passed, one skipped and 36 excluded |
+| macOS native enforcement and stdio | Passed; 30 tests passed and six excluded |
+| macOS fresh package and installed proofs | Passed; package, version-three structured answer and legacy `json-none` selections |
+| Linux build, format, strict compile, native-enabled full suite, demo and docs | Passed; 1,488 tests passed and 19 excluded |
+| Linux fresh package and installed package | Passed |
+| Linux source and installed structured-answer proofs | Passed with `json-long` |
+| Linux source and installed measured populations | Passed with `sealed-long-answers`; each saved 350 synthetic rows with complete execution and resource audits |
+| Supported Elixir 1.18.5 and OTP 27 | Strict compile rebuilt 131 current files; 68 focused tests passed |
+
+These measured populations use scripted responses. They verify the longer answer
+contract, first-prediction preservation, native charged-memory collection and
+audit admission. They establish no actual-model quality or matched-model
+resource result. All 21 Linux batch steps exited successfully. The final
+source inventory was unchanged, its controller exited, and no temporary
+measurement units remained when the host was cleared for reboot.
+
+The [hosted run for `fda3841`](https://github.com/lexlapax/ipse/actions/runs/39630222410)
+failed the Elixir 1.18 formatter before tests. Commit
+`01303641d36b35183de9e4703314f39f446310f9` replaces two consecutive `Map.put`
+calls with an equivalent `Map.merge`. Both supported formatters and 14 affected
+Answer tests pass after that correction. The current runtime inventory is
+439 files with SHA-256
+`c20a322fc43e2030d4ee70652c02593370c873ae8ab643e2e579e9de01290ff2`.
+The [exact corrected-commit hosted run](https://github.com/lexlapax/ipse/actions/runs/39631577148)
+remains in progress at this record's update. The broader platform results above
+remain attributed to `fda3841`; the formatter correction does not turn them into
+exact-commit execution evidence for `0130364`.
