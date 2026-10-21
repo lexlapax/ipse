@@ -39,6 +39,7 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
       expected = policy!().startup_path
       ^expected = System.fetch_env!("PATH")
       System.put_env("PATH", policy!().path)
+      :ok = :io.setopts(:standard_io, encoding: :unicode)
       assert!()
     end
 
@@ -105,7 +106,9 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
       :ok
     end
 
-    defp policy!, do: @policy || raise(ArgumentError, "No compiled verification environment")
+    defp policy!, do: policy!(@policy)
+    defp policy!(policy) when is_map(policy), do: policy
+    defp policy!(_), do: raise(ArgumentError, "No compiled verification environment")
 
     defp verify_shell!(shell) do
       {:ok, resolved} = Ipse.WorkspaceContext.canonical_path("/bin/sh")

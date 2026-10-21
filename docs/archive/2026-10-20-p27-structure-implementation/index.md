@@ -9,6 +9,10 @@ completion of the entire redesign or P27. Current guidance belongs to the
 [contributor learning path](../../developer/index.md); acceptance belongs to the
 [plan](../../plan.md#p27-optional-research-graph-and-rag).
 
+The [supported-toolchain compatibility investigation](floor-compatibility.md)
+records the later Elixir-1.18 warning and raw-launch Unicode repairs, including
+their completed focused checks and the limits of earlier platform receipts.
+
 ## Give shared JSON operations one owner
 
 The increment starts from `bfe8ca5d62b4a270ec26a72e60622d8c08c9847d`.

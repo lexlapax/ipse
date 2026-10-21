@@ -1175,6 +1175,8 @@ defmodule Ipse.Development.VerificationTest do
 
         run = fn role, code, argv ->
           {command, args} = owner.precompiled_command(context, role, code, argv)
+          eval_index = Enum.find_index(args, &(&1 == "-eval")) + 1
+          args = List.update_at(args, eval_index, &("ok=io:setopts(standard_io,[{encoding,latin1}])," <> &1))
           {bytes, status} = System.cmd(command, args, stderr_to_stdout: true, env: [{"ERL_CRASH_DUMP", "/dev/null"}])
           {status, JSON.decode!(String.trim(bytes))}
         end

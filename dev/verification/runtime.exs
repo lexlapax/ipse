@@ -719,6 +719,7 @@ defmodule Ipse.Development.Verification.Runtime do
     modules = Enum.map(runtime.spec.modules, &{&1, beam(runtime.harness, &1)})
 
     """
+    :ok = :io.setopts(:standard_io, encoding: :unicode)
     canonical = fn path -> {:ok, resolved} = Ipse.WorkspaceContext.canonical_path(path); resolved end
     erl = canonical.(#{inspect(runtime.erl)})
     startup_path = Path.dirname(erl) <> ":" <> Path.expand("../../bin", Path.dirname(erl)) <> ":" <> #{inspect(runtime.path)}
