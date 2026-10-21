@@ -510,6 +510,7 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
       |> Map.values()
       |> List.flatten()
       |> Enum.uniq()
+      |> Enum.sort_by(&Atom.to_string/1)
       |> Enum.map(&module_identity!(runtime, &1))
 
     {Environment, file, md5, digest} = Enum.find(bindings, &(elem(&1, 0) == Environment))

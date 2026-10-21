@@ -47,6 +47,14 @@ production knowledge modules into the evaluator or call a provider directly.
 Its caller validates the complete proposed action. A selected profile names a
 route; it does not approve every request on that route.
 
+Native stage admission rebuilds each launch command and compares its exact bytes
+with the saved bootstrap. `MeasuredExecution` sorts the unique module bindings
+by module name before serializing them. Keep that order independent of VM atom
+allocation and retain each role's explicit load order. When changing launch
+construction, run the fresh-VM command regression in
+`test/verification_test.exs`; comparing two calls in one VM misses startup-order
+differences.
+
 Start a declaration change in `Contract.build/1` and `validate/1`.
 The same owner holds the selected command and model-origin rules used by Runner.
 It loads no execution, model-service or fixture implementation. For example,
@@ -128,7 +136,10 @@ execution or a measured stage.
 Expect `synthetic: true`, `model_quality_measured: false`, 350 saved first rows and
 complete execution/resource audit results. The driver checks exact model request
 schemas, exclusion markers, canonical request counts, unchanged read-only audit,
-refused reentry and changed-evidence refusal. Its review and score controls use
+refused reentry and changed-evidence refusal. Measurement and a later audit reopen
+the captured evaluator in separate VMs through the public phase-command loader.
+The proof keeps its scratch directory outside the captured runtime and seal,
+then restores its original temporary directory. Its review and score controls use
 the actual CLI, including refusal before label or review inputs are opened.
 A successful synthetic score control reports `unmeasured_quality_refused`.
 

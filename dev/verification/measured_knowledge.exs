@@ -286,8 +286,9 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge do
   def verify(run) do
     if run.answers, do: false = File.exists?(run.labels)
 
-    {:ok, result} =
-      MeasuredExecution.run(freeze: run.seal["path"], freeze_sha256: run.seal["sha256"])
+    {0, %{"status" => "ok", "result" => summary}} = reopened(run, "measure")
+    {:ok, result} = MeasuredExecution.audit(run.seal["path"], run.seal["sha256"])
+    true = summary == Map.take(result, Map.keys(summary))
 
     true = result["execution_complete"] and result["resource_complete"]
     350 = result["rows"]
@@ -301,18 +302,39 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge do
     true = Enum.sort(Enum.uniq(Enum.map(rows, & &1["project"]))) == ~w(alpha beta)
     verify_provider_logs!(run)
     before = snapshot(run.root)
+    {0, %{"status" => "ok", "result" => ^summary}} = reopened(run, "audit")
     {:ok, ^result} = MeasuredExecution.audit(run.seal["path"], run.seal["sha256"])
     if run.answers, do: false = File.exists?(run.labels)
     true = snapshot(run.root) == before
     save!(Path.join(run.root, "verified-audit.json"), JSON.encode!(result))
     before = snapshot(run.root)
 
-    {:error, _} =
-      MeasuredExecution.run(freeze: run.seal["path"], freeze_sha256: run.seal["sha256"])
+    {1, %{"status" => "failed"}} = reopened(run, "measure")
 
     true = snapshot(run.root) == before
     verify_tamper_controls!(run)
     result
+  end
+
+  defp reopened(run, phase) do
+    temporary = Path.join(run.root, "cli-tmp")
+    File.mkdir_p!(temporary)
+    File.chmod!(temporary, 0o700)
+    previous = System.fetch_env!("TMPDIR")
+    System.put_env("TMPDIR", temporary)
+
+    try do
+      {output, status} =
+        Ipse.Development.Verification.Runtime.reopen_evaluation!(
+          run.seal["path"],
+          run.seal["sha256"],
+          ["--phase", phase, "--freeze", run.seal["path"], "--freeze-sha256", run.seal["sha256"]]
+        )
+
+      {status, output |> String.split("\n", trim: true) |> List.last() |> JSON.decode!()}
+    after
+      System.put_env("TMPDIR", previous)
+    end
   end
 
   defp verify_tamper_controls!(run) do

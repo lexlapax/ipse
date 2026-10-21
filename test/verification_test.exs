@@ -105,7 +105,7 @@ defmodule Ipse.Development.VerificationTest do
 
     File.write!(input, JSON.encode!(artifacts))
 
-    for {name, count} <- [{"measured-knowledge", 25}, {"measured-authority", 26}] do
+    for {name, count} <- [{"measured-knowledge", 27}, {"measured-authority", 28}] do
       spec =
         Scenarios.fetch!(name) |> Map.put(:retained, false) |> Map.put(:native_environment, :base)
 
@@ -1144,6 +1144,45 @@ defmodule Ipse.Development.VerificationTest do
         assert %{"precompiled_daemon_cases" => ^expected} = Runtime.eval!(runtime, expression)
       end)
     end
+  end
+
+  test "frozen commands are identical across fresh VM atom allocation orders" do
+    Runtime.with_runtime(Scenarios.evaluator(), options(), fn runtime ->
+      expression = """
+      (fn ->
+        owner = Ipse.Development.Evaluation.MeasuredExecution
+        command = ~S'''
+        {:ok, launch} = Ipse.Development.Evaluation.Freeze.runtime_launch()
+        files = for directory <- :code.get_path(), name <- File.ls!(to_string(directory)), String.ends_with?(name, ".beam") do
+          file = Path.join(Path.expand(to_string(directory)), name)
+          %{"path" => file, "bytes" => File.stat!(file).size, "sha256" => Ipse.JSON.sha256(File.read!(file))}
+        end
+        owner = Ipse.Development.Evaluation.MeasuredExecution
+        context = owner.execution_context!(%{"manifest" => %{"version" => 2, "runtime" => %{"launch" => launch, "files" => files}}})
+        generated = owner.precompiled_command(context, :evaluator, "nil", [])
+        IO.puts(Base.encode64(:erlang.term_to_binary(generated)))
+        '''
+        {:ok, launch} = Ipse.Development.Evaluation.Freeze.runtime_launch()
+        files = for directory <- :code.get_path(), name <- File.ls!(to_string(directory)), String.ends_with?(name, ".beam") do
+          file = Path.join(Path.expand(to_string(directory)), name)
+          %{"path" => file, "bytes" => File.stat!(file).size, "sha256" => Ipse.JSON.sha256(File.read!(file))}
+        end
+        context = owner.execution_context!(%{"manifest" => %{"version" => 2, "runtime" => %{"launch" => launch, "files" => files}}})
+        {executable, arguments} = owner.precompiled_command(context, :inventory, command, [])
+        index = Enum.find_index(arguments, &(&1 == "-eval")) + 1
+        roles = ~w(author evaluator input inventory cli)
+        commands = for order <- [roles, Enum.reverse(roles)] do
+          seeds = Enum.map_join(order, ",", fn role -> "binary_to_atom(<<" <> Enum.map_join(:binary.bin_to_list(role), ",", &Integer.to_string/1) <> ">>,utf8)" end)
+          arguments = List.update_at(arguments, index, &(seeds <> ",ok=io:setopts(standard_io,[{encoding,latin1}])," <> &1))
+          {output, 0} = System.cmd(executable, arguments, stderr_to_stdout: true, env: [{"ERL_CRASH_DUMP", "/dev/null"}])
+          Base.decode64!(String.trim(output))
+        end
+        %{"identical_commands" => length(Enum.uniq(commands)) == 1}
+      end).()
+      """
+
+      assert %{"identical_commands" => true} = Runtime.eval!(runtime, expression)
+    end)
   end
 
   test "frozen precompiled roles launch without loading authoring in the host" do

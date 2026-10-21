@@ -544,8 +544,15 @@ workload-charged RAM with an optional Linux benchmark backend. This includes
 cache and kernel charges under the declared `linux_memcg_charged_peak_bytes_v1`
 subject. The earlier exposed trials used the approved CPU-only policy; the user
 subsequently waited for repair and reported a completed reboot. The explicit GPU
-selection now has one successful exposed viability observation; its complete
-verification, usable final configuration and fresh private comparison remain open. Existing
+selection has one successful exposed viability observation. Its source and
+installed synthetic checks and exact `41314b7`
+[hosted matrix](https://github.com/lexlapax/ipse/actions/runs/39647137696) pass.
+The first frozen private preparation then refused before dataset reads or
+inference because separate VMs serialized module bindings in different orders.
+The [GPU policy record](archive/2026-10-21-p27-gpu-policy/index.md#preserve-the-first-private-preparation-refusal)
+retains the terminal gates, failed seal and causal regression. Canonical command
+ordering and public-reopen proof verification must pass before a fresh seal.
+The private comparison and engine selection remain open. Existing
 synthetic native controls establish counter behavior; complete integration is
 verified below, while the real comparison remains open. The experiment
 specification must remain portable. Resolved paths, runtime identities and observed host configuration

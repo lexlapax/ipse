@@ -95,8 +95,43 @@ macOS native enforcement passed. A fresh package from the corrected snapshot
 passed its installed package and model-call proofs; source and installed service
 proofs confirmed unsupported-backend refusal before effects on macOS.
 
-Linux's complete synthetic GPU audits and native-enabled full suite are still
-running. Final source/config
-freeze, all 350 first actual predictions, complete charged-RAM audit, independent
-semantic review and individual strategy qualification remain open. No engine is
-selected.
+At initial publication, Linux's complete synthetic GPU audits and native-enabled
+full suite were still running. The following section records their terminal
+results and the subsequent first private preparation refusal. No engine is selected.
+
+## Preserve the first private preparation refusal
+
+At `41314b7ac600b91b054355549585bd3c3ae8577f`,
+[hosted run 39647137696](https://github.com/lexlapax/ipse/actions/runs/39647137696)
+passed Ubuntu and macOS, including the applicable native, package and installed
+checks. The corrected Linux snapshot passed 1498 tests with 19 excluded, all
+26 source and installed model-service cases, and both source and installed
+350-row synthetic GPU populations. Both populations passed complete native
+execution/resource audits and retained unchanged source. Their scripted responses
+and memory measurements do not establish real-model quality or resource use.
+
+After those gates passed, only the independently committed corpus, questions and
+manifest were staged at the frozen input location. Reference answers remained
+sealed. The first private execution used source `41314b7` and local seal SHA-256
+`c35b158ad87ad5da2f5954496777e261b05c624cff2a60210ff55fd37d085a1b`.
+Its preparation process started, then refused with `native_authority` before the
+domain claim, dataset read or inference. The native root and preparation receipts
+confirm cleanup. There are no predictions. The public measure and read-only
+audit commands both exited 1 with `measured_evidence_unavailable`, because the
+prepared population file was absent. The observer's exit 0 records completed
+observation, not successful execution. The failed seal remains preserved and
+must never be replayed or have its claims reset.
+
+Two independent investigations traced inconsistent command bytes to
+`MeasuredExecution.validate_precompiled!/1`. It serialized module bindings from
+an atom-keyed map without canonical ordering. Identical BEAM files generated
+different bootstrap bytes in fresh VMs with different atom allocation histories.
+A regression against the actual captured runtime reproduced the difference.
+Sorting the unique bindings by module name makes that regression pass while
+preserving role load order and every identity check. The synthetic proof also
+needs the public reopen path before another private admission; the earlier proof
+started measurement directly in its existing VM and missed that transition.
+
+The repair's platform and complete synthetic verification remain open. A later
+actual comparison requires a fresh source/configuration seal, all 350 first
+outcomes, complete charged-RAM audit and subsequent independent semantic review.

@@ -190,12 +190,19 @@ defmodule Ipse.Development.Verification.Scenarios do
       module: module,
       sources:
         evaluator.sources ++
-          ["dev/fixtures/model_service.exs", "dev/verification/measured_knowledge.exs"] ++
+          [
+            "dev/fixtures/model_service.exs",
+            "dev/verification/scenarios.exs",
+            "dev/verification/runtime.exs",
+            "dev/verification/measured_knowledge.exs"
+          ] ++
           if(authority, do: [source], else: []),
       modules:
         evaluator.modules ++
           fixture!(:model_service).modules ++
           [
+            __MODULE__,
+            Ipse.Development.Verification.Runtime,
             Ipse.Development.Verification.MeasuredKnowledge,
             Ipse.Development.Verification.MeasuredKnowledge.Scoring
           ] ++ if(authority, do: [module], else: []),
