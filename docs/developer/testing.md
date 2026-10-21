@@ -143,7 +143,7 @@ Retained files do not authorize retrying an interrupted effect.
 
 | Scenario | Input | Selection or additional requirement |
 | --- | --- | --- |
-| `model` | Model-call artifact | `default`, `none`, `json`, `json-none` |
+| `model` | Model-call artifact | `default`, `none`, `json`, `json-none`, `json-long` |
 | `embedding`, `mcp`, `saved-results` | Matching SDK artifact | Default |
 | `lab` | Built lab artifact directory | Default |
 | `memory` | `examples/memory/corpus.json` | Fixed lexical fixture |
@@ -155,11 +155,12 @@ Retained files do not authorize retrying an interrupted effect.
 | `knowledge-mcp` | Corpus `mcp-lexical` artifact | Default |
 | `knowledge-research` | Research `mcp` artifact | Default |
 | `model-service` | Compiled `dev/fixtures/model_service_probe.rs` | Fresh output |
-| `measured-knowledge` | JSON map of seven prebuilt artifact directories | Clean repository, fresh output; four selections |
+| `measured-knowledge` | JSON map of seven prebuilt artifact directories | Clean repository, fresh output; five selections |
 | `measured-authority` | Same artifact map | Clean repository, fresh output; Linux backend |
 
 Measured-knowledge selections are `default`, `sealed`, `structured` and
-`sealed-structured`. Cases other than `model` and `measured-knowledge` accept
+`sealed-structured`, plus `sealed-long-answers` for the explicit longer-answer
+policy. Cases other than `model` and `measured-knowledge` accept
 only default. Follow the
 [complete measured exercise](knowledge-evaluation.md#run-a-complete-synthetic-measured-population)
 for artifact maps, retained paths and Linux prerequisites. Measured cases refuse
@@ -316,6 +317,20 @@ macOS retains app containers under `~/Library/Containers`.
 Distinguish callback delivery, worker lifetime and native cleanup. Give a test
 observation enough time for admitted initialization/callback/close work. Keep
 runtime deadlines and strict cleanup assertions while investigating.
+
+The captured-evaluator CLI exercise makes seven CLI invocations to declare, seal,
+reopen and reject changed code. Its two-minute test watchdog covers that whole
+sequence. A watchdog expiry during one `System.cmd/3` call does not identify
+which child operation stalled. Run both CLI exercises together:
+
+```sh
+mix test test/knowledge_evaluation_declaration_cli_test.exs --seed 596778
+```
+
+Expect two passing tests. Preserve the exact retained-runtime inventory,
+relative-path launch, missing/extra-code refusals and unopened-input assertions
+when changing this exercise. Its test watchdog grants no extra model-call,
+Worker or native execution time.
 
 ```sh
 IPSE_TEST_STDIO_PROBE=1 mix test test/extensions_invocation_test.exs test/knowledge_evaluation_runner_test.exs --seed 77259

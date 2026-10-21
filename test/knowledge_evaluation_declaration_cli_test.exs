@@ -7,6 +7,7 @@ defmodule Ipse.KnowledgeEvaluationDeclarationCLITest do
   use ExUnit.Case, async: false
   alias Ipse.Development.Evaluation.Contract
 
+  @tag timeout: 120_000
   test "plain CLI retains and reopens the exact precompiled evaluator before accessing inputs" do
     root = Path.join(System.tmp_dir!(), "ipse-precompiled-cli-" <> Ipse.Usage.id())
     repository = Path.join(root, "repository ")

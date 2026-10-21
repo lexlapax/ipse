@@ -125,6 +125,30 @@ Answer tests pass after that correction. The current runtime inventory is
 439 files with SHA-256
 `c20a322fc43e2030d4ee70652c02593370c873ae8ab643e2e579e9de01290ff2`.
 The [exact corrected-commit hosted run](https://github.com/lexlapax/ipse/actions/runs/39631577148)
-remains in progress at this record's update. The broader platform results above
+was in progress when the platform receipt was recorded. The broader results above
 remain attributed to `fda3841`; the formatter correction does not turn them into
 exact-commit execution evidence for `0130364`.
+
+## Preserve the later hosted CLI timeout
+
+The same corrected-commit run subsequently finished its macOS test step with
+one failure. It reported 1,483 tests, one failure, 36 excluded and one skipped
+in 1,770 seconds. The captured-evaluator declaration CLI test exhausted its
+default 60-second watchdog during its third plain CLI invocation. The stack
+stopped in `System.cmd/3`; it does not identify a child operation or prove a
+deadlock. Native enforcement, packaging and later installed proofs did not run
+in that macOS job. Ubuntu remained in progress at this observation.
+
+The test makes seven CLI invocations in total. Its individual runtime-identity,
+relative-path, changed-code and unopened-input assertions remain intact. Only
+this test receives a finite 120-second whole-sequence watchdog, consistent
+with the existing multi-CLI observation budget. No runtime, model-call, Worker
+or native deadline changes. The original test passed locally in 26.1 seconds
+with the hosted seed, so that local check does not reproduce the hosted delay.
+Both corrected CLI exercises passed locally in 42.4 seconds. A fresh local
+Elixir 1.18.5/OTP 27 checkout passed both exercises too, with compilation and test
+execution together taking 47.7 seconds. Its whole-tree format check passed.
+The contributor testing chapter was read in full; its proof-selection table
+also needed the existing `json-long` and `sealed-long-answers` selections.
+Its documented two-test command passed, and the documentation checker found
+zero errors. A fresh hosted result remains a separate gate.
