@@ -1,3 +1,5 @@
+Code.require_file("../dev/verification/cli.exs", __DIR__)
+Ipse.Development.Verification.Runtime.load_fixture!(:knowledge)
 Code.require_file("../examples/knowledge/evaluation_runner.exs", __DIR__)
 Code.require_file("../priv/cost-report-demo.exs", __DIR__)
 

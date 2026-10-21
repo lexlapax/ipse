@@ -6,7 +6,7 @@ defmodule Ipse.KnowledgeStoreContractTest do
   defmodule IpseKnowledge.ContractControls do
   use ExUnit.Case
   alias IpseKnowledge.Store.MCPCAS, as: M
-  alias IpseKnowledge.Test.CASFixture, as: F
+  alias Ipse.Development.Fixtures.Knowledge, as: F
   defp hash(text), do: Base.encode16(:crypto.hash(:sha256, text), case: :lower)
   defp id(tag, parts), do: hash(JSON.encode!(["ipse-knowledge",1,tag,parts]))
   defp profile(v), do: %{"kind"=>"mcp_cas","binding"=>"storage","partition"=>"notes","contract"=>"ipse-cas-v#{v}"}
@@ -187,9 +187,11 @@ defmodule Ipse.KnowledgeStoreContractTest do
     paths = Enum.flat_map(:code.get_path(), &["-pa", List.to_string(&1)])
 
     sources =
-      ~w(extensions/knowledge/src/profiles.ex extensions/knowledge/src/store/mcp_cas.ex test/support/knowledge_mcp_fixture.exs)
+      ~w(extensions/knowledge/src/profiles.ex extensions/knowledge/src/store/mcp_cas.ex dev/verification/cli.exs)
 
-    loads = Enum.flat_map(sources, &["-r", Path.join(@root, &1)])
+    loads =
+      Enum.flat_map(sources, &["-r", Path.join(@root, &1)]) ++
+        ["-e", "Ipse.Development.Verification.Runtime.load_fixture!(:knowledge)"]
 
     {output, status} =
       System.cmd(System.find_executable("elixir"), paths ++ loads ++ ["-e", @suite],

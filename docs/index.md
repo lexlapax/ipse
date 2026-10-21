@@ -32,7 +32,7 @@ quick start. Try the demo before configuring a model account.
 | Change source retrieval, graph or investigation behavior | [Study knowledge packages](developer/knowledge-extensions.md) |
 | Measure retrieval and cited answers without exposing labels | [Work through knowledge evaluation](developer/knowledge-evaluation.md) |
 | Change a durable record or recovery validator | [Study persistence](developer/persistence.md) |
-| Prove that a repair works | [Verify a change](developer/testing.md) |
+| Prove a repair against source or an installed runtime | [Verify a change](developer/testing.md) |
 
 ## Project context
 

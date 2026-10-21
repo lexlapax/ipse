@@ -3,25 +3,27 @@ Code.require_file("evaluation_session.exs", __DIR__)
 defmodule IpseKnowledgeExample.EvaluationProof do
   alias IpseKnowledgeExample.EvaluationSession, as: Evaluation
 
+  @options JSON.decode!(
+             File.read!(
+               Path.expand("../../extensions/knowledge/options/corpus-lexical.json", __DIR__)
+             )
+           )
+
   defmodule NoModel do
     def complete(_, _, _, _), do: raise("Evaluation driver proof called a model")
   end
 
   def run(artifact) do
+    {:ok, _} = Application.ensure_all_started(:ipse)
     root = Path.join(System.tmp_dir!(), "ipse-evaluation-proof-" <> Ipse.Usage.id())
     File.mkdir_p!(root)
     manifest = JSON.decode!(File.read!(Path.join(artifact, "extension.json")))
     digest = Ipse.JSON.sha256(File.read!(Path.join(artifact, "extension.json")))
 
     options =
-      JSON.decode!(
-        File.read!(Path.expand("../../extensions/knowledge/options/corpus-lexical.json", __DIR__))
-      )
-
-    options =
-      options
-      |> Map.put("stores", %{"notes.v1" => options["stores"]["notes"]})
-      |> Map.put("retrieval", %{"words.v1" => options["retrieval"]["words"]})
+      @options
+      |> Map.put("stores", %{"notes.v1" => @options["stores"]["notes"]})
+      |> Map.put("retrieval", %{"words.v1" => @options["retrieval"]["words"]})
 
     validator = fn review ->
       true = review.verb == "ingest"
@@ -161,6 +163,3 @@ defmodule IpseKnowledgeExample.EvaluationProof do
     end
   end
 end
-
-[artifact] = System.argv()
-IO.puts(JSON.encode!(IpseKnowledgeExample.EvaluationProof.run(Path.expand(artifact))))

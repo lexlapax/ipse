@@ -1,10 +1,15 @@
-defmodule MeasuredAuthorityVerification do
+defmodule Ipse.Development.Verification.MeasuredAuthority do
   @moduledoc "Fresh-seal loss and live authority controls; never retries an interrupted attempt."
   alias Ipse.Runner
   alias IpseKnowledgeExample.EvaluationMeasuredExecution, as: Measured
   @wait_ms 60_000
   @cleanup_ms 15_000
   @limit 1_048_576
+
+  def run(repository, artifact_file, output) do
+    artifacts = JSON.decode!(File.read!(artifact_file))
+    verify(repository, artifacts, Path.join(output, "run"))
+  end
 
   def verify(repository, artifacts, root) do
     true = :os.type() == {:unix, :linux}
@@ -38,13 +43,18 @@ defmodule MeasuredAuthorityVerification do
     run =
       if kind == "model_service_loss",
         do:
-          MeasuredKnowledgeVerification.prepare(
+          Ipse.Development.Verification.MeasuredKnowledge.prepare(
             Path.join(root, kind),
             repository,
             artifacts,
             fault: :exit_on_answer
           ),
-        else: MeasuredKnowledgeVerification.prepare(Path.join(root, kind), repository, artifacts)
+        else:
+          Ipse.Development.Verification.MeasuredKnowledge.prepare(
+            Path.join(root, kind),
+            repository,
+            artifacts
+          )
 
     manifest = json!(run.seal["path"])
 
@@ -569,7 +579,7 @@ defmodule MeasuredAuthorityVerification do
   end
 
   defp save!(path, value),
-    do: MeasuredKnowledgeVerification.save!(path, JSON.encode!(value) <> "\n")
+    do: Ipse.Development.Verification.MeasuredKnowledge.save!(path, JSON.encode!(value) <> "\n")
 
   defp wait(fun, deadline) do
     case fun.() do

@@ -1,3 +1,5 @@
+Code.require_file("../dev/verification/cli.exs", __DIR__)
+Ipse.Development.Verification.Runtime.load_fixture!(:knowledge)
 Code.require_file("../examples/knowledge/evaluation_runner.exs", __DIR__)
 
 defmodule Ipse.KnowledgeEvaluationMeasuredTest do
@@ -162,6 +164,54 @@ defmodule Ipse.KnowledgeEvaluationMeasuredTest do
     decoded = Base.decode64!(code)
     assert {:ok, _} = Code.string_to_quoted(decoded)
     assert decoded =~ "Code.require_file(\"/selected/script.exs\")"
+  end
+
+  test "legacy source execution cannot replace a captured precompiled evaluator" do
+    assert :code.which(EvaluationMeasuredExecution) == []
+    {:ok, launch} = IpseKnowledgeExample.EvaluationFreeze.runtime_launch()
+
+    verified = %{
+      "manifest" => %{"version" => 2, "runtime" => %{"launch" => launch, "files" => []}}
+    }
+
+    assert {:source, ^launch} = EvaluationMeasuredExecution.execution_context!(verified)
+
+    frozen_beam = %{
+      "path" => "/captured/Elixir.IpseKnowledgeExample.EvaluationMeasuredExecution.beam"
+    }
+
+    changed = put_in(verified, ["manifest", "runtime", "files"], [frozen_beam])
+
+    assert catch_throw(EvaluationMeasuredExecution.execution_context!(changed)) ==
+             {:measured_execution, :precompiled_module}
+  end
+
+  test "stage admission budgets the complete resolved native measurement command", %{root: root} do
+    directory = Path.join(root, String.duplicate("long-target-", 12))
+    File.mkdir!(directory)
+    File.write!(Path.join(directory, "ipse-runner"), "fixture")
+    File.ln_s!(directory, Path.join(root, "short"))
+    helper = Path.join(root, "short/ipse-runner")
+    {:ok, resolved} = Ipse.WorkspaceContext.canonical_path(helper)
+    assert byte_size(resolved) > byte_size(helper)
+
+    stage = %{
+      token: String.duplicate("a", 32),
+      timeout: 180_000,
+      output: "/private/measurement/雪/metric-cell-013",
+      argv: ["/selected/erts/bin/erl", "-eval", ""]
+    }
+
+    wrapper = [resolved, "--measure-stage", "cell", stage.token, "180000", stage.output, "--"]
+    bytes = Enum.sum(Enum.map(wrapper ++ stage.argv, &byte_size/1))
+    exact = %{stage | argv: List.replace_at(stage.argv, 2, String.duplicate(" ", 65_536 - bytes))}
+    assert :ok = EvaluationMeasuredExecution.validate_stage_launch!(helper, exact)
+
+    oversized = %{exact | argv: List.update_at(exact.argv, 2, &(&1 <> " "))}
+    assert Enum.sum(Enum.map(oversized.argv, &byte_size/1)) < 65_536
+
+    assert catch_throw(EvaluationMeasuredExecution.validate_stage_launch!(helper, oversized)) ==
+             {:measured_execution, :stage_argument_limit}
   end
 
   test "read-only domain audit detects changed and extra artifacts", %{root: root} do

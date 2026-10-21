@@ -200,7 +200,8 @@ For packaging changes or a release candidate, build and check its archive:
 
 ```sh
 ./scripts/package.sh
-elixir scripts/verify-package.exs /absolute/path/to/the-new-archive.tar.gz
+elixir scripts/verify.exs installed package \
+  --archive /absolute/path/to/the-new-archive.tar.gz --input examples/memory/corpus.json
 ```
 
 Use the archive actually produced for this platform, not a stale glob match.

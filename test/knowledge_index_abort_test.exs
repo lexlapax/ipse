@@ -7,18 +7,18 @@ defmodule Ipse.KnowledgeIndexAbortTest do
     bootstrap = ~S'''
     import ExUnit.Assertions
     alias IpseKnowledge.{Corpus, Evidence, Store}
-    alias IpseKnowledge.Test.CASFixture, as: Fixture
+    alias Ipse.Development.Fixtures.Knowledge, as: Fixture
 
     defmodule AbortDriver do
       def store({:call, request, continuation}, db) do
-        {outcome, db} = IpseKnowledge.Test.CASFixture.host(db, request)
+        {outcome, db} = Ipse.Development.Fixtures.Knowledge.host(db, request)
         store(IpseKnowledge.Store.resume(continuation, outcome), db)
       end
 
       def store(result, db), do: {result, db}
 
       def corpus({:ok, %{"kind" => "host_call", "request" => request}, state}, db) do
-        {outcome, db} = IpseKnowledge.Test.CASFixture.host(db, request)
+        {outcome, db} = Ipse.Development.Fixtures.Knowledge.host(db, request)
         reply = IpseKnowledge.Corpus.handle("host.actions", %{"outcome" => outcome}, state)
         corpus(reply, db)
       end
@@ -26,7 +26,7 @@ defmodule Ipse.KnowledgeIndexAbortTest do
       def corpus({:ok, %{"kind" => "result", "value" => value}, _}, db), do: {value, db}
 
       def mutations(db) do
-        Enum.count(IpseKnowledge.Test.CASFixture.requests(db), fn request ->
+        Enum.count(Ipse.Development.Fixtures.Knowledge.requests(db), fn request ->
           request["op"] in ~w(state.put state.delete) or
             (request["op"] == "mcp.call" and
                get_in(request, ["arguments", "action"]) in
@@ -127,7 +127,14 @@ defmodule Ipse.KnowledgeIndexAbortTest do
     args =
       Enum.flat_map(:code.get_path(), &["-pa", List.to_string(&1)]) ++
         Enum.flat_map(paths, &["-r", Path.join(@root, "extensions/knowledge/src/" <> &1)]) ++
-        ["-r", Path.join(@root, "test/support/knowledge_mcp_fixture.exs"), "-e", bootstrap]
+        [
+          "-r",
+          Path.join(@root, "dev/verification/cli.exs"),
+          "-e",
+          "Ipse.Development.Verification.Runtime.load_fixture!(:knowledge)",
+          "-e",
+          bootstrap
+        ]
 
     {output, status} =
       System.cmd(System.find_executable("elixir"), args, stderr_to_stdout: true)

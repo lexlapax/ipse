@@ -193,7 +193,8 @@ Build the SDK-only example and run its synthetic loopback proof:
 ```sh
 IPSE_EMBEDDING_ARTIFACT=$(mktemp -d)/artifact
 elixir scripts/build-artifact.exs embedding-actions --sdk _build/dev/lib/ipse/ebin --output "$IPSE_EMBEDDING_ARTIFACT"
-mix run examples/embedding-actions/verify.exs "$IPSE_EMBEDDING_ARTIFACT"
+elixir scripts/verify.exs source embedding \
+  --sdk _build/dev/lib/ipse/ebin --input "$IPSE_EMBEDDING_ARTIFACT"
 mix test test/embedding_profiles_test.exs test/provider/embedding_test.exs test/embedding_accounting_test.exs test/embedding_costs_test.exs
 ```
 

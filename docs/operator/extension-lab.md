@@ -7,7 +7,8 @@ network model, database, or paid service. Its literal corpus and deterministic
 parser are teaching examples, not production memory or retrieval engines.
 
 You need the source checkout, its supported Elixir/OTP toolchain, and an already
-built Ipse SDK. Run commands from the checkout root. For ordinary explicit notes,
+built Ipse SDK. Follow [developer setup](../developer/index.md#build-your-first-checkout)
+if you need to build it. Run commands from the checkout root. For ordinary explicit notes,
 use [Memory](memory.md) instead of these lab artifacts.
 
 ## Build inert artifacts
@@ -25,7 +26,8 @@ runner's platform and OTP version; activation refuses incompatible code.
 Run the synthetic verification walkthrough:
 
 ```sh
-mix run --no-compile examples/extension-lab/verify.exs "$IPSE_LAB_ARTIFACTS"
+elixir scripts/verify.exs source lab \
+  --sdk _build/dev/lib/ipse/ebin --input "$IPSE_LAB_ARTIFACTS"
 ```
 
 It creates isolated workspace/state, exercises real host approvals/questions,
@@ -114,13 +116,15 @@ pinned. Follow [Extensions](extensions.md) for general recovery.
 To check an already-built compatible archive using these artifacts:
 
 ```sh
-elixir examples/extension-lab/verify-package.exs /path/to/ipse-release.tar.gz "$IPSE_LAB_ARTIFACTS"
+elixir scripts/verify.exs installed lab \
+  --archive /path/to/ipse-release.tar.gz --input "$IPSE_LAB_ARTIFACTS"
 ```
 
 Use the actual archive path for your OS/architecture/runtime. This checks the
 unchanged archive's installed worker execution and temporary selection; it does
-not build a new Ipse release. The outer verifier uses your development toolchain,
-while the extracted runner uses its bundle. Review actual failures and cleanup
+not build a new Ipse release. The verifier compiles the trusted proof with your development toolchain before
+starting the extracted runner. The runner then uses its bundled runtime and the
+prebuilt lab artifacts. Review actual failures and cleanup
 status before accepting the result. [The developer lab guide](../developer/extension-proof.md)
 explains how the examples and their verification are structured.
 

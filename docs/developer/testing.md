@@ -107,6 +107,98 @@ If a sandbox denies those sockets, run through the environment's permission flow
 or an appropriate local terminal. Do not weaken TLS, skip assertions or substitute
 a different transport to make the suite appear green.
 
+## Run one proof against source and an installed runtime
+
+Use `scripts/verify.exs` to exercise an independently built artifact through real
+host APIs. Choose `source` with an existing SDK directory, or `installed` with a
+compatible runtime archive. Build the artifact before verification. The verifier
+never builds or repairs the artifact to make a proof pass.
+
+Start with the model-call exercise:
+
+```sh
+IPSE_PROOF_ROOT=$(mktemp -d)
+elixir scripts/build-artifact.exs model-calls \
+  --sdk _build/dev/lib/ipse/ebin --output "$IPSE_PROOF_ROOT/artifact"
+elixir scripts/verify.exs source model \
+  --sdk _build/dev/lib/ipse/ebin --input "$IPSE_PROOF_ROOT/artifact" \
+  --selection json-none
+```
+
+Expect nine passed assertions and `verification.precompiled_harness: true`.
+The loopback fixture sends scripted responses and synthetic usage. It makes no
+paid request. `verification.inventories_unchanged: true` means the verifier's
+before/after checks matched; read the scenario's assertions for behavior scope.
+
+To repeat the same proof against an already-built archive:
+
+```sh
+IPSE_ARCHIVE=/absolute/path/to/the-compatible-archive.tar.gz
+elixir scripts/verify.exs installed model \
+  --archive "$IPSE_ARCHIVE" --input "$IPSE_PROOF_ROOT/artifact" \
+  --selection json-none
+```
+
+Replace the archive placeholder with the actual file printed by the packager.
+The artifact, SDK and archive must agree on platform, OTP and supported SDK.
+A successful source proof does not establish installed compatibility.
+
+### Follow the shared runtime and scenario owner
+
+Read `dev/verification/cli.exs`, `scenarios.exs` and `runtime.exs` in that order.
+CLI admits the closed command grammar. Scenarios selects finite source files,
+exact module identities, arguments and required assertions. Runtime snapshots
+the input and origin, compiles those trusted proof modules in a separate compiler
+VM, then starts the selected host with that precompiled harness. Domain assertions
+stay in each proof module. `package.exs` owns the broader installed CLI checks.
+
+The runtime rechecks host, dependency, ERTS, boot, harness and utility identities
+before each child launch. It compares input and origin inventories around the
+whole proof and checks runtime inventories afterward. It gives the child a private HOME/TMP and a
+PATH of declared utilities with the selected Erlang runtime. System Elixir, Mix
+and Rust development commands are absent from that PATH. This controlled launch
+is not OS confinement, and the proof code is trusted local code.
+
+Ordinary proof runtimes are disposable, including on failure. Model-service case
+evidence remains under its explicit output while its host runtime is disposable.
+The two measured scenarios retain both runtime and evidence because later audit
+and scoring must reopen the identical executable files. Neither lifetime grants
+permission to retry an interrupted effect.
+
+Use the scenario that observes your changed boundary:
+
+| Scenario | `--input` | Additional selection or requirement |
+| --- | --- | --- |
+| `model` | Built model-call artifact | `default`, `none`, `json`, or `json-none` |
+| `embedding`, `mcp`, `saved-results` | Matching built SDK artifact | Default selection |
+| `lab` | Built extension-lab artifact directory | Default selection |
+| `memory` | `examples/memory/corpus.json` | Fixed lexical recall fixture |
+| `package` | `examples/memory/corpus.json` | Installed mode only |
+| `knowledge`, `knowledge-independence`, `knowledge-complete` | Parent directory containing built `corpus`, `graph` and `research` artifacts | Default selection |
+| `knowledge-evaluation` | Single lexical Corpus artifact | Default selection |
+| `knowledge-recovery` | Single Graph `state-model` artifact | Default selection |
+| `knowledge-graph-lifecycle` | Single Graph `state-model` artifact | Default selection |
+| `knowledge-corpus-lifecycle`, `knowledge-selection` | Single Corpus `state-dense` artifact | Default selection |
+| `knowledge-mcp` | Single Corpus `mcp-lexical` artifact | Default selection |
+| `knowledge-research` | Single Research `mcp` artifact | Default selection |
+| `model-service` | Compiled `test/support/model_service_probe.rs` binary | Fresh `--output` for retained evidence |
+| `measured-knowledge` | JSON map of seven prebuilt artifact directories | Clean `--repository`, fresh `--output`; four selections |
+| `measured-authority` | Same artifact-map format | Clean `--repository`, fresh `--output`; Linux backend |
+
+All cases except `model` and `measured-knowledge` accept only `default`.
+The measured-knowledge selections are `default`, `sealed`, `structured` and
+`sealed-structured`. Follow the complete [measured exercise](knowledge-evaluation.md#run-a-complete-synthetic-measured-population)
+for artifact-map construction, retained paths and Linux prerequisites. Both
+measured cases refuse on another OS before reading inputs or creating output.
+Do not supply `--repository` to an ordinary proof or `--output` to a case that
+does not declare one. The parser rejects duplicate, unknown and unused options.
+
+To change verification setup, begin with `test/verification_test.exs`. Its controls
+cover grammar, exact compilation closure, input changes, source/installed paths,
+retained failures and cleanup failure precedence. Preserve each domain proof's
+positive and negative assertions while changing shared setup. A compiler check
+cannot substitute for the actual source and installed runs.
+
 ## Verify documentation changes
 
 Treat a manual as something a reader can follow. Read the whole affected chapter,
@@ -286,12 +378,16 @@ Run this when changing packaging, worker launch, runtime paths or OS helpers:
 
 ```sh
 ./scripts/package.sh
-elixir scripts/verify-package.exs dist/ipse-*.tar.gz
+elixir scripts/verify.exs installed package \
+  --archive dist/ipse-*.tar.gz --input examples/memory/corpus.json
 ```
 
-The glob must select exactly one archive. Otherwise pass the exact path printed by
-the packager. The verifier extracts a fresh runtime, isolates HOME/IPSE_HOME and
-restricts PATH to declared host utilities. It checks help/demo, default and
+The archive glob must select exactly one file. Otherwise pass the exact path printed by
+the packager. The verifier extracts a fresh runtime and isolates HOME/IPSE_HOME.
+CLI and standalone checks receive a PATH containing only declared host utilities;
+the verifier checks that Erlang and development commands cannot be found there.
+The precompiled memory harness adds only the selected bundled Erlang executable.
+The verifier checks help/demo, default and
 explicit workspace paths, helper lifecycle/locks, bundled extension behavior and
 the explicit-memory corpus. It cannot borrow source checkout `priv/` files or a
 system development toolchain. Run it under a bounded outer job timeout.

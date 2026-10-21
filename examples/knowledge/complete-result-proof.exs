@@ -3,6 +3,20 @@ defmodule IpseKnowledgeExample.CompleteResultProof do
   alias Ipse.{Journal, Session}
   alias Ipse.Extensions.{Config, Invocation, Registry, ResultReader, Store}
 
+  @options Map.new(
+             [
+               {"corpus", "corpus-lexical"},
+               {"graph", "graph-explicit"},
+               {"research", "research-offline"}
+             ],
+             fn {package, preset} ->
+               path =
+                 Path.expand("../../extensions/knowledge/options/" <> preset <> ".json", __DIR__)
+
+               {package, Jason.decode!(File.read!(path))}
+             end
+           )
+
   defmodule NoModel do
     def complete(_, _, _, _), do: raise("Complete-result proof unexpectedly called a model")
   end
@@ -312,19 +326,7 @@ defmodule IpseKnowledgeExample.CompleteResultProof do
     2 = imported.manifest["sdk"]
     true = "invoke.result.pages" in imported.manifest["capabilities"]
 
-    option_file =
-      %{
-        "corpus" => "corpus-lexical",
-        "graph" => "graph-explicit",
-        "research" => "research-offline"
-      }[package]
-
-    options =
-      Jason.decode!(
-        File.read!(
-          Path.expand("../../extensions/knowledge/options/" <> option_file <> ".json", __DIR__)
-        )
-      )
+    options = Map.fetch!(@options, package)
 
     options =
       if overrides[:retrieval],

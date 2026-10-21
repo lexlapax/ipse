@@ -33,7 +33,7 @@ proof consumers use the same complete-result reader.
 
 ## Exercise actual independent workers
 
-The [complete-result verifier](../../../examples/knowledge/verify-complete-results.exs)
+The [complete-result verifier](https://github.com/lexlapax/ipse/blob/111228c1eadf6816f76e3b3981030000907f2e5a/examples/knowledge/verify-complete-results.exs)
 uses real imported artifacts and ordinary Sessions, with a provider that refuses
 any model call. The lead ran its source and extracted-runtime forms successfully:
 

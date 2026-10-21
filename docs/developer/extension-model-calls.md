@@ -209,10 +209,14 @@ Build and run the local HTTP proof after building Ipse:
 ```sh
 IPSE_MODEL_ARTIFACT=$(mktemp -d)/artifact
 elixir scripts/build-artifact.exs model-calls --sdk _build/dev/lib/ipse/ebin --output "$IPSE_MODEL_ARTIFACT"
-mix run examples/model-calls/verify.exs "$IPSE_MODEL_ARTIFACT"
-mix run examples/model-calls/verify.exs "$IPSE_MODEL_ARTIFACT" none
-mix run examples/model-calls/verify.exs "$IPSE_MODEL_ARTIFACT" json
-mix run examples/model-calls/verify.exs "$IPSE_MODEL_ARTIFACT" json none
+elixir scripts/verify.exs source model \
+  --sdk _build/dev/lib/ipse/ebin --input "$IPSE_MODEL_ARTIFACT" --selection default
+elixir scripts/verify.exs source model \
+  --sdk _build/dev/lib/ipse/ebin --input "$IPSE_MODEL_ARTIFACT" --selection none
+elixir scripts/verify.exs source model \
+  --sdk _build/dev/lib/ipse/ebin --input "$IPSE_MODEL_ARTIFACT" --selection json
+elixir scripts/verify.exs source model \
+  --sdk _build/dev/lib/ipse/ebin --input "$IPSE_MODEL_ARTIFACT" --selection json-none
 mix test test/extensions_model_call_test.exs test/extensions_model_jobs_test.exs
 ```
 

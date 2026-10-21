@@ -1,4 +1,5 @@
-Code.require_file("support/extension_mcp_server.exs", __DIR__)
+Code.require_file("../dev/verification/cli.exs", __DIR__)
+Ipse.Development.Verification.Runtime.load_fixture!(:mcp)
 
 defmodule Ipse.Extensions.MCPCallSessionTest do
   use ExUnit.Case, async: false
@@ -302,11 +303,10 @@ defmodule Ipse.Extensions.MCPCallSessionTest do
   for transport <- [:stdio, :http], kind <- [:resource, :prompt] do
     test "#{transport}: selected #{kind} dispatch returns a complete source through the extension",
          ctx do
-      transport = unquote(transport)
       kind = unquote(kind)
 
       {fixture, entry} =
-        if transport == :http,
+        if unquote(transport == :http),
           do: Fixture.http(ctx.root, self()),
           else: {nil, Fixture.stdio_config(ctx.root)}
 
@@ -314,26 +314,29 @@ defmodule Ipse.Extensions.MCPCallSessionTest do
       entry = Map.put(entry, "tools", [])
 
       entry =
-        if kind == :resource,
+        if unquote(kind == :resource),
           do: Map.put(entry, "resources", ["fixture://document"]),
           else: Map.put(entry, "prompts", ["summary"])
 
       selected = parsed_server(ctx, entry)
       cfg = config(ctx, selected) |> Map.put(:approval, :ask)
       pid = start(ctx, cfg)
-      arguments = if kind == :resource, do: %{}, else: %{"text" => "Public synthetic request"}
+
+      arguments =
+        if unquote(kind == :resource), do: %{}, else: %{"text" => "Public synthetic request"}
+
       invoke(pid, %{"request" => Map.put(request(), "arguments", arguments)})
       assert_receive {:ipse, ^pid, {:approval, ref, "extension:mcp.call", proposed}}, 10_000
       assert proposed["effect_binding"]["manifest"]["kind"] == Atom.to_string(kind)
       assert proposed["effect_binding"]["manifest"]["tool_id"] == selected_id(selected)
-      method = if kind == :resource, do: "resources/read", else: "prompts/get"
+      method = if unquote(kind == :resource), do: "resources/read", else: "prompts/get"
       refute Enum.any?(Fixture.records(ctx.root), &(&1["method"] == method))
       assert :ok = Session.approve(pid, ref, true)
       done(pid)
       ev = events(ctx, pid)
       source = Enum.find(ev, &(&1["type"] == "extension_effect_result"))
       assert source["data"]["text"] =~ Fixture.text()
-      if kind == :prompt, do: assert(source["data"]["text"] =~ "[user]")
+      if unquote(kind == :prompt), do: assert(source["data"]["text"] =~ "[user]")
 
       windows =
         for result <- action_results(ev),

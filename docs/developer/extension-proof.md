@@ -19,7 +19,8 @@ compiler VM:
 ./scripts/build.sh
 IPSE_LAB_ARTIFACTS=$(mktemp -d)/artifacts
 elixir scripts/build-artifact.exs extension-lab --sdk _build/dev/lib/ipse/ebin --output "$IPSE_LAB_ARTIFACTS"
-mix run --no-compile examples/extension-lab/verify.exs "$IPSE_LAB_ARTIFACTS"
+elixir scripts/verify.exs source lab \
+  --sdk _build/dev/lib/ipse/ebin --input "$IPSE_LAB_ARTIFACTS"
 ```
 
 Keep the shell variable for the installed check below. The builder compiles
@@ -39,8 +40,10 @@ Read these files in order:
    callbacks and finite host calls.
 4. `proof.exs` drives installation, Sessions, approvals, questions, and assertions
    from the host side.
-5. `verify.exs` prints the report; `verify-package.exs` repeats it inside an
-   extracted release with a restricted development-tool PATH.
+5. `dev/verification/scenarios.exs` binds the `lab` case to this proof.
+   `runtime.exs` compiles the harness before starting either host and checks
+   unchanged runtime, artifact and harness bytes. Follow
+   [the shared verification flow](testing.md#follow-the-shared-runtime-and-scenario-owner).
 
 Workers use `describe`, `init`, and `handle` JSON values. They receive no private
 Session state or host PID. The text observer also uses public pure ephemeral-frame
@@ -98,7 +101,8 @@ Choose the actual archive for your current platform and use artifacts compiled
 for that runtime's compatible SDK/OTP/platform:
 
 ```sh
-elixir examples/extension-lab/verify-package.exs /absolute/path/to/ipse-runtime.tar.gz "$IPSE_LAB_ARTIFACTS"
+elixir scripts/verify.exs installed lab \
+  --archive /absolute/path/to/ipse-runtime.tar.gz --input "$IPSE_LAB_ARTIFACTS"
 ```
 
 The archive path is a placeholder. The verifier extracts a disposable release,
@@ -106,9 +110,9 @@ creates an isolated home, imports selected artifacts through the CLI, and checks
 actual temporary selection with caller and lookup target enabled. It then runs
 the broader host proof inside the extracted runtime.
 
-Inside the release, PATH contains declared host utilities and permits the bundled
-Erlang runtime. System Elixir, Erlang, Mix, and Rust development executables are
-refused. Canonical path comparison accounts for filesystem aliases. The archive
+Before launch, a separate compiler VM builds the trusted host-side proof against
+the extracted SDK. Inside the release, PATH contains declared host utilities and
+the bundled Erlang runtime; system Elixir, Mix and Rust tools are absent. Canonical path comparison accounts for filesystem aliases. The archive
 hash and host application BEAM bytes must remain unchanged; domain modules must
 not be loaded into the host. These checks catch accidental reliance on checkout
 code paths or rebuilding Ipse to make a package work.

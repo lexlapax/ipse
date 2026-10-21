@@ -127,12 +127,25 @@ defmodule IpseKnowledgeExample.EvaluationInventory do
 
         {command, arguments} =
           if launch do
-            IpseKnowledgeExample.EvaluationMeasuredExecution.command(launch, [], expression, [
-              path,
-              hash,
-              partition,
-              result
-            ])
+            args = [path, hash, partition, result]
+
+            case launch do
+              {:precompiled, _} = execution ->
+                IpseKnowledgeExample.EvaluationMeasuredExecution.precompiled_command(
+                  execution,
+                  :inventory,
+                  expression,
+                  args
+                )
+
+              {:source, selected} ->
+                IpseKnowledgeExample.EvaluationMeasuredExecution.command(
+                  selected,
+                  [],
+                  expression,
+                  args
+                )
+            end
           else
             {System.find_executable("elixir") || raise("Elixir unavailable"),
              [

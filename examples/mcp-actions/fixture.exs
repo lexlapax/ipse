@@ -54,12 +54,12 @@ defmodule IpseMCPExample.Fixture do
     runtime = to_string(:code.root_dir())
     erl = Path.join([runtime, "erts-" <> to_string(:erlang.system_info(:version)), "bin", "erl"])
     boot = clean_boot(runtime)
-    file = __ENV__.file
+    file = :code.which(__MODULE__) |> to_string()
+    %{type: :regular} = File.lstat!(file)
+    true = Path.extname(file) == ".beam"
 
     expression =
-      "application:ensure_all_started(elixir), 'Elixir.Code':require_file(" <>
-        erlang_term(file) <>
-        "), 'Elixir.IpseMCPExample.Fixture':stdio(" <>
+      "application:ensure_all_started(elixir), 'Elixir.Code':'ensure_loaded!'('Elixir.IpseMCPExample.Fixture'), 'Elixir.IpseMCPExample.Fixture':stdio(" <>
         erlang_term(root) <> ", " <> erlang_term(mode) <> "), init:stop()."
 
     %{
@@ -78,6 +78,8 @@ defmodule IpseMCPExample.Fixture do
         Path.join(runtime, "lib"),
         "-pa",
         Application.app_dir(:elixir, "ebin"),
+        "-pa",
+        Path.dirname(file),
         "-eval",
         expression
       ],

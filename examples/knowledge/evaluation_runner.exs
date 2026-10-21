@@ -5,8 +5,6 @@ for file <-
   Code.require_file(file <> ".exs", __DIR__)
 end
 
-Code.require_file("../../test/support/knowledge_mcp_fixture.exs", __DIR__)
-
 defmodule IpseKnowledgeExample.EvaluationRunner do
   @moduledoc "Frozen, serial public-Session knowledge comparisons and scoring of saved first predictions."
   alias IpseKnowledgeExample.{
@@ -22,7 +20,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
   }
 
   alias Ipse.Extensions.{Manifest, ModelCall, EmbeddingCall, State, MCPCall}
-  alias IpseKnowledge.Test.CASFixture
+  alias Ipse.Development.Fixtures.Knowledge, as: CASFixture
 
   @merged_files ~w(predictions.jsonl execution.jsonl usage.jsonl request-resources.jsonl resources.jsonl timings.jsonl)
   @safe 9_007_199_254_740_991
@@ -255,6 +253,32 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     require!(verified["manifest"]["version"] == 1, :measured_entry_required)
     plan = verified["plan"]
     :ok = checked(EvaluationContract.validate(plan))
+
+    if Enum.any?(plan["variants"], &(&1["prepare"] == "research")) do
+      paths =
+        for module <- [CASFixture, CASFixture.Backend] do
+          file = :code.which(module)
+
+          require!(
+            is_list(file) and Path.extname(to_string(file)) == ".beam",
+            :research_fixture_missing
+          )
+
+          path = Path.expand(to_string(file))
+
+          require!(
+            Enum.any?(verified["manifest"]["runtime"]["files"], &(&1["path"] == path)),
+            :research_fixture_missing
+          )
+
+          path
+        end
+
+      require!(
+        length(Enum.uniq(Enum.map(paths, &Path.dirname/1))) == 1,
+        :research_fixture_missing
+      )
+    end
 
     require!(
       plan["mode"] == if(phase == :predict, do: "heldout", else: "fixture"),
@@ -544,7 +568,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
   end
 
   @doc "Perform a complete original cell, including independent Session and gateway closure."
-  def evaluate_cell(plan, cell, prepared, output, service_inventory) do
+  def evaluate_cell(plan, cell, prepared, output, service_inventory, execution) do
     :ok = checked(EvaluationContract.validate(plan))
     {:ok, derived} = schedule(plan, prepared["queries"])
 
@@ -573,7 +597,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     Process.put(:comparison_gateway, nil)
     Process.put(:comparison_inventory, %{})
     Process.put(:comparison_as_of_ms, prepared["effective_as_of_ms"])
-    Process.put(:comparison_runtime_launch, prepared["runtime_launch"])
+    Process.put(:comparison_execution, execution)
 
     sampler =
       EvaluationResources.start(Path.join(output, "memory-samples.jsonl"), plan["interval_ms"])
@@ -660,7 +684,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
           :comparison_inventory,
           :comparison_policy,
           :comparison_as_of_ms,
-          :comparison_runtime_launch
+          :comparison_execution
         ],
         do: Process.delete(key)
 
@@ -2033,6 +2057,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
 
     {command, arguments} =
       child_command(
+        :author,
         [
           Path.expand("../../extensions/knowledge/src/evidence.ex", __DIR__),
           Path.join(__DIR__, "evaluation_author.exs")
@@ -2059,18 +2084,28 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     entry["options"]["stores"][variant["prepare_options"]["store"]]
   end
 
-  defp child_command(requires, expression, arguments) do
-    if launch = Process.get(:comparison_runtime_launch) do
-      IpseKnowledgeExample.EvaluationMeasuredExecution.command(
-        launch,
-        requires,
-        expression,
-        arguments
-      )
-    else
-      {System.find_executable("elixir"),
-       ["-pa", Application.app_dir(:ipse, "ebin"), "-pa", Application.app_dir(:jason, "ebin")] ++
-         Enum.flat_map(requires, &["-r", &1]) ++ ["-e", expression, "--"] ++ arguments}
+  defp child_command(role, requires, expression, arguments) do
+    case Process.get(:comparison_execution) do
+      {:precompiled, _} = execution ->
+        IpseKnowledgeExample.EvaluationMeasuredExecution.precompiled_command(
+          execution,
+          role,
+          expression,
+          arguments
+        )
+
+      {:source, launch} ->
+        IpseKnowledgeExample.EvaluationMeasuredExecution.command(
+          launch,
+          requires,
+          expression,
+          arguments
+        )
+
+      nil ->
+        {System.find_executable("elixir"),
+         ["-pa", Application.app_dir(:ipse, "ebin"), "-pa", Application.app_dir(:jason, "ebin")] ++
+           Enum.flat_map(requires, &["-r", &1]) ++ ["-e", expression, "--"] ++ arguments}
     end
   end
 
@@ -2093,7 +2128,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
       "[path, split, output, digest] = System.argv(); %{type: :regular, size: size} = File.lstat!(path); true = size <= 1_048_576; bytes = File.read!(path); true = digest == \"\" or Ipse.JSON.sha256(bytes) == digest; {:ok, result} = IpseKnowledgeExample.EvaluationInput.queries(bytes, split); File.write!(output, JSON.encode!(result), [:exclusive])"
 
     {command, arguments} =
-      child_command([Path.join(__DIR__, "evaluation_input.exs")], expression, [
+      child_command(:input, [Path.join(__DIR__, "evaluation_input.exs")], expression, [
         Path.expand(path),
         split,
         result,
@@ -2321,7 +2356,9 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     private_file!(
       path,
       JSON.encode!(%{
-        "servers" => [CASFixture.web_stdio_config("evaluation", "normal", plan["search_port"])]
+        "servers" => [
+          apply(CASFixture, :web_stdio_config, ["evaluation", "normal", plan["search_port"]])
+        ]
       })
     )
 
@@ -2477,7 +2514,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
                          digest,
                          store["partition"],
                          output,
-                         Process.get(:comparison_runtime_launch)
+                         Process.get(:comparison_execution)
                        ) do
                     {:ok, report} -> report
                     {:error, _} -> %{"status" => "unavailable"}

@@ -1,3 +1,5 @@
+Code.require_file("../dev/verification/cli.exs", __DIR__)
+Ipse.Development.Verification.Runtime.load_fixture!(:knowledge)
 Code.require_file("../examples/knowledge/evaluation_runner.exs", __DIR__)
 
 defmodule Ipse.KnowledgeEvaluationContractTest do
@@ -29,7 +31,7 @@ defmodule Ipse.KnowledgeEvaluationContractTest do
     for module <- [IpseKnowledgeExample.EvaluationRunner,
       IpseKnowledgeExample.EvaluationFreeze, IpseKnowledgeExample.EvaluationSession,
       IpseKnowledgeExample.EvaluationModelService, IpseKnowledge.EvaluationScore,
-      IpseKnowledge.Test.CASFixture] do
+      Ipse.Development.Fixtures.Knowledge] do
       false = :code.is_loaded(module)
     end
     IO.puts("pure declaration passed")

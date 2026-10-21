@@ -403,6 +403,15 @@ the milestone. Preserve current SDK bounds and existing operation authority.
 | P27 verification | Frozen held-out workload, zero authority/isolation/replay/resurrection failures, measured retrieval/support/citation/resources, source/native/installed checks, coherent user and contributor manuals | Open; scoped repair reviews/checks pass. The fresh exposed diagnostic completes twelve first rows but retains five failed/partial rows and classification defects. Further quality repair, fresh held-out quality, resource/selection and structural-readiness gates remain |
 | P27 structural readiness | Holistic redesign and consolidation of the entire codebase and all user/developer documentation for maintainability and ease of use; migrate callers, builds, tests, packaging and CI together | Open; whole-tree survey, two proposals and independent design review complete; [selected target](archive/2026-10-20-p27-structure-design/index.md) recorded. Shared [JSON ownership implementation](archive/2026-10-20-p27-structure-implementation/index.md) passes two reviews, both platform suites and source/installed proofs with precompiled SDK artifacts. The [pure declaration owner](archive/2026-10-20-p27-structure-implementation/index.md#give-evaluation-declarations-a-pure-owner) replaces Plan and Runner validation, preserves 8,738 outcomes and passes both scoped platform checks plus complete synthetic source/installed comparisons. One [finite artifact builder](archive/2026-10-20-p27-structure-implementation/index.md#consolidate-trusted-example-artifact-builders) replaces five, with migrated callers/manuals, two reviews, both full platform suites, native/package/installed proofs and complete synthetic source/installed comparisons. Remaining consolidation precedes the final private-evaluation freeze |
 
+The [shared verification change](archive/2026-10-20-p27-shared-verification/index.md)
+is verified against unchanged runtime source on macOS and native-enabled Linux,
+with fresh packages, the source and installed command matrix, and complete
+synthetic native comparisons and authority-loss controls in both modes. It
+consolidates verification setup and shared fixtures and repairs the public source
+Research CLI and model-service terminal cleanup. This completes that structural
+unit; remaining ownership changes, actual-model quality, final private evaluation
+and engine selection remain open.
+
 The [first host-contract record](archive/2026-10-19-p27-mcp-host-contracts/index.md)
 retains causal regressions, independent review corrections and local verification.
 It establishes approved MCP transport and result paging, not research/graph/RAG

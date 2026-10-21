@@ -7,6 +7,7 @@ preserved pre-rewrite chapters. Their dated bodies and verdicts are unchanged.
 
 | Snapshot | Provenance | Current guidance and retained records |
 | --- | --- | --- |
+| [2026-10-20 shared verification](2026-10-20-p27-shared-verification/index.md) | Contributor manuals from `111228c`, preserved before common proof and captured-runtime instruction rewrites | [Testing](../developer/testing.md), [extension proofs](../developer/extension-proof.md), [evaluation training](../developer/knowledge-evaluation.md) |
 | [2026-10-20 structural implementation](2026-10-20-p27-structure-implementation/index.md) | Shared JSON/hash ownership, pure evaluation declarations and finite example builders; scoped verification and remaining whole-codebase work | [Architecture training](../developer/architecture.md), [plan](../plan.md) |
 | [2026-10-20 whole-codebase consolidation design](2026-10-20-p27-structure-design/index.md) | Whole-tree survey, competing proposals and independent design review; selected ownership and manual changes, implementation open | [Architecture training](../developer/architecture.md), [plan](../plan.md) |
 | [2026-10-20 sealed-answer evaluation](2026-10-20-p27-sealed-evaluation/index.md) | Detached answer commitments, repaired question-envelope downgrade, independent follow-ups and synthetic source/installed measured proofs; no model-quality acceptance | [Evaluation training](../developer/knowledge-evaluation.md), [plan](../plan.md) |

@@ -11,7 +11,8 @@ root after building Ipse:
 ```sh
 IPSE_MCP_ARTIFACT=$(mktemp -d)/artifact
 elixir scripts/build-artifact.exs mcp-actions --sdk _build/dev/lib/ipse/ebin --output "$IPSE_MCP_ARTIFACT"
-mix run examples/mcp-actions/verify.exs "$IPSE_MCP_ARTIFACT"
+elixir scripts/verify.exs source mcp \
+  --sdk _build/dev/lib/ipse/ebin --input "$IPSE_MCP_ARTIFACT"
 ```
 
 The verifier imports into temporary homes and explicitly grants the artifact's
@@ -35,7 +36,8 @@ quality.
 Run the same proof against an extracted release:
 
 ```sh
-elixir examples/mcp-actions/verify-package.exs /path/to/ipse-archive.tar.gz "$IPSE_MCP_ARTIFACT"
+elixir scripts/verify.exs installed mcp \
+  --archive /path/to/ipse-archive.tar.gz --input "$IPSE_MCP_ARTIFACT"
 ```
 
 Replace the archive placeholder with the exact path printed by `scripts/package.sh`
@@ -44,3 +46,6 @@ Elixir/Erlang/Mix/Rust executables, runs the proof through the extracted host,
 and verifies that the archive and release files remain unchanged. Temporary
 state is removed. A successful source run alone does not establish an installed
 release result.
+
+The [shared verification guide](../../docs/developer/testing.md#run-one-proof-against-source-and-an-installed-runtime)
+explains pre-launch compilation, input inventories and isolated runtime ownership.

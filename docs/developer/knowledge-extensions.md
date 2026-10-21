@@ -55,7 +55,8 @@ IPSE_SELECTION_ARTIFACTS=$(mktemp -d)
 elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$IPSE_SELECTION_ARTIFACTS/corpus" --package corpus --preset state-lexical
 elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$IPSE_SELECTION_ARTIFACTS/graph" --package graph --preset state-explicit
 elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$IPSE_SELECTION_ARTIFACTS/research" --package research --preset offline
-mix run examples/knowledge/verify-independence.exs "$IPSE_SELECTION_ARTIFACTS"
+elixir scripts/verify.exs source knowledge-independence \
+  --sdk _build/dev/lib/ipse/ebin --input "$IPSE_SELECTION_ARTIFACTS"
 ```
 
 Expect ten checks: nine package/scope combinations and one catalog-bound refusal.
@@ -100,11 +101,15 @@ Run the maintained test or the same proof in a matching extracted runtime:
 
 ```sh
 mix test test/knowledge_independence_test.exs
-elixir examples/knowledge/verify-package.exs /path/to/ipse.tar.gz "$IPSE_SELECTION_ARTIFACTS" independence
+elixir scripts/verify.exs installed knowledge-independence \
+  --archive /path/to/ipse.tar.gz --input "$IPSE_SELECTION_ARTIFACTS"
 ```
 
-The installed wrapper hides development tools and checks unchanged host/archive
-bytes. Omitting `independence` runs the base knowledge proof. These checks verify
+The common verifier compiles the trusted proof before launching either selected
+host, hides development commands from its PATH and checks unchanged inventories.
+`knowledge-independence` runs the selection exercise; `knowledge` runs the base
+retrieval proof. Follow [the shared runtime](testing.md#follow-the-shared-runtime-and-scenario-owner)
+when changing this setup. These checks verify
 selection, isolation and lifecycle behavior; held-out quality remains a separate
 [evaluation task](knowledge-evaluation.md).
 
@@ -420,8 +425,10 @@ For a worked exercise, build the three artifacts from the selection exercise
 above, then run:
 
 ```sh
-mix run examples/knowledge/verify-complete-results.exs "$IPSE_SELECTION_ARTIFACTS"
-elixir examples/knowledge/verify-package.exs /path/to/ipse.tar.gz "$IPSE_SELECTION_ARTIFACTS" complete
+elixir scripts/verify.exs source knowledge-complete \
+  --sdk _build/dev/lib/ipse/ebin --input "$IPSE_SELECTION_ARTIFACTS"
+elixir scripts/verify.exs installed knowledge-complete \
+  --archive /path/to/ipse.tar.gz --input "$IPSE_SELECTION_ARTIFACTS"
 ```
 
 Read `examples/knowledge/complete-result-proof.exs` alongside its five checks.
@@ -435,11 +442,11 @@ opposite assertions and requires both polarity/citation claims in direct Graph
 and Corpus graph retrieval, even with one returned passage. These are protocol
 controls, not semantic support judgments.
 
-The installed `complete` wrapper compiles its trusted proof harness in the outer
-development VM before starting the extracted runtime. The runtime loads the
-prebuilt harness and artifact BEAMs with development tools absent from its PATH.
-It rechecks archive, artifact, host and harness identities afterward. Build the
-archive and artifacts for the same platform and OTP release.
+Both modes compile the trusted proof before launching the selected host. The host
+loads the harness; separate workers load the prebuilt artifacts. Development
+commands are absent from their runtime PATH. The verifier compares the selected
+inputs, host and harness afterward; installed mode also checks the archive and
+extracted release. Build the archive and artifacts for the same platform and OTP.
 
 For dense citation changes, follow the shared excerpt selection described above.
 The package test exercises the same late passage through lexical, dense, hybrid
@@ -712,8 +719,10 @@ artifact. It denies model egress, inspects the retained draft and approves its
 exact abort without selecting Corpus or a model service:
 
 ```sh
-mix run examples/knowledge/verify-recovery.exs /path/to/graph-state-model
-elixir examples/knowledge/verify-recovery-package.exs /path/to/ipse.tar.gz /path/to/graph-state-model
+elixir scripts/verify.exs source knowledge-recovery \
+  --sdk _build/dev/lib/ipse/ebin --input /path/to/graph-state-model
+elixir scripts/verify.exs installed knowledge-recovery \
+  --archive /path/to/ipse.tar.gz --input /path/to/graph-state-model
 ```
 
 Expect eight successful checks, zero model requests and confirmed cleanup. The
@@ -723,7 +732,7 @@ files. Neither exercise measures semantic extraction quality.
 ## Implement a compatible remote store
 
 Read `store/mcp_cas.ex` with the independent atomic owner in
-`test/support/knowledge_mcp_fixture.exs`. The fixture is the executable contract
+`dev/fixtures/knowledge.exs`. The fixture is the executable contract
 reference. A service must also enforce the selected partition's access policy.
 An exact receipt establishes what that service asserted, not how it implemented
 its transaction or authorized access internally.
@@ -940,7 +949,8 @@ They are not local BM25 scores or a verified statement about the server's index.
 Run the public protocol control with an independently built MCP Corpus artifact:
 
 ```sh
-mix run examples/knowledge/verify-mcp.exs /path/to/corpus-mcp-lexical
+elixir scripts/verify.exs source knowledge-mcp \
+  --sdk _build/dev/lib/ipse/ebin --input /path/to/corpus-mcp-lexical
 ```
 
 Follow `examples/knowledge/mcp-proof.exs` through selected-only reads, denied
@@ -1007,8 +1017,10 @@ Build the same independent artifacts for a standalone source exercise:
 IPSE_LIFECYCLE_ARTIFACTS=$(mktemp -d)
 elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$IPSE_LIFECYCLE_ARTIFACTS/graph" --package graph --preset state-model
 elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$IPSE_LIFECYCLE_ARTIFACTS/corpus" --package corpus --preset state-dense
-mix run examples/knowledge/verify-lifecycle.exs "$IPSE_LIFECYCLE_ARTIFACTS/graph" graph
-mix run examples/knowledge/verify-lifecycle.exs "$IPSE_LIFECYCLE_ARTIFACTS/corpus" corpus
+elixir scripts/verify.exs source knowledge-graph-lifecycle \
+  --sdk _build/dev/lib/ipse/ebin --input "$IPSE_LIFECYCLE_ARTIFACTS/graph"
+elixir scripts/verify.exs source knowledge-corpus-lifecycle \
+  --sdk _build/dev/lib/ipse/ebin --input "$IPSE_LIFECYCLE_ARTIFACTS/corpus"
 ```
 
 Expect seven checks and seven synthetic provider requests per package, with
@@ -1017,19 +1029,23 @@ Expect seven checks and seven synthetic provider requests per package, with
 [extracted-package procedure](testing.md#verify-the-extracted-package):
 
 ```sh
-elixir examples/knowledge/verify-recovery-package.exs /path/to/ipse.tar.gz "$IPSE_LIFECYCLE_ARTIFACTS/graph" graph
-elixir examples/knowledge/verify-recovery-package.exs /path/to/ipse.tar.gz "$IPSE_LIFECYCLE_ARTIFACTS/corpus" corpus
+elixir scripts/verify.exs installed knowledge-graph-lifecycle \
+  --archive /path/to/ipse.tar.gz --input "$IPSE_LIFECYCLE_ARTIFACTS/graph"
+elixir scripts/verify.exs installed knowledge-corpus-lifecycle \
+  --archive /path/to/ipse.tar.gz --input "$IPSE_LIFECYCLE_ARTIFACTS/corpus"
 ```
 
-The optional third argument selects the lifecycle cases. Omitting it selects
-the eight-check Graph abort exercise. Both installed routes hide the
-development toolchain and check unchanged archive and host bytes.
+The graph and corpus lifecycle names each select seven interruption controls.
+`knowledge-recovery` selects the distinct eight-check Graph abort exercise.
+All installed cases hide development commands and check unchanged inventories.
 
 Exercise durable embedding identity with the same Corpus artifact:
 
 ```sh
-mix run examples/knowledge/verify-lifecycle.exs "$IPSE_LIFECYCLE_ARTIFACTS/corpus" selection
-elixir examples/knowledge/verify-recovery-package.exs /path/to/ipse.tar.gz "$IPSE_LIFECYCLE_ARTIFACTS/corpus" selection
+elixir scripts/verify.exs source knowledge-selection \
+  --sdk _build/dev/lib/ipse/ebin --input "$IPSE_LIFECYCLE_ARTIFACTS/corpus"
+elixir scripts/verify.exs installed knowledge-selection \
+  --archive /path/to/ipse.tar.gz --input "$IPSE_LIFECYCLE_ARTIFACTS/corpus"
 ```
 
 Follow `LifecycleProof.selection/1`. It uses two owned loopback endpoints with
@@ -1067,12 +1083,20 @@ mix test test/knowledge_build_spec_test.exs
 ```
 
 Use the [artifact procedure](../../extensions/knowledge/README.md#verify-independent-artifacts)
-for source execution. Run `examples/knowledge/verify-package.exs` with a bundled
-runtime and independently built artifacts for installed execution with development
-tools hidden. Both proofs assert that domain modules remain unloaded in the host.
-Build a separate Research `mcp` artifact and run
-`mix run examples/knowledge/verify-research.exs ARTIFACT` to follow the complete
-search, paged fetch and citation path. Inspect the exact approval bindings,
+for source execution. Its `knowledge` scenario also runs in installed mode with
+`--archive` and the same prebuilt artifact directory. Both modes assert that
+domain modules remain unloaded in the host. To follow selected Research search,
+paged fetch and citations, build its separate MCP artifact:
+
+```sh
+IPSE_RESEARCH_PROOF=$(mktemp -d)/artifact
+elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin \
+  --output "$IPSE_RESEARCH_PROOF" --package research --preset mcp
+elixir scripts/verify.exs source knowledge-research \
+  --sdk _build/dev/lib/ipse/ebin --input "$IPSE_RESEARCH_PROOF"
+```
+
+ Inspect the exact approval bindings,
 captured-body hash, completion-time observation and the negative-result cases.
 The [Research procedure](../operator/research-extensions.md) documents the closed
 gateway contract; a tool with a similar name need not implement it.

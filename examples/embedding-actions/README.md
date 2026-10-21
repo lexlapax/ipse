@@ -12,7 +12,8 @@ Build from the repository root after building Ipse:
 ```sh
 IPSE_EMBEDDING_ARTIFACT=$(mktemp -d)/artifact
 elixir scripts/build-artifact.exs embedding-actions --sdk _build/dev/lib/ipse/ebin --output "$IPSE_EMBEDDING_ARTIFACT"
-mix run examples/embedding-actions/verify.exs "$IPSE_EMBEDDING_ARTIFACT"
+elixir scripts/verify.exs source embedding \
+  --sdk _build/dev/lib/ipse/ebin --input "$IPSE_EMBEDDING_ARTIFACT"
 ```
 
 The manifest ID is `ipse-example/embedding-actions`. The verifier imports into a
@@ -53,7 +54,8 @@ accounting behavior. They establish no embedding quality or live model result.
 After packaging, run the same proof against the archive for the actual host:
 
 ```sh
-elixir examples/embedding-actions/verify-package.exs /path/to/ipse-archive-for-your-host.tar.gz "$IPSE_EMBEDDING_ARTIFACT"
+elixir scripts/verify.exs installed embedding \
+  --archive /path/to/ipse-archive-for-your-host.tar.gz --input "$IPSE_EMBEDDING_ARTIFACT"
 ```
 
 The wrapper extracts a disposable release, hides system Elixir/Erlang/Mix/Rust
@@ -61,3 +63,6 @@ executables, runs the proof through the bundled runtime, and compares archive
 and host files before and after. A source run alone does not establish an
 installed result. Temporary sessions, fixture listeners and synthetic credential
 environment changes are cleaned up.
+
+The [shared verification guide](../../docs/developer/testing.md#run-one-proof-against-source-and-an-installed-runtime)
+explains pre-launch compilation, input inventories and isolated runtime ownership.

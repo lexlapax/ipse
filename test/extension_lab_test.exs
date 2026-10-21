@@ -6,7 +6,6 @@ defmodule Ipse.ExtensionLabTest do
     root = Path.join(System.tmp_dir!(), "ipse-lab-test-#{Ipse.Usage.id()}")
     File.mkdir_p!(root)
     on_exit(fn -> File.rm_rf!(root) end)
-    lab = Path.expand("../examples/extension-lab", __DIR__)
     sdk = Application.app_dir(:ipse, "ebin")
     artifacts = Path.join(root, "artifacts")
     elixir = System.find_executable("elixir")
@@ -28,11 +27,24 @@ defmodule Ipse.ExtensionLabTest do
     assert build =~ "Built #{artifacts}."
     assert length(Path.wildcard(Path.join(artifacts, "*/extension.json"))) == 7
     refute build =~ "warning:"
-    paths = sdk |> Path.dirname() |> Path.dirname() |> Path.join("*/ebin") |> Path.wildcard()
-    args = Enum.flat_map(paths, &["-pa", &1]) ++ [Path.join(lab, "verify.exs"), artifacts]
+
+    args = [
+      Path.expand("../scripts/verify.exs", __DIR__),
+      "source",
+      "lab",
+      "--sdk",
+      sdk,
+      "--input",
+      artifacts
+    ]
+
     {output, status} = System.cmd(elixir, args, stderr_to_stdout: true)
     assert status == 0, output
     report = output |> String.split("\n", trim: true) |> List.last() |> Jason.decode!()
+
+    assert %{"scenario" => "lab", "mode" => "source", "inventories_unchanged" => true} =
+             report["verification"]
+
     assert map_size(report["checks"]) >= 41
     assert Enum.all?(report["checks"], fn {_, passed} -> passed == true end)
     assert report["fixture_provider"] == "synthetic"

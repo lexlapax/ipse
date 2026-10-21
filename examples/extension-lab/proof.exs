@@ -4,6 +4,82 @@ defmodule IpseLab.Proof do
   @moduledoc false
   alias Ipse.{Session, Journal}
   alias Ipse.Extensions.{Store, Config, Registry}
+  @core_reference __DIR__ |> Path.join("FROZEN_CORE") |> File.read!() |> String.trim()
+
+  def run_installed(artifacts) do
+    root = Path.join(System.tmp_dir!(), "ipse-lab-cli-" <> Ipse.Usage.id())
+    File.mkdir!(root)
+
+    try do
+      release = to_string(:code.root_dir())
+      wrapper = Path.join(release, "ipse")
+
+      for name <- ~w(memory lookup),
+          do: cli!(wrapper, ["extension", "import", Path.join(artifacts, name)], release)
+
+      operator = Path.join(root, "operator.json")
+      File.write!(operator, :json.encode(IpseLab.Spec.operator(artifacts)))
+      File.chmod!(operator, 0o600)
+
+      fixture = %{
+        "version" => 1,
+        "cases" => [
+          %{
+            "id" => "temporary-tool",
+            "kind" => "tool",
+            "name" => "ext__memory__remember",
+            "arguments" => %{"text" => "entity: Temporary"},
+            "expect" => %{"status" => "ok", "requests" => 2, "context_contains" => "supervisors"}
+          },
+          %{
+            "id" => "project-export",
+            "kind" => "command",
+            "name" => "ext__memory__export",
+            "arguments" => %{},
+            "expect" => %{"status" => "ok", "requests" => 0}
+          }
+        ]
+      }
+
+      fixture_path = Path.join(root, "scenarios.json")
+      File.write!(fixture_path, :json.encode(fixture))
+
+      output =
+        cli!(
+          wrapper,
+          [
+            "extension",
+            "check",
+            "--config",
+            operator,
+            "--fixture",
+            fixture_path,
+            "--extension",
+            "memory",
+            "--extension",
+            "lookup",
+            "--no-project-config",
+            "--yes"
+          ],
+          release
+        )
+
+      lines = String.split(output, "\n")
+      start = Enum.find_index(lines, &(&1 == "{")) || raise("CLI conformance report missing")
+      cli = lines |> Enum.drop(start) |> Enum.join("\n") |> :json.decode()
+      true = cli["passed"] and cli["safe_to_continue"] and cli["case_count"] == 2
+      Map.put(run(artifacts), "temporary_cli_selection", true)
+    after
+      File.rm_rf!(root)
+    end
+  end
+
+  defp cli!(command, arguments, cwd) do
+    case System.cmd(command, arguments, cd: cwd, stderr_to_stdout: true) do
+      {output, 0} -> output
+      {output, code} -> raise("Extension lab CLI exited #{code}: " <> output)
+    end
+  end
 
   defmodule Model do
     def complete(config, messages, _tools, emit) do
@@ -316,7 +392,7 @@ defmodule IpseLab.Proof do
 
       %{
         "version" => 1,
-        "core_reference" => String.trim(File.read!(Path.join(__DIR__, "FROZEN_CORE"))),
+        "core_reference" => @core_reference,
         "kernel_digest" => kernel,
         "fixture_provider" => "synthetic",
         "safe_to_continue" => false,

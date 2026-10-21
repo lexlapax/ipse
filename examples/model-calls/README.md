@@ -11,10 +11,14 @@ Build from the repository root after `./scripts/build.sh`:
 ```sh
 IPSE_MODEL_ARTIFACT=$(mktemp -d)/artifact
 elixir scripts/build-artifact.exs model-calls --sdk _build/dev/lib/ipse/ebin --output "$IPSE_MODEL_ARTIFACT"
-mix run examples/model-calls/verify.exs "$IPSE_MODEL_ARTIFACT"
-mix run examples/model-calls/verify.exs "$IPSE_MODEL_ARTIFACT" none
-mix run examples/model-calls/verify.exs "$IPSE_MODEL_ARTIFACT" json
-mix run examples/model-calls/verify.exs "$IPSE_MODEL_ARTIFACT" json none
+elixir scripts/verify.exs source model --sdk _build/dev/lib/ipse/ebin \
+  --input "$IPSE_MODEL_ARTIFACT" --selection default
+elixir scripts/verify.exs source model --sdk _build/dev/lib/ipse/ebin \
+  --input "$IPSE_MODEL_ARTIFACT" --selection none
+elixir scripts/verify.exs source model --sdk _build/dev/lib/ipse/ebin \
+  --input "$IPSE_MODEL_ARTIFACT" --selection json
+elixir scripts/verify.exs source model --sdk _build/dev/lib/ipse/ebin \
+  --input "$IPSE_MODEL_ARTIFACT" --selection json-none
 ```
 
 The build compiles reviewed repository source into an inert artifact; it does not
@@ -35,16 +39,22 @@ output and check the exact native JSON Schema, once with each thinking selection
 The response keeps the same text/usage envelope. All four use the synthetic HTTP
 fixture, with unchanged output ceilings and no repair or retry.
 
-After packaging, run against a single archive:
+After packaging, set `IPSE_ARCHIVE` to the exact compatible archive printed by
+`./scripts/package.sh`, then run the same four selections:
 
 ```sh
-elixir examples/model-calls/verify-package.exs dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz "$IPSE_MODEL_ARTIFACT"
-elixir examples/model-calls/verify-package.exs dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz "$IPSE_MODEL_ARTIFACT" none
-elixir examples/model-calls/verify-package.exs dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz "$IPSE_MODEL_ARTIFACT" json
-elixir examples/model-calls/verify-package.exs dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz "$IPSE_MODEL_ARTIFACT" json-none
+elixir scripts/verify.exs installed model \
+  --archive "$IPSE_ARCHIVE" --input "$IPSE_MODEL_ARTIFACT" --selection default
+elixir scripts/verify.exs installed model \
+  --archive "$IPSE_ARCHIVE" --input "$IPSE_MODEL_ARTIFACT" --selection none
+elixir scripts/verify.exs installed model \
+  --archive "$IPSE_ARCHIVE" --input "$IPSE_MODEL_ARTIFACT" --selection json
+elixir scripts/verify.exs installed model \
+  --archive "$IPSE_ARCHIVE" --input "$IPSE_MODEL_ARTIFACT" --selection json-none
 ```
 
-Replace the archive path with the actual host's archive. The verifier extracts a
+The outer verifier compiles the trusted proof against the extracted SDK before
+starting the installed host. The verifier extracts a
 disposable release, restricts `PATH` to the existing declared shell utilities and
 the bundled runtime, and refuses system Elixir/Erlang/Mix/Rust tooling. The same
 proof runs against the installed host and previously built artifact; archive and

@@ -1,4 +1,4 @@
-defmodule IpseKnowledge.Test.CASFixture do
+defmodule Ipse.Development.Fixtures.Knowledge do
   @moduledoc false
 
   def new(partition \\ "notes"),
@@ -978,11 +978,12 @@ defmodule IpseKnowledge.Test.CASFixture do
       ) || raise "No clean bundled runtime boot file"
 
     term = fn value -> :io_lib.format(~c"~p", [value]) |> IO.iodata_to_binary() end
+    file = :code.which(__MODULE__) |> to_string()
+    %{type: :regular} = File.lstat!(file)
+    true = Path.extname(file) == ".beam"
 
     expression =
-      "application:ensure_all_started(elixir), 'Elixir.Code':require_file(" <>
-        term.(__ENV__.file) <>
-        "), 'Elixir.IpseKnowledge.Test.CASFixture':stdio(" <>
+      "application:ensure_all_started(elixir), 'Elixir.Code':'ensure_loaded!'('Elixir.Ipse.Development.Fixtures.Knowledge'), 'Elixir.Ipse.Development.Fixtures.Knowledge':stdio(" <>
         term.(partition) <>
         ", " <>
         term.(mode) <> ", " <> term.(backend_port) <> ", " <> term.(toolset) <> "), init:stop()."
@@ -1003,6 +1004,8 @@ defmodule IpseKnowledge.Test.CASFixture do
         Path.join(runtime, "lib"),
         "-pa",
         Application.app_dir(:elixir, "ebin"),
+        "-pa",
+        Path.dirname(file),
         "-eval",
         expression
       ],
@@ -1240,10 +1243,10 @@ defmodule IpseKnowledge.Test.CASFixture do
   end
 end
 
-defmodule IpseKnowledge.Test.CASFixture.Backend do
+defmodule Ipse.Development.Fixtures.Knowledge.Backend do
   @moduledoc false
   use GenServer
-  alias IpseKnowledge.Test.CASFixture, as: F
+  alias Ipse.Development.Fixtures.Knowledge, as: F
 
   @impl true
   def init({owner, partition}) do

@@ -13,7 +13,8 @@ IPSE_SAVED_ARTIFACT=$(mktemp -d)/artifact
 elixir scripts/build-artifact.exs saved-results \
   --sdk _build/dev/lib/ipse/ebin \
   --output "$IPSE_SAVED_ARTIFACT"
-mix run examples/saved-results/verify.exs "$IPSE_SAVED_ARTIFACT"
+elixir scripts/verify.exs source saved-results \
+  --sdk _build/dev/lib/ipse/ebin --input "$IPSE_SAVED_ARTIFACT"
 ```
 
 The builder uses the SDK and its existing JSON/schema dependencies. It creates a
@@ -41,8 +42,8 @@ To verify an actual package archive, build the artifact first as above, then run
 
 ```sh
 ./scripts/package.sh
-elixir examples/saved-results/verify-package.exs \
-  dist/ipse-0.1.0-darwin-arm64.tar.gz "$IPSE_SAVED_ARTIFACT"
+elixir scripts/verify.exs installed saved-results \
+  --archive dist/ipse-0.1.0-darwin-arm64.tar.gz --input "$IPSE_SAVED_ARTIFACT"
 ```
 
 Replace the archive name with the file produced for your platform. The outer
@@ -59,3 +60,6 @@ production callback, aggregate deadline and resource bounds. Temporary proof
 homes and extracted releases are removed. The prebuilt artifact remains for
 inspection; remove it when finished. These checks prove generic local publication
 and recovery, not native sandbox enforcement or knowledge-package quality.
+
+The [shared verification guide](../../docs/developer/testing.md#run-one-proof-against-source-and-an-installed-runtime)
+explains pre-launch compilation, input inventories and isolated runtime ownership.

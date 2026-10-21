@@ -19,6 +19,10 @@ Follow these owners in execution order:
 
 | Owner | Implementation | Responsibility |
 | --- | --- | --- |
+| Verification command | `dev/verification/cli.exs`, `scenarios.exs`, `runtime.exs` | Admit a finite proof, compile its exact closure and own its selected source or installed runtime |
+| Phase command | `dev/evaluation/cli.exs` | Parse declaration, freeze, measured execution, audit, review and score phases |
+| Synthetic assertions | `dev/verification/measured_knowledge.exs`, `measured_authority.exs` | Preserve first predictions, tamper/scoring refusals and five independent loss controls |
+| Scripted daemon | `dev/fixtures/model_service.exs` | Build only the synthetic protocol fixture, with verification mode selected before sealing |
 | Declaration | `dev/evaluation/contract.exs` | Build seven strategies, admit complete plans and resolve declared command/model selections without loading execution |
 | Identity | `examples/knowledge/evaluation_freeze.exs` | Declare portable content and seal one closed local resolution |
 | Measured execution | `examples/knowledge/evaluation_measured_execution.exs` | Claim the native root, admit preparation/cells/finalization and audit their evidence |
@@ -55,9 +59,10 @@ running models. `validate_shape/2` has a narrower purpose: Freeze uses it to
 recognize the existing execution or portable envelope before checking identities.
 It does not replace full policy validation. Freeze still owns portable projection,
 local resolution and filesystem identity, and generic version-one seals retain
-their original map contract. Tests or tools that execute a comparison explicitly
-load `examples/knowledge/evaluation_runner.exs`; requiring the declaration owner
-alone no longer loads those implementations.
+their original map contract. Source-mode component exercises explicitly load
+`examples/knowledge/evaluation_runner.exs`; captured execution compiles its
+declared closure before launch. Requiring only the declaration owner loads
+neither execution path.
 
 Keep labels and expected answers out of the driver, extension options and model
 inputs. Query projection produces only `query_id`, `project` and `query`. Save and
@@ -66,102 +71,143 @@ order; it cannot prove that another caller has never read a label file.
 
 ## Run a complete synthetic measured population
 
-Use this exercise to follow the integration before selecting real runtime or
-model files. It builds seven artifacts and uses a scripted Ollama-protocol daemon
-inside every measured cell. It loads no model weights and makes no quality claim.
-Run it from a clean repository on the supported optional Linux backend:
+Use this exercise to trace preparation, fourteen cells, finalization, audit and
+scoring without selecting model weights. Each cell owns a scripted Ollama-protocol
+daemon. The workload has fifty queries, two projects and seven strategies.
+It tests execution and evidence protocols, with no model-quality claim.
+
+Build Ipse on the supported optional Linux backend. Keep the repository clean
+and store the prebuilt artifacts outside it. Artifact construction completes
+before the proof starts:
 
 ```sh
 ./scripts/build.sh
 IPSE_MEASURED_PROOF=$(mktemp -d)
-mix run scripts/verify-measured-knowledge.exs -- "$PWD" "$IPSE_MEASURED_PROOF/source" --sealed-answers --structured
+IPSE_PROOF_SDK="$PWD/_build/dev/lib/ipse/ebin"
+elixir extensions/knowledge/build.exs --sdk "$IPSE_PROOF_SDK" \
+  --output "$IPSE_MEASURED_PROOF/lexical" --package corpus --preset state-lexical
+elixir extensions/knowledge/build.exs --sdk "$IPSE_PROOF_SDK" \
+  --output "$IPSE_MEASURED_PROOF/dense" --package corpus --preset state-dense
+elixir extensions/knowledge/build.exs --sdk "$IPSE_PROOF_SDK" \
+  --output "$IPSE_MEASURED_PROOF/semantic" --package corpus --preset state-semantic
+elixir extensions/knowledge/build.exs --sdk "$IPSE_PROOF_SDK" \
+  --output "$IPSE_MEASURED_PROOF/explicit" --package graph --preset state-explicit
+elixir extensions/knowledge/build.exs --sdk "$IPSE_PROOF_SDK" \
+  --output "$IPSE_MEASURED_PROOF/model" --package graph --preset state-model
+elixir extensions/knowledge/build.exs --sdk "$IPSE_PROOF_SDK" \
+  --output "$IPSE_MEASURED_PROOF/research" --package research --preset mcp
+elixir scripts/build-artifact.exs model-calls --sdk "$IPSE_PROOF_SDK" \
+  --output "$IPSE_MEASURED_PROOF/answer"
+elixir -e '
+[root] = System.argv()
+map = Map.new(~w(answer dense explicit lexical model research semantic),
+  &{&1, Path.expand(Path.join(root, &1))})
+File.write!(Path.join(root, "artifacts.json"), JSON.encode!(map), [:exclusive])
+' "$IPSE_MEASURED_PROOF"
+elixir scripts/verify.exs source measured-knowledge \
+  --sdk "$IPSE_PROOF_SDK" --repository "$PWD" \
+  --input "$IPSE_MEASURED_PROOF/artifacts.json" \
+  --output "$IPSE_MEASURED_PROOF/source" --selection sealed-structured
 ```
 
-A successful invocation reports `synthetic: true`, `model_quality_measured: false`,
-350 saved rows and complete execution/resource audit results. The workload has
-fifty queries, two projects and seven strategies. Its fourteen cells each own a
-fresh daemon and complete public-Session lifecycle. The driver checks selected
-model calls, exclusion markers, canonical request counts, unchanged read-only
-audit, first-attempt refusal and changed-evidence refusal. Its scoring controls
-exercise actual CLI review, an unmeasured score exit and refusal before label
-or review input access. These are expected results to verify, not evidence that a
-particular source, host or package has passed.
+The input is exactly a JSON object with the seven keys shown above. Each value
+is a normalized absolute artifact-directory path. Runtime inventories both the
+map and every referent before and after the proof. The selected repository must
+be a clean Git root. Its exact source files supply the proof compiler; the SDK
+supplies the selected host and dependencies. No artifact build runs inside proof
+execution or a measured stage.
 
-`--structured` selects plan three. The driver inspects each actual answer,
-extraction and rerank request for its exact task schema, shown IDs, counts,
-`think: false` and declared output-token limit. `--sealed-answers` selects
-detached answers. The helper retains synthetic answers
-in the outer test owner's memory. They are absent from disk during preparation,
-all fourteen cells, finalization and audit. After that audit, the scoring helper
-releases the exact committed bytes and supplies `--labels` to review and score.
-The plan remains `mode: "fixture"`, with fixture model identities and no quality
-claim. This format exercise does not substitute for an independently authored
-held-out workload.
+Expect `synthetic: true`, `model_quality_measured: false`, 350 saved first rows and
+complete execution/resource audit results. The driver checks exact model request
+schemas, exclusion markers, canonical request counts, unchanged read-only audit,
+refused reentry and changed-evidence refusal. Its review and score controls use
+the actual CLI, including refusal before label or review inputs are opened.
+A successful synthetic score control reports `unmeasured_quality_refused`.
 
-For historical compatibility exercises, omit `--structured` to select plan two.
-Omit `--sealed-answers` to use the combined fixture dataset. When selecting both,
-keep the argument order shown above. Neither switch changes the measured seal,
-saved prediction or review-envelope versions.
+`sealed-structured` selects plan three and detached answers. Each actual answer,
+extraction and rerank request must have the expected task schema, shown IDs,
+counts, `think: false` and output-token limit. Synthetic answer bytes stay only
+in the outer proof owner's memory through preparation, all cells, finalization
+and audit. Scoring then releases the exact committed bytes. The fixture mode
+and identities remain explicit throughout.
 
-Inspect `$IPSE_MEASURED_PROOF/source/source/freeze`, the adjacent `reports`, and
-the adjacent `scoring-controls` directory. A failed command
-preserves its partial evidence. Read the first failed stage's `process.log`,
-`started.json`, terminal receipt and domain report together. Do not remove a claim
-or repeat model work against that seal. After diagnosing a synthetic failure,
-choose a new output directory for a separate exercise.
+For compatibility controls, `structured` uses combined fixture data with plan
+three, `sealed` uses detached answers with plan two, and `default` uses combined
+data with plan two. These are closed selections, not positional switches.
+None changes the seal, prediction or review-envelope version.
 
-To exercise a bundled runtime, use the artifacts built by the source exercise:
+Inspect `$IPSE_MEASURED_PROOF/source/runtime` for retained host/harness files and
+`$IPSE_MEASURED_PROOF/source/run` for the fixture data, `freeze`, `reports` and
+`scoring-controls`. Failed setup and execution retain partial evidence under the
+fresh output. Read the first failed stage's `process.log`, `started.json`, receipt
+and domain report together. Never remove a claim or rerun a consumed seal.
+After diagnosing a synthetic failure, choose a fresh output for a separate proof.
+
+To exercise an already-built compatible package with the same artifacts, set
+`IPSE_ARCHIVE` to the exact file printed by the packager:
 
 ```sh
 ./scripts/package.sh
-set -- dist/ipse-*.tar.gz
-test "$#" -eq 1
-elixir scripts/verify-measured-knowledge-package.exs \
-  "$1" "$PWD" "$IPSE_MEASURED_PROOF/source/artifacts.json" \
-  "$IPSE_MEASURED_PROOF/installed" --sealed-answers --structured
+IPSE_ARCHIVE=/absolute/path/to/the-compatible-archive.tar.gz
+elixir scripts/verify.exs installed measured-knowledge \
+  --archive "$IPSE_ARCHIVE" --repository "$PWD" \
+  --input "$IPSE_MEASURED_PROOF/artifacts.json" \
+  --output "$IPSE_MEASURED_PROOF/installed" --selection sealed-structured
 ```
 
-The installed driver extracts the archive, retains its hash and runs the same
-synthetic population through bundled `ipse eval`. Its outer release process has
-no `elixir`, `elixirc`, `mix`, `rustc` or `cargo` on PATH. Child launch environments
-include selected runtime and system directories; that outer assertion is not a
-claim that development tools are unreachable everywhere. Artifact construction
-happens before the installed run. Source helpers remain explicitly loaded from
-the checkout, while BEAM/native execution uses the selected installed runtime.
-A successful installed exercise is protocol evidence for that archive and host.
-It does not establish real Ollama CPU execution, held-out quality or complete
-failure/loss coverage. Keep actual evidence in [dated records](../archive/index.md)
+The shared verifier extracts the archive and compiles the same trusted proof
+closure against its SDK before launch. The installed host uses those BEAM files,
+the bundled ERTS and captured utility paths, with no system development tools on
+its runtime PATH. It retains the extracted runtime for later evidence checks.
+The source checkout remains a declared, unchanged input; the installed process
+does not compile or require its source files. Follow the
+[shared verification runtime](testing.md#follow-the-shared-runtime-and-scenario-owner)
+for compiler, input and lifetime ownership.
+
+A successful installed proof establishes the exercised protocols for that archive
+and host. It does not establish real Ollama CPU execution, held-out quality or
+all failure/loss behavior. Keep results in [dated records](../archive/index.md)
 and acceptance criteria in [the plan](../plan.md#p27-optional-research-graph-and-rag).
-The installed helper accepts the same optional arguments in the same order.
 
 ### Exercise authority and loss before accepting an execution change
 
-Use the same prebuilt artifacts with a fresh output directory:
+Use the same map and a fresh output for five independent seals:
 
 ```sh
-mix run scripts/verify-measured-authority.exs -- \
-  "$PWD" "$IPSE_MEASURED_PROOF/source/artifacts.json" \
-  "$IPSE_MEASURED_PROOF/authority"
+elixir scripts/verify.exs source measured-authority \
+  --sdk "$IPSE_PROOF_SDK" --repository "$PWD" \
+  --input "$IPSE_MEASURED_PROOF/artifacts.json" \
+  --output "$IPSE_MEASURED_PROOF/authority"
 ```
 
-This helper creates five separate synthetic seals. It observes the actual
-preparation VM's descriptors 4 through 8 and kernel membership before inducing
-owner loss, collector loss, an owned-service stop or registry replacement. The
-service-stop case also checks the ordinary native helper and daemon's complete
-descriptor inventories for leaked authority objects. The fifth seal selects a
-fixture that exits itself after recording its first answer request. Its failed
-service receipt, incomplete stage and first canonical request remain observable.
+`dev/verification/measured_authority.exs` observes the actual preparation VM's
+file descriptors 4 through 8 and kernel membership before inducing owner loss,
+collector loss, an owned-service stop or registry replacement. Service-stop also
+checks ordinary native-helper and daemon descriptors for leaked authority objects.
+The fifth seal selects a daemon that exits after recording its first answer
+request. Its failed service receipt, incomplete stage and first canonical request
+remain observable.
 
 Expect five retained control results, confirmed owned-scope cleanup and refused
-reentry. An absent live observation, missing cleanup or unexpected later claim
-fails the exercise and preserves `failure.json`. A missed timing boundary is
-not a passing capability check. The daemon-loss case permits later distinct
-cells only after confirmed cleanup; it never retries the interrupted request.
-Inspect its original journal and usage separately from process disappearance.
-This control does not manufacture full liability reconciliation when the domain
-report is unavailable. It starts only its own temporary services and stops only
-those named units. These controls need the optional Linux backend and establish
-no model quality.
+reentry. Missing live observation, cleanup or an unexpected later claim fails the
+proof and preserves `failure.json`. A missed timing boundary is a failure.
+The daemon-loss case permits distinct later cells after confirmed cleanup and
+never retries the interrupted request. Inspect its journal and usage separately
+from process disappearance. Missing domain evidence cannot establish full
+liability reconciliation.
+
+Repeat the same controls against an installed runtime with another fresh output:
+
+```sh
+elixir scripts/verify.exs installed measured-authority \
+  --archive "$IPSE_ARCHIVE" --repository "$PWD" \
+  --input "$IPSE_MEASURED_PROOF/artifacts.json" \
+  --output "$IPSE_MEASURED_PROOF/authority-installed"
+```
+
+Both authority modes start and stop only their own temporary services. Their
+retained runtime and `run` evidence follow the same layout as measured knowledge.
+They require the optional Linux backend and measure no model quality.
 
 ## Declare the complete comparison
 
@@ -387,6 +433,16 @@ new sealed-answer contract. Plans two and three permit it in `heldout` and expli
 Fixture mode requires fixture model names and inventory. It cannot satisfy the
 held-out model gates.
 
+The public source command validates the plan before preparing Research's local
+search/fetch fixture. Runtime compiles its two declared BEAM modules in a separate
+compiler process, loads the checked bytes and runs the phase in the caller's
+development environment. A tuning or fixture-verification command owns a temporary
+runtime that is removed after either a successful or failed phase. CLI
+`evaluate/1` returns the result to Runtime so inventory checks and cleanup finish
+before the outer command prints its summary and exits. Lexical-only plans and
+declarations need no fixture compilation. This fixture transports the admitted
+gateway calls; it does not provide model answers.
+
 Keep the actual service under its declared owner. Tuning starts no daemon and
 grants no fallback to another endpoint. With a reviewed tuning plan, exposed
 input files and an already admitted service, run:
@@ -440,7 +496,7 @@ the source index as a side effect.
 
 Use the complete plan and seven artifacts prepared above. Keep the checkout
 clean, including untracked files. Store receipts separately from authoritative
-freeze data and disposable reports:
+freeze data and retained first-prediction reports:
 
 ```sh
 IPSE_RETAINED=$(mktemp -d)
@@ -519,7 +575,8 @@ resolution = %{
 File.write!(Path.join(root, "resolution.json"), JSON.encode!(resolution), [:exclusive])
 File.chmod!(Path.join(root, "resolution.json"), 0o600)
 '
-mix run scripts/evaluate-knowledge.exs -- --phase freeze-measured \
+elixir scripts/evaluate-knowledge.exs --phase freeze-measured \
+  --sdk _build/dev/lib/ipse/ebin --repository "$PWD" \
   --experiment "$IPSE_BENCHMARK/experiment.json" \
   --experiment-sha256 "$IPSE_EXPERIMENT_SHA256" \
   --resolution "$IPSE_BENCHMARK/resolution.json" \
@@ -544,6 +601,37 @@ whole lifetime over one day. Sealing starts no worker, provider or model and
 opens no dataset or weight files.
 The semantic recipe precedes the final manifest hash. Concrete bootstrap bytes
 and tickets derive afterward, so the seal does not contain its own future hash.
+
+### Retain the evaluator before sealing
+
+The creation-only `--sdk` and `--repository` options select precompiled source-host
+execution for `freeze-measured`. Use `--archive /absolute/path/to/compatible.tar.gz`
+instead of `--sdk` to select an installed host. Both choices require the clean
+declared repository. Later phases reject these preparation options.
+Before freezing, a separate compiler VM builds the exact evaluator closure from
+that repository. The freezer retains the runtime under
+`$IPSE_BENCHMARK/frozen-measured.runtime/runtime`; keep that directory beside the
+freeze for the entire execution, audit and scoring lifetime. Retained source-mode
+SDK, dependency, OTP and utility files are still unchanged external prerequisites.
+This local capture is not a portable runtime archive.
+
+Later `scripts/evaluate-knowledge.exs` calls with the freeze path and expected hash
+reopen the captured evaluator. Use plain `elixir` for that path. The outer entry
+checks the bounded manifest, complete BEAM membership and file identities before
+loading the selected modules. A fresh child verifies the same captured files and
+runs the normal full freeze validation before its phase. It resolves supplied
+relative paths against the caller's working directory before handing off.
+A partial or changed capture refuses rather than falling back to checkout source.
+Source-mode historical seals retain their documented source execution path.
+
+The cold entry uses the inspected `erlexec` and a fresh private HOME/TMP outside
+the freeze evidence and captured runtime. It removes this scratch after each
+invocation and preserves the original operation failure if cleanup also fails.
+Only the outer Linux manager retains the selected systemd
+user-service environment. Preparation, cell and daemon environments retain their
+separate strict policies. Selecting the manager does not forward its variables
+to the measured work. The scripted fixture selects its verified bootstrap before
+sealing; runtime control data cannot downgrade that choice.
 
 ### Follow authority into preparation
 
@@ -592,19 +680,24 @@ across projects.
 
 ### Follow one complete cell and its first predictions
 
-The stage VM calls `EvaluationModelService.run/3` inside its fresh measured scope.
+The stage VM calls the internal `EvaluationModelService.run/4` inside its fresh
+measured scope, supplying the verified environment constructor for that execution.
 The owner copies the selected runtime and manifest/blob closure into new private
 files. The caller drains the native Port while a guarded Task works. Only native
 listener `P` admission permits initial HTTP inventory and the callback; child
 stdout cannot supply that proof. See [owned listener observation](../../native/README.md#observe-an-owned-loopback-listener).
 
-The callback calls `EvaluationRunner.evaluate_cell/5` with the original plan and
-one schedule cell. Source authoring, ingestion, projection, all project queries,
+The callback calls `EvaluationRunner.evaluate_cell/6` with the original plan,
+one schedule cell and its execution context. That context selects the precompiled
+child roles and their verified environment. Source authoring, ingestion,
+projection, all project queries,
 source suppression, collection, Session close, gateway close and budget
-reconciliation happen inside that cell. Authoring and inventory children use
-`EvaluationMeasuredExecution.command/4`. The selected ERTS executable and clean
-boot restore the exact ordered code-path set before loading scripts or starting
-Ipse. They do not find Elixir or Mix on PATH.
+reconciliation happen inside that cell. Captured authoring and inventory
+children use `EvaluationMeasuredExecution.precompiled_command/4`. The child
+checks ordered code-path membership and inspected BEAM bytes, loads Environment,
+enters its policy, loads the requested role, then compiles the fixed expression.
+`command/4` remains the original source-compatibility branch.
+These children use the selected ERTS and do not require Elixir or Mix on PATH.
 
 The owner preserves callback outcome, final service admission and native cleanup
 as separate facts. Task termination cannot prove domain closure or settled
@@ -619,11 +712,11 @@ contains 350 rows, including failed rows.
 Run only the already reviewed workload represented by this seal:
 
 ```sh
-mix run scripts/evaluate-knowledge.exs -- --phase measure \
+elixir scripts/evaluate-knowledge.exs --phase measure \
   --freeze "$IPSE_BENCHMARK/frozen-measured/manifest.json" \
   --freeze-sha256 "$IPSE_FREEZE_SHA256" \
   > "$IPSE_RETAINED/measure.json"
-mix run scripts/evaluate-knowledge.exs -- --phase audit \
+elixir scripts/evaluate-knowledge.exs --phase audit \
   --freeze "$IPSE_BENCHMARK/frozen-measured/manifest.json" \
   --freeze-sha256 "$IPSE_FREEZE_SHA256" \
   > "$IPSE_RETAINED/audit.json"
@@ -656,17 +749,15 @@ budget root to continue that same execution.
 
 ### Interpret the three charged-memory subjects
 
-The CLI prints an audit summary. To inspect all joined receipts, retain the full
-read-only API result under the same declared development runtime:
+The public CLI prints the joined audit summary; it has no full-report option.
+Keep its result and hash alongside the native receipts, stage records and first
+predictions. A receipt read alone is not the complete joined audit. Do not load
+a different source evaluator to inspect a captured seal.
 
-```sh
-mix run -r examples/knowledge/evaluation_runner.exs -e '
-[path, expected] = System.argv()
-{:ok, audit} = IpseKnowledgeExample.EvaluationMeasuredExecution.audit(path, expected)
-IO.puts(JSON.encode!(audit))
-' -- "$IPSE_BENCHMARK/frozen-measured/manifest.json" "$IPSE_FREEZE_SHA256" \
-  > "$IPSE_RETAINED/audit-full.json"
-```
+For this chapter's worked field inspection, use the complete synthetic proof's
+`$IPSE_MEASURED_PROOF/source/run/verified-audit.json`. Its verified result contains
+the `report` fields below. The proof saved that result through the captured
+evaluator after native execution, before its tamper and scoring controls.
 
 The metric is kernel workload-charged RAM, including cache and kernel charges:
 
@@ -698,7 +789,7 @@ review.
 
 For a change exercise, use the disposable synthetic measured population above.
 Inspect `verify_tamper_controls!/1` in
-`test/support/measured_knowledge_verification.exs`. It changes each merged stream
+`dev/verification/measured_knowledge.exs`. It changes each merged stream
 and separately tests two coherent rewrites: zeroed clocks with a recomputed
 summary, and removed requests with a recomputed summary. Both summaries can still
 report completeness. The audit must return `merged_stream_changed`, leave the
@@ -740,6 +831,34 @@ refuse; failed creation preserves its partial directory for inspection. Imports
 remain inert. The execution caller must validate the benchmark plan and each
 egress/State/MCP decision before starting work; an identity seal grants no effects.
 The small exercise plan above is not a complete comparison declaration.
+
+A complete version-one Research plan also needs executable gateway fixture files
+through later prediction and review. Use the public source entry, rather than
+calling `Freeze.create/4` directly, to prepare that prerequisite:
+
+```sh
+mix run scripts/evaluate-knowledge.exs -- --phase freeze \
+  --plan /absolute/path/to/reviewed-v1-plan.json \
+  --output /absolute/path/to/fresh-source-freeze
+```
+
+Runtime retains the two compiled fixture modules under
+`fresh-source-freeze.runtime/runtime/harness` before the ordinary version-one
+snapshot. Keep that sibling directory with the seal. Later public frozen commands
+check the separately retained manifest hash, inspect the captured fixture bytes
+and reuse those exact paths without recompiling. They still require the original
+complete source/runtime identity. The manifest format is unchanged. If the caller
+already supplies a coherent pair of compiled fixture modules, the seal records
+those caller-owned paths instead; their lifetime remains the caller's duty.
+Existing source-mode version-two seals keep their original full launch checks.
+Fixture adoption does not permit a partial capture of evaluator modules to use
+the source route.
+
+A historical seal without fixture files stays fixture-free. Research prediction
+with such a seal refuses with `research_fixture_missing` after identity verification
+and before opening the dataset. Create a fresh seal with the required fixture.
+Changed, missing, duplicate or conflicting captured fixture modules refuse; no
+replacement is compiled during reopen.
 
 Run the synthetic tampering controls before changing the seal format:
 
@@ -1248,7 +1367,7 @@ For the v2 seal above, prepare a private packet and then score a separate review
 
 ```sh
 export IPSE_LABELS=/released/identical-committed-answers.json
-mix run scripts/evaluate-knowledge.exs -- --phase review \
+elixir scripts/evaluate-knowledge.exs --phase review \
   --freeze "$IPSE_BENCHMARK/frozen-measured/manifest.json" \
   --freeze-sha256 "$IPSE_FREEZE_SHA256" --audit-sha256 "$IPSE_AUDIT_SHA256" \
   --data-manifest "$IPSE_DATA_MANIFEST" \
@@ -1265,7 +1384,7 @@ and `review_binding_sha256` exactly. Fill the existing verdict rows without
 changing IDs. After that review, run:
 
 ```sh
-mix run scripts/evaluate-knowledge.exs -- --phase score \
+elixir scripts/evaluate-knowledge.exs --phase score \
   --freeze "$IPSE_BENCHMARK/frozen-measured/manifest.json" \
   --freeze-sha256 "$IPSE_FREEZE_SHA256" --audit-sha256 "$IPSE_AUDIT_SHA256" \
   --data-manifest "$IPSE_DATA_MANIFEST" \
@@ -1578,7 +1697,9 @@ and choose a fresh evidence directory:
 ```sh
 IPSE_MODEL_PROOF=$(mktemp -d)
 rustc --edition=2021 -D warnings test/support/model_service_probe.rs -o "$IPSE_MODEL_PROOF/probe"
-mix run scripts/verify-model-service.exs -- "$IPSE_MODEL_PROOF/probe" "$IPSE_MODEL_PROOF/evidence"
+elixir scripts/verify.exs source model-service \
+  --sdk _build/dev/lib/ipse/ebin --input "$IPSE_MODEL_PROOF/probe" \
+  --output "$IPSE_MODEL_PROOF/evidence"
 ```
 
 Expect one JSON summary whose cases all report `status: "passed"`. Inspect each
@@ -1588,23 +1709,34 @@ choose another output directory for another synthetic exercise. Reusing an
 operation's directory must refuse without replacing its receipt or running work.
 
 To repeat the cases with a bundled runtime, build a package and pass its archive
-to the installed verifier. This example requires exactly one archive in `dist`:
+to the installed verifier. Set `IPSE_ARCHIVE` to the exact file printed by the
+packager for this host:
 
 ```sh
 ./scripts/package.sh
-set -- dist/ipse-*.tar.gz
-test "$#" -eq 1
-elixir scripts/verify-model-service-package.exs "$1" "$IPSE_MODEL_PROOF/probe" "$IPSE_MODEL_PROOF/installed"
+IPSE_ARCHIVE=/absolute/path/to/the-compatible-archive.tar.gz
+elixir scripts/verify.exs installed model-service \
+  --archive "$IPSE_ARCHIVE" --input "$IPSE_MODEL_PROOF/probe" \
+  --output "$IPSE_MODEL_PROOF/installed"
 ```
 
-Expect the same synthetic case results with `installed: true`. The verifier
-extracts the package and removes development executables from the outer release
-PATH. Internal launch environments include system directories. On macOS,
-its result instead confirms refusal before effects. The service module and
-fixture are trusted evaluation code loaded from the checkout; Runner, HTTP and
-native execution use the bundled package.
+Expect the same 21 synthetic cases with `verification.mode: "installed"`.
+The common verifier compiles the two trusted proof modules before host launch.
+Runner, HTTP and native execution use the selected package. The proof child's
+PATH contains declared utilities and bundled Erlang, with no development commands.
+Both modes retain case evidence under the chosen output and dispose their common
+host runtime. On macOS both modes instead confirm refusal before effects.
+This Rust service fixture is separate from the scripted per-cell daemon used by
+the complete measured proof.
 
 Trace `EvaluationModelService.run/3` through these ownership boundaries:
+
+The public `run/3` contract remains available. Its internal `run/4` form accepts
+an optional verified environment constructor. The guarded staging worker calls
+that constructor once under the existing staging deadline. Launch and receipt
+reuse the same admitted environment. The measured fixture selects this policy
+before sealing and binds the required Environment BEAM; service control data
+cannot switch verification off later.
 
 1. `validate/1` checks a closed selection without IO. The selection names exact
    runtime files, hashes, model manifests, a private loopback origin and finite
@@ -1800,9 +1932,12 @@ file and every record envelope through `State.valid_outcome?/4`. It checks the
 namespace, version and generation sum. A separate VM loads the verified
 artifact, public SDK and existing Jason runtime, then computes counts and opaque
 hashes. The SDK validator needs Jason even when the audit itself uses Elixir JSON.
-Measured inventory children first restore the sealed ERTS/ordered code paths
-through `EvaluationMeasuredExecution.command/4`, then add the verified artifact's
-`ebin` in that child. The `/5` wrapper uses the v1 development Elixir launcher.
+Captured measured inventory children use `precompiled_command/4` to verify
+ordered code-path membership and inspected BEAM bytes. They load Environment,
+enter its policy, load the inventory role and compile the fixed expression,
+then add the verified artifact's `ebin` only in that child. `command/4` retains the
+genuine source-compatibility branch; the `/5` inventory wrapper uses the v1
+development Elixir launcher.
 The host rechecks file bytes and artifact identity afterward. Domain modules remain unloaded in the host.
 
 Selected root references identify retained content and projections. The audit

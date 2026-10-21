@@ -51,40 +51,40 @@ jobs:
           mix test test/macos_sandbox_test.exs test/stdio_runner_test.exs test/macos_filesystem_test.exs --include macos_sandbox --include macos_filesystem
       - run: ./bin/ipse demo
       - run: ./scripts/package.sh
-      - run: elixir scripts/verify-package.exs dist/ipse-*.tar.gz
+      - run: elixir scripts/verify.exs installed package --archive dist/ipse-*.tar.gz --input examples/memory/corpus.json
       - name: Independent installed model-service ownership proof
         run: |
           rustc --edition=2021 -D warnings test/support/model_service_probe.rs -o "$RUNNER_TEMP/ipse-model-service-probe"
-          elixir scripts/verify-model-service-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-model-service-probe" "$RUNNER_TEMP/ipse-model-service-installed"
+          elixir scripts/verify.exs installed model-service --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-model-service-probe" --output "$RUNNER_TEMP/ipse-model-service-installed"
       - name: Independent installed extension proof
         run: |
           elixir scripts/build-artifact.exs extension-lab --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-extension-lab"
-          elixir examples/extension-lab/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-extension-lab"
+          elixir scripts/verify.exs installed lab --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-extension-lab"
       - name: Independent installed model-call proof
         run: |
           elixir scripts/build-artifact.exs model-calls --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-model-calls"
-          elixir examples/model-calls/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-model-calls"
-          elixir examples/model-calls/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-model-calls" none
-          elixir examples/model-calls/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-model-calls" json
-          elixir examples/model-calls/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-model-calls" json-none
+          elixir scripts/verify.exs installed model --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-model-calls" --selection default
+          elixir scripts/verify.exs installed model --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-model-calls" --selection none
+          elixir scripts/verify.exs installed model --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-model-calls" --selection json
+          elixir scripts/verify.exs installed model --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-model-calls" --selection json-none
       - name: Independent source and installed MCP-call proof
         run: |
           elixir scripts/build-artifact.exs mcp-actions --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-mcp-actions"
-          mix run examples/mcp-actions/verify.exs "$RUNNER_TEMP/ipse-mcp-actions"
-          elixir examples/mcp-actions/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-mcp-actions"
+          elixir scripts/verify.exs source mcp --sdk _build/dev/lib/ipse/ebin --input "$RUNNER_TEMP/ipse-mcp-actions"
+          elixir scripts/verify.exs installed mcp --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-mcp-actions"
       - name: Independent source and installed embedding proof
         run: |
           elixir scripts/build-artifact.exs embedding-actions --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-embedding-actions"
-          mix run examples/embedding-actions/verify.exs "$RUNNER_TEMP/ipse-embedding-actions"
-          elixir examples/embedding-actions/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-embedding-actions"
+          elixir scripts/verify.exs source embedding --sdk _build/dev/lib/ipse/ebin --input "$RUNNER_TEMP/ipse-embedding-actions"
+          elixir scripts/verify.exs installed embedding --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-embedding-actions"
       - name: Independent knowledge preset admission
         run: |
           mix run examples/knowledge/verify-builds.exs _build/dev/lib/ipse/ebin "$RUNNER_TEMP/ipse-knowledge-presets"
       - name: Independent source and installed saved-result proof
         run: |
           elixir scripts/build-artifact.exs saved-results --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-saved-results"
-          mix run examples/saved-results/verify.exs "$RUNNER_TEMP/ipse-saved-results"
-          elixir examples/saved-results/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-saved-results"
+          elixir scripts/verify.exs source saved-results --sdk _build/dev/lib/ipse/ebin --input "$RUNNER_TEMP/ipse-saved-results"
+          elixir scripts/verify.exs installed saved-results --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-saved-results"
       - name: Independent source and installed knowledge proof
         run: |
           elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-knowledge/corpus" --package corpus --preset state-lexical
@@ -92,25 +92,26 @@ jobs:
           elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-knowledge/research" --package research --preset offline
           elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-knowledge/corpus-mcp" --package corpus --preset mcp-lexical
           elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-knowledge/research-mcp" --package research --preset mcp
-          mix run examples/knowledge/verify.exs "$RUNNER_TEMP/ipse-knowledge"
-          mix run examples/knowledge/verify-complete-results.exs "$RUNNER_TEMP/ipse-knowledge"
-          mix run examples/knowledge/verify-independence.exs "$RUNNER_TEMP/ipse-knowledge"
-          mix run examples/knowledge/verify-evaluation.exs "$RUNNER_TEMP/ipse-knowledge/corpus"
-          mix run examples/knowledge/verify-mcp.exs "$RUNNER_TEMP/ipse-knowledge/corpus-mcp"
-          mix run examples/knowledge/verify-research.exs "$RUNNER_TEMP/ipse-knowledge/research-mcp"
-          mix run examples/knowledge/verify-recovery.exs "$RUNNER_TEMP/ipse-knowledge-presets/graph-state-model"
-          mix run examples/knowledge/verify-lifecycle.exs "$RUNNER_TEMP/ipse-knowledge-presets/graph-state-model" graph
-          mix run examples/knowledge/verify-lifecycle.exs "$RUNNER_TEMP/ipse-knowledge-presets/corpus-state-dense" corpus
-          mix run examples/knowledge/verify-lifecycle.exs "$RUNNER_TEMP/ipse-knowledge-presets/corpus-state-dense" selection
-          elixir examples/knowledge/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-knowledge"
-          elixir examples/knowledge/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-knowledge" complete
-          elixir examples/knowledge/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-knowledge" independence
-          elixir examples/knowledge/verify-mcp-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-knowledge/corpus-mcp"
-          elixir examples/knowledge/verify-mcp-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-knowledge/research-mcp" research
-          elixir examples/knowledge/verify-recovery-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-knowledge-presets/graph-state-model"
-          elixir examples/knowledge/verify-recovery-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-knowledge-presets/graph-state-model" graph
-          elixir examples/knowledge/verify-recovery-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-knowledge-presets/corpus-state-dense" corpus
-          elixir examples/knowledge/verify-recovery-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-knowledge-presets/corpus-state-dense" selection
+          elixir scripts/verify.exs source knowledge --sdk _build/dev/lib/ipse/ebin --input "$RUNNER_TEMP/ipse-knowledge"
+          elixir scripts/verify.exs source knowledge-complete --sdk _build/dev/lib/ipse/ebin --input "$RUNNER_TEMP/ipse-knowledge"
+          elixir scripts/verify.exs source knowledge-independence --sdk _build/dev/lib/ipse/ebin --input "$RUNNER_TEMP/ipse-knowledge"
+          elixir scripts/verify.exs source knowledge-evaluation --sdk _build/dev/lib/ipse/ebin --input "$RUNNER_TEMP/ipse-knowledge/corpus"
+          elixir scripts/verify.exs source knowledge-mcp --sdk _build/dev/lib/ipse/ebin --input "$RUNNER_TEMP/ipse-knowledge/corpus-mcp"
+          elixir scripts/verify.exs source knowledge-research --sdk _build/dev/lib/ipse/ebin --input "$RUNNER_TEMP/ipse-knowledge/research-mcp"
+          elixir scripts/verify.exs source knowledge-recovery --sdk _build/dev/lib/ipse/ebin --input "$RUNNER_TEMP/ipse-knowledge-presets/graph-state-model"
+          elixir scripts/verify.exs source knowledge-graph-lifecycle --sdk _build/dev/lib/ipse/ebin --input "$RUNNER_TEMP/ipse-knowledge-presets/graph-state-model"
+          elixir scripts/verify.exs source knowledge-corpus-lifecycle --sdk _build/dev/lib/ipse/ebin --input "$RUNNER_TEMP/ipse-knowledge-presets/corpus-state-dense"
+          elixir scripts/verify.exs source knowledge-selection --sdk _build/dev/lib/ipse/ebin --input "$RUNNER_TEMP/ipse-knowledge-presets/corpus-state-dense"
+          elixir scripts/verify.exs installed knowledge --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-knowledge"
+          elixir scripts/verify.exs installed knowledge-complete --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-knowledge"
+          elixir scripts/verify.exs installed knowledge-independence --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-knowledge"
+          elixir scripts/verify.exs installed knowledge-evaluation --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-knowledge/corpus"
+          elixir scripts/verify.exs installed knowledge-mcp --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-knowledge/corpus-mcp"
+          elixir scripts/verify.exs installed knowledge-research --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-knowledge/research-mcp"
+          elixir scripts/verify.exs installed knowledge-recovery --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-knowledge-presets/graph-state-model"
+          elixir scripts/verify.exs installed knowledge-graph-lifecycle --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-knowledge-presets/graph-state-model"
+          elixir scripts/verify.exs installed knowledge-corpus-lifecycle --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-knowledge-presets/corpus-state-dense"
+          elixir scripts/verify.exs installed knowledge-selection --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-knowledge-presets/corpus-state-dense"
       - name: Experimental macOS App Sandbox enforcement
         if: runner.os == 'macOS'
         run: |

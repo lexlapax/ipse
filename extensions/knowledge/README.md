@@ -100,7 +100,8 @@ validate the complete generated configuration before starting a session.
 
 ## Verify independent artifacts
 
-Build Graph and Research into the same artifact parent used above:
+Build Graph and Research beside the lexical Corpus built above, then run the
+base proof with the common verification command:
 
 ```sh
 elixir extensions/knowledge/build.exs \
@@ -111,79 +112,106 @@ elixir extensions/knowledge/build.exs \
   --sdk _build/dev/lib/ipse/ebin \
   --output "$IPSE_KNOWLEDGE_ARTIFACTS/research" \
   --package research --preset offline
-mix run examples/knowledge/verify.exs "$IPSE_KNOWLEDGE_ARTIFACTS"
+elixir scripts/verify.exs source knowledge \
+  --sdk _build/dev/lib/ipse/ebin --input "$IPSE_KNOWLEDGE_ARTIFACTS"
 ```
 
-The verifier imports the artifacts into isolated temporary homes and invokes real
-Session workers. It checks exact citations, lexical retrieval, suppression,
-inert recovery, explicit graph support and provided-source investigation. It
-requires domain modules to remain absent from the host VM. It uses synthetic
-source text and no model service. These checks establish protocol behavior;
-they do not measure semantic answer quality or choose an embedding model.
+The verifier compiles the trusted host-side proof in a separate compiler VM
+before starting the selected host. The proof imports the prebuilt worker artifacts
+into private temporary homes and invokes public Sessions. Production knowledge
+modules must remain absent from the host VM. Neither artifacts nor harness source
+are compiled inside the running proof.
 
-Use the same three SDK-2 artifacts to exercise complete results beyond the inline
-reply size:
+The base case checks exact citations, lexical retrieval, suppression, inert
+recovery, explicit graph support and provided-source investigation. It uses
+synthetic text and no model service. To inspect a narrower boundary, select its
+explicit scenario with the same three artifacts:
 
 ```sh
-mix run examples/knowledge/verify-complete-results.exs "$IPSE_KNOWLEDGE_ARTIFACTS"
+elixir scripts/verify.exs source knowledge-complete \
+  --sdk _build/dev/lib/ipse/ebin --input "$IPSE_KNOWLEDGE_ARTIFACTS"
+elixir scripts/verify.exs source knowledge-independence \
+  --sdk _build/dev/lib/ipse/ebin --input "$IPSE_KNOWLEDGE_ARTIFACTS"
 ```
 
-Expect five checks. Research and Corpus each retain ten full 1024-byte quotes.
-Another Research case retains one escaped citation larger than a 4096-byte
-fragment. Graph retains eight complete claim bases while returning one evidence
-passage. A separate pair of opposing assertions keeps both polarities and citation
-bases through Graph and Corpus graph retrieval. The exercise validates complete
-byte counts and hashes, exact historical reads, inert restart, unchanged journal
-bytes and confirmed cleanup. No model
-service is used, and domain modules remain absent from the host.
+`knowledge-complete` runs five checks. Research and Corpus retain ten full quotes,
+including a Research citation larger than one 4096-byte fragment. Graph preserves
+eight claim bases while returning one passage, and opposing assertions retain
+both polarities and citation bases. The proof checks complete byte counts/hashes,
+historical reads, inert restart, unchanged journals and confirmed cleanup.
 
-Small results still return inline JSON. Larger results use a `saved.result`
-descriptor for a complete document of at most 4 MiB, subject to aggregate and
-journal limits. Per-quote and request bounds remain unchanged. Read the retained
-document before consuming its domain fields; never remove quotes or provenance
-to fit a reply. Follow [contributor training](../../docs/developer/knowledge-extensions.md#publish-and-read-the-complete-domain-value)
+`knowledge-independence` pairs each package with session-, project- and
+operator-scoped explicit memory. It checks idle/resume dispatch counters,
+note/evidence isolation and the combined catalog ceiling. Follow
+[the selection exercise](../../docs/developer/knowledge-extensions.md#verify-independent-memory-and-knowledge-selections)
+for its expected observations.
+
+Small results return inline JSON. Larger results use a `saved.result` descriptor
+for a complete document of at most 4 MiB, subject to aggregate and journal limits.
+Read the complete document before consuming its fields; do not remove quotes or
+provenance to fit an inline reply. Follow
+[contributor training](../../docs/developer/knowledge-extensions.md#publish-and-read-the-complete-domain-value)
 for SDK ownership and [the user procedure](../../docs/operator/extensions.md#read-a-saved-result)
 for `ipse result` and `/result` examples.
 
-Run `mix run examples/knowledge/verify-independence.exs "$IPSE_KNOWLEDGE_ARTIFACTS"`
-to pair each package with session-, project- and operator-scoped memory. It checks
-idle/resume dispatch counters, explicit note/evidence isolation and the combined
-catalog ceiling. Follow the [selection exercise](../../docs/developer/knowledge-extensions.md#verify-independent-memory-and-knowledge-selections)
-for its scope and expected output.
-
-Run `mix run examples/knowledge/verify-evaluation.exs CORPUS_ARTIFACT` to check
-the evaluation Session driver with synthetic paged ingestion, named profiles and
-durable invocation receipts. It makes no model calls and is separate from a
-frozen quality evaluation.
-
-Build `corpus-mcp` with package `corpus` and preset `mcp-lexical`, then run
-`mix run examples/knowledge/verify-mcp.exs ARTIFACT` to exercise a real approved
-CAS/query server. The verifier starts and stops its own loopback fixture, checks
-selected-only source reads, forged responses, denial and unknown recovery, and
-uses no model service. Its server-side scores are synthetic assertions.
-
-Build `research-mcp` with package `research` and preset `mcp`, then run
-`mix run examples/knowledge/verify-research.exs ARTIFACT` for selected search/fetch
-tools. It checks a paged captured body, exact citations, completion-time source
-observations, denial, malformed responses and inert recovery. It uses a local
-fixture and does not measure web coverage or model quality.
-
-For an extracted runtime, run:
+For the Session evaluation driver, pass the lexical Corpus artifact itself:
 
 ```sh
-elixir examples/knowledge/verify-package.exs dist/ipse-*.tar.gz "$IPSE_KNOWLEDGE_ARTIFACTS"
-elixir examples/knowledge/verify-package.exs dist/ipse-*.tar.gz "$IPSE_KNOWLEDGE_ARTIFACTS" independence
-elixir examples/knowledge/verify-package.exs dist/ipse-*.tar.gz "$IPSE_KNOWLEDGE_ARTIFACTS" complete
-elixir examples/knowledge/verify-mcp-package.exs dist/ipse-*.tar.gz /path/to/corpus-mcp
-elixir examples/knowledge/verify-mcp-package.exs dist/ipse-*.tar.gz /path/to/research-mcp research
+elixir scripts/verify.exs source knowledge-evaluation \
+  --sdk _build/dev/lib/ipse/ebin --input "$IPSE_KNOWLEDGE_ARTIFACTS/corpus"
 ```
 
-The verifiers hide development tools from the runtime PATH and check that the
-archive and extracted host files remain unchanged. The MCP fixture needs loopback
-sockets. Keep one matching archive in `dist/` or supply its exact path.
-The `complete` mode compiles its trusted proof harness in the outer development
-VM, then runs its prebuilt BEAMs and the selected artifact BEAMs inside the
-extracted runtime. Its PATH contains declared host utilities and bundled `erl`,
-with no system development toolchain. It also checks unchanged artifact and
-proof-harness files. The archive and artifacts must match the platform and OTP
-release used to build them.
+It checks synthetic paged ingestion, named profiles and durable invocation
+receipts, with no model calls. It does not run a frozen quality comparison.
+
+To exercise optional remote routes, build their separate artifacts first:
+
+```sh
+elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin \
+  --output "$IPSE_KNOWLEDGE_ARTIFACTS/corpus-mcp" --package corpus --preset mcp-lexical
+elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin \
+  --output "$IPSE_KNOWLEDGE_ARTIFACTS/research-mcp" --package research --preset mcp
+elixir scripts/verify.exs source knowledge-mcp \
+  --sdk _build/dev/lib/ipse/ebin --input "$IPSE_KNOWLEDGE_ARTIFACTS/corpus-mcp"
+elixir scripts/verify.exs source knowledge-research \
+  --sdk _build/dev/lib/ipse/ebin --input "$IPSE_KNOWLEDGE_ARTIFACTS/research-mcp"
+```
+
+The owned loopback MCP fixtures need local sockets. Corpus checks selected-only
+reads, forged responses, denial and unknown recovery. Research checks selected
+search/fetch tools, paged captured bodies, exact citations, completion-time
+observations and inert recovery. Server scores and source text are synthetic.
+
+## Repeat the same proofs against an installed runtime
+
+Package for the actual host, then set `IPSE_ARCHIVE` to the exact compatible file
+printed by the packager:
+
+```sh
+./scripts/package.sh
+IPSE_ARCHIVE=/absolute/path/to/the-compatible-archive.tar.gz
+elixir scripts/verify.exs installed knowledge \
+  --archive "$IPSE_ARCHIVE" --input "$IPSE_KNOWLEDGE_ARTIFACTS"
+elixir scripts/verify.exs installed knowledge-independence \
+  --archive "$IPSE_ARCHIVE" --input "$IPSE_KNOWLEDGE_ARTIFACTS"
+elixir scripts/verify.exs installed knowledge-complete \
+  --archive "$IPSE_ARCHIVE" --input "$IPSE_KNOWLEDGE_ARTIFACTS"
+elixir scripts/verify.exs installed knowledge-evaluation \
+  --archive "$IPSE_ARCHIVE" --input "$IPSE_KNOWLEDGE_ARTIFACTS/corpus"
+elixir scripts/verify.exs installed knowledge-mcp \
+  --archive "$IPSE_ARCHIVE" --input "$IPSE_KNOWLEDGE_ARTIFACTS/corpus-mcp"
+elixir scripts/verify.exs installed knowledge-research \
+  --archive "$IPSE_ARCHIVE" --input "$IPSE_KNOWLEDGE_ARTIFACTS/research-mcp"
+```
+
+The common verifier compiles the same trusted proof against the extracted SDK
+before launch. Its runtime PATH has declared utilities and bundled `erl`, with no
+system development commands. It checks unchanged archive, artifacts, host and
+harness inventories. The archive and artifacts must match the platform and OTP
+release. Ordinary proof runtimes and temporary homes are removed afterward.
+
+Use [the verification guide](../../docs/developer/testing.md#run-one-proof-against-source-and-an-installed-runtime)
+to change shared setup, and [the knowledge training manual](../../docs/developer/knowledge-extensions.md)
+for recovery, interrupted inference and durable embedding selection exercises.
+These fixtures establish exercised protocol behavior. They do not measure
+held-out answer support, retrieval quality, web coverage or model quality.

@@ -1,52 +1,14 @@
-#!/usr/bin/env elixir
+defmodule Ipse.Development.Verification.Package do
+  @moduledoc "Installed package behavior assertions, using the shared verification runtime."
+  alias Ipse.Development.Verification.{Runtime, Scenarios}
 
-defmodule Ipse.PackageVerifier do
-  @utility_names ~w(dirname basename cut sed cat grep readlink sleep uname expr awk id tr head)
   @job_timeout_note "Run this verifier under a bounded CI job timeout; System.cmd/3 has no per-process timeout option."
 
-  def main([archive_arg]) do
-    archive = Path.expand(archive_arg)
-    unless File.regular?(archive), do: raise("archive is not a regular file: #{archive}")
-    tar = System.find_executable("tar") || raise("tar is required to extract the package")
-
-    id = Base.encode16(:crypto.strong_rand_bytes(8), case: :lower)
-    root = Path.join(System.tmp_dir!(), "ipse-package-check-#{id}")
-    File.mkdir_p!(root)
-
-    try do
-      verify!(archive, root, tar)
-    after
-      File.rm_rf!(root)
-    end
-  end
-
-  def main(_) do
-    raise "usage: elixir scripts/verify-package.exs /path/to/ipse-*.tar.gz"
-  end
-
-  defp verify_memory!(launcher, release, env, root) do
-    probe = Path.join(root, "verify-memory.exs")
-    corpus = Path.join(root, "memory-corpus.json")
-    File.cp!(Path.join(__DIR__, "measure-memory.exs"), probe)
-    File.cp!(Path.expand("../examples/memory/corpus.json", __DIR__), corpus)
-
-    expression =
-      "System.argv([\"--corpus\", #{inspect(corpus)}]); Code.require_file(#{inspect(probe)})"
-
-    output = run!(launcher, ["eval", expression], release, env, "explicit memory corpus")
-
+  defp verify_memory!(runtime, corpus) do
     report =
-      output
-      |> String.split("\n", trim: true)
-      |> Enum.find(&String.starts_with?(&1, "{"))
-      |> :json.decode()
+      Runtime.eval!(runtime, "Ipse.Development.Experiments.Memory.run(" <> inspect(corpus) <> ")")
 
-    unless report["passed"] == true and report["records"] == 100 and
-             report["questions"] == 100 and report["projects"] == 2 and report["sessions"] == 6 and
-             report["model_calls"] == 0 and report["recall_at_5"] == 1.0 and
-             report["exact_span_precision"] == 1.0 do
-      raise "installed memory proof failed its explicit corpus assertions"
-    end
+    :ok = Scenarios.validate!(Scenarios.fetch!("memory"), report, "default")
 
     IO.puts(
       "PASS: bundled explicit memory, 100 records/100 queries, six sessions/two projects, exact spans and no inference."
@@ -201,45 +163,30 @@ defmodule Ipse.PackageVerifier do
     IO.puts("PASS: installed large Unicode delta over the bounded v2 text channel.")
   end
 
-  defp verify!(archive, root, tar) do
-    release = Path.join(root, "release")
-    home = Path.join(root, "home")
+  def run(%{mode: :installed} = runtime, corpus) do
+    release = runtime.release
+    root = runtime.root
+    home = runtime.home
+    env = List.keystore(runtime.env, "PATH", 0, {"PATH", Path.join(root, "utilities")})
+    {"PATH", path} = List.keyfind(env, "PATH", 0)
+
+    for command <- ~w(erl elixir elixirc erlc mix rustc cargo) do
+      false = :os.find_executable(String.to_charlist(command), String.to_charlist(path))
+    end
+
     ipse_home = Path.join(home, ".ipse")
-    temp = Path.join(root, "tmp")
-    utility_path = Path.join(root, "utility-path")
     default_workspace = Path.join(root, "caller cwd with spaces")
     override_caller = Path.join(root, "different caller cwd")
     override_workspace = Path.join(root, "explicit workspace with spaces")
-
-    Enum.each(
-      [release, home, temp, utility_path, default_workspace, override_caller, override_workspace],
-      &File.mkdir_p!/1
-    )
-
+    for path <- [default_workspace, override_caller, override_workspace], do: File.mkdir!(path)
     [] = File.ls!(home)
-    File.mkdir_p!(ipse_home)
+    File.mkdir!(ipse_home)
     [] = File.ls!(ipse_home)
     File.chmod!(home, 0o700)
     File.chmod!(ipse_home, 0o700)
-
-    {_output, 0} = System.cmd(tar, ["-xzf", archive, "-C", release], stderr_to_stdout: true)
-    runtime_dirs = File.ls!(release) |> Enum.filter(&String.starts_with?(&1, "erts-"))
-
-    unless length(runtime_dirs) == 1,
-      do:
-        raise(
-          "package must contain exactly one bundled ERTS runtime, found #{length(runtime_dirs)}"
-        )
-
-    utility_path = make_utility_path!(utility_path)
-
-    for name <- ["erl", "elixir", "mix", "rustc"] do
-      if File.exists?(Path.join(utility_path, name)),
-        do: raise("toolchain executable unexpectedly present in utility PATH: #{name}")
-    end
-
-    env = isolated_env(utility_path, home, ipse_home, temp)
+    [_erts] = File.ls!(release) |> Enum.filter(&String.starts_with?(&1, "erts-"))
     wrapper = Path.join(release, "ipse")
+
     otp_launcher = Path.join(release, "bin/ipse")
     require_executable!(wrapper)
     require_executable!(otp_launcher)
@@ -248,7 +195,7 @@ defmodule Ipse.PackageVerifier do
     verify_terminal!(wrapper, release, env, root)
     verify_recovery!(otp_launcher, release, env, root)
     verify_text!(otp_launcher, release, env)
-    verify_memory!(otp_launcher, release, env, root)
+    verify_memory!(runtime, corpus)
 
     [app] = Path.wildcard(Path.join([release, "lib", "ipse-*"]))
 
@@ -401,42 +348,11 @@ defmodule Ipse.PackageVerifier do
     IO.puts("Verified --cwd workspace: #{override_workspace}")
 
     IO.puts(
-      "Execution used a utility-only PATH; no Elixir, Erlang, Mix, or Rust toolchain executables were available to the release."
+      "CLI and standalone checks used a utility-only PATH. The precompiled memory harness adds only the selected bundled erl; no system development toolchain was available."
     )
 
     IO.puts(@job_timeout_note)
-  end
-
-  defp make_utility_path!(directory) do
-    Enum.each(@utility_names, fn name ->
-      executable =
-        System.find_executable(name) || raise("required host utility unavailable: #{name}")
-
-      :ok = File.ln_s(executable, Path.join(directory, name))
-    end)
-
-    directory
-  end
-
-  defp isolated_env(path, home, ipse_home, temp) do
-    allowed_names = ["PATH", "HOME", "IPSE_HOME", "TMPDIR", "LANG", "LC_ALL"]
-
-    cleared =
-      System.get_env()
-      |> Map.keys()
-      |> Enum.reject(&(&1 in allowed_names))
-      |> Enum.map(&{&1, nil})
-
-    allowed = [
-      {"PATH", path},
-      {"HOME", home},
-      {"IPSE_HOME", ipse_home},
-      {"TMPDIR", temp},
-      {"LANG", "C"},
-      {"LC_ALL", "C"}
-    ]
-
-    cleared ++ allowed
+    %{"passed" => true, "standalone_release_checks" => true, "explicit_memory" => true}
   end
 
   defp run!(executable, args, cwd, env, label, merge_stderr \\ true) do
@@ -473,5 +389,3 @@ defmodule Ipse.PackageVerifier do
     end
   end
 end
-
-Ipse.PackageVerifier.main(System.argv())

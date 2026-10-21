@@ -7,7 +7,8 @@ defmodule IpseKnowledge.PackagesIsolationTest do
     Code.require_file(Path.join("extensions/knowledge/src", file <> ".ex"))
   end
   Code.require_file("extensions/knowledge/spec.exs")
-  Code.require_file("test/support/knowledge_mcp_fixture.exs")
+  Code.require_file("dev/verification/cli.exs")
+  Ipse.Development.Verification.Runtime.load_fixture!(:knowledge)
 
   defmodule DomainPackagesSuite do
     use ExUnit.Case, async: false
@@ -189,7 +190,7 @@ defmodule IpseKnowledge.PackagesIsolationTest do
 
     test "Graph publishes all32 bounded model proposals and exact-size explicit batches" do
       alias IpseKnowledge.{Evidence,Graph,Store}
-      alias IpseKnowledge.Test.CASFixture,as: F
+      alias Ipse.Development.Fixtures.Knowledge,as: F
       profiles=[%{"kind"=>"state","scope"=>"project","partition"=>"notes"},
         %{"kind"=>"mcp_cas","binding"=>"storage","partition"=>"notes","contract"=>"ipse-cas-v3"}]
       for profile<-profiles do
@@ -236,7 +237,7 @@ defmodule IpseKnowledge.PackagesIsolationTest do
 
     test "explicit Graph publication retains facts for their selected query time" do
       alias IpseKnowledge.{Evidence, Graph}
-      alias IpseKnowledge.Test.CASFixture, as: F
+      alias Ipse.Development.Fixtures.Knowledge, as: F
       future=System.system_time(:millisecond)+3_600_000
       for {id,observed,from,until,inside,outside} <- [
         {"future-fact",1,future,nil,future,future-1},
@@ -845,7 +846,7 @@ defmodule IpseKnowledge.PackagesIsolationTest do
     end
 
     defp graph_drive({:ok,%{"kind"=>"host_call","request"=>request},state},db) do
-      {outcome,db}=IpseKnowledge.Test.CASFixture.host(db,request)
+      {outcome,db}=Ipse.Development.Fixtures.Knowledge.host(db,request)
       graph_drive(IpseKnowledge.Graph.handle("host.actions",%{"outcome"=>outcome},state),db)
     end
 

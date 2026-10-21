@@ -8,16 +8,21 @@ defmodule Ipse.KnowledgeStoreTest do
     args =
       Enum.flat_map(:code.get_path(), &["-pa", List.to_string(&1)]) ++
         Enum.flat_map(paths, &["-r", Path.join(@root, "extensions/knowledge/src/" <> &1)]) ++
-        ["-r", Path.join(@root, "test/support/knowledge_mcp_fixture.exs")]
+        [
+          "-r",
+          Path.join(@root, "dev/verification/cli.exs"),
+          "-e",
+          "Ipse.Development.Verification.Runtime.load_fixture!(:knowledge)"
+        ]
 
     bootstrap = ~S'''
     import ExUnit.Assertions
     alias IpseKnowledge.Evidence, as: E
     alias IpseKnowledge.Store, as: S
-    alias IpseKnowledge.Test.CASFixture, as: F
+    alias Ipse.Development.Fixtures.Knowledge, as: F
     defmodule Driver do
       def run({:call,request,continuation},db) do
-        {outcome,db}=IpseKnowledge.Test.CASFixture.host(db,request)
+        {outcome,db}=Ipse.Development.Fixtures.Knowledge.host(db,request)
         run(IpseKnowledge.Store.resume(continuation,outcome),db)
       end
       def run(result,db), do: {result,db}
@@ -25,7 +30,7 @@ defmodule Ipse.KnowledgeStoreTest do
       def hold({:call,%{"op"=>"mcp.call","arguments"=>%{"action"=>action}},_}=call,db)
         when action in ~w(put_immutable_many cas_root collect),do: {call,db}
       def hold({:call,request,continuation},db) do
-        {outcome,db}=IpseKnowledge.Test.CASFixture.host(db,request)
+        {outcome,db}=Ipse.Development.Fixtures.Knowledge.host(db,request)
         hold(IpseKnowledge.Store.resume(continuation,outcome),db)
       end
 
@@ -422,7 +427,7 @@ defmodule Ipse.KnowledgeStoreTest do
       def run({:call,%{"op"=>"state.put"},_}=pending,db),do: {pending,db}
       def run({:call,%{"op"=>"mcp.call","arguments"=>%{"action"=>"cas_root"}},_}=pending,db),do: {pending,db}
       def run({:call,request,continuation},db) do
-        {outcome,db}=IpseKnowledge.Test.CASFixture.host(db,request)
+        {outcome,db}=Ipse.Development.Fixtures.Knowledge.host(db,request)
         run(IpseKnowledge.Store.resume(continuation,outcome),db)
       end
     end

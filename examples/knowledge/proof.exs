@@ -6,6 +6,19 @@ defmodule IpseKnowledgeExample.Proof do
   alias Ipse.Extensions.{Config, Registry, Store}
   @text "Release requires quiescence. Quiescence requires worker exit."
   @at 1_700_000_020_000
+  @options Map.new(
+             [
+               {"corpus", "corpus-lexical"},
+               {"graph", "graph-explicit"},
+               {"research", "research-offline"}
+             ],
+             fn {package, preset} ->
+               path =
+                 Path.expand("../../extensions/knowledge/options/" <> preset <> ".json", __DIR__)
+
+               {package, Jason.decode!(File.read!(path))}
+             end
+           )
 
   defmodule NoModel do
     def complete(_, _, _, _), do: raise("Explicit knowledge proof called the conversation model")
@@ -777,16 +790,7 @@ defmodule IpseKnowledgeExample.Proof do
     {:ok, imported} = Store.import(artifact, Path.join(home, "extensions/artifacts"))
     manifest = Jason.decode!(File.read!(Path.join(artifact, "extension.json")))
     "ipse-knowledge/" <> ^package = manifest["id"]
-    options_path = Path.expand("../../extensions/knowledge/options/", __DIR__)
-
-    file =
-      case package do
-        "corpus" -> "corpus-lexical.json"
-        "graph" -> "graph-explicit.json"
-        "research" -> "research-offline.json"
-      end
-
-    options = Jason.decode!(File.read!(Path.join(options_path, file)))
+    options = Map.fetch!(@options, package)
 
     options =
       if overrides[:retrieval],

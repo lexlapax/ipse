@@ -1,4 +1,4 @@
-defmodule MeasuredKnowledgeVerification do
+defmodule Ipse.Development.Verification.MeasuredKnowledge do
   @moduledoc false
   alias IpseKnowledgeExample.{
     EvaluationFreeze,
@@ -8,54 +8,36 @@ defmodule MeasuredKnowledgeVerification do
 
   @variants ~w(lexical graph_explicit graph_model dense hybrid rerank research)
 
-  def build_artifacts(root, repository) do
-    {:ok, launch} = EvaluationFreeze.runtime_launch()
-    File.mkdir!(root)
-    File.chmod!(root, 0o700)
+  def run(repository, artifact_file, output, selection) do
+    {:ok, _} = Application.ensure_all_started(:ipse)
+    artifacts = JSON.decode!(File.read!(artifact_file))
 
-    Map.new(
-      [
-        {"lexical", "corpus", "state-lexical"},
-        {"dense", "corpus", "state-dense"},
-        {"semantic", "corpus", "state-semantic"},
-        {"explicit", "graph", "state-explicit"},
-        {"model", "graph", "state-model"},
-        {"research", "research", "mcp"},
-        {"answer", nil, nil}
-      ],
-      fn {name, package, preset} ->
-        output = Path.join(root, name)
-
-        script =
-          if package, do: "extensions/knowledge/build.exs", else: "scripts/build-artifact.exs"
-
-        argv = ["--sdk", Application.app_dir(:ipse, "ebin"), "--output", output]
-
-        argv =
-          if package,
-            do: argv ++ ["--package", package, "--preset", preset],
-            else: ["model-calls" | argv]
-
-        {executable, args} =
-          EvaluationMeasuredExecution.command(
-            launch,
-            [Path.join(repository, script)],
-            ":ok",
-            argv
-          )
-
-        {log, code} =
-          System.cmd(executable, args,
-            cd: repository,
-            env: [{"ERL_CRASH_DUMP", "/dev/null"}],
-            stderr_to_stdout: true
-          )
-
-        save!(Path.join(root, name <> ".build.log"), log)
-        unless code == 0, do: raise("synthetic artifact build failed: " <> name)
-        {name, output}
+    {contract, generation} =
+      case selection do
+        "default" -> {nil, 2}
+        "sealed" -> {"sealed_answers_v1", 2}
+        "structured" -> {nil, 3}
+        "sealed-structured" -> {"sealed_answers_v1", 3}
       end
-    )
+
+    run =
+      prepare(Path.join(output, "run"), repository, artifacts,
+        data_contract: contract,
+        generation: generation
+      )
+
+    result = verify(run)
+
+    scoring =
+      Ipse.Development.Verification.MeasuredKnowledge.Scoring.verify(run, result, repository)
+
+    %{
+      "synthetic" => true,
+      "model_quality_measured" => false,
+      "result" => result,
+      "scoring" => scoring,
+      "evidence" => output
+    }
   end
 
   def prepare(root, repository, artifacts, options \\ []) do
@@ -74,7 +56,10 @@ defmodule MeasuredKnowledgeVerification do
     origin = "http://127.0.0.1:#{free_port()}"
     search_port = free_port()
     true = search_port != URI.parse(origin).port
-    service = MeasuredModelFixture.configuration(root, launch, origin, fault)
+
+    service =
+      Ipse.Development.Fixtures.ModelService.configuration(root, launch, origin, fault, true)
+
     data_root = Path.join(root, "data")
     File.mkdir!(data_root)
     File.chmod!(data_root, 0o700)
@@ -532,5 +517,268 @@ defmodule MeasuredKnowledgeVerification do
     Path.wildcard(Path.join(root, "**/*"))
     |> Enum.filter(&File.regular?/1)
     |> Map.new(fn path -> {path, Ipse.JSON.sha256(File.read!(path))} end)
+  end
+end
+
+defmodule Ipse.Development.Verification.MeasuredKnowledge.Scoring do
+  @moduledoc "Post-execution controls for the measured CLI audit and label boundary."
+  alias IpseKnowledgeExample.{EvaluationFreeze, EvaluationMeasuredExecution, EvaluationRunner}
+  @log_limit 1_048_576
+
+  def verify(run, result, repository) do
+    root = Path.join(run.root, "scoring-controls")
+    File.mkdir!(root)
+    File.chmod!(root, 0o700)
+    for leaf <- ~w(home tmp), do: mkdir!(Path.join(root, leaf))
+    {:ok, verified} = EvaluationFreeze.verify(run.seal["path"], run.seal["sha256"])
+    execution = EvaluationMeasuredExecution.execution_context!(verified)
+    true = verified["manifest"]["version"] == 2
+    true = result["execution_complete"] and result["resource_complete"]
+    prediction = Path.join(run.reports, "predictions.jsonl")
+    data = verified["resolution"]["data_manifest"]
+
+    labels =
+      if run.answers do
+        false = File.exists?(run.labels)
+        save!(run.labels, run.answers)
+        run.labels
+      else
+        Path.join(Path.dirname(data), verified["plan"]["data"]["queries"])
+      end
+
+    common = [
+      freeze: run.seal["path"],
+      freeze_sha256: run.seal["sha256"],
+      audit_sha256: result["sha256"],
+      data_manifest: data,
+      predictions: prediction,
+      prediction_sha256: result["prediction_sha256"]
+    ]
+
+    unchanged = snapshot!(run.root, root)
+    packet = Path.join(root, "review")
+    review_options = common ++ [output: packet] ++ if(run.answers, do: [labels: labels], else: [])
+    {review, 0} = cli!(execution, repository, root, "review", :review, review_options)
+    true = review["status"] == "ok"
+    true = review["result"]["rows"] == result["rows"]
+    true = review["result"]["reference_integrity_complete"]
+    packet_manifest = Path.join(packet, "manifest.json") |> File.read!() |> JSON.decode!()
+    true = packet_manifest["execution_freeze_sha256"] == run.seal["sha256"]
+    true = packet_manifest["data_manifest_sha256"] == verified["plan"]["data"]["manifest_sha256"]
+    template = Path.join(packet, "reviews-template.json") |> File.read!() |> JSON.decode!()
+    2 = template["version"]
+    true = template["review_binding_sha256"] == packet_manifest["review_binding_sha256"]
+
+    score_options =
+      common ++
+        [
+          labels: labels,
+          reviews: Path.join(packet, "reviews-template.json"),
+          output: Path.join(root, "score")
+        ]
+
+    {score, 1} = cli!(execution, repository, root, "score", :score, score_options)
+    true = score["status"] == "failed"
+    false = score["result"]["quality_gates_passed"]
+    "unmeasured" = score["result"]["gates"]["support"]["status"]
+    true = File.regular?(Path.join(root, "score/scores.json"))
+    true = snapshot!(run.root, root) == unchanged
+
+    binding_refusals =
+      for {name, code, changed} <- [
+            {"wrong-review-binding", "review_binding_mismatch",
+             Map.put(
+               template,
+               "review_binding_sha256",
+               different_hash(template["review_binding_sha256"])
+             )},
+            {"missing-review-binding", "invalid_reviews",
+             Map.delete(template, "review_binding_sha256")},
+            {"legacy-review", "invalid_reviews", Map.put(template, "version", 1)}
+          ] do
+        file = Path.join(root, name <> ".json")
+        save!(file, JSON.encode!(changed) <> "\n")
+        output = Path.join(root, name)
+        unopened = Path.join(root, "must-not-open-binding-labels.json")
+
+        options =
+          common ++ [labels: unopened, reviews: file, output: output]
+
+        {:error, %{"code" => actual}} = EvaluationRunner.run(:score, options)
+        true = actual == code
+        {:error, :enoent} = File.lstat(output)
+        {:error, :enoent} = File.lstat(unopened)
+        true = snapshot!(run.root, root) == unchanged
+        %{"case" => name, "code" => actual}
+      end
+
+    unopened = %{
+      labels: Path.join(root, "must-not-open-labels.json"),
+      reviews: Path.join(root, "must-not-open-reviews.json"),
+      data_manifest: Path.join(root, "must-not-open-data-manifest.json"),
+      predictions: Path.join(root, "must-not-open-predictions.jsonl")
+    }
+
+    controls = [
+      {"missing-audit", :measured_audit_required, &Keyword.delete(&1, :audit_sha256)},
+      {"wrong-audit", :measured_audit_mismatch,
+       &Keyword.put(&1, :audit_sha256, different_hash(result["sha256"]))},
+      {"wrong-prediction", :measured_audit_mismatch,
+       &Keyword.put(&1, :prediction_sha256, different_hash(result["prediction_sha256"]))},
+      {"wrong-data-path", :measured_input_mismatch,
+       &Keyword.put(&1, :data_manifest, unopened.data_manifest)},
+      {"wrong-prediction-path", :measured_input_mismatch,
+       &Keyword.put(&1, :predictions, unopened.predictions)}
+    ]
+
+    refused =
+      for phase <- [:review, :score], {name, code, change} <- controls do
+        output = Path.join(root, Atom.to_string(phase) <> "-" <> name)
+
+        options =
+          if phase == :score,
+            do: common ++ [labels: unopened.labels, reviews: unopened.reviews, output: output],
+            else: common ++ [output: output]
+
+        {:error, %{"code" => actual}} = EvaluationRunner.run(phase, change.(options))
+        true = actual == Atom.to_string(code)
+        {:error, :enoent} = File.lstat(output)
+        for path <- Map.values(unopened), do: {:error, :enoent} = File.lstat(path)
+        true = snapshot!(run.root, root) == unchanged
+        %{"phase" => Atom.to_string(phase), "case" => name, "code" => actual}
+      end
+
+    summary = %{
+      "version" => 1,
+      "synthetic" => true,
+      "model_quality_measured" => false,
+      "freeze_sha256" => run.seal["sha256"],
+      "audit_sha256" => result["sha256"],
+      "prediction_sha256" => result["prediction_sha256"],
+      "review_cli" => "passed",
+      "score_cli" => "unmeasured_quality_refused",
+      "refusals" => refused,
+      "review_binding_refusals" => binding_refusals,
+      "unopened_label_and_review_inputs" => true,
+      "evaluation_artifacts_and_model_request_logs_unchanged" => true,
+      "new_model_work" => false,
+      "answer_contract" => verified["plan"]["data"]["contract"],
+      "answers_absent_through_measured_audit" => is_binary(run.answers)
+    }
+
+    save!(Path.join(root, "verification.json"), JSON.encode!(summary) <> "\n")
+    summary
+  end
+
+  defp cli!(execution, repository, root, name, phase, options) do
+    argv =
+      ["--phase", Atom.to_string(phase)] ++
+        Enum.flat_map(options, fn {key, value} ->
+          ["--" <> (key |> Atom.to_string() |> String.replace("_", "-")), value]
+        end)
+
+    {executable, arguments} =
+      case execution do
+        {:source, launch} ->
+          EvaluationMeasuredExecution.command(
+            launch,
+            [Path.join(repository, "scripts/evaluate-knowledge.exs")],
+            ":ok",
+            argv
+          )
+
+        {:precompiled, _} ->
+          EvaluationMeasuredExecution.precompiled_command(
+            execution,
+            :cli,
+            "Ipse.Development.Evaluation.CLI.main(System.argv())",
+            argv
+          )
+      end
+
+    launch =
+      case execution do
+        {:source, launch} -> launch
+        {:precompiled, runtime} -> runtime["launch"]
+      end
+
+    selected =
+      case execution do
+        {:precompiled, _} ->
+          EvaluationMeasuredExecution.verification_environment(
+            execution,
+            Path.join(root, "home"),
+            Path.join(root, "tmp")
+          )
+
+        {:source, _} ->
+          %{
+            "PATH" => Path.dirname(launch["executable"]) <> ":/usr/bin:/bin",
+            "LANG" => "C.UTF-8",
+            "HOME" => Path.join(root, "home"),
+            "IPSE_HOME" => Path.join(root, "home/.ipse"),
+            "TMPDIR" => Path.join(root, "tmp")
+          }
+      end
+
+    environment =
+      Map.new(Map.keys(System.get_env()), &{&1, nil})
+      |> Map.merge(selected)
+      |> Map.put("ERL_CRASH_DUMP", "/dev/null")
+      |> Map.to_list()
+
+    {bytes, status} =
+      System.cmd(executable, arguments,
+        cd: repository,
+        env: environment,
+        stderr_to_stdout: true
+      )
+
+    log = Path.join(root, name <> ".log")
+    save!(log, binary_part(bytes, 0, min(byte_size(bytes), @log_limit)))
+    true = byte_size(bytes) <= @log_limit
+
+    {:ok, message} =
+      bytes |> String.split("\n", trim: true) |> List.last() |> Ipse.JSON.decode_unique()
+
+    {message, status}
+  end
+
+  defp snapshot!(root, excluded) do
+    paths = Path.wildcard(Path.join(root, "**/*"), match_dot: true)
+    true = length(paths) <= 65_536
+
+    paths
+    |> Enum.reject(&(&1 == excluded or String.starts_with?(&1, excluded <> "/")))
+    |> Enum.flat_map(fn path ->
+      case File.lstat!(path) do
+        %{type: :directory} ->
+          []
+
+        %{type: :regular, size: size} when size <= 67_108_864 ->
+          digest =
+            path
+            |> File.stream!(1_048_576, [])
+            |> Enum.reduce(:crypto.hash_init(:sha256), &:crypto.hash_update(&2, &1))
+            |> :crypto.hash_final()
+            |> Base.encode16(case: :lower)
+
+          [{path, %{"bytes" => size, "sha256" => digest}}]
+      end
+    end)
+    |> Map.new()
+  end
+
+  defp different_hash(<<first, tail::binary>>),
+    do: <<if(first == ?0, do: ?1, else: ?0), tail::binary>>
+
+  defp mkdir!(path) do
+    File.mkdir!(path)
+    File.chmod!(path, 0o700)
+  end
+
+  defp save!(path, bytes) do
+    File.write!(path, bytes, [:exclusive, :sync])
+    File.chmod!(path, 0o600)
   end
 end

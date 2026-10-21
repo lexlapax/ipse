@@ -1,6 +1,23 @@
-defmodule ModelServiceVerification do
+defmodule Ipse.Development.Verification.ModelService do
   @moduledoc false
   alias IpseKnowledgeExample.EvaluationModelService, as: Service
+
+  def run(fixture, root) do
+    %{type: :directory} = File.lstat!(root)
+    {:ok, _} = Application.ensure_all_started(:ipse)
+
+    if :os.type() == {:unix, :linux} do
+      results = Enum.map(cases(), &verify_case(&1, fixture, Path.join(root, &1)))
+      %{"synthetic" => true, "cases" => results}
+    else
+      config = configuration(fixture, root)
+      output = Path.join(root, "unsupported-output")
+      result = Service.run(config, output, fn -> raise("unexpected callback") end)
+      :not_started = result.work
+      false = File.exists?(output)
+      %{"synthetic" => true, "unsupported_before_effects" => true}
+    end
+  end
 
   def cases do
     ~w(normal existing_output bad_blob source_symlink occupied_port forge forged_only flood traffic_limit bad_tags bad_show bad_thinking initial_resident changed_after gpu_after stall_tags wildcard exit_during_http callback_exception lifetime owner_death)

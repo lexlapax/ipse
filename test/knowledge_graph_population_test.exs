@@ -9,12 +9,13 @@ defmodule Ipse.KnowledgeGraphPopulationTest do
   corpus=File.read!("extensions/knowledge/src/corpus.ex")
     |>String.replace(~s(@preset "state-lexical"),~s(@preset "state-dense"))
   Code.compile_string(corpus,"extensions/knowledge/src/corpus.ex")
-  Code.require_file("test/support/knowledge_mcp_fixture.exs")
+  Code.require_file("dev/verification/cli.exs")
+  Ipse.Development.Verification.Runtime.load_fixture!(:knowledge)
 
   defmodule PopulationDriver do
     import ExUnit.Assertions
     alias IpseKnowledge.{Evidence,Graph,Corpus}
-    alias IpseKnowledge.Test.CASFixture,as: F
+    alias Ipse.Development.Fixtures.Knowledge,as: F
     def invoke(module,state,db,id,args) do
       assert Ipse.Extension.validate(args)==:ok
       run(module,module.handle("invoke.command",%{"id"=>id,"arguments"=>args},state),db)

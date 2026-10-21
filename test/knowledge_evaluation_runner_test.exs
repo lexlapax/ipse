@@ -1,3 +1,5 @@
+Code.require_file("../dev/verification/cli.exs", __DIR__)
+Ipse.Development.Verification.Runtime.load_fixture!(:knowledge)
 Code.require_file("../examples/knowledge/evaluation_runner.exs", __DIR__)
 
 defmodule Ipse.KnowledgeEvaluationRunnerTest do
@@ -343,135 +345,315 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
     end
   end
 
+  @tag timeout: 120_000, source_evaluation: true
   test "Research approves four fetches and distinguishes reused typed versions with identical replacement bytes",
        ctx do
-    {server, origin, tag} = model_fixture()
-    root = Path.join(ctx.root, Ipse.Usage.id())
-    File.mkdir!(root)
-    text = "Release requires quiescence."
+    for execution <- [:direct, :public_cli, :public_borrowed, :public_frozen] do
+      {server, origin, tag} = model_fixture()
+      root = Path.join(ctx.root, Ipse.Usage.id())
+      File.mkdir!(root)
+      text = "Release requires quiescence."
 
-    docs =
-      for n <- 1..4, generation <- 1..2 do
-        %{
-          "document_id" => "d#{n}",
-          "project" => "alpha",
-          "source_id" => "s#{n}",
-          "generation" => generation,
-          "version" => if(rem(n, 2) == 0 and generation == 2, do: "1", else: 1),
-          "title" => "Release",
-          "text" => text,
-          "created_at" => "2026-01-01T00:00:00Z",
-          "observed_at" => "2026-03-01T00:00:00Z",
-          "state" => "current",
-          "sha256" => Ipse.JSON.sha256(text),
-          "byte_length" => byte_size(text),
-          "media_type" => "text/plain"
-        }
+      docs =
+        for n <- 1..4, generation <- 1..2 do
+          %{
+            "document_id" => "d#{n}",
+            "project" => "alpha",
+            "source_id" => "s#{n}",
+            "generation" => generation,
+            "version" => if(rem(n, 2) == 0 and generation == 2, do: "1", else: 1),
+            "title" => "Release",
+            "text" => text,
+            "created_at" => "2026-01-01T00:00:00Z",
+            "observed_at" => "2026-03-01T00:00:00Z",
+            "state" => "current",
+            "sha256" => Ipse.JSON.sha256(text),
+            "byte_length" => byte_size(text),
+            "media_type" => "text/plain"
+          }
+        end
+
+      plan =
+        matrix_plan(ctx, origin)
+        |> Map.put("answer", false)
+        |> Map.update!("variants", fn variants ->
+          [research] = Enum.filter(variants, &(&1["id"] == "research"))
+
+          research =
+            research
+            |> Map.update!("bindings", &Map.delete(&1, "answer"))
+            |> Map.update!(
+              "artifacts",
+              &Enum.reject(&1, fn entry -> entry["instance"] == "answer" end)
+            )
+            |> put_in(["query_options", "limits", "max_sources"], 4)
+
+          [research]
+        end)
+        |> put_in(["data", "expected_queries"], 1)
+
+      queries = %{
+        "schema_version" => 1,
+        "queries" => [
+          %{
+            "query_id" => "Q1",
+            "project" => "alpha",
+            "split" => "fixture",
+            "query" => "Release",
+            "expected_answer" => "NEVER_PROVIDER_INPUT"
+          }
+        ]
+      }
+
+      for {name, value} <- [
+            {"plan", plan},
+            {"corpus", %{"schema_version" => 1, "documents" => docs}},
+            {"queries", queries}
+          ] do
+        File.write!(Path.join(root, name <> ".json"), JSON.encode!(value))
       end
 
-    plan =
-      matrix_plan(ctx, origin)
-      |> Map.put("answer", false)
-      |> Map.update!("variants", fn variants ->
-        [research] = Enum.filter(variants, &(&1["id"] == "research"))
+      output = Path.join(root, "results")
 
-        research =
-          research
-          |> Map.update!("bindings", &Map.delete(&1, "answer"))
-          |> Map.update!(
-            "artifacts",
-            &Enum.reject(&1, fn entry -> entry["instance"] == "answer" end)
-          )
-          |> put_in(["query_options", "limits", "max_sources"], 4)
+      try do
+        assert :ok = Contract.validate(plan)
 
-        [research]
-      end)
-      |> put_in(["data", "expected_queries"], 1)
+        options = [
+          plan: Path.join(root, "plan.json"),
+          corpus: Path.join(root, "corpus.json"),
+          queries: Path.join(root, "queries.json"),
+          output: output
+        ]
 
-    queries = %{
-      "schema_version" => 1,
-      "queries" => [
-        %{
-          "query_id" => "Q1",
-          "project" => "alpha",
-          "split" => "fixture",
-          "query" => "Release",
-          "expected_answer" => "NEVER_PROVIDER_INPUT"
-        }
-      ]
-    }
+        report =
+          case execution do
+            :direct ->
+              assert {:ok, report} = Runner.run(:verify, options)
+              report
 
-    for {name, value} <- [
-          {"plan", plan},
-          {"corpus", %{"schema_version" => 1, "documents" => docs}},
-          {"queries", queries}
-        ] do
-      File.write!(Path.join(root, name <> ".json"), JSON.encode!(value))
-    end
+            mode when mode in [:public_cli, :public_borrowed] ->
+              temporary = Path.join(root, "tmp")
+              File.mkdir!(temporary)
+              env = [{"TMPDIR", temporary}]
 
-    output = Path.join(root, "results")
+              borrowed =
+                if mode == :public_borrowed do
+                  directory = Path.join(root, "shared-fixture")
+                  File.mkdir!(directory)
 
-    try do
-      assert :ok = Contract.validate(plan)
+                  for module <- [
+                        Ipse.Development.Fixtures.Knowledge,
+                        Ipse.Development.Fixtures.Knowledge.Backend
+                      ] do
+                    File.cp!(
+                      to_string(:code.which(module)),
+                      Path.join(directory, Atom.to_string(module) <> ".beam")
+                    )
+                  end
 
-      assert {:ok, report} =
-               Runner.run(:verify,
-                 plan: Path.join(root, "plan.json"),
-                 corpus: Path.join(root, "corpus.json"),
-                 queries: Path.join(root, "queries.json"),
-                 output: output
-               )
+                  File.cp!(
+                    Application.app_dir(:ipse, "ebin/Elixir.Ipse.JSON.beam"),
+                    Path.join(directory, "Elixir.Ipse.JSON.beam")
+                  )
 
-      events = jsonl(Path.join(output, "execution.jsonl"))
-      calls = JSON.decode!(File.read!(Path.join(output, "gateway-calls.json")))
+                  directory
+                end
 
-      assert report["failed_rows"] == 0,
-             inspect(%{
-               failed_rows: report["failed_rows"],
-               approval_refusals: Enum.count(events, &(&1["phase"] == "approval_refused")),
-               gateway_calls: length(calls)
-             })
+              argv =
+                ["--phase", "verify"] ++
+                  Enum.flat_map(options, fn {key, value} ->
+                    ["--" <> Atom.to_string(key), value]
+                  end)
 
-      assert report["execution_complete"]
-      [row] = jsonl(Path.join(output, "predictions.jsonl"))
-      assert row["status"] == "ok" and length(row["evidence"]) == 4
-      assert Enum.sort(Enum.map(row["evidence"], & &1["source"]["source_id"])) == ~w(s1 s2 s3 s4)
+              assert {%{"status" => "ok", "result" => report}, 0} =
+                       cli(argv, File.cwd!(), env, borrowed)
 
-      assert Enum.all?(row["evidence"], fn span ->
-               expected_version = if span["source"]["source_id"] in ~w(s2 s4), do: "1", else: 1
+              assert Path.wildcard(Path.join(temporary, "ipse-verification-*")) == []
 
-               span["source"]["generation"] == 2 and
-                 span["source"]["version"] === expected_version and
-                 span["source"]["sha256"] == Ipse.JSON.sha256(text) and
-                 span["quote"] == text
-             end)
+              failed =
+                options
+                |> Keyword.put(:corpus, Path.join(root, "missing"))
+                |> Keyword.put(:output, Path.join(root, "failed-results"))
 
-      receipt = Enum.find(events, &(&1["verb"] == "research" and is_map(&1["value"])))
+              failed_argv =
+                ["--phase", "verify"] ++
+                  Enum.flat_map(failed, fn {key, value} ->
+                    ["--" <> Atom.to_string(key), value]
+                  end)
 
-      assert Enum.all?(receipt["value"]["evidence"], fn candidate ->
-               candidate["citation"]["generation"] == 1 and
-                 String.starts_with?(candidate["citation"]["uri"], "dataset:alpha:")
-             end)
+              assert {%{"status" => "failed"}, 1} = cli(failed_argv, File.cwd!(), env, borrowed)
+              assert Path.wildcard(Path.join(temporary, "ipse-verification-*")) == []
+              if borrowed, do: assert(length(File.ls!(borrowed)) == 3)
+              report
 
-      assert receipt["value"]["evidence"]
-             |> Enum.map(& &1["citation"]["uri"])
-             |> Enum.uniq()
-             |> length() == 4
+            :public_frozen ->
+              repository = fixture_repository!(root)
 
-      assert Enum.count(calls, &(&1["tool"] == "fetch")) == 4
+              members =
+                for name <- ~w(corpus queries),
+                    do: %{
+                      "path" => name <> ".json",
+                      "sha256" => Ipse.JSON.sha256(File.read!(Path.join(root, name <> ".json")))
+                    }
 
-      assert JSON.decode!(File.read!(Path.join(output, "gateway-summary.json"))) ==
-               %{
-                 "call_limit" => 5,
-                 "recorded_calls" => 5,
-                 "rejected_over_limit" => 0,
-                 "request_count" => 5
-               }
+              manifest = Path.join(root, "manifest.json")
+              bytes = JSON.encode!(%{"files" => members})
+              File.write!(manifest, bytes)
 
-      assert drain(tag, []) == []
-      assert :code.is_loaded(IpseKnowledge.Research) == false
-    after
-      stop_model_fixture(server)
+              File.write!(
+                options[:plan],
+                JSON.encode!(put_in(plan, ["data", "manifest_sha256"], Ipse.JSON.sha256(bytes)))
+              )
+
+              seal_output = Path.join(root, "seal")
+
+              assert {%{"status" => "ok", "result" => seal}, 0} =
+                       cli(
+                         ["--phase", "freeze", "--plan", options[:plan], "--output", seal_output],
+                         repository
+                       )
+
+              captured = JSON.decode!(File.read!(seal["path"]))
+              assert captured["version"] == 1
+              refute Map.has_key?(captured["runtime"], "launch")
+
+              pair =
+                for file <- captured["runtime"]["files"],
+                    String.starts_with?(
+                      Path.basename(file["path"]),
+                      "Elixir.Ipse.Development.Fixtures.Knowledge"
+                    ),
+                    do: file
+
+              assert length(pair) == 2
+
+              assert Enum.all?(
+                       pair,
+                       &(Path.dirname(&1["path"]) == seal_output <> ".runtime/runtime/harness")
+                     )
+
+              assert {%{"status" => "ok", "result" => report}, 0} =
+                       cli(
+                         [
+                           "--phase",
+                           "verify-frozen",
+                           "--freeze",
+                           seal["path"],
+                           "--freeze-sha256",
+                           seal["sha256"],
+                           "--data-manifest",
+                           manifest,
+                           "--output",
+                           output
+                         ],
+                         repository
+                       )
+
+              for file <- pair do
+                assert byte_size(File.read!(file["path"])) == file["bytes"]
+                assert Ipse.JSON.sha256(File.read!(file["path"])) == file["sha256"]
+              end
+
+              historical = Path.join(root, "historical")
+              File.mkdir!(historical)
+
+              old =
+                frozen_api_inputs(
+                  options[:plan],
+                  historical,
+                  manifest,
+                  repository,
+                  :source_only,
+                  false
+                )
+
+              assert old["prediction"]["error"]["code"] == "research_fixture_missing"
+              refute File.exists?(Path.join(historical, "frozen-results"))
+
+              refused = [
+                "--phase",
+                "verify-frozen",
+                "--freeze",
+                seal["path"],
+                "--freeze-sha256",
+                seal["sha256"],
+                "--data-manifest",
+                "must-not-open",
+                "--output",
+                Path.join(root, "refused")
+              ]
+
+              first = hd(pair)["path"]
+              original = File.read!(first)
+              File.write!(first, original <> "changed")
+
+              assert {%{"reason" => %{"code" => "frozen_runtime_refused"}}, 1} =
+                       cli(refused, repository)
+
+              File.write!(first, original)
+              File.rm!(List.last(pair)["path"])
+
+              assert {%{"reason" => %{"code" => "frozen_runtime_refused"}}, 1} =
+                       cli(refused, repository)
+
+              refute File.exists?(Path.join(root, "refused"))
+
+              report
+          end
+
+        events = jsonl(Path.join(output, "execution.jsonl"))
+        calls = JSON.decode!(File.read!(Path.join(output, "gateway-calls.json")))
+
+        assert report["failed_rows"] == 0,
+               inspect(%{
+                 failed_rows: report["failed_rows"],
+                 approval_refusals: Enum.count(events, &(&1["phase"] == "approval_refused")),
+                 gateway_calls: length(calls)
+               })
+
+        assert report["execution_complete"]
+        [row] = jsonl(Path.join(output, "predictions.jsonl"))
+        assert row["status"] == "ok" and length(row["evidence"]) == 4
+
+        assert Enum.sort(Enum.map(row["evidence"], & &1["source"]["source_id"])) ==
+                 ~w(s1 s2 s3 s4)
+
+        assert Enum.all?(row["evidence"], fn span ->
+                 expected_version = if span["source"]["source_id"] in ~w(s2 s4), do: "1", else: 1
+
+                 span["source"]["generation"] == 2 and
+                   span["source"]["version"] === expected_version and
+                   span["source"]["sha256"] == Ipse.JSON.sha256(text) and
+                   span["quote"] == text
+               end)
+
+        receipt = Enum.find(events, &(&1["verb"] == "research" and is_map(&1["value"])))
+
+        assert Enum.all?(receipt["value"]["evidence"], fn candidate ->
+                 candidate["citation"]["generation"] == 1 and
+                   String.starts_with?(candidate["citation"]["uri"], "dataset:alpha:")
+               end)
+
+        assert receipt["value"]["evidence"]
+               |> Enum.map(& &1["citation"]["uri"])
+               |> Enum.uniq()
+               |> length() == 4
+
+        assert Enum.count(calls, &(&1["tool"] == "fetch")) == 4
+
+        assert JSON.decode!(File.read!(Path.join(output, "gateway-summary.json"))) ==
+                 %{
+                   "call_limit" => 5,
+                   "recorded_calls" => 5,
+                   "rejected_over_limit" => 0,
+                   "request_count" => 5
+                 }
+
+        assert drain(tag, []) == []
+        assert :code.is_loaded(IpseKnowledge.Research) == false
+      after
+        stop_model_fixture(server)
+      end
     end
   end
 
@@ -1573,26 +1755,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
       end)
 
     File.write!(paths["queries"], JSON.encode!(label_input))
-    repository = Path.join(root, "repository")
-    File.mkdir!(repository)
-    File.write!(Path.join(repository, "README.md"), "Synthetic CLI identity fixture.\n")
-
-    for args <- [
-          ["init", "-q"],
-          ["add", "README.md"],
-          [
-            "-c",
-            "user.name=Fixture",
-            "-c",
-            "user.email=fixture@example.invalid",
-            "commit",
-            "-qm",
-            "Synthetic fixture"
-          ]
-        ] do
-      {message, status} = System.cmd("git", ["-C", repository | args], stderr_to_stdout: true)
-      assert status == 0, message
-    end
+    repository = fixture_repository!(root)
 
     members =
       for name <- ~w(corpus queries),
@@ -1630,18 +1793,28 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
     {paths, root, manifest, sealed, frozen}
   end
 
-  defp frozen_api_inputs(plan, root, manifest, repository, mode) do
+  defp frozen_api_inputs(plan, root, manifest, repository, mode, include_fixture \\ true) do
     code = """
     [source, plan, seal_output, manifest, output, mode] = System.argv()
     Code.require_file(source)
     alias IpseKnowledgeExample.EvaluationRunner, as: Runner
     {:ok, sealed} = Runner.run(:freeze, plan: plan, output: seal_output)
     prediction =
-      if mode == "predictions" do
-        {:ok, prediction} = Runner.run(:verify_frozen,
-          freeze: sealed["path"], freeze_sha256: sealed["sha256"],
-          data_manifest: manifest, output: output)
-        prediction
+      case mode do
+        "predictions" ->
+          {:ok, prediction} = Runner.run(:verify_frozen,
+            freeze: sealed["path"], freeze_sha256: sealed["sha256"],
+            data_manifest: manifest, output: output)
+          prediction
+        "source_only" ->
+          Code.require_file(Path.expand("../../dev/fixtures/knowledge.exs", Path.dirname(source)))
+          true = Code.ensure_loaded?(Ipse.Development.Fixtures.Knowledge)
+          [] = :code.which(Ipse.Development.Fixtures.Knowledge)
+          {:error, error} = Runner.run(:verify_frozen,
+            freeze: sealed["path"], freeze_sha256: sealed["sha256"],
+            data_manifest: "must-not-open", output: output)
+          %{"error" => error}
+        _ -> nil
       end
     IO.puts(JSON.encode!(%{"status" => "ok", "result" => sealed, "prediction" => prediction}))
     """
@@ -1652,7 +1825,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
     {output, status} =
       System.cmd(
         System.find_executable("elixir"),
-        cli_code_paths() ++
+        cli_code_paths(include_fixture) ++
           [
             "-e",
             code,
@@ -1723,7 +1896,32 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
     {paths, root}
   end
 
-  defp cli(arguments, cwd \\ File.cwd!()) do
+  defp fixture_repository!(root) do
+    repository = Path.join(root, "repository")
+    File.mkdir!(repository)
+    File.write!(Path.join(repository, "README.md"), "Synthetic CLI identity fixture.\n")
+
+    for args <- [
+          ["init", "-q"],
+          ["add", "README.md"],
+          [
+            "-c",
+            "user.name=Fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "commit",
+            "-qm",
+            "Synthetic fixture"
+          ]
+        ] do
+      {message, status} = System.cmd("git", ["-C", repository | args], stderr_to_stdout: true)
+      assert status == 0, message
+    end
+
+    repository
+  end
+
+  defp cli(arguments, cwd \\ File.cwd!(), env \\ [], fixture \\ nil) do
     phase =
       case arguments do
         ["--phase", phase | _] when phase in ~w(freeze predict review score tune verify-frozen) ->
@@ -1737,12 +1935,22 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
     phase_timing(phase, "started", nil)
 
     try do
+      entry = Path.expand("scripts/evaluate-knowledge.exs")
+
+      preloaded = if fixture, do: "true", else: "false"
+
+      program =
+        "#{preloaded} = Code.ensure_loaded?(Ipse.Development.Fixtures.Knowledge); Code.require_file(#{inspect(entry)}); false = :code.is_loaded(IpseKnowledge.Research)"
+
+      paths = cli_code_paths(false) ++ if(fixture, do: ["-pa", fixture], else: [])
+
       {output, status} =
         System.cmd(
           System.find_executable("elixir"),
-          cli_code_paths() ++ [Path.expand("scripts/evaluate-knowledge.exs") | arguments],
+          paths ++ ["-e", program, "--" | arguments],
           stderr_to_stdout: true,
-          cd: cwd
+          cd: cwd,
+          env: env
         )
 
       {output |> String.split("\n", trim: true) |> List.last() |> JSON.decode!(), status}
@@ -1760,8 +1968,10 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
     end
   end
 
-  defp cli_code_paths do
+  defp cli_code_paths(include_fixture) do
     paths = Path.wildcard(Path.join([Path.dirname(Application.app_dir(:ipse)), "*", "ebin"]))
+    fixture = :code.which(Ipse.Development.Fixtures.Knowledge) |> to_string() |> Path.dirname()
+    paths = if include_fixture, do: [fixture | paths], else: paths
     Enum.flat_map(paths, &["-pa", &1])
   end
 

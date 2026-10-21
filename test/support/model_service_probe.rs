@@ -110,6 +110,7 @@ fn main() {
     assert!(PathBuf::from(std::env::var("TMPDIR").unwrap()).starts_with(&root));
     assert!(PathBuf::from(std::env::var("OLLAMA_MODELS").unwrap()).starts_with(&root));
     fs::write(home.join("environment-clean"), b"selected-only\n").unwrap();
+    fs::write(home.join("environment-path"), std::env::var("PATH").unwrap()).unwrap();
     fs::write(home.join("daemon.pid"), std::process::id().to_string()).unwrap();
 
     if lines[0] == "forge" || lines[0] == "forged_only" {

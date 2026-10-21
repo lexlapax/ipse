@@ -100,7 +100,10 @@ defmodule IpseKnowledgeExample.EvaluationModelService do
   end
 
   @doc "Run one fresh owned daemon lifetime; callback terms never enter diagnostics."
-  def run(config, output, work) do
+  def run(config, output, work), do: run(config, output, work, nil)
+
+  @doc false
+  def run(config, output, work, environment) do
     started = now()
 
     initial = %{
@@ -113,6 +116,7 @@ defmodule IpseKnowledgeExample.EvaluationModelService do
       listener: nil,
       port: nil,
       exit_status: nil,
+      finished: false,
       buffer: <<>>,
       traffic: 0,
       log_parts: [],
@@ -133,7 +137,8 @@ defmodule IpseKnowledgeExample.EvaluationModelService do
       validate(config) != :ok ->
         result(initial, :configuration, output, started)
 
-      not absolute?(output) or not is_function(work, 0) ->
+      not absolute?(output) or not is_function(work, 0) or
+          not (is_nil(environment) or is_function(environment, 2)) ->
         result(initial, :configuration, output, started)
 
       :os.type() != {:unix, :linux} ->
@@ -148,7 +153,7 @@ defmodule IpseKnowledgeExample.EvaluationModelService do
 
         task =
           Task.Supervisor.async_nolink(Ipse.Tasks, fn ->
-            guarded_operation(owner, token, config, output, work, deadline)
+            guarded_operation(owner, token, config, output, work, deadline, environment)
           end)
 
         send(task.pid, {token, :start})
@@ -174,7 +179,7 @@ defmodule IpseKnowledgeExample.EvaluationModelService do
     end
   end
 
-  defp guarded_operation(owner, token, config, output, work, deadline) do
+  defp guarded_operation(owner, token, config, output, work, deadline, constructor) do
     worker = self()
 
     guard =
@@ -206,6 +211,7 @@ defmodule IpseKnowledgeExample.EvaluationModelService do
       end
 
       staged = stage(config, output, deadline, owner, token)
+      staged = Map.put(staged, :environment, environment(config, staged.paths, constructor))
       send(owner, {token, :staged, staged})
 
       receive do
@@ -315,7 +321,7 @@ defmodule IpseKnowledgeExample.EvaluationModelService do
 
   defp launch_daemon(state) do
     timeout = state.deadline - now()
-    env = environment(state.config, state.staged.paths)
+    env = state.staged.environment
     port_number = URI.parse(state.config["origin"]).port
 
     if timeout <= 0 do
@@ -382,7 +388,7 @@ defmodule IpseKnowledgeExample.EvaluationModelService do
             kind when kind in [?O, ?S] -> log_prefix(state, kind, payload)
             ?P -> proof(state, payload)
             ?E -> %{state | code: :native_error}
-            ?X -> %{state | code: :service_exited}
+            ?X -> %{state | code: :service_exited, finished: true}
           end
 
         decode(next)
@@ -548,7 +554,8 @@ defmodule IpseKnowledgeExample.EvaluationModelService do
     do: %{state | native_cleanup: if(status in [0, 1], do: "confirmed", else: "unconfirmed")}
 
   defp close_daemon(state) do
-    cleanup = close_port(state.port, :cancel)
+    mode = if state.finished, do: :completed, else: :cancel
+    cleanup = close_port(state.port, mode)
 
     %{
       state
@@ -1054,24 +1061,40 @@ defmodule IpseKnowledgeExample.EvaluationModelService do
       "copy" => file.copy
     }
 
-  defp environment(config, paths),
-    do: %{
-      "PATH" => Path.join(paths.runtime, "bin") <> ":/usr/bin:/bin",
-      "LANG" => "C.UTF-8",
-      "HOME" => paths.home,
-      "TMPDIR" => paths.tmp,
-      "OLLAMA_MODELS" => paths.models,
-      "OLLAMA_HOST" => config["origin"],
-      "LD_LIBRARY_PATH" => Path.join(paths.runtime, "lib/ollama"),
-      "OLLAMA_NO_CLOUD" => "1",
-      "CUDA_VISIBLE_DEVICES" => "-1",
-      "ROCR_VISIBLE_DEVICES" => "-1",
-      "OLLAMA_VULKAN" => "0",
-      "GGML_VK_VISIBLE_DEVICES" => "-1",
-      "OLLAMA_NUM_PARALLEL" => "1",
-      "OLLAMA_MAX_LOADED_MODELS" => Integer.to_string(map_size(config["models"])),
-      "OLLAMA_KEEP_ALIVE" => "-1"
-    }
+  defp environment(config, paths, constructor) do
+    selected =
+      if constructor do
+        values = constructor.(paths.home, paths.tmp)
+        demand(exact?(values, ~w(PATH LANG HOME IPSE_HOME TMPDIR)), :environment)
+        demand(values["HOME"] == paths.home and values["TMPDIR"] == paths.tmp, :environment)
+        demand(values["IPSE_HOME"] == Path.join(paths.home, ".ipse"), :environment)
+        demand(values["LANG"] == "C.UTF-8" and is_binary(values["PATH"]), :environment)
+        values
+      else
+        %{}
+      end
+
+    Map.merge(
+      %{
+        "PATH" => Path.join(paths.runtime, "bin") <> ":/usr/bin:/bin",
+        "LANG" => "C.UTF-8",
+        "HOME" => paths.home,
+        "TMPDIR" => paths.tmp,
+        "OLLAMA_MODELS" => paths.models,
+        "OLLAMA_HOST" => config["origin"],
+        "LD_LIBRARY_PATH" => Path.join(paths.runtime, "lib/ollama"),
+        "OLLAMA_NO_CLOUD" => "1",
+        "CUDA_VISIBLE_DEVICES" => "-1",
+        "ROCR_VISIBLE_DEVICES" => "-1",
+        "OLLAMA_VULKAN" => "0",
+        "GGML_VK_VISIBLE_DEVICES" => "-1",
+        "OLLAMA_NUM_PARALLEL" => "1",
+        "OLLAMA_MAX_LOADED_MODELS" => Integer.to_string(map_size(config["models"])),
+        "OLLAMA_KEEP_ALIVE" => "-1"
+      },
+      selected
+    )
+  end
 
   defp result(state, code, output, started) do
     work_status =
@@ -1109,8 +1132,7 @@ defmodule IpseKnowledgeExample.EvaluationModelService do
       "log_scope" =>
         "O/S framed prefix through operation quiescence; Runner close drains excluded",
       "files" => Enum.reverse(state.staged_files),
-      "environment" =>
-        if(state.staged, do: environment(state.config, state.staged.paths), else: nil),
+      "environment" => if(state.staged, do: state.staged.environment, else: nil),
       "elapsed_ms" => max(now() - started, 0),
       "evidence" => output,
       "domain_cleanup" => "callback_owned_not_inferred",

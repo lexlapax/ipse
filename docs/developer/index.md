@@ -43,8 +43,9 @@ platform exclusion as enforcement evidence.
    saved validation. Understand what remains unknown after interruption.
 3. [Review authority and ownership](reviewing-changes.md) using a complete source
    path and both allowed/refused controls.
-4. [Verify the change](testing.md) with the nearest fixture, then the appropriate
-   source, OS and installed-runtime checks.
+4. [Verify the change](testing.md) with the nearest fixture. Use the common
+   source/installed proof command for the changed contract, then run applicable
+   OS and package checks.
 
 The public entry points are `Ipse.CLI`, `Ipse.Session` and `Ipse.Extension`.
 [`Ipse.Application`](../../lib/ipse/application.ex) starts shared services. Session
@@ -117,8 +118,9 @@ independent Corpus, Research and Graph workers, source-root publication, exact
 citations and projection preflight, with a ranker change exercise.
 [Knowledge evaluation](knowledge-evaluation.md) teaches independent dataset commitments,
 detached answer custody, prediction/label separation,
-complete measured execution through the optional Linux backend, private model
-service ownership and separate retrieval, span and semantic measurements.
+captured runtime preparation and cold audit, complete measured execution through
+the optional Linux backend, private model-service ownership and separate
+retrieval, span and semantic measurements.
 [Capability placement](runtime-capabilities.md) helps decide when a new generic
 host contract is necessary.
 

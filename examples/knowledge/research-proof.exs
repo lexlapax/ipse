@@ -1,12 +1,10 @@
 Code.require_file("evaluation_session.exs", __DIR__)
 
-Code.require_file("../../test/support/knowledge_mcp_fixture.exs", __DIR__)
-
 defmodule IpseKnowledgeExample.ResearchProof do
   @moduledoc false
   alias Ipse.{Session, Journal}
   alias Ipse.Extensions.{Config, Registry, Store}
-  alias IpseKnowledge.Test.CASFixture, as: Fixture
+  alias Ipse.Development.Fixtures.Knowledge, as: Fixture
   @query "quiescence"
   @uri "fixture:release"
 

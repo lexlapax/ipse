@@ -1,12 +1,107 @@
 Code.require_file("../examples/knowledge/evaluation_model_service.exs", __DIR__)
-Code.require_file("support/measured_model_fixture.exs", __DIR__)
-Code.require_file("support/measured_model_daemon.exs", __DIR__)
+Code.require_file("../dev/verification/cli.exs", __DIR__)
+Ipse.Development.Verification.Runtime.load_fixture!(:model_service)
 
 defmodule Ipse.KnowledgeMeasuredModelFixtureTest do
   use ExUnit.Case, async: false
   alias IpseKnowledgeExample.EvaluationModelService
+  alias Ipse.Development.Fixtures.ModelService, as: Fixture
+  alias Ipse.Development.Fixtures.ModelService.Daemon
 
   if :os.type() == {:unix, :linux} do
+    test "a terminal service exit waits for helper cleanup without sending cancellation" do
+      root = Path.join(System.tmp_dir!(), "ipse-measured-exit-" <> Ipse.Usage.id())
+      File.mkdir!(root)
+      File.chmod!(root, 0o700)
+      on_exit(fn -> File.rm_rf!(root) end)
+      {:ok, socket} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}])
+      {:ok, port} = :inet.port(socket)
+      :ok = :gen_tcp.close(socket)
+
+      config = Fixture.configuration(root, launch(), "http://127.0.0.1:#{port}", :exit_on_answer)
+      owner = self()
+      Code.ensure_loaded!(Ipse.Runner)
+
+      tracer = spawn(fn -> observe_service_close(owner, nil) end)
+      trace = :trace.session_create(:ipse_model_service_terminal, tracer, [])
+
+      try do
+        assert :trace.function(trace, {EvaluationModelService, :close_daemon, 1}, true, [:local]) ==
+                 1
+
+        assert :trace.function(trace, {Ipse.Runner, :close_stdio, 2}, true, [:local]) == 1
+        :trace.process(trace, self(), true, [:call])
+        output = Path.join(root, "service")
+
+        result =
+          EvaluationModelService.run(config, output, fn ->
+            input = JSON.encode!(%{"query" => "absent mineral", "candidates" => []})
+            content = "Synthetic exit control\n" <> JSON.encode!(%{"input" => input})
+
+            body =
+              JSON.encode!(%{
+                "model" => "fixture-text:latest",
+                "messages" => [%{"role" => "user", "content" => content}]
+              })
+
+            {:ok, connection} =
+              :gen_tcp.connect({127, 0, 0, 1}, port, [:binary, active: false], 5_000)
+
+            :ok =
+              :gen_tcp.send(connection, [
+                "POST /api/chat HTTP/1.1\r\nhost: 127.0.0.1\r\ncontent-type: application/json\r\ncontent-length: ",
+                Integer.to_string(byte_size(body)),
+                "\r\nconnection: close\r\n\r\n",
+                body
+              ])
+
+            _ = :gen_tcp.recv(connection, 0, 5_000)
+            :gen_tcp.close(connection)
+
+            receive do
+              :unexpected -> :unexpected
+            after
+              30_000 -> :unexpected_return
+            end
+          end)
+
+        assert_receive {:service_close_mode, :completed}, 1_000
+        assert result.work == {:interrupted, :service_exited}
+        assert result.receipt["code"] == "service_exited"
+        assert result.receipt["status"] == "failed"
+        assert result.receipt["native_cleanup"] == "confirmed"
+        assert result.receipt["staging_cleanup"] == "confirmed"
+        assert JSON.decode!(File.read!(Path.join(output, "receipt.json"))) == result.receipt
+
+        answers =
+          Path.join(output, "home/fixture-requests.jsonl")
+          |> File.read!()
+          |> String.split("\n", trim: true)
+          |> Enum.map(&JSON.decode!/1)
+          |> Enum.filter(&(&1["operation"] == "answer"))
+
+        assert length(answers) == 1
+      after
+        :trace.session_destroy(trace)
+        Process.exit(tracer, :kill)
+      end
+    end
+
+    defp observe_service_close(owner, selected) do
+      receive do
+        {:trace, ^owner, :call, {EvaluationModelService, :close_daemon, [state]}} ->
+          observe_service_close(owner, state.port)
+
+        {:trace, ^owner, :call, {Ipse.Runner, :close_stdio, [port, mode]}}
+        when port == selected ->
+          send(owner, {:service_close_mode, mode})
+          observe_service_close(owner, selected)
+
+        _ ->
+          observe_service_close(owner, selected)
+      end
+    end
+
     test "generated ERTS wrapper starts successive owned fixtures on the sealed origin" do
       root = Path.join(System.tmp_dir!(), "ipse-measured-wrapper-" <> Ipse.Usage.id())
       File.mkdir!(root)
@@ -17,7 +112,7 @@ defmodule Ipse.KnowledgeMeasuredModelFixtureTest do
       :ok = :gen_tcp.close(socket)
 
       config =
-        MeasuredModelFixture.configuration(root, launch(), "http://127.0.0.1:#{port}")
+        Fixture.configuration(root, launch(), "http://127.0.0.1:#{port}")
 
       for index <- 1..2 do
         result =
@@ -37,7 +132,7 @@ defmodule Ipse.KnowledgeMeasuredModelFixtureTest do
     root = Path.join(System.tmp_dir!(), "ipse-measured-fixture-" <> Ipse.Usage.id())
     on_exit(fn -> File.rm_rf!(root) end)
     launch = launch()
-    config = MeasuredModelFixture.configuration(root, launch, "http://127.0.0.1:47631")
+    config = Fixture.configuration(root, launch, "http://127.0.0.1:47631")
     assert EvaluationModelService.validate(config) == :ok
 
     assert Enum.sort(Map.keys(config["models"])) ==
@@ -61,11 +156,13 @@ defmodule Ipse.KnowledgeMeasuredModelFixtureTest do
     assert String.contains?(source, "exec '")
     assert String.contains?(source, launch["executable"])
     assert String.contains?(source, "code:set_path(Paths)")
-    assert String.contains?(source, "$ipse_fixture_runtime/lib/ollama/measured_model_daemon.exs")
+    assert String.contains?(source, "$ipse_fixture_runtime/lib/ollama")
     refute String.contains?(source, "mix run")
+    refute String.contains?(source, "require_file")
+    assert Enum.count(config["runtime"]["files"], &(Path.extname(&1["path"]) == ".beam")) == 1
 
     assert_raise File.Error, fn ->
-      MeasuredModelFixture.configuration(root, launch, config["origin"])
+      Fixture.configuration(root, launch, config["origin"])
     end
   end
 
@@ -76,15 +173,15 @@ defmodule Ipse.KnowledgeMeasuredModelFixtureTest do
     }
 
     assert {"tags", %{"models" => tags}} =
-             MeasuredModelDaemon.response("GET", "/api/tags", %{}, models)
+             Daemon.response("GET", "/api/tags", %{}, models)
 
     assert Enum.sort(Enum.map(tags, & &1["name"])) == Enum.sort(Map.keys(models))
 
     assert {"resident", %{"models" => []}} =
-             MeasuredModelDaemon.response("GET", "/api/ps", %{}, models)
+             Daemon.response("GET", "/api/ps", %{}, models)
 
     assert {"show", %{"capabilities" => ["embedding"]}} =
-             MeasuredModelDaemon.response(
+             Daemon.response(
                "POST",
                "/api/show",
                %{"model" => "fixture-embedding:latest"},
@@ -92,7 +189,7 @@ defmodule Ipse.KnowledgeMeasuredModelFixtureTest do
              )
 
     assert {"embedding", %{"embeddings" => vectors, "prompt_eval_count" => 3}} =
-             MeasuredModelDaemon.response(
+             Daemon.response(
                "POST",
                "/api/embed",
                %{"model" => "fixture-embedding:latest", "input" => ["Release", "mineral"]},
@@ -139,11 +236,11 @@ defmodule Ipse.KnowledgeMeasuredModelFixtureTest do
     models = %{"fixture-text:latest" => String.duplicate("a", 64)}
 
     assert_raise MatchError, fn ->
-      MeasuredModelDaemon.response("POST", "/api/show", %{"model" => "unknown"}, models)
+      Daemon.response("POST", "/api/show", %{"model" => "unknown"}, models)
     end
 
     assert_raise FunctionClauseError, fn ->
-      MeasuredModelDaemon.response(
+      Daemon.response(
         "POST",
         "/api/chat",
         %{"model" => "unknown", "messages" => []},
@@ -157,7 +254,7 @@ defmodule Ipse.KnowledgeMeasuredModelFixtureTest do
   defp chat(input, models) do
     content = "Synthetic input\n" <> JSON.encode!(%{"input" => JSON.encode!(input)})
 
-    MeasuredModelDaemon.response(
+    Daemon.response(
       "POST",
       "/api/chat",
       %{"model" => "fixture-text:latest", "messages" => [%{"content" => content}]},

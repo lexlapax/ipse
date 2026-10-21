@@ -13,6 +13,151 @@ defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
   @compile {:no_warn_undefined, EvaluationRunner}
   @metric "linux_memcg_charged_peak_bytes_v1"
   @limit 67_108_864
+  defmodule Environment do
+    @moduledoc false
+    @policy Application.compile_env(:ipse, :verification_environment, nil)
+
+    def bound?, do: @policy != nil
+
+    def launch!(launch, arguments) do
+      policy = policy!()
+      verify_shell!(policy.shell)
+      {:ok, executable} = Ipse.WorkspaceContext.canonical_path(launch["executable"])
+      true = executable == policy.executable
+      bindir = Path.dirname(executable)
+      root = Path.expand("../..", bindir)
+      {:ok, ^root} = Ipse.WorkspaceContext.canonical_path(launch["root"])
+      erlexec = Path.join(bindir, "erlexec")
+      [identity] = Enum.filter(launch["files"], &(&1["path"] == erlexec))
+      %{type: :regular, size: size} = File.lstat!(erlexec)
+      true = size == identity["bytes"] and size <= 67_108_864
+      true = digest!(erlexec, size) == identity["sha256"]
+      {"/bin/sh", ["-c", policy.startup_script, "ipse-erts", root, bindir | arguments]}
+    end
+
+    def enter! do
+      expected = policy!().startup_path
+      ^expected = System.fetch_env!("PATH")
+      System.put_env("PATH", policy!().path)
+      assert!()
+    end
+
+    def enter_manager! do
+      manager = Map.take(System.get_env(), ~w(DBUS_SESSION_BUS_ADDRESS XDG_RUNTIME_DIR))
+      for name <- Map.keys(manager), do: System.delete_env(name)
+
+      try do
+        enter!()
+      after
+        System.put_env(manager)
+      end
+    end
+
+    def build!(home, tmp) do
+      policy = policy!()
+      verify_shell!(policy.shell)
+
+      for directory <- policy.directories do
+        %{type: :directory, mode: mode} = File.lstat!(directory.path)
+        true = mode == directory.mode
+        true = Enum.sort(File.ls!(directory.path)) == directory.names
+      end
+
+      for file <- policy.files do
+        %{type: :symlink, mode: mode} = File.lstat!(file.link)
+        true = mode == file.link_mode
+        true = File.read_link!(file.link) == file.target
+        {:ok, resolved} = Ipse.WorkspaceContext.canonical_path(file.link)
+        true = resolved == file.resolved
+        %{type: :regular, mode: mode, size: size} = File.lstat!(resolved)
+        true = mode == file.mode and size == file.bytes
+        true = digest!(resolved, size) == file.sha256
+      end
+
+      for directory <- [home, tmp] do
+        {:ok, ^directory} = Ipse.WorkspaceContext.canonical_path(directory)
+        %{type: :directory, mode: mode} = File.lstat!(directory)
+        true = Bitwise.band(mode, 0o077) == 0
+      end
+
+      %{
+        "PATH" => policy.path,
+        "LANG" => "C.UTF-8",
+        "HOME" => home,
+        "IPSE_HOME" => Path.join(home, ".ipse"),
+        "TMPDIR" => tmp
+      }
+    end
+
+    def assert! do
+      home = System.fetch_env!("HOME")
+      expected = build!(home, System.fetch_env!("TMPDIR"))
+
+      if System.get_env("IPSE_HOME") == nil,
+        do: System.put_env("IPSE_HOME", expected["IPSE_HOME"])
+
+      for {name, value} <- expected, do: ^value = System.fetch_env!(name)
+      for name <- policy!().forbidden, do: nil = System.find_executable(name)
+
+      for name <- ~w(DBUS_SESSION_BUS_ADDRESS XDG_RUNTIME_DIR),
+          do: nil = System.get_env(name)
+
+      :ok
+    end
+
+    defp policy!, do: @policy || raise(ArgumentError, "No compiled verification environment")
+
+    defp verify_shell!(shell) do
+      {:ok, resolved} = Ipse.WorkspaceContext.canonical_path("/bin/sh")
+      true = resolved == shell.path
+      %{type: :regular, mode: mode, size: size} = File.lstat!(shell.path)
+      true = mode == shell.mode and size == shell.bytes
+      true = digest!(shell.path, size) == shell.sha256
+      :ok
+    end
+
+    defp digest!(path, expected) do
+      {context, ^expected} =
+        path
+        |> File.stream!(1_048_576, [])
+        |> Enum.reduce({:crypto.hash_init(:sha256), 0}, fn bytes, {context, size} ->
+          size = size + byte_size(bytes)
+          true = size <= expected
+          {:crypto.hash_update(context, bytes), size}
+        end)
+
+      context |> :crypto.hash_final() |> Base.encode16(case: :lower)
+    end
+  end
+
+  @evaluator_modules [
+    __MODULE__,
+    Environment,
+    EvaluationRunner,
+    EvaluationRunner.NoMain,
+    EvaluationContract,
+    EvaluationFreeze,
+    EvaluationModelService,
+    EvaluationResources,
+    IpseKnowledgeExample.EvaluationInput,
+    IpseKnowledgeExample.EvaluationSession,
+    IpseKnowledgeExample.EvaluationAnswer,
+    IpseKnowledgeExample.EvaluationInventory,
+    IpseKnowledgeExample.EvaluationGateway,
+    IpseKnowledgeExample.EvaluationReview,
+    IpseKnowledge.EvaluationScore,
+    IpseKnowledge.EvaluationIntegrity,
+    IpseKnowledge.Metrics,
+    Ipse.Development.Fixtures.Knowledge,
+    Ipse.Development.Fixtures.Knowledge.Backend
+  ]
+  @precompiled_roles %{
+    evaluator: @evaluator_modules,
+    author: [IpseKnowledgeExample.EvaluationAuthor, IpseKnowledge.Evidence],
+    input: [IpseKnowledgeExample.EvaluationInput],
+    inventory: [],
+    cli: [Ipse.Development.Evaluation.CLI | @evaluator_modules]
+  }
   @fds [
     {"IPSE_BOUND_ROOT_FD", 4},
     {"IPSE_BOUND_REGISTRY_FD", 5},
@@ -223,15 +368,184 @@ defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
 
   @doc false
   def command(launch, requires, expression, argv) do
-    paths = Enum.map(launch["code_paths"], &String.to_charlist/1)
-    encoded_paths = Base.encode64(:erlang.term_to_binary(paths))
-
     code =
       Enum.join(
         ["System.argv(" <> inspect(argv, limit: :infinity, printable_limit: :infinity) <> ")"] ++
           Enum.map(requires, &("Code.require_file(" <> inspect(&1) <> ")")) ++ [expression],
         "; "
       )
+
+    encoded_command(launch, code)
+  end
+
+  @doc false
+  def execution_context!(verified) do
+    require!(verified["manifest"]["version"] == 2, :precompiled_runtime)
+    runtime = verified["manifest"]["runtime"]
+
+    require!(
+      is_map(runtime) and is_map(runtime["launch"]) and is_list(runtime["files"]),
+      :precompiled_runtime
+    )
+
+    case :code.which(__MODULE__) do
+      [] ->
+        name = Atom.to_string(__MODULE__) <> ".beam"
+
+        require!(
+          not Enum.any?(runtime["files"], &(Path.basename(&1["path"]) == name)),
+          :precompiled_module
+        )
+
+        {:source, runtime["launch"]}
+
+      file when is_list(file) ->
+        validate_precompiled!(runtime)
+        {:precompiled, runtime}
+
+      _ ->
+        fail!(:precompiled_runtime)
+    end
+  end
+
+  @doc false
+  def precompiled_command({:precompiled, runtime}, role, expression, argv) do
+    modules = Map.fetch!(@precompiled_roles, role)
+    bindings = validate_precompiled!(runtime)
+
+    membership =
+      for directory <- runtime["launch"]["code_paths"] do
+        names =
+          runtime["files"]
+          |> Enum.map(& &1["path"])
+          |> Enum.filter(&(Path.dirname(&1) == directory and Path.extname(&1) == ".beam"))
+          |> Enum.map(&Path.basename/1)
+          |> Enum.sort()
+
+        {directory, names}
+      end
+
+    membership_sha256 = sha(:erlang.term_to_binary(membership))
+
+    bootstrap = """
+    membership = for directory <- :code.get_path() do
+      directory = to_string(directory)
+      names = File.ls!(directory) |> Enum.filter(&String.ends_with?(&1, ".beam")) |> Enum.sort()
+      {directory, names}
+    end
+    true = Base.encode16(:crypto.hash(:sha256, :erlang.term_to_binary(membership)), case: :lower) == #{inspect(membership_sha256)}
+    bindings = #{inspect(bindings, limit: :infinity)}
+    verified = for {module, file, expected_md5, expected_sha256} <- bindings, into: %{} do
+      %{type: :regular} = File.lstat!(file)
+      bytes = File.read!(file)
+      true = Base.encode16(:crypto.hash(:sha256, bytes), case: :lower) == expected_sha256
+      true = to_string(:code.which(module)) == file
+      if :code.is_loaded(module) != false, do: true = module.module_info(:md5) == expected_md5
+      {module, {file, bytes, expected_md5}}
+    end
+    load = fn module ->
+      {file, bytes, expected_md5} = Map.fetch!(verified, module)
+      if :code.is_loaded(module) == false, do: {:module, ^module} = :code.load_binary(module, String.to_charlist(file), bytes)
+      true = to_string(:code.which(module)) == file
+      true = module.module_info(:md5) == expected_md5
+      module
+    end
+    environment = load.(#{inspect(Environment)})
+    :ok = apply(environment, :enter!, [])
+    for module <- #{inspect(modules, limit: :infinity)}, do: load.(module)
+    """
+
+    code =
+      Enum.join(
+        [
+          "System.argv(" <> inspect(argv, limit: :infinity, printable_limit: :infinity) <> ")",
+          bootstrap,
+          "Code.eval_string(" <>
+            inspect(expression, limit: :infinity, printable_limit: :infinity) <> ")"
+        ],
+        "; "
+      )
+
+    {_, arguments} = encoded_command(runtime["launch"], code)
+    {executable, arguments} = Environment.launch!(runtime["launch"], arguments)
+
+    require!(
+      Enum.sum(Enum.map([executable | arguments], &byte_size/1)) <= 65_536,
+      :precompiled_argument_limit
+    )
+
+    {executable, arguments}
+  end
+
+  @doc false
+  def verification_environment({:precompiled, runtime}, home, tmp) do
+    validate_precompiled!(runtime)
+    Environment.build!(home, tmp)
+  end
+
+  defp environment_constructor({:source, _}), do: nil
+
+  defp environment_constructor(execution),
+    do: fn home, tmp -> verification_environment(execution, home, tmp) end
+
+  defp validate_precompiled!(runtime) do
+    require!(
+      is_map(runtime) and is_map(runtime["launch"]) and is_list(runtime["files"]),
+      :precompiled_runtime
+    )
+
+    bindings =
+      @precompiled_roles
+      |> Map.values()
+      |> List.flatten()
+      |> Enum.uniq()
+      |> Enum.map(&module_identity!(runtime, &1))
+
+    {Environment, file, md5, digest} = Enum.find(bindings, &(elem(&1, 0) == Environment))
+
+    if :code.is_loaded(Environment) == false do
+      bytes = File.read!(file)
+      require!(sha(bytes) == digest, :precompiled_module)
+      {:ok, {Environment, ^md5}} = :beam_lib.md5(bytes)
+      {:module, Environment} = :code.load_binary(Environment, String.to_charlist(file), bytes)
+    end
+
+    require!(Environment.bound?(), :verification_environment)
+    bindings
+  end
+
+  defp module_identity!(runtime, module) do
+    file = :code.which(module)
+    require!(is_list(file) and file != [], :precompiled_module)
+    file = file |> to_string() |> Path.expand()
+
+    require!(
+      Path.extname(file) == ".beam" and Path.dirname(file) in runtime["launch"]["code_paths"],
+      :precompiled_module
+    )
+
+    %{type: :regular, size: size} = File.lstat!(file)
+    require!(size <= @limit, :precompiled_module)
+    bytes = File.read!(file)
+    require!(byte_size(bytes) == size, :precompiled_module)
+    identity = %{"path" => file, "bytes" => size, "sha256" => sha(bytes)}
+
+    require!(
+      Enum.filter(runtime["files"], &(&1["path"] == file)) == [identity],
+      :precompiled_module
+    )
+
+    {:ok, {^module, md5}} = :beam_lib.md5(bytes)
+
+    if :code.is_loaded(module) != false,
+      do: require!(module.module_info(:md5) == md5, :precompiled_module)
+
+    {module, file, md5, identity["sha256"]}
+  end
+
+  defp encoded_command(launch, code) do
+    paths = Enum.map(launch["code_paths"], &String.to_charlist/1)
+    encoded_paths = Base.encode64(:erlang.term_to_binary(paths))
 
     encoded_code = Base.encode64(code)
 
@@ -257,6 +571,25 @@ defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
      ]}
   end
 
+  @doc false
+  def validate_stage_launch!(helper, stage) do
+    {:ok, helper} = Ipse.WorkspaceContext.canonical_path(helper)
+
+    arguments =
+      [
+        helper,
+        "--measure-stage",
+        "cell",
+        stage.token,
+        Integer.to_string(stage.timeout),
+        stage.output,
+        "--"
+      ] ++ stage.argv
+
+    require!(Enum.sum(Enum.map(arguments, &byte_size/1)) <= 65_536, :stage_argument_limit)
+    :ok
+  end
+
   defp context!(path, expected) do
     require!(absolute?(path) and hash?(expected), :freeze_identity)
     {:ok, verified} = EvaluationFreeze.verify(path, expected)
@@ -280,7 +613,7 @@ defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
 
     freeze = Path.dirname(path)
 
-    %{
+    context = %{
       freeze: freeze,
       path: path,
       sha: expected,
@@ -291,8 +624,14 @@ defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
       id: manifest["execution_id"],
       native: Path.join(freeze, "native-root"),
       timeouts: manifest["launch_recipe"]["timeouts"],
-      runtime: manifest["runtime"]["launch"]
+      runtime: manifest["runtime"]["launch"],
+      execution: execution_context!(verified)
     }
+
+    stage(context, "prepare", nil, nil)
+    for ordinal <- 0..13, do: stage(context, "cell", ordinal, nil)
+    stage(context, "finalize", nil, nil)
+    context
   end
 
   defp authority(context) do
@@ -343,7 +682,13 @@ defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
         ") do {:ok, _} -> System.halt(0); {:error, value} -> IO.puts(JSON.encode!(value)); System.halt(1) end"
 
     {executable, arguments} =
-      command(context.runtime, [Path.expand("evaluation_runner.exs", __DIR__)], expression, [])
+      case context.execution do
+        {:source, launch} ->
+          command(launch, [Path.expand("evaluation_runner.exs", __DIR__)], expression, [])
+
+        {:precompiled, _} = execution ->
+          precompiled_command(execution, :evaluator, expression, [])
+      end
 
     timeout =
       context.timeouts[
@@ -354,7 +699,7 @@ defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
         end
       ]
 
-    %{
+    stage = %{
       kind: kind,
       ordinal: ordinal,
       name: name,
@@ -366,6 +711,9 @@ defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
       ticket: ticket_path,
       prepared_sha: prepared_sha
     }
+
+    :ok = validate_stage_launch!(helper!(context), stage)
+    stage
   end
 
   defp stage_for!(context, ticket, prepared) do
@@ -487,7 +835,7 @@ defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
     {:ok, catalog} =
       EvaluationRunner.catalog_admission(context.plan, context.verified["artifact_paths"], root)
 
-    Process.put(:comparison_runtime_launch, context.runtime)
+    Process.put(:comparison_execution, context.execution)
 
     {:ok, input} =
       EvaluationRunner.prepare_inputs(context.plan, context.resolution["data_manifest"], root)
@@ -583,9 +931,11 @@ defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
             %{
               "origin" => context.plan["model_origin"],
               "admission" => "owned_model_service_before_callback"
-            }
+            },
+            context.execution
           )
-        end
+        end,
+        environment_constructor(context.execution)
       )
 
     domain =
@@ -946,12 +1296,23 @@ defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
   def native_receipt?(_, _), do: false
 
   defp launch_environment(context, launch) do
-    selected = %{
-      "PATH" => Path.dirname(context.runtime["executable"]) <> ":/usr/bin:/bin",
-      "LANG" => "C.UTF-8",
-      "HOME" => Path.join(launch, "home"),
-      "TMPDIR" => Path.join(launch, "tmp")
-    }
+    selected =
+      case context.execution do
+        {:precompiled, _} ->
+          verification_environment(
+            context.execution,
+            Path.join(launch, "home"),
+            Path.join(launch, "tmp")
+          )
+
+        {:source, _} ->
+          %{
+            "PATH" => Path.dirname(context.runtime["executable"]) <> ":/usr/bin:/bin",
+            "LANG" => "C.UTF-8",
+            "HOME" => Path.join(launch, "home"),
+            "TMPDIR" => Path.join(launch, "tmp")
+          }
+      end
 
     Enum.reduce(~w(DBUS_SESSION_BUS_ADDRESS XDG_RUNTIME_DIR), selected, fn name, acc ->
       if value = System.get_env(name), do: Map.put(acc, name, value), else: acc
