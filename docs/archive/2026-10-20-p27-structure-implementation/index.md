@@ -168,6 +168,12 @@ checks pass, as do all sixteen focused plan/review tests. These local checks do
 not turn the failed hosted run into a passing receipt. No command, declaration,
 query-order condition or evaluation policy changes.
 
+The repair is committed as `bad4f26b2227cd67705ed14ebc295226c7e97b10`.
+Its [complete hosted workflow](https://github.com/lexlapax/ipse/actions/runs/39522389967)
+passes on both Ubuntu and macOS, including package and installed checks. This
+replaces the failed hosted gate for structural readiness; it does not establish
+completion of S05, the entire consolidation or P27's quality and comparison gates.
+
 Each platform runs all five artifact proofs through source and installed hosts:
 all four model selections retain nine assertions each, embedding and MCP retain
 twelve each, saved results retain exactly 4 MiB and 1,024 fragments with exact
