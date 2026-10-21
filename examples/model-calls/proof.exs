@@ -4,7 +4,7 @@ defmodule IpseModelExample.Proof do
   alias Ipse.Extensions.{Store, Config, Registry}
 
   def run(artifact, thinking \\ nil, output \\ :text)
-      when thinking in [nil, "none"] and output in [:text, :json_schema] do
+      when thinking in [nil, "none"] and output in [:text, :json_schema, :json_schema_long] do
     {:ok, _} = Application.ensure_all_started(:ipse)
     root = Path.join(System.tmp_dir!(), "ipse-model-proof-#{Usage.id()}")
     File.mkdir_p!(root)
@@ -86,6 +86,15 @@ defmodule IpseModelExample.Proof do
           do: put_in(config, [:profiles, "extract", "reasoning_effort"], "none"),
           else: config
 
+      config =
+        if output == :json_schema_long do
+          config
+          |> Map.put(:timeout_ms, 480_000)
+          |> put_in([:profiles, "extract", "model_call_timeout_ms"], 480_000)
+        else
+          config
+        end
+
       request = %{
         "op" => "model.complete",
         "version" => 1,
@@ -97,7 +106,7 @@ defmodule IpseModelExample.Proof do
       }
 
       request =
-        if output == :json_schema,
+        if output in [:json_schema, :json_schema_long],
           do:
             Map.merge(request, %{
               "version" => 2,
@@ -116,6 +125,11 @@ defmodule IpseModelExample.Proof do
             }),
           else: request
 
+      request =
+        if output == :json_schema_long,
+          do: request |> Map.put("version", 3) |> Map.put("timeout_ms", 480_000),
+          else: request
+
       pid = start(config, cwd, dir)
       :ok = Session.invoke_export(pid, :command, "ext__model__complete", %{"request" => request})
 
@@ -126,6 +140,7 @@ defmodule IpseModelExample.Proof do
               proposed["request"] == request and proposed["execution"]["provider"] == "ollama"
 
             true = proposed["destination"]["origin"] == base
+            true = proposed["execution"]["timeout_ms"] == request["timeout_ms"]
 
             true =
               proposed["destination"]["target_sha256"] == Ipse.JSON.sha256(base <> "/api/chat")
@@ -135,7 +150,7 @@ defmodule IpseModelExample.Proof do
           5000 -> raise "Model approval was not displayed"
         end
 
-      expected_text = if output == :json_schema, do: ~s({"names":["Ada"]}), else: "entities"
+      expected_text = if output != :text, do: ~s({"names":["Ada"]}), else: "entities"
       server = serve_fixture(listener, self(), expected_text)
       Process.put(:model_proof_server, server)
       :ok = Session.approve(pid, ref, true)
@@ -153,7 +168,7 @@ defmodule IpseModelExample.Proof do
       true = wire["model"] == "fixture-extract" and wire["tools"] == []
       true = wire["options"] == %{"num_predict" => 32}
 
-      if output == :json_schema,
+      if output != :text,
         do: true = wire["format"] == request["response_schema"],
         else: false = Map.has_key?(wire, "format")
 
@@ -209,6 +224,16 @@ defmodule IpseModelExample.Proof do
       native = Enum.find(events, &(&1["type"] == "extension_model_response"))
       source = Enum.find(events, &(&1["type"] == "extension_model_request"))
       true = source["execution"]["reasoning_effort"] == thinking
+      true = source["execution"]["timeout_ms"] == request["timeout_ms"]
+
+      altered =
+        Enum.map(events, fn event ->
+          if event == source,
+            do: put_in(event, ["execution", "timeout_ms"], request["timeout_ms"] - 1),
+            else: event
+        end)
+
+      {:error, _} = Session.restore_context(altered)
 
       true =
         get_in(native, ["assistant", "provider_data", "message", "thinking"]) == "private-fixture"
@@ -225,7 +250,12 @@ defmodule IpseModelExample.Proof do
       %{
         "version" => 1,
         "thinking_selection" => thinking || "default",
-        "output_contract" => if(output == :json_schema, do: "json_schema_v2", else: "text_v1"),
+        "output_contract" =>
+          case output do
+            :text -> "text_v1"
+            :json_schema -> "json_schema_v2"
+            :json_schema_long -> "json_schema_v3"
+          end,
         "checks" =>
           Map.new(
             ~w(independent_artifact full_approval explicit_profile private_native_receipt bounded_text canonical_usage accounted_report shared_refusal inert_resume),

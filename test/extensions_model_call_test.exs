@@ -57,7 +57,7 @@ defmodule Ipse.Extensions.ModelCallTest do
           Map.delete(structured(), "response_schema"),
           Map.put(structured(), "version", 1),
           Map.put(structured(), "version", 2.0),
-          Map.put(structured(), "version", 3),
+          Map.put(structured(), "version", 4),
           Map.put(structured(), "response_schema", nil),
           Map.put(structured(), "response_schema", %{
             "type" => "array",
@@ -91,6 +91,93 @@ defmodule Ipse.Extensions.ModelCallTest do
              ModelCall.validate(
                update_in(exact, ["response_schema", "description"], &(&1 <> "x"))
              )
+  end
+
+  test "v3 extends only the structured deadline and retains legacy request limits" do
+    long = Map.merge(structured(), %{"version" => 3, "timeout_ms" => 600_000})
+    assert :ok = ModelCall.validate(long)
+
+    for legacy <- [request(), structured()] do
+      assert :ok = ModelCall.validate(Map.put(legacy, "timeout_ms", 120_000))
+      assert {:error, _} = ModelCall.validate(Map.put(legacy, "timeout_ms", 120_001))
+    end
+
+    for invalid <- [
+          Map.put(long, "timeout_ms", 600_001),
+          Map.put(long, "timeout_ms", 999),
+          Map.put(long, "version", 3.0),
+          Map.delete(long, "response_schema"),
+          Map.put(long, "input", String.duplicate("x", 4097)),
+          Map.put(long, "max_output_bytes", 8193)
+        ],
+        do: assert({:error, _} = ModelCall.validate(invalid))
+
+    assert {:ok, runtime, _} = ModelCall.prepare(config(), long)
+    assert runtime.extension_response_schema == long["response_schema"]
+    assert runtime.timeout_ms == 2000
+
+    admission = %{"request_id" => Ipse.Usage.id(), "attempt_id" => Ipse.Usage.id()}
+    record = %{"reported_model" => nil, "usage" => Ipse.Usage.Normalizer.normalize(:ollama, %{})}
+
+    assert {:ok, value} =
+             ModelCall.value_from_record(long, admission, record, %{
+               "role" => "assistant",
+               "content" => ~s({"names":["Ada"]})
+             })
+
+    assert ModelCall.valid_outcome?(long, "ok", value, admission["request_id"])
+
+    refute ModelCall.valid_outcome?(
+             long,
+             "ok",
+             Map.put(value, "text", ~s({"names":[1]})),
+             admission["request_id"]
+           )
+  end
+
+  test "explicit model-call override preserves legacy snapshots and narrows by root and request" do
+    owner =
+      config()
+      |> Map.put(:timeout_ms, 600_000)
+      |> put_in([:profiles, "extract", "timeout_ms"], 600_000)
+
+    legacy = %{
+      "id" => "extract",
+      "provider" => "ollama",
+      "model" => "local",
+      "billing_mode" => "local",
+      "endpoint_sha256" => Ipse.JSON.sha256("http://localhost:1234"),
+      "reasoning_effort" => nil,
+      "max_output_tokens" => 32,
+      "timeout_ms" => 120_000
+    }
+
+    assert ModelCall.snapshot(owner) == %{"extract" => legacy}
+
+    selected = put_in(owner, [:profiles, "extract", "model_call_timeout_ms"], 480_000)
+    long = Map.merge(structured(), %{"version" => 3, "timeout_ms" => 600_000})
+    assert {:ok, runtime, execution} = ModelCall.prepare(selected, long)
+    assert runtime.timeout_ms == 480_000
+    assert execution["timeout_ms"] == 480_000
+
+    assert {:ok, %{timeout_ms: 200_000}, _} =
+             ModelCall.prepare(Map.put(selected, :timeout_ms, 200_000), long)
+
+    assert {:ok, %{timeout_ms: 120_000}, _} =
+             ModelCall.prepare(Map.delete(selected, :timeout_ms), long)
+
+    assert {:ok, %{timeout_ms: 150_000}, _} =
+             ModelCall.prepare(selected, Map.put(long, "timeout_ms", 150_000))
+
+    assert {:ok, %{timeout_ms: 5000}, _} = ModelCall.prepare(selected, structured())
+
+    for invalid <- [nil, 0, 600_001, 120_000.0] do
+      assert {:error, _} =
+               ModelCall.prepare(
+                 put_in(selected, [:profiles, "extract", "model_call_timeout_ms"], invalid),
+                 long
+               )
+    end
   end
 
   test "structured output is an explicit native selection, never an inherited owner setting" do
@@ -229,7 +316,8 @@ defmodule Ipse.Extensions.ModelCallTest do
           Map.delete(proposed, "destination"),
           put_in(proposed, ["destination", "origin"], "https://name@example.invalid"),
           put_in(proposed, ["destination", "target_sha256"], "raw-url"),
-          Map.put(proposed, "api_key", "synthetic")
+          Map.put(proposed, "api_key", "synthetic"),
+          put_in(proposed, ["execution", "timeout_ms"], proposed["request"]["timeout_ms"] + 1)
         ],
         do: refute(ModelCall.delegated_approval?("extension:model.complete", invalid))
   end

@@ -21,6 +21,25 @@ defmodule Ipse.Development.Evaluation.Contract do
     },
     "selection" => "per_strategy_eligibility_v1"
   }
+  @long_contracts put_in(@contracts, ["outputs", "answer"], "json_schema_v3")
+
+  @doc "Recognize either closed structured policy, preserving the original declaration."
+  def valid_contracts?(contracts), do: contracts in [@contracts, @long_contracts]
+
+  @doc "Whether the declaration explicitly selects longer final answers only."
+  def long_answers?(plan), do: plan["version"] === 3 and plan["contracts"] == @long_contracts
+
+  @doc "The frozen final-answer deadline; other model phases retain their own limits."
+  def answer_timeout_ms(plan),
+    do:
+      if(long_answers?(plan),
+        do: plan["profiles"]["p27_answer"]["model_call_timeout_ms"],
+        else: 120_000
+      )
+
+  @doc "Bound the evaluator's surrounding work without shortening the selected answer call."
+  def session_timeout_ms(plan),
+    do: if(long_answers?(plan), do: answer_timeout_ms(plan) + 60_000, else: 180_000)
 
   def build(spec) do
     fields = execution_fields(@fields, spec)
@@ -230,7 +249,7 @@ defmodule Ipse.Development.Evaluation.Contract do
       )
 
       if plan["version"] == 3,
-        do: require!(plan["contracts"] == @contracts, :evaluation_contracts)
+        do: require!(valid_contracts?(plan["contracts"]), :evaluation_contracts)
 
       origin = model_origin!(plan)
 
@@ -301,6 +320,24 @@ defmodule Ipse.Development.Evaluation.Contract do
           Ipse.EmbeddingProfiles.validate(plan["embedding_profiles"]) == :ok,
         :profiles
       )
+
+      if long_answers?(plan) do
+        require!(
+          is_integer(answer_timeout_ms(plan)) and answer_timeout_ms(plan) in 120_001..600_000 and
+            Enum.all?(Map.delete(plan["profiles"], "p27_answer"), fn {_id, profile} ->
+              not Map.has_key?(profile, "model_call_timeout_ms")
+            end),
+          :answer_timeout
+        )
+      else
+        require!(
+          Enum.all?(
+            Map.values(plan["profiles"]),
+            &(not Map.has_key?(&1, "model_call_timeout_ms"))
+          ),
+          :answer_timeout
+        )
+      end
 
       require!(
         Enum.all?(Map.values(plan["profiles"]), &(&1["provider"] == "ollama")) and
@@ -420,12 +457,27 @@ defmodule Ipse.Development.Evaluation.Contract do
 
         require!(
           Enum.all?(
-            Map.values(plan["profiles"]),
-            &(&1["model"] == "qwen3.5:9b" and &1["base_url"] == origin and
-                &1["max_output_tokens"] == 4096 and &1["reasoning_effort"] == "none")
+            plan["profiles"],
+            fn {id, profile} ->
+              profile["model"] == "qwen3.5:9b" and profile["base_url"] == origin and
+                if(long_answers?(plan) and id == "p27_answer",
+                  do:
+                    profile["max_output_tokens"] == 8192 and
+                      not Map.has_key?(profile, "reasoning_effort"),
+                  else:
+                    profile["max_output_tokens"] == 4096 and profile["reasoning_effort"] == "none"
+                )
+            end
           ),
           :heldout_profiles
         )
+
+        if long_answers?(plan),
+          do:
+            require!(
+              Enum.all?(variants, &(&1["budget"]["reserve_output_tokens"] == 8192)),
+              :answer_reservation
+            )
 
         require!(
           Enum.all?(
@@ -452,7 +504,7 @@ defmodule Ipse.Development.Evaluation.Contract do
     if is_map(plan) and plan["version"] in [1, 2, 3] and exact?(plan, keys) and
          is_map(plan["artifacts"]) and is_map(plan["profiles"]) and
          is_map(plan["embedding_profiles"]) and
-         (plan["version"] != 3 or plan["contracts"] == @contracts),
+         (plan["version"] != 3 or valid_contracts?(plan["contracts"])),
        do: :ok,
        else: {:error, :invalid_plan}
   end
@@ -462,7 +514,7 @@ defmodule Ipse.Development.Evaluation.Contract do
     keys = if is_map(plan) and plan["version"] == 3, do: ["contracts" | keys], else: keys
 
     if exact?(plan, keys) and plan["version"] in [2, 3] and
-         (plan["version"] != 3 or plan["contracts"] == @contracts) and
+         (plan["version"] != 3 or valid_contracts?(plan["contracts"])) and
          Enum.all?(~w(profiles embedding_profiles), fn key ->
            is_map(plan[key]) and
              Enum.all?(plan[key], fn {id, profile} ->

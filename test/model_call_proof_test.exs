@@ -38,5 +38,9 @@ defmodule Ipse.ModelCallProofTest do
       assert map_size(structured["checks"]) == 9
       assert Enum.all?(structured["checks"], fn {_, passed} -> passed end)
     end
+
+    long = IpseModelExample.Proof.run(root, nil, :json_schema_long)
+    assert long["output_contract"] == "json_schema_v3"
+    assert Enum.all?(long["checks"], fn {_, passed} -> passed end)
   end
 end

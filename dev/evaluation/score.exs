@@ -1,5 +1,6 @@
 Code.require_file("metrics.exs", __DIR__)
 Code.require_file("dataset.exs", __DIR__)
+Code.require_file("contract.exs", __DIR__)
 
 defmodule Ipse.Development.Evaluation.Score do
   @moduledoc """
@@ -40,14 +41,6 @@ defmodule Ipse.Development.Evaluation.Score do
   @prediction_keys ~w(version prediction_id variant query_id project attempt status top_k predicted_class response_kind answer claims evidence context_evidence citations)
   @safe_integer 9_007_199_254_740_991
   @variants ~w(lexical graph_explicit graph_model dense hybrid rerank research)
-  @contracts %{
-    "outputs" => %{
-      "answer" => "json_schema_v2",
-      "extract" => "json_schema_v2",
-      "rerank" => "json_schema_v2"
-    },
-    "selection" => "per_strategy_eligibility_v1"
-  }
 
   @doc "Verify first-attempt rows and raw hashes, deriving review binding without loading references."
   def verified_predictions(freeze, blobs) do
@@ -127,7 +120,9 @@ defmodule Ipse.Development.Evaluation.Score do
       fields
     ) and
       (f["version"] === 2 or
-         (f["version"] === 3 and f["contracts"] == @contracts and f["variants"] == @variants and
+         (f["version"] === 3 and
+            Ipse.Development.Evaluation.Contract.valid_contracts?(f["contracts"]) and
+            f["variants"] == @variants and
             is_list(f["queries"]) and length(f["queries"]) == 50)) and hash?(f["context_sha256"]) and
       f["metric_version"] === Metrics.version() and
       bounded_list?(f["variants"], 1, 16) and Enum.all?(f["variants"], &id?/1) and

@@ -287,6 +287,16 @@ defmodule Ipse.KnowledgeEvaluationScoreTest do
     assert report["gates"]["citation"]["status"] == "fail"
     refute Map.has_key?(report, "selected_variant")
 
+    long = put_in(freeze, ["contracts", "outputs", "answer"], "json_schema_v3")
+    long_review = bind_fixture_review(long, blobs, review)
+
+    assert {:ok, long_report} =
+             score_with_corpus(long, blobs, fn -> {:ok, label} end, fn -> {:ok, long_review} end)
+
+    assert long_report["eligible_variants"] == report["eligible_variants"]
+    assert long_report["quality_gate_scope"] == report["quality_gate_scope"]
+    refute long_review["review_binding_sha256"] == review["review_binding_sha256"]
+
     old = freeze |> Map.put("version", 2) |> Map.delete("contracts")
     old_review = bind_fixture_review(old, blobs, review)
 

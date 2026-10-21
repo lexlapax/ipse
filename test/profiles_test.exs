@@ -47,6 +47,8 @@ defmodule Ipse.ProfilesTest do
            }},
           {"project",
            %{"provider" => "ollama", "model" => "fixture", "base_url" => "http://127.0.0.1:12345"}},
+          {"project",
+           %{"provider" => "ollama", "model" => "fixture", "model_call_timeout_ms" => 600_000}},
           {"main", %{"provider" => "openai", "model" => "project-replacement"}}
         ] do
       File.write!(project, Jason.encode!(%{version: 1, profiles: %{id => profile}}))
@@ -112,6 +114,24 @@ defmodule Ipse.ProfilesTest do
     assert env_selected.execution.id == "local"
     assert {:error, _} = Profiles.validate(profiles(), %{"routine" => "missing"})
     assert {:error, _} = Profiles.validate(profiles(), %{"invented-role" => "local"})
+  end
+
+  test "operator model-call deadlines do not become ordinary profile settings", c do
+    File.write!(
+      Path.join(c.home, "config.json"),
+      Jason.encode!(%{
+        version: 1,
+        profiles: %{
+          answer: %{provider: "ollama", model: "fixture", model_call_timeout_ms: 480_000}
+        },
+        roles: %{main: "answer"}
+      })
+    )
+
+    assert {:ok, cfg} = Config.resolve(c.root, c.home, [], %{})
+    assert cfg.profiles["answer"]["model_call_timeout_ms"] == 480_000
+    refute Map.has_key?(cfg.settings, "model_call_timeout_ms")
+    refute Map.has_key?(Profiles.runtime(cfg), :model_call_timeout_ms)
   end
 
   test "Ollama thinking suppression is an explicit profile selection" do

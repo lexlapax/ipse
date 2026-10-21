@@ -572,6 +572,12 @@ defmodule Ipse.Development.Evaluation.Runner do
   @doc "Perform a complete original cell, including independent Session and gateway closure."
   def evaluate_cell(plan, cell, prepared, output, service_inventory, execution) do
     :ok = checked(Contract.validate(plan))
+
+    service_inventory =
+      if Contract.long_answers?(plan),
+        do: Map.put(service_inventory, "selected_policy_inventory", inventory!(plan)),
+        else: service_inventory
+
     {:ok, derived} = schedule(plan, prepared["queries"])
 
     require!(
@@ -1025,6 +1031,7 @@ defmodule Ipse.Development.Evaluation.Runner do
       max_steps: budget["max_requests"] + 1,
       profiles: plan["profiles"],
       embedding_profiles: plan["embedding_profiles"],
+      timeout_ms: Contract.answer_timeout_ms(plan),
       budget: budget
     }
 
@@ -1169,7 +1176,7 @@ defmodule Ipse.Development.Evaluation.Runner do
       bindings: variant["bindings"],
       required_verbs: Map.keys(variant["bindings"]),
       approval_validator: &approve/1,
-      timeout_ms: 180_000
+      timeout_ms: Contract.session_timeout_ms(plan)
     }
 
     case Resources.measure(
@@ -1517,15 +1524,27 @@ defmodule Ipse.Development.Evaluation.Runner do
 
     if plan["answer"] and status == "ok" do
       prepared =
-        if plan["version"] == 3,
-          do:
+        cond do
+          Contract.long_answers?(plan) ->
+            Answer.prepare(
+              query["query"],
+              effective_time(plan),
+              evidence,
+              "json_schema_v3",
+              Contract.answer_timeout_ms(plan)
+            )
+
+          plan["version"] == 3 ->
             Answer.prepare(
               query["query"],
               effective_time(plan),
               evidence,
               plan["contracts"]["outputs"]["answer"]
-            ),
-          else: Answer.prepare(query["query"], effective_time(plan), evidence)
+            )
+
+          true ->
+            Answer.prepare(query["query"], effective_time(plan), evidence)
+        end
 
       case prepared do
         {:ok, bundle} ->
@@ -1543,7 +1562,7 @@ defmodule Ipse.Development.Evaluation.Runner do
           }
 
           context_record =
-            if bundle["version"] == 2,
+            if bundle["version"] in [2, 3],
               do:
                 Map.put(context_record, "request_sha256", Ipse.JSON.digest([bundle["request"]])),
               else: context_record
@@ -1551,7 +1570,7 @@ defmodule Ipse.Development.Evaluation.Runner do
           append!(output, "execution.jsonl", context_record)
 
           params =
-            if bundle["version"] == 2,
+            if bundle["version"] in [2, 3],
               do: %{"request" => bundle["request"]},
               else: Map.drop(bundle["request"], ~w(op version profile))
 
@@ -2316,10 +2335,25 @@ defmodule Ipse.Development.Evaluation.Runner do
           {:ok, 200, bytes} = Ipse.HTTPProfile.bounded_request(request, 1_048_576, 10_000)
           details = decode!(bytes)
 
-          if name == "qwen3.5:9b",
-            do: require!(false in details["thinking"]["values"], :thinking_control)
+          if name == "qwen3.5:9b" do
+            require!(false in details["thinking"]["values"], :thinking_control)
 
-          Map.take(tag, ~w(name digest size)) |> Map.put("capabilities", details["capabilities"])
+            if Contract.long_answers?(plan),
+              do:
+                require!(
+                  details["thinking"]["default"] === true and
+                    true in details["thinking"]["values"],
+                  :thinking_control
+                )
+          end
+
+          item =
+            Map.take(tag, ~w(name digest size))
+            |> Map.put("capabilities", details["capabilities"])
+
+          if name == "qwen3.5:9b",
+            do: Map.put(item, "thinking", Map.take(details["thinking"], ~w(default values))),
+            else: item
         end)
 
       %{

@@ -18,12 +18,14 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge do
         "sealed" -> {"sealed_answers_v1", 2}
         "structured" -> {nil, 3}
         "sealed-structured" -> {"sealed_answers_v1", 3}
+        "sealed-long-answers" -> {"sealed_answers_v1", 3}
       end
 
     run =
       prepare(Path.join(output, "run"), repository, artifacts,
         data_contract: contract,
-        generation: generation
+        generation: generation,
+        long_answers: selection == "sealed-long-answers"
       )
 
     result = verify(run)
@@ -43,11 +45,16 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge do
   def prepare(root, repository, artifacts, options \\ []) do
     true =
       Keyword.keyword?(options) and
-        Enum.all?(Keyword.keys(options), &(&1 in [:fault, :data_contract, :generation]))
+        Enum.all?(
+          Keyword.keys(options),
+          &(&1 in [:fault, :data_contract, :generation, :long_answers])
+        )
 
     fault = Keyword.get(options, :fault)
     contract = Keyword.get(options, :data_contract)
     generation = Keyword.get(options, :generation, 2)
+    long_answers = Keyword.get(options, :long_answers, false)
+    true = is_boolean(long_answers) and (not long_answers or generation == 3)
     true = contract in [nil, "sealed_answers_v1"]
     true = generation in [2, 3]
     File.mkdir!(root)
@@ -213,6 +220,29 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge do
         do:
           spec |> put_in(["data", "contract"], contract) |> put_in(["data", "split"], "heldout"),
         else: spec
+
+    spec =
+      if long_answers do
+        spec
+        |> put_in(["contracts", "outputs", "answer"], "json_schema_v3")
+        |> update_in(["profiles", "p27_answer"], fn profile ->
+          profile
+          |> Map.delete("reasoning_effort")
+          |> Map.put("max_output_tokens", 8192)
+          |> Map.put("model_call_timeout_ms", 480_000)
+        end)
+        |> Map.update!(
+          "budgets",
+          &Map.new(&1, fn {id, budget} ->
+            {id,
+             budget
+             |> Map.put("reserve_output_tokens", 8192)
+             |> Map.put("max_output_tokens", budget["max_requests"] * 8192)}
+          end)
+        )
+      else
+        spec
+      end
 
     {:ok, plan} = Contract.build(spec)
 
@@ -450,8 +480,14 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge do
           body = request["request"]
           %{"type" => "object"} = schema = body["format"]
           false = schema["additionalProperties"]
-          false = body["think"]
-          4096 = body["options"]["num_predict"]
+
+          if Contract.long_answers?(verified["plan"]) and request["operation"] == "answer" do
+            false = Map.has_key?(body, "think")
+            8192 = body["options"]["num_predict"]
+          else
+            false = body["think"]
+            4096 = body["options"]["num_predict"]
+          end
 
           input =
             body["messages"]

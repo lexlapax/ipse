@@ -19,6 +19,8 @@ elixir scripts/verify.exs source model --sdk _build/dev/lib/ipse/ebin \
   --input "$IPSE_MODEL_ARTIFACT" --selection json
 elixir scripts/verify.exs source model --sdk _build/dev/lib/ipse/ebin \
   --input "$IPSE_MODEL_ARTIFACT" --selection json-none
+elixir scripts/verify.exs source model --sdk _build/dev/lib/ipse/ebin \
+  --input "$IPSE_MODEL_ARTIFACT" --selection json-long
 ```
 
 The build compiles reviewed repository source into an inert artifact; it does not
@@ -31,16 +33,20 @@ explicit profile, private native receipt, bounded text, canonical usage, shared
 configured cost aggregation, main/helper refusal and unchanged journal/budget
 bytes on idle resume. Temporary state is removed; fixture rates are synthetic.
 
-Run all four selections. The first leaves thinking at the backend default and checks
+Run all five selections. The first leaves thinking at the backend default and checks
 that no `think` field is sent. The second explicitly selects an Ollama profile
 with `reasoning_effort: "none"`, checks native `think: false`, and restores the
-same execution fact on idle resume. The last two select version-2 structured
+same execution fact on idle resume. `json` and `json-none` select version-2 structured
 output and check the exact native JSON Schema, once with each thinking selection.
-The response keeps the same text/usage envelope. All four use the synthetic HTTP
-fixture, with unchanged output ceilings and no repair or retry.
+`json-long` selects version three, with explicit root/profile/request deadlines
+of 480000 milliseconds and the same schema and output ceiling. The fixture
+responds promptly; it tests the captured allowance, approval, source-tamper
+refusal and inert resume, without claiming an eight-minute live inference.
+The response keeps the same text/usage envelope. All five use the synthetic HTTP
+fixture, with no repair or retry.
 
 After packaging, set `IPSE_ARCHIVE` to the exact compatible archive printed by
-`./scripts/package.sh`, then run the same four selections:
+`./scripts/package.sh`, then run the same five selections:
 
 ```sh
 elixir scripts/verify.exs installed model \
@@ -51,6 +57,8 @@ elixir scripts/verify.exs installed model \
   --archive "$IPSE_ARCHIVE" --input "$IPSE_MODEL_ARTIFACT" --selection json
 elixir scripts/verify.exs installed model \
   --archive "$IPSE_ARCHIVE" --input "$IPSE_MODEL_ARTIFACT" --selection json-none
+elixir scripts/verify.exs installed model \
+  --archive "$IPSE_ARCHIVE" --input "$IPSE_MODEL_ARTIFACT" --selection json-long
 ```
 
 The outer verifier compiles the trusted proof against the extracted SDK before

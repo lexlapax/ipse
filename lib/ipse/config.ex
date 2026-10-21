@@ -395,14 +395,15 @@ defmodule Ipse.Config do
       Enum.find(loaded, fn source ->
         source.scope == "project" and
           Enum.any?(source.data["profiles"] || %{}, fn {id, profile} ->
-            MapSet.member?(operator_ids, id) or Map.has_key?(profile, "base_url")
+            MapSet.member?(operator_ids, id) or
+              Enum.any?(~w(base_url model_call_timeout_ms), &Map.has_key?(profile, &1))
           end)
       end)
 
     if invalid,
       do:
         {:error,
-         "Project configuration cannot define provider endpoints or replace operator profiles: #{invalid.path}"},
+         "Project configuration cannot define provider endpoints, extend model-call timeouts or replace operator profiles: #{invalid.path}"},
       else: :ok
   end
 

@@ -73,6 +73,61 @@ defmodule Ipse.KnowledgeEvaluationContractTest do
     )
   end
 
+  test "long-answer policy freezes only the answer override, reasoning and reservations" do
+    contracts = %{
+      "outputs" => %{
+        "answer" => "json_schema_v3",
+        "extract" => "json_schema_v2",
+        "rerank" => "json_schema_v2"
+      },
+      "selection" => "per_strategy_eligibility_v1"
+    }
+
+    declared =
+      sealed_spec()
+      |> Map.put("version", 3)
+      |> Map.put("contracts", contracts)
+      |> update_in(["profiles", "p27_answer"], fn p ->
+        p
+        |> Map.delete("reasoning_effort")
+        |> Map.put("max_output_tokens", 8192)
+        |> Map.put("model_call_timeout_ms", 480_000)
+      end)
+      |> Map.update!(
+        "budgets",
+        &Map.new(&1, fn {id, b} -> {id, Map.put(b, "reserve_output_tokens", 8192)} end)
+      )
+
+    assert {:ok, plan} = Contract.build(declared)
+    assert :ok = Contract.validate_shape(plan, :execution)
+    assert Contract.long_answers?(plan)
+    assert Contract.answer_timeout_ms(plan) == 480_000
+    assert Contract.session_timeout_ms(plan) == 540_000
+    assert plan["profiles"]["p27_extract"]["reasoning_effort"] == "none"
+    assert plan["profiles"]["p27_rerank"]["max_output_tokens"] == 4096
+
+    for bad <- [
+          update_in(
+            declared,
+            ["profiles", "p27_answer"],
+            &Map.delete(&1, "model_call_timeout_ms")
+          ),
+          put_in(declared, ["profiles", "p27_answer", "model_call_timeout_ms"], 120_000),
+          put_in(declared, ["profiles", "p27_extract", "model_call_timeout_ms"], 480_000),
+          put_in(declared, ["profiles", "p27_answer", "reasoning_effort"], "none"),
+          put_in(declared, ["profiles", "p27_answer", "max_output_tokens"], 4096),
+          put_in(declared, ["budgets", "lexical", "reserve_output_tokens"], 4096),
+          put_in(declared, ["contracts", "outputs", "extract"], "json_schema_v3"),
+          put_in(declared, ["contracts", "outputs", "answer"], "json_schema_v2")
+        ],
+        do: assert({:error, _} = Contract.build(bad))
+
+    assert {:ok, old} = Contract.build(sealed_spec())
+    refute Contract.long_answers?(old)
+    assert Contract.answer_timeout_ms(old) == 120_000
+    assert Contract.session_timeout_ms(old) == 180_000
+  end
+
   test "new generation requires every structured task and its individual qualification policy" do
     contracts = %{
       "outputs" => %{

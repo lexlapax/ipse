@@ -278,7 +278,7 @@ defmodule Ipse.Development.Verification.Scenarios do
   def selection!("measured-authority", "default"), do: :ok
 
   def selection!("measured-knowledge", selection)
-      when selection in ~w(default sealed structured sealed-structured) do
+      when selection in ~w(default sealed structured sealed-structured sealed-long-answers) do
     :ok
   end
 
@@ -323,7 +323,15 @@ defmodule Ipse.Development.Verification.Scenarios do
   def validate!(%{name: "model"}, report, selection) do
     {thinking, output} = model_selection(selection)
     true = report["thinking_selection"] == (thinking || "default")
-    true = report["output_contract"] == if(output == :text, do: "text_v1", else: "json_schema_v2")
+
+    true =
+      report["output_contract"] ==
+        case output do
+          :text -> "text_v1"
+          :json_schema -> "json_schema_v2"
+          :json_schema_long -> "json_schema_v3"
+        end
+
     checks!(report, 9)
   end
 
@@ -523,4 +531,5 @@ defmodule Ipse.Development.Verification.Scenarios do
   defp model_selection("none"), do: {"none", :text}
   defp model_selection("json"), do: {nil, :json_schema}
   defp model_selection("json-none"), do: {"none", :json_schema}
+  defp model_selection("json-long"), do: {nil, :json_schema_long}
 end

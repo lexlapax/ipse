@@ -110,6 +110,17 @@ defmodule Ipse.Development.Evaluation.Answer do
 
   def prepare(_, _, _, _), do: {:error, :output_contract}
 
+  @doc "Prepare a version-three answer with an explicitly declared, bounded deadline."
+  def prepare(query, as_of_ms, ranked_evidence, "json_schema_v3", timeout_ms) do
+    with {:ok, bundle} <- prepare(query, as_of_ms, ranked_evidence, "json_schema_v2"),
+         request = bundle["request"] |> Map.put("version", 3) |> Map.put("timeout_ms", timeout_ms),
+         :ok <- Ipse.Extensions.ModelCall.validate(request) do
+      {:ok, %{bundle | "version" => 3, "request" => request}}
+    end
+  end
+
+  def prepare(_, _, _, _, _), do: {:error, :output_contract}
+
   @doc "Decode strict JSON and pair each referenced ID with its shown citation."
   def decode_answer(raw_json, bundle) do
     with :ok <- bundle_valid(bundle),
@@ -223,7 +234,7 @@ defmodule Ipse.Development.Evaluation.Answer do
       exact?(bundle, ~w(version request context shown coverage context_sha256)) and
         is_map(request) and request["op"] == "model.complete" and
         request["profile"] == "p27_answer" and request["instruction"] == @instruction and
-        request["max_output_bytes"] == @output_bytes and request["timeout_ms"] == 120_000 and
+        request["max_output_bytes"] == @output_bytes and
         is_binary(request["input"]) and byte_size(request["input"]) <= @input_bytes and
         is_list(shown) and length(shown) <= @candidate_limit and
         Enum.all?(Enum.with_index(shown, 1), fn {item, rank} -> shown_valid?(item, rank) end) and
@@ -239,12 +250,16 @@ defmodule Ipse.Development.Evaluation.Answer do
   end
 
   defp request_contract?(version, request, _) when version == 1,
-    do: exact?(request, @request_keys) and request["version"] == 1
-
-  defp request_contract?(2, request, shown),
     do:
-      exact?(request, @request_keys ++ ["response_schema"]) and request["version"] === 2 and
-        request["response_schema"] == response_schema(shown)
+      exact?(request, @request_keys) and request["version"] == 1 and
+        request["timeout_ms"] === 120_000
+
+  defp request_contract?(version, request, shown) when version in [2, 3],
+    do:
+      exact?(request, @request_keys ++ ["response_schema"]) and request["version"] === version and
+        request["response_schema"] == response_schema(shown) and
+        Ipse.Extensions.ModelCall.validate(request) == :ok and
+        (version == 3 or request["timeout_ms"] === 120_000)
 
   defp request_contract?(_, _, _), do: false
 

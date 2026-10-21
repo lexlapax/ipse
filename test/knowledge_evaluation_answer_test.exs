@@ -97,6 +97,31 @@ defmodule Ipse.KnowledgeEvaluationAnswerTest do
              Answer.decode_answer(JSON.encode!(response("answer", ["e1", "e1"])), bundle)
   end
 
+  test "long answers preserve instructions, context and citations with an explicit v3 deadline" do
+    evidence = [candidate("a")]
+    assert {:ok, old} = Answer.prepare("release", 1000, evidence, "json_schema_v2")
+    assert {:ok, long} = Answer.prepare("release", 1000, evidence, "json_schema_v3", 480_000)
+    assert Map.drop(long, ~w(version request)) == Map.drop(old, ~w(version request))
+
+    assert Map.drop(long["request"], ~w(version timeout_ms)) ==
+             Map.drop(old["request"], ~w(version timeout_ms))
+
+    assert long["request"]["version"] === 3
+    assert long["request"]["timeout_ms"] === 480_000
+    assert {:ok, _} = Answer.decode_answer(JSON.encode!(response()), long)
+
+    for timeout <- [nil, 999, 600_001, 480_000.0] do
+      assert {:error, _} = Answer.prepare("release", 1000, evidence, "json_schema_v3", timeout)
+      forged = put_in(long, ["request", "timeout_ms"], timeout)
+      assert {:error, :invalid_bundle} = Answer.decode_answer(JSON.encode!(response()), forged)
+    end
+
+    forged = put_in(old, ["request", "timeout_ms"], 480_000)
+    assert {:error, :invalid_bundle} = Answer.decode_answer(JSON.encode!(response()), forged)
+    forged = put_in(long, ["request", "instruction"], "Changed instructions")
+    assert {:error, :invalid_bundle} = Answer.decode_answer(JSON.encode!(response()), forged)
+  end
+
   @tag :answer_contract
   test "one ordered cited body supplies the material answer independently of its classification" do
     {:ok, bundle} = Answer.prepare("release", 1000, [candidate("a")])

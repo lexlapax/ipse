@@ -77,7 +77,7 @@ These rules apply even after a project is trusted:
 | --- | --- |
 | Project `sandbox` | May tighten to `native`; cannot weaken an earlier `native` to `off` |
 | Explicit operator environment or CLI sandbox | May select either supported mode |
-| Profile endpoints and operator profile IDs | Project scopes cannot introduce endpoints or replace operator IDs |
+| Profile endpoints, extended model-call deadlines and operator profile IDs | Project scopes cannot introduce `base_url` or `model_call_timeout_ms`, or replace operator IDs |
 | `embedding_profiles` | Operator-only, separate from text profiles and roles |
 | Budget, journal policy, extension trust and diagnostic capture | Operator-only policy; project declarations refuse |
 | Extension options and selection | Still require independent artifact/trust admission before callbacks |
@@ -147,6 +147,16 @@ See [delegation](delegation.md) for scheduling and [provider limits](provider-li
 for wire fields. Main compaction stays on the main route. Separately granted
 extension inference uses a private helper-profile catalog; roles do not select it.
 Its SDK payload contains no provider key or routing authority.
+
+Extension deadlines have a separate opt-in field. `Profiles.validate_profile/1`
+admits `model_call_timeout_ms`, but `Profiles.@settings` excludes it from main
+and child settings. `ModelCall.snapshot/1` captures its minimum with the root
+timeout and 600000. Without that field it retains the historical minimum with
+120000, including when an old ordinary profile timeout was larger. This preserves
+saved model-profile equality on resume. `ModelCall.execution/2` then narrows by
+the admitted request's own deadline; versions one and two retain their original
+120000 request ceiling. Test these distinctions in
+`test/extensions_model_call_test.exs` before changing either projection.
 
 ## Preserve reasoning and destination facts
 

@@ -24,6 +24,7 @@ defmodule Ipse.Extensions.ModelCall do
       is_binary(proposed["artifact_sha256"]) and
       Regex.match?(~r/\A[0-9a-f]{64}\z/, proposed["artifact_sha256"]) and
       validate(proposed["request"]) == :ok and valid_profile?(proposed["execution"]) and
+      proposed["execution"]["timeout_ms"] <= proposed["request"]["timeout_ms"] and
       proposed["execution"]["id"] == proposed["request"]["profile"] and
       proposed["execution"]["provider"] in ~w(chatgpt openai ollama anthropic) and
       supported_response?(proposed["request"], proposed["execution"]["provider"]) and
@@ -42,19 +43,23 @@ defmodule Ipse.Extensions.ModelCall do
       "type" => "object",
       "properties" => %{
         "op" => %{"type" => "string", "enum" => ["model.complete"]},
-        "version" => %{"type" => "integer", "enum" => [1, 2]},
+        "version" => %{"type" => "integer", "enum" => [1, 2, 3]},
         "profile" => %{"type" => "string", "minLength" => 1, "maxLength" => 64},
         "instruction" => %{"type" => "string", "maxLength" => 2048},
         "input" => %{"type" => "string", "minLength" => 1, "maxLength" => 4096},
         "max_output_bytes" => %{"type" => "integer", "minimum" => 1, "maximum" => 8192},
-        "timeout_ms" => %{"type" => "integer", "minimum" => 1000, "maximum" => 120_000}
+        "timeout_ms" => %{
+          "type" => "integer",
+          "minimum" => 1000,
+          "maximum" => if(version === 3, do: 600_000, else: 120_000)
+        }
       },
       "required" => ~w(op version profile instruction input max_output_bytes timeout_ms),
       "additionalProperties" => false
     }
 
     schema =
-      if version === 2 do
+      if version in [2, 3] do
         schema
         |> put_in(["properties", "response_schema"], %{"type" => "object"})
         |> Map.update!("required", &(&1 ++ ["response_schema"]))
@@ -63,11 +68,12 @@ defmodule Ipse.Extensions.ModelCall do
       end
 
     with :ok <- Ipse.MCP.Schema.validate_arguments(schema, request),
-         true <- version === 1 or version === 2,
+         true <- version in [1, 2, 3],
          :ok <- validate_response_schema(request),
          true <- Regex.match?(~r/\A[A-Za-z][A-Za-z0-9_-]{0,63}\z/, request["profile"]),
          true <- is_integer(request["timeout_ms"]) and is_integer(request["max_output_bytes"]),
-         true <- byte_size(Jason.encode!(request)) <= if(version == 2, do: 12_288, else: 8192),
+         true <-
+           byte_size(Jason.encode!(request)) <= if(version in [2, 3], do: 12_288, else: 8192),
          :ok <- Ipse.Extension.validate(request) do
       :ok
     else
@@ -99,10 +105,19 @@ defmodule Ipse.Extensions.ModelCall do
              if(profile["base_url"], do: Ipse.JSON.sha256(profile["base_url"])),
            "reasoning_effort" => profile["reasoning_effort"],
            "max_output_tokens" => profile["max_output_tokens"],
-           "timeout_ms" =>
-             Enum.min([profile["timeout_ms"] || 120_000, config[:timeout_ms] || 120_000, 120_000])
+           "timeout_ms" => profile_timeout(profile, config)
          }}
       end)
+    end
+  end
+
+  defp profile_timeout(profile, config) do
+    case Map.fetch(profile, "model_call_timeout_ms") do
+      {:ok, limit} ->
+        Enum.min([limit, config[:timeout_ms] || 120_000, 600_000])
+
+      :error ->
+        Enum.min([profile["timeout_ms"] || 120_000, config[:timeout_ms] || 120_000, 120_000])
     end
   end
 
@@ -162,7 +177,7 @@ defmodule Ipse.Extensions.ModelCall do
         })
 
       runtime =
-        if request["version"] == 2,
+        if request["version"] in [2, 3],
           do: Map.put(runtime, :extension_response_schema, request["response_schema"]),
           else: runtime
 
@@ -271,7 +286,7 @@ defmodule Ipse.Extensions.ModelCall do
         provider: @providers[profile["provider"]],
         max_output_tokens: profile["max_output_tokens"]
       }) == :ok and
-      is_integer(profile["timeout_ms"]) and profile["timeout_ms"] in 1..120_000
+      is_integer(profile["timeout_ms"]) and profile["timeout_ms"] in 1..600_000
   rescue
     _ -> false
   end
@@ -404,9 +419,10 @@ defmodule Ipse.Extensions.ModelCall do
   defp validate_response_schema(%{"version" => 1}), do: :ok
 
   defp validate_response_schema(%{
-         "version" => 2,
+         "version" => version,
          "response_schema" => %{"type" => "object"} = schema
-       }),
+       })
+       when version in [2, 3],
        do: Ipse.MCP.Schema.validate_schema(schema)
 
   defp validate_response_schema(_), do: @error
@@ -416,7 +432,7 @@ defmodule Ipse.Extensions.ModelCall do
 
   defp matches_response?(%{"version" => 1}, _text), do: true
 
-  defp matches_response?(%{"version" => 2} = request, text) do
+  defp matches_response?(%{"version" => version} = request, text) when version in [2, 3] do
     with {:ok, object} <- Ipse.JSON.decode_bounded(text, request["max_output_bytes"]),
          :ok <- Ipse.MCP.Schema.validate_object(object),
          :ok <- Ipse.MCP.Schema.validate_result(request["response_schema"], object) do

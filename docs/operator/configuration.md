@@ -154,6 +154,53 @@ main profile. See [delegated work](subagents.md) for a complete operating proced
 Extensions request one-shot text inference separately through named profiles;
 roles do not route those calls automatically.
 
+### Allow a longer extension answer
+
+For an extension that explicitly sends a version-three `model.complete` request,
+save an operator file such as `/private/path/slow-answer.json`:
+
+```json
+{
+  "version": 1,
+  "settings": {"provider": "ollama", "model": "qwen3.5:9b", "timeout_ms": 480000},
+  "profiles": {
+    "answer": {
+      "provider": "ollama",
+      "model": "qwen3.5:9b",
+      "credential": "none",
+      "max_output_tokens": 8192,
+      "model_call_timeout_ms": 480000
+    }
+  }
+}
+```
+
+Inspect it before starting the separately configured extension:
+
+```sh
+ipse config --config /private/path/slow-answer.json --no-project-config
+```
+
+Expect the `answer` profile and root request limit to permit 480000 milliseconds.
+This file neither installs an extension nor starts inference. The extension must
+request profile `answer`, version three and its desired deadline. Its egress
+approval shows the effective limit. This Ollama profile omits `reasoning_effort`,
+so the model retains its default thinking policy; check the selected backend's
+metadata before relying on that default.
+
+`model_call_timeout_ms` accepts integers in 1000..600000. It replaces that
+profile's ordinary `timeout_ms` for extension model calls only. The root request
+limit and the extension's requested deadline still narrow it. Without the new
+field, extension inference remains capped at 120000 milliseconds, even with a
+larger ordinary timeout. Versions one and two still accept at most 120000.
+Selecting the profile for main work or a child does not apply this override.
+
+An SDK-2 invocation still has its original two-minute aggregate deadline. A
+longer model allowance cannot extend that enclosing invocation. Use a worker
+whose invocation contract supports the requested duration, such as the SDK-1
+answer helper. On timeout, inspect the retained outcome and accounting before
+starting new work. The remote request may have happened; Ipse does not replay it.
+
 ## Review project settings before trusting them
 
 Project settings live at `.ipse/config.json`. Within Git, discovery runs from
@@ -176,7 +223,8 @@ ipse chat --cwd /path/to/project --trust-project-config
 
 Trust applies to that invocation and can change provider or billing selection.
 It does not approve effects. Project profiles may use default endpoints and
-assign roles, but cannot replace operator profile IDs or set endpoints.
+assign roles, but cannot replace operator profile IDs, set endpoints or define
+`model_call_timeout_ms`.
 Automatically discovered aliases must resolve within the repository. An
 explicit operator file may be a symlink.
 

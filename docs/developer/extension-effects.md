@@ -213,6 +213,23 @@ contract. `value_from_record/4` validates UTF-8, bytes, duplicate-free JSON, SDK
 bounds and schema, then returns the original text. A schema-valid invented name
 is still invented; domain code checks meaning, quotations and attribution.
 
+Version three has the same required schema, provider selection, request bytes
+and output limits as version two, with a request deadline of 1000..600000 ms.
+For a worked change, take the version-two request above, set `version` to `3`,
+`profile` to `answer` and `timeout_ms` to `480000`. Configure both the root timeout and that operator
+profile's `model_call_timeout_ms` to `480000`, as shown in the
+[operator procedure](../operator/configuration.md#allow-a-longer-extension-answer).
+`ModelCall.prepare/2` must return an effective deadline of 480000; omitting the
+profile override or retaining the default root limit must return 120000.
+
+The override replaces the ordinary profile timeout for extension model calls.
+Project scopes cannot set it. Its absence preserves historical snapshot bytes,
+and ordinary main/child profile settings exclude it. The saved execution still
+must equal the value recomputed from the captured scope and request. Delegated
+approval additionally rejects an execution deadline above the request's limit.
+No version-three request changes the SDK-2 aggregate or read deadline. Longer
+SDK-1 answer calls use the existing inference owner, cancellation and accounting.
+
 The fixed host system instruction and labelled user-role JSON carry the approved
 instruction/input. Extension instructions do not become system rules. Reading
 history, prompts, answers, memory or tool views needs separate capabilities.
@@ -223,7 +240,7 @@ effective output ceiling and deadline.
 Destination facts expose scheme/host/port as `origin` and bind the full wire URL
 as `target_sha256`. Paths and credentials are absent from public facts. Profile
 URLs reject userinfo, queries, fragments and invalid ports; project profiles
-cannot replace operator IDs or choose endpoints. The same adapter route supplies
+cannot replace operator IDs, choose endpoints or grant longer model deadlines. The same adapter route supplies
 both disclosure and dispatch. See [configuration training](configuration.md).
 
 `Provider.Request` resolves the selected credential inside the admitted task.
@@ -256,7 +273,7 @@ budget root. Refusals count as attempts, not admitted budget bookings.
 The provider wire is at most 1 MiB including event framing, independently of the
 8 KiB text ceiling. This is not a bound on every HTTP buffer or process heap.
 A private `extension_model_response` retains original assistant/native data and
-exact IDs/digest up to 256 KiB encoded. Both request versions return version-one
+exact IDs/digest up to 256 KiB encoded. All request versions return version-one
 results; structured output remains the original JSON string in `text`:
 
 ```json
@@ -272,7 +289,7 @@ metered inference. Other closed failures are `model_limit`,
 refund or final charge from interruption.
 
 Restore checks the original profile/policy before tail repair, retained response,
-canonical completion, request source and invocation/session/turn. Version two
+canonical completion, request source and invocation/session/turn. Versions two and three
 reapplies the approved schema. Child usage readers validate the same sources.
 Idle resume performs no inference; interrupted work retains unknown/partial
 measurements and shared liabilities. See [usage accounting](usage-accounting.md)

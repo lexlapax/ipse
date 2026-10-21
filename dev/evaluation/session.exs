@@ -260,7 +260,7 @@ defmodule Ipse.Development.Evaluation.Session do
   end
 
   def invoke(run, "answer", %{"request" => request} = params) do
-    if exact?(params, ["request"]) and is_map(request) and request["version"] === 2 and
+    if exact?(params, ["request"]) and is_map(request) and request["version"] in [2, 3] and
          request["profile"] == "p27_answer" and
          Ipse.Extensions.ModelCall.validate(request) == :ok and
          text?(request["instruction"], 2048) and text?(request["input"], 4096),
@@ -922,7 +922,7 @@ defmodule Ipse.Development.Evaluation.Session do
         Map.has_key?(budget, "max_requests") and
         positive?(budget["max_requests"]) and
         is_function(spec.approval_validator, 1) and
-        is_integer(spec.timeout_ms) and spec.timeout_ms in 1_000..300_000
+        is_integer(spec.timeout_ms) and spec.timeout_ms in 1_000..660_000
 
     if valid, do: :ok, else: {:error, :invalid_session_spec}
   end

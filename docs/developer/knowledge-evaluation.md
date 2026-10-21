@@ -139,6 +139,15 @@ in the outer proof owner's memory through preparation, all cells, finalization
 and audit. Scoring then releases the exact committed bytes. The fixture mode
 and identities remain explicit throughout.
 
+To verify longer final answers, use the same source or installed command with
+`--selection sealed-long-answers` and a fresh output directory. It selects answer
+contract `json_schema_v3`, a 480000 ms root/profile/request allowance, 8192 output
+tokens and matching reservations. Its answer wire must omit `think`; extraction
+and rerank must still send `think: false`, a version-two schema and a 4096-token
+cap. The scripted server answers promptly. This exercises transport, exact
+approvals, accounting, freeze/audit and scoring admission, not actual reasoning
+quality or sustained eight-minute generation.
+
 For compatibility controls, `structured` uses combined fixture data with plan
 three, `sealed` uses detached answers with plan two, and `default` uses combined
 data with plan two. These are closed selections, not positional switches.
@@ -335,18 +344,35 @@ review. The subsequent portable declaration removes local endpoint bindings and
 the execution resolution supplies them again. Generating a plan does not open
 the manifest, corpus, questions or answers. Their paths may still be absent.
 
-Plan three also requires this exact `contracts` object:
+Plan three requires one of two closed `contracts` objects. The original policy is:
 
 ```json
 {"outputs":{"answer":"json_schema_v2","extract":"json_schema_v2","rerank":"json_schema_v2"},"selection":"per_strategy_eligibility_v1"}
 ```
 
-`Contract.build/1` adds the matching output-contract selections to
-extraction and rerank profiles. Full validation refuses a changed selection.
-All three text tasks use the host's schema-bound `model.complete` version-two
-request. The answer, extraction and rerank schemas differ and bind the IDs
-actually supplied to each task. Schema conformance does not establish factual
-support. Independent semantic review remains required.
+The longer-answer policy changes only `outputs.answer` to `json_schema_v3`.
+`p27_answer` must explicitly define `model_call_timeout_ms` in 120001..600000.
+Runner derives the root timeout from that frozen field and waits that deadline
+plus a bounded 60000 ms for surrounding work. Extraction and rerank cannot have
+the override. `Contract.build/1` keeps their `json_schema_v2` adapter selection;
+full validation refuses other contract combinations.
+
+For a held-out longer-answer declaration, retain the pinned models and set
+`p27_answer.max_output_tokens` to 8192, omit its `reasoning_effort`, and set every
+variant's `reserve_output_tokens` to 8192. Review the total output-token budget
+with its request allowance before freezing. The example budget convention is
+`max_output_tokens = max_requests * reserve_output_tokens`. Keep extraction and
+rerank at 4096 tokens with explicit `none`. Each owned real-model cell verifies
+and retains the pinned model's `thinking.default: true` and support for both
+thinking selections before inference. Omission alone cannot prove an enabled
+backend default. Fixture identities remain explicitly synthetic.
+
+Versions two and three use the same schema-bound object response. Their task
+schemas bind only the IDs actually supplied. Neither schema conformance nor a
+longer deadline establishes factual support. Independent semantic review and
+the individual 90%/95% qualification gates remain unchanged. The SDK-1 answer
+helper supports the longer call; SDK-2 knowledge preparation/query deadlines
+remain two minutes.
 
 Keep format versions separate when tracing a run:
 
@@ -354,7 +380,7 @@ Keep format versions separate when tracing a run:
 | --- | --- | --- |
 | Executable and portable plan | 3 | Fix text output contracts and individual strategy qualification |
 | Experiment and local execution seal | 2 | Bind portable policy and one measured local resolution |
-| Answer preparation bundle and model request | 2 | Retain the complete schema-bound approved request |
+| Answer preparation bundle and model request | 2 or explicitly selected 3 | Retain the complete schema-bound approved request and deadline |
 | Saved prediction row and independent review envelope | 2 | Preserve first outcomes and bound judgments |
 | Scoring declaration | 3 | Bind the complete validated declaration and prediction files to review |
 | Score report | 2 | Publish eligibility, disqualifications and complete-grid diagnostics |
@@ -1247,9 +1273,28 @@ has its complete `citation`. The result contains an exact `model.complete`
 request for `p27_answer`, a shown context, coverage and the context's SHA256.
 It executes nothing.
 
-For plan three, Runner calls `prepare/4` with `"json_schema_v2"`. Its version-two
-bundle retains the same six fields, including the complete version-two request.
-After fitting the input, the helper derives `response_schema` from only the
+For the original plan-three policy, Runner calls `prepare/4` with
+`"json_schema_v2"`. The longer-answer policy calls `prepare/5` with
+`"json_schema_v3"` and the frozen answer timeout. Run this preparation-only
+example in `iex -S mix` after loading the helper:
+
+```elixir
+Code.require_file("dev/evaluation/answer.exs")
+candidates = []
+{:ok, bundle} = Ipse.Development.Evaluation.Answer.prepare(
+  "What does release require?", 1_800_000_000_000, candidates,
+  "json_schema_v3", 480_000
+)
+3 = bundle["request"]["version"]
+480_000 = bundle["request"]["timeout_ms"]
+```
+
+This empty-evidence request can produce only an abstention with no claims. Replace
+the empty list with saved retrieval candidates to examine their shown-ID schema;
+preparation starts no inference.
+
+Both bundles retain the same six fields, complete request and original answer
+instructions. After fitting the input, the helper derives `response_schema` from only the
 shown evidence IDs. With no shown evidence, the schema permits only `abstain`
 and zero claims. Bundle validation reconstructs that schema, so adding an
 omitted ID or substituting another schema refuses before answer decoding.
@@ -1363,7 +1408,7 @@ that a claim follows from its citation, that a class is correct, that the answer
 is complete, or that two claims agree. Keep those semantic judgments in
 independent review, alongside literal captured-source verification.
 
-Trace the structured request through `Session.invoke/3`. Its new answer
+Trace the structured request through `Session.invoke/3`. Its version-two or version-three answer
 argument is exactly `%{"request" => request}`. The driver validates the request
 and evaluator byte limits, then forwards it unchanged. Historical four-field
 arguments still construct their version-one request. Mixed argument forms refuse.

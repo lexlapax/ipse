@@ -39,6 +39,7 @@ defmodule Ipse.Profiles do
         Map.merge(Map.take(Ipse.Config.settings_schema()["properties"], @settings), %{
           "credential" => %{"type" => "string", "enum" => Map.values(@credentials) |> Enum.uniq()},
           "base_url" => %{"type" => "string", "minLength" => 1, "maxLength" => 512},
+          "model_call_timeout_ms" => Ipse.Config.settings_schema()["properties"]["timeout_ms"],
           "reasoning_effort" => %{
             "type" => "string",
             "enum" => ~w(none low medium high xhigh max)
