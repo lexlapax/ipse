@@ -400,8 +400,8 @@ the milestone. Preserve current SDK bounds and existing operation authority.
 | P27H5 | Explicit schema-bound extension inference, native provider admission, approval and saved-result validation, plus independently selected domain output contracts | Host contract and domain selections verified; corrected-source macOS/native-enabled Linux suites, source/package/installed proofs, unchanged precompiled SDK-1 modes and three actual synthetic native requests pass. Plan-three evaluator integration and individual qualification pass both scoped platform checks and complete source/installed synthetic comparisons. Semantic quality remains open |
 | P27A | Independent research and lexical corpus packages with named interchangeable profiles, cited evidence, explicit limits, partial failures, stale-index handling and suppression | Review repairs and corrected-source fixture/platform/installed checks pass; held-out quality acceptance remains open |
 | P27B | Independent attributable graph, optional extraction, embedding/hybrid and rerank adapters; matched quality/resource comparisons before engine selection | Review defects, compact model contracts and shared original-byte excerpts verified through source/platform/installed checks; corrected-source matched quality/resource comparisons and selection remain open |
-| P27 verification | Frozen held-out workload, zero authority/isolation/replay/resurrection failures, measured retrieval/support/citation/resources, source/native/installed checks, coherent user and contributor manuals | Open; the exposed diagnostic retains failed/partial rows and classification defects. [Whole-milestone review and boundary checks](archive/2026-10-21-p27-readiness-repair/index.md) found six further readiness defects; repairs pass full macOS/Linux suites, supported-toolchain checks and fresh source/installed package matrices. Fresh held-out quality, resource/selection and remaining candidate gates remain |
-| P27 structural readiness | Holistic consolidation of the entire codebase and all user/developer documentation; migrate callers, builds, tests, packaging and CI together | Selected implementation units and [whole-manual consolidation](archive/2026-10-21-p27-manual-consolidation/editorial-review.md) verified within scope. Whole review and six repairs verified through platform/package gates; native measured-evaluator and hosted candidate receipts remain before the private-evaluation freeze |
+| P27 verification | Frozen held-out workload, zero authority/isolation/replay/resurrection failures, measured retrieval/support/citation/resources, source/native/installed checks, coherent user and contributor manuals | Open; the exposed diagnostic retains failed/partial rows and classification defects. [Whole-milestone review and boundary checks](archive/2026-10-21-p27-readiness-repair/index.md) found six further readiness defects; repairs pass full macOS/Linux suites, supported-toolchain and package checks, both native 350-row scripted proofs and exact-commit hosted CI. Final inference policy, fresh held-out quality, independent semantic review, matched resources and engine selection remain |
+| P27 structural readiness | Holistic consolidation of the entire codebase and all user/developer documentation; migrate callers, builds, tests, packaging and CI together | Complete at runtime commit `18af42e`; selected implementation units, [whole-manual consolidation](archive/2026-10-21-p27-manual-consolidation/editorial-review.md), whole review and six repairs pass platform/package/native gates and hosted Ubuntu/macOS CI. The final evaluation configuration and fresh private freeze remain separate |
 
 The [shared verification change](archive/2026-10-20-p27-shared-verification/index.md)
 is verified against unchanged runtime source on macOS and native-enabled Linux,
@@ -409,14 +409,15 @@ with fresh packages, the source and installed command matrix, and complete
 synthetic native comparisons and authority-loss controls in both modes. It
 consolidates verification setup and shared fixtures and repairs the public source
 Research CLI and model-service terminal cleanup. This completes that structural
-unit; final integrated readiness, actual-model quality, final private evaluation
-and engine selection remain open.
+unit. Integrated structural readiness now passes at `18af42e`; actual-model
+quality, final private evaluation and engine selection remain open.
 
 The subsequent [fixed-context answer diagnostic](archive/2026-10-20-p27-quality-remediation/index.md#reject-a-fixed-context-instruction-trial)
 retains two fresh eight-request CPU-only runs on exposed material. Structured
 output succeeds, but semantic and citation errors persist. A general instruction
 revision produced mixed results and was reverted. No quality gain or private
-acceptance is claimed; inference-policy investigation and structural work remain.
+acceptance is claimed; inference-policy investigation remains open. Structural
+work now passes the readiness gate above.
 
 The [first host-contract record](archive/2026-10-19-p27-mcp-host-contracts/index.md)
 retains causal regressions, independent review corrections and local verification.

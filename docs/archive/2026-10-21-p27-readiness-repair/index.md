@@ -92,8 +92,30 @@ because its pattern recognized only the failure-form `passed/total` summary.
 Both suites had exited zero. Completion verified the original log hashes and
 exact all-passing summaries, then ran the remaining native/demo/inventory steps.
 The green full suites were not rerun. The source and installed native measured
-evaluator proofs now run in separate fresh scopes with scripted models; their
-pending results establish no actual-model quality or resource comparison.
+evaluator proofs also pass in separate fresh Linux scopes. Each completes all
+350 scripted outcomes and five authority controls, with confirmed cleanup and
+unchanged source inventories matching the final inventory above.
+
+| Native evaluator mode | Knowledge proof | Authority controls |
+| --- | --- | --- |
+| Source | Exit zero, 350 outcomes, 700990 ms | Exit zero, five controls, 146067 ms |
+| Installed package | Exit zero, 350 outcomes, 599715 ms | Exit zero, five controls, 96510 ms |
+
+The retained root is
+`serenity:/var/tmp/ipse-p27-readiness-native-linux-20261021-c3`, with separate
+`source/summary.json` and `installed/summary.json` receipts. These modes ran
+concurrently with scripted models. They establish execution, resource-audit and
+authority behavior, not actual-model quality or a matched resource comparison.
+
+Hosted run [39610639358](https://github.com/lexlapax/ipse/actions/runs/39610639358)
+tests exact commit `18af42eac9ffb0612848325ab4cbb30831f39704` on Elixir 1.18
+and OTP 27. Both jobs completed successfully. Every applicable build, format,
+strict compile, policy, documentation, full-suite, demo, package and independent
+source/installed proof step passed. The macOS native and experimental App Sandbox
+checks also passed; Linux-only optional protocol controls passed on Ubuntu.
+Ubuntu completed at `2026-10-21T14:14:28Z` and macOS at
+`2026-10-21T14:22:35Z`. The later documentation-only receipt does not change the
+439-file runtime/test/tooling inventory certified by this run.
 
 The ninth-head regression first reproduced an unintended `embedding.create`
 proposal, then passed State/MCP negative and existing-head positive controls.
@@ -114,7 +136,8 @@ verified dispatch passes that control and the complete 40-case group.
 The original compatibility commit's hosted run `39594534394`
 is green; it does not certify these new repairs.
 
-P27 remains open. This repair does not expose the sealed private workload, run
+This closes structural and implementation readiness for the final configuration
+decision and fresh evaluation freeze. P27 remains open. This repair does not
+expose the sealed private workload, run
 actual-model inference, establish held-out quality or exact matched resources,
-provide independent semantic judgments, or select an engine. The final hosted
-candidate and remaining measured-evaluator receipts are still open.
+provide independent semantic judgments, or select an engine.
