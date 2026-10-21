@@ -10,8 +10,9 @@ parse text as vectors.
 Build from the repository root after building Ipse:
 
 ```sh
-elixir examples/embedding-actions/build.exs --sdk _build/dev/lib/ipse/ebin --output /tmp/ipse-embedding-artifact
-mix run examples/embedding-actions/verify.exs /tmp/ipse-embedding-artifact
+IPSE_EMBEDDING_ARTIFACT=$(mktemp -d)/artifact
+elixir scripts/build-artifact.exs embedding-actions --sdk _build/dev/lib/ipse/ebin --output "$IPSE_EMBEDDING_ARTIFACT"
+mix run examples/embedding-actions/verify.exs "$IPSE_EMBEDDING_ARTIFACT"
 ```
 
 The manifest ID is `ipse-example/embedding-actions`. The verifier imports into a
@@ -52,7 +53,7 @@ accounting behavior. They establish no embedding quality or live model result.
 After packaging, run the same proof against the archive for the actual host:
 
 ```sh
-elixir examples/embedding-actions/verify-package.exs /path/to/ipse-archive-for-your-host.tar.gz /tmp/ipse-embedding-artifact
+elixir examples/embedding-actions/verify-package.exs /path/to/ipse-archive-for-your-host.tar.gz "$IPSE_EMBEDDING_ARTIFACT"
 ```
 
 The wrapper extracts a disposable release, hides system Elixir/Erlang/Mix/Rust

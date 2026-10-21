@@ -29,10 +29,10 @@ the same artifact with different options and deterministic order.
 The lab provides a complete package pair with explicit service composition:
 
 ```sh
-IPSE_LAB_ARTIFACTS=$(mktemp -d)
+IPSE_LAB_ARTIFACTS=$(mktemp -d)/artifacts
 IPSE_LAB_HOME=$(mktemp -d)
 IPSE_LAB_WORKSPACE=$(mktemp -d)
-elixir examples/extension-lab/build.exs --sdk _build/dev/lib/ipse/ebin --output "$IPSE_LAB_ARTIFACTS"
+elixir scripts/build-artifact.exs extension-lab --sdk _build/dev/lib/ipse/ebin --output "$IPSE_LAB_ARTIFACTS"
 elixir examples/extension-lab/config.exs "$IPSE_LAB_ARTIFACTS" "$IPSE_LAB_ARTIFACTS/operator.json"
 IPSE_HOME="$IPSE_LAB_HOME" ./bin/ipse extension import "$IPSE_LAB_ARTIFACTS/memory"
 IPSE_HOME="$IPSE_LAB_HOME" ./bin/ipse extension import "$IPSE_LAB_ARTIFACTS/lookup"

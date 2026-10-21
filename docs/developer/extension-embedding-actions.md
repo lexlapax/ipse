@@ -191,8 +191,9 @@ no filesystem mutation lease. Child MCP and recursive delegation remain refused.
 Build the SDK-only example and run its synthetic loopback proof:
 
 ```sh
-elixir examples/embedding-actions/build.exs --sdk _build/dev/lib/ipse/ebin --output /tmp/ipse-embedding-artifact
-mix run examples/embedding-actions/verify.exs /tmp/ipse-embedding-artifact
+IPSE_EMBEDDING_ARTIFACT=$(mktemp -d)/artifact
+elixir scripts/build-artifact.exs embedding-actions --sdk _build/dev/lib/ipse/ebin --output "$IPSE_EMBEDDING_ARTIFACT"
+mix run examples/embedding-actions/verify.exs "$IPSE_EMBEDDING_ARTIFACT"
 mix test test/embedding_profiles_test.exs test/provider/embedding_test.exs test/embedding_accounting_test.exs test/embedding_costs_test.exs
 ```
 

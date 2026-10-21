@@ -12,11 +12,21 @@ defmodule Ipse.ExtensionLabTest do
     elixir = System.find_executable("elixir")
 
     {build, 0} =
-      System.cmd(elixir, [Path.join(lab, "build.exs"), "--sdk", sdk, "--output", artifacts],
+      System.cmd(
+        elixir,
+        [
+          Path.expand("../scripts/build-artifact.exs", __DIR__),
+          "extension-lab",
+          "--sdk",
+          sdk,
+          "--output",
+          artifacts
+        ],
         stderr_to_stdout: true
       )
 
-    assert build =~ "Built seven inert local artifacts"
+    assert build =~ "Built #{artifacts}."
+    assert length(Path.wildcard(Path.join(artifacts, "*/extension.json"))) == 7
     refute build =~ "warning:"
     paths = sdk |> Path.dirname() |> Path.dirname() |> Path.join("*/ebin") |> Path.wildcard()
     args = Enum.flat_map(paths, &["-pa", &1]) ++ [Path.join(lab, "verify.exs"), artifacts]

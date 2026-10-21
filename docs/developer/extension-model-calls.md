@@ -207,11 +207,12 @@ grant supplies no access to other requests; reports use their separate read gran
 Build and run the local HTTP proof after building Ipse:
 
 ```sh
-elixir examples/model-calls/build.exs --sdk _build/dev/lib/ipse/ebin --output /tmp/ipse-model-artifact
-mix run examples/model-calls/verify.exs /tmp/ipse-model-artifact
-mix run examples/model-calls/verify.exs /tmp/ipse-model-artifact none
-mix run examples/model-calls/verify.exs /tmp/ipse-model-artifact json
-mix run examples/model-calls/verify.exs /tmp/ipse-model-artifact json none
+IPSE_MODEL_ARTIFACT=$(mktemp -d)/artifact
+elixir scripts/build-artifact.exs model-calls --sdk _build/dev/lib/ipse/ebin --output "$IPSE_MODEL_ARTIFACT"
+mix run examples/model-calls/verify.exs "$IPSE_MODEL_ARTIFACT"
+mix run examples/model-calls/verify.exs "$IPSE_MODEL_ARTIFACT" none
+mix run examples/model-calls/verify.exs "$IPSE_MODEL_ARTIFACT" json
+mix run examples/model-calls/verify.exs "$IPSE_MODEL_ARTIFACT" json none
 mix test test/extensions_model_call_test.exs test/extensions_model_jobs_test.exs
 ```
 

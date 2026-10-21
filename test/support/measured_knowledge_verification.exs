@@ -27,10 +27,14 @@ defmodule MeasuredKnowledgeVerification do
         output = Path.join(root, name)
 
         script =
-          if package, do: "extensions/knowledge/build.exs", else: "examples/model-calls/build.exs"
+          if package, do: "extensions/knowledge/build.exs", else: "scripts/build-artifact.exs"
 
         argv = ["--sdk", Application.app_dir(:ipse, "ebin"), "--output", output]
-        argv = if package, do: argv ++ ["--package", package, "--preset", preset], else: argv
+
+        argv =
+          if package,
+            do: argv ++ ["--package", package, "--preset", preset],
+            else: ["model-calls" | argv]
 
         {executable, args} =
           EvaluationMeasuredExecution.command(

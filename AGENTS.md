@@ -118,6 +118,7 @@ are needed for tests or the demo.
 | Unix process groups and advisory locks | `native/ipse-runner.rs`, `native/ipse-process-group.rs` |
 | Bundled skill instructions | `priv/skills/` |
 | Pure knowledge evaluation declarations | `dev/evaluation/contract.exs` |
+| Trusted example artifact construction | `scripts/build-artifact.exs` |
 | Behavior and local protocol fixtures | `test/` |
 
 ## Invariants to preserve

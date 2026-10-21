@@ -58,23 +58,23 @@ jobs:
           elixir scripts/verify-model-service-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-model-service-probe" "$RUNNER_TEMP/ipse-model-service-installed"
       - name: Independent installed extension proof
         run: |
-          elixir examples/extension-lab/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-extension-lab"
+          elixir scripts/build-artifact.exs extension-lab --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-extension-lab"
           elixir examples/extension-lab/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-extension-lab"
       - name: Independent installed model-call proof
         run: |
-          elixir examples/model-calls/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-model-calls"
+          elixir scripts/build-artifact.exs model-calls --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-model-calls"
           elixir examples/model-calls/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-model-calls"
           elixir examples/model-calls/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-model-calls" none
           elixir examples/model-calls/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-model-calls" json
           elixir examples/model-calls/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-model-calls" json-none
       - name: Independent source and installed MCP-call proof
         run: |
-          elixir examples/mcp-actions/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-mcp-actions"
+          elixir scripts/build-artifact.exs mcp-actions --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-mcp-actions"
           mix run examples/mcp-actions/verify.exs "$RUNNER_TEMP/ipse-mcp-actions"
           elixir examples/mcp-actions/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-mcp-actions"
       - name: Independent source and installed embedding proof
         run: |
-          elixir examples/embedding-actions/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-embedding-actions"
+          elixir scripts/build-artifact.exs embedding-actions --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-embedding-actions"
           mix run examples/embedding-actions/verify.exs "$RUNNER_TEMP/ipse-embedding-actions"
           elixir examples/embedding-actions/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-embedding-actions"
       - name: Independent knowledge preset admission
@@ -82,7 +82,7 @@ jobs:
           mix run examples/knowledge/verify-builds.exs _build/dev/lib/ipse/ebin "$RUNNER_TEMP/ipse-knowledge-presets"
       - name: Independent source and installed saved-result proof
         run: |
-          elixir examples/saved-results/build.exs --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-saved-results"
+          elixir scripts/build-artifact.exs saved-results --sdk _build/dev/lib/ipse/ebin --output "$RUNNER_TEMP/ipse-saved-results"
           mix run examples/saved-results/verify.exs "$RUNNER_TEMP/ipse-saved-results"
           elixir examples/saved-results/verify-package.exs dist/ipse-*.tar.gz "$RUNNER_TEMP/ipse-saved-results"
       - name: Independent source and installed knowledge proof

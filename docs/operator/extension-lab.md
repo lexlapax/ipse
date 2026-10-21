@@ -13,8 +13,8 @@ use [Memory](memory.md) instead of these lab artifacts.
 ## Build inert artifacts
 
 ```sh
-IPSE_LAB_ARTIFACTS=$(mktemp -d)
-elixir examples/extension-lab/build.exs --sdk _build/dev/lib/ipse/ebin --output "$IPSE_LAB_ARTIFACTS"
+IPSE_LAB_ARTIFACTS=$(mktemp -d)/artifacts
+elixir scripts/build-artifact.exs extension-lab --sdk _build/dev/lib/ipse/ebin --output "$IPSE_LAB_ARTIFACTS"
 ```
 
 Expect seven separately compiled local artifacts under the output directory.

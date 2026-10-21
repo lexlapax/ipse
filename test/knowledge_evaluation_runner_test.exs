@@ -70,7 +70,8 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
       System.cmd(
         System.find_executable("elixir"),
         [
-          "examples/model-calls/build.exs",
+          "scripts/build-artifact.exs",
+          "model-calls",
           "--sdk",
           Application.app_dir(:ipse, "ebin"),
           "--output",

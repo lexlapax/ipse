@@ -9,10 +9,11 @@ Choose an output directory that does not already exist:
 
 ```sh
 ./scripts/build.sh
-elixir examples/saved-results/build.exs \
+IPSE_SAVED_ARTIFACT=$(mktemp -d)/artifact
+elixir scripts/build-artifact.exs saved-results \
   --sdk _build/dev/lib/ipse/ebin \
-  --output /tmp/ipse-saved-results-example
-mix run examples/saved-results/verify.exs /tmp/ipse-saved-results-example
+  --output "$IPSE_SAVED_ARTIFACT"
+mix run examples/saved-results/verify.exs "$IPSE_SAVED_ARTIFACT"
 ```
 
 The builder uses the SDK and its existing JSON/schema dependencies. It creates a
@@ -41,7 +42,7 @@ To verify an actual package archive, build the artifact first as above, then run
 ```sh
 ./scripts/package.sh
 elixir examples/saved-results/verify-package.exs \
-  dist/ipse-0.1.0-darwin-arm64.tar.gz /tmp/ipse-saved-results-example
+  dist/ipse-0.1.0-darwin-arm64.tar.gz "$IPSE_SAVED_ARTIFACT"
 ```
 
 Replace the archive name with the file produced for your platform. The outer

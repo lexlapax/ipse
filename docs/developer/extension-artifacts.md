@@ -7,23 +7,61 @@ must preserve when changing the host.
 
 ## Build and inspect a package
 
-After building Ipse, compile the local lab in a separate compiler process:
+After building Ipse, compile the local lab in a separate compiler process. Use a
+fresh child directory for its output:
 
 ```sh
-elixir examples/extension-lab/build.exs --sdk _build/dev/lib/ipse/ebin --output /tmp/ipse-extension-artifacts
+IPSE_ARTIFACT_ROOT=$(mktemp -d)
+elixir scripts/build-artifact.exs extension-lab --sdk _build/dev/lib/ipse/ebin --output "$IPSE_ARTIFACT_ROOT/lab"
 ```
 
-Inspect `/tmp/ipse-extension-artifacts/lookup/extension.json` and the corresponding
+Inspect `$IPSE_ARTIFACT_ROOT/lab/lookup/extension.json` and the corresponding
 `examples/extension-lab/src/lookup.ex`. The builder writes a license and compiled
 BEAM, records their real lengths and SHA-256 digests, and emits runtime constraints
 for the current machine. Nothing is installed or enabled by this command.
 
-Follow `examples/extension-lab/build.exs` when creating another package. Supply
-an entrypoint implementing `Ipse.Extension`, compile in a separate VM, declare
-every runtime file, and write the descriptor after obtaining the final bytes.
-Do not copy placeholder hashes or claim another platform without testing it.
-The builder's `spec.exs` supplies the same declarations used by executable
-`describe/0`, which prevents two handwritten contracts from drifting.
+The command accepts exactly these trusted repository recipes:
+
+| Recipe | Output | SDK |
+| --- | --- | --- |
+| `extension-lab` | Seven artifacts, including both Memory versions | 1 |
+| `model-calls` | One accounted text-model command | 1 |
+| `embedding-actions` | One native embedding command | 1 |
+| `mcp-actions` | One approved MCP-call command | 1 |
+| `saved-results` | One complete-result publication command | 2 |
+
+The SDK path names the built host's `ebin`; the builder also loads its existing
+JSON/schema dependencies for descriptor validation. `mcp-actions` alone accepts
+`--omit host.mcp` or another unique comma-separated subset of its declared
+capabilities. This creates permission-denial fixtures. Unknown recipes, unknown
+options and duplicate flags refuse. An existing output directory or dangling
+output link also refuses. Choose another fresh path instead of clearing an
+unrelated directory.
+
+Trace `Ipse.Development.ArtifactBuilder.build/4` in
+`scripts/build-artifact.exs`. It compiles fixed reviewed source in its own VM and
+a private staging working directory, captures diagnostics and refuses warnings.
+The source filename stays stable across temporary stages. It checks the final
+descriptor and file inventory before renaming the stage to the requested output.
+Compilation or descriptor failures remove the owned stage and publish no final
+artifact. Trusted compilation can run module load callbacks; the saved-result
+recipe's load marker stays in staging and is absent from the published files.
+This construction process is not an OS sandbox for arbitrary source.
+
+The lab's `examples/extension-lab/spec.exs` supplies descriptions, options and
+entrypoint names. The builder checks the compiled module and `describe/0`
+against those same declarations. Different Memory versions compile separately.
+`test/artifact_builder_test.exs` exercises collision preservation, closed options,
+compiler warnings, declaration drift, load-marker containment and stable rebuild
+identity.
+
+For another independent package, supply an entrypoint implementing
+`Ipse.Extension` and a package-owned builder. Follow the construction boundaries
+above rather than passing arbitrary source paths to this finite example command.
+Declare every runtime file and write the descriptor from the final bytes. The
+[knowledge package walkthrough](knowledge-extensions.md) teaches the separate
+`extensions/knowledge/build.exs` builder. Never copy placeholder hashes or claim
+another platform without testing it.
 
 ## Descriptor and identity
 
@@ -206,11 +244,40 @@ Status formatting exposes readiness and counters, not options or payloads.
 
 ## Exercise an incompatible package
 
-In a scratch copy of a built artifact, change its runtime platform and rebuild
-its manifest identity through the builder. Confirm inert storage can succeed
-while activation refuses before executable initialization. Then change a declared
-file after import and confirm lookup refuses it. Use fixture files rather than
-editing a real installed store.
+Use the Lookup artifact built above. Start a development shell with its path:
+
+```sh
+IPSE_LAB_LOOKUP="$IPSE_ARTIFACT_ROOT/lab/lookup" iex -S mix
+```
+
+Copy that artifact into a temporary directory and change only the scratch
+manifest's platform. Import computes a new identity from the edited manifest
+bytes; the finite builder does not consume modified artifacts.
+
+```elixir
+alias Ipse.Extensions.{Manifest, Store, Worker}
+root = Path.join(System.tmp_dir!(), "ipse-incompatible-" <> Ipse.Usage.id())
+scratch = Path.join(root, "source")
+File.mkdir_p!(root)
+File.chmod!(root, 0o700)
+{:ok, _} = File.cp_r(System.fetch_env!("IPSE_LAB_LOOKUP"), scratch)
+path = Path.join(scratch, "extension.json")
+manifest = path |> File.read!() |> Jason.decode!()
+manifest = put_in(manifest, ["runtime", "platforms"], ["different-host"])
+File.write!(path, Jason.encode!(manifest))
+store = Path.join(root, "store")
+{:ok, artifact} = Store.import(scratch, store)
+false = Manifest.compatible?(artifact.manifest)
+{:error, :extension_admission_refused} = Worker.start(owner: self(), store: store, digest: artifact.digest,
+  trusted: artifact.digest, options: %{})
+File.write!(Path.join(artifact.path, "LICENSE"), "changed fixture")
+{:error, :invalid_extension_artifact} = Store.lookup(store, artifact.digest)
+File.rm_rf!(root)
+```
+
+Import succeeds without executable initialization. Activation refuses the
+incompatible platform. Changing the imported fixture's license then makes
+lookup refuse its file hash. Keep this exercise in the disposable store.
 
 ```sh
 mix test test/extensions_store_test.exs test/extensions_worker_test.exs

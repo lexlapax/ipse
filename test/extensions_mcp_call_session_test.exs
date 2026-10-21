@@ -26,7 +26,8 @@ defmodule Ipse.Extensions.MCPCallSessionTest do
           System.cmd(
             System.find_executable("elixir"),
             [
-              Path.expand("../examples/mcp-actions/build.exs", __DIR__),
+              Path.expand("../scripts/build-artifact.exs", __DIR__),
+              "mcp-actions",
               "--sdk",
               Application.app_dir(:ipse, "ebin"),
               "--output",

@@ -9,8 +9,9 @@ Build the inert artifact and run the credential-free proof from the repository
 root after building Ipse:
 
 ```sh
-elixir examples/mcp-actions/build.exs --sdk _build/dev/lib/ipse/ebin --output /tmp/ipse-mcp-artifact
-mix run examples/mcp-actions/verify.exs /tmp/ipse-mcp-artifact
+IPSE_MCP_ARTIFACT=$(mktemp -d)/artifact
+elixir scripts/build-artifact.exs mcp-actions --sdk _build/dev/lib/ipse/ebin --output "$IPSE_MCP_ARTIFACT"
+mix run examples/mcp-actions/verify.exs "$IPSE_MCP_ARTIFACT"
 ```
 
 The verifier imports into temporary homes and explicitly grants the artifact's
@@ -34,7 +35,7 @@ quality.
 Run the same proof against an extracted release:
 
 ```sh
-elixir examples/mcp-actions/verify-package.exs /path/to/ipse-archive.tar.gz /tmp/ipse-mcp-artifact
+elixir examples/mcp-actions/verify-package.exs /path/to/ipse-archive.tar.gz "$IPSE_MCP_ARTIFACT"
 ```
 
 Replace the archive placeholder with the exact path printed by `scripts/package.sh`

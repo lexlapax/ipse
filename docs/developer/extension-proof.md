@@ -17,8 +17,8 @@ compiler VM:
 
 ```sh
 ./scripts/build.sh
-IPSE_LAB_ARTIFACTS=$(mktemp -d)
-elixir examples/extension-lab/build.exs --sdk _build/dev/lib/ipse/ebin --output "$IPSE_LAB_ARTIFACTS"
+IPSE_LAB_ARTIFACTS=$(mktemp -d)/artifacts
+elixir scripts/build-artifact.exs extension-lab --sdk _build/dev/lib/ipse/ebin --output "$IPSE_LAB_ARTIFACTS"
 mix run --no-compile examples/extension-lab/verify.exs "$IPSE_LAB_ARTIFACTS"
 ```
 
@@ -32,7 +32,9 @@ Read these files in order:
 
 1. `examples/extension-lab/spec.exs` defines descriptors, schemas, capabilities,
    service routes, and disabled operator selections.
-2. `build.exs` compiles in its own VM and emits data-only manifests.
+2. `scripts/build-artifact.exs` compiles the finite `extension-lab` recipe in its
+   own VM and emits data-only manifests. Follow the shared construction flow in
+   [the artifact chapter](extension-artifacts.md#build-and-inspect-a-package).
 3. `src/memory.ex` and `src/lookup.ex` implement domain behavior through public
    callbacks and finite host calls.
 4. `proof.exs` drives installation, Sessions, approvals, questions, and assertions

@@ -9,8 +9,9 @@ This exercise needs a built checkout and its Elixir toolchain. It uses synthetic
 stdio and loopback HTTP servers, with no account or model service:
 
 ```sh
-elixir examples/mcp-actions/build.exs --sdk _build/dev/lib/ipse/ebin --output /tmp/ipse-mcp-artifact
-mix run examples/mcp-actions/verify.exs /tmp/ipse-mcp-artifact
+IPSE_MCP_ARTIFACT=$(mktemp -d)/artifact
+elixir scripts/build-artifact.exs mcp-actions --sdk _build/dev/lib/ipse/ebin --output "$IPSE_MCP_ARTIFACT"
+mix run examples/mcp-actions/verify.exs "$IPSE_MCP_ARTIFACT"
 ```
 
 Read `examples/mcp-actions/src/read.ex` beside the proof. It is compiled with only

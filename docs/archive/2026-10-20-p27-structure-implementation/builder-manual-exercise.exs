@@ -1,0 +1,7 @@
+[artifact] = System.argv()
+System.put_env("IPSE_LAB_LOOKUP", Path.expand(artifact))
+chapter = File.read!("docs/developer/extension-artifacts.md")
+[_, exercise] = Regex.run(~r/```elixir\n(alias Ipse.Extensions.\{Manifest, Store, Worker\}.*?)\n```/s, chapter)
+Code.eval_string(exercise, [], file: "docs/developer/extension-artifacts.md")
+false = :code.is_loaded(IpseLab.Lookup)
+IO.puts("Literal incompatible-artifact exercise passed; worker module stayed unloaded")

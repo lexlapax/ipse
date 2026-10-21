@@ -9,11 +9,12 @@ proof/example, not a shipped memory or extraction engine.
 Build from the repository root after `./scripts/build.sh`:
 
 ```sh
-elixir examples/model-calls/build.exs --sdk _build/dev/lib/ipse/ebin --output /tmp/ipse-model-artifact
-mix run examples/model-calls/verify.exs /tmp/ipse-model-artifact
-mix run examples/model-calls/verify.exs /tmp/ipse-model-artifact none
-mix run examples/model-calls/verify.exs /tmp/ipse-model-artifact json
-mix run examples/model-calls/verify.exs /tmp/ipse-model-artifact json none
+IPSE_MODEL_ARTIFACT=$(mktemp -d)/artifact
+elixir scripts/build-artifact.exs model-calls --sdk _build/dev/lib/ipse/ebin --output "$IPSE_MODEL_ARTIFACT"
+mix run examples/model-calls/verify.exs "$IPSE_MODEL_ARTIFACT"
+mix run examples/model-calls/verify.exs "$IPSE_MODEL_ARTIFACT" none
+mix run examples/model-calls/verify.exs "$IPSE_MODEL_ARTIFACT" json
+mix run examples/model-calls/verify.exs "$IPSE_MODEL_ARTIFACT" json none
 ```
 
 The build compiles reviewed repository source into an inert artifact; it does not
@@ -37,10 +38,10 @@ fixture, with unchanged output ceilings and no repair or retry.
 After packaging, run against a single archive:
 
 ```sh
-elixir examples/model-calls/verify-package.exs dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz /tmp/ipse-model-artifact
-elixir examples/model-calls/verify-package.exs dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz /tmp/ipse-model-artifact none
-elixir examples/model-calls/verify-package.exs dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz /tmp/ipse-model-artifact json
-elixir examples/model-calls/verify-package.exs dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz /tmp/ipse-model-artifact json-none
+elixir examples/model-calls/verify-package.exs dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz "$IPSE_MODEL_ARTIFACT"
+elixir examples/model-calls/verify-package.exs dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz "$IPSE_MODEL_ARTIFACT" none
+elixir examples/model-calls/verify-package.exs dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz "$IPSE_MODEL_ARTIFACT" json
+elixir examples/model-calls/verify-package.exs dist/ipse-0.1.0-linux-x86_64-glibc-2.44.tar.gz "$IPSE_MODEL_ARTIFACT" json-none
 ```
 
 Replace the archive path with the actual host's archive. The verifier extracts a

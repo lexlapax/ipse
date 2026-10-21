@@ -122,9 +122,72 @@ The separately selected new evaluator generation and individual qualification
 policy are subsequent work. These protocol fixtures establish no held-out quality,
 matched real-model resource result, engine choice or whole-P27 acceptance.
 
+## Consolidate trusted example artifact builders
+
+Historical S04 implementation record, 2026-10-20, over `c9c4999`. Current
+construction instructions belong to the
+[artifact training chapter](../../developer/extension-artifacts.md#build-and-inspect-a-package).
+One finite `scripts/build-artifact.exs` command replaces five example builders.
+Its 214 implementation lines replace 311 lines, while preserving eleven
+artifacts across the five recipes, both Memory versions, SDK-1/2 declarations,
+catalogs, options, runtime constraints and ordered file paths. The independent
+knowledge-package builder remains separate. Every active static, dynamic and
+generated caller, CI command and affected manual now uses the shared command.
+
+The compiler uses a private staging working directory, rejects diagnostics and
+publishes only a fully checked descriptor and file inventory. Stable original
+source filenames prevent temporary stage names from changing rebuilt bytes.
+Duplicate flags, invalid MCP omission fixtures, existing outputs, dangling output
+links and shared lab declaration drift refuse. The saved-result load marker stays
+in private staging and is absent from the final files. All owned stage
+initialization is covered by cleanup.
+
+Two [integration reviews](builder-reviews.md) covered the implementation and
+whole affected manuals. The lab invariant test's incomplete fixture could mask a
+missing guard; it now establishes a successful seven-artifact control first.
+Deleting the guard makes the corrected test fail. Both stale manual instructions
+were repaired, and the literal scratch-manifest exercise passes on both platforms
+without loading the worker. Eight focused regressions pass.
+
+The [verification receipt](builder-verification.json) binds the identical
+[459-file implementation inventory](builder-source.json) before and after both
+platform runs. macOS passes 1,401 tests with one skip and 36 exclusions, plus
+30 dedicated native checks. Linux passes 1,440 tests with native sandbox tests
+included and 19 exclusions. Both pass build, formatting, strict compilation,
+demo, package and installed-package checks. These local runs use OTP 29 with
+Elixir 1.20.3 on macOS and 1.20.4 on Linux. A new hosted OTP-27/Elixir-1.18 run is
+not part of this receipt.
+
+Each platform runs all five artifact proofs through source and installed hosts:
+all four model selections retain nine assertions each, embedding and MCP retain
+twelve each, saved results retain exactly 4 MiB and 1,024 fragments with exact
+historical reads and inert resume, and the lab retains its actual installed CLI
+selection. Its final deliberate service crash still reports expected unconfirmed
+cleanup. Previously compiled SDK-1/2 artifacts also pass source and installed
+invocation with unchanged inventories. Catalog comparisons do not substitute for
+these actual runtime checks or weaken artifact identity.
+
+Linux additionally completes the migrated generated builder call through both
+source and installed structured, sealed-answer synthetic comparisons. Each has
+350 distinct first predictions, sixteen measured stages, complete resource and
+execution audits, confirmed whole-lifetime cleanup, read-only re-audit, refused
+reentry/tampering, and the review/scoring binding controls. Synthetic answers stay
+absent through prediction and audit. Unmeasured semantic judgments correctly
+prevent quality acceptance. These fixtures establish no actual model quality or
+matched real-model resource comparison.
+
+The historical [check controller](builder-checks.exs),
+[literal exercise runner](builder-manual-exercise.exs),
+[source inventory helper](builder-source-inventory.exs), and
+[bounded receipt collector](builder-receipt-collector.exs) retain the original
+verification code and temporary-path conventions. Previously compiled SDK
+artifacts are retained locally and identified by receipt inventories; generated
+artifacts and raw journals are not committed. Use current manuals for supported
+procedures. Stronger common precompiled installed isolation remains S05.
+
 ## Remaining work
 
-Shared artifact construction and verification, development-tooling ownership,
+Shared verification, development-tooling ownership,
 the remaining evaluation layout, costs, bundled behavior, configuration and Session state
 remain separate implementation units. The complete operator/developer manual
 consolidation and whole-codebase review remain open. The separately recorded
