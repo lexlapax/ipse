@@ -29,14 +29,14 @@ defmodule Ipse.Development.Verification.Scenarios do
        [
          IpseKnowledgeExample.Proof,
          IpseKnowledgeExample.Proof.NoModel,
-         IpseKnowledgeExample.EvaluationSession
+         Ipse.Development.Evaluation.Session
        ]},
     "knowledge-independence" =>
       {"examples/knowledge/proof.exs", IpseKnowledgeExample.Proof,
        [
          IpseKnowledgeExample.Proof,
          IpseKnowledgeExample.Proof.NoModel,
-         IpseKnowledgeExample.EvaluationSession
+         Ipse.Development.Evaluation.Session
        ]},
     "knowledge-complete" =>
       {"examples/knowledge/complete-result-proof.exs", IpseKnowledgeExample.CompleteResultProof,
@@ -49,35 +49,35 @@ defmodule Ipse.Development.Verification.Scenarios do
        [
          IpseKnowledgeExample.EvaluationProof,
          IpseKnowledgeExample.EvaluationProof.NoModel,
-         IpseKnowledgeExample.EvaluationSession
+         Ipse.Development.Evaluation.Session
        ]},
     "knowledge-recovery" =>
       {"examples/knowledge/recovery-proof.exs", IpseKnowledgeExample.RecoveryProof,
        [
          IpseKnowledgeExample.RecoveryProof,
          IpseKnowledgeExample.RecoveryProof.NoModel,
-         IpseKnowledgeExample.EvaluationSession
+         Ipse.Development.Evaluation.Session
        ]},
     "knowledge-graph-lifecycle" =>
       {"examples/knowledge/lifecycle-proof.exs", IpseKnowledgeExample.LifecycleProof,
        [
          IpseKnowledgeExample.LifecycleProof,
          IpseKnowledgeExample.LifecycleProof.NoMain,
-         IpseKnowledgeExample.EvaluationSession
+         Ipse.Development.Evaluation.Session
        ]},
     "knowledge-corpus-lifecycle" =>
       {"examples/knowledge/lifecycle-proof.exs", IpseKnowledgeExample.LifecycleProof,
        [
          IpseKnowledgeExample.LifecycleProof,
          IpseKnowledgeExample.LifecycleProof.NoMain,
-         IpseKnowledgeExample.EvaluationSession
+         Ipse.Development.Evaluation.Session
        ]},
     "knowledge-selection" =>
       {"examples/knowledge/lifecycle-proof.exs", IpseKnowledgeExample.LifecycleProof,
        [
          IpseKnowledgeExample.LifecycleProof,
          IpseKnowledgeExample.LifecycleProof.NoMain,
-         IpseKnowledgeExample.EvaluationSession
+         Ipse.Development.Evaluation.Session
        ]},
     "knowledge-mcp" =>
       {["dev/fixtures/knowledge.exs", "examples/knowledge/mcp-proof.exs"],
@@ -85,7 +85,7 @@ defmodule Ipse.Development.Verification.Scenarios do
        [
          Ipse.Development.Fixtures.Knowledge,
          Ipse.Development.Fixtures.Knowledge.Backend,
-         IpseKnowledgeExample.EvaluationSession,
+         Ipse.Development.Evaluation.Session,
          IpseKnowledgeExample.MCPProof,
          IpseKnowledgeExample.MCPProof.NoModel
        ]},
@@ -95,7 +95,7 @@ defmodule Ipse.Development.Verification.Scenarios do
        [
          Ipse.Development.Fixtures.Knowledge,
          Ipse.Development.Fixtures.Knowledge.Backend,
-         IpseKnowledgeExample.EvaluationSession,
+         Ipse.Development.Evaluation.Session,
          IpseKnowledgeExample.ResearchProof,
          IpseKnowledgeExample.ResearchProof.NoModel
        ]}
@@ -110,32 +110,31 @@ defmodule Ipse.Development.Verification.Scenarios do
       source: "dev/evaluation/cli.exs",
       sources: [
         "extensions/knowledge/src/evidence.ex",
-        "examples/knowledge/evaluation_author.exs",
+        "dev/evaluation/author.exs",
         "dev/fixtures/knowledge.exs",
         "dev/evaluation/cli.exs"
       ],
-      module: IpseKnowledgeExample.EvaluationMeasuredExecution,
+      module: Ipse.Development.Evaluation.MeasuredExecution,
       modules: [
-        IpseKnowledgeExample.EvaluationContract,
-        IpseKnowledgeExample.EvaluationInput,
-        IpseKnowledgeExample.EvaluationFreeze,
-        IpseKnowledgeExample.EvaluationSession,
-        IpseKnowledgeExample.EvaluationAnswer,
-        IpseKnowledgeExample.EvaluationResources,
-        IpseKnowledgeExample.EvaluationInventory,
-        IpseKnowledgeExample.EvaluationGateway,
-        IpseKnowledge.EvaluationScore,
-        IpseKnowledgeExample.EvaluationReview,
-        IpseKnowledgeExample.EvaluationModelService,
-        IpseKnowledgeExample.EvaluationMeasuredExecution,
-        IpseKnowledgeExample.EvaluationMeasuredExecution.Environment,
-        IpseKnowledge.EvaluationIntegrity,
-        IpseKnowledge.Metrics,
-        IpseKnowledgeExample.EvaluationRunner,
-        IpseKnowledgeExample.EvaluationRunner.NoMain,
+        Ipse.Development.Evaluation.Contract,
+        Ipse.Development.Evaluation.Dataset,
+        Ipse.Development.Evaluation.Freeze,
+        Ipse.Development.Evaluation.Session,
+        Ipse.Development.Evaluation.Answer,
+        Ipse.Development.Evaluation.Resources,
+        Ipse.Development.Evaluation.Inventory,
+        Ipse.Development.Evaluation.Gateway,
+        Ipse.Development.Evaluation.Score,
+        Ipse.Development.Evaluation.Review,
+        Ipse.Development.Evaluation.ModelService,
+        Ipse.Development.Evaluation.MeasuredExecution,
+        Ipse.Development.Evaluation.MeasuredExecution.Environment,
+        Ipse.Development.Evaluation.Metrics,
+        Ipse.Development.Evaluation.Runner,
+        Ipse.Development.Evaluation.Runner.NoMain,
         Ipse.Development.Fixtures.Knowledge,
         Ipse.Development.Fixtures.Knowledge.Backend,
-        IpseKnowledgeExample.EvaluationAuthor,
+        Ipse.Development.Evaluation.Author,
         IpseKnowledge.Evidence,
         Ipse.Development.Evaluation.CLI
       ]
@@ -213,12 +212,12 @@ defmodule Ipse.Development.Verification.Scenarios do
       name: "model-service",
       source: "dev/verification/model_service.exs",
       sources: [
-        "examples/knowledge/evaluation_model_service.exs",
+        "dev/evaluation/model_service.exs",
         "dev/verification/model_service.exs"
       ],
       module: Ipse.Development.Verification.ModelService,
       modules: [
-        IpseKnowledgeExample.EvaluationModelService,
+        Ipse.Development.Evaluation.ModelService,
         Ipse.Development.Verification.ModelService
       ],
       utilities: ["kill"]

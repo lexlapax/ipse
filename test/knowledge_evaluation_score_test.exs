@@ -1,8 +1,8 @@
-Code.require_file("../examples/knowledge/evaluation_score.exs", __DIR__)
+Code.require_file("../dev/evaluation/score.exs", __DIR__)
 
 defmodule Ipse.KnowledgeEvaluationScoreTest do
   use ExUnit.Case, async: true
-  alias IpseKnowledge.EvaluationScore, as: Score
+  alias Ipse.Development.Evaluation.Score, as: Score
 
   defp sha(bytes), do: Base.encode16(:crypto.hash(:sha256, bytes), case: :lower)
 

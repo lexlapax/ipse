@@ -82,7 +82,7 @@ defmodule Ipse.Development.ArtifactBuilder do
         result =
           File.cd!(cwd, fn ->
             Code.with_diagnostics([log: true], fn ->
-              Code.compile_string(source, Path.join(root, job.source))
+              compile_worker(source, Path.join(root, job.source))
             end)
           end)
 
@@ -155,6 +155,13 @@ defmodule Ipse.Development.ArtifactBuilder do
     after
       File.rm_rf!(stage)
     end
+  end
+
+  defp compile_worker(source, filename) do
+    {:defmodule, meta, [name, [do: body]]} = Code.string_to_quoted!(source, file: filename)
+    deterministic = quote(do: @compile(:deterministic))
+    module = {:defmodule, meta, [name, [do: {:__block__, [], [deterministic, body]}]]}
+    Code.compile_quoted(module, filename)
   end
 
   defp jobs("extension-lab") do

@@ -1,8 +1,8 @@
-Code.require_file("evaluation_session.exs", __DIR__)
+Code.require_file("../../dev/evaluation/session.exs", __DIR__)
 
 defmodule IpseKnowledgeExample.RecoveryProof do
   @moduledoc false
-  alias IpseKnowledgeExample.EvaluationSession, as: Evaluation
+  alias Ipse.Development.Evaluation.Session, as: Evaluation
   @source_id "proof:graph-recovery"
   @text "Release requires quiescence."
 

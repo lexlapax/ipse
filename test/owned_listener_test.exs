@@ -1,4 +1,4 @@
-Code.require_file("support/owned_listener_verification.exs", __DIR__)
+Code.require_file("../dev/platform/owned_listener.exs", __DIR__)
 
 defmodule Ipse.OwnedListenerTest do
   use ExUnit.Case, async: false
@@ -74,14 +74,14 @@ defmodule Ipse.OwnedListenerTest do
                  "--edition=2021",
                  "-D",
                  "warnings",
-                 Path.expand("support/owned_listener_probe.rs", __DIR__),
+                 Path.expand("../dev/platform/owned_listener_probe.rs", __DIR__),
                  "-o",
                  fixture
                ],
                stderr_to_stdout: true
              )
 
-    result = OwnedListenerVerification.verify(fixture, ctx.root)
+    result = Ipse.Development.Platform.OwnedListener.verify(fixture, ctx.root)
     assert result["checks"] == 8
     assert result["inference_requests"] == 0
   end

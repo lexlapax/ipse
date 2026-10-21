@@ -1,8 +1,8 @@
-defmodule IpseKnowledgeExample.EvaluationInventory do
+defmodule Ipse.Development.Evaluation.Inventory do
   @moduledoc "Read-only State metadata audit in a separately loaded, verified domain artifact."
   import Bitwise
   alias Ipse.Extensions.{Registry, State}
-  @compile {:no_warn_undefined, IpseKnowledgeExample.EvaluationMeasuredExecution}
+  @compile {:no_warn_undefined, Ipse.Development.Evaluation.MeasuredExecution}
   @bytes 1_048_576
 
   @doc "Exact project-scope deletions after all roots in a verified partition are suppressed."
@@ -131,7 +131,7 @@ defmodule IpseKnowledgeExample.EvaluationInventory do
 
             case launch do
               {:precompiled, _} = execution ->
-                IpseKnowledgeExample.EvaluationMeasuredExecution.precompiled_command(
+                Ipse.Development.Evaluation.MeasuredExecution.precompiled_command(
                   execution,
                   :inventory,
                   expression,
@@ -139,7 +139,7 @@ defmodule IpseKnowledgeExample.EvaluationInventory do
                 )
 
               {:source, selected} ->
-                IpseKnowledgeExample.EvaluationMeasuredExecution.command(
+                Ipse.Development.Evaluation.MeasuredExecution.command(
                   selected,
                   [],
                   expression,

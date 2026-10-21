@@ -212,3 +212,51 @@ retains its pinned `bfe8ca5` source and first outcomes; these structural increme
 do not change its source or replay its attempts. Fresh private evaluation inputs remain
 withheld until the final code/configuration freeze. No quality improvement,
 resource comparison, engine selection or P27 acceptance is claimed here.
+
+## Consolidate evaluation and platform ownership
+
+S06/S08 implementation record, 2026-10-21, over `f10334f`. Substantive evaluation
+code now lives in `dev/evaluation/` under `Ipse.Development.Evaluation`. Shared OS
+probes live in `dev/platform/`, and the scripted model-service probe lives in
+`dev/fixtures/`. Small examples and explicit public commands retain their tasks.
+Input projection and literal integrity share the pure Dataset owner. Review and
+Score retain hash-before-label authority, and Score and Metrics remain separate.
+Generated launches, exact BEAM sets, tests, CI and current manuals move together.
+The evaluator, measured knowledge and authority closures contain exactly 21, 25
+and 26 unique modules, each with one Dataset. Historical captures retain their
+original source requirements; no compatibility fallback was added.
+
+Two source-only reviews found one broken test caller: an evaluation Session alias
+was shadowed by the host Session. The existing test reproduces the failure before
+the explicit alias repair; all three completeness cases then pass. Focused input,
+score, review, declaration and execution checks pass. The first declaration-copy
+failure remains recorded separately from its unchanged successful rerun after new
+source files were registered for the fixture's Git inventory.
+
+The [combined receipt](evaluation-platform-verification.json) retains distinct
+437-file identities for the structural checks and the later compiler repair.
+Linux passes 1,475 tests with native sandbox checks enabled and 19 exclusions,
+all relocated memory/listener probes, a fresh package, both model-service modes
+and complete source/installed synthetic comparisons of 350 first outcomes each.
+Both comparisons complete their execution and resource audits. These results
+belong to the original structural identity.
+
+macOS passes 1,432 of 1,433 tests, with one skip and 36 exclusions. Its sole
+failure exposes nondeterministic Elixir checker-metadata encoding in the existing
+artifact builder. Independent retained builds differ only in ExCk bytes and
+decode to identical terms. The repaired builder adds deterministic compilation
+at the trusted recipe boundary while preserving source locations, diagnostics
+and staging. Eight prototype builds have identical whole BEAMs and unchanged
+code/checker semantics. A source-only review finds no blocking repair issue.
+All eight builder tests pass on each platform; all five recipes and their eleven
+artifacts build. The repaired macOS source/package runs pass 27 affected commands,
+and the separate repaired Linux source/package follow-up passes 13. Previously
+failed runs are retained; no full-suite rerun on the repaired identity is claimed.
+
+This unit removes one implementation file. The broader code/test line count
+increases by 30 through formatting and the compiler repair/check. It establishes
+ownership and exercised compatibility, not held-out quality or engine selection.
+Current procedures belong to [evaluation training](../../developer/knowledge-evaluation.md),
+[verification training](../../developer/testing.md) and
+[artifact construction](../../developer/extension-artifacts.md). Remaining core
+consolidation, whole-manual work and final integrated P27 gates remain open.

@@ -1,4 +1,4 @@
-defmodule IpseKnowledgeExample.EvaluationContract do
+defmodule Ipse.Development.Evaluation.Contract do
   @moduledoc """
   Pure declaration ownership for matched knowledge comparisons.
 

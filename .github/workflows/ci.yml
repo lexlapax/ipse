@@ -54,7 +54,7 @@ jobs:
       - run: elixir scripts/verify.exs installed package --archive dist/ipse-*.tar.gz --input examples/memory/corpus.json
       - name: Independent installed model-service ownership proof
         run: |
-          rustc --edition=2021 -D warnings test/support/model_service_probe.rs -o "$RUNNER_TEMP/ipse-model-service-probe"
+          rustc --edition=2021 -D warnings dev/fixtures/model_service_probe.rs -o "$RUNNER_TEMP/ipse-model-service-probe"
           elixir scripts/verify.exs installed model-service --archive dist/ipse-*.tar.gz --input "$RUNNER_TEMP/ipse-model-service-probe" --output "$RUNNER_TEMP/ipse-model-service-installed"
       - name: Independent installed extension proof
         run: |

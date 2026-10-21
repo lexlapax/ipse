@@ -1,4 +1,4 @@
-Code.require_file("../examples/knowledge/evaluation_integrity.exs", __DIR__)
+Code.require_file("../dev/evaluation/dataset.exs", __DIR__)
 
 result =
   try do
@@ -44,20 +44,23 @@ result =
     corpus = read.(options[:corpus])
     queries = read.(options[:queries])
     answers = read.(options[:answers])
-    {:ok, questions} = IpseKnowledgeExample.EvaluationInput.queries(queries, "heldout")
+    {:ok, questions} = Ipse.Development.Evaluation.Dataset.queries(queries, "heldout")
     true = questions["contract"] == "sealed_answers_v1"
     true = length(questions["queries"]) == 50
     projects = questions["queries"] |> Enum.map(& &1["project"]) |> Enum.uniq()
     true = length(projects) == 2
 
     {:ok, reference} =
-      IpseKnowledgeExample.EvaluationInput.references(answers, "heldout", questions)
+      Ipse.Development.Evaluation.Dataset.references(answers, "heldout", questions)
 
-    {:ok, sources} = IpseKnowledge.EvaluationIntegrity.sources(corpus)
+    {:ok, sources} = Ipse.Development.Evaluation.Dataset.sources(corpus)
 
     true =
       Enum.all?(
-        IpseKnowledge.EvaluationIntegrity.references(reference["labels"]["queries"], sources),
+        Ipse.Development.Evaluation.Dataset.reference_checks(
+          reference["labels"]["queries"],
+          sources
+        ),
         & &1["valid"]
       )
 

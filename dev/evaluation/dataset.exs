@@ -1,6 +1,6 @@
-defmodule IpseKnowledgeExample.EvaluationInput do
+defmodule Ipse.Development.Evaluation.Dataset do
   @moduledoc """
-  Bounded dataset projections and delayed reference normalization.
+  Bounded projections, delayed reference normalization and literal citation checks.
 
   Query projection returns only query ID, project and query text. It never returns
   relevance, expected answers or expected classes. Labels are a separate API for
@@ -162,6 +162,50 @@ defmodule IpseKnowledgeExample.EvaluationInput do
       %{"labels" => labels, "expected_answers" => answers}
     end)
   end
+
+  def sources(bytes) do
+    with {:ok, corpus} <- corpus(bytes) do
+      {:ok, Map.new(corpus["documents"], &{unit(&1), &1})}
+    end
+  end
+
+  def citation_checks(rows, sources) do
+    for row <- rows, span <- row["evidence"] ++ row["context_evidence"] do
+      %{
+        "prediction_id" => row["prediction_id"],
+        "span_id" => span["span_id"],
+        "verdict" => if(literal?(span, sources, row["project"]), do: "valid", else: "invalid"),
+        "reviewer_id" => "source-bytes-v1",
+        "independent" => true
+      }
+    end
+  end
+
+  def reference_checks(labels, sources) do
+    for q <- labels, {span, index} <- Enum.with_index(q["relevance"], 1) do
+      %{
+        "query_id" => q["query_id"],
+        "reference_index" => index,
+        "valid" => literal?(span, sources, q["project"])
+      }
+    end
+  end
+
+  defp literal?(span, sources, project) do
+    case sources[unit(span["source"])] do
+      %{"text" => body} ->
+        first = span["start_byte"]
+        last = span["end_byte"]
+
+        span["source"]["project"] == project and first >= 0 and last <= byte_size(body) and
+          last > first and binary_part(body, first, last - first) == span["quote"]
+
+      _ ->
+        false
+    end
+  end
+
+  defp unit(source), do: Enum.map(@source_fields, &source[&1])
 
   defp sealed_answers!(data, split) do
     require!(

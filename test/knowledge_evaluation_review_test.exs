@@ -1,8 +1,8 @@
-Code.require_file("../examples/knowledge/evaluation_review.exs", __DIR__)
+Code.require_file("../dev/evaluation/review.exs", __DIR__)
 
 defmodule Ipse.KnowledgeEvaluationReviewTest do
   use ExUnit.Case, async: true
-  alias IpseKnowledgeExample.EvaluationReview, as: Review
+  alias Ipse.Development.Evaluation.Review, as: Review
   @seed String.duplicate("b", 64)
   @body "α café Ω"
   @variants ~w(secret-lexical-engine secret-graph-engine)
@@ -241,7 +241,7 @@ defmodule Ipse.KnowledgeEvaluationReviewTest do
     for label <- @variants ++ [@seed], do: refute(JSON.encode!(files) =~ label)
     review = JSON.decode!(files["reviews-template.json"])
     assert review["version"] == 2
-    assert {:ok, verified} = IpseKnowledge.EvaluationScore.verified_predictions(freeze, blobs)
+    assert {:ok, verified} = Ipse.Development.Evaluation.Score.verified_predictions(freeze, blobs)
     assert review["review_binding_sha256"] == verified["review_binding_sha256"]
     assert packet["summary"]["review_binding_sha256"] == verified["review_binding_sha256"]
     assert packet["summary"]["protocol"] == "independent-knowledge-review-v2"

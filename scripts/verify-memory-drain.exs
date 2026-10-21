@@ -1,8 +1,8 @@
 unless match?({:unix, :linux}, :os.type()),
   do: raise("population drain verification requires Linux")
 
-Code.require_file("../test/support/memory_scope_verification.exs", __DIR__)
-alias MemoryScopeVerification, as: Verify
+Code.require_file("../dev/platform/memory_scope.exs", __DIR__)
+alias Ipse.Development.Platform.MemoryScope, as: Verify
 [helper] = System.argv()
 helper = Path.expand(helper)
 
@@ -24,7 +24,7 @@ fixture = Path.join(root, "probe")
       "-D",
       "warnings",
       "-O",
-      Path.expand("../test/support/memory_scope_probe.rs", __DIR__),
+      Path.expand("../dev/platform/memory_scope_probe.rs", __DIR__),
       "-o",
       fixture
     ],

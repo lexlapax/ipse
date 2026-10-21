@@ -3,7 +3,7 @@ unless match?({:unix, :linux}, :os.type()),
 
 [] = System.argv()
 
-Code.require_file("../test/support/owned_listener_verification.exs", __DIR__)
+Code.require_file("../dev/platform/owned_listener.exs", __DIR__)
 
 root =
   Path.join(
@@ -22,13 +22,13 @@ fixture = Path.join(root, "probe")
       "--edition=2021",
       "-D",
       "warnings",
-      Path.expand("../test/support/owned_listener_probe.rs", __DIR__),
+      Path.expand("../dev/platform/owned_listener_probe.rs", __DIR__),
       "-o",
       fixture
     ],
     stderr_to_stdout: true
   )
 
-OwnedListenerVerification.verify(fixture, root)
+Ipse.Development.Platform.OwnedListener.verify(fixture, root)
 |> JSON.encode!()
 |> IO.puts()

@@ -1,4 +1,4 @@
-defmodule OwnedListenerPidNamespaceVerification do
+defmodule Ipse.Development.Platform.ListenerRegression.PidNamespace do
   def collect(port, until, state) do
     receive do
       {^port, {:data, bytes}} ->
@@ -75,7 +75,7 @@ defmodule OwnedListenerPidNamespaceVerification do
   end
 end
 
-defmodule OwnedListenerPidNamespaceControls do
+defmodule Ipse.Development.Platform.ListenerRegression.PidNamespace.Controls do
   def verify(wrapper, helper, fixture, root) do
     unless match?({:unix, :linux}, :os.type()), do: raise("PID namespace controls require Linux")
 
@@ -143,13 +143,13 @@ defmodule OwnedListenerPidNamespaceControls do
           ArgumentError -> :ok
         end
 
-        OwnedListenerPidNamespaceVerification.collect(
+        Ipse.Development.Platform.ListenerRegression.PidNamespace.collect(
           native,
           System.monotonic_time(:millisecond) + 12_000,
           %{raw: <<>>, buffer: <<>>, frames: [], canceled: false}
         )
       after
-        OwnedListenerPidNamespaceVerification.cleanup(native)
+        Ipse.Development.Platform.ListenerRegression.PidNamespace.cleanup(native)
       end
 
     save(directory, "protocol.bin", value.raw)

@@ -1,9 +1,9 @@
-Code.require_file("../examples/knowledge/evaluation_inventory.exs", __DIR__)
+Code.require_file("../dev/evaluation/inventory.exs", __DIR__)
 
 defmodule Ipse.KnowledgeEvaluationInventoryTest do
   use ExUnit.Case, async: false
   alias Ipse.Extensions.{State, Store}
-  alias IpseKnowledgeExample.EvaluationInventory, as: Inventory
+  alias Ipse.Development.Evaluation.Inventory, as: Inventory
 
   test "collection allowance binds suppressed partition bytes and exact page revisions" do
     root = Path.join(System.tmp_dir!(), "ipse-collection-" <> Ipse.Usage.id())

@@ -1,4 +1,4 @@
-defmodule IpseKnowledgeExample.EvaluationModelService do
+defmodule Ipse.Development.Evaluation.ModelService do
   @moduledoc """
   One explicitly configured, fresh local model daemon and complete work callback.
 

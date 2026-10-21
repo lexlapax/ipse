@@ -1,4 +1,4 @@
-Code.require_file("../../examples/knowledge/evaluation_runner.exs", __DIR__)
+Code.require_file("runner.exs", __DIR__)
 
 defmodule Ipse.Development.Evaluation.CLI do
   @moduledoc "Command-line parsing, summary output and exit policy for saved knowledge evaluation."
@@ -57,7 +57,7 @@ defmodule Ipse.Development.Evaluation.CLI do
 
     result =
       if rest == [] and invalid == [] and phase != nil do
-        IpseKnowledgeExample.EvaluationRunner.run(phase, Keyword.delete(options, :phase))
+        Ipse.Development.Evaluation.Runner.run(phase, Keyword.delete(options, :phase))
       else
         {:error, %{"code" => "invalid_options"}}
       end

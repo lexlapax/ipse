@@ -1,4 +1,4 @@
-defmodule OwnedListenerVerification do
+defmodule Ipse.Development.Platform.OwnedListener do
   @moduledoc false
   alias Ipse.Runner
   @traffic_limit 1_048_576

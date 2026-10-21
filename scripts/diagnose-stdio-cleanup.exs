@@ -1,5 +1,5 @@
 # Synthetic local process fixtures only; no MCP server or model service is used.
-defmodule Ipse.StdioCleanupDiagnostic do
+defmodule Ipse.Development.Diagnostics.StdioCleanup do
   alias Ipse.Runner
 
   def main(args) do
@@ -226,4 +226,4 @@ defmodule Ipse.StdioCleanupDiagnostic do
   defp now, do: System.monotonic_time(:millisecond)
 end
 
-Ipse.StdioCleanupDiagnostic.main(System.argv())
+Ipse.Development.Diagnostics.StdioCleanup.main(System.argv())

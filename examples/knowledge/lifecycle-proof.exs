@@ -1,4 +1,4 @@
-Code.require_file("evaluation_session.exs", __DIR__)
+Code.require_file("../../dev/evaluation/session.exs", __DIR__)
 
 defmodule IpseKnowledgeExample.LifecycleProof do
   @moduledoc "Barrier-controlled public domain operations, using only synthetic provider responses."
@@ -697,7 +697,7 @@ defmodule IpseKnowledgeExample.LifecycleProof do
 
       {:ipse, pid, {:done, :ok}} when pid == session.pid ->
         {:ok, value, _proof} =
-          IpseKnowledgeExample.EvaluationSession.complete_result(
+          Ipse.Development.Evaluation.Session.complete_result(
             pid,
             Session.info(pid).extension_result
           )

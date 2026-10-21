@@ -1,4 +1,4 @@
-defmodule IpseKnowledge.Metrics do
+defmodule Ipse.Development.Evaluation.Metrics do
   @moduledoc """
   Pure measurements over saved, normalized predictions and explicit review verdicts.
 

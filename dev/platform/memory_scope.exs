@@ -1,4 +1,4 @@
-defmodule MemoryScopeVerification do
+defmodule Ipse.Development.Platform.MemoryScope do
   def start(helper, output, command, timeout \\ 10_000, bootstrap \\ [], authority \\ nil) do
     token = Base.encode16(:crypto.strong_rand_bytes(16), case: :lower)
     unit = "ipse-measure-" <> token

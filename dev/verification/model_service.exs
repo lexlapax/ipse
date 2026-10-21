@@ -1,6 +1,6 @@
 defmodule Ipse.Development.Verification.ModelService do
   @moduledoc false
-  alias IpseKnowledgeExample.EvaluationModelService, as: Service
+  alias Ipse.Development.Evaluation.ModelService, as: Service
 
   def run(fixture, root) do
     %{type: :directory} = File.lstat!(root)

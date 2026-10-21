@@ -76,7 +76,7 @@ defmodule Ipse.Development.Fixtures.ModelService do
 
     {environment_files, environment_modules} =
       if verification do
-        module = Module.concat(IpseKnowledgeExample.EvaluationMeasuredExecution, "Environment")
+        module = Module.concat(Ipse.Development.Evaluation.MeasuredExecution, "Environment")
         file = module |> :code.which() |> to_string()
         %{type: :regular, size: size} = File.lstat!(file)
         true = size <= 67_108_864
@@ -176,7 +176,7 @@ defmodule Ipse.Development.Fixtures.ModelService do
 
     {executable, arguments} =
       if verification do
-        module = Module.concat(IpseKnowledgeExample.EvaluationMeasuredExecution, "Environment")
+        module = Module.concat(Ipse.Development.Evaluation.MeasuredExecution, "Environment")
         module.launch!(launch, arguments)
       else
         {launch["executable"], arguments}
@@ -262,7 +262,7 @@ defmodule Ipse.Development.Fixtures.ModelService.Daemon do
     true = :code.get_path() == Enum.map(expected_paths, &String.to_charlist/1)
 
     if verification do
-      module = Module.concat(IpseKnowledgeExample.EvaluationMeasuredExecution, "Environment")
+      module = Module.concat(Ipse.Development.Evaluation.MeasuredExecution, "Environment")
       :ok = module.enter!()
     end
 

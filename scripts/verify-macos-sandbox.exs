@@ -6,7 +6,7 @@
 # Add --process-boundary to check descendant cleanup. Known group escapes cause
 # a nonzero exit; the default file/network probe does not establish containment.
 
-defmodule Ipse.MacSandboxProbe do
+defmodule Ipse.Development.Platform.MacSandboxProbe do
   @codesign "/usr/bin/codesign"
 
   def main([helper, workspace_arg]) do
@@ -224,8 +224,14 @@ defmodule Ipse.MacSandboxProbe do
         )
 
         if process_checks do
-          Code.require_file("support/macos_process_boundary.exs", __DIR__)
-          Ipse.MacProcessBoundary.run!(executable, workspace, outside_secret, rustc)
+          Code.require_file("../dev/platform/macos_process_boundary.exs", __DIR__)
+
+          Ipse.Development.Platform.MacProcessBoundary.run!(
+            executable,
+            workspace,
+            outside_secret,
+            rustc
+          )
         end
       after
         :gen_tcp.close(listener)
@@ -451,4 +457,4 @@ defmodule Ipse.MacSandboxProbe do
   end
 end
 
-Ipse.MacSandboxProbe.main(System.argv())
+Ipse.Development.Platform.MacSandboxProbe.main(System.argv())

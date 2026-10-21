@@ -1,4 +1,4 @@
-defmodule IpseKnowledgeExample.EvaluationSession do
+defmodule Ipse.Development.Evaluation.Session do
   @moduledoc "One owned, catalog-bound Session for a declared knowledge evaluation variant."
   alias Ipse.{Journal, Session, Usage}
   alias Ipse.Extensions.{Catalog, Config, Registry, Store, Worker, WorkerLease}

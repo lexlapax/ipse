@@ -1,11 +1,11 @@
 Code.require_file("../dev/verification/cli.exs", __DIR__)
 Ipse.Development.Verification.Runtime.load_fixture!(:knowledge)
-Code.require_file("../examples/knowledge/evaluation_runner.exs", __DIR__)
+Code.require_file("../dev/evaluation/runner.exs", __DIR__)
 
 defmodule Ipse.KnowledgeEvaluationRunnerTest do
   use ExUnit.Case, async: false
-  alias IpseKnowledgeExample.EvaluationRunner, as: Runner
-  alias IpseKnowledgeExample.EvaluationContract, as: Contract
+  alias Ipse.Development.Evaluation.Runner, as: Runner
+  alias Ipse.Development.Evaluation.Contract, as: Contract
 
   setup_all do
     root = Path.join(System.tmp_dir!(), "ipse-evaluation-runner-" <> Ipse.Usage.id())
@@ -702,7 +702,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
           )
       })
 
-    {:ok, declared} = IpseKnowledgeExample.EvaluationContract.build(spec)
+    {:ok, declared} = Ipse.Development.Evaluation.Contract.build(spec)
     declared
   end
 
@@ -1109,7 +1109,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
     end
 
     assert {:ok, seal} =
-             IpseKnowledgeExample.EvaluationFreeze.create(
+             Ipse.Development.Evaluation.Freeze.create(
                repository,
                JSON.encode!(declared),
                declared["artifacts"],
@@ -1797,7 +1797,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
     code = """
     [source, plan, seal_output, manifest, output, mode] = System.argv()
     Code.require_file(source)
-    alias IpseKnowledgeExample.EvaluationRunner, as: Runner
+    alias Ipse.Development.Evaluation.Runner, as: Runner
     {:ok, sealed} = Runner.run(:freeze, plan: plan, output: seal_output)
     prediction =
       case mode do
@@ -1830,7 +1830,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
             "-e",
             code,
             "--",
-            Path.expand("examples/knowledge/evaluation_runner.exs"),
+            Path.expand("dev/evaluation/runner.exs"),
             plan,
             Path.join(root, "seal"),
             manifest,

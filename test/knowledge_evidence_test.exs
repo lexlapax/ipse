@@ -371,8 +371,8 @@ defmodule Ipse.KnowledgeEvidenceTest do
 
   test "selected whole excerpts expose the exact answer packing tradeoff" do
     pure(~S'''
-    Code.require_file("examples/knowledge/evaluation_answer.exs")
-    alias IpseKnowledgeExample.EvaluationAnswer, as: Answer
+    Code.require_file("dev/evaluation/answer.exs")
+    alias Ipse.Development.Evaluation.Answer, as: Answer
     query="release "<>String.duplicate("z",56)
     assert byte_size(query)==64
     candidates=fn size, filler ->

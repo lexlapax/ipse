@@ -1,4 +1,4 @@
-Code.require_file("evaluation_session.exs", __DIR__)
+Code.require_file("../../dev/evaluation/session.exs", __DIR__)
 
 defmodule IpseKnowledgeExample.ResearchProof do
   @moduledoc false
@@ -269,7 +269,7 @@ defmodule IpseKnowledgeExample.ResearchProof do
 
     if status == :ok do
       {:ok, value, _proof} =
-        IpseKnowledgeExample.EvaluationSession.complete_result(
+        Ipse.Development.Evaluation.Session.complete_result(
           pid,
           Session.info(pid).extension_result
         )

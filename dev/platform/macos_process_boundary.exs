@@ -1,4 +1,4 @@
-defmodule Ipse.MacProcessBoundary do
+defmodule Ipse.Development.Platform.MacProcessBoundary do
   def run!(helper, workspace, secret, rustc) do
     root = Path.join(workspace, ".ipse-process-probe-#{System.unique_integer([:positive])}")
     File.mkdir!(root)

@@ -181,7 +181,7 @@ Use the scenario that observes your changed boundary:
 | `knowledge-corpus-lifecycle`, `knowledge-selection` | Single Corpus `state-dense` artifact | Default selection |
 | `knowledge-mcp` | Single Corpus `mcp-lexical` artifact | Default selection |
 | `knowledge-research` | Single Research `mcp` artifact | Default selection |
-| `model-service` | Compiled `test/support/model_service_probe.rs` binary | Fresh `--output` for retained evidence |
+| `model-service` | Compiled `dev/fixtures/model_service_probe.rs` binary | Fresh `--output` for retained evidence |
 | `measured-knowledge` | JSON map of seven prebuilt artifact directories | Clean `--repository`, fresh `--output`; four selections |
 | `measured-authority` | Same artifact-map format | Clean `--repository`, fresh `--output`; Linux backend |
 

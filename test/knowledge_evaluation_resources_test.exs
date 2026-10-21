@@ -1,8 +1,8 @@
-Code.require_file("../examples/knowledge/evaluation_resources.exs", __DIR__)
+Code.require_file("../dev/evaluation/resources.exs", __DIR__)
 
 defmodule Ipse.KnowledgeEvaluationResourcesTest do
   use ExUnit.Case, async: false
-  alias IpseKnowledgeExample.EvaluationResources, as: Resources
+  alias Ipse.Development.Evaluation.Resources, as: Resources
 
   test "budget reconciliation detects missing admissions and uncovered historical peaks" do
     alias Ipse.{Budget.Ledger, Usage}

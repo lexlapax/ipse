@@ -1,16 +1,16 @@
-Code.require_file("../../dev/evaluation/contract.exs", __DIR__)
+Code.require_file("contract.exs", __DIR__)
 
-defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
+defmodule Ipse.Development.Evaluation.MeasuredExecution do
   @moduledoc "One permanently claimed, sealed measured knowledge population and its read-only audit."
-  alias IpseKnowledgeExample.{
-    EvaluationContract,
-    EvaluationFreeze,
-    EvaluationRunner,
-    EvaluationModelService,
-    EvaluationResources
+  alias Ipse.Development.Evaluation.{
+    Contract,
+    Freeze,
+    Runner,
+    ModelService,
+    Resources
   }
 
-  @compile {:no_warn_undefined, EvaluationRunner}
+  @compile {:no_warn_undefined, Runner}
   @metric "linux_memcg_charged_peak_bytes_v1"
   @limit 67_108_864
   defmodule Environment do
@@ -133,28 +133,27 @@ defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
   @evaluator_modules [
     __MODULE__,
     Environment,
-    EvaluationRunner,
-    EvaluationRunner.NoMain,
-    EvaluationContract,
-    EvaluationFreeze,
-    EvaluationModelService,
-    EvaluationResources,
-    IpseKnowledgeExample.EvaluationInput,
-    IpseKnowledgeExample.EvaluationSession,
-    IpseKnowledgeExample.EvaluationAnswer,
-    IpseKnowledgeExample.EvaluationInventory,
-    IpseKnowledgeExample.EvaluationGateway,
-    IpseKnowledgeExample.EvaluationReview,
-    IpseKnowledge.EvaluationScore,
-    IpseKnowledge.EvaluationIntegrity,
-    IpseKnowledge.Metrics,
+    Runner,
+    Runner.NoMain,
+    Contract,
+    Freeze,
+    ModelService,
+    Resources,
+    Ipse.Development.Evaluation.Dataset,
+    Ipse.Development.Evaluation.Session,
+    Ipse.Development.Evaluation.Answer,
+    Ipse.Development.Evaluation.Inventory,
+    Ipse.Development.Evaluation.Gateway,
+    Ipse.Development.Evaluation.Review,
+    Ipse.Development.Evaluation.Score,
+    Ipse.Development.Evaluation.Metrics,
     Ipse.Development.Fixtures.Knowledge,
     Ipse.Development.Fixtures.Knowledge.Backend
   ]
   @precompiled_roles %{
     evaluator: @evaluator_modules,
-    author: [IpseKnowledgeExample.EvaluationAuthor, IpseKnowledge.Evidence],
-    input: [IpseKnowledgeExample.EvaluationInput],
+    author: [Ipse.Development.Evaluation.Author, IpseKnowledge.Evidence],
+    input: [Ipse.Development.Evaluation.Dataset],
     inventory: [],
     cli: [Ipse.Development.Evaluation.CLI | @evaluator_modules]
   }
@@ -592,15 +591,15 @@ defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
 
   defp context!(path, expected) do
     require!(absolute?(path) and hash?(expected), :freeze_identity)
-    {:ok, verified} = EvaluationFreeze.verify(path, expected)
+    {:ok, verified} = Freeze.verify(path, expected)
     require!(verified["manifest"]["version"] == 2, :measured_plan_required)
-    :ok = EvaluationContract.validate(verified["plan"])
+    :ok = Contract.validate(verified["plan"])
     manifest = verified["manifest"]
-    expected_directory = Path.join(manifest["source"]["root"], "examples/knowledge")
+    expected_directory = Path.join(manifest["source"]["root"], "dev/evaluation")
     require!(Path.expand(__DIR__) == expected_directory, :evaluator_source)
 
     for relative <-
-          ~w(examples/knowledge/evaluation_runner.exs examples/knowledge/evaluation_measured_execution.exs dev/evaluation/contract.exs) do
+          ~w(dev/evaluation/runner.exs dev/evaluation/measured_execution.exs dev/evaluation/contract.exs) do
       require!(
         Enum.any?(
           manifest["source"]["files"],
@@ -677,14 +676,14 @@ defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
         else: Path.join(context.native, "prepared/" <> name <> "-ticket.json")
 
     expression =
-      "case IpseKnowledgeExample.EvaluationMeasuredExecution.enter(" <>
+      "case Ipse.Development.Evaluation.MeasuredExecution.enter(" <>
         inspect(ticket_path) <>
         ") do {:ok, _} -> System.halt(0); {:error, value} -> IO.puts(JSON.encode!(value)); System.halt(1) end"
 
     {executable, arguments} =
       case context.execution do
         {:source, launch} ->
-          command(launch, [Path.expand("evaluation_runner.exs", __DIR__)], expression, [])
+          command(launch, [Path.expand("runner.exs", __DIR__)], expression, [])
 
         {:precompiled, _} = execution ->
           precompiled_command(execution, :evaluator, expression, [])
@@ -833,12 +832,12 @@ defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
     :ok = Application.ensure_all_started(:ipse) |> started_ok()
 
     {:ok, catalog} =
-      EvaluationRunner.catalog_admission(context.plan, context.verified["artifact_paths"], root)
+      Runner.catalog_admission(context.plan, context.verified["artifact_paths"], root)
 
     Process.put(:comparison_execution, context.execution)
 
     {:ok, input} =
-      EvaluationRunner.prepare_inputs(context.plan, context.resolution["data_manifest"], root)
+      Runner.prepare_inputs(context.plan, context.resolution["data_manifest"], root)
 
     prepared =
       Map.merge(input, %{
@@ -902,7 +901,7 @@ defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
       :prepared_changed
     )
 
-    {:ok, schedule} = EvaluationRunner.schedule(context.plan, value["queries"])
+    {:ok, schedule} = Runner.schedule(context.plan, value["queries"])
 
     require!(
       value["schedule"] == schedule and length(schedule["cells"]) == 14,
@@ -919,11 +918,11 @@ defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
     mkdir!(output)
 
     result =
-      EvaluationModelService.run(
+      ModelService.run(
         context.resolution["model_service"],
         Path.join(output, "model-service"),
         fn ->
-          EvaluationRunner.evaluate_cell(
+          Runner.evaluate_cell(
             context.plan,
             cell,
             prepared,
@@ -983,7 +982,7 @@ defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
       end)
 
     {:ok, finalized} =
-      EvaluationRunner.seal_predictions(
+      Runner.seal_predictions(
         context.plan,
         prepared["queries"],
         outputs,
@@ -1073,7 +1072,7 @@ defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
         &Path.join(reports, "cells/" <> &1["id"] <> "/domain")
       )
 
-    streams = EvaluationRunner.audit_merged_files(cell_outputs, reports)
+    streams = Runner.audit_merged_files(cell_outputs, reports)
     merged_files = Map.new(streams, fn {name, bytes} -> {name, sha(bytes)} end)
     final = json!(Path.join(reports, "finalized.json"))
     predictions = Map.fetch!(streams, "predictions.jsonl")
@@ -1100,7 +1099,7 @@ defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
     resource = json!(Path.join(context.resolution["reports"], "resource-summary.json"))
 
     recomputed =
-      EvaluationResources.summary(
+      Resources.summary(
         rows,
         jsonl(Map.fetch!(streams, "timings.jsonl")),
         jsonl(Map.fetch!(streams, "request-resources.jsonl")),
@@ -1251,7 +1250,7 @@ defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
         :domain_changed
       )
 
-      :ok = EvaluationRunner.audit_cell(Path.join(output, "domain"), domain)
+      :ok = Runner.audit_cell(Path.join(output, "domain"), domain)
       prepared = prepared!(context, stage.prepared_sha).value
       selected = Enum.at(prepared["schedule"]["cells"], stage.ordinal)
       cell_rows = jsonl(read!(Path.join(output, "domain/predictions.jsonl")))
@@ -1278,7 +1277,7 @@ defmodule IpseKnowledgeExample.EvaluationMeasuredExecution do
   @doc false
   def native_receipt?(value, timeout_ms)
       when is_map(value) and is_integer(timeout_ms) and timeout_ms > 0 do
-    policy = EvaluationFreeze.completion_policy()
+    policy = Freeze.completion_policy()
     elapsed = value["elapsed_us"]
     drain = value["natural_drain_us"]
 

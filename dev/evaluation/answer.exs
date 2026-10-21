@@ -1,4 +1,4 @@
-defmodule IpseKnowledgeExample.EvaluationAnswer do
+defmodule Ipse.Development.Evaluation.Answer do
   @moduledoc """
   Pure preparation and citation mapping for one frozen answer comparison.
 

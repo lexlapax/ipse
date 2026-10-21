@@ -41,7 +41,10 @@ unrelated directory.
 Trace `Ipse.Development.ArtifactBuilder.build/4` in
 `scripts/build-artifact.exs`. It compiles fixed reviewed source in its own VM and
 a private staging working directory, captures diagnostics and refuses warnings.
-The source filename stays stable across temporary stages. It checks the final
+`compile_worker/2` adds deterministic compilation to the recipe's single module
+while retaining its source locations. The stable filename and canonical checker
+metadata keep temporary stages and map encoding order out of rebuild identity.
+It checks the final
 descriptor and file inventory before renaming the stage to the requested output.
 Compilation or descriptor failures remove the owned stage and publish no final
 artifact. Trusted compilation can run module load callbacks; the saved-result

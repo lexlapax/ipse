@@ -1,4 +1,4 @@
-defmodule IpseKnowledgeExample.EvaluationResources do
+defmodule Ipse.Development.Evaluation.Resources do
   @moduledoc "Sample the harness VM and count files, without claiming model or OS peak memory."
 
   def start(path, interval) when interval in 10..1000 do

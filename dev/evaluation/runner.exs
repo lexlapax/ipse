@@ -1,22 +1,22 @@
-Code.require_file("../../dev/evaluation/contract.exs", __DIR__)
+Code.require_file("contract.exs", __DIR__)
 
 for file <-
-      ~w(evaluation_input evaluation_freeze evaluation_session evaluation_answer evaluation_resources evaluation_inventory evaluation_gateway evaluation_score evaluation_review evaluation_model_service evaluation_measured_execution) do
+      ~w(dataset freeze session answer resources inventory gateway score review model_service measured_execution) do
   Code.require_file(file <> ".exs", __DIR__)
 end
 
-defmodule IpseKnowledgeExample.EvaluationRunner do
+defmodule Ipse.Development.Evaluation.Runner do
   @moduledoc "Frozen, serial public-Session knowledge comparisons and scoring of saved first predictions."
-  alias IpseKnowledgeExample.{
-    EvaluationContract,
-    EvaluationInput,
-    EvaluationFreeze,
-    EvaluationSession,
-    EvaluationAnswer,
-    EvaluationResources,
-    EvaluationInventory,
-    EvaluationGateway,
-    EvaluationReview
+  alias Ipse.Development.Evaluation.{
+    Contract,
+    Dataset,
+    Freeze,
+    Session,
+    Answer,
+    Resources,
+    Inventory,
+    Gateway,
+    Review
   }
 
   alias Ipse.Extensions.{Manifest, ModelCall, EmbeddingCall, State, MCPCall}
@@ -84,9 +84,9 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
           "timing_scope" =>
             "runner_entry_through_prediction_finalization; includes_preflight_input_cleanup_and_primary_reports",
           "timing_exclusions" => ~w(cli_startup module_loading overview_inspection_and_receipt),
-          "output_storage" => EvaluationResources.storage(options[:output]),
+          "output_storage" => Resources.storage(options[:output]),
           "frozen_input_storage" =>
-            if(options[:freeze], do: EvaluationResources.storage(Path.dirname(options[:freeze]))),
+            if(options[:freeze], do: Resources.storage(Path.dirname(options[:freeze]))),
           "storage_scope" =>
             "regular_file_lengths_before_overview_receipt; allocation_compression_and_sharing_unmeasured",
           "storage_exclusions" =>
@@ -112,7 +112,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
   @doc "Derive every complete project/strategy cell without reading inputs or renewing allowances."
   def schedule(plan, queries) do
     try do
-      :ok = checked(EvaluationContract.validate(plan))
+      :ok = checked(Contract.validate(plan))
       require!(plan["version"] in [2, 3], :measured_plan_required)
 
       require!(
@@ -174,20 +174,20 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
   defp dispatch(:declare, options) do
     bytes = read!(options[:plan])
     plan = decode!(bytes)
-    :ok = checked(EvaluationContract.validate(plan))
+    :ok = checked(Contract.validate(plan))
     require!(plan["mode"] in ~w(heldout fixture), :freeze_mode)
-    {:ok, declaration} = EvaluationFreeze.declare(File.cwd!(), bytes, plan["artifacts"])
+    {:ok, declaration} = Freeze.declare(File.cwd!(), bytes, plan["artifacts"])
     output = Path.expand(options[:output])
     private_file!(output, declaration["bytes"])
     {:ok, declaration |> Map.delete("bytes") |> Map.put("path", output)}
   end
 
   defp dispatch(:measure, options),
-    do: IpseKnowledgeExample.EvaluationMeasuredExecution.run(options)
+    do: Ipse.Development.Evaluation.MeasuredExecution.run(options)
 
   defp dispatch(:audit, options),
     do:
-      IpseKnowledgeExample.EvaluationMeasuredExecution.audit(
+      Ipse.Development.Evaluation.MeasuredExecution.audit(
         options[:freeze],
         options[:freeze_sha256]
       )
@@ -201,13 +201,13 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     )
 
     resolution = decode!(read!(options[:resolution]))
-    {:ok, plan} = EvaluationFreeze.resolve_plan(bytes, resolution)
-    :ok = checked(EvaluationContract.validate(plan))
+    {:ok, plan} = Freeze.resolve_plan(bytes, resolution)
+    :ok = checked(Contract.validate(plan))
 
     with {:ok, seal} <-
-           EvaluationFreeze.create_v2(File.cwd!(), bytes, resolution, options[:output]),
-         {:ok, verified} <- EvaluationFreeze.verify(seal["path"], seal["sha256"]) do
-      :ok = checked(EvaluationContract.validate(verified["plan"]))
+           Freeze.create_v2(File.cwd!(), bytes, resolution, options[:output]),
+         {:ok, verified} <- Freeze.verify(seal["path"], seal["sha256"]) do
+      :ok = checked(Contract.validate(verified["plan"]))
       {:ok, seal}
     end
   end
@@ -215,22 +215,22 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
   defp dispatch(:freeze, options) do
     bytes = read!(options[:plan])
     plan = decode!(bytes)
-    :ok = checked(EvaluationContract.validate(plan))
+    :ok = checked(Contract.validate(plan))
     require!(plan["version"] == 1, :measured_entry_required)
     require!(plan["mode"] in ~w(heldout fixture), :freeze_mode)
 
     with {:ok, seal} <-
-           EvaluationFreeze.create(File.cwd!(), bytes, plan["artifacts"], options[:output]),
-         {:ok, verified} <- EvaluationFreeze.verify(seal["path"], seal["sha256"]) do
+           Freeze.create(File.cwd!(), bytes, plan["artifacts"], options[:output]),
+         {:ok, verified} <- Freeze.verify(seal["path"], seal["sha256"]) do
       preflight!(plan, verified["artifact_paths"], Path.dirname(seal["path"]))
-      {:ok, _} = EvaluationFreeze.verify(seal["path"], seal["sha256"])
+      {:ok, _} = Freeze.verify(seal["path"], seal["sha256"])
       {:ok, seal}
     end
   end
 
   defp dispatch(phase, options) when phase in [:tune, :verify] do
     plan = decode!(read!(options[:plan]))
-    :ok = checked(EvaluationContract.validate(plan))
+    :ok = checked(Contract.validate(plan))
     require!(plan["version"] == 1, :measured_entry_required)
     require!(plan["mode"] == if(phase == :verify, do: "fixture", else: "tuning"), :execution_mode)
 
@@ -242,17 +242,17 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     prepare_output!(options[:output])
     paths = Map.new(plan["artifacts"], fn {id, path} -> {id, Path.expand(path)} end)
     preflight!(plan, paths, options[:output])
-    {:ok, corpus} = EvaluationInput.corpus(read!(options[:corpus]))
+    {:ok, corpus} = Dataset.corpus(read!(options[:corpus]))
     queries = project_queries(options[:queries], plan["data"]["split"], options[:output])
     execute(plan, paths, corpus["documents"], queries, options[:output], nil)
   end
 
   defp dispatch(phase, options) when phase in [:predict, :verify_frozen] do
     require!(!Keyword.has_key?(options, :labels), :labels_forbidden)
-    {:ok, verified} = EvaluationFreeze.verify(options[:freeze], options[:freeze_sha256])
+    {:ok, verified} = Freeze.verify(options[:freeze], options[:freeze_sha256])
     require!(verified["manifest"]["version"] == 1, :measured_entry_required)
     plan = verified["plan"]
-    :ok = checked(EvaluationContract.validate(plan))
+    :ok = checked(Contract.validate(plan))
 
     if Enum.any?(plan["variants"], &(&1["prepare"] == "research")) do
       paths =
@@ -288,7 +288,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     if phase == :verify_frozen, do: require!(plan["data"]["split"] == "fixture", :execution_split)
     prepare_output!(options[:output])
     preflight!(plan, verified["artifact_paths"], options[:output])
-    {:ok, _} = EvaluationFreeze.verify(options[:freeze], options[:freeze_sha256])
+    {:ok, _} = Freeze.verify(options[:freeze], options[:freeze_sha256])
     manifest = verify_dataset!(options[:data_manifest], plan["data"])
 
     plan =
@@ -297,7 +297,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
         else: plan
 
     directory = Path.dirname(Path.expand(options[:data_manifest]))
-    {:ok, corpus} = EvaluationInput.corpus(read!(Path.join(directory, plan["data"]["corpus"])))
+    {:ok, corpus} = Dataset.corpus(read!(Path.join(directory, plan["data"]["corpus"])))
 
     queries =
       project_queries(
@@ -318,7 +318,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     require!(Keyword.has_key?(options, :labels) == sealed?(plan["data"]), :option_shape)
 
     result =
-      EvaluationReview.prepare(
+      Review.prepare(
         freeze,
         %{"predictions" => bytes},
         fn ->
@@ -382,7 +382,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     {plan, freeze, bytes} = scoring_context(options)
 
     result =
-      IpseKnowledge.EvaluationScore.score(
+      Ipse.Development.Evaluation.Score.score(
         freeze,
         %{"predictions" => bytes},
         fn ->
@@ -398,7 +398,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
 
             answers = answer_bytes!(options[:labels], verified_data)
 
-            case EvaluationInput.references(answers, plan["data"]["split"], projection) do
+            case Dataset.references(answers, plan["data"]["split"], projection) do
               {:ok, reference} -> {:ok, reference["labels"]}
               error -> error
             end
@@ -408,7 +408,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
 
             labels = read!(options[:labels])
             require!(sha(labels) == member["sha256"], :label_member_hash)
-            EvaluationInput.labels(labels, plan["data"]["split"])
+            Dataset.labels(labels, plan["data"]["split"])
           end
         end,
         fn ->
@@ -444,13 +444,13 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
   defp dispatch(_, _), do: {:error, %{"code" => "unknown_phase"}}
 
   defp scoring_context(options) do
-    {:ok, verified} = EvaluationFreeze.verify(options[:freeze], options[:freeze_sha256])
+    {:ok, verified} = Freeze.verify(options[:freeze], options[:freeze_sha256])
 
     if verified["manifest"]["version"] == 2 do
       require!(hash?(options[:audit_sha256]), :measured_audit_required)
 
       {:ok, audit} =
-        IpseKnowledgeExample.EvaluationMeasuredExecution.audit(
+        Ipse.Development.Evaluation.MeasuredExecution.audit(
           options[:freeze],
           options[:freeze_sha256]
         )
@@ -472,7 +472,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     end
 
     plan = verified["plan"]
-    :ok = checked(EvaluationContract.validate(plan))
+    :ok = checked(Contract.validate(plan))
     bytes = read!(options[:predictions], 67_108_864)
     require!(sha(bytes) == options[:prediction_sha256], :prediction_hash_mismatch)
     saved = decode!(read!(Path.join(Path.dirname(options[:predictions]), "finalized.json")))
@@ -507,7 +507,9 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
         else: freeze
 
     checked_rows =
-      case IpseKnowledge.EvaluationScore.verified_predictions(freeze, %{"predictions" => bytes}) do
+      case Ipse.Development.Evaluation.Score.verified_predictions(freeze, %{
+             "predictions" => bytes
+           }) do
         {:ok, rows} -> rows
         {:error, code} -> fail!(code)
       end
@@ -526,7 +528,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
   @doc "Admit catalogs and initialized options without contacting a model service."
   def catalog_admission(plan, paths, output) do
     capture(fn ->
-      :ok = checked(EvaluationContract.validate(plan))
+      :ok = checked(Contract.validate(plan))
       preflight!(plan, paths, output, false)
       decode!(read!(Path.join(output, "preflight.json")))
     end)
@@ -545,7 +547,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
       directory = Path.dirname(manifest_path)
 
       {:ok, corpus} =
-        EvaluationInput.corpus(dataset_member!(manifest, directory, plan["data"]["corpus"]))
+        Dataset.corpus(dataset_member!(manifest, directory, plan["data"]["corpus"]))
 
       queries =
         project_queries(
@@ -569,7 +571,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
 
   @doc "Perform a complete original cell, including independent Session and gateway closure."
   def evaluate_cell(plan, cell, prepared, output, service_inventory, execution) do
-    :ok = checked(EvaluationContract.validate(plan))
+    :ok = checked(Contract.validate(plan))
     {:ok, derived} = schedule(plan, prepared["queries"])
 
     require!(
@@ -600,13 +602,13 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     Process.put(:comparison_execution, execution)
 
     sampler =
-      EvaluationResources.start(Path.join(output, "memory-samples.jsonl"), plan["interval_ms"])
+      Resources.start(Path.join(output, "memory-samples.jsonl"), plan["interval_ms"])
 
     execution =
       capture(fn ->
         gateway =
           if variant["prepare"] == "research" do
-            {:ok, gateway} = EvaluationGateway.start(plan["search_port"], cell["research_share"])
+            {:ok, gateway} = Gateway.start(plan["search_port"], cell["research_share"])
             Process.put(:comparison_gateway, gateway)
             gateway
           end
@@ -631,17 +633,17 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
       capture(fn ->
         if gateway = Process.delete(:comparison_gateway) do
           try do
-            write!(output, "gateway-calls.json", EvaluationGateway.calls(gateway))
-            write!(output, "gateway-summary.json", EvaluationGateway.summary(gateway))
+            write!(output, "gateway-calls.json", Gateway.calls(gateway))
+            write!(output, "gateway-summary.json", Gateway.summary(gateway))
           after
-            :ok = EvaluationGateway.stop(gateway)
+            :ok = Gateway.stop(gateway)
           end
         end
       end)
 
     memory =
       capture(fn ->
-        {:ok, report} = EvaluationResources.stop(sampler)
+        {:ok, report} = Resources.stop(sampler)
         write!(output, "memory-summary.json", report)
       end)
 
@@ -655,7 +657,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
           do: Map.put(error, "phase", phase)
 
     resources =
-      EvaluationResources.summary(
+      Resources.summary(
         jsonl!(output, "predictions.jsonl"),
         jsonl!(output, "timings.jsonl"),
         jsonl!(output, "request-resources.jsonl"),
@@ -777,7 +779,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     require!(length(rows) == length(grid), :missing_prediction)
 
     resources =
-      EvaluationResources.summary(
+      Resources.summary(
         rows,
         jsonl!(output, "timings.jsonl"),
         jsonl!(output, "request-resources.jsonl"),
@@ -870,14 +872,14 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     write!(output, "inventory-before.json", inventory)
 
     sampler =
-      EvaluationResources.start(Path.join(output, "memory-samples.jsonl"), plan["interval_ms"])
+      Resources.start(Path.join(output, "memory-samples.jsonl"), plan["interval_ms"])
 
     Process.put(:comparison_run, nil)
     Process.put(:comparison_gateway, nil)
     Process.put(:comparison_inventory, %{})
 
     execution =
-      EvaluationResources.measure(output, %{"phase" => "execution"}, fn ->
+      Resources.measure(output, %{"phase" => "execution"}, fn ->
         capture(fn ->
           gateway =
             if Enum.any?(plan["variants"], &(&1["prepare"] == "research")),
@@ -921,17 +923,17 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
       capture(fn ->
         if gateway = Process.delete(:comparison_gateway) do
           try do
-            write!(output, "gateway-calls.json", EvaluationGateway.calls(gateway))
-            write!(output, "gateway-summary.json", EvaluationGateway.summary(gateway))
+            write!(output, "gateway-calls.json", Gateway.calls(gateway))
+            write!(output, "gateway-summary.json", Gateway.summary(gateway))
           after
-            :ok = EvaluationGateway.stop(gateway)
+            :ok = Gateway.stop(gateway)
           end
         end
       end)
 
     memory_cleanup =
       capture(fn ->
-        {:ok, memory} = EvaluationResources.stop(sampler)
+        {:ok, memory} = Resources.stop(sampler)
         write!(output, "memory-summary.json", memory)
       end)
 
@@ -1036,14 +1038,14 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     {status, records} =
       Enum.reduce_while(plan["variants"], {:ok, []}, fn variant, {_, records} ->
         outcome =
-          EvaluationResources.measure(
+          Resources.measure(
             output,
             %{"phase" => "preflight", "variant" => variant["id"]},
             fn ->
               capture(fn ->
                 {artifacts, runtime} = selection(plan, variant, paths, 1)
 
-                EvaluationSession.preflight(%{
+                Session.preflight(%{
                   root: root,
                   project: "catalogs",
                   variant: variant["id"],
@@ -1124,7 +1126,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
         else: runtime
 
     prepared =
-      EvaluationResources.measure(
+      Resources.measure(
         output,
         %{"phase" => "source_authoring", "project" => project, "variant" => variant["id"]},
         fn -> author!(documents, variant, effective_time(plan), output, project) end
@@ -1167,10 +1169,10 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
       timeout_ms: 180_000
     }
 
-    case EvaluationResources.measure(
+    case Resources.measure(
            output,
            %{"phase" => "session_open", "project" => project, "variant" => variant["id"]},
-           fn -> EvaluationSession.open(spec) end
+           fn -> Session.open(spec) end
          ) do
       {:ok, run} ->
         Process.put(:comparison_run, run)
@@ -1197,7 +1199,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
         if gateway != nil and variant["prepare"] == "research",
           do:
             :ok =
-              EvaluationGateway.select(gateway, current_documents(prepared, effective_time(plan)))
+              Gateway.select(gateway, current_documents(prepared, effective_time(plan)))
 
         resource(output, run, "after_preparation")
 
@@ -1205,7 +1207,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
           Enum.reduce(queries, run, fn query, current ->
             {next, row} =
               try do
-                EvaluationResources.measure(
+                Resources.measure(
                   output,
                   %{
                     "phase" => "query",
@@ -1260,7 +1262,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     store = variant["prepare_options"]["store"]
 
     run =
-      EvaluationResources.measure(output, scope(run, "storage_forget"), fn ->
+      Resources.measure(output, scope(run, "storage_forget"), fn ->
         prepared
         |> Enum.uniq_by(& &1["source"]["source_id"])
         |> Enum.reduce(run, fn doc, current ->
@@ -1303,7 +1305,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
       Path.join([run.directory, "home", "extension-state-v1", policy.namespace, "state.json"])
 
     {:ok, allowed} =
-      EvaluationInventory.collection_requests(
+      Inventory.collection_requests(
         path,
         inventory["state_sha256"],
         primary_store(variant)["partition"]
@@ -1317,7 +1319,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     })
 
     run =
-      EvaluationResources.measure(output, scope(run, "storage_collection"), fn ->
+      Resources.measure(output, scope(run, "storage_collection"), fn ->
         Enum.reduce_while(1..22, run, fn _, current ->
           {current, result} =
             invoke(current, "collect", %{"store" => store, "limit" => 12}, output)
@@ -1355,7 +1357,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
 
   defp prepare(run, variant, prepared, output) do
     {run, sources_ok} =
-      EvaluationResources.measure(output, scope(run, "ingestion"), fn ->
+      Resources.measure(output, scope(run, "ingestion"), fn ->
         Enum.reduce(prepared, {run, true}, fn doc, {current, ok} ->
           policy = Process.get(:comparison_policy)
           Process.put(:comparison_policy, %{policy | active: doc})
@@ -1429,7 +1431,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     end)
 
     if sources_ok do
-      EvaluationResources.measure(output, scope(run, "projection"), fn ->
+      Resources.measure(output, scope(run, "projection"), fn ->
         Enum.reduce(eligible, {run, true}, fn doc, {current, ok} ->
           {next, projected} = projections(current, variant, doc, output)
           {next, ok and projected}
@@ -1519,13 +1521,13 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
       prepared =
         if plan["version"] == 3,
           do:
-            EvaluationAnswer.prepare(
+            Answer.prepare(
               query["query"],
               effective_time(plan),
               evidence,
               plan["contracts"]["outputs"]["answer"]
             ),
-          else: EvaluationAnswer.prepare(query["query"], effective_time(plan), evidence)
+          else: Answer.prepare(query["query"], effective_time(plan), evidence)
 
       case prepared do
         {:ok, bundle} ->
@@ -1562,7 +1564,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
 
           decoded =
             if is_binary(text),
-              do: EvaluationAnswer.decode_answer(text, bundle),
+              do: Answer.decode_answer(text, bundle),
               else: {:error, :no_answer}
 
           case decoded do
@@ -1687,9 +1689,9 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
   defp invoke(run, verb, args, output) do
     policy = Process.get(:comparison_policy)
     Process.put(:comparison_policy, %{policy | effects: %{}})
-    if verb == "research", do: :ok = EvaluationGateway.begin_query(policy.gateway)
+    if verb == "research", do: :ok = Gateway.begin_query(policy.gateway)
 
-    case EvaluationSession.invoke(run, verb, args) do
+    case Session.invoke(run, verb, args) do
       {:ok, receipt, next} ->
         {next, _} = record_receipts(output, run, next)
 
@@ -1730,7 +1732,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     Enum.each(added, fn receipt ->
       append!(output, "execution.jsonl", receipt)
 
-      EvaluationResources.record(
+      Resources.record(
         output,
         Map.put(context, "phase", "invoke_" <> receipt["verb"]),
         receipt["elapsed_ms"] * 1000,
@@ -1777,7 +1779,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
 
       "extension:embedding.create" ->
         true = policy.variant["prepare"] == "embedding" and review.verb in ~w(index query)
-        options = checked(EvaluationContract.selection(policy.variant, review.verb))["options"]
+        options = checked(Contract.selection(policy.variant, review.verb))["options"]
 
         embedding =
           if review.verb == "index",
@@ -1820,7 +1822,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
 
           "extract" ->
             true = policy.variant["prepare"] == "extract"
-            options = checked(EvaluationContract.selection(policy.variant, "extract"))["options"]
+            options = checked(Contract.selection(policy.variant, "extract"))["options"]
 
             true =
               request["profile"] ==
@@ -1851,7 +1853,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
 
           "query" ->
             true = policy.variant["id"] == "rerank"
-            options = checked(EvaluationContract.selection(policy.variant, "query"))["options"]
+            options = checked(Contract.selection(policy.variant, "query"))["options"]
 
             true =
               request["profile"] ==
@@ -1916,7 +1918,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
           else:
             true =
               exact?(request["arguments"], ~w(version contract uri)) and
-                request["arguments"]["uri"] in EvaluationGateway.selected_uris(policy.gateway)
+                request["arguments"]["uri"] in Gateway.selected_uris(policy.gateway)
 
       _ ->
         raise("Unselected effect")
@@ -2053,14 +2055,14 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     private_file!(input, JSON.encode!(rows))
 
     expression =
-      "rows = JSON.decode!(File.read!(hd(System.argv()))); result = IpseKnowledgeExample.EvaluationAuthor.prepare(rows); File.write!(Enum.at(System.argv(), 1), JSON.encode!(result), [:exclusive])"
+      "rows = JSON.decode!(File.read!(hd(System.argv()))); result = Ipse.Development.Evaluation.Author.prepare(rows); File.write!(Enum.at(System.argv(), 1), JSON.encode!(result), [:exclusive])"
 
     {command, arguments} =
       child_command(
         :author,
         [
           Path.expand("../../extensions/knowledge/src/evidence.ex", __DIR__),
-          Path.join(__DIR__, "evaluation_author.exs")
+          Path.join(__DIR__, "author.exs")
         ],
         expression,
         [input, result]
@@ -2087,7 +2089,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
   defp child_command(role, requires, expression, arguments) do
     case Process.get(:comparison_execution) do
       {:precompiled, _} = execution ->
-        IpseKnowledgeExample.EvaluationMeasuredExecution.precompiled_command(
+        Ipse.Development.Evaluation.MeasuredExecution.precompiled_command(
           execution,
           role,
           expression,
@@ -2095,7 +2097,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
         )
 
       {:source, launch} ->
-        IpseKnowledgeExample.EvaluationMeasuredExecution.command(
+        Ipse.Development.Evaluation.MeasuredExecution.command(
           launch,
           requires,
           expression,
@@ -2125,10 +2127,10 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     result = Path.join(output, "projected-queries.json")
 
     expression =
-      "[path, split, output, digest] = System.argv(); %{type: :regular, size: size} = File.lstat!(path); true = size <= 1_048_576; bytes = File.read!(path); true = digest == \"\" or Ipse.JSON.sha256(bytes) == digest; {:ok, result} = IpseKnowledgeExample.EvaluationInput.queries(bytes, split); File.write!(output, JSON.encode!(result), [:exclusive])"
+      "[path, split, output, digest] = System.argv(); %{type: :regular, size: size} = File.lstat!(path); true = size <= 1_048_576; bytes = File.read!(path); true = digest == \"\" or Ipse.JSON.sha256(bytes) == digest; {:ok, result} = Ipse.Development.Evaluation.Dataset.queries(bytes, split); File.write!(output, JSON.encode!(result), [:exclusive])"
 
     {command, arguments} =
-      child_command(:input, [Path.join(__DIR__, "evaluation_input.exs")], expression, [
+      child_command(:input, [Path.join(__DIR__, "dataset.exs")], expression, [
         Path.expand(path),
         split,
         result,
@@ -2231,7 +2233,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
   end
 
   defp checked_public_inputs(corpus, queries, split, saved) do
-    checked(EvaluationInput.corpus(corpus))
+    checked(Dataset.corpus(corpus))
     questions = sealed_questions!(queries, split)
 
     require!(
@@ -2243,7 +2245,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
   end
 
   defp sealed_questions!(bytes, split) do
-    questions = checked(EvaluationInput.queries(bytes, split))
+    questions = checked(Dataset.queries(bytes, split))
     require!(questions["contract"] == "sealed_answers_v1", :data_query_contract)
     questions
   end
@@ -2306,7 +2308,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     if map_size(plan["models"]) == 0 do
       %{"models" => [], "inference_requests" => 0}
     else
-      origin = checked(EvaluationContract.model_origin(plan))
+      origin = checked(Contract.model_origin(plan))
       request = Finch.build(:get, origin <> "/api/tags")
       {:ok, 200, bytes} = Ipse.HTTPProfile.bounded_request(request, 1_048_576, 10_000)
       tags = decode!(bytes)["models"]
@@ -2346,7 +2348,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
     limit =
       plan["data"]["expected_queries"] * (1 + research["query_options"]["limits"]["max_sources"])
 
-    {:ok, pid} = EvaluationGateway.start(plan["search_port"], limit)
+    {:ok, pid} = Gateway.start(plan["search_port"], limit)
     pid
   end
 
@@ -2368,8 +2370,8 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
 
   defp persist_close(output, run) do
     closure =
-      EvaluationResources.measure(output, scope(run, "cleanup"), fn ->
-        EvaluationSession.close(run)
+      Resources.measure(output, scope(run, "cleanup"), fn ->
+        Session.close(run)
       end)
 
     {kind, report} = closure
@@ -2414,7 +2416,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
         config.budget_root,
         config.budget,
         fn state ->
-          :ok = EvaluationResources.reconcile_budget(state, ledger, events, run.session_id)
+          :ok = Resources.reconcile_budget(state, ledger, events, run.session_id)
 
           admitted =
             Map.new(state.requests, fn {id, entry} ->
@@ -2497,7 +2499,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
         path =
           Path.join([run.directory, "home", "extension-state-v1", policy.namespace, "state.json"])
 
-        case EvaluationInventory.fingerprint(path) do
+        case Inventory.fingerprint(path) do
           {:ok, fingerprint} ->
             key = {path, fingerprint, digest, store["partition"]}
             cache = Process.get(:comparison_inventory)
@@ -2508,7 +2510,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
 
               :error ->
                 report =
-                  case EvaluationInventory.snapshot(
+                  case Inventory.snapshot(
                          path,
                          Path.join(run.directory, "home/extensions/artifacts"),
                          digest,
@@ -2543,7 +2545,7 @@ defmodule IpseKnowledgeExample.EvaluationRunner do
           do: get_in(policy.active, ["selected_chunks", Access.at(0), "chunk_id"])
         ),
       "inventory" => inventory,
-      "storage" => EvaluationResources.storage(run.directory)
+      "storage" => Resources.storage(run.directory)
     })
 
     inventory

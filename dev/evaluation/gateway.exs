@@ -1,4 +1,4 @@
-defmodule IpseKnowledgeExample.EvaluationGateway do
+defmodule Ipse.Development.Evaluation.Gateway do
   @moduledoc "Controlled loopback search/fetch provider for the frozen corpus comparison."
   use GenServer
   @max_calls 1024 * 11

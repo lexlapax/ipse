@@ -1,8 +1,8 @@
 unless match?({:unix, :linux}, :os.type()),
   do: raise("terminal ownership verification requires Linux")
 
-Code.require_file("../test/support/memory_scope_verification.exs", __DIR__)
-alias MemoryScopeVerification, as: Verify
+Code.require_file("../dev/platform/memory_scope.exs", __DIR__)
+alias Ipse.Development.Platform.MemoryScope, as: Verify
 [helper] = System.argv()
 
 root =

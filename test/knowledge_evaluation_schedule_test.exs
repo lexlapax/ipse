@@ -1,11 +1,11 @@
 Code.require_file("../dev/verification/cli.exs", __DIR__)
 Ipse.Development.Verification.Runtime.load_fixture!(:knowledge)
-Code.require_file("../examples/knowledge/evaluation_runner.exs", __DIR__)
+Code.require_file("../dev/evaluation/runner.exs", __DIR__)
 Code.require_file("../priv/cost-report-demo.exs", __DIR__)
 
 defmodule Ipse.KnowledgeEvaluationScheduleTest do
   use ExUnit.Case, async: false
-  alias IpseKnowledgeExample.{EvaluationContract, EvaluationRunner}
+  alias Ipse.Development.Evaluation.{Contract, Runner}
   @variants ~w(lexical graph_explicit graph_model dense hybrid rerank research)
 
   defp plan do
@@ -13,7 +13,7 @@ defmodule Ipse.KnowledgeEvaluationScheduleTest do
       JSON.decode!(File.read!("examples/knowledge/benchmark-spec.json"))
       |> Map.put("blind_seed", String.duplicate("b", 64))
 
-    {:ok, plan} = EvaluationContract.build(spec)
+    {:ok, plan} = Contract.build(spec)
 
     plan
     |> Map.put("version", 2)
@@ -46,7 +46,7 @@ defmodule Ipse.KnowledgeEvaluationScheduleTest do
         "selection" => "per_strategy_eligibility_v1"
       })
 
-    {:ok, plan} = EvaluationContract.build(spec)
+    {:ok, plan} = Contract.build(spec)
     plan
   end
 
@@ -58,7 +58,7 @@ defmodule Ipse.KnowledgeEvaluationScheduleTest do
 
   test "a resolved plan binds every selected model profile to one explicit private origin" do
     plan = plan()
-    assert :ok = EvaluationContract.validate(plan)
+    assert :ok = Contract.validate(plan)
 
     for origin <- [
           "http://127.0.0.1:11434",
@@ -72,20 +72,20 @@ defmodule Ipse.KnowledgeEvaluationScheduleTest do
           "http://127.0.0.1:65536"
         ] do
       assert {:error, :model_origin} =
-               EvaluationContract.validate(Map.put(plan, "model_origin", origin))
+               Contract.validate(Map.put(plan, "model_origin", origin))
     end
 
     mismatched = put_in(plan, ["profiles", "p27_answer", "base_url"], "http://127.0.0.1:31434")
-    assert {:error, :model_origin} = EvaluationContract.validate(mismatched)
+    assert {:error, :model_origin} = Contract.validate(mismatched)
 
     assert {:error, :model_origin} =
-             EvaluationContract.validate(Map.put(plan, "search_port", 21434))
+             Contract.validate(Map.put(plan, "search_port", 21434))
   end
 
   test "the full schedule preserves original allowances and disjoint research shares" do
     plan = plan()
     queries = queries()
-    assert {:ok, schedule} = EvaluationRunner.schedule(plan, queries)
+    assert {:ok, schedule} = Runner.schedule(plan, queries)
     assert schedule["original_project_count"] == 2
     assert schedule["query_count"] == 50
     assert schedule["research_call_limit"] == 550
@@ -123,16 +123,16 @@ defmodule Ipse.KnowledgeEvaluationScheduleTest do
   test "missing projects, duplicate queries and reduced strategy sets cannot create a schedule" do
     plan = plan()
     queries = queries()
-    assert {:error, :query_count} = EvaluationRunner.schedule(plan, tl(queries))
+    assert {:error, :query_count} = Runner.schedule(plan, tl(queries))
 
     assert {:error, :query_identity} =
-             EvaluationRunner.schedule(plan, [hd(queries) | tl(tl(queries))] ++ [hd(queries)])
+             Runner.schedule(plan, [hd(queries) | tl(tl(queries))] ++ [hd(queries)])
 
     assert {:error, :project_count} =
-             EvaluationRunner.schedule(plan, Enum.map(queries, &Map.put(&1, "project", "alpha")))
+             Runner.schedule(plan, Enum.map(queries, &Map.put(&1, "project", "alpha")))
 
     assert {:error, :measured_matrix} =
-             EvaluationRunner.schedule(Map.update!(plan, "variants", &tl/1), queries)
+             Runner.schedule(Map.update!(plan, "variants", &tl/1), queries)
   end
 
   test "monetary limits are partitioned without changing reservations or rate cards" do
@@ -153,8 +153,8 @@ defmodule Ipse.KnowledgeEvaluationScheduleTest do
       end)
 
     for plan <- [plan, structured(plan)] do
-      assert :ok = EvaluationContract.validate(plan)
-      assert {:ok, schedule} = EvaluationRunner.schedule(plan, queries())
+      assert :ok = Contract.validate(plan)
+      assert {:ok, schedule} = Runner.schedule(plan, queries())
 
       for variant <- @variants do
         cells = Enum.filter(schedule["cells"], &(&1["variant"] == variant))

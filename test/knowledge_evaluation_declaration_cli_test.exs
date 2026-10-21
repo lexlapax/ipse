@@ -1,11 +1,11 @@
 Code.require_file("../dev/verification/cli.exs", __DIR__)
 Ipse.Development.Verification.Runtime.load_fixture!(:knowledge)
-Code.require_file("../examples/knowledge/evaluation_runner.exs", __DIR__)
+Code.require_file("../dev/evaluation/runner.exs", __DIR__)
 Code.require_file("support/frozen_model_selection.exs", __DIR__)
 
 defmodule Ipse.KnowledgeEvaluationDeclarationCLITest do
   use ExUnit.Case, async: false
-  alias IpseKnowledgeExample.EvaluationContract
+  alias Ipse.Development.Evaluation.Contract
 
   test "plain CLI retains and reopens the exact precompiled evaluator before accessing inputs" do
     root = Path.join(System.tmp_dir!(), "ipse-precompiled-cli-" <> Ipse.Usage.id())
@@ -45,7 +45,7 @@ defmodule Ipse.KnowledgeEvaluationDeclarationCLITest do
       |> Map.put("blind_seed", String.duplicate("b", 64))
       |> Map.update!("artifacts", &Map.new(&1, fn {id, _} -> {id, artifact} end))
 
-    assert {:ok, plan} = EvaluationContract.build(spec)
+    assert {:ok, plan} = Contract.build(spec)
     plan_path = Path.join(root, "plan.json")
     private!(plan_path, JSON.encode!(plan))
     experiment = Path.join(root, "experiment.json")
@@ -132,7 +132,7 @@ defmodule Ipse.KnowledgeEvaluationDeclarationCLITest do
              plain_cli(root, relative)
 
     assert before == Ipse.Development.Verification.Runtime.inventory(frozen <> ".runtime")
-    beam = Path.join(runtime, "harness/Elixir.IpseKnowledgeExample.EvaluationAuthor.beam")
+    beam = Path.join(runtime, "harness/Elixir.Ipse.Development.Evaluation.Author.beam")
     original = File.read!(beam)
     File.rm!(beam)
 
@@ -198,7 +198,7 @@ defmodule Ipse.KnowledgeEvaluationDeclarationCLITest do
       |> Map.put("blind_seed", String.duplicate("b", 64))
       |> Map.update!("artifacts", &Map.new(&1, fn {id, _} -> {id, artifact} end))
 
-    assert {:ok, plan} = EvaluationContract.build(spec)
+    assert {:ok, plan} = Contract.build(spec)
     plan_path = Path.join(root, "public-plan.json")
     private!(plan_path, JSON.encode!(plan))
     experiment_path = Path.join(root, "experiment.json")

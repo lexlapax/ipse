@@ -1,7 +1,7 @@
-Code.require_file("evaluation_model_service.exs", __DIR__)
-Code.require_file("../../dev/evaluation/contract.exs", __DIR__)
+Code.require_file("model_service.exs", __DIR__)
+Code.require_file("contract.exs", __DIR__)
 
-defmodule IpseKnowledgeExample.EvaluationFreeze do
+defmodule Ipse.Development.Evaluation.Freeze do
   @moduledoc """
   Seal the identities needed by a knowledge evaluation before opening its inputs.
 
@@ -22,7 +22,7 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
   and establishes no attempt claim. Version 1 seals keep their original contract.
   """
   alias Ipse.Extensions.{Store}
-  alias IpseKnowledgeExample.EvaluationContract
+  alias Ipse.Development.Evaluation.Contract
 
   @completion_policy %{
     "completion_policy" => "bounded_natural_drain_v1",
@@ -363,7 +363,7 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
 
   defp decode_execution_plan!(bytes) do
     {:ok, plan} = Ipse.JSON.decode_bounded(bytes, 1_048_576)
-    require!(EvaluationContract.validate_shape(plan, :execution) == :ok, :invalid_plan)
+    require!(Contract.validate_shape(plan, :execution) == :ok, :invalid_plan)
 
     plan
   end
@@ -432,7 +432,7 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
 
     plan = experiment["plan"]
 
-    require!(EvaluationContract.validate_shape(plan, :portable) == :ok, :invalid_experiment)
+    require!(Contract.validate_shape(plan, :portable) == :ok, :invalid_experiment)
 
     experiment
   end
@@ -494,7 +494,7 @@ defmodule IpseKnowledgeExample.EvaluationFreeze do
     )
 
     require!(
-      IpseKnowledgeExample.EvaluationModelService.validate(resolution["model_service"]) == :ok,
+      Ipse.Development.Evaluation.ModelService.validate(resolution["model_service"]) == :ok,
       :model_service
     )
 

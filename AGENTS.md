@@ -117,9 +117,10 @@ are needed for tests or the demo.
 | File tools and native Port protocol | `lib/ipse/tools.ex`, `runner.ex` |
 | Unix process groups and advisory locks | `native/ipse-runner.rs`, `native/ipse-process-group.rs` |
 | Bundled skill instructions | `priv/skills/` |
-| Pure knowledge evaluation declarations and phase CLI | `dev/evaluation/contract.exs`, `dev/evaluation/cli.exs` |
+| Frozen knowledge evaluation, pure declarations and dataset checks | `dev/evaluation/` |
 | Shared source/installed proof compilation and runtime ownership | `dev/verification/`, `scripts/verify.exs` |
 | Reusable synthetic services and direct experiments | `dev/fixtures/`, `dev/experiments/` |
+| Shared development OS probes | `dev/platform/`; explicit commands in `scripts/` |
 | Trusted example artifact construction | `scripts/build-artifact.exs` |
 | Behavior and local protocol fixtures | `test/` |
 

@@ -1,4 +1,4 @@
-defmodule IpseKnowledgeExample.EvaluationAuthor do
+defmodule Ipse.Development.Evaluation.Author do
   @moduledoc "Source-only explicit-fact authoring, executed outside the harness VM."
   alias IpseKnowledge.Evidence
 

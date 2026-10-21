@@ -104,7 +104,7 @@ defmodule Ipse.Development.VerificationTest do
 
     File.write!(input, JSON.encode!(artifacts))
 
-    for {name, count} <- [{"measured-knowledge", 26}, {"measured-authority", 27}] do
+    for {name, count} <- [{"measured-knowledge", 25}, {"measured-authority", 26}] do
       spec =
         Scenarios.fetch!(name) |> Map.put(:retained, false) |> Map.put(:native_environment, :base)
 
@@ -115,7 +115,7 @@ defmodule Ipse.Development.VerificationTest do
           assert %{"precompiled" => true} =
                    Runtime.eval!(
                      runtime,
-                     ~s|%{"precompiled" => IpseKnowledgeExample.EvaluationMeasuredExecution.Environment.bound?()}|
+                     ~s|%{"precompiled" => Ipse.Development.Evaluation.MeasuredExecution.Environment.bound?()}|
                    )
 
           File.write!(file, "changed")
@@ -441,14 +441,14 @@ defmodule Ipse.Development.VerificationTest do
       fn runtime ->
         expression = """
         (fn ->
-          {:ok, launch} = IpseKnowledgeExample.EvaluationFreeze.runtime_launch()
+          {:ok, launch} = Ipse.Development.Evaluation.Freeze.runtime_launch()
           files = for directory <- :code.get_path(), name <- File.ls!(to_string(directory)), String.ends_with?(name, ".beam") do
           file = Path.join(Path.expand(to_string(directory)), name)
             %{"path" => file, "bytes" => File.stat!(file).size, "sha256" => Ipse.JSON.sha256(File.read!(file))}
           end
           verified = %{"manifest" => %{"version" => 2, "runtime" => %{"launch" => launch, "files" => files}}}
           refused = try do
-            IpseKnowledgeExample.EvaluationMeasuredExecution.execution_context!(verified)
+            Ipse.Development.Evaluation.MeasuredExecution.execution_context!(verified)
             false
           catch
             {:measured_execution, :verification_environment} -> true
@@ -480,13 +480,13 @@ defmodule Ipse.Development.VerificationTest do
       Runtime.with_runtime(Scenarios.evaluator(), options(), fn runtime ->
         expression = """
         (fn ->
-          {:ok, launch} = IpseKnowledgeExample.EvaluationFreeze.runtime_launch()
+          {:ok, launch} = Ipse.Development.Evaluation.Freeze.runtime_launch()
           files = for directory <- :code.get_path(), name <- File.ls!(to_string(directory)), String.ends_with?(name, ".beam") do
           file = Path.join(Path.expand(to_string(directory)), name)
             %{"path" => file, "bytes" => File.stat!(file).size, "sha256" => Ipse.JSON.sha256(File.read!(file))}
           end
           verified = %{"manifest" => %{"version" => 2, "runtime" => %{"launch" => launch, "files" => files}}}
-          owner = IpseKnowledgeExample.EvaluationMeasuredExecution
+          owner = Ipse.Development.Evaluation.MeasuredExecution
           context = owner.execution_context!(verified)
           marker = Path.join(#{inspect(runtime.tmp)}, "must-not-run")
           code = ~S'File.write!(hd(System.argv()), System.fetch_env!("IPSE_HOME"))'
@@ -976,7 +976,7 @@ defmodule Ipse.Development.VerificationTest do
       target =
         if unquote(target == :daemon),
           do: Ipse.Development.Fixtures.ModelService.Daemon,
-          else: IpseKnowledgeExample.EvaluationMeasuredExecution.Environment
+          else: Ipse.Development.Evaluation.MeasuredExecution.Environment
 
       beam_name = Atom.to_string(target) <> ".beam"
       replacement = Path.join(root, "replacement.beam")
@@ -1137,13 +1137,13 @@ defmodule Ipse.Development.VerificationTest do
       (fn ->
         false = :code.is_loaded(IpseKnowledge.Evidence)
         false = :code.is_loaded(IpseKnowledge.Store)
-        {:ok, launch} = IpseKnowledgeExample.EvaluationFreeze.runtime_launch()
+        {:ok, launch} = Ipse.Development.Evaluation.Freeze.runtime_launch()
         files = for directory <- :code.get_path(), name <- File.ls!(to_string(directory)), String.ends_with?(name, ".beam") do
           file = Path.join(Path.expand(to_string(directory)), name)
           %{"path" => file, "bytes" => File.stat!(file).size, "sha256" => Ipse.JSON.sha256(File.read!(file))}
         end
         verified = %{"manifest" => %{"version" => 2, "runtime" => %{"launch" => launch, "files" => files}}}
-        owner = IpseKnowledgeExample.EvaluationMeasuredExecution
+        owner = Ipse.Development.Evaluation.MeasuredExecution
         {:precompiled, _} = context = owner.execution_context!(verified)
         false = :code.is_loaded(IpseKnowledge.Evidence)
         nested_refused = try do
@@ -1186,14 +1186,14 @@ defmodule Ipse.Development.VerificationTest do
           "observed_at_ms" => 1, "event_at_ms" => nil, "expires_at_ms" => nil,
           "origin" => %{"kind" => "provided", "store_profile" => nil, "partition_or_scope" => nil,
             "receipt" => nil, "historical" => false}}
-        [row] = IpseKnowledgeExample.EvaluationAuthor.prepare([%{"key" => "synthetic", "attrs" => attrs}])
+        [row] = Ipse.Development.Evaluation.Author.prepare([%{"key" => "synthetic", "attrs" => attrs}])
         [[fact]] = Map.values(row["facts"])
         IO.puts(JSON.encode!(Map.take(fact, ~w(subject predicate object))))
         '''
         {0, %{"subject" => "Release", "predicate" => "requires", "object" => "tests"}} = run.(:author, author, [])
         input = ~S'''
         bytes = JSON.encode!(%{"schema_version" => 1, "queries" => [%{"query_id" => "q", "project" => "alpha", "query" => "Release?", "split" => "tuning", "expected_answer" => "must be excluded"}]})
-        {:ok, result} = IpseKnowledgeExample.EvaluationInput.queries(bytes, "tuning")
+        {:ok, result} = Ipse.Development.Evaluation.Dataset.queries(bytes, "tuning")
         IO.puts(JSON.encode!(%{queries: result["queries"], argv: System.argv()}))
         '''
         marker_arg = "untrusted \\\"quote\\\"; System.halt(99) 雪"
@@ -1208,7 +1208,7 @@ defmodule Ipse.Development.VerificationTest do
         {_, 0} = System.cmd(command, args, stderr_to_stdout: true, env: [{"ERL_CRASH_DUMP", "/dev/null"}])
         "ran" = File.read!(marker)
         File.rm!(marker)
-        beam = Path.join(#{inspect(runtime.harness)}, "Elixir.IpseKnowledgeExample.EvaluationAuthor.beam")
+        beam = Path.join(#{inspect(runtime.harness)}, "Elixir.Ipse.Development.Evaluation.Author.beam")
         bytes = File.read!(beam)
         try do
           File.write!(beam, bytes <> "changed")

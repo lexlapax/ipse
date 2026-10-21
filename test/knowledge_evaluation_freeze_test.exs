@@ -1,9 +1,9 @@
-Code.require_file("../examples/knowledge/evaluation_freeze.exs", __DIR__)
+Code.require_file("../dev/evaluation/freeze.exs", __DIR__)
 Code.require_file("support/frozen_model_selection.exs", __DIR__)
 
 defmodule Ipse.KnowledgeEvaluationFreezeTest do
   use ExUnit.Case, async: false
-  alias IpseKnowledgeExample.EvaluationFreeze, as: Freeze
+  alias Ipse.Development.Evaluation.Freeze, as: Freeze
 
   setup do
     root = Path.join(System.tmp_dir!(), "ipse-evaluation-freeze-" <> Ipse.Usage.id())

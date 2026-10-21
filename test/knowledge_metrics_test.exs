@@ -1,8 +1,8 @@
-Code.require_file("../examples/knowledge/metrics.exs", __DIR__)
+Code.require_file("../dev/evaluation/metrics.exs", __DIR__)
 
 defmodule Ipse.KnowledgeMetricsTest do
   use ExUnit.Case, async: true
-  alias IpseKnowledge.Metrics, as: M
+  alias Ipse.Development.Evaluation.Metrics, as: M
 
   defp source(id, extra \\ %{}) do
     Map.merge(

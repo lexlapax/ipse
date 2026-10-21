@@ -1,9 +1,9 @@
 defmodule Ipse.Development.Verification.MeasuredKnowledge do
   @moduledoc false
-  alias IpseKnowledgeExample.{
-    EvaluationFreeze,
-    EvaluationContract,
-    EvaluationMeasuredExecution
+  alias Ipse.Development.Evaluation.{
+    Freeze,
+    Contract,
+    MeasuredExecution
   }
 
   @variants ~w(lexical graph_explicit graph_model dense hybrid rerank research)
@@ -52,7 +52,7 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge do
     true = generation in [2, 3]
     File.mkdir!(root)
     File.chmod!(root, 0o700)
-    {:ok, launch} = EvaluationFreeze.runtime_launch()
+    {:ok, launch} = Freeze.runtime_launch()
     origin = "http://127.0.0.1:#{free_port()}"
     search_port = free_port()
     true = search_port != URI.parse(origin).port
@@ -214,10 +214,10 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge do
           spec |> put_in(["data", "contract"], contract) |> put_in(["data", "split"], "heldout"),
         else: spec
 
-    {:ok, plan} = EvaluationContract.build(spec)
+    {:ok, plan} = Contract.build(spec)
 
-    :ok = EvaluationContract.validate(plan)
-    {:ok, experiment} = EvaluationFreeze.declare(repository, JSON.encode!(plan), artifacts)
+    :ok = Contract.validate(plan)
+    {:ok, experiment} = Freeze.declare(repository, JSON.encode!(plan), artifacts)
 
     resolution = %{
       "artifacts" => artifacts,
@@ -229,7 +229,7 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge do
     }
 
     {:ok, seal} =
-      EvaluationFreeze.create_v2(
+      Freeze.create_v2(
         repository,
         experiment["bytes"],
         resolution,
@@ -252,7 +252,7 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge do
     if run.answers, do: false = File.exists?(run.labels)
 
     {:ok, result} =
-      EvaluationMeasuredExecution.run(freeze: run.seal["path"], freeze_sha256: run.seal["sha256"])
+      MeasuredExecution.run(freeze: run.seal["path"], freeze_sha256: run.seal["sha256"])
 
     true = result["execution_complete"] and result["resource_complete"]
     350 = result["rows"]
@@ -266,14 +266,14 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge do
     true = Enum.sort(Enum.uniq(Enum.map(rows, & &1["project"]))) == ~w(alpha beta)
     verify_provider_logs!(run)
     before = snapshot(run.root)
-    {:ok, ^result} = EvaluationMeasuredExecution.audit(run.seal["path"], run.seal["sha256"])
+    {:ok, ^result} = MeasuredExecution.audit(run.seal["path"], run.seal["sha256"])
     if run.answers, do: false = File.exists?(run.labels)
     true = snapshot(run.root) == before
     save!(Path.join(run.root, "verified-audit.json"), JSON.encode!(result))
     before = snapshot(run.root)
 
     {:error, _} =
-      EvaluationMeasuredExecution.run(freeze: run.seal["path"], freeze_sha256: run.seal["sha256"])
+      MeasuredExecution.run(freeze: run.seal["path"], freeze_sha256: run.seal["sha256"])
 
     true = snapshot(run.root) == before
     verify_tamper_controls!(run)
@@ -301,7 +301,7 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge do
       try do
         File.write!(path, original <> " ")
         changed = snapshot(run.root)
-        {:error, _} = EvaluationMeasuredExecution.audit(run.seal["path"], run.seal["sha256"])
+        {:error, _} = MeasuredExecution.audit(run.seal["path"], run.seal["sha256"])
         true = snapshot(run.root) == changed
       after
         File.write!(path, original)
@@ -334,7 +334,7 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge do
         read_rows = fn file -> File.read!(Path.join(run.reports, file)) |> jsonl() end
 
         summary =
-          IpseKnowledgeExample.EvaluationResources.summary(
+          Ipse.Development.Evaluation.Resources.summary(
             read_rows.("predictions.jsonl"),
             read_rows.("timings.jsonl"),
             read_rows.("request-resources.jsonl"),
@@ -346,7 +346,7 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge do
         true = summary != JSON.decode!(original_summary)
         File.write!(summary_path, JSON.encode!(summary) <> "\n")
         changed_snapshot = snapshot(run.root)
-        {:error, error} = EvaluationMeasuredExecution.audit(run.seal["path"], run.seal["sha256"])
+        {:error, error} = MeasuredExecution.audit(run.seal["path"], run.seal["sha256"])
         "merged_stream_changed" = error["code"]
         true = snapshot(run.root) == changed_snapshot
       after
@@ -368,12 +368,12 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge do
         changed = snapshot(run.root)
 
         {:error, _} =
-          EvaluationMeasuredExecution.run(
+          MeasuredExecution.run(
             freeze: run.seal["path"],
             freeze_sha256: run.seal["sha256"]
           )
 
-        {:error, _} = EvaluationMeasuredExecution.audit(run.seal["path"], run.seal["sha256"])
+        {:error, _} = MeasuredExecution.audit(run.seal["path"], run.seal["sha256"])
         true = snapshot(run.root) == changed
       after
         File.rmdir!(directory)
@@ -383,7 +383,7 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge do
       true = snapshot(run.root) == before
     end
 
-    {:ok, _} = EvaluationMeasuredExecution.audit(run.seal["path"], run.seal["sha256"])
+    {:ok, _} = MeasuredExecution.audit(run.seal["path"], run.seal["sha256"])
 
     save!(
       Path.join(run.root, "tamper-controls.json"),
@@ -399,7 +399,7 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge do
   end
 
   defp verify_provider_logs!(run) do
-    {:ok, verified} = EvaluationFreeze.verify(run.seal["path"], run.seal["sha256"])
+    {:ok, verified} = Freeze.verify(run.seal["path"], run.seal["sha256"])
     models = verified["plan"]["models"]
 
     for ordinal <- 0..13 do
@@ -522,7 +522,7 @@ end
 
 defmodule Ipse.Development.Verification.MeasuredKnowledge.Scoring do
   @moduledoc "Post-execution controls for the measured CLI audit and label boundary."
-  alias IpseKnowledgeExample.{EvaluationFreeze, EvaluationMeasuredExecution, EvaluationRunner}
+  alias Ipse.Development.Evaluation.{Freeze, MeasuredExecution, Runner}
   @log_limit 1_048_576
 
   def verify(run, result, repository) do
@@ -530,8 +530,8 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge.Scoring do
     File.mkdir!(root)
     File.chmod!(root, 0o700)
     for leaf <- ~w(home tmp), do: mkdir!(Path.join(root, leaf))
-    {:ok, verified} = EvaluationFreeze.verify(run.seal["path"], run.seal["sha256"])
-    execution = EvaluationMeasuredExecution.execution_context!(verified)
+    {:ok, verified} = Freeze.verify(run.seal["path"], run.seal["sha256"])
+    execution = MeasuredExecution.execution_context!(verified)
     true = verified["manifest"]["version"] == 2
     true = result["execution_complete"] and result["resource_complete"]
     prediction = Path.join(run.reports, "predictions.jsonl")
@@ -604,7 +604,7 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge.Scoring do
         options =
           common ++ [labels: unopened, reviews: file, output: output]
 
-        {:error, %{"code" => actual}} = EvaluationRunner.run(:score, options)
+        {:error, %{"code" => actual}} = Runner.run(:score, options)
         true = actual == code
         {:error, :enoent} = File.lstat(output)
         {:error, :enoent} = File.lstat(unopened)
@@ -640,7 +640,7 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge.Scoring do
             do: common ++ [labels: unopened.labels, reviews: unopened.reviews, output: output],
             else: common ++ [output: output]
 
-        {:error, %{"code" => actual}} = EvaluationRunner.run(phase, change.(options))
+        {:error, %{"code" => actual}} = Runner.run(phase, change.(options))
         true = actual == Atom.to_string(code)
         {:error, :enoent} = File.lstat(output)
         for path <- Map.values(unopened), do: {:error, :enoent} = File.lstat(path)
@@ -680,7 +680,7 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge.Scoring do
     {executable, arguments} =
       case execution do
         {:source, launch} ->
-          EvaluationMeasuredExecution.command(
+          MeasuredExecution.command(
             launch,
             [Path.join(repository, "scripts/evaluate-knowledge.exs")],
             ":ok",
@@ -688,7 +688,7 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge.Scoring do
           )
 
         {:precompiled, _} ->
-          EvaluationMeasuredExecution.precompiled_command(
+          MeasuredExecution.precompiled_command(
             execution,
             :cli,
             "Ipse.Development.Evaluation.CLI.main(System.argv())",
@@ -705,7 +705,7 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge.Scoring do
     selected =
       case execution do
         {:precompiled, _} ->
-          EvaluationMeasuredExecution.verification_environment(
+          MeasuredExecution.verification_environment(
             execution,
             Path.join(root, "home"),
             Path.join(root, "tmp")

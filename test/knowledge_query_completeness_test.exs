@@ -1,8 +1,8 @@
-Code.require_file("../examples/knowledge/evaluation_session.exs", __DIR__)
+Code.require_file("../dev/evaluation/session.exs", __DIR__)
 
 defmodule Ipse.KnowledgeQueryCompletenessTest do
   use ExUnit.Case, async: false
-  alias IpseKnowledgeExample.EvaluationSession
+  alias Ipse.Development.Evaluation.Session, as: EvaluationSession
   alias Ipse.{Session, Usage}
   alias Ipse.Extensions.{State, EmbeddingCall}
 

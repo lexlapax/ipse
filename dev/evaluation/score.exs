@@ -1,7 +1,7 @@
 Code.require_file("metrics.exs", __DIR__)
-Code.require_file("evaluation_integrity.exs", __DIR__)
+Code.require_file("dataset.exs", __DIR__)
 
-defmodule IpseKnowledge.EvaluationScore do
+defmodule Ipse.Development.Evaluation.Score do
   @moduledoc """
   Scoring-only library for finalized first-attempt predictions.
 
@@ -32,8 +32,8 @@ defmodule IpseKnowledge.EvaluationScore do
   Thresholds are fixed at 0.90 support accuracy and 0.95 semantic citation precision.
   This report does not measure authority, isolation, replay or platform gates.
   """
-  alias IpseKnowledge.Metrics
-  alias IpseKnowledge.EvaluationIntegrity, as: Integrity
+  alias Ipse.Development.Evaluation.Metrics
+  alias Ipse.Development.Evaluation.Dataset
   @statuses ~w(ok partial failed refused timeout unavailable missing cancelled)
   @classes ~w(answer conflict open abstain)
   @source_keys ~w(project source_id generation version sha256)
@@ -94,17 +94,17 @@ defmodule IpseKnowledge.EvaluationScore do
       require!(is_binary(corpus), :invalid_corpus)
 
       sources =
-        case Integrity.sources(corpus) do
+        case Dataset.sources(corpus) do
           {:ok, sources} -> sources
           _ -> throw({:evaluation_score, :invalid_corpus})
         end
 
-      reviews = Map.put(reviews, "integrity", Integrity.predictions(verified["rows"], sources))
+      reviews = Map.put(reviews, "integrity", Dataset.citation_checks(verified["rows"], sources))
       labels = load!(labels_loader, :labels_failed)
       require!(labels?(labels, freeze), :invalid_labels)
 
       require!(
-        Enum.all?(Integrity.references(labels["queries"], sources), & &1["valid"]),
+        Enum.all?(Dataset.reference_checks(labels["queries"], sources), & &1["valid"]),
         :invalid_reference_integrity
       )
 

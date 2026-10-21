@@ -34,7 +34,7 @@ result =
         end)
       end)
 
-    {:ok, plan} = IpseKnowledgeExample.EvaluationContract.build(spec)
+    {:ok, plan} = Ipse.Development.Evaluation.Contract.build(spec)
     bytes = JSON.encode!(plan) <> "\n"
     true = byte_size(bytes) <= 1_048_576
     output = Path.expand(Keyword.fetch!(options, :output))

@@ -1,4 +1,4 @@
-defmodule ListenerRegressionNamespace do
+defmodule Ipse.Development.Platform.ListenerRegression.Namespace do
   @moduledoc false
   alias Ipse.Runner
 

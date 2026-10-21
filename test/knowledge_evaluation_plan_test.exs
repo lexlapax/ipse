@@ -1,10 +1,10 @@
 Code.require_file("../dev/verification/cli.exs", __DIR__)
 Ipse.Development.Verification.Runtime.load_fixture!(:knowledge)
-Code.require_file("../examples/knowledge/evaluation_runner.exs", __DIR__)
+Code.require_file("../dev/evaluation/runner.exs", __DIR__)
 
 defmodule Ipse.KnowledgeEvaluationContractTest do
   use ExUnit.Case, async: false
-  alias IpseKnowledgeExample.{EvaluationContract, EvaluationRunner}
+  alias Ipse.Development.Evaluation.{Contract, Runner}
   @variants ~w(lexical graph_explicit graph_model dense hybrid rerank research)
 
   defp spec do
@@ -25,12 +25,12 @@ defmodule Ipse.KnowledgeEvaluationContractTest do
     expression = """
     before = Code.required_files()
     Code.require_file(#{inspect(contract)})
-    {:ok, plan} = IpseKnowledgeExample.EvaluationContract.build(#{inspect(declared)})
-    :ok = IpseKnowledgeExample.EvaluationContract.validate(plan)
+    {:ok, plan} = Ipse.Development.Evaluation.Contract.build(#{inspect(declared)})
+    :ok = Ipse.Development.Evaluation.Contract.validate(plan)
     [#{inspect(contract)}] = Code.required_files() -- before
-    for module <- [IpseKnowledgeExample.EvaluationRunner,
-      IpseKnowledgeExample.EvaluationFreeze, IpseKnowledgeExample.EvaluationSession,
-      IpseKnowledgeExample.EvaluationModelService, IpseKnowledge.EvaluationScore,
+    for module <- [Ipse.Development.Evaluation.Runner,
+      Ipse.Development.Evaluation.Freeze, Ipse.Development.Evaluation.Session,
+      Ipse.Development.Evaluation.ModelService, Ipse.Development.Evaluation.Score,
       Ipse.Development.Fixtures.Knowledge] do
       false = :code.is_loaded(module)
     end
@@ -84,10 +84,10 @@ defmodule Ipse.KnowledgeEvaluationContractTest do
     }
 
     declared = sealed_spec() |> Map.put("version", 3) |> Map.put("contracts", contracts)
-    assert {:ok, plan} = EvaluationContract.build(declared)
+    assert {:ok, plan} = Contract.build(declared)
     assert plan["contracts"] == contracts
-    assert :ok = EvaluationContract.validate(plan)
-    assert :ok = EvaluationContract.validate_shape(plan, :execution)
+    assert :ok = Contract.validate(plan)
+    assert :ok = Contract.validate_shape(plan, :execution)
 
     profiles =
       for variant <- plan["variants"],
@@ -108,7 +108,7 @@ defmodule Ipse.KnowledgeEvaluationContractTest do
           put_in(declared, ["contracts", "outputs", "extract"], "text_v1"),
           put_in(declared, ["contracts", "outputs", "rerank"], "text_v1")
         ] do
-      assert {:error, _} = EvaluationContract.build(changed)
+      assert {:error, _} = Contract.build(changed)
     end
 
     changed =
@@ -133,7 +133,7 @@ defmodule Ipse.KnowledgeEvaluationContractTest do
         end)
       end)
 
-    assert {:error, :output_contract} = EvaluationContract.validate(changed)
+    assert {:error, :output_contract} = Contract.validate(changed)
 
     root = Path.join(System.tmp_dir!(), "ipse-structured-entry-" <> Ipse.Usage.id())
     File.mkdir!(root)
@@ -156,7 +156,7 @@ defmodule Ipse.KnowledgeEvaluationContractTest do
               ]
 
       assert {:error, %{"code" => "measured_entry_required"}} =
-               EvaluationRunner.run(phase, options)
+               Runner.run(phase, options)
 
       refute File.exists?(output)
     end
@@ -219,14 +219,14 @@ defmodule Ipse.KnowledgeEvaluationContractTest do
 
   test "new sealed workload uses the v2 builder without relaxing heldout model or grid policies" do
     declared = sealed_spec()
-    assert {:ok, plan} = EvaluationContract.build(declared)
-    assert :ok = EvaluationContract.validate(plan)
+    assert {:ok, plan} = Contract.build(declared)
+    assert :ok = Contract.validate(plan)
     assert plan["data"] == declared["data"]
 
     fixture_spec =
       declared |> Map.put("mode", "fixture") |> Map.put("as_of_ms", 1_800_000_000_000)
 
-    assert {:error, :fixture_models} = EvaluationContract.build(fixture_spec)
+    assert {:error, :fixture_models} = Contract.build(fixture_spec)
 
     fixture =
       fixture_spec
@@ -247,11 +247,11 @@ defmodule Ipse.KnowledgeEvaluationContractTest do
         end)
       )
 
-    assert {:ok, _} = EvaluationContract.build(fixture)
-    assert {:error, _} = EvaluationContract.build(Map.put(fixture, "mode", "heldout"))
+    assert {:ok, _} = Contract.build(fixture)
+    assert {:error, _} = Contract.build(Map.put(fixture, "mode", "heldout"))
 
     assert {:error, :heldout_manifest} =
-             EvaluationContract.build(update_in(declared, ["data"], &Map.delete(&1, "contract")))
+             Contract.build(update_in(declared, ["data"], &Map.delete(&1, "contract")))
 
     for changed <- [
           Map.delete(declared, "model_origin"),
@@ -264,7 +264,7 @@ defmodule Ipse.KnowledgeEvaluationContractTest do
           put_in(declared, ["models", "qwen3.5:9b"], String.duplicate("0", 64)),
           put_in(declared, ["profiles", "p27_answer", "max_output_tokens"], 2048)
         ] do
-      assert {:error, _} = EvaluationContract.build(changed)
+      assert {:error, _} = Contract.build(changed)
     end
   end
 
@@ -318,7 +318,7 @@ defmodule Ipse.KnowledgeEvaluationContractTest do
       declared =
         put_in(sealed_spec(), ["data", "manifest_sha256"], Ipse.JSON.sha256(bytes))
 
-      {:ok, plan} = EvaluationContract.build(declared)
+      {:ok, plan} = Contract.build(declared)
       plan
     end
 
@@ -327,7 +327,7 @@ defmodule Ipse.KnowledgeEvaluationContractTest do
     File.mkdir!(output)
 
     {{:ok, prepared}, calls} =
-      trace_files(fn -> EvaluationRunner.prepare_inputs(plan, path, output) end)
+      trace_files(fn -> Runner.prepare_inputs(plan, path, output) end)
 
     assert prepared["queries"] == questions
     assert length(prepared["schedule"]["cells"]) == 14
@@ -349,7 +349,7 @@ defmodule Ipse.KnowledgeEvaluationContractTest do
     File.mkdir!(present)
 
     {{:ok, again}, calls} =
-      trace_files(fn -> EvaluationRunner.prepare_inputs(plan, path, present) end)
+      trace_files(fn -> Runner.prepare_inputs(plan, path, present) end)
 
     assert again == prepared
     refute Enum.any?(calls, fn {_function, file} -> file == answers end)
@@ -361,14 +361,14 @@ defmodule Ipse.KnowledgeEvaluationContractTest do
       })
 
     assert {:error, %{"code" => "data_manifest_members"}} =
-             EvaluationRunner.prepare_inputs(
+             Runner.prepare_inputs(
                write_plan.(changed),
                path,
                Path.join(root, "never-created")
              )
 
     assert {:error, %{"code" => "data_manifest_shape"}} =
-             EvaluationRunner.prepare_inputs(
+             Runner.prepare_inputs(
                write_plan.(
                  Map.put(manifest, "answers", %{
                    "path" => answers,
@@ -383,7 +383,7 @@ defmodule Ipse.KnowledgeEvaluationContractTest do
     File.write!(Path.join(root, "queries.json"), queries <> " ")
 
     assert {:error, %{"code" => "data_member_hash"}} =
-             EvaluationRunner.prepare_inputs(plan, path, Path.join(root, "never-created"))
+             Runner.prepare_inputs(plan, path, Path.join(root, "never-created"))
 
     refute File.exists?(Path.join(root, "never-created"))
 
@@ -412,7 +412,7 @@ defmodule Ipse.KnowledgeEvaluationContractTest do
     File.mkdir!(legacy_output)
 
     {refused, calls} =
-      trace_files(fn -> EvaluationRunner.prepare_inputs(legacy_plan, path, legacy_output) end)
+      trace_files(fn -> Runner.prepare_inputs(legacy_plan, path, legacy_output) end)
 
     assert {:error, %{"code" => "data_query_contract"}} = refused
     refute Enum.any?(calls, fn {_function, file} -> file == answers end)
@@ -522,8 +522,8 @@ defmodule Ipse.KnowledgeEvaluationContractTest do
         &Map.new(&1, fn {id, p} -> {id, Map.put(p, "base_url", origin)} end)
       )
 
-    assert {:ok, plan} = EvaluationContract.build(declared)
-    assert :ok = EvaluationContract.validate(plan)
+    assert {:ok, plan} = Contract.build(declared)
+    assert :ok = Contract.validate(plan)
     refute Map.has_key?(plan, "model_origin")
 
     for changed <- [
@@ -531,7 +531,7 @@ defmodule Ipse.KnowledgeEvaluationContractTest do
           Map.put(declared, "search_port", 47635),
           Map.put(declared, "mode", "heldout")
         ] do
-      assert {:error, :model_origin} = EvaluationContract.build(changed)
+      assert {:error, :model_origin} = Contract.build(changed)
     end
 
     for bad <- [
@@ -552,14 +552,14 @@ defmodule Ipse.KnowledgeEvaluationContractTest do
           &Map.new(&1, fn {id, p} -> {id, Map.put(p, "base_url", bad)} end)
         )
 
-      assert {:error, :model_origin} = EvaluationContract.build(changed)
+      assert {:error, :model_origin} = Contract.build(changed)
     end
   end
 
   test "the complete declaration is valid without opening dataset members or artifacts" do
     declared = spec()
-    assert {:ok, plan} = EvaluationContract.build(declared)
-    assert :ok = EvaluationContract.validate(plan)
+    assert {:ok, plan} = Contract.build(declared)
+    assert :ok = Contract.validate(plan)
     assert plan["answer"] and Enum.map(plan["variants"], & &1["id"]) == @variants
     assert plan["data"] == declared["data"] and plan["models"] == declared["models"]
     assert Enum.all?(plan["variants"], &(&1["budget"] == declared["budgets"][&1["id"]]))
@@ -578,7 +578,7 @@ defmodule Ipse.KnowledgeEvaluationContractTest do
           update_in(declared, ["artifacts"], &Map.delete(&1, "answer")),
           put_in(declared, ["profiles", "p27_answer", "credential"], "unreviewed")
         ] do
-      assert {:error, _} = EvaluationContract.build(mutated)
+      assert {:error, _} = Contract.build(mutated)
     end
   end
 
@@ -610,7 +610,7 @@ defmodule Ipse.KnowledgeEvaluationContractTest do
       assert result["result"]["sha256"] == Ipse.JSON.sha256(File.read!(output))
       plan = JSON.decode!(File.read!(output))
       refute message =~ plan["blind_seed"]
-      assert :ok = EvaluationContract.validate(plan)
+      assert :ok = Contract.validate(plan)
       assert plan["artifacts"]["lexical"] == Path.join(root, "artifacts/lexical")
       assert Bitwise.band(File.stat!(output).mode, 0o777) == 0o600
     end
@@ -709,7 +709,7 @@ defmodule Ipse.KnowledgeEvaluationContractTest do
       approval_validator: fn _ -> flunk("offline Research proposed a host action") end
     }
 
-    alias IpseKnowledgeExample.EvaluationSession, as: Session
+    alias Ipse.Development.Evaluation.Session, as: Session
     assert {:ok, run} = Session.open(selection)
 
     try do

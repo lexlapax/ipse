@@ -1,9 +1,9 @@
-Code.require_file("../examples/knowledge/evaluation_session.exs", __DIR__)
+Code.require_file("../dev/evaluation/session.exs", __DIR__)
 Code.require_file("support/stdio_probe.exs", __DIR__)
 
 defmodule Ipse.KnowledgeEvaluationSessionTest do
   use ExUnit.Case, async: false
-  alias IpseKnowledgeExample.EvaluationSession, as: Evaluation
+  alias Ipse.Development.Evaluation.Session, as: Evaluation
 
   test "structured answer transport rejects mixed shapes before attempting a dispatch" do
     request = %{

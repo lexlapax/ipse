@@ -1,11 +1,10 @@
-Code.require_file("evaluation_score.exs", __DIR__)
-Code.require_file("evaluation_input.exs", __DIR__)
+Code.require_file("score.exs", __DIR__)
+Code.require_file("dataset.exs", __DIR__)
 
-defmodule IpseKnowledgeExample.EvaluationReview do
+defmodule Ipse.Development.Evaluation.Review do
   @moduledoc "Prepare label-bearing blind review only after verifying the complete first-prediction grid."
-  alias IpseKnowledge.EvaluationScore, as: Score
-  alias IpseKnowledgeExample.EvaluationInput, as: Input
-  alias IpseKnowledge.EvaluationIntegrity, as: Integrity
+  alias Ipse.Development.Evaluation.Score, as: Score
+  alias Ipse.Development.Evaluation.Dataset
 
   @instructions """
   # Independent knowledge review, protocol 2
@@ -85,8 +84,8 @@ defmodule IpseKnowledgeExample.EvaluationReview do
       )
 
       require!(is_integer(context["as_of_ms"]) and context["as_of_ms"] >= 0, :invalid_context)
-      {:ok, corpus} = Input.corpus(context["corpus"])
-      {:ok, queries} = Input.queries(context["queries"], context["split"])
+      {:ok, corpus} = Dataset.corpus(context["corpus"])
+      {:ok, queries} = Dataset.queries(context["queries"], context["split"])
       sealed = queries["contract"] == "sealed_answers_v1"
       require!(Map.has_key?(context, "answers") == sealed, :invalid_context)
 
@@ -97,7 +96,7 @@ defmodule IpseKnowledgeExample.EvaluationReview do
 
       {:ok, reference} =
         checked(
-          Input.references(
+          Dataset.references(
             if(sealed, do: context["answers"], else: context["queries"]),
             context["split"],
             queries
@@ -106,9 +105,9 @@ defmodule IpseKnowledgeExample.EvaluationReview do
 
       labels = reference["labels"]
       query_map = Map.new(queries["queries"], &{&1["query_id"], &1})
-      {:ok, sources} = Integrity.sources(context["corpus"])
-      integrity = Integrity.predictions(rows, sources)
-      references = Integrity.references(labels["queries"], sources)
+      {:ok, sources} = Dataset.sources(context["corpus"])
+      integrity = Dataset.citation_checks(rows, sources)
+      references = Dataset.reference_checks(labels["queries"], sources)
       if sealed, do: require!(Enum.all?(references, & &1["valid"]), :invalid_reference_integrity)
 
       review = %{

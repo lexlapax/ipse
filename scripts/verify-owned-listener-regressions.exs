@@ -4,9 +4,9 @@ unless match?({:unix, :linux}, :os.type()),
   do: raise("owned listener causal regressions require Linux")
 
 [] = System.argv()
-Code.require_file("../test/support/listener_regression/instrument.exs", __DIR__)
-Code.require_file("../test/support/listener_regression/namespace.exs", __DIR__)
-Code.require_file("../test/support/listener_regression/pid_namespace.exs", __DIR__)
+Code.require_file("../dev/platform/listener_regression/instrument.exs", __DIR__)
+Code.require_file("../dev/platform/listener_regression/namespace.exs", __DIR__)
+Code.require_file("../dev/platform/listener_regression/pid_namespace.exs", __DIR__)
 {:ok, _} = Application.ensure_all_started(:ipse)
 repository = Path.expand("..", __DIR__)
 
@@ -30,11 +30,11 @@ compile = fn source, output ->
 end
 
 fixture = Path.join(root, "fixture")
-compile.(Path.join(repository, "test/support/owned_listener_probe.rs"), fixture)
+compile.(Path.join(repository, "dev/platform/owned_listener_probe.rs"), fixture)
 loss_probe = Path.join(root, "output-loss-probe")
-compile.(Path.join(repository, "test/support/listener_regression/output_loss.rs"), loss_probe)
+compile.(Path.join(repository, "dev/platform/listener_regression/output_loss.rs"), loss_probe)
 pid_probe = Path.join(root, "pid-namespace-probe")
-compile.(Path.join(repository, "test/support/listener_regression/pid_namespace.rs"), pid_probe)
+compile.(Path.join(repository, "dev/platform/listener_regression/pid_namespace.rs"), pid_probe)
 current_helper = Path.join(root, "current-helper")
 compile.(Path.join(repository, "native/ipse-runner.rs"), current_helper)
 
@@ -44,7 +44,12 @@ compile.(Path.join(repository, "native/ipse-runner.rs"), current_helper)
       name = "#{kind}-#{if reverted, do: "reverted", else: "current"}"
 
       {helper, hashes} =
-        ListenerRegressionInstrument.prepare!(repository, Path.join(root, name), kind, reverted)
+        Ipse.Development.Platform.ListenerRegression.Instrument.prepare!(
+          repository,
+          Path.join(root, name),
+          kind,
+          reverted
+        )
 
       if original != nil and original != hashes,
         do: raise("production source changed during diagnostic preparation")
@@ -57,7 +62,7 @@ previous = Process.flag(:trap_exit, true)
 summary =
   try do
     namespace =
-      ListenerRegressionNamespace.verify(
+      Ipse.Development.Platform.ListenerRegression.Namespace.verify(
         helpers[{:namespace, false}],
         helpers[{:namespace, true}],
         fixture,
@@ -65,7 +70,7 @@ summary =
       )
 
     pid_namespace =
-      OwnedListenerPidNamespaceControls.verify(
+      Ipse.Development.Platform.ListenerRegression.PidNamespace.Controls.verify(
         pid_probe,
         current_helper,
         fixture,
@@ -95,7 +100,9 @@ summary =
 
     for {name, hash} <- originals do
       true =
-        ListenerRegressionInstrument.sha(File.read!(Path.join([repository, "native", name]))) ==
+        Ipse.Development.Platform.ListenerRegression.Instrument.sha(
+          File.read!(Path.join([repository, "native", name]))
+        ) ==
           hash
     end
 
@@ -110,8 +117,10 @@ summary =
       "output_loss" => output_loss,
       "inference_requests" => 0,
       "source_hashes" => originals,
-      "fixture_sha256" => ListenerRegressionInstrument.sha(File.read!(fixture)),
-      "output_probe_sha256" => ListenerRegressionInstrument.sha(File.read!(loss_probe)),
+      "fixture_sha256" =>
+        Ipse.Development.Platform.ListenerRegression.Instrument.sha(File.read!(fixture)),
+      "output_probe_sha256" =>
+        Ipse.Development.Platform.ListenerRegression.Instrument.sha(File.read!(loss_probe)),
       "evidence" => root
     }
   after

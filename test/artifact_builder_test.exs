@@ -155,5 +155,10 @@ defmodule Ipse.ArtifactBuilderTest do
       assert File.read!(Path.join(ctx.output, relative)) ==
                File.read!(Path.join(second.output, relative))
     end
+
+    beam = File.read!(Path.join(ctx.output, "ebin/Elixir.IpseModelExample.Complete.beam"))
+    {:ok, _, chunks} = :beam_lib.all_chunks(beam)
+    checker = Map.fetch!(Map.new(chunks), ~c"ExCk")
+    assert checker == :erlang.term_to_binary(:erlang.binary_to_term(checker), [:deterministic])
   end
 end

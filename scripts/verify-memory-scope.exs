@@ -20,16 +20,16 @@ fixture = Path.join(root, "probe")
     [
       "--edition=2021",
       "-O",
-      Path.expand("../test/support/memory_scope_probe.rs", __DIR__),
+      Path.expand("../dev/platform/memory_scope_probe.rs", __DIR__),
       "-o",
       fixture
     ],
     stderr_to_stdout: true
   )
 
-Code.require_file("../test/support/memory_scope_verification.exs", __DIR__)
+Code.require_file("../dev/platform/memory_scope.exs", __DIR__)
 
-alias MemoryScopeVerification, as: Verify
+alias Ipse.Development.Platform.MemoryScope, as: Verify
 
 serial =
   Verify.start(helper, Path.join(root, "serial"), [fixture, "serial"])

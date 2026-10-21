@@ -1,10 +1,10 @@
-Code.require_file("../examples/knowledge/evaluation_model_service.exs", __DIR__)
+Code.require_file("../dev/evaluation/model_service.exs", __DIR__)
 Code.require_file("../dev/verification/model_service.exs", __DIR__)
 Code.require_file("../dev/verification/cli.exs", __DIR__)
 
 defmodule Ipse.KnowledgeEvaluationModelServiceTest do
   use ExUnit.Case, async: false
-  alias IpseKnowledgeExample.EvaluationModelService, as: Service
+  alias Ipse.Development.Evaluation.ModelService, as: Service
   alias Ipse.Development.Verification.ModelService, as: ModelServiceVerification
 
   setup_all do
@@ -20,7 +20,7 @@ defmodule Ipse.KnowledgeEvaluationModelServiceTest do
           "--edition=2021",
           "-D",
           "warnings",
-          Path.join(__DIR__, "support/model_service_probe.rs"),
+          Path.join(__DIR__, "../dev/fixtures/model_service_probe.rs"),
           "-o",
           fixture
         ],

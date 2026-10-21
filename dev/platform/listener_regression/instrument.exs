@@ -1,4 +1,4 @@
-defmodule ListenerRegressionInstrument do
+defmodule Ipse.Development.Platform.ListenerRegression.Instrument do
   @moduledoc false
   def replace_once!(source, anchor, replacement) do
     case String.split(source, anchor) do

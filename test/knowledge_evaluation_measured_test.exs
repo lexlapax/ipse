@@ -1,10 +1,10 @@
 Code.require_file("../dev/verification/cli.exs", __DIR__)
 Ipse.Development.Verification.Runtime.load_fixture!(:knowledge)
-Code.require_file("../examples/knowledge/evaluation_runner.exs", __DIR__)
+Code.require_file("../dev/evaluation/runner.exs", __DIR__)
 
 defmodule Ipse.KnowledgeEvaluationMeasuredTest do
   use ExUnit.Case, async: false
-  alias IpseKnowledgeExample.{EvaluationMeasuredExecution, EvaluationRunner}
+  alias Ipse.Development.Evaluation.{MeasuredExecution, Runner}
 
   setup do
     root = Path.join(System.tmp_dir!(), "ipse-measured-boundary-" <> Ipse.Usage.id())
@@ -31,7 +31,7 @@ defmodule Ipse.KnowledgeEvaluationMeasuredTest do
       "peak_bytes" => 1234
     }
 
-    assert EvaluationMeasuredExecution.native_receipt?(receipt, 1000)
+    assert MeasuredExecution.native_receipt?(receipt, 1000)
 
     for {key, value} <- [
           {"version", 1},
@@ -52,16 +52,16 @@ defmodule Ipse.KnowledgeEvaluationMeasuredTest do
           {"exit_code", 7},
           {"reason", "timeout"}
         ] do
-      refute EvaluationMeasuredExecution.native_receipt?(Map.put(receipt, key, value), 1000),
+      refute MeasuredExecution.native_receipt?(Map.put(receipt, key, value), 1000),
              inspect({key, value})
     end
 
     for key <-
           ~w(version completion_policy population_drain_limit_ms population_exit elapsed_us natural_drain_us population_drain_ms) do
-      refute EvaluationMeasuredExecution.native_receipt?(Map.delete(receipt, key), 1000), key
+      refute MeasuredExecution.native_receipt?(Map.delete(receipt, key), 1000), key
     end
 
-    assert EvaluationMeasuredExecution.native_receipt?(
+    assert MeasuredExecution.native_receipt?(
              Map.merge(receipt, %{"natural_drain_us" => 0, "population_drain_ms" => 0}),
              1000
            )
@@ -73,22 +73,22 @@ defmodule Ipse.KnowledgeEvaluationMeasuredTest do
         "population_drain_ms" => 1999
       })
 
-    assert EvaluationMeasuredExecution.native_receipt?(boundary, 4000)
+    assert MeasuredExecution.native_receipt?(boundary, 4000)
 
-    refute EvaluationMeasuredExecution.native_receipt?(
+    refute MeasuredExecution.native_receipt?(
              Map.merge(boundary, %{"natural_drain_us" => 2_000_000, "population_drain_ms" => 2000}),
              4000
            )
 
-    refute EvaluationMeasuredExecution.native_receipt?(receipt, 500)
-    refute EvaluationMeasuredExecution.native_receipt?(receipt, nil)
+    refute MeasuredExecution.native_receipt?(receipt, 500)
+    refute MeasuredExecution.native_receipt?(receipt, nil)
   end
 
   test "measured invocation rejects unbound options before effects", %{root: root} do
-    assert {:error, %{"code" => "option_shape"}} = EvaluationMeasuredExecution.run([])
+    assert {:error, %{"code" => "option_shape"}} = MeasuredExecution.run([])
 
     assert {:error, %{"code" => "option_shape"}} =
-             EvaluationMeasuredExecution.run(
+             MeasuredExecution.run(
                freeze: Path.join(root, "missing"),
                freeze_sha256: String.duplicate("a", 64),
                output: root
@@ -97,7 +97,7 @@ defmodule Ipse.KnowledgeEvaluationMeasuredTest do
     assert File.ls!(root) == []
 
     assert {:error, %{"code" => "freeze_identity"}} =
-             EvaluationMeasuredExecution.audit(Path.join(root, "missing"), "bad")
+             MeasuredExecution.audit(Path.join(root, "missing"), "bad")
 
     assert File.ls!(root) == []
   end
@@ -107,7 +107,7 @@ defmodule Ipse.KnowledgeEvaluationMeasuredTest do
       if :os.type() == {:unix, :linux}, do: "authority_descriptor", else: "unsupported_platform"
 
     assert {:error, %{"code" => ^expected}} =
-             EvaluationMeasuredExecution.enter(Path.join(root, "must-not-open"))
+             MeasuredExecution.enter(Path.join(root, "must-not-open"))
 
     assert File.ls!(root) == []
   end
@@ -123,7 +123,7 @@ defmodule Ipse.KnowledgeEvaluationMeasuredTest do
     marker = "untrusted \"quote\"; System.halt(99)"
 
     {executable, arguments} =
-      EvaluationMeasuredExecution.command(
+      MeasuredExecution.command(
         launch,
         ["/selected/script.exs"],
         "IO.puts(hd(System.argv()))",
@@ -167,22 +167,22 @@ defmodule Ipse.KnowledgeEvaluationMeasuredTest do
   end
 
   test "legacy source execution cannot replace a captured precompiled evaluator" do
-    assert :code.which(EvaluationMeasuredExecution) == []
-    {:ok, launch} = IpseKnowledgeExample.EvaluationFreeze.runtime_launch()
+    assert :code.which(MeasuredExecution) == []
+    {:ok, launch} = Ipse.Development.Evaluation.Freeze.runtime_launch()
 
     verified = %{
       "manifest" => %{"version" => 2, "runtime" => %{"launch" => launch, "files" => []}}
     }
 
-    assert {:source, ^launch} = EvaluationMeasuredExecution.execution_context!(verified)
+    assert {:source, ^launch} = MeasuredExecution.execution_context!(verified)
 
     frozen_beam = %{
-      "path" => "/captured/Elixir.IpseKnowledgeExample.EvaluationMeasuredExecution.beam"
+      "path" => "/captured/Elixir.Ipse.Development.Evaluation.MeasuredExecution.beam"
     }
 
     changed = put_in(verified, ["manifest", "runtime", "files"], [frozen_beam])
 
-    assert catch_throw(EvaluationMeasuredExecution.execution_context!(changed)) ==
+    assert catch_throw(MeasuredExecution.execution_context!(changed)) ==
              {:measured_execution, :precompiled_module}
   end
 
@@ -205,12 +205,12 @@ defmodule Ipse.KnowledgeEvaluationMeasuredTest do
     wrapper = [resolved, "--measure-stage", "cell", stage.token, "180000", stage.output, "--"]
     bytes = Enum.sum(Enum.map(wrapper ++ stage.argv, &byte_size/1))
     exact = %{stage | argv: List.replace_at(stage.argv, 2, String.duplicate(" ", 65_536 - bytes))}
-    assert :ok = EvaluationMeasuredExecution.validate_stage_launch!(helper, exact)
+    assert :ok = MeasuredExecution.validate_stage_launch!(helper, exact)
 
     oversized = %{exact | argv: List.update_at(exact.argv, 2, &(&1 <> " "))}
     assert Enum.sum(Enum.map(oversized.argv, &byte_size/1)) < 65_536
 
-    assert catch_throw(EvaluationMeasuredExecution.validate_stage_launch!(helper, oversized)) ==
+    assert catch_throw(MeasuredExecution.validate_stage_launch!(helper, oversized)) ==
              {:measured_execution, :stage_argument_limit}
   end
 
@@ -224,16 +224,16 @@ defmodule Ipse.KnowledgeEvaluationMeasuredTest do
       ]
     }
 
-    assert :ok = EvaluationRunner.audit_cell(root, report)
+    assert :ok = Runner.audit_cell(root, report)
     File.write!(path, "other\n")
 
-    assert catch_throw(EvaluationRunner.audit_cell(root, report)) ==
+    assert catch_throw(Runner.audit_cell(root, report)) ==
              {:evaluation_runner, :domain_files_changed}
 
     File.write!(path, "first\n")
     File.write!(Path.join(root, "extra"), "")
 
-    assert catch_throw(EvaluationRunner.audit_cell(root, report)) ==
+    assert catch_throw(Runner.audit_cell(root, report)) ==
              {:evaluation_runner, :domain_files_changed}
   end
 
@@ -252,7 +252,7 @@ defmodule Ipse.KnowledgeEvaluationMeasuredTest do
     end
 
     expected = Map.new(names, &{&1, File.read!(Path.join(output, &1))})
-    assert EvaluationRunner.audit_merged_files(cells, output) == expected
+    assert Runner.audit_merged_files(cells, output) == expected
 
     for name <- names do
       path = Path.join(output, name)
@@ -265,7 +265,7 @@ defmodule Ipse.KnowledgeEvaluationMeasuredTest do
           do: :first_predictions_changed,
           else: :merged_stream_changed
 
-      assert catch_throw(EvaluationRunner.audit_merged_files(cells, output)) ==
+      assert catch_throw(Runner.audit_merged_files(cells, output)) ==
                {:evaluation_runner, code}
 
       assert File.read!(path) == changed
@@ -277,24 +277,24 @@ defmodule Ipse.KnowledgeEvaluationMeasuredTest do
     original = File.read!(path)
     File.write!(path, "")
 
-    assert catch_throw(EvaluationRunner.audit_merged_files(cells, output)) ==
+    assert catch_throw(Runner.audit_merged_files(cells, output)) ==
              {:evaluation_runner, :merged_stream_changed}
 
     assert File.read!(path) == ""
     File.write!(path, original)
 
-    assert catch_throw(EvaluationRunner.audit_merged_files(Enum.reverse(cells), output)) ==
+    assert catch_throw(Runner.audit_merged_files(Enum.reverse(cells), output)) ==
              {:evaluation_runner, :first_predictions_changed}
 
-    assert EvaluationRunner.audit_merged_files(cells, output) == expected
+    assert Runner.audit_merged_files(cells, output) == expected
   end
 
   test "the current selected ERTS actually boots with exact paths and literal arguments" do
-    {:ok, launch} = IpseKnowledgeExample.EvaluationFreeze.runtime_launch()
+    {:ok, launch} = Ipse.Development.Evaluation.Freeze.runtime_launch()
     supplied = ["untrusted \"quote\"; System.halt(99)", "雪\nsecond line"]
 
     {executable, arguments} =
-      EvaluationMeasuredExecution.command(
+      MeasuredExecution.command(
         launch,
         [],
         "IO.puts(JSON.encode!(%{argv: System.argv(), paths: Enum.map(:code.get_path(), &to_string/1)}))",
@@ -326,7 +326,7 @@ defmodule Ipse.KnowledgeEvaluationMeasuredTest do
     plan = %{"data" => %{"expected_queries" => 1}, "variants" => [%{"id" => "lexical"}]}
 
     assert catch_throw(
-             EvaluationRunner.seal_predictions(
+             Runner.seal_predictions(
                plan,
                [%{"query_id" => "q", "project" => "alpha"}],
                [input],

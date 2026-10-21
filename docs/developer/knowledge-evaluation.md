@@ -24,22 +24,30 @@ Follow these owners in execution order:
 | Synthetic assertions | `dev/verification/measured_knowledge.exs`, `measured_authority.exs` | Preserve first predictions, tamper/scoring refusals and five independent loss controls |
 | Scripted daemon | `dev/fixtures/model_service.exs` | Build only the synthetic protocol fixture, with verification mode selected before sealing |
 | Declaration | `dev/evaluation/contract.exs` | Build seven strategies, admit complete plans and resolve declared command/model selections without loading execution |
-| Identity | `examples/knowledge/evaluation_freeze.exs` | Declare portable content and seal one closed local resolution |
-| Measured execution | `examples/knowledge/evaluation_measured_execution.exs` | Claim the native root, admit preparation/cells/finalization and audit their evidence |
+| Identity | `dev/evaluation/freeze.exs` | Declare portable content and seal one closed local resolution |
+| Measured execution | `dev/evaluation/measured_execution.exs` | Claim the native root, admit preparation/cells/finalization and audit their evidence |
 | Kernel population | `native/ipse-bound.rs`, `ipse-measure.rs`, `ipse-sequence.rs` | Retain directory/scope authority, launch work inside cgroups and record terminal receipts |
-| Domain execution | `examples/knowledge/evaluation_runner.exs` | Admit catalogs, project inputs, run complete cells and finalize first predictions |
-| Model lifetime | `examples/knowledge/evaluation_model_service.exs` | Copy a fresh runtime/cache, own one daemon and guard one complete cell callback |
-| Public Session | `examples/knowledge/evaluation_session.exs` | Invoke approved public commands and retain complete results and cleanup acknowledgments |
-| Input and answer projection | `evaluation_input.exs`, `evaluation_answer.exs` in the same directory | Keep labels outside predictor input and map shown answer spans back to complete evidence |
-| Inspection | `evaluation_inventory.exs`, `evaluation_resources.exs` | Verify storage reachability and reconcile canonical requests with conservative budget liability |
-| Review and score | `evaluation_review.exs`, `evaluation_integrity.exs`, `evaluation_score.exs`, `metrics.exs` | Blind saved predictions, recompute literal references from captured bytes and measure independent semantic verdicts |
+| Domain execution | `dev/evaluation/runner.exs` | Admit catalogs, project inputs, run complete cells and finalize first predictions |
+| Model lifetime | `dev/evaluation/model_service.exs` | Copy a fresh runtime/cache, own one daemon and guard one complete cell callback |
+| Public Session | `dev/evaluation/session.exs` | Invoke approved public commands and retain complete results and cleanup acknowledgments |
+| Dataset | `dev/evaluation/dataset.exs` | Project questions without labels, normalize delayed answers and check literal citations against hash-validated source bytes |
+| Answer projection | `dev/evaluation/answer.exs` | Map shown answer spans back to complete evidence |
+| Inspection | `dev/evaluation/inventory.exs`, `resources.exs` | Verify storage reachability and reconcile canonical requests with conservative budget liability |
+| Review and score | `dev/evaluation/review.exs`, `score.exs`, `metrics.exs` | Blind saved predictions and measure independent semantic verdicts after recomputing literal references |
+
+These owners use the `Ipse.Development.Evaluation` namespace. The runnable
+knowledge examples remain under `examples/knowledge/`; independently distributed
+domain code stays under `extensions/knowledge/`. Follow `Dataset` when changing
+input projection or source identity. It performs no file IO. Runner and Score
+still control when captured bytes and labels may be opened; combining pure
+dataset operations does not move that authority.
 
 The Session driver imports artifacts through ordinary host APIs. It does not load
 production knowledge modules into the evaluator or call a provider directly.
 Its caller validates the complete proposed action. A selected profile names a
 route; it does not approve every request on that route.
 
-Start a declaration change in `EvaluationContract.build/1` and `validate/1`.
+Start a declaration change in `Contract.build/1` and `validate/1`.
 The same owner holds the selected command and model-origin rules used by Runner.
 It loads no execution, model-service or fixture implementation. For example,
 this prepares the public template while its data and artifact paths are absent:
@@ -48,8 +56,8 @@ this prepares the public template while its data and artifact paths are absent:
 Code.require_file("dev/evaluation/contract.exs")
 spec = JSON.decode!(File.read!("examples/knowledge/benchmark-spec.json"))
 spec = Map.put(spec, "blind_seed", String.duplicate("b", 64))
-{:ok, plan} = IpseKnowledgeExample.EvaluationContract.build(spec)
-:ok = IpseKnowledgeExample.EvaluationContract.validate(plan)
+{:ok, plan} = Ipse.Development.Evaluation.Contract.build(spec)
+:ok = Ipse.Development.Evaluation.Contract.validate(plan)
 ```
 
 Run the example in `iex -S mix` from the repository root. The repeated seed is
@@ -60,7 +68,7 @@ recognize the existing execution or portable envelope before checking identities
 It does not replace full policy validation. Freeze still owns portable projection,
 local resolution and filesystem identity, and generic version-one seals retain
 their original map contract. Source-mode component exercises explicitly load
-`examples/knowledge/evaluation_runner.exs`; captured execution compiles its
+`dev/evaluation/runner.exs`; captured execution compiles its
 declared closure before launch. Requiring only the declaration owner loads
 neither execution path.
 
@@ -333,7 +341,7 @@ Plan three also requires this exact `contracts` object:
 {"outputs":{"answer":"json_schema_v2","extract":"json_schema_v2","rerank":"json_schema_v2"},"selection":"per_strategy_eligibility_v1"}
 ```
 
-`EvaluationContract.build/1` adds the matching output-contract selections to
+`Contract.build/1` adds the matching output-contract selections to
 extraction and rerank profiles. Full validation refuses a changed selection.
 All three text tasks use the host's schema-bound `model.complete` version-two
 request. The answer, extraction and rerank schemas differ and bind the IDs
@@ -508,7 +516,7 @@ IPSE_EXPERIMENT_SHA256=$(elixir -e 'r = File.read!(hd(System.argv())) |> String.
 ```
 
 Expect `status: "ok"`, the experiment path/hash and the source commit.
-`EvaluationFreeze.declare/3` removes source/artifact paths, profile origins and
+`Freeze.declare/3` removes source/artifact paths, profile origins and
 the search port. The private blind seed remains part of the experiment. Keep
 that declaration away from the independent reviewer.
 
@@ -525,7 +533,7 @@ is not relocatable or renewable.
 
 A resolution contains exactly `artifacts`, `model_origin`, `search_port`, `reports`,
 `data_manifest` and `model_service`. The service selection is the existing closed
-`EvaluationModelService.validate/1` schema. Its origin and exact model map must
+`ModelService.validate/1` schema. Its origin and exact model map must
 match the resolved plan. The shared model port 11434 is forbidden; the search
 port must differ. Sealing proves neither port availability nor listener ownership.
 
@@ -540,7 +548,7 @@ export IPSE_BENCHMARK
 export IPSE_DATA_MANIFEST=/absolute/path/to/reviewed/dataset/manifest.json
 export IPSE_OLLAMA_RUNTIME=/absolute/path/to/reviewed/ollama-distribution
 export IPSE_OLLAMA_MODELS=/absolute/path/to/existing/ollama-models
-mix run -r examples/knowledge/evaluation_model_service.exs -e '
+mix run -r dev/evaluation/model_service.exs -e '
 root = System.fetch_env!("IPSE_BENCHMARK")
 plan = JSON.decode!(File.read!(Path.join(root, "plan.json")))
 {:ok, runtime} = Ipse.WorkspaceContext.canonical_path(System.fetch_env!("IPSE_OLLAMA_RUNTIME"))
@@ -565,7 +573,7 @@ service = %{
   "limits" => %{"ready_ms" => 60000, "lifetime_ms" => 1800000, "metadata_ms" => 10000},
   "cpu_policy" => "visibility_v1"
 }
-:ok = IpseKnowledgeExample.EvaluationModelService.validate(service)
+:ok = Ipse.Development.Evaluation.ModelService.validate(service)
 resolution = %{
   "artifacts" => plan["artifacts"], "model_origin" => service["origin"],
   "search_port" => 47632, "reports" => Path.join(root, "reports"),
@@ -636,7 +644,7 @@ sealing; runtime control data cannot downgrade that choice.
 ### Follow authority into preparation
 
 Read `context!/2`, `run/1`, `enter/1` and `admit_stage!/2` in
-`EvaluationMeasuredExecution`. The entry rechecks the seal and the actual evaluator
+`MeasuredExecution`. The entry rechecks the seal and the actual evaluator
 source files. It creates exclusive `launch` and fixed `native-root` evidence,
 separate from reports and the removable registry. Deleting reports or replacing
 the registry does not authorize another first execution. Preserve an interrupted
@@ -669,7 +677,7 @@ effective time, exact runtime launch and schedule. Preparation persists their
 hash before producing cell tickets/descriptors; future descriptor hashes do not
 create a circular identity.
 
-`EvaluationRunner.schedule/2` derives fourteen cells in sorted-project and
+`Runner.schedule/2` derives fourteen cells in sorted-project and
 original-variant order. Plans two and three divide every request, token and monetary
 cap by the original two-project count, rounding down. Reservations and the rate
 card remain unchanged. A share below its reservation refuses admission. Unused
@@ -680,20 +688,20 @@ across projects.
 
 ### Follow one complete cell and its first predictions
 
-The stage VM calls the internal `EvaluationModelService.run/4` inside its fresh
+The stage VM calls the internal `ModelService.run/4` inside its fresh
 measured scope, supplying the verified environment constructor for that execution.
 The owner copies the selected runtime and manifest/blob closure into new private
 files. The caller drains the native Port while a guarded Task works. Only native
 listener `P` admission permits initial HTTP inventory and the callback; child
 stdout cannot supply that proof. See [owned listener observation](../../native/README.md#observe-an-owned-loopback-listener).
 
-The callback calls `EvaluationRunner.evaluate_cell/6` with the original plan,
+The callback calls `Runner.evaluate_cell/6` with the original plan,
 one schedule cell and its execution context. That context selects the precompiled
 child roles and their verified environment. Source authoring, ingestion,
 projection, all project queries,
 source suppression, collection, Session close, gateway close and budget
 reconciliation happen inside that cell. Captured authoring and inventory
-children use `EvaluationMeasuredExecution.precompiled_command/4`. The child
+children use `MeasuredExecution.precompiled_command/4`. The child
 checks ordered code-path membership and inspected BEAM bytes, loads Environment,
 enters its policy, loads the requested role, then compiles the fixed expression.
 `command/4` remains the original source-compatibility branch.
@@ -728,7 +736,7 @@ Continue to review only after a successful audit. Audit joins the root M frame,
 collector exits, stage M/T frames, receipt bytes and recorded file identities,
 claim/scope identities, model-service cleanup, domain files, first predictions
 and recomputed resource summaries. It verifies each closed cell's files, then
-`EvaluationRunner.audit_merged_files/2` compares all six merged streams with
+`Runner.audit_merged_files/2` compares all six merged streams with
 those cells in sealed schedule order. The comparison covers predictions,
 execution, usage, request resources, storage resources and timings. Each stream
 has a cumulative 64-MiB limit. Resource computation uses those exact checked
@@ -803,8 +811,8 @@ paths and a clean source checkout, including untracked files:
 
 ```sh
 elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin --output /tmp/ipse-evaluation-corpus --package corpus --preset state-lexical
-mix run -r examples/knowledge/evaluation_freeze.exs -e '
-alias IpseKnowledgeExample.EvaluationFreeze, as: Freeze
+mix run -r dev/evaluation/freeze.exs -e '
+alias Ipse.Development.Evaluation.Freeze, as: Freeze
 plan = JSON.encode!(%{"version" => 1, "purpose" => "identity exercise"})
 {:ok, seal} = Freeze.create(File.cwd!(), plan,
   %{"corpus" => "/tmp/ipse-evaluation-corpus"}, "/tmp/ipse-evaluation-seal")
@@ -874,9 +882,9 @@ also verifies that a dataset path in a plan is never opened during sealing.
 
 The version-one runner's `freeze` phase adds executable preflight after the
 identity seal.
-Follow `preflight!/3`, `selection/4` and `EvaluationSession.preflight/1`. Tuning,
+Follow `preflight!/3`, `selection/4` and `Session.preflight/1`. Tuning,
 fixture execution and frozen prediction also perform this check before opening
-any dataset member, including its manifest. The direct `EvaluationFreeze.create/4`
+any dataset member, including its manifest. The direct `Freeze.create/4`
 exercise above remains an inert identity operation.
 Frozen phases recheck the source, runtime, plan and copied-artifact seal after
 preflight. Successful worker checks cannot authorize execution against identities
@@ -937,14 +945,14 @@ present, and preparation never traverses arbitrary manifest members. An extra
 answer descriptor refuses. The legacy reader preserves recursive member hashing
 for historical manifests, including their combined query/reference file.
 
-`EvaluationInput.queries/2` accepts the strict sealed question envelope or the
+`Dataset.queries/2` accepts the strict sealed question envelope or the
 historical version-one bytes and declared split. Its `queries` result contains exactly
 `query_id`, `project` and `query`, preserving their input order. Relevance,
 expected classes, expected answers and refusal labels remain excluded. The
 separate `excluded_fields` list reports field names; keep it in run metadata,
 outside Session/model inputs.
 
-`EvaluationInput.corpus/1` checks each complete source's identity, generation,
+`Dataset.corpus/1` checks each complete source's identity, generation,
 version, byte length, SHA256, UTF8 text and timestamps. It retains all source
 generations and state metadata. It neither suppresses sources automatically nor
 turns metadata into model instructions. The execution plan must declare how
@@ -959,8 +967,16 @@ a separate identity. The adapter never
 drops rows to make a comparison fit. Resolve any required capacity gap before
 freezing the implementation intended to cover the workload.
 
+`Dataset.sources/1` builds a lookup from that same validated corpus using the
+typed project, source, generation, version and body-hash identity.
+`citation_checks/2` compares prediction spans against those bytes;
+`reference_checks/2` checks normalized reference spans after answer release.
+Both use exact half-open UTF8 byte coordinates and quotes. These literal verdicts
+do not establish semantic support. Review and Score call these operations rather
+than trusting byte-check verdicts supplied in a review file.
+
 Review and scoring load references only after their authority and first-prediction
-checks. `EvaluationInput.references/3` validates every detached answer, exact
+checks. `Dataset.references/3` validates every detached answer, exact
 query/project identity equality and duplicate typed relevance spans before it
 builds lookup maps. It returns normalized score labels in original question
 order and a separate expected-answer lookup for the independent review packet.
@@ -970,19 +986,23 @@ check before answer loading. Public corpus and question bytes are hash-checked
 again on the same bytes actually parsed. Review validates their semantics before
 opening answers. Scoring retains its corpus-before-label boundary.
 
-`EvaluationInput.labels/2` remains the historical scorer adapter and also accepts
+`Dataset.labels/2` remains the historical scorer adapter and also accepts
 the new answer envelope. The runner uses `references/3` for a new workload so the
 complete question join cannot be skipped. Neither API gives the predictor any
 expected answer, reference class or refusal label.
 
 ```sh
-mix test test/knowledge_evaluation_input_test.exs
+mix test test/knowledge_evaluation_dataset_test.exs
 ```
 
 Change expected-answer, class and relevance values in its first fixture. Query
 projection must remain unchanged even when those labels become invalid. Then run
 the label adapter and observe its separate refusal. This tests information
 separation without opening the held-out workload.
+Next, use its literal-span fixture to change one byte of a reference quote while
+keeping the source identity. `reference_checks/2` must return `valid: false`.
+The unchanged query projection still succeeds; byte validity and label release
+remain separate questions.
 
 ## Materialize before interpreting a result
 
@@ -1116,7 +1136,7 @@ Run the orchestration fixture:
 mix test test/knowledge_evaluation_runner_test.exs
 ```
 
-Open its `matrix_plan/2` helper and follow `EvaluationContract.build/1`. They select independently built Corpus, Graph,
+Open its `matrix_plan/2` helper and follow `Contract.build/1`. They select independently built Corpus, Graph,
 Research and text-helper artifacts, with explicit command bindings and named
 profiles. Its seven variants cover lexical retrieval, explicit and model
 extraction, dense retrieval, hybrid retrieval, reranking and Research. The
@@ -1203,7 +1223,7 @@ contracts as the authority when changing an evaluation adapter.
 
 ## Trace an answer's evidence
 
-`IpseKnowledgeExample.EvaluationAnswer.prepare/3` takes the query, an as-of time
+`Ipse.Development.Evaluation.Answer.prepare/3` takes the query, an as-of time
 and at most ten saved candidates in their existing rank order. Each candidate
 has its complete `citation`. The result contains an exact `model.complete`
 request for `p27_answer`, a shown context, coverage and the context's SHA256.
@@ -1325,7 +1345,7 @@ that a claim follows from its citation, that a class is correct, that the answer
 is complete, or that two claims agree. Keep those semantic judgments in
 independent review, alongside literal captured-source verification.
 
-Trace the structured request through `EvaluationSession.invoke/3`. Its new answer
+Trace the structured request through `Session.invoke/3`. Its new answer
 argument is exactly `%{"request" => request}`. The driver validates the request
 and evaluator byte limits, then forwards it unchanged. Historical four-field
 arguments still construct their version-one request. Mixed argument forms refuse.
@@ -1348,7 +1368,7 @@ first-prediction hash before preparing a review. Version two additionally requir
 the separately retained audit hash and the exact sealed data/prediction paths.
 The `review` phase verifies the execution freeze, first-prediction identity and
 complete variant/query grid before opening reference labels. It reuses
-`EvaluationScore.verified_predictions/2`; a separate permissive JSON parser
+`Score.verified_predictions/2`; a separate permissive JSON parser
 cannot substitute for the scorer's row checks. Prediction IDs must be opaque
 `p-` plus SHA256 values before any label loader runs.
 
@@ -1487,7 +1507,7 @@ mix test test/knowledge_evaluation_score_test.exs test/knowledge_metrics_test.ex
 ```
 
 Open `test/knowledge_evaluation_score_test.exs`. Follow its `inputs/3` fixture
-into `EvaluationScore.score/5`. The frozen declaration names variants, queries,
+into `Score.score/5`. The frozen declaration names variants, queries,
 a baseline, an explicit classification mapping and prediction-file hashes.
 Its version-two `context_sha256` names verified experiment and reference policy.
 Runner supplies the verified execution-freeze hash. A direct pure caller owns
@@ -1613,7 +1633,7 @@ through `Ipse.Session.restore_context/1`. Use `Usage.order/1` and
 `Usage.snapshot/1` shows only the latest sixteen requests for the UI.
 
 The runner attaches the saved budget in inspection mode and reads it under its
-existing lock. `EvaluationResources.reconcile_budget/4` checks the exact request
+existing lock. `Resources.reconcile_budget/4` checks the exact request
 IDs and admissions against canonical usage, including refusals. It also checks
 that retained liability covers every known canonical observation, including
 earlier peaks followed by smaller counters. This comparison requires one root
@@ -1684,7 +1704,7 @@ mix test test/knowledge_evaluation_model_service_test.exs
 ```
 
 The fixture is a Rust HTTP server compiled from
-`test/support/model_service_probe.rs`. It checks the selected environment and
+`dev/fixtures/model_service_probe.rs`. It checks the selected environment and
 answers the small Ollama inventory protocol. It loads no model and performs no
 inference. The tests cover private cache contents and inodes, occupied ports,
 forged child output, bounded logs, inventory failures, callback exceptions,
@@ -1696,7 +1716,7 @@ and choose a fresh evidence directory:
 
 ```sh
 IPSE_MODEL_PROOF=$(mktemp -d)
-rustc --edition=2021 -D warnings test/support/model_service_probe.rs -o "$IPSE_MODEL_PROOF/probe"
+rustc --edition=2021 -D warnings dev/fixtures/model_service_probe.rs -o "$IPSE_MODEL_PROOF/probe"
 elixir scripts/verify.exs source model-service \
   --sdk _build/dev/lib/ipse/ebin --input "$IPSE_MODEL_PROOF/probe" \
   --output "$IPSE_MODEL_PROOF/evidence"
@@ -1729,7 +1749,7 @@ host runtime. On macOS both modes instead confirm refusal before effects.
 This Rust service fixture is separate from the scripted per-cell daemon used by
 the complete measured proof.
 
-Trace `EvaluationModelService.run/3` through these ownership boundaries:
+Trace `ModelService.run/3` through these ownership boundaries:
 
 The public `run/3` contract remains available. Its internal `run/4` form accepts
 an optional verified environment constructor. The guarded staging worker calls
@@ -1834,7 +1854,7 @@ One population read and its timestamp govern natural closure, cleanup and
 terminal eligibility. Deadline equality refuses. Guards run during natural
 drain and again at the terminal output decision. The private population decision
 tests exercise exact boundaries without depending on scheduler precision.
-`EvaluationMeasuredExecution.native_receipt?/2` checks the corresponding
+`MeasuredExecution.native_receipt?/2` checks the corresponding
 version, policy and timings against each original timeout. A changed or missing
 field cannot be supplied by a later clean process list.
 
@@ -1897,7 +1917,7 @@ finalizer. Descriptor admission opens nonblocking before checking the retained
 FD type, so refusal does not wait for the outer run deadline.
 
 The [native protocol](../../native/README.md#sequence-complete-measured-stages)
-owns the exact descriptor layout, limits and evidence filenames. `EvaluationMeasuredExecution` supplies the sealed schedule, original allocations
+owns the exact descriptor layout, limits and evidence filenames. `MeasuredExecution` supplies the sealed schedule, original allocations
 and first claim for knowledge work. Its post-exit audit reconciles finalizer and
 outer-root receipts, which do not exist while finalization runs. The generic
 controls isolate sequencing; held-out quality and real model execution require
@@ -1926,7 +1946,7 @@ harness memory do not measure whole-system memory or every storage allocation.
 
 ### Verify retained storage without querying through the audit
 
-Follow `EvaluationInventory.snapshot/6` and the pure `Store.inventory/2` in the
+Follow `Inventory.snapshot/6` and the pure `Store.inventory/2` in the
 independent knowledge artifact. The host validates the bounded, owner-only State
 file and every record envelope through `State.valid_outcome?/4`. It checks the
 namespace, version and generation sum. A separate VM loads the verified
@@ -1966,7 +1986,7 @@ Research has no retained State store and reports that distinction explicitly.
 Follow `storage_lifecycle/4` after the prediction loop. It inspects each source
 once, skips roots already suppressed and explicitly forgets the rest. The
 post-forget inventory must be available before collection. Follow
-`EvaluationInventory.collection_requests/3`: it binds owner-only namespace bytes
+`Inventory.collection_requests/3`: it binds owner-only namespace bytes
 to their verified hash, requires every root in the selected partition to be
 suppressed with no draft, and returns only exact project-scope page deletions.
 The approval policy matches each request and permits each key once. Collection

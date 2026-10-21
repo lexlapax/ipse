@@ -153,7 +153,7 @@ defmodule Ipse.Development.Verification.Runtime do
 
            true = Enum.sort(Keyword.keys(options)) == required
            Code.require_file("../evaluation/contract.exs", __DIR__)
-           contract = Code.ensure_loaded!(IpseKnowledgeExample.EvaluationContract)
+           contract = Code.ensure_loaded!(Ipse.Development.Evaluation.Contract)
            json = Code.ensure_loaded!(Ipse.JSON)
            {:ok, plan} = json.decode_bounded(bounded!(options[:plan], 1_048_576), 1_048_576)
            :ok = contract.validate(plan)
@@ -479,7 +479,7 @@ defmodule Ipse.Development.Verification.Runtime do
           {module, identity["path"], md5, identity["sha256"]}
         end
 
-      environment = IpseKnowledgeExample.EvaluationMeasuredExecution.Environment
+      environment = Ipse.Development.Evaluation.MeasuredExecution.Environment
       {^environment, environment_file, _, _} = Enum.find(bindings, &(elem(&1, 0) == environment))
       harness = Path.dirname(environment_file)
       true = Path.basename(harness) == "harness"
@@ -514,7 +514,7 @@ defmodule Ipse.Development.Verification.Runtime do
         environment = load.(#{inspect(environment)})
         :ok = apply(environment, #{inspect(if manager_cli?(argv), do: :enter_manager!, else: :enter!)}, [])
         for module <- #{inspect(modules, limit: :infinity)}, module != #{inspect(environment)}, do: load.(module)
-        freeze = Enum.find(Map.keys(verified), &(&1 == IpseKnowledgeExample.EvaluationFreeze))
+        freeze = Enum.find(Map.keys(verified), &(&1 == Ipse.Development.Evaluation.Freeze))
         cli = Enum.find(Map.keys(verified), &(&1 == Ipse.Development.Evaluation.CLI))
         case apply(freeze, :verify, [#{inspect(path)}, #{inspect(expected)}]) do
           {:ok, _} -> apply(cli, :main, [#{inspect(argv)}])

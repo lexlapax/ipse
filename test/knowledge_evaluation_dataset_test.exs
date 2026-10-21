@@ -1,9 +1,8 @@
-Code.require_file("../examples/knowledge/evaluation_input.exs", __DIR__)
-Code.require_file("../examples/knowledge/evaluation_integrity.exs", __DIR__)
+Code.require_file("../dev/evaluation/dataset.exs", __DIR__)
 
-defmodule Ipse.KnowledgeEvaluationInputTest do
+defmodule Ipse.KnowledgeEvaluationDatasetTest do
   use ExUnit.Case, async: true
-  alias IpseKnowledgeExample.EvaluationInput, as: Input
+  alias Ipse.Development.Evaluation.Dataset
 
   defp document do
     %{
@@ -80,7 +79,7 @@ defmodule Ipse.KnowledgeEvaluationInputTest do
     second = %{"query_id" => "q2", "project" => "beta", "query" => "Another question?"}
 
     assert {:ok, questions} =
-             Input.queries(
+             Dataset.queries(
                sealed_questions([Map.take(query(), ~w(query_id project query)), second]),
                "heldout"
              )
@@ -92,25 +91,25 @@ defmodule Ipse.KnowledgeEvaluationInputTest do
       sealed_answer() |> Map.merge(%{"query_id" => "q2", "project" => "beta", "relevance" => []})
 
     assert {:ok, refs} =
-             Input.references(sealed_answers([other, sealed_answer()]), "heldout", questions)
+             Dataset.references(sealed_answers([other, sealed_answer()]), "heldout", questions)
 
     assert Enum.map(refs["labels"]["queries"], & &1["query_id"]) == ~w(q1 q2)
     assert refs["expected_answers"] == %{"q1" => "A café.", "q2" => "A café."}
     refute JSON.encode!(refs["labels"]) =~ "expected_answer"
 
     assert {:error, :query_shape} =
-             Input.queries(
+             Dataset.queries(
                sealed_questions([Map.put(second, "expected_answer", "secret")]),
                "heldout"
              )
 
-    assert {:error, :query_split} = Input.queries(sealed_questions(), "tuning")
-    assert {:error, :dataset_version} = Input.labels(sealed_questions(), "heldout")
-    assert {:error, :dataset_version} = Input.queries(sealed_answers(), "heldout")
+    assert {:error, :query_split} = Dataset.queries(sealed_questions(), "tuning")
+    assert {:error, :dataset_version} = Dataset.labels(sealed_questions(), "heldout")
+    assert {:error, :dataset_version} = Dataset.queries(sealed_answers(), "heldout")
   end
 
   test "sealed answer joins and typed relevance are closed and never silently drop rows" do
-    assert {:ok, questions} = Input.queries(sealed_questions(), "heldout")
+    assert {:ok, questions} = Dataset.queries(sealed_questions(), "heldout")
     answer = sealed_answer()
 
     for rows <- [
@@ -119,7 +118,7 @@ defmodule Ipse.KnowledgeEvaluationInputTest do
           [Map.put(answer, "query_id", "foreign")],
           [Map.put(answer, "project", "beta")]
         ] do
-      assert {:error, _} = Input.references(sealed_answers(rows), "heldout", questions)
+      assert {:error, _} = Dataset.references(sealed_answers(rows), "heldout", questions)
     end
 
     for changed <- [
@@ -131,32 +130,38 @@ defmodule Ipse.KnowledgeEvaluationInputTest do
           put_in(answer, ["relevance", Access.at(0), "end_byte"], 6),
           put_in(answer, ["relevance", Access.at(0), "source", "extra"], true)
         ] do
-      assert {:error, _} = Input.references(sealed_answers([changed]), "heldout", questions)
+      assert {:error, _} = Dataset.references(sealed_answers([changed]), "heldout", questions)
     end
 
-    assert {:ok, refs} = Input.references(sealed_answers(), "heldout", questions)
-    assert {:ok, sources} = IpseKnowledge.EvaluationIntegrity.sources(corpus([document()]))
+    assert {:ok, refs} = Dataset.references(sealed_answers(), "heldout", questions)
+    assert {:ok, sources} = Ipse.Development.Evaluation.Dataset.sources(corpus([document()]))
 
     assert Enum.all?(
-             IpseKnowledge.EvaluationIntegrity.references(refs["labels"]["queries"], sources),
+             Ipse.Development.Evaluation.Dataset.reference_checks(
+               refs["labels"]["queries"],
+               sources
+             ),
              & &1["valid"]
            )
 
     changed = put_in(answer, ["relevance", Access.at(0), "source", "version"], "1")
-    assert {:ok, wrong} = Input.references(sealed_answers([changed]), "heldout", questions)
+    assert {:ok, wrong} = Dataset.references(sealed_answers([changed]), "heldout", questions)
 
     refute Enum.all?(
-             IpseKnowledge.EvaluationIntegrity.references(wrong["labels"]["queries"], sources),
+             Ipse.Development.Evaluation.Dataset.reference_checks(
+               wrong["labels"]["queries"],
+               sources
+             ),
              & &1["valid"]
            )
 
     raw = sealed_answers() |> JSON.decode!() |> Map.delete("commitment_nonce") |> JSON.encode!()
-    assert {:error, :answer_shape} = Input.references(raw, "heldout", questions)
+    assert {:error, :answer_shape} = Dataset.references(raw, "heldout", questions)
   end
 
   test "query projection excludes label values even when they change or become invalid" do
     original = query()
-    assert {:ok, projected} = Input.queries(queries([original]), "tuning")
+    assert {:ok, projected} = Dataset.queries(queries([original]), "tuning")
     assert projected["queries"] == [Map.take(original, ~w(query_id project query))]
     assert projected["excluded_fields"] == ~w(expected_answer expected_class relevance split)
 
@@ -168,20 +173,20 @@ defmodule Ipse.KnowledgeEvaluationInputTest do
         "expected_refusal" => true
       })
 
-    assert {:ok, changed} = Input.queries(queries([poisoned]), "tuning")
+    assert {:ok, changed} = Dataset.queries(queries([poisoned]), "tuning")
     assert changed["queries"] == projected["queries"]
     refute JSON.encode!(changed) =~ "secret-label-marker"
     refute JSON.encode!(changed) =~ "secret-relevance-marker"
-    assert {:error, :label_class} = Input.labels(queries([poisoned]), "tuning")
+    assert {:error, :label_class} = Dataset.labels(queries([poisoned]), "tuning")
   end
 
   test "wrong splits, missing query text, duplicate IDs and duplicate JSON keys refuse" do
-    assert {:error, :query_split} = Input.queries(queries([query()]), "heldout")
+    assert {:error, :query_split} = Dataset.queries(queries([query()]), "heldout")
 
     assert {:error, :query_text} =
-             Input.queries(queries([Map.delete(query(), "query")]), "tuning")
+             Dataset.queries(queries([Map.delete(query(), "query")]), "tuning")
 
-    assert {:error, :duplicate_query} = Input.queries(queries([query(), query()]), "tuning")
+    assert {:error, :duplicate_query} = Dataset.queries(queries([query(), query()]), "tuning")
 
     raw =
       String.replace(
@@ -190,8 +195,8 @@ defmodule Ipse.KnowledgeEvaluationInputTest do
         "\"query_id\":\"q1\",\"query_id\":\"q2\""
       )
 
-    assert {:error, :duplicate_key} = Input.queries(raw, "tuning")
-    assert {:error, :invalid_json} = Input.queries(String.duplicate(" ", 1_048_577), "tuning")
+    assert {:error, :duplicate_key} = Dataset.queries(raw, "tuning")
+    assert {:error, :invalid_json} = Dataset.queries(String.duplicate(" ", 1_048_577), "tuning")
   end
 
   test "corpus preserves complete source generations and reports excluded metadata" do
@@ -200,23 +205,25 @@ defmodule Ipse.KnowledgeEvaluationInputTest do
     second =
       Map.merge(document(), %{"document_id" => "d2", "generation" => 2, "state" => "forgotten"})
 
-    assert {:ok, result} = Input.corpus(corpus([first, second]))
+    assert {:ok, result} = Dataset.corpus(corpus([first, second]))
     assert length(result["documents"]) == 2
     assert Enum.map(result["documents"], & &1["text"]) == ["A café.", "A café."]
     assert Enum.map(result["documents"], & &1["generation"]) == [1, 2]
     assert List.last(result["documents"])["state"] == "forgotten"
     assert result["excluded_fields"] == ["curation_note"]
-    assert {:error, :duplicate_source_generation} = Input.corpus(corpus([document(), document()]))
+
+    assert {:error, :duplicate_source_generation} =
+             Dataset.corpus(corpus([document(), document()]))
 
     for version <- ["1", 2, "other"] do
       duplicate =
         document() |> Map.put("document_id", "another-id") |> Map.put("version", version)
 
       assert {:error, :duplicate_source_generation} =
-               Input.corpus(corpus([document(), duplicate]))
+               Dataset.corpus(corpus([document(), duplicate]))
     end
 
-    assert {:ok, _} = Input.corpus(corpus([document(), Map.put(document(), "project", "beta")]))
+    assert {:ok, _} = Dataset.corpus(corpus([document(), Map.put(document(), "project", "beta")]))
   end
 
   test "source byte length, hash, observation and field bounds are checked independently" do
@@ -228,12 +235,12 @@ defmodule Ipse.KnowledgeEvaluationInputTest do
           {"title", String.duplicate("é", 65), :document_text},
           {"project", "../other", :document_identity}
         ] do
-      assert {:error, ^reason} = Input.corpus(corpus([Map.put(document(), field, value)]))
+      assert {:error, ^reason} = Dataset.corpus(corpus([Map.put(document(), field, value)]))
     end
   end
 
   test "labels normalize full source identity and retain byte coordinates only in scoring data" do
-    assert {:ok, normalized} = Input.labels(queries([query()]), "tuning")
+    assert {:ok, normalized} = Dataset.labels(queries([query()]), "tuning")
     [row] = normalized["queries"]
     assert row["expected_class"] == "answer"
     assert row["expected_refusal"] == false
@@ -243,8 +250,8 @@ defmodule Ipse.KnowledgeEvaluationInputTest do
     refute Map.has_key?(row, "expected_answer")
 
     wrong_span = put_in(query(), ["relevance", Access.at(0), "end_byte"], 6)
-    assert {:error, :relevance_span} = Input.labels(queries([wrong_span]), "tuning")
+    assert {:error, :relevance_span} = Dataset.labels(queries([wrong_span]), "tuning")
     foreign = put_in(query(), ["relevance", Access.at(0), "project"], "beta")
-    assert {:error, :relevance_project} = Input.labels(queries([foreign]), "tuning")
+    assert {:error, :relevance_project} = Dataset.labels(queries([foreign]), "tuning")
   end
 end

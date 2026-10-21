@@ -1,10 +1,10 @@
-Code.require_file("../examples/knowledge/evaluation_model_service.exs", __DIR__)
+Code.require_file("../dev/evaluation/model_service.exs", __DIR__)
 Code.require_file("../dev/verification/cli.exs", __DIR__)
 Ipse.Development.Verification.Runtime.load_fixture!(:model_service)
 
 defmodule Ipse.KnowledgeMeasuredModelFixtureTest do
   use ExUnit.Case, async: false
-  alias IpseKnowledgeExample.EvaluationModelService
+  alias Ipse.Development.Evaluation.ModelService
   alias Ipse.Development.Fixtures.ModelService, as: Fixture
   alias Ipse.Development.Fixtures.ModelService.Daemon
 
@@ -26,7 +26,7 @@ defmodule Ipse.KnowledgeMeasuredModelFixtureTest do
       trace = :trace.session_create(:ipse_model_service_terminal, tracer, [])
 
       try do
-        assert :trace.function(trace, {EvaluationModelService, :close_daemon, 1}, true, [:local]) ==
+        assert :trace.function(trace, {ModelService, :close_daemon, 1}, true, [:local]) ==
                  1
 
         assert :trace.function(trace, {Ipse.Runner, :close_stdio, 2}, true, [:local]) == 1
@@ -34,7 +34,7 @@ defmodule Ipse.KnowledgeMeasuredModelFixtureTest do
         output = Path.join(root, "service")
 
         result =
-          EvaluationModelService.run(config, output, fn ->
+          ModelService.run(config, output, fn ->
             input = JSON.encode!(%{"query" => "absent mineral", "candidates" => []})
             content = "Synthetic exit control\n" <> JSON.encode!(%{"input" => input})
 
@@ -89,7 +89,7 @@ defmodule Ipse.KnowledgeMeasuredModelFixtureTest do
 
     defp observe_service_close(owner, selected) do
       receive do
-        {:trace, ^owner, :call, {EvaluationModelService, :close_daemon, [state]}} ->
+        {:trace, ^owner, :call, {ModelService, :close_daemon, [state]}} ->
           observe_service_close(owner, state.port)
 
         {:trace, ^owner, :call, {Ipse.Runner, :close_stdio, [port, mode]}}
@@ -116,7 +116,7 @@ defmodule Ipse.KnowledgeMeasuredModelFixtureTest do
 
       for index <- 1..2 do
         result =
-          EvaluationModelService.run(config, Path.join(root, "service-#{index}"), fn -> :ready end)
+          ModelService.run(config, Path.join(root, "service-#{index}"), fn -> :ready end)
 
         details = Map.take(result.receipt, ~w(code status work_status native_cleanup))
         assert result.work == {:returned, :ready}, inspect(details)
@@ -133,7 +133,7 @@ defmodule Ipse.KnowledgeMeasuredModelFixtureTest do
     on_exit(fn -> File.rm_rf!(root) end)
     launch = launch()
     config = Fixture.configuration(root, launch, "http://127.0.0.1:47631")
-    assert EvaluationModelService.validate(config) == :ok
+    assert ModelService.validate(config) == :ok
 
     assert Enum.sort(Map.keys(config["models"])) ==
              ~w(fixture-embedding:latest fixture-text:latest)
