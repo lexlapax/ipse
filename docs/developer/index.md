@@ -1,18 +1,17 @@
 # Develop Ipse
 
-This is the contributor training manual. Follow the first-session exercise to
-build a mental model of the harness, then choose the chapter that owns your
-change. You need basic Elixir and OTP knowledge; the manual explains Ipse's
-processes, messages, persistence and authority rules through source and fixtures.
-For using the application, start with the [user manual](../operator/index.md).
+Build a checkout, follow one completed turn and then choose the owner of your
+change. You need basic Elixir and OTP knowledge; these chapters teach Ipse's
+processes, messages, persistence and authority through source and fixtures. For
+using the application, start with the [user manual](../operator/index.md).
 
-## Build your first checkout
+## Build and follow your first session
 
 You need Elixir 1.18+, Erlang/OTP 27+, Rust 1.85+, Git and a C linker on Linux or
-macOS. The [dependency inventory](dependencies.md) explains package/host scope and
-licenses. On Arch, the [setup guide](../operator/arch-linux.md) gives installation
-commands. Use your host's supported toolchain installation procedure on another
-system; a bundled Ipse runtime does not include the development toolchain.
+macOS. [Dependencies](dependencies.md) explains package/host scope and licenses;
+[Arch setup](../operator/arch-linux.md) gives installation commands. Use your
+host's supported toolchain procedure elsewhere. A bundled Ipse release contains
+its runtime, not the development toolchain.
 
 From a checkout:
 
@@ -24,115 +23,91 @@ mix run examples/session/hello.exs
 mix test test/session_test.exs
 ```
 
-The build fetches locked packages and compiles the Rust helper and application.
-The example uses a fixed in-process provider and temporary files. Expect its
-message confirming that the answer was journaled and idle resume made no model
-call. The Session tests then exercise real approval and lifecycle paths with
-synthetic providers. These steps require no paid account.
+The build fetches locked packages and compiles Rust helpers/application. The
+example uses a fixed provider and temporary files; expect its confirmation that
+the answer was journaled and idle resume made no model call. Session tests then
+exercise approval and lifecycle paths with synthetic providers. No paid account
+is needed. Mix's lock service needs loopback; use your environment's permission
+flow or a suitable terminal on `:eperm`, keeping TLS verification enabled.
 
-If Mix reports `:eperm` for a TCP filesystem lock, use the environment's permission
-flow or a local terminal with loopback access. Keep TLS verification enabled.
-Read [verification](testing.md) before broadening checks or interpreting a
-platform exclusion as enforcement evidence.
+Read these chapters in order:
 
-## Learn the core in order
+1. [Architecture](architecture.md): follow `prompt/2` to completion and identify
+   Session, owned task, provider and journal responsibilities.
+2. [Persistence](persistence.md): trace intent, effect and result, including what
+   remains unknown after interruption.
+3. [Reviewing changes](reviewing-changes.md): check a complete allowed/refused
+   source path instead of trusting one helper or return value.
+4. [Testing](testing.md): choose a focused fixture and prove source/installed
+   behavior, then run applicable OS/package checks.
 
-1. [Follow a turn](architecture.md) from `prompt/2` to a completed answer. Run the
-   example, locate each owner and distinguish acceptance from completion.
-2. [Follow durable records](persistence.md) through intent, effect, result and
-   saved validation. Understand what remains unknown after interruption.
-3. [Review authority and ownership](reviewing-changes.md) using a complete source
-   path and both allowed/refused controls.
-4. [Verify the change](testing.md) with the nearest fixture. Use the common
-   source/installed proof command for the changed contract, then run applicable
-   OS and package checks.
-
-The public entry points are `Ipse.CLI`, `Ipse.Session` and `Ipse.Extension`.
-[`Ipse.Application`](../../lib/ipse/application.ex) starts shared services. Session
-owns each conversation; slow IO uses owned tasks, and Rust owns narrow OS helpers.
-Read [AGENTS.md](../../AGENTS.md) for repository conventions and
-[CONTRIBUTING.md](../../CONTRIBUTING.md) for submitting work.
+`Ipse.CLI`, `Ipse.Session` and `Ipse.Extension` are public entry points.
+[`Ipse.Application`](../../lib/ipse/application.ex) starts shared services.
+Session owns each conversation; slow IO uses owned tasks and Rust implements
+narrow OS facilities. [AGENTS](../../AGENTS.md) defines repository conventions;
+[CONTRIBUTING](../../CONTRIBUTING.md) explains submissions.
 
 ## Change conversation behavior
 
-| Learn to change | Chapter |
+| Learning task | Authoritative chapter |
 | --- | --- |
-| Load bounded scoped settings and retain provenance | [Configuration](configuration.md) |
-| Route main, child and helper requests explicitly | [Model profiles](model-profiles.md) |
-| Admit instruction/skill snapshots and refresh them | [Workspace context](workspace-context.md) |
-| Reduce active context while preserving history | [Compaction](context-compaction.md) |
-| Ask and restore explicit user questions | [Operator questions](operator-questions.md) |
+| Resolve bounded settings, provenance, profiles and child routes | [Configuration](configuration.md) |
+| Snapshot instructions/skills and reduce active context without losing history | [Workspace context and compaction](workspace-context.md) |
+| Ask and restore explicit structured user questions | [Operator questions](operator-questions.md) |
 | Bound provider requests and response assembly | [Provider limits](provider-limits.md) |
-| Retain canonical usage and unknown coverage | [Usage accounting](usage-accounting.md) |
-| Calculate configured local cost estimates | [Costs](costs.md) |
-| Reserve shared request quotas conservatively | [Budgets](budgets.md) |
-| Preserve research source/claim provenance | [Research](research.md) |
+| Preserve canonical counters, coverage and configured cost estimates | [Usage accounting](usage-accounting.md) |
+| Reserve shared request liabilities conservatively | [Budgets](budgets.md) |
+| Retain native research source/claim provenance | [Research](research.md) |
 
 ## Work across process boundaries
 
-| Learn to change | Chapter |
+| Learning task | Authoritative chapter |
 | --- | --- |
-| Launch, confine and confirm local OS work | [Native sandbox](sandbox.md) |
-| Integrate external tools through bounded transports | [MCP](mcp.md) |
-| Own child conversations and their approvals | [Delegation](delegation.md) |
-| Deliver bounded visible text to clients/workers | [Text streams](text-streams.md) |
-| Bind text frames to negotiated event identities | [Stream events](stream-events.md) |
-| Project durable metadata and runtime epochs | [Lifecycle events](lifecycle-events.md) |
-| Bind admitted tool input/results to sources | [Tool events](tool-events.md) |
+| Launch/confine local OS work and confirm cleanup | [Sandbox](sandbox.md) |
+| Integrate external tools through bounded transport | [MCP](mcp.md) |
+| Own child conversations and separate approvals | [Delegation](delegation.md) |
+| Deliver visible text with pressure, exact acknowledgment and ephemeral identity | [Text streams](text-streams.md) |
+| Bind durable metadata, epochs, waits and private tool views to physical sources | [Lifecycle sources](lifecycle-events.md) |
 | Capture optional sanitized diagnostics | [Observability](observability.md) |
 
-Supervision, approval and OS confinement are distinct boundaries. A task exit
-cannot confirm a started OS effect or revoke a remote request. Work through the
-failure exercises in these chapters before introducing another asynchronous lane.
+Supervision, approval and OS confinement are distinct boundaries. Process exit
+cannot prove completion of an OS effect or revoke remote work. Follow each
+chapter's failure exercises before adding another asynchronous lane.
 
-## Build extensions before adding domain branches
+## Build domain behavior through extensions
 
-Start with [the extension authoring course](extensions.md). It takes a small
-prompt hook through description, packaging, explicit trust, selection and a
-synthetic check. Then choose the host interaction you need:
+[Extension authoring](extensions.md) takes a small hook through description,
+packaging, trust, selection, conformance and a complete workflow. Then choose
+the generic contract your behavior needs:
 
-| Goal | Chapter |
+| Learning task | Authoritative chapter |
 | --- | --- |
-| Import an inert package and launch its owned VM | [Artifacts and workers](extension-artifacts.md) |
-| Transform prompt or presentation projections | [Hooks](extension-hooks.md) |
-| Export typed tools, commands and value services | [Invocations](extension-invocations.md) |
-| Use scoped CAS storage and durable continuations | [Host calls](extension-host-calls.md) |
-| Pause for an explicit structured answer | [Extension questions](extension-questions.md) |
-| Request approved file and shell work | [Workflow tools](extension-tool-actions.md) |
-| Call a selected MCP item and read complete source windows | [MCP actions](extension-mcp-actions.md) |
-| Compose declared value services | [Services](extension-services.md) |
-| Publish bounded asserted or receipt-backed context | [Context](extension-context.md) |
-| Request a profile-bound accounted text inference | [Model calls](extension-model-calls.md) |
-| Create accounted vectors and reconstruct bounded coordinate pages | [Embedding actions](extension-embedding-actions.md) |
-| Observe original/effective prompt and completed-answer views | [Notifications](extension-events.md) |
-| Run separately admitted before/after-turn jobs | [Event jobs](extension-event-jobs.md) |
-| Consume finite, acknowledged live deliveries | [Feeds](extension-feeds.md) |
-| Read bounded own-session history for catch-up | [History](extension-history.md) |
-| Exercise ordinary host validation with synthetic inputs | [Conformance](extension-conformance.md) |
-| Verify unchanged artifacts in an installed runtime | [Compatibility proofs](extension-proof.md) |
-| Combine these contracts into a complete feature | [Worked scenarios](extension-scenarios.md) |
+| Import inert artifacts and launch an owned VM | [Artifacts and workers](extension-artifacts.md) |
+| Export typed tools, commands and services | [Invocations](extension-invocations.md) |
+| Use scoped CAS, stale-write deadlines and durable questions | [State and continuations](extension-state.md) |
+| Request approved file/shell, MCP, text-model or embedding work and read retained results | [Effects](extension-effects.md) |
+| Bind typed services and publish literal receipt-backed context | [Composition](extension-composition.md) |
+| Observe prompt/answer boundaries or run before/after-turn jobs | [Notifications and jobs](extension-events.md) |
+| Consume bounded live feeds and fixed-prefix history | [Feeds and catch-up](extension-feeds.md) |
+| Prove unchanged artifacts against an installed runtime | [Testing and compatibility lab](testing.md) |
 
-[Explicit memory](memory.md) is a worked domain implementation using generic
-state/actions. [Knowledge extensions](knowledge-extensions.md) traces the
-independent Corpus, Research and Graph workers, source-root publication, exact
-citations and projection preflight, with a ranker change exercise.
-[Knowledge evaluation](knowledge-evaluation.md) teaches independent dataset commitments,
-detached answer custody, prediction/label separation,
-captured runtime preparation and cold audit, complete measured execution through
-the optional Linux backend, private model-service ownership and separate
-retrieval, span and semantic measurements.
-[Capability placement](runtime-capabilities.md) helps decide when a new generic
-host contract is necessary.
+[Explicit memory](memory.md) is a domain implementation over generic state and
+actions. [Knowledge packages](knowledge-extensions.md) traces independent Corpus,
+Graph and Research workers, source-root publication, citations and retrieval
+changes. [Knowledge evaluation](knowledge-evaluation.md) teaches independent data
+commitments, prediction/label separation, captured execution, cold audit, exact
+charged-memory measurement and semantic review. [Capability placement](runtime-capabilities.md)
+helps decide when a generic host gap warrants a core change.
 
 ## Finish with a reviewable result
 
-Keep a change focused on an observable behavior. Add a meaningful regression when
-state/protocol behavior changes, update the affected manual as a coherent chapter,
-and run the [handoff checks](testing.md). Use [dependency maintenance](dependencies.md)
-before adding packages, executables or services. For a comparative or supervised
-self-development task, use [evaluation design](self-hosting-evaluation.md).
+Keep changes focused on observable behavior. Add meaningful state/protocol
+regressions, update affected chapters coherently and run their
+[handoff checks](testing.md). Consult [dependency policy](dependencies.md) before
+adding packages, executables or services. Comparative/supervised self-development
+uses [evaluation design](self-hosting-evaluation.md).
 
-Current priority and acceptance decisions live in the [plan](../plan.md). Dated
-measurements, investigations, reviews and failed/successful verification records
-live in the [archive](../archive/index.md). They provide historical evidence;
-these training chapters describe how to understand and change the current code.
+Current priorities and acceptance belong to [the plan](../plan.md). Dated
+measurements, investigations, reviews and verification receipts belong to
+[the archive](../archive/index.md). Manuals explain the current implementation
+and its use; they do not serve as milestone reports.

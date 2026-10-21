@@ -20,7 +20,7 @@ ipse chat --provider chatgpt --cwd /path/to/project --max-steps 20
 This uses real subscription model requests after you submit work. Repository
 content supplied to the model leaves the machine through that provider. Select
 a local provider instead when that matches your data-sharing decision. Use an
-explicit [profile](model-profiles.md) for a repeatable route.
+explicit [profile](configuration.md#reuse-a-named-model-profile) for a repeatable route.
 
 Do not add `--yes` for a review that needs per-command control. Read-only intent
 does not create a read-only OS sandbox. Approve only commands whose full arguments

@@ -1,3 +1,5 @@
+Historical manual from `d35287afbfc0101938f0c86e70748a5e1c354c9f`, archived on 2026-10-21 before topic consolidation. Commands and ownership may be obsolete. Use [the current chapter](../../../../../developer/extension-effects.md). The original body is retained; relative links outside code fences are rebased, and links to jointly preserved chapters point to these snapshots.
+
 # Make an approved extension model call
 
 `model.complete` runs one bounded request through a named operator profile.
@@ -57,7 +59,7 @@ request inside the same `host_call` envelope:
 ```
 
 The schema root must have `type: "object"`. It uses the same bounded JSON Schema
-subset as [MCP tool validation](mcp.md), without references or loaders. The complete
+subset as [MCP tool validation](../../../../../developer/mcp.md), without references or loaders. The complete
 request and its SDK envelope still have to fit their own bounds. A schema adds no
 allowance to the input, instruction, deadline or returned-text limits.
 
@@ -227,6 +229,6 @@ ceiling. All four check actual loopback routing,
 complete approval, private response, canonical usage, budgets, and unchanged
 idle-resume state. Tests add limits,
 parallel children, cancellation, worker death, and corruption. Use the package
-procedure in [the example README](../../examples/model-calls/README.md) for an
+procedure in [the example README](../../../../../../examples/model-calls/README.md) for an
 unchanged installed release. These are credential-free fixtures; actual billing
 and model quality need separate live evaluation.

@@ -80,7 +80,7 @@ explanation of why the product behavior was already correct.
 Check saved validation before torn-tail repair. A malformed committed receipt
 must not become acceptable because a later repair removed evidence. Review
 configuration drift, stale CAS generations, source references and cached result
-bindings. Use [persistence](persistence.md), [state calls](extension-host-calls.md)
+bindings. Use [persistence](persistence.md), [state calls](extension-state.md#read-a-revision-and-propose-a-write)
 and the matching subsystem chapter to find the validator.
 
 ## Review dependencies and disclosures

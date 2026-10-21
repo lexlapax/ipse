@@ -4,7 +4,7 @@ Historical review and verification record, recorded 2026-10-20 for the session
 that began on 2026-10-19. This work
 starts from `f2bfc8d7f8dd3fadedd2e18183faf4533ee63ac5`. Use the current
 [Corpus](../../operator/corpus.md)/[Graph](../../operator/graph.md) operator manuals and
-[embedding](../../developer/extension-embedding-actions.md) and
+[embedding](../../developer/extension-effects.md#generate-and-reconstruct-embeddings) and
 [knowledge](../../developer/knowledge-extensions.md) developer chapters for procedures.
 P27 remains incomplete until the separate quality/resource gates pass.
 

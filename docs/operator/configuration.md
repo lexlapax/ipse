@@ -1,15 +1,16 @@
-# Configure a workspace and session
+# Configure a workspace, model and session
 
-Use a version-1 JSON file to keep repeatable settings out of command lines.
-Inspect the effective configuration before making model requests, especially
-when a project proposes a provider or endpoint change. This guide uses `ipse`;
-see the [manual entry point](index.md) for source/release command substitutions.
+Keep repeatable settings in a private version-1 JSON file. Inspect the selected
+provider, model and endpoint before submitting work. Configuration inspection
+needs no model account or running service. Starting a conversation requires the
+selected service and model to be available.
 
-## Create an operator configuration
+The commands below use an installed `ipse`. In a source checkout, use
+`./bin/ipse`; in an extracted release, use `./ipse`.
 
-Create a private file outside the workspace, such as `~/.ipse/config.json`.
-This complete example selects a local service; it does not install that service
-or download the named model:
+## Save and inspect operator settings
+
+Create `~/.ipse/config.json`, or another private file outside your workspace:
 
 ```json
 {
@@ -29,89 +30,189 @@ or download the named model:
 }
 ```
 
-`IPSE_HOME/config.json` is the default operator file. `IPSE_HOME` defaults to
-`~/.ipse`. Select another existing file with `--config PATH` or `IPSE_CONFIG`.
-An explicitly selected file must exist; an absent default file is allowed.
-
-Inspect without authentication, network calls, or inference:
+This example selects an existing local Ollama service. It installs no service
+and downloads no model. Replace `/path/to/operator.json` with the file you saved:
 
 ```sh
 ipse config --config /path/to/operator.json --no-project-config
 ```
 
-Expect effective non-secret values, provenance, source paths/digests, and a
-fingerprint. Keep credentials out of JSON. Use Ipse's protected subscription
-login or the selected provider's supported environment variable. Unknown fields,
-duplicate keys, inline credentials, scripts, approval policies, MCP definitions,
-and filesystem-root changes are rejected.
+Expect non-secret effective settings, each setting's provenance, source paths
+and digests, and a configuration fingerprint. No inference occurs. Keep tokens
+out of this file: subscription access uses `ipse login`, and API providers use
+their supported credential environment variables.
 
-Start a real conversation only after reviewing the output:
+The default file is `IPSE_HOME/config.json`; `IPSE_HOME` defaults to `~/.ipse`.
+`--config PATH` overrides `IPSE_CONFIG`. An explicitly selected file must exist;
+an absent default file is allowed. Files allow at most 16 KiB. Unknown fields,
+duplicate keys and inline credentials refuse with a configuration error.
+
+After reviewing the output, start a session:
 
 ```sh
 ipse chat --config /path/to/operator.json --no-project-config --cwd /path/to/project
 ```
 
-The selected model/service must already be available. This command uses that
-service when you submit a task. Configuration inspection grants no action
-permissions; interactive approvals still apply.
+Submitting a task uses the selected model. The file grants no write, shell,
+MCP or delegation permission. Interactive approvals still apply.
 
-## Decide whether to trust project settings
+## Reuse a named model profile
 
-Project files live at `.ipse/config.json`. Inside Git, Ipse searches from the
-nearest repository boundary through `--cwd`; a worktree `.git` file also defines
-a boundary. Outside Git, it searches only the selected directory.
+Use `profiles` to name routes you repeatedly choose. This complete operator file
+uses a subscription model for main work and a local model for routine children:
 
-Review those files, then compare the untrusted and explicitly trusted views:
+```json
+{
+  "version": 1,
+  "settings": {"subagents": true},
+  "profiles": {
+    "strong": {
+      "provider": "chatgpt",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "high",
+      "credential": "ipse-auth"
+    },
+    "local": {
+      "provider": "ollama",
+      "model": "qwen3:8b",
+      "max_steps": 4,
+      "max_output_tokens": 4096,
+      "timeout_ms": 120000
+    }
+  },
+  "roles": {"main": "strong", "routine": "local", "review": "strong"}
+}
+```
+
+Save it as `/private/path/models.json`. Sign in with `ipse login` before using
+`strong`. Serve the named local model before using `local`.
+
+```sh
+ipse config --config /private/path/models.json --no-project-config --profile strong
+ipse config --config /private/path/models.json --no-project-config --profile local
+ipse chat --config /private/path/models.json --no-project-config --profile strong --cwd /path/to/project
+```
+
+Both inspection commands stay local. In chat, `/info` shows the selected profile,
+requested model, reasoning policy and any provider-reported model identity.
+An unavailable model or failed service produces an error; Ipse does not select
+another provider or billing route.
+
+Selection follows `--profile ID`, then `IPSE_PROFILE`, then the `main` role.
+The selected profile fixes provider and model. Conflicting `--provider` or
+`--model` values refuse; `--base-url` cannot accompany a selected profile.
+Supported step, context, timeout and output-cap settings can still be overridden.
+Up to eight profiles are allowed. IDs begin with an ASCII letter and contain
+at most 64 letters, digits, underscores or hyphens.
+
+### Choose credentials and endpoints
+
+Credential references are fixed lookups, not token values:
+
+| Provider | Credential reference |
+| --- | --- |
+| `chatgpt` | `ipse-auth` |
+| `openai` | `OPENAI_API_KEY` |
+| `anthropic` | `ANTHROPIC_API_KEY` |
+| `ollama`, `demo` | `none` |
+
+Omit `credential` to use the provider's fixed lookup. Text roles never select
+vector generation; configure that separately through [embeddings](embeddings.md).
+
+Only operator profiles may set `base_url`. Endpoints require HTTPS, or HTTP to
+literal loopback or `localhost`, with a port in 1..65535. Credentials in URLs,
+query strings and fragments refuse. Keep secrets out of paths: configuration
+is inspectable. The selected API endpoint receives the provider credential and
+request context. Subscription access stays on the public OpenAI endpoint.
+
+`reasoning_effort` accepts `low`, `medium`, `high`, `xhigh` and `max` for exact
+`gpt-6.1-sol` ChatGPT or OpenAI profiles. For Ollama, explicit `none` sends
+`think: false`; choose it only for a server/model supporting that control.
+Omitting it retains the model's default behavior. Other unsupported combinations
+refuse. Anthropic extended-thinking configuration is unavailable.
+
+### Route a child review
+
+With subagents enabled, ask for a bounded task in the configured role:
+
+```text
+Review the error handling in lib/example.ex. Delegate a read-only check to the
+configured review role. Include only the relevant files and question. Compare
+its evidence with the source before reporting findings.
+```
+
+Before approving, inspect the task, selected context, profile or role, provider,
+model and billing mode. A child selects one profile or one role. Without either,
+it uses `routine`, or inherits the parent if `routine` is absent. Children get
+fresh history and credential lookup, selected context and workspace instructions.
+They do not receive the parent's transcript, tokens or native provider payloads.
+
+Each child has at most six admitted main/helper calls and 120 seconds of active
+work. Effects need separate approvals. An inherited output cap remains or narrows;
+an incompatible route refuses before work. Main-model compaction stays on the
+main profile. See [delegated work](subagents.md) for a complete operating procedure.
+Extensions request one-shot text inference separately through named profiles;
+roles do not route those calls automatically.
+
+## Review project settings before trusting them
+
+Project settings live at `.ipse/config.json`. Within Git, discovery runs from
+the nearest repository boundary through `--cwd`; a worktree's `.git` file counts
+as a boundary. Outside Git, only the selected directory contributes settings.
+At most 17 scopes are examined.
+
+Read the files, then compare these views:
 
 ```sh
 ipse config --cwd /path/to/project --no-project-config
 ipse config --cwd /path/to/project --trust-project-config
+```
+
+If the trusted view is acceptable, launch with the same explicit trust:
+
+```sh
 ipse chat --cwd /path/to/project --trust-project-config
 ```
 
-Project trust is required on each invocation. It allows those settings to affect
-this run, including provider/billing selection. It does not authorize writes,
-shell, MCP, or delegation. Automatically discovered aliases must resolve within
-the repository. An explicitly selected operator file may itself be a symlink.
+Trust applies to that invocation and can change provider or billing selection.
+It does not approve effects. Project profiles may use default endpoints and
+assign roles, but cannot replace operator profile IDs or set endpoints.
+Automatically discovered aliases must resolve within the repository. An
+explicit operator file may be a symlink.
 
-Ordinary precedence, lowest first, is defaults, operator file, project root,
-nearer directory, environment, then CLI. Environment names use uppercase setting
-names, such as `IPSE_MAX_STEPS`; boolean values are `true` or `false`.
+Settings resolve from defaults, operator file, project scopes, selected profile,
+allowlisted environment settings, then explicit CLI values. Nearer project
+settings take precedence. Environment names include `IPSE_MAX_STEPS` and
+`IPSE_TIMEOUT_MS`; booleans use `true` or `false`.
 
-Project sandbox settings can tighten to `native` but cannot weaken an existing
-`native` selection to `off`. Explicit operator `IPSE_SANDBOX` or `--sandbox` can
-select either value. This exception retains the stricter value's provenance.
+A project can tighten an existing sandbox policy to `native`, but cannot weaken
+`native` to `off`. An explicit operator `IPSE_SANDBOX` or `--sandbox` can select
+either supported mode.
 
-## Set execution limits
+## Set request and journal limits
 
-| Setting | Default or behavior | Accepted range |
+| Setting | Default | Accepted values |
 | --- | --- | --- |
 | `provider` | `chatgpt` | `chatgpt`, `openai`, `ollama`, `anthropic`, `demo` |
-| `model` | Provider default | At most 200 characters |
-| `max_steps` | 30 model calls per turn | 1..100000 |
+| `model` | Provider default | Nonempty, at most 200 characters |
+| `max_steps` | 30 calls per turn | 1..100000 |
 | `context_bytes` | 400000 | 8192..16000000 bytes |
-| `timeout_ms` | 120000 ms provider request deadline | 1000..600000 ms |
+| `timeout_ms` | 120000 | 1000..600000 ms |
 | `compact` | `true` | Boolean |
-| `sandbox` | `off` | `off` or `native` |
+| `sandbox` | `off` | `off`, `native` |
 | `subagents` | `false` | Boolean |
 | `subagent_concurrency` | 1 | 1 or 2; 2 requires subagents |
-| `max_output_tokens` | Omitted | OpenAI API 16..1000000; Ollama/Anthropic 1..1000000 |
+| `max_output_tokens` | Absent | OpenAI API 16..1000000; Ollama/Anthropic 1..1000000 |
 
-A file is at most 16 KiB; at most 17 candidate scopes are examined.
-`max_output_tokens` caps each supported request, including summaries. ChatGPT
-subscription and demo reject it. Adapter/model limits can be tighter;
-Anthropic's default is 8192 and Ollama summaries retain a 4096 cap. A per-request
-cap is separate from [aggregate admission budgets](budgets.md) and does not limit
-input tokens or promise an invoice ceiling.
+Output caps apply per supported request, including summaries. Subscription and
+demo reject them. Model limits may be tighter; Anthropic defaults to 8192 and
+Ollama summaries retain a 4096 cap. A per-request cap does not bound input tokens
+or an invoice. Use [budgets](budgets.md) for covered aggregate admission.
+Provider responses have a separate 8 MiB accumulation ceiling; sign-in responses
+allow 1 MiB. Redirects and automatic retries are disabled.
 
-Provider response bodies have an independent 8 MiB accumulation ceiling and
-sign-in responses a 1 MiB ceiling. Exceeding these stops the attempt. Redirects
-and automatic retries are disabled. Keep TLS verification enabled.
-
-## Bound journal growth
-
-To lower the mandatory per-journal limits, add operator-only `journal` alongside
-`settings` in the same version-1 file:
+To lower mandatory journal bounds, add operator-only `journal` alongside
+`settings`, or use this complete journal-only file:
 
 ```json
 {
@@ -124,48 +225,30 @@ To lower the mandatory per-journal limits, add operator-only `journal` alongside
 }
 ```
 
-| Field | Default and host ceiling | Minimum |
-| --- | --- | --- |
-| `max_bytes` | 134217728 bytes, 128 MiB | 1024 |
-| `max_events` | 100000 records | 2 |
-| `max_record_bytes` | 16777216 JSON bytes, excluding newline | 512 |
+The host ceilings are 134217728 bytes, 100000 records and 16777216 JSON bytes per
+record, excluding its newline. Minimums are 1024 bytes, two records and 512 bytes
+per record. Omitted fields retain their ceiling. Values must be integers.
+Project journal declarations refuse. Very small limits can refuse startup before
+metadata fits. Children inherit the policy but have separate journals; the whole
+state directory has no aggregate size limit.
 
-Omitted fields keep their ceiling. Values must be integers; unlimited settings
-and project declarations are refused. Very small limits can refuse startup if
-metadata and a terminal receipt cannot fit. Children have separate journals with
-the inherited policy. These limits do not bound the whole state directory.
+Exhaustion preserves and seals the journal. Raising limits does not reopen it.
+Run `ipse diagnose --resume SESSION_ID`, inspect uncertain effects and create a
+[fresh-session handoff](recovery.md). Whole-history commands can also refuse
+oversized legacy files; preserve those files for bounded inspection.
 
-When a limit is exhausted, Ipse preserves and seals the journal. Raising limits
-does not reopen it. Inspect with `ipse diagnose --resume SESSION_ID`, check
-uncertain effects, and use a [fresh-session handoff](recovery.md). Oversized legacy
-files may need developer-assisted bounded inspection because whole-history
-commands can also refuse them.
+## Add optional behavior or recover a changed configuration
 
-## Add profiles and optional features
+Use [Extensions](extensions.md) for `extensions` and operator-only
+`extension_trust`, [Embeddings](embeddings.md) for `embedding_profiles`,
+[Budgets](budgets.md) for `budget`, and [Diagnostic capture](observability.md)
+for `observability`. Generic project trust grants none of these operator-only
+authorities. Inspection shows extension option digests, not their contents;
+the file itself remains a private configuration file, not a secret store.
 
-The operator file can also contain these documented top-level objects:
-
-- `profiles` and `roles` select [named models](model-profiles.md). Projects can
-  add default-endpoint profiles but cannot replace operator IDs or set endpoints.
-- `embedding_profiles` selects [embedding services](embeddings.md) through a
-  separate operator-only registry. It supplies no automatic text/model routing.
-- `budget` reserves covered work for [one session tree](budgets.md).
-- `extensions` selects instances; operator-only `extension_trust` grants their
-  reviewed ceilings and optional storage/service bindings. See [Extensions](extensions.md).
-- Operator-only `observability` controls [diagnostic capture](observability.md).
-
-Project trust does not grant any operator-only object. Keep endpoint changes in
-operator profiles. Config inspection prints extension option digests rather
-than contents, but configuration is not a secret store.
-
-## Change configuration without losing recovery
-
-Files are fixed for a session. `/context refresh` reloads instructions and skills,
-not settings. Start a new session to adopt a file edit.
-
-Resume checks saved fingerprints and source digests, as well as execution-policy
-pins. Changed files can refuse resume even if a value appears equivalent. Old
-sessions without manifests accept no newly introduced configuration. Restore the
-original file/profile/endpoint for ordinary resume. If the policy must change,
-inspect the old session and export a reviewed handoff into a fresh session.
-Never edit a journal to make incompatible configuration appear unchanged.
+Settings stay fixed for a session. `/context refresh` reloads instructions and
+skills only. File/profile/role edits can refuse resume even if effective values
+look equivalent, because source digests and execution pins are checked too.
+Restore the original configuration for ordinary resume, or inspect the old
+session and export a reviewed handoff into a fresh one. Never edit a journal to
+make an incompatible route appear unchanged.

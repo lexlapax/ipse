@@ -262,7 +262,7 @@ two intact recent user turns, bounded provider-neutral summaries, and durable
 validated checkpoints. Original transcripts remain intact. All 78 tests and the
 source baseline passed. A live ChatGPT scratch check compacted 29,490 to 3,358
 bytes, retained its project name/license, and resumed without recompression or
-tool execution. See [design and limits](../../../developer/context-compaction.md) and
+tool execution. See [design and limits](../../../developer/workspace-context.md#plan-a-reduction-at-the-model-boundary) and
 [verification evidence](../../2026-10-18-before-manual-rewrite/docs/developer/testing.md#p2-context-compaction-2026-10-15).
 
 ## P2: define an OS sandbox boundary
@@ -799,7 +799,7 @@ The native Linux suite passed 309 tests (14 macOS excluded); a live subscription
 `gpt-6.1-sol`/high parent and installed Ollama `qwen3.5:9b` child passed routing,
 arithmetic verification and unchanged idle resume. The combined main suite passed
 324 native Linux tests; extracted package and hosted Linux/macOS checks passed. See
-[profile setup](../../../operator/model-profiles.md) and [contract](../../../developer/model-profiles.md).
+[profile setup](../../../operator/configuration.md#reuse-a-named-model-profile) and [contract](../../../developer/configuration.md#trace-main-and-child-profile-selection).
 The intended use is a stronger main model with an explicitly chosen smaller local
 model for suitable routine subtasks. P15 supplies persistent configuration; this
 milestone supplies host-enforced profiles/routing, not a mandatory task pipeline.
@@ -1023,7 +1023,7 @@ memory/workflow package with no core edits, and P22D observability/compatibility
 The [SDK coverage matrix](../../2026-10-18-before-manual-rewrite/docs/developer/extensions.md#core-boundary-and-sdk-coverage)
 includes tools, commands, context/state, approved effects and bounded workflows.
 The operator's bundled/third-party/assisted/generated permanent and temporary
-use cases are tested as [design walkthroughs](../../../developer/extension-scenarios.md).
+use cases are tested as [design walkthroughs](../../../developer/extensions.md#trial-an-independently-built-package).
 They revealed a rebuild-only loading gap. P22 now includes backend-independent
 SDK values, package/installed/activation identity, a minimal local immutable
 artifact import, worker execution and scoped config/session leases. Remote
@@ -1062,7 +1062,7 @@ before journal repair. Child scope, expiry and actual worker cancellation are te
 Source and extracted-package fixtures exercise both examples. Broader lifecycle/
 tools/commands/state/services/jobs, worker subscription access, live controls and the
 extension-only memory/workflow proof remain in progress. See the
-[implemented hook contract](../../../developer/extension-hooks.md).
+[implemented hook contract](../../../developer/extensions.md#run-a-prompt-and-presentation-hook).
 
 P22A5 implements [durable request accounting](../../../developer/usage-accounting.md):
 request/attempt/turn/parent identity, cumulative allowlisted usage observations,
@@ -1089,7 +1089,7 @@ the catalog and `/ext NAME JSON_OBJECT` invokes an operator command. See the
 [invocation contract](../../../developer/extension-invocations.md). Host action proposals,
 state/context, service composition, workflows and observability remain P22 work.
 
-P22A8 implements [bounded host-call continuations and scoped state](../../../developer/extension-host-calls.md).
+P22A8 implements [bounded host-call continuations and scoped state](../../../developer/extension-state.md#read-a-revision-and-propose-a-write).
 Host-derived namespaces, compare-and-swap revisions, retained deletion tombstones,
 cross-process locks and separate mutation approval constrain the initial get/list/
 put/delete operations. Final results bind their complete action receipt chain;
@@ -1098,14 +1098,14 @@ not select a production memory backend. Context/evidence, questions/tool actions
 service composition, worker stream handles, observability and the independent
 memory/workflow package proof remain required P22 work.
 
-P22A9 implements [structured-question checkpoints](../../../developer/extension-questions.md)
+P22A9 implements [structured-question checkpoints](../../../developer/extension-state.md#suspend-with-a-durable-question)
 for extension tools/commands/services. Workers close before question publication.
 Idle resume restores the question/checkpoint without running code. Only an
 explicit validated answer authorizes a newly journaled continuation; it never
 grants later write approval. Cancellation, bounded answers, action-chain integrity
 and interrupted-answer no-replay recovery are exercised by independent artifacts.
 
-P22A10 implements [bounded workflow calls](../../../developer/extension-tool-actions.md)
+P22A10 implements [bounded workflow calls](../../../developer/extension-effects.md#reuse-file-and-shell-ownership)
 to the existing file/shell tools. Full mutation approval, scoped instruction
 preflight, linked owned execution and source-bound receipts preserve host policy.
 Known read failures retain typed failure codes. Unsupported tools, deadlines and
@@ -1113,7 +1113,7 @@ incomplete/ambiguous effect outcomes stop the callback
 chain without replay. Service composition, context/evidence, worker streams,
 observability and the independent package proof remain required P22 work.
 
-P22A11 implements [typed requirements and explicit operator service routes](../../../developer/extension-services.md).
+P22A11 implements [typed requirements and explicit operator service routes](../../../developer/extension-composition.md#declare-the-value-contract).
 Value contract 1 pins full dependency identities/schema, rejects missing/cyclic
 dependencies before activation, and journals owned jobs with typed result
 provenance. Idle restore runs no code. Nested interactive/effectful services
@@ -1121,7 +1121,7 @@ require a separately negotiated future contract; value replies cannot acquire
 host effects. Context/evidence, worker streams, observability and the independent
 package coverage proof remain P22 work.
 
-P22A12 implements [session context and receipt-bound evidence](../../../developer/extension-context.md).
+P22A12 implements [session context and receipt-bound evidence](../../../developer/extension-composition.md#publish-a-bounded-reference-set).
 Explicit publications replace only the caller's bounded set. Assertions remain
 unverified; literal excerpts can bind successful prior action receipts. Main
 requests pin exact context snapshots before dispatch; idle resume uses committed

@@ -112,7 +112,7 @@ the entire journal.
 
 For a change to input handling, distinguish four separate bounds: input bytes,
 active context bytes, provider response limits and journal growth. Increasing one
-does not increase the others. Use [compaction](context-compaction.md),
+does not increase the others. Use [compaction](workspace-context.md#plan-a-reduction-at-the-model-boundary),
 [provider limits](provider-limits.md) and [persistence](persistence.md) to choose
 the correct boundary.
 
@@ -162,8 +162,8 @@ The sequence to preserve is:
 `read` is ordinarily read-only; `write`, `edit`, `shell`, MCP and delegation have
 explicit action rules. Interactive CLI approvals use a fresh displayed code.
 Embedded clients call `Session.approve/3` with the received reference. Headless
-mutation is denied without `--yes`. See [tool sources](tool-events.md) and
-[workflow actions](extension-tool-actions.md) before adding another tool path.
+mutation is denied without `--yes`. See [tool sources](lifecycle-events.md#bind-admitted-tool-input-and-result) and
+[workflow actions](extension-effects.md#reuse-file-and-shell-ownership) before adding another tool path.
 
 A failed setup known to precede execution can be `not_started`. Loss after an
 effect might have begun is unknown. Never infer a definite failure merely because
@@ -204,11 +204,11 @@ ask the provider to continue while idle. Read the
 | Requirement | Start reading |
 | --- | --- |
 | Add note retrieval, a report or a domain command | [Extension authoring](extensions.md) |
-| Add a provider setting or response field | [Profiles](model-profiles.md), [provider limits](provider-limits.md) |
+| Add a provider setting or response field | [Profiles](configuration.md#trace-main-and-child-profile-selection), [provider limits](provider-limits.md) |
 | Change shared approval or cancellation behavior | Session and its behavioral tests |
 | Change file/process completion | `FileEffect`, `TaskResources`, `Session.Lock`, [native sandbox](sandbox.md) |
 | Change durable records or recovery | [Persistence](persistence.md), [lifecycle sources](lifecycle-events.md) |
-| Decode bounded host JSON or preserve raw/canonical digests | `Ipse.JSON`, `test/json_test.exs`, [checkpoint identities](context-compaction.md#commit-once-and-restore-deterministically) |
+| Decode bounded host JSON or preserve raw/canonical digests | `Ipse.JSON`, `test/json_test.exs`, [checkpoint identities](workspace-context.md#commit-and-reconstruct-the-projection) |
 | Add external tools | [MCP](mcp.md), [dependency policy](dependencies.md) |
 
 Keep domain logic outside Session. Use existing OTP, schema, journal and helper

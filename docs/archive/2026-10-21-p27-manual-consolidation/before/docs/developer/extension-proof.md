@@ -1,3 +1,5 @@
+Historical manual from `d35287afbfc0101938f0c86e70748a5e1c354c9f`, archived on 2026-10-21 before topic consolidation. Commands and ownership may be obsolete. Use [the current chapter](../../../../../developer/testing.md). The original body is retained; relative links outside code fences are rebased, and links to jointly preserved chapters point to these snapshots.
+
 # Prove an extension against source and an installed runtime
 
 The independent lab teaches you to test an extension package without rebuilding
@@ -35,7 +37,7 @@ Read these files in order:
    service routes, and disabled operator selections.
 2. `scripts/build-artifact.exs` compiles the finite `extension-lab` recipe in its
    own VM and emits data-only manifests. Follow the shared construction flow in
-   [the artifact chapter](extension-artifacts.md#build-and-inspect-a-package).
+   [the artifact chapter](../../../../../developer/extension-artifacts.md#build-and-inspect-a-package).
 3. `src/memory.ex` and `src/lookup.ex` implement domain behavior through public
    callbacks and finite host calls.
 4. `proof.exs` drives installation, Sessions, approvals, questions, and assertions
@@ -150,6 +152,6 @@ mix test test/extension_lab_test.exs
 
 This integration builds and runs the source proof in separate VMs. The package
 command above establishes installed execution separately. For helper inference,
-use the additional [model-call artifact proof](../../examples/model-calls/README.md),
+use the additional [model-call artifact proof](../../../../../../examples/model-calls/README.md),
 which uses a local HTTP fixture. Neither proof establishes paid billing, model
 quality, external retrieval quality, or unsupported SDK contracts.

@@ -1,3 +1,5 @@
+Historical manual from `d35287afbfc0101938f0c86e70748a5e1c354c9f`, archived on 2026-10-21 before topic consolidation. Commands and ownership may be obsolete. Use [the current chapter](../../../../../developer/extension-composition.md). The original body is retained; relative links outside code fences are rebased, and links to jointly preserved chapters point to these snapshots.
+
 # Compose extensions with typed value services
 
 Use a value service when one extension needs a typed result from another selected

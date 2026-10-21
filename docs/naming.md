@@ -60,6 +60,7 @@ implementation of Hofstadter's theory.
 | Default local data | `~/.ipse` |
 | Native helper | `ipse-runner` |
 
-The public description stays practical: **an Elixir-native coding agent with
-local skills and resumable conversations**. The philosophical origin belongs
-in this note, while everyday usage should remain straightforward.
+The public description is **a general-purpose local AI harness implemented in
+Elixir/OTP**. The current prototype has coding-oriented tools, local skills and
+resumable conversations. The philosophical origin belongs in this note; everyday
+usage should explain the task the user can perform.

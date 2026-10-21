@@ -3,7 +3,7 @@
 Historical review request, not an acceptance verdict. The [remediation record](index.md)
 owns verification receipts and later decisions. Current behavior belongs in the
 [operator manual](../../operator/memory.md), [developer memory chapter](../../developer/memory.md)
-and [host-call contract](../../developer/extension-host-calls.md).
+and [host-call contract](../../developer/extension-state.md#read-a-revision-and-propose-a-write).
 
 Copy the following request to the independent reviewer.
 

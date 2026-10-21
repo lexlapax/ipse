@@ -47,5 +47,5 @@ and verifies that the archive and release files remain unchanged. Temporary
 state is removed. A successful source run alone does not establish an installed
 release result.
 
-The [shared verification guide](../../docs/developer/testing.md#run-one-proof-against-source-and-an-installed-runtime)
+The [shared verification guide](../../docs/developer/testing.md#prove-an-independent-artifact-without-rebuilding-the-host)
 explains pre-launch compilation, input inventories and isolated runtime ownership.

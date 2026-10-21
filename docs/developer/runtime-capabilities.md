@@ -54,11 +54,11 @@ for flow control and [lifecycle events](lifecycle-events.md) for saved sources.
 
 Model work needs an explicitly selected profile, credential reference, egress
 approval, canonical request/attempt identity, normalized usage, and shared budget
-admission where configured. The [one-shot extension model action](extension-model-calls.md)
+admission where configured. The [one-shot extension model action](extension-effects.md#request-bounded-text-inference)
 supplies these for text helpers. It does not open a second conversation loop or
 receive private data without separate grants.
 
-[Embedding actions](extension-embedding-actions.md) supply the separate native
+[Embedding actions](extension-effects.md#generate-and-reconstruct-embeddings) supply the separate native
 vector contract. They use selected operator embedding profiles, exact egress,
 typed float32 result pages and operation-aware metering. Their generated-output
 token dimension is explicitly inapplicable; applicable input/money liabilities

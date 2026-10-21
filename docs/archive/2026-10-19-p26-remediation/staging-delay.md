@@ -3,7 +3,7 @@
 Historical synthetic verification at candidate
 `25f1d8e115fe809857a8359c5420bc62126919c7`, after the whole-P26 source review.
 The [remediation record](index.md) owns acceptance. Current behavior is taught in
-[the State deadline contract](../../developer/extension-host-calls.md#bound-a-prepared-write-by-time)
+[the State deadline contract](../../developer/extension-state.md#read-a-revision-and-propose-a-write)
 and [the memory manual](../../operator/memory.md).
 
 ## What ran

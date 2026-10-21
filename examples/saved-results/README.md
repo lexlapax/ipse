@@ -61,5 +61,5 @@ homes and extracted releases are removed. The prebuilt artifact remains for
 inspection; remove it when finished. These checks prove generic local publication
 and recovery, not native sandbox enforcement or knowledge-package quality.
 
-The [shared verification guide](../../docs/developer/testing.md#run-one-proof-against-source-and-an-installed-runtime)
+The [shared verification guide](../../docs/developer/testing.md#prove-an-independent-artifact-without-rebuilding-the-host)
 explains pre-launch compilation, input inventories and isolated runtime ownership.

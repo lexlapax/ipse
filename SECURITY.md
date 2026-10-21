@@ -86,8 +86,8 @@ must retain their promised behavior under those failures.
 
 Contracts for [configuration](docs/developer/configuration.md),
 [artifacts/workers](docs/developer/extension-artifacts.md),
-[host calls](docs/developer/extension-host-calls.md),
-[model calls](docs/developer/extension-model-calls.md),
+[host calls](docs/developer/extension-state.md#read-a-revision-and-propose-a-write),
+[model calls](docs/developer/extension-effects.md#request-bounded-text-inference),
 [lifecycle delivery](docs/developer/lifecycle-events.md),
 [accounting](docs/developer/usage-accounting.md) and
 [budgets](docs/developer/budgets.md) define the exact supported boundaries.
@@ -123,9 +123,11 @@ configured estimates/reservations do not promise an invoice ceiling.
 These limitations are inputs to impact assessment, not blanket exclusions.
 Report misleading claims, a reproducible breach of the stated boundary, or a
 stronger reachable impact separately from a restatement of an accepted limit.
-Unsupported embeddings/audio, future package distribution and production knowledge
-engines are not implemented attack surfaces unless reachable current code supplies
-the claimed path. Architectural gaps can still be recorded for planned capabilities.
+Selected-profile OpenAI/Ollama embedding inference is a current input, egress,
+response-decoding and accounting boundary. Unsupported audio, future package
+distribution and future knowledge-engine behavior require a reachable current
+path for an implemented-impact claim. Architectural gaps can still be recorded
+for planned capabilities.
 
 ## Safe review and evidence
 

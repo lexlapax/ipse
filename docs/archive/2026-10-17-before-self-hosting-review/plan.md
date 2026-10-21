@@ -263,7 +263,7 @@ two intact recent user turns, bounded provider-neutral summaries, and durable
 validated checkpoints. Original transcripts remain intact. All 78 tests and the
 source baseline passed. A live ChatGPT scratch check compacted 29,490 to 3,358
 bytes, retained its project name/license, and resumed without recompression or
-tool execution. See [design and limits](../../developer/context-compaction.md) and
+tool execution. See [design and limits](../../developer/workspace-context.md#plan-a-reduction-at-the-model-boundary) and
 [verification evidence](../2026-10-18-before-manual-rewrite/docs/developer/testing.md#p2-context-compaction-2026-10-15).
 
 ## P2: define an OS sandbox boundary
@@ -800,7 +800,7 @@ The native Linux suite passed 309 tests (14 macOS excluded); a live subscription
 `gpt-6.1-sol`/high parent and installed Ollama `qwen3.5:9b` child passed routing,
 arithmetic verification and unchanged idle resume. The combined main suite passed
 324 native Linux tests; extracted package and hosted Linux/macOS checks passed. See
-[profile setup](../../operator/model-profiles.md) and [contract](../../developer/model-profiles.md).
+[profile setup](../../operator/configuration.md#reuse-a-named-model-profile) and [contract](../../developer/configuration.md#trace-main-and-child-profile-selection).
 The intended use is a stronger main model with an explicitly chosen smaller local
 model for suitable routine subtasks. P15 supplies persistent configuration; this
 milestone supplies host-enforced profiles/routing, not a mandatory task pipeline.
@@ -1008,7 +1008,7 @@ Unknown future capabilities and core bugs may still require reviewed core work.
 
 The [architecture and framework comparison](../../developer/extensions.md) explains
 the design and [core/SDK boundary](../2026-10-18-before-manual-rewrite/docs/developer/extensions.md#core-boundary-and-sdk-coverage).
-The [adoption scenarios](../../developer/extension-scenarios.md) cover bundled,
+The [adoption scenarios](../../developer/extensions.md#trial-an-independently-built-package) cover bundled,
 third-party and operator-generated extensions, including temporary and
 persistent use. They are design walkthroughs, not execution proofs.
 
@@ -1017,31 +1017,31 @@ persistent use. They are design walkthroughs, not execution proofs.
 | Area | Current behavior | Contract |
 | --- | --- | --- |
 | Artifacts and activation (A1–A3) | Inert immutable import/inspection, independent worker SDK, scoped operator trust/configuration and session leases | [Artifacts](../../developer/extension-artifacts.md), [operator selection](../../operator/extensions.md) |
-| Prompt and presentation (A4) | Two default-off examples; source-bound projections retain original/native data and restore without callbacks | [Hooks](../../developer/extension-hooks.md) |
+| Prompt and presentation (A4) | Two default-off examples; source-bound projections retain original/native data and restore without callbacks | [Hooks](../../developer/extensions.md#run-a-prompt-and-presentation-hook) |
 | Request facts (A5) | Durable identities, normalized final/partial/unknown usage, rejected-summary retention and child attribution | [Usage](../../developer/usage-accounting.md) |
 | Visible text (A6/A13) | Embedded and selected worker consumers, serializable handles, acknowledgments, bounded pressure and incomplete shutdown | [Text channel](../../developer/text-streams.md) |
 | Catalogs and invocations (A7) | Inert typed tools/commands/services, full tool approval, owned workers and committed receipts | [Invocations](../../developer/extension-invocations.md) |
-| Host state (A8) | Finite continuations, scoped CAS storage, retained tombstones and separate write approval | [Host calls](../../developer/extension-host-calls.md) |
-| Operator questions (A9) | Durable checkpoints; only explicit validated answers start new continuations | [Questions](../../developer/extension-questions.md) |
-| Workflow actions (A10) | Existing file/shell tools behind instruction preflight, full mutation approval and bounded owned execution | [Tool actions](../../developer/extension-tool-actions.md) |
-| Service composition (A11) | Operator-bound typed value services with acyclic dependency pins and durable provenance | [Services](../../developer/extension-services.md) |
-| Context and evidence (A12) | Caller-scoped bounded publications, assertion/receipt distinctions and exact cached request snapshots | [Context](../../developer/extension-context.md) |
+| Host state (A8) | Finite continuations, scoped CAS storage, retained tombstones and separate write approval | [Host calls](../../developer/extension-state.md#read-a-revision-and-propose-a-write) |
+| Operator questions (A9) | Durable checkpoints; only explicit validated answers start new continuations | [Questions](../../developer/extension-state.md#suspend-with-a-durable-question) |
+| Workflow actions (A10) | Existing file/shell tools behind instruction preflight, full mutation approval and bounded owned execution | [Tool actions](../../developer/extension-effects.md#reuse-file-and-shell-ownership) |
+| Service composition (A11) | Operator-bound typed value services with acyclic dependency pins and durable provenance | [Services](../../developer/extension-composition.md#declare-the-value-contract) |
+| Context and evidence (A12) | Caller-scoped bounded publications, assertion/receipt distinctions and exact cached request snapshots | [Context](../../developer/extension-composition.md#publish-a-bounded-reference-set) |
 | Lifecycle source/views (A14) | Internal stable journal occurrence IDs, bounded read-only source pages and distinct metadata/private prompt projections; no subscriber activation | [Lifecycle events](../2026-10-18-before-manual-rewrite/docs/developer/lifecycle-events.md#internal-journal-source-and-prompt-views) |
 | Prompt subscriptions (A15) | Inert declarations, scoped metadata/private views, final-effective user-text marker and finite owned notifications with required/optional no-replay receipts | [Subscriptions](../../developer/extension-events.md) |
-| Prompt jobs and recall (A16) | Source-bound typed handlers use finite approved actions; before-request context, after-turn maintenance, host-derived failures and explicit question continuation | [Event jobs](../../developer/extension-event-jobs.md) |
+| Prompt jobs and recall (A16) | Source-bound typed handlers use finite approved actions; before-request context, after-turn maintenance, host-derived failures and explicit question continuation | [Event jobs](../../developer/extension-events.md#declare-a-job-with-an-exported-handler) |
 | Shared committed metadata (A17) | Allowlisted model/tool/context/question/child/extension/turn projections retain stable source IDs and existing host causal links; no broader delivery or exporter activation | [Lifecycle events](../2026-10-18-before-manual-rewrite/docs/developer/lifecycle-events.md#internal-journal-source-and-prompt-views) |
 | Diagnostic capture (A18) | Operator-only off/local/export policy, default-off local sink, bounded owned worker queues, visible drops/failures, rotation, immediate stop and independent recovery receipts | [Controls](../../operator/observability.md), [contract](../../developer/observability.md) |
 | Local trace retention (A19) | Bundled sink backend bounds slots/files/bytes across sessions, protects active writers with native locks and refuses corrupt/mismatched policy without changing host APIs | [Ring contract](../2026-10-18-before-manual-rewrite/docs/developer/observability.md#local-ring-retention) |
-| SDK conformance (A20) | Explicit synthetic CLI checks reuse Sessions, trust/approval and recovery schemas; support prompt/tool/command/service scenarios, structured answers, scratch state and content-free assertions | [Author runner](../../developer/extension-conformance.md) |
+| SDK conformance (A20) | Explicit synthetic CLI checks reuse Sessions, trust/approval and recovery schemas; support prompt/tool/command/service scenarios, structured answers, scratch state and content-free assertions | [Author runner](../../developer/extensions.md#turn-the-hook-into-a-repeatable-scenario) |
 | Developer tracing (A21) | Opt-in synthetic dispatcher samples use isolated OTP sessions, one-in-flight VM admission, fixed arities, bounded reports and independent cleanup/deadline monitors | [Trace and source-debugging boundaries](../2026-10-18-before-manual-rewrite/docs/developer/observability.md#synthetic-dispatcher-tracing) |
-| Completed-answer events (A22) | Original/presented private views, shared metadata/source identity and after-turn notify/job delivery bind final presentation to native history and effective prompt; normal approvals and question/no-replay recovery remain separate | [Subscriptions](../../developer/extension-events.md), [jobs](../../developer/extension-event-jobs.md) |
-| Explicit history (A23) | Own-session fixed-range reads share source/view identities, separate private history grants, bounded pages and skipped/gap outcomes; SDK catch-up uses normal actions, questions and no-replay recovery | [History contract](../../developer/extension-history.md) |
+| Completed-answer events (A22) | Original/presented private views, shared metadata/source identity and after-turn notify/job delivery bind final presentation to native history and effective prompt; normal approvals and question/no-replay recovery remain separate | [Subscriptions](../../developer/extension-events.md), [jobs](../../developer/extension-events.md#declare-a-job-with-an-exported-handler) |
+| Explicit history (A23) | Own-session fixed-range reads share source/view identities, separate private history grants, bounded pages and skipped/gap outcomes; SDK catch-up uses normal actions, questions and no-replay recovery | [History contract](../../developer/extension-feeds.md#capture-a-fixed-historical-prefix) |
 | Runtime epochs/waits (A24) | Opt-in durable session start/resume/logical close and approval/question waits, bounded recording, process-local duration, actual host links and incomplete restart semantics; no broader subscriber activation | [Runtime facts](../2026-10-18-before-manual-rewrite/docs/developer/lifecycle-events.md#runtime-epochs-and-operator-waits) |
 | Live metadata feeds (A25) | Selected committed activity after explicit enrollment, source-bound intents/acknowledgments, bounded serial queues, visible incomplete closure, independent diagnostic policy and inert idle resume | [Feed contract](../../developer/extension-feeds.md) |
-| Admitted-tool views (A26) | Host tool IDs and source-bound input/outcome facts, separately granted structured live/history views, metadata privacy, bounded recording and explicit question/cancellation recovery | [Tool event contract](../../developer/tool-events.md) |
+| Admitted-tool views (A26) | Host tool IDs and source-bound input/outcome facts, separately granted structured live/history views, metadata privacy, bounded recording and explicit question/cancellation recovery | [Tool event contract](../../developer/lifecycle-events.md#bind-admitted-tool-input-and-result) |
 | Child outcomes (A27) | Parent-owned start/result binding, authenticated worker completion, bounded metadata feed/history projection and distinct cleanup acknowledgment, with unknown/incomplete recovery | [Child event contract](../2026-10-18-before-manual-rewrite/docs/developer/lifecycle-events.md#delegated-child-outcomes) |
-| Ephemeral text sources (A28) | Negotiated v2 text delivery, broker epochs, fresh stream/range identity, distinct consumer sequence, bounded metadata/private projections and unchanged v1 admission/recovery | [Stream event contract](../../developer/stream-events.md) |
-| Independent domain proof (A29) | Seven separately compiled artifacts exercise scoped memory/graph extraction, recall, questions/workflows, history/deduplication/forget and private tool/text observers against candidate core `3b0ef78`; unchanged installed Linux archive, temporary CLI selection and persistent configuration verified | [Proof scope](../../developer/extension-proof.md), [operator lab](../../operator/extension-lab.md) |
+| Ephemeral text sources (A28) | Negotiated v2 text delivery, broker epochs, fresh stream/range identity, distinct consumer sequence, bounded metadata/private projections and unchanged v1 admission/recovery | [Stream event contract](../../developer/text-streams.md#distinguish-occurrence-identity-from-delivery-order) |
+| Independent domain proof (A29) | Seven separately compiled artifacts exercise scoped memory/graph extraction, recall, questions/workflows, history/deduplication/forget and private tool/text observers against candidate core `3b0ef78`; unchanged installed Linux archive, temporary CLI selection and persistent configuration verified | [Proof scope](../../developer/testing.md#learn-a-complete-workflow-through-the-compatibility-lab), [operator lab](../../operator/extension-lab.md) |
 | Lifecycle audit and supervised extension change (A30) | Supported/unsupported boundaries audited; frozen release authored an operator-only read-only stats command under three separately approved edits, followed by a fresh scoped review, 41 source/installed assertions and unchanged idle resume | [Coverage audit](../2026-10-18-before-manual-rewrite/docs/developer/lifecycle-events.md#supported-lifecycle-coverage), [live trial](../2026-10-18-before-manual-rewrite/docs/developer/testing.md#supervised-extension-only-trial-2026-10-17) |
 
 The [verification guide](../2026-10-18-before-manual-rewrite/docs/developer/testing.md#current-evidence-and-next-checks)
@@ -1164,7 +1164,7 @@ Acceptance:
 ## P23: usage, cost reporting and budget controls
 
 **In progress.** P23A implements the pure extension-side
-[rate-card estimator](../../developer/costs.md): exact model/billing/endpoint/date/token-band
+[rate-card estimator](../../developer/usage-accounting.md#calculate-a-synthetic-rate): exact model/billing/endpoint/date/token-band
 selection, configured decimal rates, fixed-point arithmetic, cache partitions,
 explicit unknown/partial values and provenance. P23B adds `usage.read` with an
 explicit own-session grant, fixed admitted prefixes, canonical cumulative records,

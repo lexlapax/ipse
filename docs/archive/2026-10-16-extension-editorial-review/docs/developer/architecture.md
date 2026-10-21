@@ -13,24 +13,24 @@ task starts the independent worker VM. Validated receipts reconstruct tool
 messages on resume without running code; standalone command/service values are
 separate from assistant messages. The CLI is a generic catalog/invocation client.
 No host action, state or workflow is inferred from returned domain JSON.
-Separately negotiated [host calls](../../../../developer/extension-host-calls.md) admit finite scoped
+Separately negotiated [host calls](../../../../developer/extension-state.md#read-a-revision-and-propose-a-write) admit finite scoped
 state requests with normal mutation approval, intent-before-IO and ordered
 receipts. The native lock/JSON CAS store runs in the owned task, outside Session.
 Unknown outcomes stop without replay; no workflow framework is introduced.
-Structured [extension questions](../../../../developer/extension-questions.md) close their worker before
+Structured [extension questions](../../../../developer/extension-state.md#suspend-with-a-durable-question) close their worker before
 publication. Pending checkpoints restore inertly. An explicit validated answer
 commits its receipt/continuation intent before a fresh owned worker initializes;
 it never grants later mutation approval or manufactures a native provider call.
-[Workflow tool actions](../../../../developer/extension-tool-actions.md) use existing tools/Runner in a
+[Workflow tool actions](../../../../developer/extension-effects.md#reuse-file-and-shell-ownership) use existing tools/Runner in a
 linked leaf task. Session owns full approval and a request/job/identity/workspace
 gate; new nested instructions stop admission. Durable results preserve output
 completeness and native tool provenance without synthetic assistant calls.
-[Service composition](../../../../developer/extension-services.md) resolves manifest requirements only
+[Service composition](../../../../developer/extension-composition.md#declare-the-value-contract) resolves manifest requirements only
 through operator routes. OTP acyclic graph ordering pins complete dependency
 identities before startup; owned value jobs journal intent before target loading
 and result after schema/lease/cleanup checks. Nested effects are not inferred from
 returned data, and idle restore never executes either artifact.
-[Context contributions](../../../../developer/extension-context.md) replace only the caller's session
+[Context contributions](../../../../developer/extension-composition.md#publish-a-bounded-reference-set) replace only the caller's session
 set, with bounded asserted data or excerpts bound to earlier successful action
 receipts. Main requests sync exact snapshots before dispatch; cached sets survive
 idle resume without retrieval. Mandatory instructions/messages/native data remain
@@ -109,7 +109,7 @@ durable projections on resume. Summaries and excerpts remain untrusted data.
 A synced checkpoint changes only the effective projection; original transcript
 events stay intact. Resume validates the covered prefix and restores without
 automatically restarting inference or tools. Cancellation saves no partial
-checkpoint. See [the compaction contract](../../../../developer/context-compaction.md) for thresholds,
+checkpoint. See [the compaction contract](../../../../developer/workspace-context.md#plan-a-reduction-at-the-model-boundary) for thresholds,
 schema, recovery, and fidelity limits.
 
 ## Runtime identity
@@ -347,7 +347,7 @@ CLI configuration resolves bounded operator/project/directory JSON through
 `Ipse.Config`, requiring current-run project trust. Effective non-secret settings,
 source digests, configured profiles/roles and selected execution are persisted and
 checked on resume before inference. See [configuration](../../../../developer/configuration.md) and
-[model profiles](../../../../developer/model-profiles.md). `Ipse.Profiles` enforces configured IDs/roles,
+[model profiles](../../../../developer/configuration.md#trace-main-and-child-profile-selection). `Ipse.Profiles` enforces configured IDs/roles,
 documented reasoning capabilities and credential/native-history isolation for
 mixed-provider children. Configuration and skills grant no effect permissions.
 Shared operator skills use explicit isolation inputs; see

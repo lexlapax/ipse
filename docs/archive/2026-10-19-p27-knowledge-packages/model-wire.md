@@ -2,7 +2,7 @@
 
 Historical causal investigation after `f89ccee`. The commit containing this record
 owns the bounded text-model wire correction. Use the current
-[model-call training chapter](../../developer/extension-model-calls.md#receipts-bounds-and-accounting)
+[model-call training chapter](../../developer/extension-effects.md#request-bounded-text-inference)
 for limits and verification. Full P27 acceptance remains open in the
 [plan](../../plan.md#p27-optional-research-graph-and-rag).
 

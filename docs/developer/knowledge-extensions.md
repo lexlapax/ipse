@@ -7,8 +7,8 @@ approvals or recovery.
 
 Start with the [user procedure](../operator/corpus.md) and build the
 [independent artifacts](../../extensions/knowledge/README.md). Workers use the
-[SDK](extensions.md), [MCP actions](extension-mcp-actions.md),
-[embedding actions](extension-embedding-actions.md), state actions and accounted
+[SDK](extensions.md), [MCP actions](extension-effects.md#bind-and-call-an-external-mcp-item),
+[embedding actions](extension-effects.md#generate-and-reconstruct-embeddings), state actions and accounted
 text requests. They do not open files, sockets or executables or load domain
 modules into Session.
 
@@ -87,7 +87,7 @@ no conversational model turn follows forget. Follow the
 
 The counters use OTP trace-session `call_count` instrumentation. They retain no
 arguments or result payloads and require every target function to be instrumented.
-They describe host entrypoints. Run the [OS enforcement checks](testing.md#test-actual-os-enforcement)
+They describe host entrypoints. Run the [OS enforcement checks](testing.md#exercise-actual-os-policies)
 separately when changing confinement. The selected logical bindings control store
 authority; deliberately sharing a binding changes that authority.
 
@@ -108,7 +108,7 @@ elixir scripts/verify.exs installed knowledge-independence \
 The common verifier compiles the trusted proof before launching either selected
 host, hides development commands from its PATH and checks unchanged inventories.
 `knowledge-independence` runs the selection exercise; `knowledge` runs the base
-retrieval proof. Follow [the shared runtime](testing.md#follow-the-shared-runtime-and-scenario-owner)
+retrieval proof. Follow [the shared runtime](testing.md#follow-compilation-and-execution-ownership)
 when changing this setup. These checks verify
 selection, isolation and lifecycle behavior; held-out quality remains a separate
 [evaluation task](knowledge-evaluation.md).
@@ -136,7 +136,7 @@ tombstone at a root key refuses as corrupt store state, rather than becoming a
 free source slot.
 
 Keep the 32-root policy in Store. The host knows only revisions, generations and
-opaque values. Read the [conditional State contract](extension-host-calls.md#bind-a-write-to-a-namespace-snapshot)
+opaque values. Read the [conditional State contract](extension-state.md#preserve-record-and-namespace-compare-and-swap)
 for precedence and exact receipts. The condition introduces no reservation
 record, extra host call or automatic retry. Unrelated namespace writes can
 conservatively invalidate admission.
@@ -517,7 +517,7 @@ domain limit is independent of the generic host field's 4096-character ceiling.
 The extra room holds the schema beside escaped input. Neither path shortens the
 source or changes providers. The host refuses structured requests unless the
 selected operator profile uses native Ollama. Follow
-[the model-call exercise](extension-model-calls.md) through approval, charged
+[the model-call exercise](extension-effects.md#request-bounded-text-inference) through approval, charged
 failure and saved-source validation before changing this boundary.
 
 The extraction adapter sends `max_facts` alongside selected chunk text, assigning
@@ -1026,7 +1026,7 @@ elixir scripts/verify.exs source knowledge-corpus-lifecycle \
 Expect seven checks and seven synthetic provider requests per package, with
 `actual_model_inference: false`. For installed execution, replace
 `/path/to/ipse.tar.gz` with one matching archive built through the
-[extracted-package procedure](testing.md#verify-the-extracted-package):
+[extracted-package procedure](testing.md#verify-documentation-and-packaging-at-their-own-boundaries):
 
 ```sh
 elixir scripts/verify.exs installed knowledge-graph-lifecycle \

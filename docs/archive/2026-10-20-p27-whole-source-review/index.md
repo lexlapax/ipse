@@ -9,7 +9,7 @@ not external acceptance or a completed P27 quality evaluation.
 Current procedures are in [Corpus](../../operator/corpus.md),
 [Graph](../../operator/graph.md) and the [package build guide](../../../extensions/knowledge/README.md).
 Current implementation training is in [knowledge extensions](../../developer/knowledge-extensions.md)
-and [State host calls](../../developer/extension-host-calls.md).
+and [State host calls](../../developer/extension-state.md#read-a-revision-and-propose-a-write).
 The [plan](../../plan.md#p27-optional-research-graph-and-rag) owns milestone status.
 
 ## Reproduced findings and corrections

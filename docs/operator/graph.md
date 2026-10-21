@@ -444,7 +444,7 @@ It does not remove suppression. For a new unsuppressed demonstration source:
 Wait for each command to finish and replace `CHUNK_ID_FROM_INSPECT` with its actual
 64-character chunk ID before submitting extraction. Model extraction requires
 `facts: []`; it does not accept a blend of supplied and generated facts. Model
-profiles and billing remain explicit. See [profile configuration](model-profiles.md).
+profiles and billing remain explicit. See [profile configuration](configuration.md#reuse-a-named-model-profile).
 
 The extractor sees short chunk IDs and copies exact supporting quotations.
 Ipse derives their byte positions and retains the canonical source/chunk hashes.

@@ -169,7 +169,7 @@ the bundled ERTS and captured utility paths, with no system development tools on
 its runtime PATH. It retains the extracted runtime for later evidence checks.
 The source checkout remains a declared, unchanged input; the installed process
 does not compile or require its source files. Follow the
-[shared verification runtime](testing.md#follow-the-shared-runtime-and-scenario-owner)
+[shared verification runtime](testing.md#follow-compilation-and-execution-ownership)
 for compiler, input and lifetime ownership.
 
 A successful installed proof establishes the exercised protocols for that archive

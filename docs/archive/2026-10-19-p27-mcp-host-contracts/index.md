@@ -3,7 +3,7 @@
 Historical verification record only. This records the first generic P27 host
 increment, not completion of P27 or retrieval/model quality. Current procedures
 are in the [operator MCP manual](../../operator/mcp.md) and
-[extension MCP training](../../developer/extension-mcp-actions.md).
+[extension MCP training](../../developer/extension-effects.md#bind-and-call-an-external-mcp-item).
 The [plan](../../plan.md#p27-optional-research-graph-and-rag) owns milestone status.
 
 The implementation starts from `6096075aa5c91733d911548abb4f87fd3bd2b4d6`.

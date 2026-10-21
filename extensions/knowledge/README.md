@@ -94,7 +94,7 @@ every host profile referenced by the package's embedding, extraction and rerank
 registries, with an explicit provider and model. The generator preserves those
 registries in its output. It never reads the ordinary home configuration or
 chooses a provider. Follow the [embedding manual](../../docs/operator/embeddings.md)
-and [profile manual](../../docs/operator/model-profiles.md) to define those routes.
+and [profile manual](../../docs/operator/configuration.md#reuse-a-named-model-profile) to define those routes.
 Run `ipse config --config FILE --no-project-config --extension INSTANCE` to
 validate the complete generated configuration before starting a session.
 
@@ -210,7 +210,7 @@ system development commands. It checks unchanged archive, artifacts, host and
 harness inventories. The archive and artifacts must match the platform and OTP
 release. Ordinary proof runtimes and temporary homes are removed afterward.
 
-Use [the verification guide](../../docs/developer/testing.md#run-one-proof-against-source-and-an-installed-runtime)
+Use [the verification guide](../../docs/developer/testing.md#prove-an-independent-artifact-without-rebuilding-the-host)
 to change shared setup, and [the knowledge training manual](../../docs/developer/knowledge-extensions.md)
 for recovery, interrupted inference and durable embedding selection exercises.
 These fixtures establish exercised protocol behavior. They do not measure

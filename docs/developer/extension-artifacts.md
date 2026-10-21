@@ -85,7 +85,7 @@ Objects reject duplicate keys at every depth. The required fields are:
 | `files` | Relative path, byte count, and SHA-256 for each file |
 
 Optional `exports`, `requires`, and `subscriptions` add
-[catalogs](extension-invocations.md), [service dependencies](extension-services.md),
+[catalogs](extension-invocations.md), [service dependencies](extension-composition.md#declare-the-value-contract),
 and [notifications, jobs, or feeds](extension-events.md). These are inert data.
 Capability declarations are requirements, not operator grants. Unknown operations
 or unsupported declaration shapes fail validation.
@@ -289,5 +289,5 @@ mix test test/extensions_store_test.exs test/extensions_worker_test.exs
 Store tests establish inert import, path/schema/hash limits, corruption refusal,
 and locking. Worker tests compile independent modules and check explicit trust,
 handshake, environment exclusion, deadlines, protocol failure, contention, and
-owner death. Continue with [hooks](extension-hooks.md) or
+owner death. Continue with [hooks](extensions.md#run-a-prompt-and-presentation-hook) or
 [invocations](extension-invocations.md) to learn how Session journals execution.

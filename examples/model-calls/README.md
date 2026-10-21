@@ -66,4 +66,4 @@ fixture proves exercised SDK/routing/accounting behavior, not live billing,
 arbitrary private-data authority, OS confinement or model quality. For actual
 operator selection and the closed request/receipt contract, use
 [extensions](../../docs/operator/extensions.md) and
-[accounted model calls](../../docs/developer/extension-model-calls.md).
+[accounted model calls](../../docs/developer/extension-effects.md#request-bounded-text-inference).

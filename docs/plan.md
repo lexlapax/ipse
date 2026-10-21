@@ -70,7 +70,7 @@ reproduced repairs and passing local and exact-source hosted checks. The
 [remediation record](archive/2026-10-19-p26-remediation/index.md) preserves the
 findings, failures and scoped acceptance. P27 research, graph and RAG development
 is active. External whole-milestone review repairs have scoped passing checks;
-quality evaluation, structural implementation and final verification remain open;
+quality evaluation, final integrated review and candidate verification remain open;
 media remains deferred to P28. External services remain configurable; no third-party
 engine, database or mandatory backend is selected.
 
@@ -80,7 +80,7 @@ engine, database or mandatory backend is selected.
 | [P24: architecture/security readiness](#p24-independent-architecture-validation-and-baseline-security) | Complete for supervised P25 at `375e607`; accepted limits recorded | Refresh affected validation after trial changes |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Complete within declared supervision/assistance at `3307563`; security findings triaged and corrected scopes verified | Preserve frozen evidence; select a later production increment separately |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Complete within explicit-note scope at `25f1d8e`; review repairs and local/hosted gates pass | Preserve lifecycle, authority and documented retention limits |
-| [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Active; review repairs verified within their scopes; no engine selected | Complete quality remediation and structural consolidation, then corrected-source held-out quality and matched resource evidence |
+| [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Active; review repairs verified within their scopes; no engine selected | Finish holistic review and final candidate gates, then frozen held-out quality and matched resources |
 | [P28: voice and media](#p28-voice-and-realtime-media) | Deferred; unimplemented | Explicit media contracts and later device/service validation |
 | [Apache-2.0 transition](#license-transition) | Complete; local and hosted `7bb642b` checks pass | Preserve bundled identity/recovery and third-party license boundaries |
 
@@ -125,7 +125,7 @@ unrelated work and never force-push. Detailed procedures are in
 
 **Complete within the selected scope.** The [usage contract](developer/usage-accounting.md) supplies durable
 request/attempt/provider/billing/model facts separately from diagnostics. The
-[configured cost implementation](developer/costs.md) and
+[configured cost implementation](developer/usage-accounting.md#calculate-a-synthetic-rate) and
 [operator guide](operator/usage-accounting.md) define the available reports:
 
 | Increment | Delivery state and scope |
@@ -144,7 +144,7 @@ output-token ceiling is invented for that public interface. Verification scope
 and limitations are recorded in
 [actual evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#current-evidence-and-next-checks).
 The [shared budget contract](developer/budgets.md) covers main, summary and local
-children and [extension model operations](developer/extension-model-calls.md)
+children and [extension model operations](developer/extension-effects.md#request-bounded-text-inference)
 independently of reports. P23F's source and installed proofs passed locally and on
 both hosted platforms; the measured coverage remains distinct from live billing.
 
@@ -400,8 +400,8 @@ the milestone. Preserve current SDK bounds and existing operation authority.
 | P27H5 | Explicit schema-bound extension inference, native provider admission, approval and saved-result validation, plus independently selected domain output contracts | Host contract and domain selections verified; corrected-source macOS/native-enabled Linux suites, source/package/installed proofs, unchanged precompiled SDK-1 modes and three actual synthetic native requests pass. Plan-three evaluator integration and individual qualification pass both scoped platform checks and complete source/installed synthetic comparisons. Semantic quality remains open |
 | P27A | Independent research and lexical corpus packages with named interchangeable profiles, cited evidence, explicit limits, partial failures, stale-index handling and suppression | Review repairs and corrected-source fixture/platform/installed checks pass; held-out quality acceptance remains open |
 | P27B | Independent attributable graph, optional extraction, embedding/hybrid and rerank adapters; matched quality/resource comparisons before engine selection | Review defects, compact model contracts and shared original-byte excerpts verified through source/platform/installed checks; corrected-source matched quality/resource comparisons and selection remain open |
-| P27 verification | Frozen held-out workload, zero authority/isolation/replay/resurrection failures, measured retrieval/support/citation/resources, source/native/installed checks, coherent user and contributor manuals | Open; scoped repair reviews/checks pass. The fresh exposed diagnostic completes twelve first rows but retains five failed/partial rows and classification defects. Further quality repair, fresh held-out quality, resource/selection and structural-readiness gates remain |
-| P27 structural readiness | Holistic consolidation of the entire codebase and all user/developer documentation; migrate callers, builds, tests, packaging and CI together | Open; [selected design](archive/2026-10-20-p27-structure-design/index.md) settled. JSON, declarations, construction, verification, evaluation/platform ownership, Config runtime assembly, saved/current invocation ownership and [Usage/Builtins ownership](archive/2026-10-20-p27-structure-implementation/index.md#separate-usage-arithmetic-from-bundled-behavior) have scoped implementation/check records. Whole-manual work and final integrated review/proofs remain before the private-evaluation freeze |
+| P27 verification | Frozen held-out workload, zero authority/isolation/replay/resurrection failures, measured retrieval/support/citation/resources, source/native/installed checks, coherent user and contributor manuals | Open; scoped repair reviews/checks pass. The fresh exposed diagnostic completes twelve first rows but retains five failed/partial rows and classification defects. Final holistic review, fresh held-out quality, resource/selection and candidate gates remain |
+| P27 structural readiness | Holistic consolidation of the entire codebase and all user/developer documentation; migrate callers, builds, tests, packaging and CI together | Selected implementation units and [whole-manual consolidation](archive/2026-10-21-p27-manual-consolidation/editorial-review.md) verified within scope. Final holistic adversarial review and candidate gates remain before the private-evaluation freeze |
 
 The [shared verification change](archive/2026-10-20-p27-shared-verification/index.md)
 is verified against unchanged runtime source on macOS and native-enabled Linux,
@@ -670,9 +670,10 @@ passes macOS's 1,383-test suite and Linux's 1,422-test native-enabled suite, fiv
 knowledge source/installed proof pairs and all four model-call modes using an
 unchanged precompiled SDK-1 artifact. Three synthetic native first requests pass
 with retained usage and confirmed cleanup. These checks establish compatibility,
-not semantic quality or a resource comparison. Frozen evaluator plans still use
-their original text contract; explicit evaluator schema and qualification-policy
-integration precede the final private workload release.
+not semantic quality or a resource comparison. That snapshot's evaluator plans used their original text contract. The later
+[plan-three integration](archive/2026-10-20-p27-quality-remediation/index.md#bind-evaluation-outputs-and-individual-qualification)
+implements explicit schema and individual qualification; private release still
+requires final readiness and a fresh freeze.
 The selected-runtime CPU compatibility proof passes two real explicit requests,
 with complete accounting and confirmed cleanup. It establishes no quality or
 exact memory result. The superseded `f2bfc8d` comparison was intentionally stopped
@@ -780,7 +781,7 @@ subsequently implemented within P22's documented boundaries; see
 Complete: validated durable checkpoints preserve user intent, host approval/action
 metadata and native continuation while retaining original journals; unsafe
 reduction stops explicitly. P13/P19/P21 added bounded long-turn recovery and
-handoff capabilities. See [compaction](developer/context-compaction.md) and
+handoff capabilities. See [compaction](developer/workspace-context.md#plan-a-reduction-at-the-model-boundary) and
 [P2 evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#p2-context-compaction-2026-10-15).
 
 ## P2b: define an OS sandbox boundary
@@ -909,7 +910,7 @@ Complete: named profiles and main/routine/review roles, supported provider setti
 explicit child selection and credential/native-payload isolation. A stronger
 subscription main/local Ollama child trial passed; no hidden billing/provider
 fallback or automatic summary routing is claimed. See
-[profiles](operator/model-profiles.md) and
+[profiles](operator/configuration.md#reuse-a-named-model-profile) and
 [integrated evidence](archive/2026-10-18-before-manual-rewrite/docs/developer/testing.md#five-stage-integrated-verification-2026-10-16).
 
 ## P17: structured operator questions
@@ -963,14 +964,14 @@ off/local/export controls, bounded retention and synthetic developer tracing.
 Two shipped prompt/presentation examples are default-off.
 
 The [architecture/comparison](developer/extensions.md),
-[adoption scenarios](developer/extension-scenarios.md) and
+[adoption scenarios](developer/extensions.md#trial-an-independently-built-package) and
 [lifecycle coverage audit](archive/2026-10-18-before-manual-rewrite/docs/developer/lifecycle-events.md#supported-lifecycle-coverage)
 define supported and unsupported seams. Hooks share lifecycle occurrence identity
 with notifications/feeds/jobs while retaining distinct private-view, ordering and
 effect authority. Remote event bridges, nested effectful services, automatic
 installers/builders and idle hot activation remain explicit future enhancements.
 
-The separate [memory/workflow lab](developer/extension-proof.md) passed 41 synthetic
+The separate [memory/workflow lab](developer/testing.md#learn-a-complete-workflow-through-the-compatibility-lab) passed 41 synthetic
 source/installed assertions against frozen core `3b0ef78`, without core edits or
 rebuilding the installed archive. A separately reviewed live extension-only change
 and hosted Linux/Mac checks closed P22's gates. This proves the exercised SDK

@@ -128,7 +128,7 @@ Rates are decimal strings. Token rates are per million tokens; supported
 search/fetch extras use per-thousand-request rates, and duration rates are per
 second. Flat input uses `input`; cache-split modes need their distinct component
 rates. Do not invent missing dimensions or apply an unrelated model's rate.
-See [the rate reference](../developer/costs.md) for cache variants and exact
+See [the rate reference](../developer/usage-accounting.md#calculate-a-synthetic-rate) for cache variants and exact
 selection rules.
 
 Version-1 cards cover text requests. To price embeddings, use card `version: 2`

@@ -1,3 +1,5 @@
+Historical manual from `d35287afbfc0101938f0c86e70748a5e1c354c9f`, archived on 2026-10-21 before topic consolidation. Commands and ownership may be obsolete. Use [the current chapter](../../../../../developer/configuration.md). The original body is retained; relative links outside code fences are rebased, and links to jointly preserved chapters point to these snapshots.
+
 # Routing requests with execution profiles
 
 An execution profile chooses provider behavior without giving model text access
@@ -78,8 +80,8 @@ A selected child's output cap can narrow its parent's cap, but cannot widen or
 omit it. Combined provider capability checks precede delegation approval. A route
 to a provider that cannot honor the inherited cap refuses. Child limits also
 retain at most six model/helper calls, 120 seconds of active work, and the
-parent's context ceiling. See [delegation](delegation.md) for scheduling and
-[provider limits](provider-limits.md) for wire fields.
+parent's context ceiling. See [delegation](../../../../../developer/delegation.md) for scheduling and
+[provider limits](../../../../../developer/provider-limits.md) for wire fields.
 
 Separately granted `host.model` extensions keep a private helper-profile catalog
 and protected credential reference. Those are host runtime values, never SDK

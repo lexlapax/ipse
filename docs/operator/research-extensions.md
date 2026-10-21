@@ -410,7 +410,7 @@ the original text contract with another provider, omit `output_contract`.
 Unsupported structured profiles refuse before model approval or dispatch.
 
 This expects an already available local model. Select your actual provider/model
-explicitly using [model profiles](model-profiles.md); no model is downloaded and
+explicitly using [model profiles](configuration.md#reuse-a-named-model-profile); no model is downloaded and
 no service/billing route is substituted on failure. Build and generate:
 
 ```sh

@@ -23,7 +23,7 @@ and OTP supervision. `format_status/1` limits Session's formatted state to ID an
 phase. MCP processes also implement formatted status. Dependency Telemetry is
 locked at 1.4.2 through Finch/Plug, but Ipse currently emits no application
 `:telemetry` events. The extension host runs reviewed independent workers for
-prompt/presentation, typed invocations and [prompt jobs](../../developer/extension-event-jobs.md).
+prompt/presentation, typed invocations and [prompt jobs](../../developer/extension-events.md#declare-a-job-with-an-exported-handler).
 Shared source identity correlates private/metadata prompt views and allowlisted
 committed model/tool/context/question/extension/turn metadata; source paging
 itself executes no callback. Prompt subscribers are explicitly selected bounded

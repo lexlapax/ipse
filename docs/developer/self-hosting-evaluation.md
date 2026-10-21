@@ -66,7 +66,7 @@ later must not replace the executable under the active runner. Build outputs and
 fixture stores must also be separate when runs overlap. A benchmark that reads
 one checkout while another process recompiles it has not frozen its input.
 
-The [independent artifact proof](extension-proof.md) demonstrates this separation:
+The [independent artifact proof](testing.md#learn-a-complete-workflow-through-the-compatibility-lab) demonstrates this separation:
 build a reviewed artifact once, then execute it in an extracted runtime without
 a development toolchain. Compare archive/host bytes before and after. Do not
 rebuild the artifact to make a failing compatibility result disappear.

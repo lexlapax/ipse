@@ -8,7 +8,7 @@ other, and the renamed current operator subscriber anchor was repaired.
 | Original path | Snapshot | Current replacement |
 | --- | --- | --- |
 | `docs/developer/extension-events.md` | [Read-only notifications](extension-events.md) | [Prompt/answer subscriptions](../../developer/extension-events.md) |
-| `docs/developer/extension-event-jobs.md` | [Prompt jobs](extension-event-jobs.md) | [Prompt/answer jobs](../../developer/extension-event-jobs.md) |
+| `docs/developer/extension-event-jobs.md` | [Prompt jobs](extension-event-jobs.md) | [Prompt/answer jobs](../../developer/extension-events.md#declare-a-job-with-an-exported-handler) |
 
 These commands and status claims describe the source revision, not current
 coverage. Use the [documentation map](../../index.md) and

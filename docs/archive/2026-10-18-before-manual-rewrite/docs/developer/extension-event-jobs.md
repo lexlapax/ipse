@@ -1,6 +1,6 @@
 > Historical reference only. Snapshot of `docs/developer/extension-event-jobs.md` at `10b9dd66d06ef28718b58530a7e5b01c7c50397a` on 2026-10-18.
 > Original body retained; relative links rebased for this archive.
-> Use the [current manual](../../../../developer/extension-event-jobs.md).
+> Use the [current manual](../../../../developer/extension-events.md#declare-a-job-with-an-exported-handler).
 
 # Event jobs and context recall
 

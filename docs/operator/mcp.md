@@ -155,8 +155,9 @@ private HOME/TMPDIR. An interpreted launcher may need an explicit reviewed `PATH
 entry for its runtime. Provider credential variable names are refused. Never put
 secrets in arguments. Protect private-valued configuration with mode `600`.
 Selected known values are redacted from output; this is not a general secret
-detector or an OS permission boundary. Abrupt supervisor failure can leave
-owner-only temporary environment data on macOS.
+detector or an OS permission boundary. The macOS native helper transfers the
+selected environment through a private pipe prefix and stages no environment
+file. This transport does not erase files left by older installations.
 
 ## Configure a remote HTTP endpoint
 

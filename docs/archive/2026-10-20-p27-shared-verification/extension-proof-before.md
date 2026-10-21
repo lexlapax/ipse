@@ -1,4 +1,4 @@
-Historical guide from `111228c1eadf6816f76e3b3981030000907f2e5a`, archived on 2026-10-20 before shared verification instructions. Commands and ownership descriptions may be obsolete. Use [the current chapter](../../developer/extension-proof.md). Relative links below are rebased; the original guidance is otherwise retained.
+Historical guide from `111228c1eadf6816f76e3b3981030000907f2e5a`, archived on 2026-10-20 before shared verification instructions. Commands and ownership descriptions may be obsolete. Use [the current chapter](../../developer/testing.md#learn-a-complete-workflow-through-the-compatibility-lab). Relative links below are rebased; the original guidance is otherwise retained.
 
 # Prove an extension against source and an installed runtime
 
@@ -95,7 +95,7 @@ source history or establish a production retention policy.
 ## Test the unchanged installed runtime
 
 Build a runtime archive through the repository's
-[packaging procedure](../../developer/testing.md#verify-the-extracted-package).
+[packaging procedure](../../developer/testing.md#verify-documentation-and-packaging-at-their-own-boundaries).
 Choose the actual archive for your current platform and use artifacts compiled
 for that runtime's compatible SDK/OTP/platform:
 

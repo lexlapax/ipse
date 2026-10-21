@@ -1,9 +1,11 @@
+Historical manual from `d35287afbfc0101938f0c86e70748a5e1c354c9f`, archived on 2026-10-21 before topic consolidation. Commands and ownership may be obsolete. Use [the current chapter](../../../../../developer/usage-accounting.md). The original body is retained; relative links outside code fences are rebased, and links to jointly preserved chapters point to these snapshots.
+
 # Calculating and reporting configured costs
 
 Use `Ipse.Usage.Costs` to estimate one canonical request and
 `Ipse.Usage.CostSummary` to aggregate cumulative request snapshots. These pure
 modules own arithmetic and coverage. Bundled reports under `Ipse.Builtins` obtain
-the records through approved extension reads. [Shared budgets](budgets.md) own
+the records through approved extension reads. [Shared budgets](../../../../../developer/budgets.md) own
 admission and reservations. No rates are enabled by default, and calculation
 performs no IO or pricing lookup.
 

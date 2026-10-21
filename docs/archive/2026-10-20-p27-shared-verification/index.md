@@ -2,7 +2,7 @@
 
 Historical reference, recorded on 2026-10-20. This directory preserves the manuals
 before the common source/installed verification workflow. Current instructions
-are [testing](../../developer/testing.md), [the extension proof](../../developer/extension-proof.md)
+are [testing](../../developer/testing.md), [the extension proof](../../developer/testing.md#learn-a-complete-workflow-through-the-compatibility-lab)
 and [knowledge evaluation](../../developer/knowledge-evaluation.md). The
 [plan](../../plan.md) owns acceptance status.
 

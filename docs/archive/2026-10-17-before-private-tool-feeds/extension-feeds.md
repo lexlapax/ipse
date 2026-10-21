@@ -6,7 +6,7 @@ Selected extensions can consume supported committed metadata while explicit
 session work proceeds. A feed uses one owned worker per declaration and preserves
 its private VM state for that lease. Its exact acknowledgments grant no actions,
 context changes or provider requests. [Prompt/answer notifications](../../developer/extension-events.md)
-retain their ordered barriers and fresh-worker contract; [event jobs](../../developer/extension-event-jobs.md)
+retain their ordered barriers and fresh-worker contract; [event jobs](../../developer/extension-events.md#declare-a-job-with-an-exported-handler)
 retain separate effect admission. Operator selection and stop are described under
 [event subscribers](../2026-10-18-before-manual-rewrite/docs/operator/extensions.md#event-subscribers).
 
@@ -39,7 +39,7 @@ Waits and `session.recording_stopped` additionally require `lifecycle.record` in
 that artifact's trust ceiling so their sources exist with diagnostics off.
 Prompt/answer stages use their existing boundary subscriptions. Creation,
 process start/resume and final logical close are outside this live enrollment;
-authorized [history reads](../../developer/extension-history.md) expose recorded metadata for them.
+authorized [history reads](../../developer/extension-feeds.md#capture-a-fixed-historical-prefix) expose recorded metadata for them.
 Declaring those types as feeds refuses explicitly.
 
 ## Enrollment and callback

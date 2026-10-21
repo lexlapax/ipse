@@ -307,7 +307,7 @@ IPSE_HOME=$(mktemp -d) ./ipse demo
 ```
 
 Use the root wrapper for CLI commands and the bundled OTP launcher for `eval`.
-The [independent artifact chapter](../../developer/extension-proof.md) teaches the additional
+The [independent artifact chapter](../../developer/testing.md#learn-a-complete-workflow-through-the-compatibility-lab) teaches the additional
 source/installed SDK proof. Do not rebuild the artifact during installed runtime
 verification. Match archive OS, architecture and libc. A local verification
 archive is not a published release. When distributing one, supply matching

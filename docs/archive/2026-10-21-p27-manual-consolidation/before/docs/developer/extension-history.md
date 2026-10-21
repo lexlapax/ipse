@@ -1,3 +1,5 @@
+Historical manual from `d35287afbfc0101938f0c86e70748a5e1c354c9f`, archived on 2026-10-21 before topic consolidation. Commands and ownership may be obsolete. Use [the current chapter](../../../../../developer/extension-feeds.md). The original body is retained; relative links outside code fences are rebased, and links to jointly preserved chapters point to these snapshots.
+
 # Read recorded session views for explicit catch-up
 
 `history.read` gives an admitted invocation or event job bounded pages of recorded

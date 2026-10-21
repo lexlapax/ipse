@@ -9,7 +9,7 @@ before changing scheduling or cancellation.
 `delegation/worker.ex` owns one child's active work; `delegation/group.ex`
 coordinates a pair. Session admits the parent tool, registers workers and children,
 forwards approvals, and records outcomes. Profile routing has its own
-[configuration rules](model-profiles.md).
+[configuration rules](configuration.md#trace-main-and-child-profile-selection).
 
 ## Follow a serial task
 

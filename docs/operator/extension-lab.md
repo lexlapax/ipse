@@ -7,7 +7,7 @@ network model, database, or paid service. Its literal corpus and deterministic
 parser are teaching examples, not production memory or retrieval engines.
 
 You need the source checkout, its supported Elixir/OTP toolchain, and an already
-built Ipse SDK. Follow [developer setup](../developer/index.md#build-your-first-checkout)
+built Ipse SDK. Follow [developer setup](../developer/index.md#build-and-follow-your-first-session)
 if you need to build it. Run commands from the checkout root. For ordinary explicit notes,
 use [Memory](memory.md) instead of these lab artifacts.
 
@@ -125,7 +125,7 @@ unchanged archive's installed worker execution and temporary selection; it does
 not build a new Ipse release. The verifier compiles the trusted proof with your development toolchain before
 starting the extracted runner. The runner then uses its bundled runtime and the
 prebuilt lab artifacts. Review actual failures and cleanup
-status before accepting the result. [The developer lab guide](../developer/extension-proof.md)
+status before accepting the result. [The developer lab guide](../developer/testing.md#learn-a-complete-workflow-through-the-compatibility-lab)
 explains how the examples and their verification are structured.
 
 When finished, exit every lab session before removing the disposable directories.

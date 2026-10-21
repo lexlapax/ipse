@@ -1,3 +1,5 @@
+Historical manual from `d35287afbfc0101938f0c86e70748a5e1c354c9f`, archived on 2026-10-21 before topic consolidation. Commands and ownership may be obsolete. Use [the current chapter](../../../../../developer/workspace-context.md). The original body is retained; relative links outside code fences are rebased, and links to jointly preserved chapters point to these snapshots.
+
 # Reducing model context while retaining evidence
 
 Compaction changes the effective conversation sent to a model. It does not delete
@@ -108,6 +110,6 @@ after commit. A smaller context alone does not prove safe recovery.
 
 `Ipse.Diagnostics.context/3` measures exact encoded categories using the shared
 trigger; it exports numbers and fixed labels, not source text. Saved inspection
-uses pure restoration without replay. Explicit [handoff](../operator/recovery.md)
+uses pure restoration without replay. Explicit [handoff](../../../../../operator/recovery.md)
 exports a bounded reviewed note into a fresh idle session, not native history,
 permissions, or executable calls. Handoff validation and compaction remain separate.

@@ -2,7 +2,7 @@
 
 Historical verification record, 2026-10-20. Source is
 `914bc0ad7fd1794e0c9855a20d4548b961c309f4`. Current contributor procedures are in
-[testing](../../developer/testing.md#measure-and-report-honestly), and milestone
+[testing](../../developer/testing.md), and milestone
 acceptance remains in [the plan](../../plan.md#p27-optional-research-graph-and-rag).
 
 The exact-source [run 39392520309](https://github.com/lexlapax/ipse/actions/runs/39392520309)

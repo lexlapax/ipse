@@ -39,7 +39,7 @@ may have happened, timeout, connection loss, malformed reply, or RPC error yield
 unknown and stops the batch; later calls are not started. Resume never replays.
 Remote effects are not undone by closing local IO.
 
-Extensions use the separate [MCP host-call contract](extension-mcp-actions.md).
+Extensions use the separate [MCP host-call contract](extension-effects.md#bind-and-call-an-external-mcp-item).
 Their action intent replaces the model tool's `tool_started` record; routing,
 descriptor rediscovery, transport ownership and unknown-outcome rules are shared.
 

@@ -64,7 +64,7 @@ ipse chat --provider ollama --model qwen3:8b --cwd /path/to/project
 
 The default endpoint root is `http://localhost:11434`. To use another permitted
 endpoint, pass `--base-url URL` or configure an operator-owned
-[model profile](model-profiles.md). Ipse does not download models for you.
+[model profile](configuration.md#reuse-a-named-model-profile). Ipse does not download models for you.
 
 ### Anthropic API
 

@@ -2,7 +2,7 @@
 
 Historical CI investigation and verification record, 2026-10-20. This test-only
 increment follows the [native population correction](../2026-10-20-p27-native-drain/index.md).
-Current contributor instructions are in [testing](../../developer/testing.md#diagnose-worker-and-stdio-cleanup).
+Current contributor instructions are in [testing](../../developer/testing.md).
 P27 acceptance remains in [the plan](../../plan.md#p27-optional-research-graph-and-rag).
 
 ## Retained hosted failure

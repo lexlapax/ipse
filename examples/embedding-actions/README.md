@@ -64,5 +64,5 @@ and host files before and after. A source run alone does not establish an
 installed result. Temporary sessions, fixture listeners and synthetic credential
 environment changes are cleaned up.
 
-The [shared verification guide](../../docs/developer/testing.md#run-one-proof-against-source-and-an-installed-runtime)
+The [shared verification guide](../../docs/developer/testing.md#prove-an-independent-artifact-without-rebuilding-the-host)
 explains pre-launch compilation, input inventories and isolated runtime ownership.

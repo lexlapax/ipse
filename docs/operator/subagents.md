@@ -14,7 +14,7 @@ ipse chat --provider chatgpt --subagents --cwd /path/to/project
 ```
 
 This example uses real ChatGPT subscription requests. For another provider,
-select it explicitly or use [model profiles](model-profiles.md).
+select it explicitly or use [model profiles](configuration.md#reuse-a-named-model-profile).
 At the prompt, ask:
 
 ```text

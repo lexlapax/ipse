@@ -1,6 +1,6 @@
 # Historical prompt-event contract
 
-Historical only. Archived 2026-10-17 from `docs/developer/extension-event-jobs.md` at commit `22ac9e1`. Links were rebased; original claims remain unchanged. Current replacement: [extension-event-jobs.md](../../developer/extension-event-jobs.md).
+Historical only. Archived 2026-10-17 from `docs/developer/extension-event-jobs.md` at commit `22ac9e1`. Links were rebased; original claims remain unchanged. Current replacement: [extension-event-jobs.md](../../developer/extension-events.md#declare-a-job-with-an-exported-handler).
 
 ---
 

@@ -7,7 +7,7 @@ and cleanup. Keep those responsibilities out of extension domain code.
 
 This chapter follows a result from its inert declaration through publication and
 later reading. Start with the [artifact and SDK training](extension-artifacts.md)
-for compilation and import. Use [host calls](extension-host-calls.md) when a
+for compilation and import. Use [host calls](extension-state.md#read-a-revision-and-propose-a-write) when a
 callback needs approved effects before it returns a value.
 
 ## Declare the caller's contract
@@ -84,7 +84,7 @@ An ordinary callback returns a bounded reply and private worker state:
 
 The host checks `value` against the declared result schema. Action-looking keys
 inside `value` remain data. Request an effect through the separate
-[host-call protocol](extension-host-calls.md).
+[host-call protocol](extension-state.md#read-a-revision-and-propose-a-write).
 
 For a tool or command that needs complete larger results, declare SDK version 2
 and capability `invoke.result.pages` in the manifest and matching description.
@@ -331,7 +331,7 @@ mix test test/extensions_result_session_test.exs
 ```
 
 Keep interruption, identity, cleanup, quota, and disclosure cases when extending
-this path. Use [installed compatibility training](extension-proof.md) for the
+this path. Use [installed compatibility training](testing.md#learn-a-complete-workflow-through-the-compatibility-lab) for the
 separate packaged-worker checks. Passing a pure source test does not verify
 Session publication or native cleanup.
 

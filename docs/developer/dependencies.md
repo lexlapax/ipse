@@ -156,7 +156,7 @@ mix test test/mcp/schema_test.exs
 ```
 
 The focused command above is an example for a schema-adapter change. Choose the
-actual affected fixture for another dependency. Run the [source baseline](testing.md#run-the-source-baseline)
+actual affected fixture for another dependency. Run the [source baseline](testing.md#run-a-complete-source-baseline)
 for runtime changes. Keep the source/build output fixed while checks are active.
 
 If the dependency affects worker or runtime paths, also build the package and
@@ -164,7 +164,7 @@ run its extracted verifier. Before distribution, provide notices for the exact
 bundled Erlang/Elixir toolchain via `IPSE_NOTICES_DIR`. The packager copies locked
 package notices and supplied toolchain notices into `licenses/`; inspect that
 folder in the extraction. [Third-party notices](../../THIRD_PARTY_NOTICES.md) and
-[release verification](testing.md#verify-the-extracted-package) describe the
+[release verification](testing.md#verify-documentation-and-packaging-at-their-own-boundaries) describe the
 remaining distribution obligations.
 
 ## Keep optional services optional

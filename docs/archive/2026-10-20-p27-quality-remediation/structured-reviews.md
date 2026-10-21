@@ -1,6 +1,6 @@
 # Structured model-call review records
 
-Historical scoped records, 2026-10-20. Provenance is the six original bounded review reports, hashed in [the verification receipt](structured-model.json). Current guidance: [model calls](../../developer/extension-model-calls.md) and [knowledge training](../../developer/knowledge-extensions.md). Acceptance and remaining work: [plan](../../plan.md#p27-optional-research-graph-and-rag). Original prose is retained; headings are nested two levels for this combined record. Reports describe their own snapshots, not later corrections.
+Historical scoped records, 2026-10-20. Provenance is the six original bounded review reports, hashed in [the verification receipt](structured-model.json). Current guidance: [model calls](../../developer/extension-effects.md#request-bounded-text-inference) and [knowledge training](../../developer/knowledge-extensions.md). Acceptance and remaining work: [plan](../../plan.md#p27-optional-research-graph-and-rag). Original prose is retained; headings are nested two levels for this combined record. Reports describe their own snapshots, not later corrections.
 
 ## review-a-original
 

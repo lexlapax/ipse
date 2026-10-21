@@ -72,7 +72,7 @@ chmod 600 "$IPSE_TRIAL/config.json"
 If needed, run `"$IPSE_STABLE/ipse" login` and complete browser sign-in. Work
 submitted under this profile makes real subscription requests and sends selected
 candidate content to that provider. If you prefer another service, review an
-explicit [profile](model-profiles.md) before starting. Failure does not authorize
+explicit [profile](configuration.md#reuse-a-named-model-profile) before starting. Failure does not authorize
 a provider/billing change. An optional local routine role requires an already
 available local model; do not download or substitute one implicitly.
 

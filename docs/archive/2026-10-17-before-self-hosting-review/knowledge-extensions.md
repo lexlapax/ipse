@@ -6,7 +6,7 @@
 Operator-requested planning on 2026-10-16. These are proposed shipped extensions,
 **all disabled by default**, not new implementations or services. P14 already
 provides a research skill, configured MCP retrieval and a durable evidence ledger;
-P22's [synthetic installed memory/workflow lab](../../developer/extension-proof.md) proves exercised
+P22's [synthetic installed memory/workflow lab](../../developer/testing.md#learn-a-complete-workflow-through-the-compatibility-lab) proves exercised
 SDK seams, including prompt-driven graph capture and explicit catch-up. Neither is a
 production memory, graph, RAG or pluggable research engine. Plan delivery as the
 independently selectable P25 capability family using P22 foundations. P23 reporting/
@@ -156,7 +156,7 @@ Typed options select store/search/fetch/embedding/rerank/graph instances and
 profiles; no backend or endpoint is mandatory. Project selections may narrow
 operator grants, not authorize egress or widen memory access. Unsupported
 operations refuse instead of hiding unaccounted work inside a hook. Use the
-independent [installed-package evidence](../../developer/extension-proof.md) to assess the exercised
+independent [installed-package evidence](../../developer/testing.md#learn-a-complete-workflow-through-the-compatibility-lab) to assess the exercised
 contracts alongside the [lifecycle audit](../2026-10-18-before-manual-rewrite/docs/developer/lifecycle-events.md#supported-lifecycle-coverage)
 and supervised trial; hosted checks passed. Production graph queries, embeddings, database installation
 and research-engine algorithms and measurements belong to P25.

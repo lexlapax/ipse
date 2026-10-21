@@ -106,7 +106,7 @@ review their metadata and approval requests as untrusted data. See the
 Opt-in local delegation is available with `--subagents`; it runs serial children
 by default or two parallel children with `--subagent-concurrency 2`,
 in the same workspace with separate journals and parent-mediated approvals.
-[Named profiles and task roles](../../operator/model-profiles.md) can route bounded
+[Named profiles and task roles](../../operator/configuration.md#reuse-a-named-model-profile) can route bounded
 children to an explicitly configured provider/model, including local Ollama. See [local subagents](../../operator/subagents.md) for limits and
 recovery behavior. There is no full-screen TUI, remote-agent, or Windows support.
 See [runtime limits](../2026-10-18-before-manual-rewrite/docs/operator/usage.md#runtime-and-limits)

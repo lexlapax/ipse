@@ -1,3 +1,5 @@
+Historical manual from `d35287afbfc0101938f0c86e70748a5e1c354c9f`, archived on 2026-10-21 before topic consolidation. Commands and ownership may be obsolete. Use [the current chapter](../../../../../developer/extension-state.md). The original body is retained; relative links outside code fences are rebased, and links to jointly preserved chapters point to these snapshots.
+
 # Pause an extension for an operator question
 
 A question saves a bounded checkpoint and closes its worker before asking for
@@ -30,7 +32,7 @@ capability. Return the ordinary outer protocol:
 ```
 
 The request has exactly `op`, `arguments`, and `checkpoint`. Arguments use the
-[question schema](operator-questions.md), supporting single-choice,
+[question schema](../../../../../developer/operator-questions.md), supporting single-choice,
 multiple-choice, and text questions. There are at most three questions and eight
 options per question, with unique IDs. Recommendations are never auto-answered.
 Checkpoint is a plain JSON object up to 8 KiB encoded. The whole proposal also

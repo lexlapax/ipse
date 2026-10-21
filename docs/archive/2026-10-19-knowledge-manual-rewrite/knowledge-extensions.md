@@ -25,7 +25,7 @@ request admission. Background indexing cannot change an already frozen request.
 | Requirement | Existing mechanism to inspect |
 | --- | --- |
 | Explicit remember/recall/forget/export | Memory invocation and generic state actions |
-| Retrieval from an external service | Explicit MCP selection and an operator-bound [extension call](../../developer/extension-mcp-actions.md) |
+| Retrieval from an external service | Explicit MCP selection and an operator-bound [extension call](../../developer/extension-effects.md#bind-and-call-an-external-mcp-item) |
 | Source-supported claims | Research source/claim ledger |
 | Read earlier recorded views | Granted fixed-range history action |
 | Run deterministic extraction at a prompt boundary | Source-bound event job |
@@ -79,7 +79,7 @@ and cycles. For an index, bind source/index versions and decide whether stale
 indexes refuse or require explicit rebuilding. Do not silently add embeddings,
 download weights, contact a model, or switch providers when local retrieval fails.
 
-Use [embedding actions](../../developer/extension-embedding-actions.md) for approved native vector
+Use [embedding actions](../../developer/extension-effects.md#generate-and-reconstruct-embeddings) for approved native vector
 generation with operation-aware usage and shared budgets. Keep the selected
 profile, reported model, dimensions and encoding bound to each index generation.
 A model alias alone does not establish unchanged weights. A service exposed
@@ -124,5 +124,5 @@ Use these existing implementations as source-reading exercises, then add focused
 fixtures for the new package. Prove default-off empty effects, explicit scope,
 approval refusal, stale commit rejection, bounded output, cancellation, and inert
 resume before adding automatic lifecycle behavior. The [installed extension
-example](../../developer/extension-proof.md) illustrates independent packaging; its synthetic graph
+example](../../developer/testing.md#learn-a-complete-workflow-through-the-compatibility-lab) illustrates independent packaging; its synthetic graph
 is a teaching example, not a production engine selected by configuration.

@@ -1,3 +1,5 @@
+Historical manual from `d35287afbfc0101938f0c86e70748a5e1c354c9f`, archived on 2026-10-21 before topic consolidation. Commands and ownership may be obsolete. Use [the current chapter](../../../../../developer/extensions.md). The original body is retained; relative links outside code fences are rebased, and links to jointly preserved chapters point to these snapshots.
+
 # Write repeatable extension conformance scenarios
 
 `ipse extension check` drives selected extensions through real Sessions with a
@@ -119,7 +121,7 @@ For bounded argument-free dispatcher samples, add `--developer-trace`.
 `--trace-ms` is 1–5,000, default 1,000; `--trace-events` is 1–128, default 32.
 Both require tracing. Capture failure fails the check; a normal sample/time limit
 does not. These flags are operator policy, never fixture grants. See
-[synthetic tracing](observability.md#diagnose-with-synthetic-data).
+[synthetic tracing](../../../../../developer/observability.md#diagnose-with-synthetic-data).
 
 ## Extend the training fixture
 

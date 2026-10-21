@@ -39,17 +39,12 @@ Anthropic API. Never switch providers or billing modes silently. Keep a
 credential-free demo usable without any model service. Choose small, testable
 improvements rather than turning the plan into a mandatory execution pipeline.
 
-P22's selected direction is extension-first feature development. Prefer its
-implemented, documented extension APIs for new domain behavior, memory,
-presentation and optional workflows. Reserve core changes for host invariants,
-correctness and explicitly reviewed extension-API gaps; do not bypass approvals or execute
-untrusted code to avoid a necessary core change. P22's documented foundation and
-proof gates are complete. P23's scoped accounting/budget/model-call gates are
-complete; P24 now owns independent
-architecture validation and baseline security, and P25 the comparative
-self-development evaluation. Knowledge capabilities defer to P26/P27 and the
-former P24 media scope moves to deferred P28. Earlier milestones
-did not require mechanisms unavailable when they shipped.
+Prefer the implemented, documented extension APIs for new domain behavior,
+memory, presentation and optional workflows. Reserve core changes for host
+invariants, correctness and explicitly reviewed extension-API gaps. Do not bypass
+approvals or execute untrusted code to avoid a necessary core change. Use
+`docs/plan.md` for current milestone scope and acceptance; this handoff defines
+repository conventions rather than a second milestone ledger.
 
 ## Start here
 

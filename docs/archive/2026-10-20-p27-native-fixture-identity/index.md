@@ -2,7 +2,7 @@
 
 Historical investigation and correction record, 2026-10-20. Source is
 `1e31e5bb54ac8a35a7e6b10ff55c88c8006f9c1f`. Current contributor instructions are in
-[testing](../../developer/testing.md#test-actual-os-enforcement), and acceptance
+[testing](../../developer/testing.md), and acceptance
 remains in [the plan](../../plan.md#p27-optional-research-graph-and-rag).
 
 Later status: the then-uncommitted review-binding/resource-join correction named

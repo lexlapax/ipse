@@ -307,7 +307,7 @@ unknown. Configure MCP through its separate
 ## Accounted model calls
 
 A reviewed artifact can request one-shot text inference through a named
-[model profile](model-profiles.md). It supplies its full instruction and input.
+[model profile](configuration.md#reuse-a-named-model-profile). It supplies its full instruction and input.
 It cannot choose new credentials, providers, or endpoints through arguments.
 
 The separate approval shows the full input, profile, provider, model, billing,
@@ -330,7 +330,7 @@ target must already be imported, trusted, and selected. Missing routes, schema
 mismatches, or cycles refuse startup. Ipse installs no dependency implicitly.
 Services return typed data and provenance; they cannot return nested effects,
 questions, or paged output. Follow the
-[service configuration reference](../developer/extension-services.md) for binding
+[service configuration reference](../developer/extension-composition.md#declare-the-value-contract) for binding
 names.
 
 A `host.context` publication replaces that instance's current session set. An

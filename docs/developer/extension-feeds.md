@@ -1,154 +1,214 @@
-# Consume a bounded live lifecycle feed
+# Observe live facts and catch up from history
 
-A feed observes supported committed facts while explicit session work proceeds.
-Each declaration owns one worker VM and a finite queue. Its acknowledgment means
-receipt of that fact, not authority for effects. Use a feed for an observer or
-monitor; use boundary notifications for prompt/answer views and event jobs for
-host actions.
+A feed observes supported committed lifecycle facts while explicit Session work
+proceeds. A history read scans a fixed recorded prefix as new explicit work.
+Neither grants effects, publishes context or replays a journal. The extension
+owns deduplication, extraction and any later separately approved writes.
 
-Read `examples/extension-lab/src/observer.ex` and `src/tool_observer.ex`. The first
-has a deliberate hang for pressure testing; the second checks selected private
-tool views. Their manifests in `spec.exs` show why metadata and tool content need
-different grants.
+Read `examples/extension-lab/src/observer.ex` and `src/tool_observer.ex` for live
+observation, then the `catchup` export in `src/memory.ex` for a domain history
+scan. `spec.exs` shows their distinct grants. You need a built checkout and
+Elixir toolchain; the synthetic lab needs no account or model service.
 
-## Declare a feed
+## Choose live and historical authority separately
+
+Live declarations need `event.feed` in artifact and operator trust. Private tool
+views need their exact event capability and prior source recording. History needs
+`host.actions`, `host.history` and each selected private historical capability.
+Live grants never imply history. Children see only their own independently
+permitted sessions, and metadata selection grants no private content.
+
+| View | Live prerequisite | Historical prerequisite |
+| --- | --- | --- |
+| Metadata | Declared supported feed; tool facts also need recording grants | `host.history` |
+| Tool input/result | `lifecycle.record`, `lifecycle.tools`, `event.tool.input` or `event.tool.result` | `host.history.tool.input` or `host.history.tool.result`, plus recorded source |
+| Original/expanded/effective prompt | Separate boundary notification/job contract | `host.history.prompt.original`, `.expanded` or `.effective` |
+| Original/presented answer | Separate boundary notification/job contract | `host.history.answer.original` or `.presented` |
+
+`Feeds.types/0` is the authoritative live list. It includes committed model,
+assistant/tool, context/compaction, question, child, extension, wait and settlement
+facts. `wait.started`, `wait.finished` and `session.recording_stopped` also require
+`lifecycle.record`. Prompt/answer boundaries use [notifications or jobs](extension-events.md).
+Session creation/start/resume/final close lie outside live enrollment; use
+authorized history for their recorded metadata. See
+[lifecycle sources](lifecycle-events.md) for coverage and recording prerequisites.
+
+## Declare a bounded live feed
 
 Add this fragment to a complete reviewed manifest:
 
 ```json
-{
-  "capabilities": ["event.feed"],
-  "subscriptions": [{
-    "id": "requests", "event": "model.admitted", "event_version": 1,
-    "view": "metadata", "mode": "feed", "queue_events": 8
-  }]
-}
+{"capabilities":["event.feed"],"subscriptions":[{"id":"requests","event":"model.admitted","event_version":1,"view":"metadata","mode":"feed","queue_events":8}]}
 ```
 
-Declarations have exactly those six keys. `queue_events` is 1–32 and includes
-queued callbacks, the active callback, and an acknowledgment awaiting durable
-commit. Feeds share the four-per-artifact/eight-total subscription limits with
-notifications and jobs. `event.feed` is present exactly when feeds exist, and
-`describe/0` must match the inert manifest. Required policies, schedules,
-handlers, filters, wildcards, and arbitrary topics refuse.
+The declaration has exactly six fields. `queue_events` is 1..32 and includes the
+active callback, queued callbacks and an acknowledgment awaiting durable commit.
+Feeds share four-per-artifact and eight-total subscriptions with notifications
+and jobs. `event.feed` is present exactly when feeds exist; `describe/0` must
+match. Required policies, schedules, handlers, filters, wildcards and arbitrary
+topics refuse.
 
-`Feeds.types/0` is the authoritative supported event list. It includes committed
-model, assistant/tool, context/compaction, question, child, extension, wait, and
-turn-settlement facts from the shared
-[lifecycle vocabulary](lifecycle-events.md#understand-committed-metadata-coverage). Prompt/answer
-boundary events retain their separate notification/job contracts. Session creation,
-start/resume, and final logical close are outside live enrollment; use authorized
-history reads for their recorded metadata.
+Selection alone starts no worker. Accepted explicit input, a valid question
+answer, an admitted command/service or explicit context refresh can enroll once
+for that process. Invalid input and idle resume enroll none. Session syncs
+`extension_feed_intent` before startup and `extension_feed_ready` before draining.
+The enrollment intent is the lease's lower source boundary; earlier facts lie
+outside coverage. One worker retains private state for that lease.
 
-| Selected event | Views | Additional prerequisites |
-| --- | --- | --- |
-| `tool.intent_committed` | `metadata`, `tool.input` | `lifecycle.tools` and `lifecycle.record`; private input also needs `event.tool.input` |
-| `tool.outcome_recorded` | `metadata`, `tool.result` | Same recording grants; private result also needs `event.tool.result` |
-| Other admitted-tool facts | `metadata` | `lifecycle.tools` and `lifecycle.record` |
-| Waits and `session.recording_stopped` | `metadata` | `lifecycle.record` |
-| Other supported types | `metadata` | Declared feed authority |
-
-Private grants must correspond exactly to declared views. Tool recording is a
-separate source prerequisite; feed selection cannot manufacture old private facts.
-Stopping that recorder closes affected feeds with incomplete coverage while
-ordinary tools can continue. See [tool sources](tool-events.md).
-
-## Enrollment and callback
-
-Selection alone enrolls no worker. Accepted explicit input, a valid question
-answer, an admitted command/service, or explicit context refresh can enroll feeds
-once for that process. Invalid input and idle resume run none. Session syncs
-`extension_feed_intent` before startup, then `extension_feed_ready` before draining
-callbacks. The enrollment intent's source is the lease's lower boundary; earlier
-facts are outside its coverage.
-
-`handle("event.feed", payload, state)` receives a closed object with:
-
-| Field | Meaning |
-| --- | --- |
-| `api_version` | Integer 1 |
-| `handle` | Host resource ID |
-| `subscription_id` | Selected declaration ID |
-| `sequence` | Consecutive lease-local admission number, starting at 1 |
-| `after` | Public source reference to enrollment intent |
-| `event` | Selected version-1 envelope retaining the original occurrence ID |
-
-The worker retains private state for this lease. A callback acknowledges exact
-host identifiers:
+`handle("event.feed", payload, state)` receives `api_version:1`, host `handle`,
+subscription ID, consecutive lease-local sequence starting at 1, `after` pointing
+to the enrollment intent, and the selected version-one event envelope. Echo its
+actual identifiers:
 
 ```elixir
 def handle("event.feed", payload, state) do
   {:ok,
    %{"api_version" => 1, "kind" => "ack", "handle" => payload["handle"],
-     "sequence" => payload["sequence"], "event_id" => payload["event"]["event_id"]},
-   state}
+     "sequence" => payload["sequence"],
+     "event_id" => payload["event"]["event_id"]}, state}
 end
 ```
 
-Metadata excludes arguments, question/answer text, credentials, native continuation,
-arbitrary errors, and private content hashes. Tool views include only the selected
-input/result and normal private source binding. Every view is scoped to the owned
-session, including metadata about its other selected instances. Children observe
-only their own independently permitted sessions.
+Metadata excludes arguments, question/answer text, credentials, raw native data,
+arbitrary errors and private content hashes. A tool view adds only its selected
+input/result and normal source binding. A feed may observe metadata about other
+selected instances in the same owned session, never another session.
 
-The full payload/reply retains 16 KiB SDK-object and 8 KiB string limits.
-Initialization and each callback have separate five-second deadlines. Even a
-worker with separate action grants cannot return effects through an acknowledgment.
-Diagnostic capture settings neither enable nor sample this path. The worker heap
-has ordinary OS permissions; queue bounds are not an OS sandbox or memory quota.
+Initialization and each callback have separate five-second deadlines. Payloads
+and replies retain SDK 16 KiB object and 8 KiB string limits. An acknowledgment
+cannot execute actions even when that worker separately has effect grants.
+Diagnostic sampling settings do not enable this path. The trusted worker retains
+ordinary OS permissions; queue bounds are not a heap quota or sandbox.
 
-## Ordering, pressure and stop
+## Account for pressure and incomplete coverage
 
-After syncing a source, Session reserves capacity before sending any mailbox
-message and commits `extension_feed_delivery_intent` before enqueueing. A valid
-acknowledgment yields a synced `extension_feed_delivery_result`. Only then is
-capacity released and the next callback dispatched. One worker owns one serial
-lane. Feed-control receipts have no feed projection, preventing acknowledgment
-loops.
+After syncing a source, Session reserves capacity before sending mailbox work
+and records `extension_feed_delivery_intent` before enqueueing. Only a synced
+valid `extension_feed_delivery_result` releases capacity for the next callback.
+Each worker has one serial lane. Feed-control receipts have no feed projection,
+which prevents acknowledgment loops.
 
-At most 10,000 deliveries and 10,000 lease intents are admitted across a session.
-Full queues, the delivery ceiling, or oversized payloads close with the first
-rejected source. Unreferenceable oversized sources use `source_unavailable`.
-An unavailable private view closes that feed with `view_unavailable` and a source
-gap while metadata may continue. Invalid replies, timeout, expiry, or resource
-loss also end coverage. Ordinary agent work proceeds. There is no silent drop,
-implicit retry, automatic catch-up, or hidden inference.
+A session permits 10000 deliveries and 10000 lease intents. A full queue, delivery
+ceiling or oversized payload closes with the first rejected source. Oversized
+unreferenceable sources use `source_unavailable`. An unavailable private view
+closes that feed with `view_unavailable` and a source gap while metadata may
+continue. Invalid replies, timeout, expiry and resource loss also end coverage.
+Ordinary agent work continues. There is no silent drop, retry or implicit catch-up.
 
-`/events off`, cancellation, and close revoke admission and interrupt owned work.
-`extension_feed_closed` retains the first cause, admitted/acknowledged counts,
-rejection reference when available, and actual cleanup confirmation. An uncommitted
-acknowledgment remains unacknowledged even if the callback finished. Closing need
-not drain the queue or deliver later cancellation/final-close facts. It stays
-stopped for that process; a new invocation can enroll on new work.
+`/events off`, cancellation and close revoke admission and interrupt owned work.
+The closed receipt retains first cause, admitted/acknowledged counts, available
+rejection reference and actual cleanup confirmation. A callback finished without
+a committed acknowledgment is still unacknowledged. Close need not drain queues
+or deliver subsequent cancellation/final-close facts. Enrollment stays stopped
+for that Session process; additional input does not restart it. A new Session
+process, including compatible resume followed by explicit input, can enroll a
+fresh lease. Idle resume alone still enrolls nothing.
 
-Delivery coverage and cleanup are independent. A failed delivery can still have
-a genuine native cleanup receipt, which the worker lease retains. Process
-absence alone is insufficient proof of descendant cleanup.
+Delivery coverage and cleanup are independent. A failed delivery may still have
+a genuine native cleanup receipt. Process absence alone proves no descendant
+cleanup. Stopping tool recording closes affected feeds with incomplete coverage
+while ordinary tools can continue.
 
-## Recovery and verification
+Saved validation checks identity, declaration, sequence, ready/close order,
+payloads and actual source positions before tail repair. Source/intent resolution
+uses at most ten records, allowing eight feed intents and an adjacent question
+checkpoint. It stops at the intent; later torn tails remain for normal recovery.
+Raw records remain at most 1 MiB, without a full journal scan for each frame.
+Open/interrupted leases stay historical incomplete work. Idle resume starts no
+worker and recreates no queue.
 
-Saved validation checks identities, declaration, sequence, ready/close order,
-payloads, and physical source positions before tail repair. Each delivery resolves
-source and intent within at most ten records, allowing up to eight feed intents
-and the adjacent question checkpoint. Reads stop at the intent, leaving a later
-torn tail for ordinary recovery. Raw records are at most 1 MiB; there is no full
-journal scan per frame.
+## Capture a fixed historical prefix
 
-Open/interrupted leases remain historical incomplete work. Idle resume starts no
-worker and rebuilds no queue. New explicit work enrolls a fresh lease, excluding
-earlier facts. Use separately granted [history reads](extension-history.md) for
-explicit catch-up and deduplicate by source occurrence. Source IDs alone cannot
-make external writes exactly once.
+An admitted invocation or job returns this five-field request inside an outer
+host-call reply:
 
-For an exercise, run the deliberate hang through the capacity fixture. Identify
-the first rejected source and compare admitted versus acknowledged counts. Then
-resume idle and confirm no worker is enrolled.
-
-```sh
-mix test test/extensions_feeds_test.exs
+```json
+{"op":"history.read","view":"prompt.effective","cursor":0,"snapshot":null,"limit":8}
 ```
 
-These fixtures test pressure, strict replies, metadata privacy, private tool
-views, stop/cancel/owner loss, source tampering, and question recovery. The
-[installed lab](extension-proof.md) checks those exercised worker contracts against
-an unchanged packaged runtime.
+`cursor` is an inclusive JSONL byte boundary. Limit is 1..8 source records scanned,
+not matching events. Paths, another session and project/operator scope are not
+accepted. Trusted reads need no new mutation approval; later writes, tools and
+model transfers keep their own rules.
+
+With null snapshot, this action intent's starting byte offset becomes the
+exclusive upper boundary. The returned version-one snapshot contains session ID,
+byte offset, event ID, operation ID and view, without a path or private digest.
+Continue by passing the exact snapshot and returned `next`. Each call still needs
+current grants and lease admission. Host resolves the capture intent and checks
+caller identity, session, operation and view; changed/missing anchors refuse.
+A worker-supplied reference is not permission or authenticated provenance.
+
+The range `[0, byte_offset)` excludes its capture intent and later appends, so
+catch-up cannot chase its own receipts. It can continue across explicit
+invocations or answered questions in the same pinned session. A cursor is page
+position, not a narrower grant or a persisted progress promise. The bound relies
+on the owned append-only journal, not immutable storage against same-user edits.
+
+## Consume pages, skips and gaps
+
+An `ok` page has exactly `version`, `coverage`, `snapshot`, `cursor`, `next`,
+`scanned` and `records`. Coverage is `recorded_views_only`. Each consumed source
+produces one row:
+
+| Kind | Fields |
+| --- | --- |
+| `event` | Selected versioned event retaining its occurrence ID |
+| `skipped` | Content-free source and `reason:other_view` |
+| `gap` | Content-free source and `unsupported_record`, `view_unavailable` or `page_budget` reason |
+
+Null `next` means the captured range was examined, not complete conversational
+coverage. Skips/gaps expose neither raw record type nor body. Private rows contain
+only the selected content/binding. Tool views expose closed name/arguments JSON
+or result text from recorded markers; old native messages are not relabelled.
+Missing prompt/answer boundaries are not invented from nearby records. Expanded
+prompt remains a distinct saved-user-message view.
+
+Each call scans up to eight records and 1 MiB raw JSON, plus bounded anchor
+resolution. Page values are at most 12288 encoded bytes; the whole callback must
+fit SDK 16 KiB, string and depth limits. An overflowing next event remains
+unconsumed when the page already has rows. One event too large for an empty page
+becomes a `page_budget` gap without truncation. Cursor, syntax, raw-source and IO
+failures return known `history_snapshot`, `history_cursor`, `history_source` or
+`history_timeout`, without paths, error prose or unchecked partial pages.
+
+History IO uses a linked task outside Session and a five-second wait before
+brutal task shutdown. Reads consume their invocation allowance; there is no host
+pagination loop or automatic reindexing.
+
+## Keep extraction and forgetting consistent
+
+Receipts bind page, snapshot, operation, caller and session namespace. To publish
+an excerpt, cite the page action's operation ID with a path such as
+`["records",0,"event","data","text"]` under
+[context publication](extension-composition.md). The page action can differ from
+the original capture action. Provenance establishes recorded text, not truth or
+instruction priority.
+
+Record gaps/skips before claiming complete ingestion and deduplicate by original
+occurrence. Source IDs cannot make remote writes exactly once. Capture revision/
+tombstone before delayed extraction and use it in later CAS. Forgetting derived
+notes does not erase journals or revoke independent history access. The extension
+owns suppression and explicit reindex commands.
+
+Recovery checks cached anchors, actual projections, contiguous spans and budget
+gaps without rerunning scans or updating pages. Missing, altered or coherently
+omitted spans refuse before repair. Interrupted operations remain incomplete or
+unknown. Idle resume runs no catch-up callback.
+
+## Verify pressure and fixed-range catch-up
+
+Run the observer's deliberate hang through the capacity fixture. Identify the
+first rejected source and compare admitted/acknowledged counts; idle resume must
+start no worker. Then capture history, append more facts and continue the saved
+snapshot. Later facts must remain outside it, and zero matching events may still
+advance the cursor. Question continuation must be explicit new work.
+
+```sh
+mix test test/extensions_feeds_test.exs test/extensions_history_test.exs
+```
+
+The suites cover metadata privacy, private views, bounded pressure, stop/cancel/
+owner loss, page splitting, gaps, torn later tails, source tampering and cached
+recovery. The [installed lab](testing.md) combines them with domain deduplication
+and stale-write rejection after forget against an unchanged runtime.

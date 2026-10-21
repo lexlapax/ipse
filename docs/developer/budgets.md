@@ -6,8 +6,8 @@ without treating interrupted work as free. `Ipse.Budget` wraps the existing prov
 path; it is independent of optional diagnostics and cost reports.
 
 The implementation covers main, summary, local-child, and explicitly
-[accounted extension text](extension-model-calls.md) and
-[embedding](extension-embedding-actions.md) requests. It does not meter
+[accounted extension text](extension-effects.md#request-bounded-text-inference) and
+[embedding](extension-effects.md#generate-and-reconstruct-embeddings) requests. It does not meter
 audio, arbitrary MCP/tool charges, out-of-band executable calls, or
 operator-wide account usage. A new independent root session is a new quota.
 

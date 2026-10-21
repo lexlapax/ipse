@@ -4,7 +4,7 @@ Historical investigation after `075d56e`. The commit containing this record owns
 the recovery, continuation, prompt and explicit Ollama thinking-selection changes.
 Use the current [Graph user manual](../../operator/graph.md),
 [knowledge development manual](../../developer/knowledge-extensions.md) and
-[model-call training](../../developer/extension-model-calls.md) for procedures.
+[model-call training](../../developer/extension-effects.md#request-bounded-text-inference) for procedures.
 The [plan](../../plan.md#p27-optional-research-graph-and-rag) owns acceptance.
 These tuning results do not complete P27 or establish held-out quality.
 

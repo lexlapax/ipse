@@ -198,12 +198,21 @@ defmodule Ipse.DocsCheck do
   end
 
   defp archive_errors do
-    for manifest <- Path.wildcard("docs/archive/2026-10-18-before-manual-rewrite/manifest.json"),
+    manifests =
+      Path.wildcard("docs/archive/2026-10-18-before-manual-rewrite/manifest.json") ++
+        Path.wildcard("docs/archive/**/manual-provenance.json")
+
+    for manifest <- manifests,
         item <- :json.decode(File.read!(manifest))["files"],
-        not File.regular?(item["snapshot"]) or
-          Base.encode16(:crypto.hash(:sha256, File.read!(item["snapshot"])), case: :lower) !=
+        snapshot =
+          if(String.starts_with?(item["snapshot"], "docs/archive/"),
+            do: item["snapshot"],
+            else: Path.expand(item["snapshot"], Path.dirname(manifest))
+          ),
+        not File.regular?(snapshot) or
+          Base.encode16(:crypto.hash(:sha256, File.read!(snapshot)), case: :lower) !=
             item["snapshot_sha256"],
-        do: "#{item["snapshot"]}: archived snapshot differs from its provenance manifest"
+        do: "#{snapshot}: archived snapshot differs from its provenance manifest"
   end
 end
 

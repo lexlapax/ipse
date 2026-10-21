@@ -24,10 +24,8 @@ conversation. For an Arch source installation, use [Install on Arch Linux](arch-
 
 ## Set up your work
 
-- [Configuration](configuration.md) explains operator and project settings,
-  precedence, inspection, and journal limits.
-- [Model profiles](model-profiles.md) gives named model configurations and explicit
-  routing for main work and child reviews.
+- [Configuration and profiles](configuration.md) explains private setup, named
+  model routes, project policy, inspection and journal limits.
 - [Subagents](subagents.md) explains delegated work, separate approvals, and the
   limits of sharing one workspace.
 - [MCP servers](mcp.md) connects explicitly selected local or remote tools.

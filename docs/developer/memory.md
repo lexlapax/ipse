@@ -38,7 +38,7 @@ ordinary approval path. State checks its own clock under the namespace lock and
 again before publication. A known `write_deadline_elapsed` failure becomes
 `source_expired` without another write. Follow the real Session delayed-approval
 tests for both operations, their live-renewal controls, and idle resume after the
-failed receipt. The [host-call chapter](extension-host-calls.md#bound-a-prepared-write-by-time)
+failed receipt. The [host-call chapter](extension-state.md#reject-an-expired-prepared-write)
 owns the generic request and receipt contract.
 
 Version-2 active notes have this bounded domain shape:

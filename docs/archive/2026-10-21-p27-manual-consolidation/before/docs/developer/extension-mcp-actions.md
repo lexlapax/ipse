@@ -1,3 +1,5 @@
+Historical manual from `d35287afbfc0101938f0c86e70748a5e1c354c9f`, archived on 2026-10-21 before topic consolidation. Commands and ownership may be obsolete. Use [the current chapter](../../../../../developer/extension-effects.md). The original body is retained; relative links outside code fences are rebased, and links to jointly preserved chapters point to these snapshots.
+
 # Build an extension that calls a selected MCP service
 
 Use `mcp.call` when an extension needs a configured external tool, resource or
@@ -30,7 +32,7 @@ route for a specific operator-scoped instance:
 ```
 
 This is a fragment of the artifact's trust record. The selected server must also
-be present in the explicit MCP configuration. See the [operator procedure](../operator/mcp.md#allow-a-reviewed-extension-to-use-a-selected-item).
+be present in the explicit MCP configuration. See the [operator procedure](../../../../../operator/mcp.md#allow-a-reviewed-extension-to-use-a-selected-item).
 Project configuration cannot supply or override the binding. An alias uses a
 lowercase letter followed by lowercase letters, digits, underscores or hyphens,
 up to 32 characters. Trust permits 64 bindings, unique by instance/alias; an
