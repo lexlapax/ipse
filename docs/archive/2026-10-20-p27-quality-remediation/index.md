@@ -387,6 +387,37 @@ The private workload remains sealed. Remaining semantic repair, holistic structu
 and manuals, final freeze, independent quality/resource validation and engine
 selection still precede P27 completion.
 
+## Reject a fixed-context instruction trial
+
+On 2026-10-21, after shared verification shipped at `f8b49c1`, eight answer
+contexts from the already exposed diagnostic were reconstructed with identical
+instruction and input bytes. A fresh CPU-only `qwen3.5:9b` service ran each once
+through the current structured answer contract and real Session approvals. All
+eight first responses decoded, with confirmed Session, native and staging
+cleanup. Several still abstained despite relevant evidence or combined facts
+whose cited passage supported only part of the claim.
+
+A separate source snapshot changed only the general answer instruction. It
+emphasized direct yes/no answers, compatible processing stages and separate
+claims for separately supported reasoning links. Its 2,011-byte instruction
+passed all 13 existing answer-contract tests. Another fresh service ran the same
+eight shown inputs and citation IDs once, with the same model, profile, budgets
+and individual deadlines. All responses decoded and cleanup was confirmed.
+
+The results were mixed. Dense Q04 named the approver and dense Q26 gave a direct
+negative answer. However, lexical Q02 cited the erasure procedure for the
+freshness timer, and lexical Q27 became empty `open` despite its shown clock
+statement. Compound and irrelevant claims remained. The instruction and its
+manual changes were reverted; the original answer contract remains.
+
+The [trial record](answer-context-trial.json) binds both source inventories,
+first-result hashes, outcome identities, model selection, cleanup and the
+rejected instruction. Raw first outcomes remain in the continuation evidence.
+These are supervisor observations on exposed examples, not independent semantic
+grades, isolated causal estimates or a measured quality improvement. There were
+no retries, classification repairs, scoring changes, model downloads or private
+workload access. Shared warm state prevents a matched resource comparison.
+
 ## Remaining quality work
 
 The shared excerpt repair removes the separate dense-prefix and first-match

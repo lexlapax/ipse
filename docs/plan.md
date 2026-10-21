@@ -412,6 +412,12 @@ Research CLI and model-service terminal cleanup. This completes that structural
 unit; remaining ownership changes, actual-model quality, final private evaluation
 and engine selection remain open.
 
+The subsequent [fixed-context answer diagnostic](archive/2026-10-20-p27-quality-remediation/index.md#reject-a-fixed-context-instruction-trial)
+retains two fresh eight-request CPU-only runs on exposed material. Structured
+output succeeds, but semantic and citation errors persist. A general instruction
+revision produced mixed results and was reverted. No quality gain or private
+acceptance is claimed; inference-policy investigation and structural work remain.
+
 The [first host-contract record](archive/2026-10-19-p27-mcp-host-contracts/index.md)
 retains causal regressions, independent review corrections and local verification.
 It establishes approved MCP transport and result paging, not research/graph/RAG
