@@ -18,6 +18,41 @@ defmodule Ipse.Development.Evaluation.Dataset do
   @source_fields ~w(project source_id generation version sha256)
   @safe 9_007_199_254_740_991
 
+  @doc "Resolve authored source versions at the comparison's fixed observation time."
+  def population(documents, at) do
+    observed =
+      documents
+      |> Enum.filter(&(&1["source"]["observed_at_ms"] <= at))
+      |> Enum.sort_by(&{&1["source"]["source_id"], &1["source"]["generation"]})
+
+    suppressed =
+      observed
+      |> Enum.filter(&(&1["state"] in ~w(forgotten deleted suppressed)))
+      |> MapSet.new(&{&1["identity"]["project"], &1["source"]["source_id"]})
+
+    selected =
+      observed
+      |> Enum.group_by(&{&1["identity"]["project"], &1["source"]["source_id"]})
+      |> Enum.map(fn {_, versions} -> Enum.max_by(versions, & &1["source"]["generation"]) end)
+      |> Enum.sort_by(&{&1["source"]["source_id"], &1["source"]["generation"]})
+
+    eligible =
+      Enum.reject(selected, fn doc ->
+        MapSet.member?(suppressed, {doc["identity"]["project"], doc["source"]["source_id"]}) or
+          doc["state"] == "expired" or
+          (doc["source"]["expires_at_ms"] != nil and doc["source"]["expires_at_ms"] <= at)
+      end)
+
+    eligible_keys = MapSet.new(eligible, & &1["key"])
+
+    %{
+      observed: observed,
+      selected: selected,
+      eligible: eligible,
+      excluded: Enum.reject(documents, &MapSet.member?(eligible_keys, &1["key"]))
+    }
+  end
+
   def queries(bytes, split) do
     project(bytes, fn data ->
       sealed = is_map(data) and data["contract"] == @contract and Map.has_key?(data, "queries")

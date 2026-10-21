@@ -1139,11 +1139,14 @@ defmodule Ipse.Development.Evaluation.Runner do
         Enum.map(artifacts, &%{identity: %{"capabilities" => &1.trust["capabilities"]}})
       )
 
+    population = Dataset.population(prepared, effective_time(plan))
+
     policy = %{
       plan: plan,
       variant: variant,
       artifacts: Map.new(artifacts, &{&1.instance, &1.digest}),
       prepared: prepared,
+      population: population,
       runtime: scope_runtime,
       session: nil,
       namespace: nil,
@@ -1194,12 +1197,12 @@ defmodule Ipse.Development.Evaluation.Runner do
 
         Process.put(:comparison_policy, %{policy | session: run.session_id, namespace: namespace})
         resource(output, run, "before_ingestion")
-        {run, preparation_ok} = prepare(run, variant, prepared, output)
+        {run, preparation_ok} = prepare(run, variant, population, output)
 
         if gateway != nil and variant["prepare"] == "research",
           do:
             :ok =
-              Gateway.select(gateway, current_documents(prepared, effective_time(plan)))
+              Gateway.select(gateway, population.eligible)
 
         resource(output, run, "after_preparation")
 
@@ -1236,7 +1239,7 @@ defmodule Ipse.Development.Evaluation.Runner do
             next
           end)
 
-        run = storage_lifecycle(run, variant, prepared, output)
+        run = storage_lifecycle(run, variant, population.selected, output)
         Process.delete(:comparison_run)
         persist_close(output, run)
 
@@ -1355,10 +1358,10 @@ defmodule Ipse.Development.Evaluation.Runner do
 
   defp prepare(run, %{"prepare" => "research"}, _prepared, _output), do: {run, true}
 
-  defp prepare(run, variant, prepared, output) do
+  defp prepare(run, variant, population, output) do
     {run, sources_ok} =
       Resources.measure(output, scope(run, "ingestion"), fn ->
-        Enum.reduce(prepared, {run, true}, fn doc, {current, ok} ->
+        Enum.reduce(population.observed, {run, true}, fn doc, {current, ok} ->
           policy = Process.get(:comparison_policy)
           Process.put(:comparison_policy, %{policy | active: doc})
           store = variant["prepare_options"]["store"]
@@ -1416,23 +1419,18 @@ defmodule Ipse.Development.Evaluation.Runner do
         end)
       end)
 
-    eligible = current_documents(prepared, effective_time(Process.get(:comparison_policy).plan))
-    eligible_keys = MapSet.new(eligible, & &1["key"])
-
-    Enum.each(prepared, fn doc ->
-      unless MapSet.member?(eligible_keys, doc["key"]) do
-        append!(output, "execution.jsonl", %{
-          "phase" => "projection_skipped",
-          "source_id" => doc["source"]["source_id"],
-          "generation" => doc["source"]["generation"],
-          "reason" => "not_current_eligible_source"
-        })
-      end
+    Enum.each(population.excluded, fn doc ->
+      append!(output, "execution.jsonl", %{
+        "phase" => "projection_skipped",
+        "source_id" => doc["source"]["source_id"],
+        "generation" => doc["source"]["generation"],
+        "reason" => "not_current_eligible_source"
+      })
     end)
 
     if sources_ok do
       Resources.measure(output, scope(run, "projection"), fn ->
-        Enum.reduce(eligible, {run, true}, fn doc, {current, ok} ->
+        Enum.reduce(population.eligible, {run, true}, fn doc, {current, ok} ->
           {next, projected} = projections(current, variant, doc, output)
           {next, ok and projected}
         end)
@@ -1873,7 +1871,7 @@ defmodule Ipse.Development.Evaluation.Runner do
 
             chunks =
               Enum.flat_map(
-                current_documents(policy.prepared, effective_time(policy.plan)),
+                policy.population.eligible,
                 & &1["chunks"]
               )
 
@@ -2112,16 +2110,6 @@ defmodule Ipse.Development.Evaluation.Runner do
   end
 
   defp effective_time(plan), do: Process.get(:comparison_as_of_ms, plan["as_of_ms"])
-
-  defp current_documents(documents, at) do
-    documents
-    |> Enum.group_by(& &1["source"]["source_id"])
-    |> Enum.map(fn {_, versions} -> Enum.max_by(versions, & &1["source"]["generation"]) end)
-    |> Enum.reject(
-      &(&1["state"] in ~w(forgotten deleted suppressed expired) or
-          &1["source"]["observed_at_ms"] > at)
-    )
-  end
 
   defp project_queries(path, split, output, digest \\ nil) do
     result = Path.join(output, "projected-queries.json")

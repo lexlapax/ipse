@@ -7,6 +7,7 @@ preserved pre-rewrite chapters. Their dated bodies and verdicts are unchanged.
 
 | Snapshot | Provenance | Current guidance and retained records |
 | --- | --- | --- |
+| [2026-10-21 P27 readiness review and repairs](2026-10-21-p27-readiness-repair/index.md) | Whole-milestone review of `166914a`, four repair dispositions and scoped verification | [Knowledge training](../developer/knowledge-extensions.md), [evaluation training](../developer/knowledge-evaluation.md), [plan](../plan.md) |
 | [2026-10-21 manuals before topic consolidation](2026-10-21-p27-manual-consolidation/index.md) | Source `d35287a`, original manuals/navigation preserved with hashes and replacement ownership | [User manual](../operator/index.md), [developer training](../developer/index.md) |
 | [2026-10-20 shared verification](2026-10-20-p27-shared-verification/index.md) | Contributor manuals from `111228c`, preserved before common proof and captured-runtime instruction rewrites | [Testing](../developer/testing.md), [extension proofs](../developer/testing.md#learn-a-complete-workflow-through-the-compatibility-lab), [evaluation training](../developer/knowledge-evaluation.md) |
 | [2026-10-20 structural implementation](2026-10-20-p27-structure-implementation/index.md) | Shared JSON/hash ownership, pure evaluation declarations and finite example builders; scoped verification and remaining whole-codebase work | [Architecture training](../developer/architecture.md), [plan](../plan.md) |

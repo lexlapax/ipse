@@ -94,6 +94,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
   for {scenario, selected, initialized, model_kinds} <-
         [
           {:current, "all seven variants", 16, ~w(embedding extraction rerank answer)},
+          {:future_tombstone, "all seven variants", 16, ~w(embedding extraction rerank answer)},
           {:suppressed, "lexical", 2, ~w(answer)},
           {:suppressed, "graph_explicit", 3, ~w(answer)},
           {:suppressed, "graph_model", 3, ~w(extraction answer)},
@@ -109,6 +110,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
     test "#{selected} preserves #{scenario} source selection and canonical model accounting",
          ctx do
       scenario = ctx.scenario
+      all_variants = ctx.selected_variant == "all seven variants"
       {server, origin, tag} = model_fixture()
       root = Path.join(ctx.root, Ipse.Usage.id())
       File.mkdir!(root)
@@ -128,6 +130,18 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
         "sha256" => Ipse.JSON.sha256(text),
         "byte_length" => byte_size(text),
         "media_type" => "text/plain"
+      }
+
+      future = %{
+        doc
+        | "document_id" => "future",
+          "generation" => 2,
+          "version" => 2,
+          "observed_at" => "2099-01-01T00:00:00Z",
+          "state" => if(scenario == :future_tombstone, do: "suppressed", else: "current"),
+          "text" => "FUTURE_EVIDENCE requires silence.",
+          "sha256" => Ipse.JSON.sha256("FUTURE_EVIDENCE requires silence."),
+          "byte_length" => byte_size("FUTURE_EVIDENCE requires silence.")
       }
 
       removed = %{
@@ -174,19 +188,19 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
       plan =
         matrix_plan(ctx, origin)
         |> Map.update!("variants", fn variants ->
-          if scenario == :current,
+          if all_variants,
             do: variants,
             else: Enum.filter(variants, &(&1["id"] == ctx.selected_variant))
         end)
 
-      variant_count = if scenario == :current, do: 7, else: 1
+      variant_count = if all_variants, do: 7, else: 1
 
       for {name, value} <- [
             {"plan", plan},
             {"corpus",
              %{
                "schema_version" => 1,
-               "documents" => if(scenario == :current, do: [doc], else: [doc, removed, expired])
+               "documents" => if(all_variants, do: [doc, future], else: [doc, removed, expired])
              }},
             {"queries", query}
           ],
@@ -243,7 +257,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
           end
         end
 
-        if scenario == :current or ctx.selected_variant == "research" do
+        if all_variants or ctx.selected_variant == "research" do
           gateway_calls = JSON.decode!(File.read!(Path.join(output, "gateway-calls.json")))
           gateway_summary = JSON.decode!(File.read!(Path.join(output, "gateway-summary.json")))
 
@@ -298,6 +312,11 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
                      &1["context_evidence"] != [])
                )
 
+        for row <- rows, citation <- row["evidence"] do
+          assert citation["source"]["generation"] == 1
+          assert citation["source"]["source_id"] == doc["source_id"]
+        end
+
         assert Enum.all?(
                  Enum.filter(rows, &(&1["query_id"] == "Q2")),
                  &(&1["response_kind"] == "abstention")
@@ -307,7 +326,7 @@ defmodule Ipse.KnowledgeEvaluationRunnerTest do
         refute requests == []
         encoded = JSON.encode!(requests)
 
-        for secret <- ~w(PRIVATE_FORGOTTEN PRIVATE_EXPIRED NEVER_PROVIDER_INPUT),
+        for secret <- ~w(PRIVATE_FORGOTTEN PRIVATE_EXPIRED NEVER_PROVIDER_INPUT FUTURE_EVIDENCE),
             do: refute(encoded =~ secret)
 
         for kind <- ctx.model_kinds,

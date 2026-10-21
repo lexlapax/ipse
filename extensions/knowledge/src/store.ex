@@ -23,7 +23,7 @@ defmodule IpseKnowledge.Store do
   ]
   @source_fields ~w(source_id partition generation title text uri observed_at_ms event_at_ms expires_at_ms origin)
   @root_fields ~w(format kind partition source_key source_id generation state title uri observed_at_ms event_at_ms expires_at_ms origin content_sha256 content_ref chunks_ref projections draft)
-  @safe 9_007_199_254_740_991
+  @projection_limit 8
 
   def start(name, profile, operation, args) do
     with true <- name?(name) and profile?(profile) and operation in @operations and is_map(args),
@@ -785,7 +785,11 @@ defmodule IpseKnowledge.Store do
            "kind" => "root",
            "partition" => state.profile["partition"],
            "source_key" => source_key,
-           "generation" => if(record, do: record["value"]["generation"] + 1, else: 1),
+           "generation" =>
+             if(record,
+               do: min(record["value"]["generation"] + 1, Evidence.safe_integer_max()),
+               else: 1
+             ),
            "state" => "suppressed",
            "suppressed_at_ms" =>
              Map.get(state.args, "suppressed_at_ms", System.system_time(:millisecond))
@@ -952,6 +956,7 @@ defmodule IpseKnowledge.Store do
          true <-
            root["state"] == "active" and root["generation"] == state.args["generation"] and
              root["draft"] == nil,
+         {:ok, _} <- projection_slot(root, state.args["projection_kind"], state.args["profile"]),
          {:ok, source} <- load_source(state, root),
          {:ok, chunks} <- Evidence.chunks(source),
          selected = Enum.filter(chunks, &(&1["chunk_id"] in state.args["chunks"])),
@@ -1158,7 +1163,7 @@ defmodule IpseKnowledge.Store do
     kind = token["projection_kind"]
 
     with :ok <- projection_items(kind, items, source, token),
-         projection_id = Evidence.id("projection", [kind, ordered(token["profile"])]),
+         {:ok, projection_id} <- projection_slot(root, kind, token["profile"]),
          {:ok, previous} <- projection_previous(state, root, projection_id, kind, items),
          {:ok, pages, records} <- projection_pages(source, token["draft_id"], kind, items),
          manifest =
@@ -1184,7 +1189,6 @@ defmodule IpseKnowledge.Store do
            "ref" => reference(manifest)
          },
          projections = Map.put(root["projections"], projection_id, head),
-         true <- map_size(projections) <= 8,
          desired = root |> Map.put("projections", projections) |> Map.put("draft", nil),
          true <- fits?(desired),
          {:ok, _} <- load_projections(%{state | cache: staged_cache(state.cache, all)}, desired) do
@@ -1200,6 +1204,15 @@ defmodule IpseKnowledge.Store do
 
   defp page_effects(_, pages), do: length(pages)
   defp items_digest(items), do: Evidence.id("projection-items", [ordered(items)])
+
+  defp projection_slot(root, kind, profile) do
+    id = Evidence.id("projection", [kind, ordered(profile)])
+
+    if Map.has_key?(root["projections"], id) or
+         map_size(root["projections"]) < @projection_limit,
+       do: {:ok, id},
+       else: {:error, :projection_bounds}
+  end
 
   defp projection_items("vectors", vectors, source, token) do
     with true <- is_list(vectors) and length(vectors) == length(token["chunks"]),
@@ -2105,7 +2118,7 @@ defmodule IpseKnowledge.Store do
         json(%{
           "version" => 1,
           "namespace" => String.duplicate("0", 64),
-          "generation" => min(@safe, state.cache["generation"] + 16),
+          "generation" => min(Evidence.safe_integer_max(), state.cache["generation"] + 16),
           "records" => records
         })
       )
@@ -2249,7 +2262,7 @@ defmodule IpseKnowledge.Store do
       hash?(root["content_sha256"]) and is_list(root["chunks_ref"]) and
       length(root["chunks_ref"]) <= 32 and
       Enum.all?(root["chunks_ref"], &ref?/1) and is_map(root["projections"]) and
-      map_size(root["projections"]) <= 8 and
+      map_size(root["projections"]) <= @projection_limit and
       Enum.all?(root["projections"], fn {key, head} ->
         hash?(key) and keys?(head, ~w(kind profile_sha256 ref)) and
           head["kind"] in ~w(vectors facts) and hash?(head["profile_sha256"]) and
@@ -2516,8 +2529,8 @@ defmodule IpseKnowledge.Store do
   defp hash?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{64}\z/, value)
   defp id?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{32}\z/, value)
   defp name?(value), do: is_binary(value) and Regex.match?(~r/\A[A-Za-z0-9_.-]{1,64}\z/, value)
-  defp uint?(value), do: is_integer(value) and value in 0..@safe
-  defp positive?(value), do: is_integer(value) and value in 1..@safe
+  defp uint?(value), do: Evidence.safe_uint?(value)
+  defp positive?(value), do: Evidence.safe_positive?(value)
   defp random_id, do: Base.encode16(:crypto.strong_rand_bytes(16), case: :lower)
   defp json(value), do: JSON.encode!(value) |> IO.iodata_to_binary()
 
@@ -2600,6 +2613,12 @@ defmodule IpseKnowledge.Store do
               not Regex.match?(~r/[\x00-\x1f\x7f]/, args["source_id"]))) and
         (not Map.has_key?(args, "expected_revision") or uint?(args["expected_revision"])) and
         (not Map.has_key?(args, "generation") or positive?(args["generation"])) and
+        (operation not in [:put, :open] or
+           (uint?(args["observed_at_ms"]) and
+              Enum.all?(~w(event_at_ms expires_at_ms), fn field ->
+                args[field] == nil or uint?(args[field])
+              end))) and
+        (not Map.has_key?(args, "suppressed_at_ms") or uint?(args["suppressed_at_ms"])) and
         (not Map.has_key?(args, "draft_id") or id?(args["draft_id"])) and
         (not Map.has_key?(args, "text") or
            (is_binary(args["text"]) and String.valid?(args["text"]) and

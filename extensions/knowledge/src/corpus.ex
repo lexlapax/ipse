@@ -91,7 +91,7 @@ defmodule IpseKnowledge.Corpus do
            text?(args["query"], 1024) and is_integer(args["top_k"]) and args["top_k"] in 1..10,
          true <-
            args["as_of_ms"] == nil or
-             (is_integer(args["as_of_ms"]) and args["as_of_ms"] in 0..9_007_199_254_740_991),
+             Evidence.safe_uint?(args["as_of_ms"]),
          true <-
            retrieval["kind"] != "mcp_query" or
              (store_profile["kind"] == "mcp_cas" and
@@ -133,8 +133,7 @@ defmodule IpseKnowledge.Corpus do
          {:ok, profile} <- Profiles.lookup(state.resolved, "stores", args["store"]),
          {:ok, embedding} <- Profiles.lookup(state.resolved, "embedding", args["embedding"]),
          true <-
-           text?(args["source_id"], 256) and is_integer(args["generation"]) and
-             args["generation"] > 0,
+           text?(args["source_id"], 256) and Evidence.safe_positive?(args["generation"]),
          true <- args["action"] in ~w(next inspect abort) and is_list(args["chunks"]),
          true <- length(args["chunks"]) in 1..2 and Enum.all?(args["chunks"], &hash?/1),
          true <- args["action"] != "next" or budgeted_index?(profile, embedding, args["chunks"]) do
@@ -732,8 +731,16 @@ defmodule IpseKnowledge.Corpus do
       "text" => string(8192),
       "uri" => string(512),
       "observed_at_ms" => integer(0, 9_000_000_000_000),
-      "event_at_ms" => %{"type" => ["integer", "null"]},
-      "expires_at_ms" => %{"type" => ["integer", "null"]},
+      "event_at_ms" => %{
+        "type" => ["integer", "null"],
+        "minimum" => 0,
+        "maximum" => Evidence.safe_integer_max()
+      },
+      "expires_at_ms" => %{
+        "type" => ["integer", "null"],
+        "minimum" => 0,
+        "maximum" => Evidence.safe_integer_max()
+      },
       "byte_count" => integer(1, 65_536),
       "content_sha256" => string(64),
       "draft_id" => string(64),
@@ -756,7 +763,11 @@ defmodule IpseKnowledge.Corpus do
         "rerank" => %{"type" => ["string", "null"]},
         "query" => string(1024),
         "top_k" => integer(1, 10),
-        "as_of_ms" => %{"type" => ["integer", "null"]}
+        "as_of_ms" => %{
+          "type" => ["integer", "null"],
+          "minimum" => 0,
+          "maximum" => Evidence.safe_integer_max()
+        }
       }
     }
   end

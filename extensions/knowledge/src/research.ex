@@ -50,7 +50,7 @@ defmodule IpseKnowledge.Research do
              ~w(search fetch retrieval rerank query limits sources)
            ),
          true <-
-           not Map.has_key?(args, "as_of_ms") or num?(args["as_of_ms"], 0, 9_007_199_254_740_991),
+           not Map.has_key?(args, "as_of_ms") or Evidence.safe_uint?(args["as_of_ms"]),
          {:ok, search_profile} <- Profiles.lookup(state.resolved, "search", args["search"]),
          {:ok, fetch_profile} <- Profiles.lookup(state.resolved, "fetch", args["fetch"]),
          {:ok, retrieval} <- Profiles.lookup(state.resolved, "retrieval", args["retrieval"]),
@@ -179,11 +179,11 @@ defmodule IpseKnowledge.Research do
       ) and
         text?(source["source_id"], 256) and text?(source["title"], 128) and
         text?(source["text"], 65_536) and text?(source["uri"], 512) and
-        is_integer(source["generation"]) and source["generation"] > 0 and
-        is_integer(source["observed_at_ms"]) and source["observed_at_ms"] >= 0 and
+        Evidence.safe_positive?(source["generation"]) and
+        Evidence.safe_uint?(source["observed_at_ms"]) and
         Enum.all?(~w(event_at_ms expires_at_ms), fn k ->
           source[k] == nil or
-            (is_integer(source[k]) and source[k] >= 0)
+            Evidence.safe_uint?(source[k])
         end)
 
   defp build_provided(sources) do
@@ -389,7 +389,7 @@ defmodule IpseKnowledge.Research do
         "retrieval" => string(64),
         "rerank" => %{"type" => ["string", "null"]},
         "query" => string(1024),
-        "as_of_ms" => integer(0, 9_007_199_254_740_991),
+        "as_of_ms" => integer(0, Evidence.safe_integer_max()),
         "limits" => %{
           "type" => "object",
           "additionalProperties" => false,
@@ -402,7 +402,17 @@ defmodule IpseKnowledge.Research do
         },
         "sources" => %{
           "type" => "array",
-          "items" => %{"type" => "object"},
+          "items" => %{
+            "type" => "object",
+            "properties" => %{
+              "generation" => integer(1, Evidence.safe_integer_max()),
+              "observed_at_ms" => integer(0, Evidence.safe_integer_max()),
+              "event_at_ms" =>
+                Map.put(integer(0, Evidence.safe_integer_max()), "type", ["integer", "null"]),
+              "expires_at_ms" =>
+                Map.put(integer(0, Evidence.safe_integer_max()), "type", ["integer", "null"])
+            }
+          },
           "maxItems" => @max_sources
         }
       }

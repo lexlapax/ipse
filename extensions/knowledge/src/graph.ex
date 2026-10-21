@@ -82,8 +82,7 @@ defmodule IpseKnowledge.Graph do
          {:ok, store_profile} <- Profiles.lookup(state.resolved, "stores", args["store"]),
          {:ok, extraction} <- Profiles.lookup(state.resolved, "extraction", args["extraction"]),
          true <-
-           text?(args["source_id"], 256) and is_integer(args["generation"]) and
-             args["generation"] > 0,
+           text?(args["source_id"], 256) and Evidence.safe_positive?(args["generation"]),
          true <- is_integer(args["max_edges"]) and args["max_edges"] in 1..32,
          true <-
            is_list(args["chunks"]) and length(args["chunks"]) in 1..2 and
@@ -121,7 +120,7 @@ defmodule IpseKnowledge.Graph do
          true <- num?(args["max_nodes"], 1, 128) and num?(args["max_edges"], 1, 256),
          true <- num?(args["top_k"], 1, 10),
          true <-
-           args["as_of_ms"] == nil or (is_integer(args["as_of_ms"]) and args["as_of_ms"] >= 0) do
+           args["as_of_ms"] == nil or Evidence.safe_uint?(args["as_of_ms"]) do
       at = args["as_of_ms"] || System.system_time(:millisecond)
 
       advance(
@@ -316,8 +315,16 @@ defmodule IpseKnowledge.Graph do
       "text" => string(8192),
       "uri" => string(512),
       "observed_at_ms" => integer(0, 9_000_000_000_000),
-      "event_at_ms" => %{"type" => ["integer", "null"]},
-      "expires_at_ms" => %{"type" => ["integer", "null"]},
+      "event_at_ms" => %{
+        "type" => ["integer", "null"],
+        "minimum" => 0,
+        "maximum" => Evidence.safe_integer_max()
+      },
+      "expires_at_ms" => %{
+        "type" => ["integer", "null"],
+        "minimum" => 0,
+        "maximum" => Evidence.safe_integer_max()
+      },
       "byte_count" => integer(1, 65_536),
       "content_sha256" => string(64),
       "draft_id" => string(64),
@@ -341,7 +348,22 @@ defmodule IpseKnowledge.Graph do
         "generation" => integer(1, 1_000_000_000),
         "max_edges" => integer(1, 32),
         "chunks" => %{"type" => "array", "items" => string(64), "minItems" => 1, "maxItems" => 2},
-        "facts" => %{"type" => "array", "items" => %{"type" => "object"}, "maxItems" => 32}
+        "facts" => %{
+          "type" => "array",
+          "items" => %{
+            "type" => "object",
+            "properties" =>
+              Map.new(~w(valid_from_ms valid_to_ms), fn field ->
+                {field,
+                 %{
+                   "type" => ["integer", "null"],
+                   "minimum" => 0,
+                   "maximum" => Evidence.safe_integer_max()
+                 }}
+              end)
+          },
+          "maxItems" => 32
+        }
       }
     }
   end
@@ -358,7 +380,11 @@ defmodule IpseKnowledge.Graph do
         "max_nodes" => integer(1, 128),
         "max_edges" => integer(1, 256),
         "top_k" => integer(1, 10),
-        "as_of_ms" => %{"type" => ["integer", "null"]}
+        "as_of_ms" => %{
+          "type" => ["integer", "null"],
+          "minimum" => 0,
+          "maximum" => Evidence.safe_integer_max()
+        }
       }
     }
   end

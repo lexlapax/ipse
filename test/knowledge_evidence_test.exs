@@ -70,6 +70,50 @@ defmodule Ipse.KnowledgeEvidenceTest do
     ''')
   end
 
+  test "portable source, citation, fact and query identities stop at the safe integer boundary" do
+    pure(~S'''
+    max=E.safe_integer_max()
+    for n <- [0,1,max], do: assert(E.safe_uint?(n))
+    for n <- [-1,max+1,1.0,nil,"1",true], do: refute(E.safe_uint?(n))
+    for n <- [1,max], do: assert(E.safe_positive?(n))
+    refute E.safe_positive?(0)
+    s=source.("Release requires lock.",%{})
+    attrs=Map.drop(s,~w(version source_key content_sha256))
+    for field <- ~w(generation observed_at_ms event_at_ms expires_at_ms) do
+      assert {:ok,good}=E.source(Map.put(attrs,field,max))
+      assert E.valid_source?(good)
+      assert {:error,:invalid_source}=E.source(Map.put(attrs,field,max+1))
+      refute E.valid_source?(Map.put(good,field,max+1))
+    end
+    c=cite.(s,s["text"])
+    for field <- ~w(generation observed_at_ms event_at_ms) do
+      refute E.valid_span?(s,Map.put(c,field,max+1))
+      unsafe=Map.put(c,field,max+1)
+      assert {:error,_}=E.fact(%{"subject"=>"Release","predicate"=>"requires","object"=>"lock",
+        "polarity"=>"positive","inferred"=>false,"valid_from_ms"=>nil,"valid_to_ms"=>nil,
+        "extraction"=>%{"kind"=>"explicit","profile"=>nil,"version"=>1},"citations"=>[unsafe]})
+    end
+    max_source=source.(s["text"],%{"generation"=>max,"observed_at_ms"=>max,"event_at_ms"=>max})
+    max_citation=cite.(max_source,s["text"])
+    assert E.valid_span?(max_source,max_citation)
+    assert E.valid_fact?(fact.("Release","lock",max_citation))
+    f=fact.("Release","lock",c)
+    attrs=Map.drop(f,~w(version fact_id))
+    for {from,to} <- [{max,max},{nil,max},{max,nil}] do
+      assert {:ok,valid}=E.fact(Map.merge(attrs,%{"valid_from_ms"=>from,"valid_to_ms"=>to}))
+      assert E.valid_fact?(valid)
+    end
+    for field <- ~w(valid_from_ms valid_to_ms) do
+      assert {:error,_}=E.fact(Map.put(attrs,field,max+1))
+      refute E.valid_fact?(Map.put(f,field,max+1))
+    end
+    assert E.current?(s,max)
+    refute E.current?(s,max+1)
+    assert {:ok,_}=E.rank_lexical([s],"Release",1,max)
+    assert {:error,_}=E.rank_lexical([s],"Release",1,max+1)
+    ''')
+  end
+
   test "64 KiB sources are contiguous and UTF8 chunk cuts never lose bytes" do
     pure(~S'''
     s=source.(String.duplicate("a",65536),%{})

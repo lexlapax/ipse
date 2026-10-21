@@ -3,7 +3,7 @@ defmodule Ipse.KnowledgeDomainRegressionsTest do
 
   @suite ~S"""
   ExUnit.start(autorun: false)
-  for file <- ~w(evidence profiles store/state store/mcp_cas store adapters corpus research) do
+  for file <- ~w(evidence profiles store/state store/mcp_cas store adapters corpus graph research) do
     Code.require_file(Path.join("extensions/knowledge/src",file<>".ex"))
   end
 
@@ -23,7 +23,63 @@ defmodule Ipse.KnowledgeDomainRegressionsTest do
 
   defmodule DomainRegressions do
     use ExUnit.Case, async: false
-    alias IpseKnowledge.{Adapters,Corpus,Evidence,Research}
+    alias IpseKnowledge.{Adapters,Corpus,Evidence,Graph,Research}
+
+    test "public query callbacks and schemas enforce portable time before host proposals" do
+      max=Evidence.safe_integer_max()
+      options=%{"stores"=>%{"notes"=>%{"kind"=>"state","scope"=>"project","partition"=>"notes"}},
+        "retrieval"=>%{"words"=>%{"kind"=>"bm25","version"=>1}},"rerank"=>%{}}
+      state=%{resolved: %{"options"=>options},phase: :idle,ctx: nil,cont: nil,pending: nil}
+      corpus=%{"store"=>"notes","retrieval"=>"words","rerank"=>nil,"query"=>"Release","top_k"=>1,"as_of_ms"=>max}
+      graph=%{"store"=>"notes","entity"=>"Release","depth"=>1,"max_nodes"=>8,"max_edges"=>8,"top_k"=>1,"as_of_ms"=>max}
+      for {module,args} <- [{Corpus,corpus},{Graph,graph}] do
+        for at <- [max,nil] do
+          assert {:ok,%{"kind"=>"host_call"},_}=
+            module.handle("invoke.command",%{"id"=>"query","arguments"=>Map.put(args,"as_of_ms",at)},state)
+        end
+        assert {:ok,%{"value"=>%{"status"=>"refused"}},_}=
+          module.handle("invoke.command",%{"id"=>"query","arguments"=>Map.put(args,"as_of_ms",max+1)},state)
+        entry=Enum.find(module.describe()["exports"]["commands"],&(&1["id"]=="query"))
+        assert :ok=Ipse.MCP.Schema.validate_arguments(entry["arguments_schema"],args)
+        assert {:error,_}=Ipse.MCP.Schema.validate_arguments(entry["arguments_schema"],Map.put(args,"as_of_ms",max+1))
+      end
+    end
+
+    test "provided source identities and remote fetch times refuse unsafe integers" do
+      max=Evidence.safe_integer_max()
+      options=%{"search"=>%{"given"=>%{"kind"=>"provided","version"=>1}},
+        "fetch"=>%{"given"=>%{"kind"=>"provided","version"=>1}},
+        "retrieval"=>%{"words"=>%{"kind"=>"bm25","version"=>1}},
+        "rerank"=>%{"judge"=>%{"kind"=>"model_complete","profile"=>"judge","max_candidates"=>16,"quote_bytes"=>128}}}
+      source=%{"source_id"=>"one","generation"=>1,"title"=>"One","text"=>"Release requires lock.",
+        "uri"=>"local:one","observed_at_ms"=>1,"event_at_ms"=>nil,"expires_at_ms"=>nil}
+      args=%{"search"=>"given","fetch"=>"given","retrieval"=>"words","rerank"=>"judge","query"=>"Release",
+        "limits"=>%{"timeout_ms"=>30000,"max_sources"=>1,"max_body_bytes"=>49152},"sources"=>[source],"as_of_ms"=>max-1}
+      state=%{resolved: %{"options"=>options},phase: :idle,cont: nil,ctx: nil}
+      for field <- ~w(generation observed_at_ms event_at_ms expires_at_ms) do
+        safe=put_in(args,["sources"],[Map.put(source,field,max)])
+        assert {:ok,result,_}=Research.handle("invoke.command",%{"id"=>"investigate","arguments"=>safe},state)
+        refute result["value"] && result["value"]["status"]=="refused"
+        unsafe=put_in(args,["sources"],[Map.put(source,field,max+1)])
+        assert {:ok,%{"value"=>%{"status"=>"refused"}},_}=
+          Research.handle("invoke.command",%{"id"=>"investigate","arguments"=>unsafe},state)
+      end
+      for at <- [nil,max+1] do
+        assert {:ok,%{"value"=>%{"status"=>"refused"}},_}=
+          Research.handle("invoke.command",%{"id"=>"investigate","arguments"=>Map.put(args,"as_of_ms",at)},state)
+      end
+      for at <- [max,max+1] do
+        resolved=%{"options"=>%{"fetch"=>%{"web"=>%{"kind"=>"mcp","binding"=>"f","contract"=>"fetch-v1"}}}}
+        text="Release"
+        response=%{"version"=>1,"contract"=>"fetch-v1","status"=>"ok","requested_uri"=>"local:one",
+          "observed_uri"=>"local:one","media_type"=>"text/plain","observed_at_ms"=>at,"text"=>text,
+          "body_sha256"=>Evidence.sha256(text),"complete"=>true,"start_byte"=>0,"end_byte"=>byte_size(text)}
+        {:call,_,cont}=Adapters.start(resolved,:fetch,%{"profile"=>"web","uri"=>"local:one","timeout_ms"=>2000})
+        {cont,page}=text_page(cont,response)
+        result=Adapters.resume(cont,%{"status"=>"ok","value"=>page})
+        if at==max,do: assert(match?({:done,{:ok,_}},result)),else: assert(match?({:done,{:error,:invalid_remote_result,%{}}},result))
+      end
+    end
 
     test "hybrid fuses one chunk while preserving graph claim bases and eligible seed" do
       text="Preface. Release requires lock. Release does not require lock."

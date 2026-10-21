@@ -146,6 +146,15 @@ mutation advances its revision. A source generation identifies one complete
 source version. Drafts, pages and citations bind that generation and its raw
 content hash. A source ID alone does not identify the indexed bytes.
 
+Evidence owns portable numeric identity through `safe_uint?/1` and
+`safe_positive?/1`: integers stop at 9007199254740991. Generations are positive;
+observation, event, expiry, fact-validity and query times are nonnegative, with
+null permitted only for optional times. Command schemas can impose narrower
+limits. Query and source put/open callbacks validate these fields before a Store
+read; remote fetch adapters reject unsafe timestamps before returning a typed
+capture. Imports validate captured source fields after reading the destination
+snapshot and before publication.
+
 Now follow `Corpus.query/2` with BM25. Store returns validated selected sources,
 projections, revision tokens and coverage. Evidence ranks this captured data at
 the selected time. Corpus revalidates the captured roots immediately before
@@ -610,6 +619,12 @@ admits exactly one chunk per invocation and can still refuse its capacity plan.
 Metadata-heavy facts may need smaller explicit batches. Do not dispatch inference
 if its result cannot fit the preflight plan.
 
+`Store.projection_slot/3` uses the same kind/profile identity at admission and
+publication. Each source retains at most eight heads; an existing head remains
+updatable at that ceiling. Refuse a ninth identity before claiming a draft or
+proposing inference. The Store regression drives both Corpus indexing and Graph
+extraction through State and MCP, with existing-profile positive controls.
+
 Host embedding input hashes are opaque. Bind result indices to their original
 inputs and require stable host hashes across pages. Keep raw input hashes
 separately as receipt provenance. The host validates its typed input identity
@@ -634,6 +649,11 @@ finish delayed extraction → refuse stale or suppressed commit
 Suppression roots retain hashes, generation and partition without source text,
 title or URI. Old imports and delayed drafts cannot restore them. Graph traversal
 validates every supporting source. Queries do not rebuild missing projections.
+Forget advances the source generation until its portable integer ceiling. At
+that ceiling it keeps the generation and still advances the CAS revision; the
+terminal suppression state blocks resurrection. The public import-to-forget
+regression covers this boundary through both State and MCP, including stale
+revision and old-import refusals.
 
 All root creation, including suppression import, passes `Store.capacity/3`.
 Its callers supply the added record count and added root count from the actual

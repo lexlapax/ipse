@@ -238,6 +238,11 @@ Extraction selects one or two chunks and at most 32 facts. MCP-backed extraction
 selects exactly one chunk. Explicit facts are packed and checked against actual
 encoded storage and effect costs before the draft is claimed. The count ceiling
 does not guarantee that every combination of large citations fits.
+Each source retains at most eight projection heads across profiles. A new profile
+at that ceiling refuses with `projection_bounds` before model inference or a draft
+claim. Updating an existing profile still uses its current head. Inspect the
+source's projection metadata and reuse an existing profile. If a new profile is
+required, publish a new source generation and explicitly rebuild its projections.
 Larger sources use the explicit source draft lifecycle in
 [Corpus](corpus.md#publish-a-larger-source), rather than hidden
 background extraction. Each invocation has at most 16 effects and a separate

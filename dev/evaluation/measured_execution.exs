@@ -17,119 +17,127 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
     @moduledoc false
     @policy Application.compile_env(:ipse, :verification_environment, nil)
 
-    def bound?, do: @policy != nil
+    def bound?, do: is_map(@policy)
 
-    def launch!(launch, arguments) do
-      policy = policy!()
-      verify_shell!(policy.shell)
-      {:ok, executable} = Ipse.WorkspaceContext.canonical_path(launch["executable"])
-      true = executable == policy.executable
-      bindir = Path.dirname(executable)
-      root = Path.expand("../..", bindir)
-      {:ok, ^root} = Ipse.WorkspaceContext.canonical_path(launch["root"])
-      erlexec = Path.join(bindir, "erlexec")
-      [identity] = Enum.filter(launch["files"], &(&1["path"] == erlexec))
-      %{type: :regular, size: size} = File.lstat!(erlexec)
-      true = size == identity["bytes"] and size <= 67_108_864
-      true = digest!(erlexec, size) == identity["sha256"]
-      {"/bin/sh", ["-c", policy.startup_script, "ipse-erts", root, bindir | arguments]}
-    end
-
-    def enter! do
-      expected = policy!().startup_path
-      ^expected = System.fetch_env!("PATH")
-      System.put_env("PATH", policy!().path)
-      :ok = :io.setopts(:standard_io, encoding: :unicode)
-      assert!()
-    end
-
-    def enter_manager! do
-      manager = Map.take(System.get_env(), ~w(DBUS_SESSION_BUS_ADDRESS XDG_RUNTIME_DIR))
-      for name <- Map.keys(manager), do: System.delete_env(name)
-
-      try do
-        enter!()
-      after
-        System.put_env(manager)
-      end
-    end
-
-    def build!(home, tmp) do
-      policy = policy!()
-      verify_shell!(policy.shell)
-
-      for directory <- policy.directories do
-        %{type: :directory, mode: mode} = File.lstat!(directory.path)
-        true = mode == directory.mode
-        true = Enum.sort(File.ls!(directory.path)) == directory.names
+    if is_map(@policy) do
+      def launch!(launch, arguments) do
+        policy = policy!()
+        verify_shell!(policy.shell)
+        {:ok, executable} = Ipse.WorkspaceContext.canonical_path(launch["executable"])
+        true = executable == policy.executable
+        bindir = Path.dirname(executable)
+        root = Path.expand("../..", bindir)
+        {:ok, ^root} = Ipse.WorkspaceContext.canonical_path(launch["root"])
+        erlexec = Path.join(bindir, "erlexec")
+        [identity] = Enum.filter(launch["files"], &(&1["path"] == erlexec))
+        %{type: :regular, size: size} = File.lstat!(erlexec)
+        true = size == identity["bytes"] and size <= 67_108_864
+        true = digest!(erlexec, size) == identity["sha256"]
+        {"/bin/sh", ["-c", policy.startup_script, "ipse-erts", root, bindir | arguments]}
       end
 
-      for file <- policy.files do
-        %{type: :symlink, mode: mode} = File.lstat!(file.link)
-        true = mode == file.link_mode
-        true = File.read_link!(file.link) == file.target
-        {:ok, resolved} = Ipse.WorkspaceContext.canonical_path(file.link)
-        true = resolved == file.resolved
-        %{type: :regular, mode: mode, size: size} = File.lstat!(resolved)
-        true = mode == file.mode and size == file.bytes
-        true = digest!(resolved, size) == file.sha256
+      def enter! do
+        expected = policy!().startup_path
+        ^expected = System.fetch_env!("PATH")
+        System.put_env("PATH", policy!().path)
+        :ok = :io.setopts(:standard_io, encoding: :unicode)
+        assert!()
       end
 
-      for directory <- [home, tmp] do
-        {:ok, ^directory} = Ipse.WorkspaceContext.canonical_path(directory)
-        %{type: :directory, mode: mode} = File.lstat!(directory)
-        true = Bitwise.band(mode, 0o077) == 0
+      def enter_manager! do
+        manager = Map.take(System.get_env(), ~w(DBUS_SESSION_BUS_ADDRESS XDG_RUNTIME_DIR))
+        for name <- Map.keys(manager), do: System.delete_env(name)
+
+        try do
+          enter!()
+        after
+          System.put_env(manager)
+        end
       end
 
-      %{
-        "PATH" => policy.path,
-        "LANG" => "C.UTF-8",
-        "HOME" => home,
-        "IPSE_HOME" => Path.join(home, ".ipse"),
-        "TMPDIR" => tmp
-      }
-    end
+      def build!(home, tmp) do
+        policy = policy!()
+        verify_shell!(policy.shell)
 
-    def assert! do
-      home = System.fetch_env!("HOME")
-      expected = build!(home, System.fetch_env!("TMPDIR"))
+        for directory <- policy.directories do
+          %{type: :directory, mode: mode} = File.lstat!(directory.path)
+          true = mode == directory.mode
+          true = Enum.sort(File.ls!(directory.path)) == directory.names
+        end
 
-      if System.get_env("IPSE_HOME") == nil,
-        do: System.put_env("IPSE_HOME", expected["IPSE_HOME"])
+        for file <- policy.files do
+          %{type: :symlink, mode: mode} = File.lstat!(file.link)
+          true = mode == file.link_mode
+          true = File.read_link!(file.link) == file.target
+          {:ok, resolved} = Ipse.WorkspaceContext.canonical_path(file.link)
+          true = resolved == file.resolved
+          %{type: :regular, mode: mode, size: size} = File.lstat!(resolved)
+          true = mode == file.mode and size == file.bytes
+          true = digest!(resolved, size) == file.sha256
+        end
 
-      for {name, value} <- expected, do: ^value = System.fetch_env!(name)
-      for name <- policy!().forbidden, do: nil = System.find_executable(name)
+        for directory <- [home, tmp] do
+          {:ok, ^directory} = Ipse.WorkspaceContext.canonical_path(directory)
+          %{type: :directory, mode: mode} = File.lstat!(directory)
+          true = Bitwise.band(mode, 0o077) == 0
+        end
 
-      for name <- ~w(DBUS_SESSION_BUS_ADDRESS XDG_RUNTIME_DIR),
-          do: nil = System.get_env(name)
+        %{
+          "PATH" => policy.path,
+          "LANG" => "C.UTF-8",
+          "HOME" => home,
+          "IPSE_HOME" => Path.join(home, ".ipse"),
+          "TMPDIR" => tmp
+        }
+      end
 
-      :ok
-    end
+      def assert! do
+        home = System.fetch_env!("HOME")
+        expected = build!(home, System.fetch_env!("TMPDIR"))
 
-    defp policy!, do: policy!(@policy)
-    defp policy!(policy) when is_map(policy), do: policy
-    defp policy!(_), do: raise(ArgumentError, "No compiled verification environment")
+        if System.get_env("IPSE_HOME") == nil,
+          do: System.put_env("IPSE_HOME", expected["IPSE_HOME"])
 
-    defp verify_shell!(shell) do
-      {:ok, resolved} = Ipse.WorkspaceContext.canonical_path("/bin/sh")
-      true = resolved == shell.path
-      %{type: :regular, mode: mode, size: size} = File.lstat!(shell.path)
-      true = mode == shell.mode and size == shell.bytes
-      true = digest!(shell.path, size) == shell.sha256
-      :ok
-    end
+        for {name, value} <- expected, do: ^value = System.fetch_env!(name)
+        for name <- policy!().forbidden, do: nil = System.find_executable(name)
 
-    defp digest!(path, expected) do
-      {context, ^expected} =
-        path
-        |> File.stream!(1_048_576, [])
-        |> Enum.reduce({:crypto.hash_init(:sha256), 0}, fn bytes, {context, size} ->
-          size = size + byte_size(bytes)
-          true = size <= expected
-          {:crypto.hash_update(context, bytes), size}
-        end)
+        for name <- ~w(DBUS_SESSION_BUS_ADDRESS XDG_RUNTIME_DIR),
+            do: nil = System.get_env(name)
 
-      context |> :crypto.hash_final() |> Base.encode16(case: :lower)
+        :ok
+      end
+
+      defp policy!, do: @policy
+
+      defp verify_shell!(shell) do
+        {:ok, resolved} = Ipse.WorkspaceContext.canonical_path("/bin/sh")
+        true = resolved == shell.path
+        %{type: :regular, mode: mode, size: size} = File.lstat!(shell.path)
+        true = mode == shell.mode and size == shell.bytes
+        true = digest!(shell.path, size) == shell.sha256
+        :ok
+      end
+
+      defp digest!(path, expected) do
+        {context, ^expected} =
+          path
+          |> File.stream!(1_048_576, [])
+          |> Enum.reduce({:crypto.hash_init(:sha256), 0}, fn bytes, {context, size} ->
+            size = size + byte_size(bytes)
+            true = size <= expected
+            {:crypto.hash_update(context, bytes), size}
+          end)
+
+        context |> :crypto.hash_final() |> Base.encode16(case: :lower)
+      end
+    else
+      def launch!(_launch, _arguments), do: unbound!()
+      def enter!(), do: unbound!()
+      def enter_manager!(), do: unbound!()
+      def build!(_home, _tmp), do: unbound!()
+      def assert!(), do: unbound!()
+
+      defp unbound!, do: raise(ArgumentError, "No compiled verification environment")
     end
   end
 
@@ -469,7 +477,8 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
       )
 
     {_, arguments} = encoded_command(runtime["launch"], code)
-    {executable, arguments} = Environment.launch!(runtime["launch"], arguments)
+    # The verified environment BEAM can replace the unbound bootstrap module.
+    {executable, arguments} = :erlang.apply(Environment, :launch!, [runtime["launch"], arguments])
 
     require!(
       Enum.sum(Enum.map([executable | arguments], &byte_size/1)) <= 65_536,

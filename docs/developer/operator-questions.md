@@ -63,6 +63,13 @@ and canonical prefix digest. `operator_answer` atomically stores the complete
 validated result before continuation. `operator_question_closed` records
 cancellation with no answer.
 
+`Session.Saved` projects conversation events chronologically and checks each
+question against the effective context at that point. Checkpoint normalization
+is a temporary view: installing synthetic unknown results there could hide a
+real tool result recorded later. Completed questions do not replay earlier
+journal prefixes. Canonical hashing still reads each checkpoint's active context;
+compaction bounds that context without removing journal history.
+
 Resume validates schema, identity, prefix, and answer bindings. It restores a
 pending question without inference or a synthetic unknown tool result. Headless
 resume refuses pending input without changing the journal. Owner/VM loss preserves
@@ -78,3 +85,6 @@ The pure suite teaches accepted data. Session fixtures establish durable waits,
 invalid/stale replies, cancellation, recovery, and native-message integrity. When
 changing input handling, add a terminal-state fixture as well: Session validation
 cannot catch a stale buffered line interpreted by the UI as a fresh answer.
+The saved-question scaling fixture keeps active context fixed while quadrupling
+historical events. It detects repeated prefix reconstruction through process
+reductions; it does not claim constant-cost hashing for a growing conversation.

@@ -6,7 +6,7 @@ defmodule Ipse.KnowledgeStoreTest do
     paths = ~w(evidence.ex store/state.ex store/mcp_cas.ex store.ex)
 
     args =
-      Enum.flat_map(:code.get_path(), &["-pa", List.to_string(&1)]) ++
+      Enum.flat_map(Enum.reject(:code.get_path(), &(&1 == ~c".")), &["-pa", List.to_string(&1)]) ++
         Enum.flat_map(paths, &["-r", Path.join(@root, "extensions/knowledge/src/" <> &1)]) ++
         [
           "-r",
@@ -80,6 +80,102 @@ defmodule Ipse.KnowledgeStoreTest do
     refute Code.ensure_loaded?(IpseKnowledge.Store)
     refute Code.ensure_loaded?(IpseKnowledge.Store.State)
     refute Code.ensure_loaded?(IpseKnowledge.Store.MCPCAS)
+  end
+
+  test "source timestamps refuse before Store reads at unsafe integer values" do
+    isolated(~S'''
+    max=E.safe_integer_max()
+    for profile <- [state,remote], operation <- [:put,:open] do
+      args=put.("text",%{})
+      args=if operation==:open,
+        do: args |> Map.delete("text") |> Map.merge(%{"byte_count"=>4,"content_sha256"=>E.sha256("text")}),
+        else: args
+      for field <- ~w(observed_at_ms event_at_ms expires_at_ms) do
+        assert {:call,_,_}=S.start("notes",profile,operation,Map.put(args,field,max))
+        assert {:done,{:error,:invalid_store_arguments,%{}}}=
+          S.start("notes",profile,operation,Map.put(args,field,max+1))
+      end
+    end
+    ''')
+  end
+
+  @tag :projection_slot
+  test "full projection heads refuse before Corpus and Graph inference but permit existing profiles" do
+    isolated(~S"""
+    for file <- ~w(profiles adapters corpus graph),
+      do: Code.require_file(Path.join("extensions/knowledge/src", file <> ".ex"))
+
+    defmodule HeadDriver do
+      def run({:ok, %{"kind" => "host_call", "request" => %{"op" => op} = request}, _}, db, _)
+          when op in ~w(embedding.create model.complete), do: {{:inference, request}, db}
+      def run({:ok, %{"kind" => "host_call", "request" => request}, next}, db, module) do
+        {outcome, db} = Ipse.Development.Fixtures.Knowledge.host(db, request)
+        run(module.handle("host.actions", %{"outcome" => outcome}, next), db, module)
+      end
+      def run({:ok, %{"kind" => "result", "value" => value}, _}, db, _), do: {value, db}
+      def invoke(module, resolved, id, args, db) do
+        initial = %{resolved: resolved, phase: :idle, ctx: nil, cont: nil, pending: nil}
+        module.handle("invoke.command", %{"id" => id, "arguments" => args}, initial)
+        |> run(db, module)
+      end
+    end
+
+    for backend <- [state, remote] do
+      {result, db} = invoke.(F.new(), backend, :put, put.("Release requires tests.", %{}))
+      success.(result)
+      {snap, db} = snapshot.(db, backend)
+      {:ok, [chunk]} = E.chunks(hd(snap["sources"]))
+      chunks = [chunk["chunk_id"]]
+      open = %{"source_id" => "manual:one", "generation" => 1, "chunks" => chunks}
+      embedding = %{"kind" => "embedding", "profile" => "encoder1"}
+      model = fn i -> %{"kind" => "model_complete", "profile" => "extractor#{i}", "version" => 1} end
+      {:ok, vector} = E.vector(%{"chunk_id" => chunk["chunk_id"],
+        "selection_sha256" => E.sha256("selection"), "input_sha256" => E.sha256("input"),
+        "profile" => "encoder1", "model" => "synthetic", "dimensions" => 1, "values" => [1.0]})
+      profiles = [{"vectors", embedding, [vector]}] ++
+        Enum.map(1..7, &{"facts", model.(&1), []})
+      db = Enum.reduce(profiles, db, fn {kind, profile, items}, db ->
+        args = Map.merge(open, %{"projection_kind" => kind, "profile" => profile})
+        {result, db} = invoke.(db, backend, :projection_open, args)
+        opened = success.(result)
+        {result, db} = invoke.(db, backend, :projection_commit,
+          %{"draft" => opened["draft"], kind => items})
+        success.(result)
+        db
+      end)
+      [root] = Enum.filter(Map.values(db.records), &(get_in(&1, ["value", "kind"]) == "root"))
+      assert map_size(root["value"]["projections"]) == 8
+      assert root["value"]["draft"] == nil
+      empty = Map.new(~w(stores search fetch retrieval embedding rerank extraction), &{&1, %{}})
+        |> Map.put("version", 1) |> Map.put("stores", %{"notes" => backend})
+        |> Map.put("retrieval", %{"words" => %{"kind" => "bm25", "version" => 1}})
+      corpus_options = Map.put(empty, "embedding", %{"existing" => embedding,
+        "ninth" => %{"kind" => "embedding", "profile" => "encoder9"}})
+      graph_options = empty |> Map.put("retrieval", %{}) |> Map.put("extraction", %{"existing" => model.(1), "ninth" => model.(9)})
+      corpus_preset = if backend["kind"] == "state", do: "state-dense", else: "mcp-dense"
+      graph_preset = if backend["kind"] == "state", do: "state-model", else: "mcp-model"
+      {:ok, corpus} = IpseKnowledge.Profiles.validate("corpus", corpus_preset, corpus_options)
+      {:ok, graph} = IpseKnowledge.Profiles.validate("graph", graph_preset, graph_options)
+      index = Map.merge(open, %{"store" => "notes", "action" => "next", "embedding" => "ninth"})
+      extract = Map.merge(open, %{"store" => "notes", "extraction" => "ninth", "max_edges" => 1, "facts" => []})
+      for {module, resolved, id, args, key, operation} <- [
+        {IpseKnowledge.Corpus, corpus, "index", index, "embedding", "embedding.create"},
+        {IpseKnowledge.Graph, graph, "extract", extract, "extraction", "model.complete"}
+      ] do
+        {result, unchanged} = HeadDriver.invoke(module, resolved, id, args, %{db | requests: []})
+        assert result == %{"version" => 1, "status" => "refused", "evidence" => [], "claims" => [],
+          "gaps" => [%{"code" => "projection_bounds"}], "coverage" => %{}, "continuation" => nil}
+        assert unchanged.records == db.records
+        assert unchanged.generation == db.generation
+        refute Enum.any?(F.requests(unchanged), fn request ->
+          request["op"] in ~w(state.put embedding.create model.complete) or
+            get_in(request, ["arguments", "action"]) in ~w(cas_root put_immutable_many)
+        end)
+        assert {{:inference, %{"op" => ^operation}}, _} =
+          HeadDriver.invoke(module, resolved, id, Map.put(args, key, "existing"), db)
+      end
+    end
+    """)
   end
 
   test "State and independent MCP publish only selected immutable pages and permanently suppress a source" do
@@ -366,6 +462,51 @@ defmodule Ipse.KnowledgeStoreTest do
       current_abort=%{"source_id"=>"manual:one","draft_id"=>next["draft"]["draft_id"],"expected_revision"=>next["draft"]["revision"]+1}
       {r,unchanged}=invoke.(db,profile,:abort,current_abort); assert {:done,{:error,:stale_draft,%{}}}=r
       assert unchanged.records==db.records
+    end
+    ''')
+  end
+
+  @tag :maximum_import
+  test "public import at maximum generation remains forgettable with stale revision and resurrection fences" do
+    isolated(~S'''
+    for file <- ~w(profiles adapters corpus),do: Code.require_file(Path.join("extensions/knowledge/src",file<>".ex"))
+    {r,db}=invoke.(F.new(),state,:put,put.("Maximum generation import.",%{})); success.(r)
+    {r,_}=invoke.(db,state,:export,%{"source_id"=>"manual:one","cursor"=>nil,"limit"=>1}); envelope=success.(r)
+    schema=Enum.find(IpseKnowledge.Corpus.describe()["exports"]["commands"],&(&1["id"]=="source"))["arguments_schema"]
+    for backend <- [state,remote], generation <- [E.safe_integer_max()-1,E.safe_integer_max()] do
+      options=Map.new(~w(stores search fetch retrieval embedding rerank extraction),&{&1,%{}})
+        |> Map.put("version",1) |> Map.put("stores",%{"notes"=>backend})
+        |> Map.put("retrieval",%{"words"=>%{"kind"=>"bm25","version"=>1}})
+      preset=if backend["kind"]=="state",do: "state-lexical",else: "mcp-lexical"
+      {:ok,resolved}=IpseKnowledge.Profiles.validate("corpus",preset,options)
+      callback=%{resolved: resolved,phase: :idle,ctx: nil,cont: nil,pending: nil}
+      drive=fn drive,result,db ->
+        case result do
+          {:ok,%{"kind"=>"host_call","request"=>request},next} ->
+            {outcome,db}=F.host(db,request)
+            drive.(drive,IpseKnowledge.Corpus.handle("host.actions",%{"outcome"=>outcome},next),db)
+          {:ok,result,_} -> {result["value"],db}
+        end
+      end
+      command=fn db,action,args ->
+        outer=%{"store"=>"notes","action"=>action,"args"=>args}
+        assert :ok=Ipse.MCP.Schema.validate_arguments(schema,outer)
+        drive.(drive,IpseKnowledge.Corpus.handle("invoke.command",%{"id"=>"source","arguments"=>outer},callback),db)
+      end
+      exported=put_in(envelope,["source","generation"],generation)
+      {imported,db}=command.(F.new(),"import",%{"expected_revision"=>0,"export"=>exported})
+      assert imported["status"]=="ok"
+      revision=imported["coverage"]["revision"]
+      {denied,unchanged}=command.(db,"forget",%{"source_id"=>"manual:one","expected_revision"=>revision+1})
+      assert denied["status"]=="refused" and unchanged.records==db.records
+      {forgotten,db}=command.(db,"forget",%{"source_id"=>"manual:one","expected_revision"=>revision})
+      assert forgotten["status"]=="ok",inspect(forgotten)
+      assert forgotten["coverage"]["generation"]==E.safe_integer_max()
+      assert forgotten["coverage"]["revision"]>revision
+      {snap,db}=snapshot.(db,backend)
+      assert snap["sources"]==[] and Enum.any?(snap["gaps"],&(&1["code"]=="suppressed"))
+      {revived,unchanged}=command.(db,"import",%{"expected_revision"=>forgotten["coverage"]["revision"],"export"=>exported})
+      assert revived["status"]=="refused" and unchanged.records==db.records
     end
     ''')
   end

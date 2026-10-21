@@ -453,11 +453,25 @@ defmodule Ipse.Development.VerificationTest do
           catch
             {:measured_execution, :verification_environment} -> true
           end
-          %{"unbound_policy_refused" => refused}
+          environment = Ipse.Development.Evaluation.MeasuredExecution.Environment
+          Application.put_env(:ipse, :verification_environment, %{path: "runtime value must not enable authority"})
+          false = environment.bound?()
+          operations = [{:launch!, [%{}, []]}, {:enter!, []}, {:enter_manager!, []},
+            {:build!, ["/missing-home", "/missing-tmp"]}, {:assert!, []}]
+          all_refused = Enum.all?(operations, fn {operation, args} ->
+            try do
+              apply(environment, operation, args)
+              false
+            rescue
+              error in ArgumentError -> Exception.message(error) == "No compiled verification environment"
+            end
+          end)
+          %{"unbound_policy_refused" => refused, "all_operations_refused" => all_refused}
         end).()
         """
 
-        assert %{"unbound_policy_refused" => true} = Runtime.eval!(runtime, expression)
+        assert %{"unbound_policy_refused" => true, "all_operations_refused" => true} =
+                 Runtime.eval!(runtime, expression)
       end
     )
   end

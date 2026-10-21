@@ -600,7 +600,7 @@ defmodule IpseKnowledge.Adapters do
          true <-
            text?(data["text"], @max_mcp_bytes) and data["end_byte"] == byte_size(data["text"]),
          true <- Evidence.sha256(data["text"]) == data["body_sha256"],
-         true <- is_integer(data["observed_at_ms"]) and data["observed_at_ms"] >= 0 do
+         true <- Evidence.safe_uint?(data["observed_at_ms"]) do
       {:ok, %{"source" => data, "coverage" => %{"complete" => true}, "receipt" => descriptor}}
     else
       _ -> {:error, :invalid_remote_result}
@@ -662,8 +662,8 @@ defmodule IpseKnowledge.Adapters do
   defp finite_score?(score),
     do: is_number(score) and score == score and abs(score) <= 1.7976931348623157e308
 
-  defp safe_uint?(value), do: is_integer(value) and value in 0..9_007_199_254_740_991
-  defp safe_positive?(value), do: safe_uint?(value) and value > 0
+  defp safe_uint?(value), do: Evidence.safe_uint?(value)
+  defp safe_positive?(value), do: Evidence.safe_positive?(value)
 
   defp ascii_name?(value),
     do: is_binary(value) and Regex.match?(~r/\A[A-Za-z0-9_.-]{1,64}\z/, value)

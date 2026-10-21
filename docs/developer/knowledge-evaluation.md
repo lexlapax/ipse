@@ -623,6 +623,15 @@ freeze for the entire execution, audit and scoring lifetime. Retained source-mod
 SDK, dependency, OTP and utility files are still unchanged external prerequisites.
 This local capture is not a portable runtime archive.
 
+`MeasuredExecution.Environment` compiles its policy into the retained BEAM.
+Without that policy it exposes refusal functions for all five environment APIs;
+changing application configuration later cannot enable them. A fresh retained
+worker loads the captured bound implementation instead of the bootstrap version.
+An already loaded conflicting module refuses; the loader does not replace it.
+Launch uses a dynamic call so compiler inference about the unbound compilation
+does not describe the separately compiled bound implementation. Module identity
+and file verification still precede the call; there is no runtime policy fallback.
+
 Later `scripts/evaluate-knowledge.exs` calls with the freeze path and expected hash
 reopen the captured evaluator. Use plain `elixir` for that path. The outer entry
 checks the bounded manifest, complete BEAM membership and file identities before
@@ -1148,9 +1157,18 @@ Follow `run_variant/9`, `prepare/4`, `invoke/4` and `approve/1` in the runner:
 
 1. Each project and variant gets a fresh Session and a fixed share of its declared
    inference budget. Budgets are not transferred or renewed after failure.
-2. Source authoring runs outside the host VM. Ingestion and explicit forget
-   commands finish before projections start. Only current eligible generations
-   reach index or extraction commands. Skipped projections remain recorded.
+2. Source authoring runs outside the host VM and retains every captured generation
+   for citation verification. `Dataset.population/2` resolves one explicit view:
+   discard observations after `as_of_ms`, then select the highest known generation
+   per project/source. Ingest the observed history in generation order, applying
+   explicit forget states before projections. A known suppression remains
+   permanent even if a later row claims to revive that source. Exclude suppressed
+   sources and expired selected versions
+   from index, extraction, Research gateway and rerank admission. A future
+   replacement or tombstone cannot erase a version that was current at the
+   selected time. Skipped projections remain recorded. Separate Store fixtures
+   test individual live transitions; this comparison rebuilds the observed history
+   through its as-of cutoff.
 3. Each invocation logs every new public receipt, including source paging steps.
    A refusal before dispatch cannot acquire an older command's receipt.
 4. Approval checks bind the selected artifact, command owner, profile and complete

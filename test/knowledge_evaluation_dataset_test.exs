@@ -4,6 +4,41 @@ defmodule Ipse.KnowledgeEvaluationDatasetTest do
   use ExUnit.Case, async: true
   alias Ipse.Development.Evaluation.Dataset
 
+  test "as-of population selects observation-eligible generations before lifecycle exclusion" do
+    row = fn id, generation, observed, state ->
+      %{
+        "key" => "#{id}-#{generation}",
+        "identity" => %{"project" => "alpha"},
+        "source" => %{
+          "source_id" => id,
+          "generation" => generation,
+          "observed_at_ms" => observed,
+          "expires_at_ms" => nil
+        },
+        "state" => state
+      }
+    end
+
+    old = row.("replacement", 1, 1000, "current")
+    live = row.("tombstone", 1, 1000, "current")
+    newer = row.("replacement", 2, 3000, "current")
+    tombstone = row.("tombstone", 2, 3000, "suppressed")
+    rows = [tombstone, newer, live, old]
+
+    assert %{selected: [^old, ^live], eligible: [^old, ^live], excluded: [^tombstone, ^newer]} =
+             Dataset.population(rows, 2000)
+
+    assert %{selected: [^newer, ^tombstone], eligible: [^newer]} = Dataset.population(rows, 3000)
+    expired = put_in(newer, ["source", "expires_at_ms"], 3000)
+    assert %{selected: [^expired], eligible: []} = Dataset.population([old, expired], 3000)
+    assert %{selected: [], eligible: []} = Dataset.population(rows, 999)
+    suppressed = row.("tombstone", 1, 1000, "suppressed")
+    resurrection = row.("tombstone", 2, 2000, "current")
+
+    assert %{observed: [^suppressed, ^resurrection], selected: [^resurrection], eligible: []} =
+             Dataset.population([resurrection, suppressed], 3000)
+  end
+
   defp document do
     %{
       "document_id" => "d1",

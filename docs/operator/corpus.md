@@ -290,6 +290,13 @@ Approve only the inspected source text, the selected `encoder` route and the
 shown State writes. A completed index publishes vectors for that source
 generation. State indexing selects one or two chunk IDs per invocation, so larger
 sources need separate explicit batches. MCP indexing selects exactly one chunk.
+Each source retains at most eight projection heads across profiles. At that
+ceiling, indexing with a new profile refuses with `projection_bounds` before
+embedding inference or a draft claim. Updating an existing profile still uses
+its current head. Inspect projection metadata and reuse an existing profile. If
+a new profile is required, publish a new source generation and explicitly rebuild
+its projections.
+
 Changing a source does not automatically reindex it. An interrupted projection
 needs inspection before new work.
 

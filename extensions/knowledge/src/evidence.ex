@@ -10,6 +10,11 @@ defmodule IpseKnowledge.Evidence do
   @max_facts_per_manifest 32
   @max_query_fact_rows @max_store_records * @max_facts_per_manifest
   @max_claim_context 256
+  @safe 9_007_199_254_740_991
+
+  def safe_integer_max, do: @safe
+  def safe_uint?(value), do: is_integer(value) and value in 0..@safe
+  def safe_positive?(value), do: is_integer(value) and value in 1..@safe
 
   def sha256(bytes) when is_binary(bytes),
     do: Base.encode16(:crypto.hash(:sha256, bytes), case: :lower)
@@ -1054,8 +1059,8 @@ defmodule IpseKnowledge.Evidence do
   defp nullable_text?(nil, _), do: true
   defp nullable_text?(s, max), do: text?(s, max)
   defp hash?(s), do: is_binary(s) and Regex.match?(~r/\A[0-9a-f]{64}\z/, s)
-  defp positive?(n), do: is_integer(n) and n > 0
-  defp timestamp?(n), do: is_integer(n) and n >= 0
+  defp positive?(n), do: safe_positive?(n)
+  defp timestamp?(n), do: safe_uint?(n)
   defp optional_time?(nil), do: true
   defp optional_time?(n), do: timestamp?(n)
   defp ordered_times?(a, b), do: is_nil(a) or is_nil(b) or a <= b
