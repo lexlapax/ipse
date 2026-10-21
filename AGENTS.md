@@ -98,6 +98,7 @@ are needed for tests or the demo.
 | Area | Location |
 | --- | --- |
 | Application supervision | `lib/ipse/application.ex` |
+| Scoped settings and admitted session runtime policy | `lib/ipse/config.ex` |
 | Session state, turn loop, approval, cancellation | `lib/ipse/session.ex` |
 | Bounded context checkpoints | `lib/ipse/compaction.ex` |
 | Bounded host JSON, raw SHA-256 and canonical list digests | `lib/ipse/json.ex` |

@@ -1083,97 +1083,24 @@ defmodule Ipse.CLI do
   end
 
   defp config(opts, interactive) do
-    with {:ok, effective} <- Ipse.Config.resolve(opts[:cwd] || default_cwd(), home(), opts) do
-      configured = Ipse.Config.runtime_settings(effective)
-      opts = Keyword.merge(opts, Map.to_list(configured))
-      build_config(opts, interactive, effective)
-    end
-  end
+    workspace = opts[:cwd] || default_cwd()
+    home = home()
 
-  defp build_config(opts, interactive, effective) do
-    name = opts[:provider]
+    client = %{
+      workspace: workspace,
+      home: home,
+      auth_dir: Path.join(home, "auth"),
+      operator_home: Ipse.Skills.operator_home(),
+      mcp_config: opts[:mcp_config],
+      base_url: opts[:base_url],
+      operator_questions: interactive,
+      approval: if(opts[:yes], do: :allow, else: if(interactive, do: :ask, else: :deny))
+    }
 
-    provider =
-      %{
-        "chatgpt" => :chatgpt,
-        "openai" => :openai,
-        "ollama" => :ollama,
-        "anthropic" => :anthropic,
-        "demo" => :demo
-      }[name]
-
-    model =
-      opts[:model] || System.get_env("IPSE_MODEL") ||
-        %{
-          chatgpt: "gpt-6.1-sol",
-          openai: "gpt-6.1-sol",
-          ollama: "qwen3:8b",
-          anthropic: "claude-sonnet-4-5",
-          demo: "scripted"
-        }[provider]
-
-    sandbox_name = opts[:sandbox] || "off"
-    sandbox = %{"off" => :off, "native" => :native}[sandbox_name]
-
-    cond do
-      provider == nil ->
-        {:error, "Unknown provider: #{name}"}
-
-      sandbox == nil ->
-        {:error, "Unknown sandbox mode: #{sandbox_name}; choose off or native"}
-
-      opts[:max_steps] && opts[:max_steps] < 1 ->
-        {:error, "--max-steps must be positive"}
-
-      opts[:context_bytes] && opts[:context_bytes] < 8192 ->
-        {:error, "--context-bytes must be at least 8192"}
-
-      opts[:subagent_concurrency] != 1 &&
-          (opts[:subagent_concurrency] not in [1, 2] or opts[:subagents] != true) ->
-        {:error, "--subagent-concurrency must be 1 or 2 and requires --subagents"}
-
-      provider == :chatgpt && opts[:base_url] ->
-        {:error, "Subscription credentials only go to the official OpenAI endpoint."}
-
-      not Ipse.Provider.valid_base_url?(provider, opts[:base_url]) ->
-        {:error,
-         "Provider endpoint requires HTTPS or explicit HTTP loopback, without credentials, query or fragment."}
-
-      true ->
-        with {:ok, extensions} <- Ipse.Extensions.Registry.prepare(effective.extensions, home()),
-             {:ok, servers} <- Ipse.MCP.Config.load(opts[:mcp_config]),
-             {:ok, _policy} <- Ipse.Sandbox.resolve(sandbox, opts[:cwd] || default_cwd()),
-             {:ok, _key} <- credential(provider) do
-          {:ok,
-           Map.merge(
-             %{
-               provider: provider,
-               model: model,
-               auth_dir: auth_dir(),
-               home: home(),
-               operator_home: Ipse.Skills.operator_home(),
-               configuration: Ipse.Config.manifest(effective),
-               extensions: extensions,
-               embedding_profiles: effective.embedding_profiles,
-               observability: effective.observability.policy,
-               timeout_ms: opts[:timeout_ms],
-               max_output_tokens: opts[:max_output_tokens],
-               budget: effective.budget,
-               journal: effective.journal,
-               sandbox: sandbox,
-               base_url: opts[:base_url],
-               max_steps: opts[:max_steps] || 30,
-               context_bytes: opts[:context_bytes] || 400_000,
-               compact: opts[:compact] != false,
-               mcp_servers: servers,
-               subagents: opts[:subagents] == true,
-               subagent_concurrency: opts[:subagent_concurrency] || 1,
-               operator_questions: interactive,
-               approval: if(opts[:yes], do: :allow, else: if(interactive, do: :ask, else: :deny))
-             },
-             Ipse.Profiles.runtime(effective)
-           )}
-        end
+    with {:ok, effective} <- Ipse.Config.resolve(workspace, home, opts),
+         {:ok, runtime} <- Ipse.Config.runtime(effective, client),
+         {:ok, _key} <- credential(runtime.provider) do
+      {:ok, runtime}
     end
   end
 

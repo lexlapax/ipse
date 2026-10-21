@@ -1,5 +1,5 @@
 defmodule Ipse.Config do
-  @moduledoc "Bounded data-only operator and scoped project configuration."
+  @moduledoc "Bounded configuration resolution and admitted session runtime policy."
   alias Ipse.{MCP.Schema, WorkspaceContext, RuntimeInfo}
 
   @file_bytes 16_384
@@ -14,13 +14,14 @@ defmodule Ipse.Config do
     "subagent_concurrency" => 1,
     "timeout_ms" => 120_000
   }
-  @models %{
-    "chatgpt" => "gpt-6.1-sol",
-    "openai" => "gpt-6.1-sol",
-    "ollama" => "qwen3:8b",
-    "anthropic" => "claude-sonnet-4-5",
-    "demo" => "scripted"
+  @providers %{
+    "chatgpt" => {:chatgpt, "gpt-6.1-sol"},
+    "openai" => {:openai, "gpt-6.1-sol"},
+    "ollama" => {:ollama, "qwen3:8b"},
+    "anthropic" => {:anthropic, "claude-sonnet-4-5"},
+    "demo" => {:demo, "scripted"}
   }
+  @sandboxes %{"off" => :off, "native" => :native}
   @fields ~w(provider model sandbox max_steps context_bytes compact subagents subagent_concurrency timeout_ms max_output_tokens)
   @option_keys Map.new(@fields, fn key -> {key, String.to_atom(key)} end)
   @env_keys Map.new(@fields, &{&1, "IPSE_" <> String.upcase(&1)})
@@ -87,7 +88,12 @@ defmodule Ipse.Config do
         effective = overlay(effective, cli, "CLI")
 
         settings =
-          Map.put_new(effective.settings, "model", @models[effective.settings["provider"]])
+          Map.put_new_lazy(effective.settings, "model", fn ->
+            case @providers[effective.settings["provider"]] do
+              {_, model} -> model
+              nil -> nil
+            end
+          end)
 
         provenance = Map.put_new(effective.provenance, "model", "provider default")
 
@@ -102,13 +108,13 @@ defmodule Ipse.Config do
                ),
              :ok <-
                Ipse.Provider.Limits.validate(%{
-                 provider: String.to_existing_atom(settings["provider"]),
+                 provider: elem(@providers[settings["provider"]], 0),
                  max_output_tokens: settings["max_output_tokens"]
                }),
              :ok <-
                Ipse.Budget.Policy.runtime(%{
                  budget: budget,
-                 provider: String.to_existing_atom(settings["provider"]),
+                 provider: elem(@providers[settings["provider"]], 0),
                  max_output_tokens: settings["max_output_tokens"]
                }),
              true <-
@@ -162,8 +168,57 @@ defmodule Ipse.Config do
     end
   end
 
-  def runtime_settings(effective),
-    do: Map.new(effective.settings, fn {key, value} -> {@option_keys[key], value} end)
+  @doc "Admit runtime resources after resolve/4; client supplies paths and interaction policy."
+  def runtime(effective, client) do
+    settings = effective.settings
+    {provider, _} = Map.fetch!(@providers, settings["provider"])
+    sandbox = Map.fetch!(@sandboxes, settings["sandbox"])
+
+    cond do
+      provider == :chatgpt && client.base_url ->
+        {:error, "Subscription credentials only go to the official OpenAI endpoint."}
+
+      not Ipse.Provider.valid_base_url?(provider, client.base_url) ->
+        {:error,
+         "Provider endpoint requires HTTPS or explicit HTTP loopback, without credentials, query or fragment."}
+
+      true ->
+        with {:ok, extensions} <-
+               Ipse.Extensions.Registry.prepare(effective.extensions, client.home),
+             {:ok, servers} <- Ipse.MCP.Config.load(client.mcp_config),
+             {:ok, _policy} <- Ipse.Sandbox.resolve(sandbox, client.workspace) do
+          {:ok,
+           Map.merge(
+             %{
+               provider: provider,
+               model: settings["model"],
+               auth_dir: client.auth_dir,
+               home: client.home,
+               operator_home: client.operator_home,
+               configuration: manifest(effective),
+               extensions: extensions,
+               embedding_profiles: effective.embedding_profiles,
+               observability: effective.observability.policy,
+               timeout_ms: settings["timeout_ms"],
+               max_output_tokens: settings["max_output_tokens"],
+               budget: effective.budget,
+               journal: effective.journal,
+               sandbox: sandbox,
+               base_url: client.base_url,
+               max_steps: settings["max_steps"],
+               context_bytes: settings["context_bytes"],
+               compact: settings["compact"],
+               mcp_servers: servers,
+               subagents: settings["subagents"],
+               subagent_concurrency: settings["subagent_concurrency"],
+               operator_questions: client.operator_questions,
+               approval: client.approval
+             },
+             Ipse.Profiles.runtime(effective)
+           )}
+        end
+    end
+  end
 
   def manifest(effective),
     do:
@@ -193,7 +248,7 @@ defmodule Ipse.Config do
     %{
       "type" => "object",
       "properties" => %{
-        "provider" => %{"type" => "string", "enum" => Map.keys(@models)},
+        "provider" => %{"type" => "string", "enum" => Map.keys(@providers)},
         "model" => %{"type" => "string", "minLength" => 1, "maxLength" => 200},
         "sandbox" => %{"type" => "string", "enum" => ["off", "native"]},
         "max_steps" => integer(1, 100_000),

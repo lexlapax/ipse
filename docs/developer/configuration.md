@@ -17,8 +17,9 @@ optional; an explicitly selected operator file must exist.
 Resolution proceeds in this order: built-in defaults, operator file, project
 files from root to launch directory, selected main profile, allowlisted
 environment settings, and explicit CLI options. Nearer profiles replace whole
-profile definitions; role assignments merge by key. `runtime_settings/1` converts
-only known field names to atoms. Do not create atoms from arbitrary JSON keys.
+profile definitions; role assignments merge by key. Config owns the closed
+provider/default-model table and supported runtime atoms. Arbitrary JSON keys
+never become atoms.
 
 The result keeps effective settings, field provenance, source descriptors, and a
 canonical fingerprint. Source descriptors include paths, scope, and SHA-256.
@@ -31,6 +32,22 @@ For a concrete exercise, read the precedence fixture in
 `test/config_test.exs` and follow `max_steps` through its operator, project,
 environment, and CLI assignments. Then inspect `overlay/3` and `manifest/1`.
 The winning value and its provenance answer different questions.
+
+After resolution, `Config.runtime/2` assembles the session's runtime policy. Its
+second argument contains the client's workspace and private paths, selected MCP
+file and direct endpoint, approval mode and permission to ask operator questions.
+It reads validated settings directly; the CLI does not apply another set of
+defaults or precedence rules. Runtime admission checks the direct endpoint, then
+prepares extension metadata, loads the explicit MCP configuration and verifies
+the sandbox. The selected profile's runtime facts are merged last, preserving
+its endpoint and reasoning policy. No provider or billing fallback occurs.
+
+The CLI performs its existing credential preflight after those checks. Config
+neither reads credentials nor caches a key in the resulting runtime map.
+`Provider.Request` resolves credentials again inside the owned inference task;
+explicit embedded fixture keys keep their existing behavior. The local
+`ipse config` command calls only `resolve/4` and `manifest/1`, so inspecting
+settings never performs runtime admission or sign-in.
 
 ```sh
 mix test test/config_test.exs test/config_session_test.exs
@@ -78,12 +95,12 @@ not a dump of the operator's process environment.
 | `max_output_tokens` | absent | Provider-specific validation in [provider limits](provider-limits.md) |
 
 `model` is a nonempty string of at most 200 characters. When omitted, resolution
-selects the configured provider's default in `@models`; consult that table when
+selects the configured provider's default in `@providers`; consult that table when
 updating defaults. [Profiles](model-profiles.md), [budgets](budgets.md), and
 [persistence](persistence.md) own their nested schemas.
 
 `EmbeddingProfiles` owns its separate registry and selected execution snapshot.
-The CLI explicitly carries that registry into host runtime; delegation and routed
+Config carries that registry into host runtime; delegation and routed
 child allowlists preserve the private operator reference. Worker SDK values get
 only the bounded selected facts. Follow `test/embedding_config_test.exs` to check
 project refusal and fingerprint inclusion, then the
@@ -103,8 +120,8 @@ checks recorded request endpoint hashes; request-free legacy sessions cannot pro
 an old custom route and accept only an implicit default or exactly pinned profile.
 Use a fresh session when the old destination is unknown.
 
-To add a setting, update the schema, fixed runtime-key map, environment parser,
-manifest/fingerprint policy, CLI conversion, and resume checks together. Decide
+To add a setting, update the schema, fixed CLI-key map, environment parser,
+manifest/fingerprint policy, runtime assembly and resume checks together. Decide
 whether absence must preserve legacy fingerprints. Add a precedence fixture and
 a changed-saved-value fixture. A field that works only on fresh CLI launches is
 an incomplete configuration change.

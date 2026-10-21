@@ -161,7 +161,6 @@ defmodule Ipse.ConfigTest do
     assert config.provenance["model"] == "environment"
     assert config.provenance["max_steps"] == "CLI"
     assert length(config.sources) == 3
-    assert Config.runtime_settings(config).provider == "ollama"
   end
 
   test "project sandbox settings only tighten; explicit operator environment and CLI retain authority",
@@ -208,7 +207,7 @@ defmodule Ipse.ConfigTest do
        c do
     put(Path.join(c.home, "config.json"), %{"provider" => "ollama", "max_output_tokens" => 96})
     assert {:ok, file} = Config.resolve(c.cwd, c.home, [], %{})
-    assert Config.runtime_settings(file).max_output_tokens == 96
+    assert file.settings["max_output_tokens"] == 96
 
     File.write!(
       Path.join(c.home, "config.json"),

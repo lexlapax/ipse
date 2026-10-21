@@ -289,3 +289,34 @@ artifacts. The checks preserve approval, accounting, memory and hook behavior.
 Documentation links pass. No full suite was repeated for this ownership move;
 final integrated native/platform/package gates remain open. No private inputs
 or actual model calls were used, and P27 remains incomplete.
+
+## Assemble runtime policy in Config
+
+S11 implementation record, 2026-10-21, over `f51d80b`. `Config.resolve/4`
+retains data-only discovery, precedence, validation and fingerprinting.
+`Config.runtime/2` owns session policy assembly from those effective values and
+the client's explicit paths, MCP/endpoint selections and interaction policy.
+The CLI's second provider/default table, duplicate settings guards and
+`runtime_settings/1` conversion are removed with their callers. Config's closed
+provider table owns both supported atoms and default models, avoiding reliance
+on another module having created those atoms first.
+
+Endpoint checking and Registry, MCP and sandbox admission retain their order.
+The CLI still checks credentials afterward; the key is discarded there and
+resolved freshly by the owned provider request. Profile runtime facts retain
+the final merge, and embedded Session fixtures are unchanged. No persisted
+configuration field, endpoint, credential reference or billing choice changes.
+The [configuration training chapter](../../developer/configuration.md) explains
+the resolution/admission boundary and its worked precedence exercise.
+
+A synthetic before/after comparison captures 204 exact CLI configuration
+outcomes: all supported providers and an unknown provider, valid/invalid bounds,
+approval modes, direct endpoints, missing MCP input and selected profile routes.
+Every returned map or error matches. Both source-only adversarial reviews report
+no finding and include the complete affected chapter. macOS passes 90 focused
+configuration, CLI, profile, subscription, embedding and budget tests, build,
+formatting, strict compilation, the credential-free demo and documentation links.
+The first sandboxed test launch could not acquire Mix's loopback filesystem
+lock; tests pass with the required local socket access. No model calls or private
+evaluation inputs were used. This scoped record does not claim a full suite,
+Linux rerun or installed-package proof; final integrated gates remain open.
