@@ -420,17 +420,19 @@ acceptance is claimed; inference-policy investigation remains open. Structural
 work now passes the readiness gate above.
 
 The user selected the existing 9B model with reasoning enabled for final answers
-only in the final CPU
-comparison. Its [default-reasoning diagnostic](archive/2026-10-20-p27-quality-remediation/index.md#retain-the-default-reasoning-deadline-result)
+only. Its [default-reasoning diagnostic](archive/2026-10-20-p27-quality-remediation/index.md#retain-the-default-reasoning-deadline-result)
 retains eight first-request deadline cancellations and confirmed cleanup.
 The [bounded-answer increment](archive/2026-10-21-p27-long-answers/index.md)
 retains the advisory trial's one decoded response and seven failures, then a
 480-second failure that stopped its fresh trial after one admission. The explicit
 version-three allowance uses the existing SDK-1 answer helper; extraction,
 reranking and SDK-2 deadlines remain unchanged. Independent source and manual
-reviews found no remaining implementation defect. Validation and a usable final
-operating policy remain in progress. The private workload stays sealed until
-the final source and usable configuration are frozen.
+reviews found no remaining implementation defect. One combined exposed diagnostic
+completed in 7.6 minutes on CPU, with no further batch or production-prompt change.
+The user now chooses to wait for GPU repair. Verification continues, while final
+device policy, inference configuration and the private freeze remain open. The
+private workload stays sealed until the final source and usable configuration
+are frozen.
 
 The [first host-contract record](archive/2026-10-19-p27-mcp-host-contracts/index.md)
 retains causal regressions, independent review corrections and local verification.

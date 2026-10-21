@@ -64,8 +64,29 @@ found one stale selection reference; the README now names the two version-two
 selections explicitly. Source/installed synthetic selections exercise the longer
 policy without claiming actual model quality or long generation.
 
+## Observe one completed CPU answer
+
+The [combined diagnostic](concise-long-trial.json) used the advisory instruction,
+8192 output tokens and a 600000 ms deadline. It predeclared exactly one exposed
+lexical Q02 admission and stopped afterward. Its final answer decoded in
+457545 ms. Canonical usage records 1400 input tokens and 1709 output tokens;
+the separate reasoning-token count is unavailable. The cited freshness statement
+supports the final claim, according to supervisor inspection. This is not an
+independent semantic grade or a workload quality result.
+
+The service verified enabled default thinking and the same pinned model. Session,
+native and staging cleanup were confirmed. Source remained unchanged. The helper
+was a separately hashed diagnostic clone with the advisory instruction;
+production answer instructions stayed unchanged. No further batch ran.
+
+Repeating that duration for 350 answers would take about 44.5 hours before
+preparation, beyond the existing one-day measured-root limit. That multiplication
+illustrates scale, not a runtime forecast. The user chose to wait for GPU repair
+instead of preparing a multi-day CPU comparison. Read-only host diagnostics found
+an older running kernel and loaded NVIDIA module than the installed packages,
+with an NVML driver/library mismatch. No host repair was attempted by this agent.
+
 Final operating-policy selection and the new private evaluation freeze remain
-open. A single exposed diagnostic combining advisory brevity and the supported
-600000 ms ceiling is separately declared to stop after one admission regardless
-of outcome. Its existence does not authorize replacing failed first outcomes or
-opening the private workload. No engine has been selected.
+open. A repaired GPU will still need an explicit benchmark device policy;
+the current owned-service selection deliberately forces CPU execution. No engine
+has been selected, and the private workload remains sealed.
