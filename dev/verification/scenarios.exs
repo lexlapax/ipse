@@ -317,7 +317,7 @@ defmodule Ipse.Development.Verification.Scenarios do
 
     if :os.type() == {:unix, :linux} do
       rows = report["cases"]
-      26 = length(rows)
+      31 = length(rows)
       true = MapSet.size(MapSet.new(rows, & &1["case"])) == length(rows)
       for row <- rows, do: true = row["synthetic"] and row["status"] == "passed"
     else

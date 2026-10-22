@@ -188,6 +188,16 @@ approval shows the effective limit. This Ollama profile omits `reasoning_effort`
 so the model retains its default thinking policy; check the selected backend's
 metadata before relying on that default.
 
+The output allowance and the model's context window are separate limits. Context
+must fit the prompt and all generated tokens, including reasoning. Increasing
+`max_output_tokens` does not increase an Ollama server's context window. For a
+server you manage, select its context through Ollama's
+[context configuration](https://github.com/ollama/ollama/blob/main/docs/faq.mdx),
+then check the loaded model's `context_length` in `/api/ps` after a request.
+Ipse's ordinary provider profile does not configure that server setting.
+For the optional measured comparison, use the explicit service context in the
+[evaluation procedure](../developer/knowledge-evaluation.md#build-the-six-local-bindings).
+
 `model_call_timeout_ms` accepts integers in 1000..600000. It replaces that
 profile's ordinary `timeout_ms` for extension model calls only. The root request
 limit and the extension's requested deadline still narrow it. Without the new

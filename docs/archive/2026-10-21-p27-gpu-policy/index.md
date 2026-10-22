@@ -157,3 +157,8 @@ manifest were installed for one new admission. Its seal SHA-256 is
 Native preparation admitted and completed; the first cell is running. Reference
 answers remain sealed. The actual comparison still requires all 350 first
 outcomes, complete charged-RAM audit and subsequent independent semantic review.
+
+The [2026-10-22 terminal record](../2026-10-22-p27-private-comparison/index.md)
+preserves the subsequent 350 first outcomes, audit-capacity failure and effective
+context-window diagnosis. The admission state above is historical; the execution
+is no longer running and P27 acceptance remains open.

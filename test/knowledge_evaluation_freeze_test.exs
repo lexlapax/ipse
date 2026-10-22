@@ -242,6 +242,73 @@ defmodule Ipse.KnowledgeEvaluationFreezeTest do
              Freeze.resolve_plan(JSON.encode!(changed), resolution(ctx))
   end
 
+  test "extended answers require explicit portable context while historical declarations remain readable",
+       ctx do
+    contracts = %{
+      "outputs" => %{
+        "answer" => "json_schema_v3",
+        "extract" => "json_schema_v2",
+        "rerank" => "json_schema_v2"
+      },
+      "selection" => "per_strategy_eligibility_v1"
+    }
+
+    plan =
+      plan_v2(ctx)
+      |> Map.put("version", 3)
+      |> Map.put("contracts", contracts)
+      |> Map.put("model_origin", "http://127.0.0.1:21434")
+      |> put_in(["profiles", "answer", "max_output_tokens"], 8192)
+
+    bytes = JSON.encode!(plan)
+    artifacts = %{"fixture" => ctx.artifact}
+    automatic = resolution(ctx)
+
+    assert {:error, :context_selection} = Freeze.declare(ctx.repository, bytes, artifacts)
+
+    assert {:error, :context_selection} =
+             Freeze.declare(ctx.repository, bytes, artifacts, automatic)
+
+    explicit =
+      update_in(automatic["model_service"], fn service ->
+        service
+        |> Map.delete("cpu_policy")
+        |> Map.merge(%{
+          "version" => 3,
+          "device_selection" => %{"policy" => "cpu_only"},
+          "context_tokens" => 16_384
+        })
+      end)
+
+    assert {:ok, declared} = Freeze.declare(ctx.repository, bytes, artifacts, explicit)
+    portable = JSON.decode!(declared["bytes"])
+    assert portable["version"] == 3 and portable["policy"]["context_tokens"] == 16_384
+    assert portable["policy"]["device"] == "cpu_only"
+    refute declared["bytes"] =~ ctx.root
+    assert {:ok, _} = Freeze.resolve_plan(declared["bytes"], explicit)
+
+    changed = put_in(explicit, ["model_service", "context_tokens"], 8192)
+
+    assert {:error, :context_selection} =
+             Freeze.declare(ctx.repository, bytes, artifacts, changed)
+
+    assert {:error, :context_selection} = Freeze.resolve_plan(declared["bytes"], changed)
+    changed = put_in(explicit, ["model_service", "context_tokens"], 32_768)
+    assert {:error, :context_selection} = Freeze.resolve_plan(declared["bytes"], changed)
+    assert {:ok, other} = Freeze.declare(ctx.repository, bytes, artifacts, changed)
+    refute other["sha256"] == declared["sha256"]
+
+    historical =
+      portable
+      |> Map.put("version", 2)
+      |> update_in(["policy"], &Map.delete(&1, "context_tokens"))
+
+    assert {:ok, _} = Freeze.resolve_plan(JSON.encode!(historical), automatic)
+    assert {:error, :context_selection} = Freeze.resolve_plan(JSON.encode!(historical), explicit)
+    refute File.exists?(explicit["data_manifest"])
+    refute File.exists?(ctx.output)
+  end
+
   test "one portable declaration yields distinct immutable local execution seals", ctx do
     {:ok, experiment} = declare(ctx)
     relocated = Path.join(ctx.root, "relocated")

@@ -105,6 +105,11 @@ fn main() {
         ("OLLAMA_NO_CLOUD", "1"),
     ];
     assert!(selected.iter().all(|(key, value)| std::env::var(key).as_deref() == Ok(*value)));
+    if lines[0].starts_with("context_") || lines[0] == "nvidia_context" {
+        assert_eq!(std::env::var("OLLAMA_CONTEXT_LENGTH").as_deref(), Ok("16384"));
+    } else {
+        assert!(std::env::var("OLLAMA_CONTEXT_LENGTH").is_err());
+    }
     assert!(std::env::var("IPSE_MODEL_OWNER_INHERITED_TEST").is_err());
     assert!(std::env::var("OPENAI_API_KEY").is_err());
     assert!(std::env::var("HTTP_PROXY").is_err());

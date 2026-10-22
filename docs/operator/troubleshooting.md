@@ -130,6 +130,13 @@ can survive cancellation. Follow [Recovery](recovery.md) before repeating effect
 
 ## Context, configuration, or journal refusal
 
+For an Ollama answer that ends before producing the required result, compare
+input plus output token counts with the loaded model's context window. Reasoning
+also consumes output space. A larger output cap alone cannot enlarge that window.
+Check the selected server's loaded `context_length` and follow
+[context configuration](configuration.md#allow-a-longer-extension-answer).
+Preserve the failed result before trying a separately authorized request.
+
 `/diagnostics` distinguishes context bytes from token accounting. Compaction can
 retain too much necessary content to fit, especially within one long turn.
 `--no-compact` disables both reduction paths. Choose a suitable explicit

@@ -18,7 +18,9 @@ defmodule Ipse.KnowledgeMeasuredModelFixtureTest do
       {:ok, port} = :inet.port(socket)
       :ok = :gen_tcp.close(socket)
 
-      config = Fixture.configuration(root, launch(), "http://127.0.0.1:#{port}", :exit_on_answer)
+      config =
+        Fixture.configuration(root, launch(), "http://127.0.0.1:#{port}", fault: :exit_on_answer)
+
       owner = self()
       Code.ensure_loaded!(Ipse.Runner)
 

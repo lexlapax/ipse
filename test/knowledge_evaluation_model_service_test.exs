@@ -134,8 +134,134 @@ defmodule Ipse.KnowledgeEvaluationModelServiceTest do
     end
   end
 
-  test "saved GPU evidence rechecks frozen visibility and observed placement", c do
-    root = Path.join(c.root, "gpu-evidence")
+  test "explicit context is bounded and independent of CPU or GPU placement", c do
+    root = Path.join(c.root, "context-selection")
+    File.mkdir!(root)
+    gpu = ModelServiceVerification.configuration(c.fixture, root, "nvidia_partial")
+    gpu = Map.merge(gpu, %{"version" => 3, "context_tokens" => 16_384})
+    cpu = put_in(gpu, ["device_selection"], %{"policy" => "cpu_only"})
+
+    assert Service.validate(gpu) == :ok
+    assert Service.device_policy(gpu) == {:ok, "nvidia_visible_mixed_v1"}
+    assert Service.validate(cpu) == :ok
+    assert Service.device_policy(cpu) == {:ok, "cpu_only"}
+
+    for config <- [cpu, gpu], tokens <- [nil, 0, -1, 16_384.0, "16384", 1_048_577] do
+      assert {:error, :configuration} =
+               Service.validate(Map.put(config, "context_tokens", tokens))
+    end
+
+    assert {:error, :configuration} =
+             Service.validate(Map.put(cpu, "cpu_policy", "visibility_v1"))
+
+    assert {:error, :configuration} = Service.validate(Map.put(cpu, "extra", true))
+  end
+
+  test "saved context evidence requires completion windows and permits smaller embedding windows",
+       c do
+    {config, output, started, _, receipt} = service_evidence(c)
+    [{model, digest}] = Map.to_list(config["models"])
+    embedding = "fixture-embedding:latest"
+    embedding_digest = String.duplicate("e", 64)
+
+    config =
+      config
+      |> Map.merge(%{"version" => 3, "context_tokens" => 16_384})
+      |> put_in(["models", embedding], embedding_digest)
+      |> put_in(
+        ["manifests", embedding],
+        "manifests/registry.ollama.ai/library/fixture-embedding/latest"
+      )
+
+    metadata = %{
+      "name" => embedding,
+      "digest" => embedding_digest,
+      "capabilities" => ["embedding"]
+    }
+
+    completion = %{
+      "name" => model,
+      "digest" => digest,
+      "size" => 8,
+      "size_vram" => 4,
+      "context_length" => 16_384
+    }
+
+    embedded = %{
+      "name" => embedding,
+      "digest" => embedding_digest,
+      "size" => 4,
+      "size_vram" => 2,
+      "context_length" => 2048
+    }
+
+    models = (receipt["inventory_before"]["models"] ++ [metadata]) |> Enum.sort_by(& &1["name"])
+
+    receipt =
+      receipt
+      |> Map.put("version", 3)
+      |> put_in(["environment", "OLLAMA_CONTEXT_LENGTH"], "16384")
+      |> put_in(["environment", "OLLAMA_MAX_LOADED_MODELS"], "2")
+      |> put_in(["inventory_before", "models"], models)
+      |> put_in(["inventory_after", "models"], models)
+      |> put_in(["inventory_after", "resident"], [completion, embedded])
+
+    File.write!(
+      started,
+      JSON.encode!(%{
+        "version" => 1,
+        "configuration_sha256" => Ipse.JSON.sha256(JSON.encode!(config))
+      })
+    )
+
+    assert Service.verify_receipt(config, output, receipt) == :ok
+
+    for rows <- [
+          [embedded],
+          [Map.delete(completion, "context_length"), embedded],
+          [Map.put(completion, "context_length", 4096), embedded],
+          [Map.put(completion, "context_length", 16_384.0), embedded],
+          [completion, Map.put(embedded, "context_length", 0)]
+        ] do
+      assert {:error, :service_evidence} =
+               Service.verify_receipt(
+                 config,
+                 output,
+                 put_in(receipt, ["inventory_after", "resident"], rows)
+               )
+    end
+
+    assert {:error, :service_evidence} =
+             Service.verify_receipt(
+               config,
+               output,
+               put_in(receipt, ["environment", "OLLAMA_CONTEXT_LENGTH"], "4096")
+             )
+
+    cpu = put_in(config, ["device_selection"], %{"policy" => "cpu_only"})
+
+    cpu_receipt =
+      receipt
+      |> put_in(["environment", "CUDA_VISIBLE_DEVICES"], "-1")
+      |> put_in(
+        ["inventory_after", "resident"],
+        Enum.map([completion, embedded], &Map.put(&1, "size_vram", 0))
+      )
+
+    File.write!(
+      started,
+      JSON.encode!(%{
+        "version" => 1,
+        "configuration_sha256" => Ipse.JSON.sha256(JSON.encode!(cpu))
+      })
+    )
+
+    assert Service.verify_receipt(cpu, output, cpu_receipt) == :ok
+    assert {:error, :service_evidence} = Service.verify_receipt(cpu, output, receipt)
+  end
+
+  defp service_evidence(c) do
+    root = Path.join(c.root, "service-evidence-" <> Ipse.Usage.id())
     File.mkdir!(root)
     config = ModelServiceVerification.configuration(c.fixture, root, "nvidia_partial")
     output = Path.join(root, "output")
@@ -190,6 +316,16 @@ defmodule Ipse.KnowledgeEvaluationModelServiceTest do
       "inventory_before" => inventory,
       "inventory_after" => Map.put(inventory, "resident", [row])
     }
+
+    {config, output, started, bytes, receipt}
+  end
+
+  test "saved GPU evidence rechecks frozen visibility and observed placement", c do
+    {config, output, started, bytes, receipt} = service_evidence(c)
+    inventory = receipt["inventory_before"]
+    [row] = receipt["inventory_after"]["resident"]
+    root = Path.dirname(output)
+    digest = row["digest"]
 
     before = File.read!(started)
     assert Service.verify_receipt(config, output, receipt) == :ok

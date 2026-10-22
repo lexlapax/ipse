@@ -20,7 +20,7 @@ defmodule Ipse.Development.Verification.ModelService do
   end
 
   def cases do
-    ~w(normal existing_output bad_blob source_symlink occupied_port forge forged_only flood traffic_limit bad_tags bad_show bad_thinking initial_resident changed_after gpu_after stall_tags wildcard exit_during_http callback_exception lifetime owner_death nvidia_full nvidia_partial nvidia_cpu nvidia_empty nvidia_malformed)
+    ~w(normal existing_output bad_blob source_symlink occupied_port forge forged_only flood traffic_limit bad_tags bad_show bad_thinking initial_resident changed_after gpu_after stall_tags wildcard exit_during_http callback_exception lifetime owner_death nvidia_full nvidia_partial nvidia_cpu nvidia_empty nvidia_malformed context_cpu nvidia_context context_wrong context_missing context_empty)
   end
 
   def configuration(fixture, root, mode \\ "normal") do
@@ -80,12 +80,38 @@ defmodule Ipse.Development.Verification.ModelService do
         vram =
           case mode do
             "nvidia_full" -> 8
-            "nvidia_partial" -> 4
+            name when name in ~w(nvidia_partial nvidia_context) -> 4
             "nvidia_malformed" -> "4"
             _ -> 0
           end
 
         %{"models" => if(mode == "nvidia_empty", do: [], else: [Map.put(row, "size_vram", vram)])}
+      else
+        resident
+      end
+
+    explicit_context = String.starts_with?(mode, "context_") or mode == "nvidia_context"
+
+    resident =
+      if explicit_context do
+        rows =
+          if mode == "context_empty",
+            do: [],
+            else:
+              Enum.map(resident["models"], fn row ->
+                row = Map.put(row, "size", 8)
+
+                if mode == "context_missing",
+                  do: row,
+                  else:
+                    Map.put(
+                      row,
+                      "context_length",
+                      if(mode == "context_wrong", do: 4096, else: 16_384)
+                    )
+              end)
+
+        %{"models" => rows}
       else
         resident
       end
@@ -128,15 +154,29 @@ defmodule Ipse.Development.Verification.ModelService do
       "cpu_policy" => "visibility_v1"
     }
 
-    if gpu do
+    selection =
+      if gpu do
+        selection
+        |> Map.delete("cpu_policy")
+        |> Map.merge(%{
+          "version" => 2,
+          "device_selection" => %{
+            "policy" => "nvidia_visible_mixed_v1",
+            "uuid" => "GPU-00000000-0000-0000-0000-000000000001"
+          }
+        })
+      else
+        selection
+      end
+
+    if explicit_context do
       selection
       |> Map.delete("cpu_policy")
       |> Map.merge(%{
-        "version" => 2,
-        "device_selection" => %{
-          "policy" => "nvidia_visible_mixed_v1",
-          "uuid" => "GPU-00000000-0000-0000-0000-000000000001"
-        }
+        "version" => 3,
+        "context_tokens" => 16_384,
+        "device_selection" =>
+          if(gpu, do: selection["device_selection"], else: %{"policy" => "cpu_only"})
       })
     else
       selection
@@ -278,10 +318,13 @@ defmodule Ipse.Development.Verification.ModelService do
     )
 
     File.write!(Path.join(Path.dirname(output), "receipt.json"), encoded)
-    positive? = name in ~w(normal forge flood nvidia_full nvidia_partial)
+
+    positive? =
+      name in ~w(normal forge flood nvidia_full nvidia_partial context_cpu nvidia_context)
 
     returned? =
-      positive? or name in ~w(changed_after gpu_after nvidia_cpu nvidia_empty nvidia_malformed)
+      positive? or
+        name in ~w(changed_after gpu_after nvidia_cpu nvidia_empty nvidia_malformed context_wrong context_missing context_empty)
 
     if returned? do
       check(
@@ -306,6 +349,16 @@ defmodule Ipse.Development.Verification.ModelService do
 
     if name in ~w(nvidia_cpu nvidia_empty),
       do: check(receipt["code"] == "gpu_use_not_observed", "GPU absence was not reported")
+
+    if name in ~w(context_wrong context_missing),
+      do: check(receipt["code"] == "context_length", "wrong or missing context was not refused")
+
+    if name == "context_empty",
+      do:
+        check(
+          receipt["code"] == "context_not_observed",
+          "missing completion evidence was not refused"
+        )
 
     if name == "callback_exception",
       do:

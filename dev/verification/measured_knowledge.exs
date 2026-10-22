@@ -69,7 +69,12 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge do
     true = search_port != URI.parse(origin).port
 
     service =
-      Ipse.Development.Fixtures.ModelService.configuration(root, launch, origin, fault, true, gpu)
+      Ipse.Development.Fixtures.ModelService.configuration(root, launch, origin,
+        fault: fault,
+        verification: true,
+        gpu: gpu,
+        context_tokens: if(long_answers, do: 16_384)
+      )
 
     data_root = Path.join(root, "data")
     File.mkdir!(data_root)

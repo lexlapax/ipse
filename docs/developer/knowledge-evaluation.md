@@ -157,7 +157,10 @@ tokens and matching reservations. Its answer wire must omit `think`; extraction
 and rerank must still send `think: false`, a version-two schema and a 4096-token
 cap. The scripted server answers promptly. This exercises transport, exact
 approvals, accounting, freeze/audit and scoring admission, not actual reasoning
-quality or sustained eight-minute generation.
+quality or sustained eight-minute generation. Longer-answer selections also use
+service and experiment version three with an explicit 16384-token context. The
+scripted text model reports that window; the embedding model reports 2048. This
+checks capability-specific context admission without claiming actual prompt fit.
 
 Use `--selection sealed-gpu-answers` with another fresh output to exercise the
 same longer-answer policy plus the explicit NVIDIA selection. Its daemon is
@@ -398,7 +401,8 @@ Keep format versions separate when tracing a run:
 | Object | New comparison version | Responsibility |
 | --- | --- | --- |
 | Executable and portable plan | 3 | Fix text output contracts and individual strategy qualification |
-| Experiment and local execution seal | 2 | Bind portable policy and one measured local resolution |
+| Portable experiment | 3 for explicit context; historical 2 for automatic context | Bind portable device/context policy and content identities |
+| Local execution seal | 2 | Bind one measured local resolution and captured runtime |
 | Answer preparation bundle and model request | 2 or explicitly selected 3 | Retain the complete schema-bound approved request and deadline |
 | Saved prediction row and independent review envelope | 2 | Preserve first outcomes and bound judgments |
 | Scoring declaration | 3 | Bind the complete validated declaration and prediction files to review |
@@ -572,7 +576,7 @@ is not relocatable or renewable.
 
 A resolution contains exactly `artifacts`, `model_origin`, `search_port`, `reports`,
 `data_manifest` and `model_service`. The service selection is the existing closed
-`ModelService.validate/1` schema. Its origin, exact model map and device policy
+`ModelService.validate/1` schema. Its origin, exact model map, device policy and context policy
 must match the experiment. The shared model port 11434 is forbidden; the search
 port must differ. Sealing proves neither port availability nor listener ownership.
 
@@ -602,7 +606,7 @@ files = for path <- Enum.sort(files), File.lstat!(path).type != :directory do
 end
 models = plan["models"]
 service = %{
-  "version" => 1, "origin" => "http://127.0.0.1:47631", "models" => models,
+  "version" => 3, "origin" => "http://127.0.0.1:47631", "models" => models,
   "manifests" => Map.new(models, fn {name, _} ->
     [model, tag] = String.split(name, ":", parts: 2)
     {name, "manifests/registry.ollama.ai/library/" <> model <> "/" <> tag}
@@ -610,7 +614,8 @@ service = %{
   "cache_source" => cache,
   "runtime" => %{"executable" => "bin/ollama", "files" => files},
   "limits" => %{"ready_ms" => 60000, "lifetime_ms" => 1800000, "metadata_ms" => 10000},
-  "cpu_policy" => "visibility_v1"
+  "device_selection" => %{"policy" => "cpu_only"},
+  "context_tokens" => 16384
 }
 :ok = Ipse.Development.Evaluation.ModelService.validate(service)
 resolution = %{
@@ -624,8 +629,8 @@ File.chmod!(Path.join(root, "resolution.json"), 0o600)
 '
 ```
 
-This creates the legacy version-one CPU selection. For an authorized GPU
-comparison, first check `nvidia-smi -L` and set `IPSE_MODEL_GPU_UUID` to one complete
+This creates a version-three CPU selection with explicit context. For an authorized
+GPU comparison, first check `nvidia-smi -L` and set `IPSE_MODEL_GPU_UUID` to one complete
 physical GPU UUID it reports. Then replace the proposed service selection before
 declaration:
 
@@ -635,8 +640,7 @@ export IPSE_MODEL_GPU_UUID='GPU-REPLACE-WITH-THE-REPORTED-UUID'
 mix run -r dev/evaluation/model_service.exs -e '
 path = Path.join(System.fetch_env!("IPSE_BENCHMARK"), "resolution.json")
 resolution = JSON.decode!(File.read!(path))
-service = resolution["model_service"] |> Map.delete("cpu_policy") |> Map.merge(%{
-  "version" => 2,
+service = resolution["model_service"] |> Map.merge(%{
   "device_selection" => %{
     "policy" => "nvidia_visible_mixed_v1",
     "uuid" => System.fetch_env!("IPSE_MODEL_GPU_UUID")
@@ -650,8 +654,148 @@ File.write!(path, JSON.encode!(Map.put(resolution, "model_service", service)))
 The UUID must contain the full `GPU-` prefix and canonical lowercase hexadecimal
 groups. Indices, abbreviated IDs, MIG IDs, lists and unknown policy fields refuse.
 Validation checks the selection's shape; it does not discover hardware. The new
-policy changes only CUDA visibility. ROCm and Vulkan remain disabled, as do cloud
-models. It grants no GPU-only execution guarantee or model/provider fallback.
+device policy changes only CUDA visibility. ROCm and Vulkan remain disabled, as
+do cloud models. It grants no GPU-only execution guarantee or model/provider
+fallback. Both CPU and GPU version-three selections set `OLLAMA_CONTEXT_LENGTH`
+from `context_tokens`. The field accepts an integer from 1 through 1048576.
+
+Choose a context that fits the prompt and generated output, including reasoning.
+`max_output_tokens` limits generation; it does not enlarge the model context.
+New extended-answer declarations require explicit context strictly greater than
+every text profile's output allowance. That check is necessary but cannot prove
+that tokenized prompts fit. Before sealing private data, run exposed prompts with
+the exact selected model, reasoning, output and context settings. Inspect actual
+loaded `context_length` through the service evidence. The example's 16384 value
+is an explicit configuration example, not a measured quality or capacity result.
+
+### Check one exposed answer before a private freeze
+
+Use a built source checkout, the answer artifact and the reviewed version-three
+`resolution.json` above. Prepare `plan.json` with the extended-answer profile you
+intend to measure. This exercise uses one public checksum statement. Replace its
+query and citation with representative exposed evidence when checking prompt fit.
+Never use private questions or reference answers for this step. One small prompt
+checks the route and context admission; it cannot establish the largest prompt's
+headroom or held-out quality.
+
+Choose a fresh output outside the checkout. Save this trusted driver there, then
+run it from the repository root. It approves only the exact answer-helper request,
+starts one fresh owned daemon, invokes the public Session once and saves its
+first result, accounting and cleanup. It downloads nothing and performs no main
+conversation request.
+
+```sh
+IPSE_PREFLIGHT=$(mktemp -d)
+cat > "$IPSE_PREFLIGHT/probe.exs" <<'ELIXIR'
+for file <- ~w(answer model_service session),
+  do: Code.require_file("dev/evaluation/" <> file <> ".exs", File.cwd!())
+defmodule ContextProbeNoMain do
+  def complete(_, _, _, _), do: raise("unexpected main inference")
+end
+alias Ipse.Development.Evaluation.{Answer, ModelService, Session}
+alias Ipse.Extensions.{Manifest, ModelCall}
+[benchmark, root] = System.argv()
+plan = File.read!(Path.join(benchmark, "plan.json")) |> JSON.decode!()
+resolution = File.read!(Path.join(benchmark, "resolution.json")) |> JSON.decode!()
+service = resolution["model_service"]
+profile = plan["profiles"]["p27_answer"]
+3 = service["version"]
+true = service["origin"] == profile["base_url"]
+true = service["context_tokens"] > profile["max_output_tokens"]
+timeout = profile["model_call_timeout_ms"]
+true = is_integer(timeout) and timeout in 120001..600000
+save = fn name, value ->
+  path = Path.join(root, name)
+  File.write!(path, JSON.encode!(value) <> "\n", [:exclusive, :sync])
+  File.chmod!(path, 0o600)
+end
+quote = "A release includes its checksums."
+hash = &Ipse.JSON.sha256/1
+citation = %{
+  "version" => 1, "source_id" => "manual-source", "source_key" => hash.("manual-source"),
+  "generation" => 1, "content_sha256" => hash.(quote), "chunk_id" => hash.("manual-chunk"),
+  "start_byte" => 0, "end_byte" => byte_size(quote), "quote" => quote,
+  "quote_sha256" => hash.(quote), "uri" => "provided:context-probe",
+  "observed_at_ms" => 1000, "event_at_ms" => nil,
+  "origin" => %{"kind" => "provided", "ledger_class" => "open"}
+}
+{:ok, bundle} = Answer.prepare("What does a release include?", 1000,
+  [%{"citation" => citation}], "json_schema_v3", timeout)
+artifact_path = plan["artifacts"]["answer"]
+artifact_bytes = File.read!(Path.join(artifact_path, "extension.json"))
+{:ok, artifact} = Manifest.decode(artifact_bytes)
+digest = hash.(artifact_bytes)
+trust = %{"artifact" => digest, "capabilities" => artifact["capabilities"],
+  "allow_project" => false, "allow_children" => false}
+reserve = service["context_tokens"]
+cap = profile["max_output_tokens"]
+runtime = %{
+  provider: :ollama, model: "no-main", provider_module: ContextProbeNoMain,
+  compact: false, max_steps: 2, timeout_ms: timeout,
+  profiles: %{"p27_answer" => profile},
+  budget: %{"version" => 1, "max_requests" => 1, "max_input_tokens" => reserve,
+    "max_output_tokens" => cap, "reserve_input_tokens" => reserve, "reserve_output_tokens" => cap}
+}
+approval_runtime = Map.put(runtime, :extensions,
+  [%{identity: %{"capabilities" => artifact["capabilities"]}}])
+approve = fn review ->
+  proposed = review.proposed
+  true = review.verb == "answer" and ModelCall.delegated_approval?(review.name, proposed)
+  true = proposed["extension"] == "answer" and proposed["artifact_sha256"] == digest
+  true = proposed["namespace"] == Process.get(:context_probe).session_id
+  true = proposed["request"] == bundle["request"]
+  {:ok, selected, execution} = ModelCall.prepare(approval_runtime, bundle["request"])
+  {:ok, destination} = Ipse.Provider.destination(selected)
+  true = proposed["execution"] == execution and proposed["destination"] == destination
+  {:approve, %{name: review.name, proposed: proposed}}
+end
+save.("prepared.json", bundle)
+result = ModelService.run(service, Path.join(root, "service"), fn ->
+  {:ok, run} = Session.open(%{
+    root: root, project: "exposed", variant: "context-probe", runtime: runtime,
+    artifacts: [%{instance: "answer", path: artifact_path, digest: digest,
+      options: %{}, order: 0, trust: trust}],
+    bindings: %{"answer" => %{"instance" => "answer", "id" => "complete"}},
+    required_verbs: ["answer"], timeout_ms: timeout + 60000, approval_validator: approve
+  })
+  Process.put(:context_probe, run)
+  try do
+    invoked = Session.invoke(run, "answer", %{"request" => bundle["request"]})
+    {status, receipt, next} = invoked
+    Process.put(:context_probe, next)
+    first = if status == :ok, do: receipt,
+      else: %{"error" => inspect(receipt), "receipt" => List.last(next.receipts)}
+    save.("first-result.json", %{"status" => to_string(status), "result" => first})
+    {:ok, snapshot} = Session.snapshot(next)
+    save.("accounting.json", snapshot["accounting"])
+    {:ok, receipt, _} = invoked
+    {:ok, decoded} = Answer.decode_answer(receipt["value"]["value"]["text"], bundle)
+    save.("decoded.json", decoded)
+    :passed
+  after
+    closed = Session.close(Process.get(:context_probe))
+    save.("close.json", %{"status" => to_string(elem(closed, 0)), "receipt" => elem(closed, 1)})
+    {:ok, _} = closed
+  end
+end)
+save.("service-receipt.json", result.receipt)
+{:returned, :passed} = result.work
+:ok = ModelService.verify_receipt(service, Path.join(root, "service"), result.receipt)
+IO.puts(JSON.encode!(%{"status" => "passed", "context_tokens" => service["context_tokens"],
+  "resident" => result.receipt["inventory_after"]["resident"], "quality_measured" => false}))
+ELIXIR
+mix run "$IPSE_PREFLIGHT/probe.exs" "$IPSE_BENCHMARK" "$IPSE_PREFLIGHT"
+```
+
+Expect `status: "passed"`, the selected completion model's exact `context_length`,
+`close.json` status `ok` and confirmed native/staging cleanup in the service receipt.
+Inspect `accounting.json` for the completed request's input/output counts and finality.
+The decoded file establishes schema and citation mapping, not semantic support.
+For larger exposed prompts, compare total tokens with context and retain every
+first outcome. A wrong context, failed decode, unknown request or unconfirmed
+cleanup blocks private freezing. Preserve its directory and diagnose it before
+starting a separately authorized diagnostic in another fresh output. Never rerun
+this driver into its existing service directory.
 
 ### Declare and seal the selected policy
 
@@ -677,16 +821,22 @@ IPSE_FREEZE_SHA256=$(elixir -e 'r = File.read!(hd(System.argv())) |> String.spli
 
 Expect `status: "ok"`, each path/hash and the source commit. The declaration's
 `Freeze.declare/4` validates the complete resolution without opening its paths,
-then projects only the finite device policy. UUID changes preserve portable
-experiment identity and require a fresh local seal. Device-policy changes require
-a fresh declaration too. A CPU/GPU mismatch refuses before freeze output exists.
+then projects the finite device and context policy. An explicit context produces
+experiment version three. UUID changes preserve portable experiment identity and
+require a fresh local seal. Device-policy or context changes require a fresh
+declaration too. A device or context mismatch refuses before freeze output exists.
 `measure` and `audit` reject a new `--resolution`; they use the sealed selection.
 
-`Freeze.declare/3`, or the declaration command without `--resolution`, retains the
-legacy CPU default. An explicit CPU resolution produces the same declaration
-bytes for the same source, plan and artifacts. Both forms remove source/artifact
-paths, profile origins and search port. The private blind seed remains in the
-experiment. Keep that declaration away from the independent reviewer.
+For ordinary answer plans, `Freeze.declare/3` or declaration without `--resolution`
+retains the legacy automatic-context CPU default and experiment version two.
+An automatic-context CPU resolution produces the same declaration bytes for the
+same source, plan and artifacts. New extended-answer plans refuse that default
+and require a version-three service resolution. Historical version-one CPU and
+version-two GPU service selections and version-two experiments remain readable,
+including previously sealed extended-answer experiments. Reading history grants
+no new execution or replacement-auditor authority. All declaration forms remove
+source/artifact paths, profile origins and search port. The private blind seed
+remains in the experiment. Keep it away from the independent reviewer.
 
 Use the actual reviewed distribution layout when building a selection. Missing
 libraries, symlinks or a changed manifest must refuse; do not omit required files
@@ -842,9 +992,14 @@ claim/scope identities, model-service cleanup, domain files, first predictions
 and recomputed resource summaries. It verifies each closed cell's files, then
 `Runner.audit_merged_files/2` compares all six merged streams with
 those cells in sealed schedule order. The comparison covers predictions,
-execution, usage, request resources, storage resources and timings. Each stream
-has a cumulative 64-MiB limit. Resource computation uses those exact checked
-bytes, and `report.merged_files` binds their hashes into the audit identity.
+execution, usage, request resources, storage resources and timings. Each cell file
+is bounded at 64 MiB. Raw execution may total at most fourteen such files. The
+auditor compares 64-KiB chunks and binds each cell to its already-audited inventory
+digest while computing the aggregate digest. It never retains the raw execution
+stream as one binary. Each other merged stream remains bounded at 32 MiB, as in
+finalization. Resource computation uses the parsed bytes retained from those same
+checked chunks; it does not reopen unchecked files. `report.merged_files` binds
+the aggregate hashes into the audit identity.
 Changing aggregate clocks or deleting requests cannot pass by recomputing a
 matching summary.
 
@@ -1876,7 +2031,7 @@ elixir scripts/verify.exs installed model-service \
   --output "$IPSE_MODEL_PROOF/installed"
 ```
 
-Expect the same 26 synthetic cases with `verification.mode: "installed"`.
+Expect the same 31 synthetic cases with `verification.mode: "installed"`.
 The common verifier compiles the two trusted proof modules before host launch.
 Runner, HTTP and native execution use the selected package. The proof child's
 PATH contains declared utilities and bundled Erlang, with no development commands.
@@ -1911,7 +2066,11 @@ cannot switch verification off later.
    inventory and private runtime/manifest/config rechecks. Final resident models
    must have selected digests. CPU requires integer-zero `size_vram`; GPU requires
    a nonempty final set and `0 < size_vram <= size` on every row, with safe integer
-   bounds. Partial placement passes. Missing or malformed observations fail.
+   bounds. Partial placement passes. Version three additionally checks bounded
+   positive `context_length` on every resident row and exact selected context for
+   completion-capable models. All configured completion models must appear in the
+   final inventory, and before/after model metadata must match. An embedding-only
+   model may report a smaller positive window. Missing or malformed observations fail.
    A callback exception preserves the raised outcome and reports `callback_raised`;
    it proceeds directly to cleanup without further HTTP inventory.
 5. The caller waits for the Task and HTTP clients to stop, closes the daemon,
@@ -1942,15 +2101,23 @@ the attempt and establishes kernel membership before calling the owner. A servic
 receipt alone still establishes neither the complete native population nor model
 quality; the post-exit audit joins the cell and native evidence.
 
-GPU service receipts use version two and normalized inventories. During measured
-audit, `ModelService.verify_receipt/4` reads the known service directory's existing
-`started.json`, matches its configuration digest against the frozen selection,
-reconstructs the complete expected environment and validates the same capability
-and residency rows as live admission. Its verified environment constructor is
-deterministic and read-only. Receipt data cannot choose it or override visibility.
-CPU receipts and their existing audit behavior remain unchanged. To exercise
-these boundaries, follow `nvidia_partial` and `nvidia_cpu` in the service fixture,
-then the malformed-capability and masked-CPU-answer mutations in its test file.
+Service receipts match their configuration version. Version two preserves the
+GPU contract; version three adds explicit context on either CPU or GPU. During
+measured audit, `ModelService.verify_receipt/4` reads the known service directory's
+existing `started.json`, matches its configuration digest against the frozen
+selection, reconstructs the complete expected environment and validates the same
+capability, residency and context rows as live admission. Its verified environment
+constructor is deterministic and read-only. Receipt data cannot choose it or
+override visibility or context. Legacy CPU receipts retain their original checks.
+
+For a change exercise, follow `context_cpu` and `nvidia_context` in
+`dev/verification/model_service.exs`. Compare `context_wrong`, `context_missing`
+and `context_empty`: the callback returns once, but the final service receipt
+refuses the wrong, missing or unobserved completion context. Re-run the 31-case
+source and installed proofs above. Then run the saved-evidence mutations in
+`test/knowledge_evaluation_model_service_test.exs`, which change context, model
+capabilities and environment independently. These endpoint inventories do not
+prove continuous placement or context history for every earlier request.
 
 ### Exercise the native aggregate collector
 

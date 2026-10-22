@@ -251,8 +251,14 @@ defmodule Ipse.KnowledgeEvaluationMeasuredTest do
       File.write!(Path.join(output, name), "first #{name}\nsecond #{name}\n")
     end
 
-    expected = Map.new(names, &{&1, File.read!(Path.join(output, &1))})
-    assert Runner.audit_merged_files(cells, output) == expected
+    bytes = Map.new(names, &{&1, File.read!(Path.join(output, &1))})
+
+    expected =
+      {Map.new(bytes, fn {name, value} -> {name, Ipse.JSON.sha256(value)} end),
+       Map.delete(bytes, "execution.jsonl")}
+
+    audited_cells = closed_streams(cells, names)
+    assert Runner.audit_merged_files(audited_cells, output) == expected
 
     for name <- names do
       path = Path.join(output, name)
@@ -265,11 +271,18 @@ defmodule Ipse.KnowledgeEvaluationMeasuredTest do
           do: :first_predictions_changed,
           else: :merged_stream_changed
 
-      assert catch_throw(Runner.audit_merged_files(cells, output)) ==
+      assert catch_throw(Runner.audit_merged_files(audited_cells, output)) ==
                {:evaluation_runner, code}
 
       assert File.read!(path) == changed
       assert File.read!(Path.join(hd(cells), name)) == "first #{name}\n"
+
+      File.write!(Path.join(hd(cells), name), "other #{name}\n")
+
+      assert catch_throw(Runner.audit_merged_files(audited_cells, output)) ==
+               {:evaluation_runner, code}
+
+      File.write!(Path.join(hd(cells), name), "first #{name}\n")
       File.write!(path, original)
     end
 
@@ -277,16 +290,115 @@ defmodule Ipse.KnowledgeEvaluationMeasuredTest do
     original = File.read!(path)
     File.write!(path, "")
 
-    assert catch_throw(Runner.audit_merged_files(cells, output)) ==
+    assert catch_throw(Runner.audit_merged_files(audited_cells, output)) ==
              {:evaluation_runner, :merged_stream_changed}
 
     assert File.read!(path) == ""
     File.write!(path, original)
 
-    assert catch_throw(Runner.audit_merged_files(Enum.reverse(cells), output)) ==
+    assert catch_throw(Runner.audit_merged_files(Enum.reverse(audited_cells), output)) ==
              {:evaluation_runner, :first_predictions_changed}
 
-    assert Runner.audit_merged_files(cells, output) == expected
+    assert Runner.audit_merged_files(audited_cells, output) == expected
+  end
+
+  test "raw execution audit accepts the bounded concatenation above 64 MiB", %{root: root} do
+    cells = Enum.map(~w(first second), &Path.join(root, &1))
+    output = Path.join(root, "merged")
+
+    names =
+      ~w(predictions.jsonl execution.jsonl usage.jsonl request-resources.jsonl resources.jsonl timings.jsonl)
+
+    for directory <- cells ++ [output] do
+      File.mkdir!(directory)
+      for name <- names, do: File.write!(Path.join(directory, name), "")
+    end
+
+    chunk = :binary.copy("x", 1_048_576)
+
+    for {directory, count, tail} <- [
+          {hd(cells), 32, ""},
+          {List.last(cells), 32, "x"},
+          {output, 64, "x"}
+        ] do
+      File.open!(Path.join(directory, "execution.jsonl"), [:write, :binary], fn io ->
+        for _ <- 1..count, do: IO.binwrite(io, chunk)
+        IO.binwrite(io, tail)
+      end)
+    end
+
+    execution = Path.join(output, "execution.jsonl")
+    assert File.stat!(execution).size == 67_108_865
+
+    digest =
+      execution
+      |> File.stream!(65_536)
+      |> Enum.reduce(:crypto.hash_init(:sha256), &:crypto.hash_update(&2, &1))
+      |> :crypto.hash_final()
+      |> Base.encode16(case: :lower)
+
+    audited_cells = closed_streams(cells, names)
+    {identities, parsed} = Runner.audit_merged_files(audited_cells, output)
+    assert identities["execution.jsonl"] == digest
+    refute Map.has_key?(parsed, "execution.jsonl")
+    assert Enum.all?(parsed, fn {_, bytes} -> bytes == "" end)
+
+    File.open!(execution, [:read, :write, :binary], fn io ->
+      :ok = :file.pwrite(io, 67_108_864, "y")
+    end)
+
+    assert catch_throw(Runner.audit_merged_files(audited_cells, output)) ==
+             {:evaluation_runner, :merged_stream_changed}
+
+    assert File.stat!(execution).size == 67_108_865
+  end
+
+  test "merged comparison retains parsed-stream and individual cell limits", %{root: root} do
+    cell = Path.join(root, "cell")
+    output = Path.join(root, "merged")
+
+    names =
+      ~w(predictions.jsonl execution.jsonl usage.jsonl request-resources.jsonl resources.jsonl timings.jsonl)
+
+    for directory <- [cell, output] do
+      File.mkdir!(directory)
+      for name <- names, do: File.write!(Path.join(directory, name), "")
+    end
+
+    [closed] = closed_streams([cell], names)
+
+    for {name, bytes} <- [{"execution.jsonl", 67_108_865}, {"usage.jsonl", 33_554_433}] do
+      oversized = %{
+        closed
+        | files:
+            Enum.map(closed.files, fn file ->
+              if file["path"] == name, do: Map.put(file, "bytes", bytes), else: file
+            end)
+      }
+
+      assert catch_throw(Runner.audit_merged_files([oversized], output)) ==
+               {:evaluation_runner, :file_limit}
+    end
+  end
+
+  defp closed_streams(paths, names) do
+    Enum.map(paths, fn path ->
+      files =
+        Enum.map(names, fn name ->
+          file = Path.join(path, name)
+
+          digest =
+            file
+            |> File.stream!(65_536)
+            |> Enum.reduce(:crypto.hash_init(:sha256), &:crypto.hash_update(&2, &1))
+            |> :crypto.hash_final()
+            |> Base.encode16(case: :lower)
+
+          %{"path" => name, "bytes" => File.stat!(file).size, "sha256" => digest}
+        end)
+
+      %{path: path, files: files}
+    end)
   end
 
   test "the current selected ERTS actually boots with exact paths and literal arguments" do

@@ -1050,7 +1050,8 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
       :cell_descriptor_changed
     )
 
-    evidence = Enum.map(stages, &audit_stage!(context, &1))
+    audited = Enum.map(stages, &audit_stage!(context, &1))
+    evidence = Enum.map(audited, &elem(&1, 0))
     protocol = read!(Path.join(context.freeze, "launch/protocol.bin"), 8192)
     root_bytes = read!(Path.join(context.native, "receipt.json"), 8192)
     <<?M, size::32, root_protocol::binary>> = protocol
@@ -1079,14 +1080,8 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
 
     reports = context.resolution["reports"]
 
-    cell_outputs =
-      Enum.map(
-        prepared.value["schedule"]["cells"],
-        &Path.join(reports, "cells/" <> &1["id"] <> "/domain")
-      )
-
-    streams = Runner.audit_merged_files(cell_outputs, reports)
-    merged_files = Map.new(streams, fn {name, bytes} -> {name, sha(bytes)} end)
+    cells = for {_, cell} <- audited, cell != nil, do: cell
+    {merged_files, streams} = Runner.audit_merged_files(cells, reports)
     final = json!(Path.join(reports, "finalized.json"))
     predictions = Map.fetch!(streams, "predictions.jsonl")
     rows = jsonl(predictions)
@@ -1234,67 +1229,71 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
       :domain_claim_changed
     )
 
-    if stage.kind == "cell" do
-      output = Path.join(context.resolution["reports"], "cells/" <> stage.name)
-      result = json!(Path.join(output, "cell-result.json"))
-      require!(outcome == result, :domain_outcome_changed)
+    cell =
+      if stage.kind == "cell" do
+        output = Path.join(context.resolution["reports"], "cells/" <> stage.name)
+        result = json!(Path.join(output, "cell-result.json"))
+        require!(outcome == result, :domain_outcome_changed)
 
-      service_bytes = read!(Path.join(output, "model-service/receipt.json"))
+        service_bytes = read!(Path.join(output, "model-service/receipt.json"))
 
-      require!(
-        sha(service_bytes) == result["service_receipt_sha256"] and
-          decode!(service_bytes, @limit) == result["service"],
-        :service_receipt_changed
-      )
+        require!(
+          sha(service_bytes) == result["service_receipt_sha256"] and
+            decode!(service_bytes, @limit) == result["service"],
+          :service_receipt_changed
+        )
 
-      require!(
-        result["complete"] == true and result["prepared_sha256"] == stage.prepared_sha and
-          result["service"]["status"] == "ok" and
-          result["service"]["native_cleanup"] == "confirmed" and
-          result["service"]["staging_cleanup"] == "confirmed",
-        :cell_incomplete
-      )
+        require!(
+          result["complete"] == true and result["prepared_sha256"] == stage.prepared_sha and
+            result["service"]["status"] == "ok" and
+            result["service"]["native_cleanup"] == "confirmed" and
+            result["service"]["staging_cleanup"] == "confirmed",
+          :cell_incomplete
+        )
 
-      require!(
-        ModelService.verify_receipt(
-          context.resolution["model_service"],
-          Path.join(output, "model-service"),
-          result["service"],
-          environment_constructor(context.execution)
-        ) == :ok,
-        :service_evidence
-      )
+        require!(
+          ModelService.verify_receipt(
+            context.resolution["model_service"],
+            Path.join(output, "model-service"),
+            result["service"],
+            environment_constructor(context.execution)
+          ) == :ok,
+          :service_evidence
+        )
 
-      domain = json!(Path.join(output, "domain/domain-result.json"))
+        domain = json!(Path.join(output, "domain/domain-result.json"))
 
-      require!(
-        domain == result["domain"] and
-          domain["prediction_sha256"] == sha(read!(Path.join(output, "domain/predictions.jsonl"))),
-        :domain_changed
-      )
+        require!(
+          domain == result["domain"] and
+            domain["prediction_sha256"] ==
+              sha(read!(Path.join(output, "domain/predictions.jsonl"))),
+          :domain_changed
+        )
 
-      :ok = Runner.audit_cell(Path.join(output, "domain"), domain)
-      prepared = prepared!(context, stage.prepared_sha).value
-      selected = Enum.at(prepared["schedule"]["cells"], stage.ordinal)
-      cell_rows = jsonl(read!(Path.join(output, "domain/predictions.jsonl")))
+        :ok = Runner.audit_cell(Path.join(output, "domain"), domain)
+        prepared = prepared!(context, stage.prepared_sha).value
+        selected = Enum.at(prepared["schedule"]["cells"], stage.ordinal)
+        cell_rows = jsonl(read!(Path.join(output, "domain/predictions.jsonl")))
 
-      require!(
-        Enum.map(cell_rows, &{&1["variant"], &1["query_id"], &1["project"]}) ==
-          Enum.map(selected["query_ids"], &{selected["variant"], &1, selected["project"]}),
-        :cell_prediction_grid
-      )
-    end
+        require!(
+          Enum.map(cell_rows, &{&1["variant"], &1["query_id"], &1["project"]}) ==
+            Enum.map(selected["query_ids"], &{selected["variant"], &1, selected["project"]}),
+          :cell_prediction_grid
+        )
 
-    %{
-      "name" => stage.name,
-      "token" => stage.token,
-      "receipt_sha256" => sha(bytes),
-      "domain_sha256" => sha(encode(outcome)),
-      "claim_sha256" => sha(encode(claim)),
-      "scope" => Map.take(started, ~w(scope_device scope_inode)),
-      "fresh_lifetime_peak_bytes" => receipt["peak_bytes"],
-      "whole_population_interval_peak_bytes" => receipt["parent_interval_peak_bytes"]
-    }
+        %{path: Path.join(output, "domain"), files: domain["files"]}
+      end
+
+    {%{
+       "name" => stage.name,
+       "token" => stage.token,
+       "receipt_sha256" => sha(bytes),
+       "domain_sha256" => sha(encode(outcome)),
+       "claim_sha256" => sha(encode(claim)),
+       "scope" => Map.take(started, ~w(scope_device scope_inode)),
+       "fresh_lifetime_peak_bytes" => receipt["peak_bytes"],
+       "whole_population_interval_peak_bytes" => receipt["parent_interval_peak_bytes"]
+     }, cell}
   end
 
   @doc false

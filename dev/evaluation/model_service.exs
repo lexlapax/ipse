@@ -103,18 +103,18 @@ defmodule Ipse.Development.Evaluation.ModelService do
   @doc "Project a validated service selection into its portable device policy."
   def device_policy(config) do
     with :ok <- validate(config) do
-      {:ok, if(config["version"] === 1, do: "cpu_only", else: @gpu_policy)}
+      {:ok, if(device!(config) == :cpu_only, do: "cpu_only", else: @gpu_policy)}
     end
   end
 
-  @doc "Verify GPU service evidence against the selected configuration without contacting a daemon."
+  @doc "Verify selected device and context evidence without contacting a daemon."
   def verify_receipt(config, output, receipt, constructor \\ nil) do
     try do
       :ok = validate(config)
 
-      if config["version"] === 2 do
+      if config["version"] in [2, 3] do
         demand(
-          receipt["version"] === 2 and receipt["status"] == "ok" and
+          receipt["version"] === config["version"] and receipt["status"] == "ok" and
             receipt["code"] == nil and receipt["work_status"] == "returned" and
             receipt["service_status"] == "admitted" and
             receipt["native_cleanup"] == "confirmed" and
@@ -153,9 +153,16 @@ defmodule Ipse.Development.Evaluation.ModelService do
             :service_evidence
           )
 
-          rows = resident_rows!(config, inventory["resident"], initial)
+          rows = resident_rows!(config, inventory["resident"], initial, models)
           demand(rows == inventory["resident"], :service_evidence)
         end
+
+        if config["version"] === 3,
+          do:
+            demand(
+              receipt["inventory_before"]["models"] == receipt["inventory_after"]["models"],
+              :service_evidence
+            )
       end
 
       :ok
@@ -303,6 +310,10 @@ defmodule Ipse.Development.Evaluation.ModelService do
       if match?({:raised, _, _, _}, outcome), do: fail(:callback_raised)
 
       after_inventory = inventory(config, false, owner, token, deadline)
+
+      if config["version"] === 3,
+        do: demand(before["models"] == after_inventory["models"], :model_inventory)
+
       recheck(staged.files)
       {:ok, after_inventory}
     rescue
@@ -1010,7 +1021,7 @@ defmodule Ipse.Development.Evaluation.ModelService do
       :resident_inventory
     )
 
-    rows = resident_rows!(config, resident["models"], initial)
+    rows = resident_rows!(config, resident["models"], initial, models)
 
     inventory = %{
       "models" => Enum.sort_by(models, & &1["name"]),
@@ -1046,9 +1057,11 @@ defmodule Ipse.Development.Evaluation.ModelService do
     row
   end
 
-  defp resident_rows!(config, items, initial) do
+  defp resident_rows!(config, items, initial, models) do
     demand(is_list(items) and length(items) <= map_size(config["models"]), :resident_inventory)
     if initial, do: demand(items == [], :initial_resident)
+    completion = for model <- models, "completion" in model["capabilities"], do: model["name"]
+    device = device!(config)
 
     rows =
       Enum.map(items, fn item ->
@@ -1058,24 +1071,46 @@ defmodule Ipse.Development.Evaluation.ModelService do
           :resident_inventory
         )
 
-        if config["version"] === 1 do
-          demand(item["size_vram"] === 0, :resident_inventory)
-          Map.take(item, ~w(name digest size_vram))
-        else
-          demand(
-            positive?(item["size"], @safe_integer) and uint?(item["size_vram"], item["size"]),
-            :resident_inventory
-          )
+        row =
+          if config["version"] === 1 do
+            demand(item["size_vram"] === 0, :resident_inventory)
+            Map.take(item, ~w(name digest size_vram))
+          else
+            demand(
+              positive?(item["size"], @safe_integer) and uint?(item["size_vram"], item["size"]),
+              :resident_inventory
+            )
 
-          demand(item["size_vram"] > 0, :gpu_use_not_observed)
-          Map.take(item, ~w(name digest size size_vram))
+            if device == :cpu_only,
+              do: demand(item["size_vram"] === 0, :resident_inventory),
+              else: demand(item["size_vram"] > 0, :gpu_use_not_observed)
+
+            Map.take(item, ~w(name digest size size_vram))
+          end
+
+        if config["version"] === 3 do
+          demand(positive?(item["context_length"], 1_048_576), :context_length)
+
+          if item["name"] in completion,
+            do: demand(item["context_length"] == config["context_tokens"], :context_length)
+
+          Map.put(row, "context_length", item["context_length"])
+        else
+          row
         end
       end)
 
     demand(length(Enum.uniq_by(rows, & &1["name"])) == length(rows), :resident_inventory)
 
-    if config["version"] === 2 and not initial,
+    if device != :cpu_only and not initial,
       do: demand(rows != [], :gpu_use_not_observed)
+
+    if config["version"] === 3 and not initial,
+      do:
+        demand(
+          Enum.all?(completion, fn name -> Enum.any?(rows, &(&1["name"] == name)) end),
+          :context_not_observed
+        )
 
     rows
   end
@@ -1177,30 +1212,35 @@ defmodule Ipse.Development.Evaluation.ModelService do
         %{}
       end
 
-    Map.merge(
-      %{
-        "PATH" => Path.join(paths.runtime, "bin") <> ":/usr/bin:/bin",
-        "LANG" => "C.UTF-8",
-        "HOME" => paths.home,
-        "TMPDIR" => paths.tmp,
-        "OLLAMA_MODELS" => paths.models,
-        "OLLAMA_HOST" => config["origin"],
-        "LD_LIBRARY_PATH" => Path.join(paths.runtime, "lib/ollama"),
-        "OLLAMA_NO_CLOUD" => "1",
-        "CUDA_VISIBLE_DEVICES" =>
-          case device!(config) do
-            :cpu_only -> "-1"
-            {:nvidia, uuid} -> uuid
-          end,
-        "ROCR_VISIBLE_DEVICES" => "-1",
-        "OLLAMA_VULKAN" => "0",
-        "GGML_VK_VISIBLE_DEVICES" => "-1",
-        "OLLAMA_NUM_PARALLEL" => "1",
-        "OLLAMA_MAX_LOADED_MODELS" => Integer.to_string(map_size(config["models"])),
-        "OLLAMA_KEEP_ALIVE" => "-1"
-      },
-      selected
-    )
+    values =
+      Map.merge(
+        %{
+          "PATH" => Path.join(paths.runtime, "bin") <> ":/usr/bin:/bin",
+          "LANG" => "C.UTF-8",
+          "HOME" => paths.home,
+          "TMPDIR" => paths.tmp,
+          "OLLAMA_MODELS" => paths.models,
+          "OLLAMA_HOST" => config["origin"],
+          "LD_LIBRARY_PATH" => Path.join(paths.runtime, "lib/ollama"),
+          "OLLAMA_NO_CLOUD" => "1",
+          "CUDA_VISIBLE_DEVICES" =>
+            case device!(config) do
+              :cpu_only -> "-1"
+              {:nvidia, uuid} -> uuid
+            end,
+          "ROCR_VISIBLE_DEVICES" => "-1",
+          "OLLAMA_VULKAN" => "0",
+          "GGML_VK_VISIBLE_DEVICES" => "-1",
+          "OLLAMA_NUM_PARALLEL" => "1",
+          "OLLAMA_MAX_LOADED_MODELS" => Integer.to_string(map_size(config["models"])),
+          "OLLAMA_KEEP_ALIVE" => "-1"
+        },
+        selected
+      )
+
+    if config["version"] === 3,
+      do: Map.put(values, "OLLAMA_CONTEXT_LENGTH", Integer.to_string(config["context_tokens"])),
+      else: values
   end
 
   defp device!(%{"version" => 1, "cpu_policy" => "visibility_v1"} = config) do
@@ -1214,6 +1254,27 @@ defmodule Ipse.Development.Evaluation.ModelService do
       :configuration
     )
 
+    nvidia_selection!(selection)
+  end
+
+  defp device!(%{"version" => 3, "device_selection" => selection} = config) do
+    demand(
+      exact?(
+        config,
+        List.delete(@config_keys, "cpu_policy") ++ ~w(device_selection context_tokens)
+      ) and
+        positive?(config["context_tokens"], 1_048_576),
+      :configuration
+    )
+
+    if selection == %{"policy" => "cpu_only"},
+      do: :cpu_only,
+      else: nvidia_selection!(selection)
+  end
+
+  defp device!(_), do: fail(:configuration)
+
+  defp nvidia_selection!(selection) do
     demand(
       exact?(selection, ~w(policy uuid)) and selection["policy"] == @gpu_policy,
       :configuration
@@ -1232,8 +1293,6 @@ defmodule Ipse.Development.Evaluation.ModelService do
 
     {:nvidia, uuid}
   end
-
-  defp device!(_), do: fail(:configuration)
 
   defp paths(output),
     do: %{
@@ -1256,7 +1315,8 @@ defmodule Ipse.Development.Evaluation.ModelService do
     code = code || if(work_status == "raised", do: :callback_raised)
 
     receipt = %{
-      "version" => if(get_in(state, [:config, "version"]) === 2, do: 2, else: 1),
+      "version" =>
+        if(get_in(state, [:config, "version"]) in [2, 3], do: state.config["version"], else: 1),
       "status" => if(code == nil, do: "ok", else: "failed"),
       "code" => if(code, do: Atom.to_string(code)),
       "work_status" => work_status,

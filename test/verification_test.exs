@@ -1060,7 +1060,7 @@ defmodule Ipse.Development.VerificationTest do
           {:ok, selected_port} = :inet.port(listener)
           :ok = :gen_tcp.close(listener)
           base = #{inspect(Path.join(runtime.tmp, "fixture"))}
-          config = fixture.configuration(base, launch, "http://127.0.0.1:" <> Integer.to_string(selected_port), nil, #{inspect(@verification)})
+          config = fixture.configuration(base, launch, "http://127.0.0.1:" <> Integer.to_string(selected_port), verification: #{inspect(@verification)})
           modes = [:present, :changed, :missing, :replacement] ++ if(#{inspect(@verification)}, do: [:control_downgrade], else: [])
           results = for mode <- modes do
             stage = Path.join(base, Atom.to_string(mode))

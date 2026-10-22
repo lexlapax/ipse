@@ -6,7 +6,19 @@ defmodule Ipse.Development.Fixtures.ModelService do
   @launch_keys ~w(executable boot root code_paths files)
   @gpu_uuid "GPU-00000000-0000-0000-0000-000000000001"
 
-  def configuration(root, launch, origin, fault \\ nil, verification \\ false, gpu \\ false) do
+  def configuration(root, launch, origin, options \\ []) do
+    true =
+      Keyword.keyword?(options) and
+        Enum.all?(Keyword.keys(options), &(&1 in [:fault, :verification, :gpu, :context_tokens]))
+
+    fault = Keyword.get(options, :fault)
+    verification = Keyword.get(options, :verification, false)
+    gpu = Keyword.get(options, :gpu, false)
+    context_tokens = Keyword.get(options, :context_tokens)
+
+    true =
+      is_nil(context_tokens) or (is_integer(context_tokens) and context_tokens in 1..1_048_576)
+
     true = fault in [nil, :exit_on_answer]
     true = verification in [false, true]
     true = is_boolean(gpu)
@@ -110,6 +122,11 @@ defmodule Ipse.Development.Fixtures.ModelService do
     control_values =
       if gpu, do: Map.put(control_values, "cuda_visible_devices", @gpu_uuid), else: control_values
 
+    control_values =
+      if context_tokens,
+        do: Map.put(control_values, "context_tokens", context_tokens),
+        else: control_values
+
     control_bytes = JSON.encode!(control_values) <> "\n"
 
     true = byte_size(control_bytes) <= 1_048_576
@@ -143,12 +160,26 @@ defmodule Ipse.Development.Fixtures.ModelService do
       "cpu_policy" => "visibility_v1"
     }
 
-    if gpu do
+    config =
+      if gpu do
+        config
+        |> Map.delete("cpu_policy")
+        |> Map.merge(%{
+          "version" => 2,
+          "device_selection" => %{"policy" => "nvidia_visible_mixed_v1", "uuid" => @gpu_uuid}
+        })
+      else
+        config
+      end
+
+    if context_tokens do
       config
       |> Map.delete("cpu_policy")
       |> Map.merge(%{
-        "version" => 2,
-        "device_selection" => %{"policy" => "nvidia_visible_mixed_v1", "uuid" => @gpu_uuid}
+        "version" => 3,
+        "context_tokens" => context_tokens,
+        "device_selection" =>
+          if(gpu, do: config["device_selection"], else: %{"policy" => "cpu_only"})
       })
     else
       config
@@ -268,6 +299,11 @@ defmodule Ipse.Development.Fixtures.ModelService.Daemon do
     cuda = Map.get(control, "cuda_visible_devices", "-1")
     true = cuda in ["-1", "GPU-00000000-0000-0000-0000-000000000001"]
     ^verification = control["verification_environment"]
+    context_tokens = control["context_tokens"]
+
+    if context_tokens,
+      do: true = System.fetch_env!("OLLAMA_CONTEXT_LENGTH") == Integer.to_string(context_tokens)
+
     %{"version" => 1, "models" => models, "launch" => launch} = control
     true = Enum.sort(Map.keys(models)) == ~w(fixture-embedding:latest fixture-text:latest)
     beam = Path.join(Path.dirname(control_path), Atom.to_string(__MODULE__) <> ".beam")
@@ -339,6 +375,7 @@ defmodule Ipse.Development.Fixtures.ModelService.Daemon do
       log_bytes: 0,
       counts: %{},
       gpu: cuda != "-1",
+      context_tokens: context_tokens,
       resident: MapSet.new(),
       fault: control["fault"]
     })
@@ -460,15 +497,25 @@ defmodule Ipse.Development.Fixtures.ModelService.Daemon do
         {kind, value} = response(method, path, body, state.models)
 
         value =
-          if state.gpu and path == "/api/ps" do
+          if (state.gpu or state.context_tokens != nil) and path == "/api/ps" do
             rows =
-              for name <- Enum.sort(state.resident),
-                  do: %{
-                    "name" => name,
-                    "digest" => state.models[name],
-                    "size" => 16,
-                    "size_vram" => 8
-                  }
+              for name <- Enum.sort(state.resident) do
+                row = %{
+                  "name" => name,
+                  "digest" => state.models[name],
+                  "size" => 16,
+                  "size_vram" => if(state.gpu, do: 8, else: 0)
+                }
+
+                if state.context_tokens,
+                  do:
+                    Map.put(
+                      row,
+                      "context_length",
+                      if(name == "fixture-embedding:latest", do: 2048, else: state.context_tokens)
+                    ),
+                  else: row
+              end
 
             %{"models" => rows}
           else
@@ -489,9 +536,10 @@ defmodule Ipse.Development.Fixtures.ModelService.Daemon do
             recorded = record(state, method, path, body, kind)
 
             recorded =
-              if state.gpu and kind in ~w(embedding extraction rerank answer),
-                do: %{recorded | resident: MapSet.put(recorded.resident, body["model"])},
-                else: recorded
+              if (state.gpu or state.context_tokens != nil) and
+                   kind in ~w(embedding extraction rerank answer),
+                 do: %{recorded | resident: MapSet.put(recorded.resident, body["model"])},
+                 else: recorded
 
             if state.fault == "exit_on_answer" and kind == "answer", do: System.halt(86)
 

@@ -45,10 +45,10 @@ defmodule Ipse.Development.Evaluation.Freeze do
       {:ok, _} = Application.ensure_all_started(:ipse)
       plan = decode_execution_plan!(plan_bytes)
 
-      device =
+      {device, context_tokens} =
         case resolution do
           nil ->
-            "cpu_only"
+            {"cpu_only", nil}
 
           selection ->
             validate_resolution!(selection)
@@ -57,8 +57,11 @@ defmodule Ipse.Development.Evaluation.Freeze do
             {:ok, device} =
               Ipse.Development.Evaluation.ModelService.device_policy(selection["model_service"])
 
-            device
+            {device, selection["model_service"]["context_tokens"]}
         end
+
+      require!(!Contract.long_answers?(plan) or context_tokens != nil, :context_selection)
+      require_context!(plan, context_tokens)
 
       validate_artifact_paths!(artifacts)
 
@@ -81,13 +84,18 @@ defmodule Ipse.Development.Evaluation.Freeze do
 
       require!(source_snapshot(source["root"]) == source, :source_changed)
 
+      policy = Map.put(@policy, "device", device)
+
+      policy =
+        if context_tokens, do: Map.put(policy, "context_tokens", context_tokens), else: policy
+
       experiment = %{
-        "version" => 2,
+        "version" => if(context_tokens, do: 3, else: 2),
         "kind" => "knowledge_experiment",
         "source" => Map.delete(source, "root"),
         "plan" => portable_plan!(plan),
         "artifacts" => digests,
-        "policy" => Map.put(@policy, "device", device)
+        "policy" => policy
       }
 
       bytes = JSON.encode!(experiment) <> "\n"
@@ -117,7 +125,7 @@ defmodule Ipse.Development.Evaluation.Freeze do
       {:ok, _} = Application.ensure_all_started(:ipse)
       experiment = decode_experiment!(experiment_bytes)
       validate_resolution!(resolution)
-      require_device!(experiment, resolution)
+      require_service_policy!(experiment, resolution)
       repository = canonical!(repository)
       output = canonical!(output)
       resolution = normalize_resolution!(resolution)
@@ -405,10 +413,26 @@ defmodule Ipse.Development.Evaluation.Freeze do
 
     require!(
       exact?(experiment, ~w(version kind source plan artifacts policy)) and
-        experiment["version"] === 2 and experiment["kind"] == "knowledge_experiment" and
-        experiment["policy"] in [@policy, Map.put(@policy, "device", "nvidia_visible_mixed_v1")],
+        experiment["version"] in [2, 3] and experiment["kind"] == "knowledge_experiment",
       :invalid_experiment
     )
+
+    policy = experiment["policy"]
+    context_tokens = if is_map(policy), do: policy["context_tokens"]
+
+    legacy_policy =
+      if experiment["version"] == 3 and is_map(policy),
+        do: Map.delete(policy, "context_tokens"),
+        else: policy
+
+    require!(
+      legacy_policy in [@policy, Map.put(@policy, "device", "nvidia_visible_mixed_v1")],
+      :invalid_experiment
+    )
+
+    if experiment["version"] == 3 do
+      require!(is_integer(context_tokens) and context_tokens in 1..1_048_576, :invalid_experiment)
+    end
 
     source = experiment["source"]
 
@@ -450,13 +474,14 @@ defmodule Ipse.Development.Evaluation.Freeze do
     plan = experiment["plan"]
 
     require!(Contract.validate_shape(plan, :portable) == :ok, :invalid_experiment)
+    require_context!(plan, context_tokens)
 
     experiment
   end
 
   defp resolved_plan!(experiment, resolution) do
     validate_resolution!(resolution)
-    require_device!(experiment, resolution)
+    require_service_policy!(experiment, resolution)
 
     require!(
       resolution["model_service"]["models"] == experiment["plan"]["models"],
@@ -475,11 +500,27 @@ defmodule Ipse.Development.Evaluation.Freeze do
     |> Map.update!("embedding_profiles", &with_origin(&1, resolution["model_origin"]))
   end
 
-  defp require_device!(experiment, resolution) do
+  defp require_service_policy!(experiment, resolution) do
     {:ok, device} =
       Ipse.Development.Evaluation.ModelService.device_policy(resolution["model_service"])
 
     require!(device == experiment["policy"]["device"], :device_selection)
+
+    require!(
+      resolution["model_service"]["context_tokens"] == experiment["policy"]["context_tokens"],
+      :context_selection
+    )
+  end
+
+  defp require_context!(_plan, nil), do: :ok
+
+  defp require_context!(plan, context_tokens) do
+    require!(
+      Enum.all?(Map.values(plan["profiles"]), fn profile ->
+        is_integer(profile["max_output_tokens"]) and context_tokens > profile["max_output_tokens"]
+      end),
+      :context_selection
+    )
   end
 
   defp with_origin(profiles, origin),
