@@ -342,12 +342,17 @@ the [extension contract](developer/memory.md) owns suppression and measurement l
 
 ## P27: optional research, graph and RAG
 
-**Active; corrective verification and final acceptance remain open.** The first
-private GPU comparison at runtime `7bffee0` finished with 350 retained first
-outcomes. Its public measurement and audit failed, and its answer outcomes cannot
-qualify any strategy. No engine has been selected. The
-[terminal record](archive/2026-10-22-p27-private-comparison/index.md) preserves the
-failures and evidence; the [previous plan](archive/2026-10-22-p27-private-comparison/previous-plan.md)
+**Active; duration-repair verification and final acceptance remain open.**
+The first private GPU comparison at `7bffee0` retained 350 first outcomes but
+failed measurement and audit. Its context and streaming corrections passed
+verification and hosted CI at `1d40eee`. A fresh comparison at that source then
+exhausted its first cell's 100-minute service allowance. It retained 22 outcomes
+before the remaining owned work was stopped. Neither attempt qualifies a strategy.
+No engine has been selected, and reference answers remain sealed. The
+[first terminal record](archive/2026-10-22-p27-private-comparison/index.md) and
+[duration-repair record](archive/2026-10-22-p27-duration-repair/index.md) preserve
+the separate failures and their corrections. The
+[previous plan](archive/2026-10-22-p27-private-comparison/previous-plan.md)
 preserves earlier increment history.
 
 P27 supplies independently configurable Corpus, Graph and Research extensions.
@@ -408,7 +413,8 @@ The complete milestone requires all of the following:
 | Structural readiness | Consolidated source ownership, callers, tests, packaging, CI and both audience manuals | Complete at `18af42e`; final results integration remains |
 | Comparison audit repair | Stream merged execution against closed cell inventories without materializing the raw aggregate | Reviewed; platform suites and all four source/installed CPU/GPU measured proofs pass |
 | Explicit context repair | Bind portable and local context; verify loaded completion context while allowing separate embedding windows | Reviewed; platform/floor checks, 31-case service proofs, all four measured proofs and eight exposed GPU requests pass |
-| Final acceptance | Frozen private outcomes, independent judgments, all-strategy publication, exact resources and engine choice | Open; first full GPU attempt failed, references remain sealed |
+| Duration composition repair | Compose fourteen legal service lifetimes within one finite measured-root ceiling; preserve existing request and service limits | Source and manual reviews clear; platform suites, supported toolchain, native controls, package and source CPU measured proof pass; three measured proofs and exact-source hosted verification remain |
+| Final acceptance | Frozen private outcomes, independent judgments, all-strategy publication, exact resources and engine choice | Open; both private GPU attempts failed acceptance, references remain sealed |
 
 The [external whole-P27 review and dispositions](archive/2026-10-20-p27-external-review-r1/index.md)
 retain all twelve code and five documentation findings, their repairs and
@@ -428,21 +434,28 @@ They do not verify the current corrective increment. Its
 retains passing macOS and native-enabled Linux suites, the supported toolchain,
 package/installed checks, source comparisons and exposed context diagnostic.
 All four source/installed CPU/GPU measured comparisons and final source-identity
-checks pass. Hosted verification of the corrective commit remains pending.
+checks pass. Exact hosted run `39737181313` is green on Ubuntu and macOS for
+`1d40eee`. That result verifies the context and streaming corrections. The new
+duration-composition repair has separate, still-open verification in its
+[record](archive/2026-10-22-p27-duration-repair/index.md#verification-and-remaining-acceptance).
 
 ### Next tasks
 
-1. Commit and push the verified corrective increment and associate hosted results
-   with that exact commit. All four measured comparisons and source-identity
-   checks pass; their receipts remain distinct from actual model quality.
-2. Freeze a fresh acceptance experiment with explicit context and the verified
-   inference policy. The exposed preflight completed eight requests with exact
-   loaded context and cleanup; it establishes no held-out semantic quality.
-3. Preserve the first comparison and its failed audit. Never replay its consumed
-   seal, replace its captured evaluator, rewrite evidence or release labels through
-   its failed authority. A product reader repair cannot upgrade its original verdict.
-4. Complete a separately frozen acceptance comparison, independent semantic review,
-   all-strategy quality/resource publication and individual strategy qualification.
+1. Finish the three remaining source/installed measured proofs of the duration
+   repair and exact-source hosted verification. Platform/native/floor/package
+   checks, source and manual reviews, and the source CPU measured proof pass.
+   Run hosted verification alongside the remaining independent local proofs;
+   require both before launching another private comparison.
+2. Resolve the overall-duration limit and record the next cell allocation's
+   assumptions. Freeze a fresh acceptance experiment with explicit context and
+   the approved inference policy. Neither legal timeout admission nor the eight
+   exposed context requests establish held-out semantic quality.
+3. Preserve both failed comparisons and their consumed seals. Never replay them,
+   replace captured evaluators, rewrite evidence or release labels through failed
+   authority. Product repairs cannot upgrade historical verdicts.
+4. Complete all 350 first outcomes and the joined frozen audit, then independent
+   semantic review, all-strategy quality/resource publication and individual
+   strategy qualification.
 5. Justify the selected engine, integrate results throughout both manuals, finish
    final review and verification, then commit and push the completed milestone.
 

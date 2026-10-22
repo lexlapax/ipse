@@ -563,16 +563,28 @@ defmodule Ipse.KnowledgeEvaluationFreezeTest do
                )
              )
 
-    assert {:error, :execution_limits} =
-             Freeze.resolve_plan(
-               experiment["bytes"],
-               put_in(selected, ["model_service", "limits", "lifetime_ms"], 86_400_000)
-             )
-
     assert {:ok, _} = Freeze.resolve_plan(experiment["bytes"], selected)
     refute File.exists?(selected["data_manifest"])
     refute File.exists?(selected["model_service"]["cache_source"])
     refute File.exists?(ctx.output)
+  end
+
+  test "the full sequence composes the maximum legal service lifetime without opening inputs",
+       ctx do
+    {:ok, experiment} = declare(ctx)
+    selected = put_in(resolution(ctx), ["model_service", "limits", "lifetime_ms"], 86_400_000)
+
+    assert {:ok, _} = Freeze.resolve_plan(experiment["bytes"], selected)
+
+    assert {:ok, sealed} =
+             Freeze.create_v2(ctx.repository, experiment["bytes"], selected, ctx.output)
+
+    assert {:ok, verified} = Freeze.verify(sealed["path"], sealed["sha256"])
+    timeouts = verified["manifest"]["launch_recipe"]["timeouts"]
+    assert timeouts["cell_ms"] == 86_430_000
+    assert timeouts["root_ms"] == 1_210_518_000
+    refute File.exists?(selected["data_manifest"])
+    refute File.exists?(selected["model_service"]["cache_source"])
   end
 
   test "device policy projects from one local selection without leaking its UUID", ctx do

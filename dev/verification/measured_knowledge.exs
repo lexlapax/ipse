@@ -76,6 +76,11 @@ defmodule Ipse.Development.Verification.MeasuredKnowledge do
         context_tokens: if(long_answers, do: 16_384)
       )
 
+    service =
+      if long_answers and is_nil(fault),
+        do: put_in(service, ["limits", "lifetime_ms"], 86_400_000),
+        else: service
+
     data_root = Path.join(root, "data")
     File.mkdir!(data_root)
     File.chmod!(data_root, 0o700)

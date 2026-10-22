@@ -24,6 +24,8 @@ defmodule Ipse.Development.Evaluation.Freeze do
   alias Ipse.Extensions.{Store}
   alias Ipse.Development.Evaluation.Contract
 
+  @max_measured_lifetime_ms 15 * 86_400_000
+
   @completion_policy %{
     "completion_policy" => "bounded_natural_drain_v1",
     "population_drain_limit_ms" => 2000
@@ -618,7 +620,7 @@ defmodule Ipse.Development.Evaluation.Freeze do
   defp measured_timeouts!(resolution) do
     cell = resolution["model_service"]["limits"]["lifetime_ms"] + 30_000
     root = 14 * cell + 360_000 + 16 * 8_000 + 10_000
-    require!(root <= 86_400_000, :execution_limits)
+    require!(root <= @max_measured_lifetime_ms, :execution_limits)
     %{"root_ms" => root, "prepare_ms" => 180_000, "cell_ms" => cell, "finalize_ms" => 180_000}
   end
 

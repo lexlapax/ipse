@@ -1,4 +1,7 @@
 #[cfg(target_os = "linux")]
+pub const MAX_MEASUREMENT_TIMEOUT_MS: u64 = 15 * 24 * 60 * 60 * 1000;
+
+#[cfg(target_os = "linux")]
 mod implementation {
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Write};
@@ -45,7 +48,7 @@ impl<'a> Decoder<'a> {
             return Err("invalid sequence token".into());
         }
         let timeout = u64::from_be_bytes(self.take(8)?.try_into().unwrap());
-        if !(1..=86_400_000).contains(&timeout) { return Err("invalid sequence timeout".into()); }
+        if !(1..=super::MAX_MEASUREMENT_TIMEOUT_MS).contains(&timeout) { return Err("invalid sequence timeout".into()); }
         let output = self.path()?;
         let count = self.number()?;
         if !(1..=121).contains(&count) { return Err("invalid sequence argument count".into()); }
@@ -305,7 +308,7 @@ mod tests {
             let bytes = claim(&sample);
             assert_eq!(Decoder { bytes: &bytes, offset: 8 }.stage().is_ok(), count == 121);
         }
-        for timeout in [0, 86_400_001] {
+        for timeout in [0, 1_296_000_001] {
             let mut invalid = stage(1); invalid.timeout = timeout;
             let bytes = claim(&invalid);
             assert!(Decoder { bytes: &bytes, offset: 8 }.stage().is_err());
@@ -314,6 +317,15 @@ mod tests {
         assert!(Decoder { bytes: &bytes, offset: 8 }.stage().is_err());
         let mut bad = stage(1); bad.argv[0] = "relative".into(); let bytes = claim(&bad);
         assert!(Decoder { bytes: &bytes, offset: 8 }.stage().is_err());
+    }
+    #[test]
+    fn composed_multi_day_allocations_remain_finite_and_preserve_the_declared_timeout() {
+        for timeout in [86_400_001, 1_210_518_000, 1_296_000_000] {
+            let mut sample = stage(1); sample.timeout = timeout;
+            let bytes = claim(&sample);
+            let decoded = Decoder { bytes: &bytes, offset: 8 }.stage().unwrap();
+            assert_eq!(decoded.timeout, timeout);
+        }
     }
     #[test]
     fn schedule_count_and_duplicate_identities_are_refused() {

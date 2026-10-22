@@ -161,6 +161,12 @@ quality or sustained eight-minute generation. Longer-answer selections also use
 service and experiment version three with an explicit 16384-token context. The
 scripted text model reports that window; the embedding model reports 2048. This
 checks capability-specific context admission without claiming actual prompt fit.
+Successful long-answer proofs also select the existing 24-hour service allowance.
+Their frozen measured root exceeds one day, so execution and audit exercise the
+multi-day timeout path. Fault-injected proofs retain short service allowances.
+Bound the surrounding verification job independently. The allocation is an upper
+limit, not an instruction to wait for days if a scripted proof stalls. These
+controls establish admission and natural completion, not days of elapsed operation.
 
 Use `--selection sealed-gpu-answers` with another fresh output to exercise the
 same longer-answer policy plus the explicit NVIDIA selection. Its daemon is
@@ -374,8 +380,10 @@ Plan three requires one of two closed `contracts` objects. The original policy i
 
 The longer-answer policy changes only `outputs.answer` to `json_schema_v3`.
 `p27_answer` must explicitly define `model_call_timeout_ms` in 120001..600000.
-Runner derives the root timeout from that frozen field and waits that deadline
-plus a bounded 60000 ms for surrounding work. Extraction and rerank cannot have
+Runner derives the answer invocation's root timeout from that frozen field.
+The Session driver observes each command for that deadline plus a bounded
+60000 ms for surrounding work. This command clock differs from the complete
+measured sequence's root deadline. Extraction and rerank cannot have
 the override. `Contract.build/1` keeps their `json_schema_v2` adapter selection;
 full validation refuses other contract combinations.
 
@@ -580,6 +588,25 @@ A resolution contains exactly `artifacts`, `model_origin`, `search_port`, `repor
 must match the experiment. The shared model port 11434 is forbidden; the search
 port must differ. Sealing proves neither port availability nor listener ownership.
 
+Choose the service's `lifetime_ms` for the complete strategy/project cell before
+creating the resolution. This nonrenewing clock covers runtime and cache staging,
+readiness, initial inventory, the complete callback and final inventory. Each
+cell gets a fresh service. A request deadline bounds one inference, not the cell.
+
+Count source inspection and ingestion, projections, retrievals, answers and
+lifecycle commands for the selected population. Include paging where needed and
+allow time for staging, journal and report IO. For example, 25 final answers with
+600-second deadlines permit 4 hours 10 minutes of answer work alone. A 30-minute
+service cannot accommodate that allocation. An exposed request's duration is
+useful diagnostic evidence, but it is not a completion forecast for 350 answers.
+
+The service admits at most 86400000 ms, or 24 hours. Select an operational
+allowance within that limit and record its assumptions. Filesystem work has no
+separately proved elapsed bound, and coordinator observation waits can exceed
+the SDK request deadline. Even the maximum legal allowance does not guarantee
+that every cell finishes. Resolve an overall run limit before sealing. An early
+stop preserves an incomplete attempt; it does not qualify a smaller comparison.
+
 For an already authorized real comparison, select a reviewed local Ollama
 runtime distribution and existing model cache. The runtime directory below must
 contain `bin/ollama` and its complete `lib/ollama` files as regular files. The
@@ -591,6 +618,8 @@ export IPSE_BENCHMARK
 export IPSE_DATA_MANIFEST=/absolute/path/to/reviewed/dataset/manifest.json
 export IPSE_OLLAMA_RUNTIME=/absolute/path/to/reviewed/ollama-distribution
 export IPSE_OLLAMA_MODELS=/absolute/path/to/existing/ollama-models
+# Example maximum allowance per cell. Record the chosen budget before sealing.
+export IPSE_MODEL_CELL_LIFETIME_MS=86400000
 mix run -r dev/evaluation/model_service.exs -e '
 root = System.fetch_env!("IPSE_BENCHMARK")
 plan = JSON.decode!(File.read!(Path.join(root, "plan.json")))
@@ -613,7 +642,9 @@ service = %{
   end),
   "cache_source" => cache,
   "runtime" => %{"executable" => "bin/ollama", "files" => files},
-  "limits" => %{"ready_ms" => 60000, "lifetime_ms" => 1800000, "metadata_ms" => 10000},
+  "limits" => %{"ready_ms" => 60000,
+    "lifetime_ms" => String.to_integer(System.fetch_env!("IPSE_MODEL_CELL_LIFETIME_MS")),
+    "metadata_ms" => 10000},
   "device_selection" => %{"policy" => "cpu_only"},
   "context_tokens" => 16384
 }
@@ -850,8 +881,16 @@ canonicalizes local paths, copies the exact declared artifacts and creates a
 private fixed `attempts` registry. Its manifest binds the registry device/inode,
 source, plan, full service selection, runtime launch and semantic recipe. The
 recipe derives finite preparation/finalization/cell/root deadlines and rejects a
-whole lifetime over one day. Sealing starts no worker, provider or model and
-opens no dataset or weight files.
+whole measured lifetime over fifteen days. For service allowance `L` in
+milliseconds, each cell gets `L + 30000`; the root gets
+`14 * (L + 30000) + 498000`. Preparation and finalization each get 180000 ms.
+The remaining root allowance covers stage cleanup and sequencing. At the legal
+24-hour service maximum, a cell gets 86430000 ms and the root gets 1210518000 ms,
+or 14 days, 15 minutes, 18 seconds. Capture and controller work precede the
+measured root clock. These are finite allocations, not runtime predictions.
+The native measurement and sequence protocols share the fifteen-day ceiling;
+ordinary stdio transport retains its separate 24-hour maximum.
+Sealing starts no worker, provider or model and opens no dataset or weight files.
 The semantic recipe precedes the final manifest hash. Concrete bootstrap bytes
 and tickets derive afterward, so the seal does not contain its own future hash.
 

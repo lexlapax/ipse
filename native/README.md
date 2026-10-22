@@ -118,6 +118,13 @@ It records `linux_memcg_charged_peak_bytes_v1`, the kernel's aggregate charged
 memory high water, not sampled RSS, summed process RSS or GPU/device memory.
 macOS and missing Linux capabilities fail closed.
 
+`TIMEOUT_MS` accepts 1 through 1,296,000,000 ms, a finite fifteen-day maximum
+shared with measured sequence stages. This ceiling permits a root to contain
+fourteen serial cells whose individual model-service lifetimes remain at most
+24 hours. The evaluation recipe adds cleanup and sequencing allowances and
+freezes the resulting root deadline before launch. The measurement ceiling does
+not enlarge ordinary shell or stdio deadlines or renew any service allowance.
+
 The root collector must be the sole process in a new delegated user service named
 `ipse-measure-TOKEN.service`. `TOKEN` is 32 lowercase hexadecimal characters.
 It moves only itself into a collector leaf, enables memory accounting in that
@@ -227,7 +234,7 @@ admitted size; exact bytes and numeric FD identity are preserved privately.
 | --- | --- |
 | Bootstrap | Eight bytes `IPSEQ001`, sequence evidence directory string, future cells descriptor path string, preparation Stage, finalization Stage, EOF |
 | Prepared cells | Eight bytes `IPSCELL1`, u32 count from 1 to 64, that many Stages, EOF |
-| Stage | Token string of 32 lowercase hexadecimal characters, u64 timeout from 1 to 86,400,000 ms, fresh metric directory string, u32 argument count from 1 to 121, argument strings |
+| Stage | Token string of 32 lowercase hexadecimal characters, u64 timeout from 1 to 1,296,000,000 ms, fresh metric directory string, u32 argument count from 1 to 121, argument strings |
 
 A Stage's first argument is an absolute executable; other arguments are opaque
 and may be empty. The argument-byte total and complete collector argv must each

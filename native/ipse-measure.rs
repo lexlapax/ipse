@@ -362,7 +362,7 @@ mod linux {
         let role = &args[2]; let id = &args[3];
         if unsafe { signal(17, 0) } == usize::MAX { return Err("cannot retain measurement children".into()); }
         let timeout: u64 = args[4].parse().map_err(|_| "invalid measurement timeout")?;
-        if !(1..=86_400_000).contains(&timeout) { return Err("invalid measurement timeout".into()); }
+        if !(1..=crate::ipse_sequence::MAX_MEASUREMENT_TIMEOUT_MS).contains(&timeout) { return Err("invalid measurement timeout".into()); }
         let named_output = PathBuf::from(&args[5]);
         let mut output = named_output.clone();
         if !output.is_absolute() { return Err("measurement output must be absolute".into()); }
