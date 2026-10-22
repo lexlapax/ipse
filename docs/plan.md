@@ -469,6 +469,12 @@ and 22 documents. The earlier exposed workload is tuning material and cannot
 establish final acceptance. Preserve every historical attempt and its original
 verdict; never upgrade or replay an incomplete comparison.
 
+The [recorded semantic-review method](archive/2026-10-22-p27-semantic-review-policy/index.md)
+requires two fresh blinded assessments of every case and citation, followed by
+separate adjudication of disagreements. Preserve both raw assessments and the
+adjudications. Unresolved judgments leave review completeness open. This method
+is recorded before reference release and changes neither qualification target.
+
 The selected inference policy uses the existing `qwen3.5:9b` model with reasoning
 for final answers only. Extraction and reranking retain SDK-2's two-minute limit
 and disabled reasoning. The explicit SDK-1 version-three answer allowance is

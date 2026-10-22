@@ -7,6 +7,7 @@ preserved pre-rewrite chapters. Their dated bodies and verdicts are unchanged.
 
 | Snapshot | Provenance | Current guidance and retained records |
 | --- | --- | --- |
+| [2026-10-22 semantic-review method](2026-10-22-p27-semantic-review-policy/index.md) | Method recorded during the frozen `817ab84` comparison before reference release; two blinded assessments per case, independent adjudication and unchanged qualification targets | [Evaluation training](../developer/knowledge-evaluation.md), [plan](../plan.md) |
 | [2026-10-22 comparison duration repair](2026-10-22-p27-duration-repair/index.md) | Interrupted `1d40eee` execution, preserved failure, metadata-only allocation analysis and finite multi-day measurement composition | [Evaluation training](../developer/knowledge-evaluation.md), [native measurement](../../native/README.md#optional-exact-aggregate-memory-scopes), [plan](../plan.md) |
 | [2026-10-22 first private GPU comparison](2026-10-22-p27-private-comparison/index.md) | Frozen `7bffee0` execution; retained 350 first outcomes, terminal audit-capacity failure and effective-context diagnosis | [Evaluation training](../developer/knowledge-evaluation.md), [plan](../plan.md) |
 | [2026-10-21 explicit NVIDIA evaluation policy](2026-10-21-p27-gpu-policy/index.md) | Increment after `bfc388f`; portable/local device binding, scoped reviews, exposed GPU trial and retained verification limits | [Evaluation training](../developer/knowledge-evaluation.md), [dependencies](../developer/dependencies.md), [plan](../plan.md) |
