@@ -80,7 +80,7 @@ engine, database or mandatory backend is selected.
 | [P24: architecture/security readiness](#p24-independent-architecture-validation-and-baseline-security) | Complete for supervised P25 at `375e607`; accepted limits recorded | Refresh affected validation after trial changes |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Complete within declared supervision/assistance at `3307563`; security findings triaged and corrected scopes verified | Preserve frozen evidence; select a later production increment separately |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Complete within explicit-note scope at `25f1d8e`; review repairs and local/hosted gates pass | Preserve lifecycle, authority and documented retention limits |
-| [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Active; first full private GPU comparison failed; corrective verification open | Verify merged-audit and explicit-context repairs, then exposed viability before new acceptance |
+| [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Active; corrected private comparison running | Complete frozen outcomes and audit, independent semantic review, strategy selection and final manuals |
 | [P28: voice and media](#p28-voice-and-realtime-media) | Deferred; unimplemented | Explicit media contracts and later device/service validation |
 | [Apache-2.0 transition](#license-transition) | Complete; local and hosted `7bb642b` checks pass | Preserve bundled identity/recovery and third-party license boundaries |
 
@@ -342,13 +342,16 @@ the [extension contract](developer/memory.md) owns suppression and measurement l
 
 ## P27: optional research, graph and RAG
 
-**Active; duration-repair verification and final acceptance remain open.**
+**Active; corrected private comparison running, final acceptance open.**
 The first private GPU comparison at `7bffee0` retained 350 first outcomes but
 failed measurement and audit. Its context and streaming corrections passed
 verification and hosted CI at `1d40eee`. A fresh comparison at that source then
 exhausted its first cell's 100-minute service allowance. It retained 22 outcomes
 before the remaining owned work was stopped. Neither attempt qualifies a strategy.
-No engine has been selected, and reference answers remain sealed. The
+The duration correction at `817ab84` passed local verification and exact-source
+hosted CI. A fresh comparison has started with the approved inference policy
+and a 24-hour service allowance per cell. The user authorized the full comparison
+to finish. No engine has been selected, and reference answers remain sealed. The
 [first terminal record](archive/2026-10-22-p27-private-comparison/index.md) and
 [duration-repair record](archive/2026-10-22-p27-duration-repair/index.md) preserve
 the separate failures and their corrections. The
@@ -413,8 +416,8 @@ The complete milestone requires all of the following:
 | Structural readiness | Consolidated source ownership, callers, tests, packaging, CI and both audience manuals | Complete at `18af42e`; final results integration remains |
 | Comparison audit repair | Stream merged execution against closed cell inventories without materializing the raw aggregate | Reviewed; platform suites and all four source/installed CPU/GPU measured proofs pass |
 | Explicit context repair | Bind portable and local context; verify loaded completion context while allowing separate embedding windows | Reviewed; platform/floor checks, 31-case service proofs, all four measured proofs and eight exposed GPU requests pass |
-| Duration composition repair | Compose fourteen legal service lifetimes within one finite measured-root ceiling; preserve existing request and service limits | Source and manual reviews clear; platform suites, supported toolchain, native controls, package and source CPU measured proof pass; three measured proofs and exact-source hosted verification remain |
-| Final acceptance | Frozen private outcomes, independent judgments, all-strategy publication, exact resources and engine choice | Open; both private GPU attempts failed acceptance, references remain sealed |
+| Duration composition repair | Compose fourteen legal service lifetimes within one finite measured-root ceiling; preserve existing request and service limits | Reviews, platform and supported-toolchain checks, native controls, package checks, all four source/installed CPU/GPU measured proofs and exact-source hosted CI pass at `817ab84` |
+| Final acceptance | Frozen private outcomes, independent judgments, all-strategy publication, exact resources and engine choice | Open; fresh corrected comparison running, both earlier private GPU attempts remain failed, references sealed |
 
 The [external whole-P27 review and dispositions](archive/2026-10-20-p27-external-review-r1/index.md)
 retain all twelve code and five documentation findings, their repairs and
@@ -436,27 +439,27 @@ package/installed checks, source comparisons and exposed context diagnostic.
 All four source/installed CPU/GPU measured comparisons and final source-identity
 checks pass. Exact hosted run `39737181313` is green on Ubuntu and macOS for
 `1d40eee`. That result verifies the context and streaming corrections. The new
-duration-composition repair has separate, still-open verification in its
+duration-composition repair has separate completed verification in its
 [record](archive/2026-10-22-p27-duration-repair/index.md#verification-and-remaining-acceptance).
+Exact hosted run `39764314254` is green on Ubuntu and macOS for `817ab84`.
+All four measured fixture proofs complete 350 outcomes and the joined audits.
+These checks verify execution behavior and leave held-out semantic quality open.
 
 ### Next tasks
 
-1. Finish the three remaining source/installed measured proofs of the duration
-   repair and exact-source hosted verification. Platform/native/floor/package
-   checks, source and manual reviews, and the source CPU measured proof pass.
-   Run hosted verification alongside the remaining independent local proofs;
-   require both before launching another private comparison.
-2. Resolve the overall-duration limit and record the next cell allocation's
-   assumptions. Freeze a fresh acceptance experiment with explicit context and
-   the approved inference policy. Neither legal timeout admission nor the eight
-   exposed context requests establish held-out semantic quality.
-3. Preserve both failed comparisons and their consumed seals. Never replay them,
+1. Observe the single fresh comparison at `817ab84` through all 350 first outcomes
+   and the joined frozen execution/resource audit. Retain an independent native
+   receipt prefix during execution. The approved 24-hour service allowance per
+   cell composes to a root allowance of 14 days, 15 minutes and 18 seconds.
+   These are finite operational limits, not a completion-time forecast.
+2. Preserve both failed comparisons and their consumed seals. Never replay them,
    replace captured evaluators, rewrite evidence or release labels through failed
    authority. Product repairs cannot upgrade historical verdicts.
-4. Complete all 350 first outcomes and the joined frozen audit, then independent
-   semantic review, all-strategy quality/resource publication and individual
-   strategy qualification.
-5. Justify the selected engine, integrate results throughout both manuals, finish
+3. After all first outcomes and the full audit pass, release reference answers
+   through the current experiment's guard. Obtain independent semantic judgments,
+   recompute literal citation integrity, publish all strategy quality/resource
+   results and qualify strategies individually.
+4. Justify the selected engine, integrate results throughout both manuals, finish
    final review and verification, then commit and push the completed milestone.
 
 ### Final comparison policy

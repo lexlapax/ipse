@@ -1,8 +1,8 @@
 # Preserve the interrupted comparison and repair its duration allocation
 
 Historical evidence record, dated 2026-10-22. The failed execution used runtime
-`1d40eeee57d55cdfec3c9b377dd86d2c07fe4862`. The corrective increment starts from
-that commit. Current procedures belong to the
+`1d40eeee57d55cdfec3c9b377dd86d2c07fe4862`. The corrective increment is
+`817ab84944c347f76e297efaad313b1ec841ee91`. Current procedures belong to the
 [evaluation training manual](../../developer/knowledge-evaluation.md#build-the-six-local-bindings)
 and [native measurement reference](../../../native/README.md#optional-exact-aggregate-memory-scopes).
 The [plan](../../plan.md#p27-optional-research-graph-and-rag) owns acceptance status.
@@ -85,9 +85,12 @@ is an assumption, not a proved filesystem bound. Other inventory work also
 belongs in that reserve. This intentionally excessive envelope exceeds the
 unchanged 24-hour service limit and is not a measured runtime estimate.
 
-A future 24-hour choice would be a legal operational allocation, not proof that
-every theoretical wait fits. The overall-duration choice remains unresolved.
-No new private experiment has been launched under this repair.
+The user subsequently authorized the full comparison to finish. The fresh
+experiment selects the existing 24-hour service allowance per cell. That is a
+legal operational allocation, not proof that every theoretical wait fits.
+Per-request deadlines, model allowances and the service's 24-hour cap stay
+unchanged. The new root permits 14 days, 15 minutes and 18 seconds. That allowance
+is not a forecast or a claim of successful completion.
 
 ## Verification and remaining acceptance
 
@@ -119,17 +122,37 @@ source-consistency review found no defect in the duration guidance or examples.
 Linux build, formatting, strict compilation, demo and package build pass. Its
 native-enabled suite reports 1510 passed and 19 excluded in 960.8 seconds. The
 installed package check and all 31 model-service cases pass in both source and
-installed modes. The complete source CPU proof passes 350 first outcomes,
+installed modes. All four measured proofs pass 350 first outcomes each, full
 execution/resource audits, replay/tamper/scoring controls and natural cleanup.
-Its captured native launch uses root allowance 1210518000 ms and cell allowance
-86430000 ms, matching the frozen manifest. It finished in 676686 ms. This verifies
-the allocation through the complete path, not that duration of elapsed operation.
+The source CPU and GPU proofs took 676686 ms and 679917 ms. The installed CPU and
+GPU proofs took 566291 ms and 567295 ms. Every captured native launch uses root
+allowance 1210518000 ms and cell allowance 86430000 ms, matching its frozen
+manifest. Source inventories remain unchanged. These synthetic controls verify
+the allocation through the complete path. They do not establish multi-day
+elapsed operation, real GPU performance or semantic quality.
 
-At this checkpoint, the source GPU and both installed measured proofs remain in
-progress or pending. Hosted verification of the new repair is also pending.
-The source and documentation are ready for a focused commit while these
-independent checks finish. A private launch still requires all four measured
-proofs and exact-source hosted verification; committing does not waive them.
+The [local verification receipt](verification.json) retains the check results,
+source inventory, proof identities and log hashes. Its hosted status is the
+earlier local snapshot. The separate [hosted receipt](hosted-ci.json) records
+[run 39764314254](https://github.com/lexlapax/ipse/actions/runs/39764314254),
+which passed on Ubuntu and macOS at exact commit `817ab84`. All launch readiness
+checks completed before predictor inputs were released.
+
+## Start the fresh comparison
+
+The [launch receipt](fresh-launch.json) binds the new experiment to runtime
+`817ab84944c347f76e297efaad313b1ec841ee91` and freeze
+`e142cf44a0c257f85cfc30bddba6de645a6de7e8f64ccc9a7586ad37aef407fb`.
+Its directory is `/var/tmp/ipse-p27-heldout-20261022-817ab84-c4` on Serenity.
+These paths identify this execution and do not constrain other installations.
+
+The input gate checked both hosted jobs, all four measured proofs, the complete
+local receipt, source cleanliness, the seal and the author commitment. Only then
+did it release the manifest, corpus and questions. The remote verifier checked
+their byte counts and hashes and confirmed that reference answers were absent.
+The one measured comparison then started, with a separate observer retaining
+native receipt prefixes. At this launch checkpoint no outcomes or semantic
+quality are claimed. The consumed seal must never be replayed.
 
 The parent commit's hosted run `39737181313` is green on Ubuntu and macOS.
 It verifies the preceding context and streaming repairs, not this increment.
