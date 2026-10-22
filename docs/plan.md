@@ -413,7 +413,7 @@ The complete milestone requires all of the following:
 | P27H5 | Explicit schema-bound inference and independently selected extraction and rerank contracts | Compatibility and protocol checks complete; semantic acceptance open |
 | P27A | Independent Research and lexical Corpus packages with cited evidence, explicit limits, partial failures and suppression | Implementation and review repairs verified; held-out acceptance open |
 | P27B | Independent Graph, optional extraction, dense/hybrid retrieval and reranking | Implementation and review repairs verified; matched comparison and selection open |
-| Structural readiness | Consolidated source ownership, callers, tests, packaging, CI and both audience manuals | Complete at `18af42e`; final results integration remains |
+| Structural readiness | Earlier source ownership and manual changes are recorded at `18af42e` | Open; whole-tree consolidation must meet the clarified layout, deletion and maintenance requirements below |
 | Comparison audit repair | Stream merged execution against closed cell inventories without materializing the raw aggregate | Reviewed; platform suites and all four source/installed CPU/GPU measured proofs pass |
 | Explicit context repair | Bind portable and local context; verify loaded completion context while allowing separate embedding windows | Reviewed; platform/floor checks, 31-case service proofs, all four measured proofs and eight exposed GPU requests pass |
 | Duration composition repair | Compose fourteen legal service lifetimes within one finite measured-root ceiling; preserve existing request and service limits | Reviews, platform and supported-toolchain checks, native controls, package checks, all four source/installed CPU/GPU measured proofs and exact-source hosted CI pass at `817ab84` |
@@ -425,7 +425,23 @@ follow-up coverage. The [readiness repair record](archive/2026-10-21-p27-readine
 retains the subsequent whole-milestone and Daybreak review, six further repairs
 and their checks. The [structural implementation](archive/2026-10-20-p27-structure-implementation/index.md)
 and [whole-manual editorial review](archive/2026-10-21-p27-manual-consolidation/editorial-review.md)
-explain the completed consolidation.
+record the earlier changes. Those records do not establish acceptance of the
+whole-codebase consolidation.
+
+Structural acceptance remains open. Use the standard Elixir layout with matching
+feature folders under `lib/ipse/` and `test/ipse/`. Consolidate generic extension
+host and SDK code under `lib/ipse/extension/`, and place bundled and optional
+feature implementations under one `extensions/` source tree. Merge small, tightly
+coupled modules and one-caller wrappers while preserving justified process and
+public-contract ownership. Keep separate developer commands, with their shared
+implementation grouped into fewer directories. Retain individual historical files
+and simplify current material only.
+
+The implementation proposal must cover runtime code, extension packages, tests,
+developer tooling, examples, shipped resources and both current manuals. Identify
+specific deletions and merges separately from file moves, then verify callers,
+packaging and documented usage against the resulting structure. The running
+comparison retains its original frozen source and provenance throughout this work.
 
 The [preceding launch-verification record](archive/2026-10-21-p27-gpu-policy/index.md#preserve-the-first-private-preparation-refusal)
 binds the canonical command correction, actual fresh-VM regression, macOS and
