@@ -9,6 +9,11 @@ The current prototype runs on Linux and macOS. It is a line-oriented terminal
 application and an embeddable Session API. Start with the scripted demo, then
 choose a provider explicitly when you are ready to use a model.
 
+P27 is complete within its optional Corpus, Graph and Research scope. The
+[plan](docs/plan.md#p27-optional-research-graph-and-rag) records acceptance, the
+selected hybrid reference configuration and its limits. Voice and media (P28)
+remain deferred.
+
 ## Build and try the demo
 
 You need Elixir 1.18+, Erlang/OTP 27+, Rust 1.85+, Git and a C linker. From a source
@@ -68,9 +73,17 @@ providers or billing modes.
 | Connect external tools | [MCP](docs/operator/mcp.md) |
 | Select reviewed extensions | [Extensions](docs/operator/extensions.md) |
 | Store explicit notes with retention and suppression | [Memory](docs/operator/memory.md) |
+| Retain sources and retrieve cited passages | [Corpus](docs/operator/corpus.md) |
+| Record attributed facts and traverse relationships | [Graph](docs/operator/graph.md) |
+| Investigate a question and inspect its evidence | [Research](docs/operator/research.md) |
 | Recover interrupted work or start from a reviewed handoff | [Session recovery](docs/operator/recovery.md) |
 | Inspect usage and shared quotas | [Resource controls](docs/operator/resources.md) |
 | Contribute to the harness or build an extension | [Developer training](docs/developer/index.md) |
+
+Corpus, Graph and Research are independently configured optional extensions.
+Lexical retrieval can run without a model service. Embeddings, model extraction
+and reranking require explicitly selected profiles; follow the linked setup guides
+before enabling them.
 
 Shell commands use your ordinary account permissions by default. An explicit
 `--sandbox native` requests the supported workspace OS policy and fails closed
