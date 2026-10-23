@@ -89,6 +89,14 @@ judgments stay unmeasured. Keep raw reviews/adjudication and bind the final scor
 input to that evidence. The generic scorer validates one final review envelope;
 it does not automatically prove this multi-review procedure occurred.
 
+Publish qualification under each primary review as a sensitivity check beside
+the final adjudicated scores. A selected strategy can pass under both reviewers
+while the claim that it alone qualifies depends on adjudication. Preserve the
+frozen selection policy; this comparison does not replace adjudicated verdicts.
+If an owner resolves residual uncertainty outside the recorded review method,
+label that decision as an owner resolution and method extension. Retain the
+uncertainty, exact affected judgments, and its effect on completeness and gates.
+
 No fabricated template values or simple majority label replaces source inspection.
 Several claims citing the same span are several pairs. Correct bytes are a
 prerequisite, not a semantic verdict. Wrong project/version/coordinates cannot gain

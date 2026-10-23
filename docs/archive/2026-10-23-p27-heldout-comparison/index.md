@@ -105,11 +105,17 @@ now rejects that incompatible kind/verdict pair; all six custody tests pass.
 The original captured scorer accepted the corrected schema, recomputed literal
 integrity, wrote the report and exited one because review was incomplete. One
 relative clause could describe either a booked survey or an unproved drill status.
-The project owner independently judged the clause as referring to the survey and
-therefore supported. That separate human judgment resolves only the remaining
+The project owner judged the clause as referring to the survey and therefore
+supported. This owner resolution extends the pre-registered method, which left
+unresolved judgments unmeasured; it is not another independent blinded review.
+That separate human judgment resolves only the remaining
 answer/citation uncertainty; the first claim's existing model support and every
 other case remain unchanged. All model assessments, including the uncertainty,
 are retained. The final scorer invocation exited zero with complete review.
+The resolution changes rerank's answer support and one citation pair, and closes
+review completeness. It changes neither hybrid's scores nor any strategy's
+qualification. The six earlier corrections changed verdict labels to match saved
+response kinds; they changed no numeric score.
 
 ## Quality comparison
 
@@ -148,12 +154,29 @@ binding `combined`; the user manual's equivalent worked configuration names it
 configured; this decision adds no database, default network call or automatic
 provider switch.
 
-Hybrid is the only strategy meeting both targets. Lexical had higher answer
+Hybrid is the only strategy meeting both targets under the final adjudicated
+scores. Lexical had higher answer
 support and fewer model requests, but failed citation support. The graph, dense,
 rerank and Research variants also fail at least one target and are rejected for
 this reference choice. Adding rerank increases requests without qualifying quality.
 Hybrid retains two failed first outcomes and higher observed request/storage
 cost than lexical; the quality gate does not erase those tradeoffs.
+
+The [subsequent independent review](../2026-10-23-p27-independent-review/index.md#n3-the-reference-selection-depends-on-adjudication)
+identified material sensitivity to reviewer disagreement. Recomputing each
+primary assessment separately gives these supported-answer and citation counts:
+
+| Strategy | Reviewer A alone | Reviewer B alone | Final adjudicated scores |
+| --- | --- | --- | --- |
+| Hybrid | 46/50; 79/83, qualifies | 46/50; 83/83, qualifies | 46/50; 79/83, qualifies |
+| Lexical | 48/50; 86/96, fails | 49/50; 92/96, qualifies | 48/50; 88/96, fails |
+| Rerank | 43/50; 83/91, fails | 45/50; 87/91, qualifies | 44/50; 84/91, fails |
+
+Thus hybrid qualifies under either primary review, but the claim that it alone
+qualifies depends on adjudication. All four unsupported hybrid citation pairs
+were disputed and resolved in reviewer A's direction. Adjudication followed the
+recorded procedure; review completeness additionally uses the owner resolution
+disclosed above. The result does not establish a reviewer-independent ranking.
 
 The answer-side result applies to the frozen 9B final-answer policy, not arbitrary
 providers or corpora. Corpus query itself returns evidence and does not silently

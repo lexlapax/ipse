@@ -529,11 +529,14 @@ corpus, provider or model changes need their own scoped evaluation rather than
 upgrading this historical result or replaying consumed seals. P28 remains deferred.
 
 The [independent review of `a7f4982`](archive/2026-10-23-p27-independent-review/index.md)
-confirms acceptance within this scope and records open follow-up work. Two P2
-findings are open: a dispatched MCP `isError` result shares the pre-dispatch
-`mcp_refused` outcome, and non-regular skill files can block discovery in Session.
-It also notes that the reference selection depends on adjudicated reviewer
-disagreements. Repairs need their own scoped changes and checks.
+confirms acceptance within this scope. The later
+[remediation record](archive/2026-10-23-p27-review-remediation/index.md) closes both
+P2 findings: dispatched MCP errors now retain a distinct diagnostic outcome,
+and non-regular skill files refuse while explicit prompt expansion runs outside
+the owner. It also closes deadline-edge accounting and patches PlugCrypto.
+The comparison discloses adjudication sensitivity and the owner-resolution method
+extension; frozen predictions and scores remain unchanged. Broader maintenance
+work stays recorded separately, including versioned MCP fingerprint portability.
 
 ### Final comparison policy
 

@@ -233,7 +233,49 @@ defmodule Ipse.Extension.MCPCallSessionTest do
   defp action_results(events), do: Enum.filter(events, &(&1["type"] == "extension_action_result"))
   defp digest(value), do: Ipse.JSON.digest([value])
 
+  test "tool error diagnostics fit the escaped SDK envelope and never split a codepoint", ctx do
+    prefix = String.duplicate(<<0>>, 2047)
+    File.write!(Path.join(ctx.root, "error-text"), prefix <> "🙂")
+    pid = start(ctx, config(ctx, server(ctx, :http, :tool_error)))
+    invoke(pid)
+    done(pid)
+    [result] = action_results(events(ctx, pid))
+
+    assert result["outcome"] == %{
+             "status" => "failed",
+             "value" => %{"code" => "mcp_tool_error", "message" => prefix, "truncated" => true}
+           }
+
+    assert :ok = Ipse.Extension.validate(Actions.resume(result))
+  end
+
   for transport <- [:stdio, :http] do
+    test "#{transport}: a dispatched tool error retains its diagnostic and possible effect on resume",
+         ctx do
+      selected = server(ctx, unquote(transport), :tool_error)
+      cfg = config(ctx, selected)
+      pid = start(ctx, cfg)
+      id = Session.info(pid).id
+      invoke(pid)
+      done(pid)
+      assert Fixture.calls(ctx.root) == 1
+      assert File.read!(Path.join(ctx.root, "partial-effect")) == "written before error"
+
+      assert [%{"outcome" => %{"status" => "failed", "value" => value}}] =
+               action_results(events(ctx, pid))
+
+      assert value == %{
+               "code" => "mcp_tool_error",
+               "message" => "fixture rejected",
+               "truncated" => false
+             }
+
+      assert :ok = Session.close_confirmed(pid)
+      resumed = start(ctx, cfg, id)
+      assert Session.info(resumed).phase == :idle
+      assert Fixture.calls(ctx.root) == 1
+    end
+
     test "#{transport}: exact approval, durable source before descriptor and complete UTF8 windows without inference",
          ctx do
       selected = server(ctx, unquote(transport), :normal)

@@ -496,12 +496,18 @@ defmodule Ipse.Session.Invocation do
       s = Session.account(s, admission)
       active = %{admission: admission, started: System.monotonic_time(:millisecond)}
 
-      reply =
-        if output_timely?(s),
-          do: {:ok, config, admission},
-          else: {:error, :extension_model_refused}
+      s = %{s | extension_model: active, steps: s.steps + 1}
 
-      {:reply, reply, %{s | extension_model: active, steps: s.steps + 1}}
+      if output_timely?(s) do
+        {:reply, {:ok, config, admission}, s}
+      else
+        code =
+          if message == :extension_embedding_begin,
+            do: "embedding_request_failed",
+            else: "model_request_failed"
+
+        {:reply, {:failed, %{"code" => code}}, Session.measure_request(s, :expired)}
+      end
     else
       _ -> {:reply, {:error, :extension_model_refused}, s}
     end

@@ -135,6 +135,15 @@ action-result capacity, including repeated arguments, before approval and
 dispatch. A denial after discovery still sends zero effect requests. The Client
 rediscovers and compares the descriptor immediately before dispatch.
 
+A pre-dispatch refusal returns `failed` with `code: "mcp_refused"`. A tool
+response with `isError: true` instead returns `failed` with
+`code: "mcp_tool_error"`, the redacted `message` and a `truncated` boolean.
+The message retains at most 2048 UTF-8 bytes without splitting a codepoint, so
+even JSON escaping fits the SDK envelope. This response confirms dispatch, not
+rollback: a remote write may have partly completed. Inspect the service before
+requesting another approved call. It grants no successful source-read authority.
+Transport loss or an invalid response remains `unknown` and stops continuation.
+
 New operations and explicit mixed invocations use version-two action records
 with `effect_binding`. Version-one records retain their exact shape. The public
 binding identifies the alias, schema, selected manifest and redacted server
@@ -269,6 +278,12 @@ and canonical `request_admitted`. Request ID equals operation ID and attempt ID
 is fresh. Kind is `extension`, with actual provider, billing, profile and original
 child/parent origin. Reservations and conservative settlement use the real shared
 budget root. Refusals count as attempts, not admitted budget bookings.
+
+If the producer deadline expires while Session syncs an admission, Session closes
+that admission with a failed completion before returning `model_request_failed`
+or `embedding_request_failed`. No provider call or budget reservation starts.
+Keep this distinct from a pre-admission `model_limit` or `embedding_limit` refusal;
+recovery must find a completion for the admitted attempt.
 
 The provider wire is at most 1 MiB including event framing, independently of the
 8 KiB text ceiling. This is not a bound on every HTTP buffer or process heap.

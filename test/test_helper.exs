@@ -23,3 +23,21 @@ System.put_env("IPSE_HOME", Path.join(operator_home, ".ipse"))
 System.at_exit(fn _ -> File.rm_rf!(operator_home) end)
 
 ExUnit.start(exclude: [:native_sandbox, :macos_sandbox, :macos_filesystem, :memory_scope])
+
+defmodule Ipse.Test.FileEffectProbe do
+  def fifo!(path) do
+    probe = path <> ".probe"
+
+    try do
+      {_, 0} =
+        System.cmd("rustc", ["--edition=2021", "test/support/file_effect_probe.rs", "-o", probe],
+          stderr_to_stdout: true
+        )
+
+      {_, 0} = System.cmd(probe, ["--fifo-only", path])
+      :ok
+    after
+      File.rm(probe)
+    end
+  end
+end

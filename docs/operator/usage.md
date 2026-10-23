@@ -132,7 +132,10 @@ Invoke a selected skill with `$name`. List available skills before a session wit
 `ipse skills --cwd /path/to/project`. Same-name precedence is project
 `.agents/skills`, `IPSE_HOME/skills`, shared `~/.agents/skills`, then bundled skills.
 `IPSE_HOME` defaults to `~/.ipse`. A skill supplies text; it does not execute its
-support files. Skill documents are limited to 64 KiB; explicit resource reads
+support files. Skill documents must be regular files; FIFOs, devices, directories
+and leaf symlinks are skipped. A selected file that changes or becomes unavailable
+refuses the prompt; inspect it and use `/context refresh` before trying again.
+Skill documents are limited to 64 KiB; explicit resource reads
 are limited to 32 KiB and eight path components, without recursive loading.
 
 Ipse snapshots applicable `AGENTS.md` files from the nearest repository boundary

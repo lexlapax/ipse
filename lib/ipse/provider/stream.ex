@@ -90,12 +90,6 @@ defmodule Ipse.Provider.Stream do
 
   def new_lines(mode \\ :sse), do: %Ipse.Provider.Stream.LineState{mode: mode}
 
-  def feed_lines(state, bytes) when is_binary(bytes) do
-    with {:ok, state, lines} <-
-           reduce_lines(state, bytes, [], fn line, lines -> {:ok, [line | lines]} end),
-         do: {:ok, Enum.reverse(lines), state}
-  end
-
   def reduce_lines(state, bytes, acc, fun) when is_binary(bytes) and is_function(fun, 2),
     do: split_lines(state, bytes, acc, fun)
 

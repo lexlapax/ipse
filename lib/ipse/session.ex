@@ -220,6 +220,7 @@ defmodule Ipse.Session do
             else: "not_decided"
           ),
         task: nil,
+        prompt_from: nil,
         task_cleanup_failed: false,
         job_ref: nil,
         phase: if(question, do: :question, else: :idle),
@@ -1186,8 +1187,8 @@ defmodule Ipse.Session do
   def handle_call({:prompt, _}, _from, %{phase: phase} = s) when phase != :idle,
     do: {:reply, {:error, :busy}, s}
 
-  def handle_call({:prompt, text}, _from, s) when is_binary(text) and byte_size(text) > 0 do
-    Turn.prompt(s, text)
+  def handle_call({:prompt, text}, from, s) when is_binary(text) and byte_size(text) > 0 do
+    Turn.prompt(s, text, from)
   end
 
   def handle_call({:prompt, _}, _from, s), do: {:reply, {:error, :empty_prompt}, s}
@@ -1312,6 +1313,8 @@ defmodule Ipse.Session do
 
     if s.task, do: Task.shutdown(s.task, :brutal_kill)
 
+    if s.prompt_from, do: GenServer.reply(s.prompt_from, {:error, :cancelled})
+
     text_cleanup =
       Enum.map(s.extension_text, fn {_, resource} ->
         result =
@@ -1368,6 +1371,7 @@ defmodule Ipse.Session do
       %{
         s
         | phase: :idle,
+          prompt_from: nil,
           task: nil,
           approval: nil,
           job_ref: nil,
@@ -1568,6 +1572,9 @@ defmodule Ipse.Session do
 
       {:context_preflight, {:ok, snapshot, drift}} ->
         Turn.context_checked(s, snapshot, drift)
+
+      {:prompt_preflight, prepared} ->
+        Turn.prompt_prepared(s, prepared)
 
       {:context_preflight, {:error, reason}} ->
         Turn.context_check_failed(s, reason)

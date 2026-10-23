@@ -10,11 +10,16 @@ unsafe extern "C" {
 }
 
 fn main() {
+    let args: Vec<String> = std::env::args().collect();
+    if args.get(1).map(String::as_str) == Some("--fifo-only") {
+        let path = CString::new(args[2].clone()).unwrap();
+        assert_eq!(unsafe { mkfifo(path.as_ptr(), 0o600) }, 0);
+        return;
+    }
     thread::spawn(|| {
         let _ = std::io::stdin().read_to_end(&mut Vec::new());
         std::process::exit(2);
     });
-    let args: Vec<String> = std::env::args().collect();
     let path = CString::new(args[1].clone()).unwrap();
     assert_eq!(unsafe { mkfifo(path.as_ptr(), 0o600) }, 0);
     let mut fifo = OpenOptions::new().read(true).write(true).open(&args[1]).unwrap();

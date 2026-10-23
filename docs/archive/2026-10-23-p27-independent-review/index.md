@@ -8,7 +8,9 @@ executed. The FIFO reproduction used an isolated temporary workspace.
 
 It follows the [held-out comparison and acceptance audit](../2026-10-23-p27-heldout-comparison/index.md)
 and does not replace it. Findings below are open unless a later record repairs
-them. Use the [user manual](../../operator/index.md),
+them. The later [review remediation](../2026-10-23-p27-review-remediation/index.md)
+records fixes, disclosure corrections, verification and remaining maintenance work.
+Use the [user manual](../../operator/index.md),
 [developer training](../../developer/index.md) and [plan](../../plan.md) for
 current behavior and status. Paths below are repository-relative at the subject
 commit.

@@ -152,6 +152,71 @@ defmodule Ipse.SessionTest do
     refute_received {:model_input, _}
   end
 
+  test "skill expansion reads outside the owner and rejects a skill replaced with a FIFO", ctx do
+    path = Path.join(ctx.root, ".agents/skills/review/SKILL.md")
+    File.mkdir_p!(Path.dirname(path))
+    File.write!(path, "---\nname: review\ndescription: Fixture\n---\nReview text")
+    pid = session(ctx, %{})
+    :erlang.trace_pattern({Ipse.Workspace, :expand_skills, 2}, true, [])
+    :erlang.trace(:new, true, [:call, {:tracer, self()}])
+
+    try do
+      assert :ok = Ipse.Session.prompt(pid, "$review")
+
+      assert_receive {:trace, reader, :call, {Ipse.Workspace, :expand_skills, _}}, 2000
+      refute reader == pid
+      assert_receive {:ipse, ^pid, {:done, :ok}}, 2000
+    after
+      :erlang.trace(:new, false, [:call])
+      :erlang.trace_pattern({Ipse.Workspace, :expand_skills, 2}, false, [])
+    end
+
+    File.rm!(path)
+    :ok = Ipse.Test.FileEffectProbe.fifo!(path)
+    assert {:error, :skill_catalog_changed} = Ipse.Session.prompt(pid, "$review")
+    assert :ok = Ipse.Session.cancel(pid)
+    assert Ipse.Session.info(pid).phase == :idle
+    assert :ok = Ipse.Session.close_confirmed(pid)
+    fresh = session(ctx, %{})
+    refute Enum.any?(:sys.get_state(fresh).skills, &(&1["path"] == path))
+  end
+
+  test "cancellation settles a pending skill preflight caller and kills its owned task", ctx do
+    pid = session(ctx, %{})
+    ref = make_ref()
+    caller = self()
+
+    state =
+      :sys.replace_state(pid, fn s ->
+        task = Ipse.Session.owned_task(fn -> Process.sleep(:infinity) end)
+        %{s | phase: :prompt_preflight, task: task, prompt_from: {caller, ref}}
+      end)
+
+    assert :ok = Ipse.Session.cancel(pid)
+    assert_receive {^ref, {:error, :cancelled}}, 2000
+    refute Process.alive?(state.task.pid)
+    assert Ipse.Session.info(pid).phase == :idle
+    assert :ok = Ipse.Session.prompt(pid, "another turn")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 2000
+  end
+
+  test "failed skill preflight settles the caller without terminating the owner", ctx do
+    pid = session(ctx, %{})
+    ref = make_ref()
+    caller = self()
+
+    :sys.replace_state(pid, fn s ->
+      task = Ipse.Session.owned_task(fn -> raise "synthetic skill read failure" end)
+      %{s | phase: :prompt_preflight, task: task, prompt_from: {caller, ref}}
+    end)
+
+    assert_receive {^ref, {:error, :skill_catalog_changed}}, 2000
+    assert_receive {:ipse, ^pid, {:done, :error}}, 2000
+    assert Ipse.Session.info(pid).phase == :idle
+    assert :ok = Ipse.Session.prompt(pid, "another turn")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 2000
+  end
+
   test "approved writes execute, survive resume, and do not rerun on startup", ctx do
     pid = session(ctx, %{scenario: :write, approval: :allow})
     Ipse.Session.prompt(pid, "write")

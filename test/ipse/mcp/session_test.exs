@@ -95,6 +95,27 @@ defmodule Ipse.MCP.SessionTest do
            )
   end
 
+  test "a server-declared error preserves partial effects and diagnostics without idle replay",
+       ctx do
+    pid = session(ctx, scenario: "is_error", approval: :allow)
+    :ok = Ipse.Session.prompt(pid, "write")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5000
+    id = Ipse.Session.info(pid).id
+    assert File.read!(Path.join(ctx.root, "note.txt")) == "approved fixture 1"
+    assert {:ok, events} = Ipse.Journal.load(ctx.dir, id)
+
+    message =
+      Enum.find_value(events, &if(get_in(&1, ["message", "role"]) == "tool", do: &1["message"]))
+
+    assert message["ipse_tool_outcome"]["status"] == "error"
+    assert message["content"] =~ "Effects may have happened"
+    assert message["content"] =~ "fixture rejected"
+    assert :ok = Ipse.Session.close_confirmed(pid)
+    resumed = session(ctx, [scenario: "is_error", approval: :allow], id)
+    assert Ipse.Session.info(resumed).phase == :idle
+    assert File.read!(Path.join(ctx.root, "calls.log")) == "write_note\n"
+  end
+
   test "headless policy denies all external tools and resume never replays completed calls",
        ctx do
     denied = session(ctx, approval: :deny)

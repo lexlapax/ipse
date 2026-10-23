@@ -56,6 +56,32 @@ defmodule Ipse.SkillsTest do
     refute Enum.any?(Workspace.discover_skills(project, user), &(&1["name"] in ["bad", "huge"]))
   end
 
+  test "discovery skips a FIFO skill and a selected skill replaced with a FIFO refuses", ctx do
+    path = install(Path.join(ctx.project, ".agents/skills"), "pipe", "pipe")
+    skills = Workspace.discover_skills(ctx.project, ctx.user)
+    File.rm!(path)
+    :ok = Ipse.Test.FileEffectProbe.fifo!(path)
+
+    for operation <- [
+          fn -> Workspace.discover_skills(ctx.project, ctx.user) end,
+          fn -> Workspace.load_skill(skills, "pipe") end
+        ] do
+      task = Task.async(operation)
+      result = Task.yield(task, 1000)
+
+      if result == nil do
+        System.cmd("sh", ["-c", "printf x > \"$1\"", "sh", path])
+        Task.await(task)
+      end
+
+      assert {:ok, value} = result
+
+      if is_list(value),
+        do: refute(Enum.any?(value, &(&1["name"] == "pipe"))),
+        else: assert(match?({:error, _}, value))
+    end
+  end
+
   test "quoted Unicode metadata removes exactly the ASCII delimiters", ctx do
     for {quote, name, description} <- [
           {"\"", "雪", "Review café 🙂"},

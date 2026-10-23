@@ -240,6 +240,13 @@ the remote service before explicitly asking again. Resume never replays the
 call. A helper launch refusal before startup is a known error; correct the
 executable/workspace/profile before a new attempt.
 
+A tool can return an error after performing part of its work. Ipse displays the
+server's redacted diagnostic with a warning about possible effects; an extension
+records `mcp_tool_error`, rather than the pre-dispatch `mcp_refused` code. Extension
+diagnostics retain up to 2048 UTF-8 bytes and mark longer text as truncated.
+Inspect the affected files or service before requesting a retry. The error does
+not undo changes, grant another approval, or cause idle resume to repeat the call.
+
 A helper that started must acknowledge cleanup. Exit zero or a terminal frame
 alone is insufficient. An output-read error or a pipe still open after the
 500 ms post-exit drain deadline is a transport failure. Detached children can
@@ -250,6 +257,11 @@ Resume with the same `--mcp-config` public fields, including allowlists and sand
 Changed public configuration refuses resume. Private environment values are
 reloaded and excluded from the public fingerprint. In-flight approvals keep
 their immutable snapshot. Follow [Recovery](recovery.md) when uncertainty remains.
+
+Public fingerprints currently use OTP's deterministic term encoding. A major OTP
+upgrade can therefore refuse an unchanged MCP configuration. Keep the previous
+runtime available for inspection or resume; start a new session with reviewed
+configuration if the new runtime refuses it. Do not bypass the fingerprint check.
 
 ## Try the bundled credential-free example
 

@@ -194,11 +194,6 @@ defmodule Ipse.Journal do
   defp validate_id(_), do: {:error, :invalid_id}
   defp journal_path(state_dir, id), do: Path.join(state_dir, id <> ".jsonl")
 
-  @doc false
-  def validate_complete(contents) do
-    with {:ok, stats} <- read_binary(contents), do: complete(stats)
-  end
-
   defp complete(%{count: count, tail: :none}) when count > 0, do: :ok
   defp complete(_), do: {:error, :incomplete_journal}
   defp now, do: DateTime.utc_now() |> DateTime.to_iso8601()

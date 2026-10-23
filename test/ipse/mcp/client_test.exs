@@ -73,10 +73,11 @@ defmodule Ipse.MCP.ClientTest do
   test "server-declared tool errors and oversized replies do not masquerade as success", ctx do
     descriptor = discover!(server(ctx.cwd, "is_error"), ctx.cwd)
 
-    assert {:error, "fixture rejected"} =
+    assert {:tool_error, "fixture rejected"} =
              MCP.call(descriptor, %{"path" => "note.txt", "content" => "hello"}, ctx.cwd)
 
     assert File.read!(Path.join(ctx.cwd, "calls.log")) == "write_note\n"
+    assert File.read!(Path.join(ctx.cwd, "note.txt")) == "hello"
 
     oversized_cwd = Path.join(ctx.cwd, "oversized")
     File.mkdir_p!(oversized_cwd)

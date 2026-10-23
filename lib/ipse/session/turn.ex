@@ -25,11 +25,36 @@ defmodule Ipse.Session.Turn do
     end
   end
 
-  def prompt(s, text) do
-    original = text
+  def prompt(s, text, from) do
+    with :ok <- prompt_text(text) do
+      if Workspace.explicit_skills(text, s.skills) == [] do
+        commit_prompt(s, text, {:ok, text, []})
+      else
+        task = Session.owned_task(fn -> {text, prepare_prompt(text, s.skills)} end)
+        {:noreply, %{s | phase: :prompt_preflight, task: task, prompt_from: from}}
+      end
+    else
+      error -> {:reply, error, s}
+    end
+  end
+
+  def prompt_prepared(s, {:error, error}) when is_binary(error) do
+    GenServer.reply(s.prompt_from, {:error, :skill_catalog_changed})
+    {:noreply, fail(%{s | prompt_from: nil}, error)}
+  end
+
+  def prompt_prepared(s, {original, result}) do
+    {:reply, reply, next} =
+      commit_prompt(%{s | phase: :idle, prompt_from: nil}, original, result)
+
+    GenServer.reply(s.prompt_from, reply)
+    {:noreply, next}
+  end
+
+  defp commit_prompt(s, original, prepared) do
     turn = Ipse.Usage.id()
 
-    case prepare_prompt(text, s.skills) do
+    case prepared do
       {:error, error} when error in [:invalid_prompt, :prompt_too_large] ->
         {:reply, {:error, error}, s}
 
@@ -1216,6 +1241,15 @@ defmodule Ipse.Session.Turn do
   end
 
   @doc false
+  def tool_completed(s, :tool_error, text) do
+    tool_completed(
+      s,
+      :error,
+      "MCP tool reported an error after dispatch. Effects may have happened; inspect before retrying.\n" <>
+        text
+    )
+  end
+
   def tool_completed(s, status, text) do
     s = %{
       s

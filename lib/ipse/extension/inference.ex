@@ -800,6 +800,7 @@ defmodule Ipse.Extension.Inference do
   def execute(context, intent, kind, perform) when kind in [:text, :embedding] do
     case GenServer.call(context.owner, {begin_message(kind), context.job_ref, intent}, :infinity) do
       {:ok, config, admission} -> run(context, intent, kind, perform, config, admission)
+      {:failed, _} = failure -> failure
       _ -> {:failed, %{"code" => code(kind, :limit)}}
     end
   end

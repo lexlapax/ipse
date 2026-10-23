@@ -146,6 +146,7 @@ defmodule Ipse.Extension.MCPCall do
              request["timeout_ms"]
            ) do
         {:ok, text} when is_binary(text) -> persist_source(context, intent, text)
+        {:tool_error, text} when is_binary(text) -> tool_error(text)
         {:error, _} -> @refused
         _ -> @unknown
       end
@@ -161,12 +162,29 @@ defmodule Ipse.Extension.MCPCall do
   def valid_outcome?(_request, status, value, _) when status in ~w(unknown denied),
     do: value == %{}
 
-  def valid_outcome?(_request, "failed", value, _), do: value === elem(@refused, 1)
+  def valid_outcome?(_request, "failed", value, _) do
+    value === elem(@refused, 1) or
+      (keys?(value, ~w(code message truncated)) and value["code"] == "mcp_tool_error" and
+         is_binary(value["message"]) and String.valid?(value["message"]) and
+         byte_size(value["message"]) <= 2048 and is_boolean(value["truncated"]))
+  end
 
   def valid_outcome?(request, "ok", value, operation_id),
     do: validate(request) == :ok and EffectResult.descriptor?(value, operation_id)
 
   def valid_outcome?(_, _, _, _), do: false
+
+  defp tool_error(text) do
+    prefix = binary_part(text, 0, min(byte_size(text), 2048))
+
+    message =
+      case :unicode.characters_to_binary(prefix) do
+        {:incomplete, valid, _} -> valid
+        valid when is_binary(valid) -> valid
+      end
+
+    {:failed, %{"code" => "mcp_tool_error", "message" => message, "truncated" => message != text}}
+  end
 
   defp persist_source(context, intent, text) do
     if String.valid?(text) and byte_size(text) <= 65_536 and

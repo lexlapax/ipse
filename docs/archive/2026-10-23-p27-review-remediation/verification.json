@@ -1,0 +1,206 @@
+{
+  "base_commit": "a912db1095a313fde29461b758ce77676224d75c",
+  "created_at": "2026-10-23T18:50:59.621007Z",
+  "final_changed_code_lock_test_files_sha256": {
+    "dev/fixtures/mcp.exs": "dc7e6c08bff11ef0cda9ae5336af2b95261da2b474368eedee7c3c16f925b8d3",
+    "lib/ipse/extension/external_calls.ex": "eb69b097d5f8a21c96666057f6934a28b1311154976872e93d652dfa0f08f1f5",
+    "lib/ipse/extension/inference.ex": "8ebd682e2843f5ead1caa7a8ffd462d3922a26ff34ed1de3b5510277b4bd1ef6",
+    "lib/ipse/journal.ex": "4c39151c2e8bfd570975db7b5ddde84a400f0afe60c07294c736a633d22eb164",
+    "lib/ipse/mcp.ex": "9d7b3a5d9e9256ed6a656b9fe4a3c36c4267193e772db08b5d6b6ec465ed324e",
+    "lib/ipse/provider/stream.ex": "4a455787a606596670a9202e6ec130f9118ec334acefd6e99f6349a52211d4f6",
+    "lib/ipse/session.ex": "04412f4990894d0b6921edd323be2e964ed031ab12a7a72559f6eb002a3347be",
+    "lib/ipse/session/invocation.ex": "ed76756769e0fba972174d956d409a942cfba588bc1f0df312f5a83749782fd4",
+    "lib/ipse/session/turn.ex": "214f00db9dc56bcba111223d09a2968c0a18405fd02d132b9d6933436769c090",
+    "lib/ipse/workspace.ex": "cc3c2f12227fbe183336691ab9f82a63b681480ba64059688d44082673f1eae2",
+    "mix.lock": "c6be0ff68446834973ed443028e318f86782ee9f6061b9fd911da419184f86c0",
+    "test/ipse/extension/invocation_test.exs": "50f93fc404eabd6592b4115660cb3c14a87946de080c3f421d4dc9cb6807e2ea",
+    "test/ipse/extension/mcp_call_session_test.exs": "45021744ebda06cbbf52adb1af42eb3a0221beba3bc830bc4c8de21f0df0190d",
+    "test/ipse/mcp/client_test.exs": "57ec12350b7a5d7aabcd91341f5011a54dfb41f52b9341ee93672178cc7819ce",
+    "test/ipse/mcp/session_test.exs": "428eca1f81da644ffeec134f61d31ab9a7592329f2bacfbafa0870e74c25e919",
+    "test/ipse/session_test.exs": "e4a1b9f47a353b0935632501eaef1d359d287443dd889e68d0ace717bc6f5814",
+    "test/ipse/workspace_skills_test.exs": "f887b22e0c73de8f3da406de05797355d414c88c67ffe31947bcccf944fff0a7",
+    "test/support/file_effect_probe.rs": "5dea87af1f2d05f93417567f615e24cdefd6ce6722392c0aaad25306db93c252",
+    "test/test_helper.exs": "3fe1c5ac8fab2068cc8d0001bc79f3a17fc6e9f6d997df9ccb34600509d6d63d"
+  },
+  "final_code_files_equal_across_hosts": true,
+  "linux": {
+    "all_verification_jobs_exited": true,
+    "commands": [
+      "./dev/build.sh",
+      "mix format --check-formatted",
+      "mix compile --warnings-as-errors",
+      "mix test --include native_sandbox",
+      "mix test --include native_sandbox test/ipse/session_test.exs test/ipse/workspace_skills_test.exs test/ipse/mcp/client_test.exs test/ipse/mcp/session_test.exs test/ipse/extension/mcp_call_session_test.exs test/ipse/extension/invocation_test.exs test/dev/evaluation/declaration_cli_test.exs",
+      "mix test test/ipse/workspace_skills_test.exs test/ipse/session_test.exs test/ipse/session/file_effect_test.exs test/ipse/mcp/session_test.exs:98",
+      "./bin/ipse demo"
+    ],
+    "corrected_focused_suite": {
+      "passed": 139,
+      "seconds": 118.8
+    },
+    "correction": "After native run exited, restored a912db1 Git metadata without replacing files, overlaid final skill-worker error handling, reran both failed evaluator cases and all affected suites",
+    "demo": "passed",
+    "final_fixture_controls": {
+      "excluded_by_location": 12,
+      "passed": 32,
+      "seconds": 1.9
+    },
+    "initial_native_suite": {
+      "excluded": 19,
+      "failed": 2,
+      "passed": 1519,
+      "seconds": 979.9,
+      "status": "failed_setup"
+    },
+    "initial_overlay_patch_sha256": "6c2457d9323336aacd7fbd3d8c0661468f14692371d0c628ac7e55dfab5e295d",
+    "initial_source_archive_sha256": "cf59670fc6ad85cb4e9f49c03f45ac7acc478163f653e9622707e17c1b50326d",
+    "logs_sha256": {
+      "build.log": "6beda6c1e1bd426f04ba5b7bdf5964f79d6a0dd94768003ca8724645828421fe",
+      "compile.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "corrected-compile.log": "03d47c6b429a076348282533b9725f493e889974a689133db39f187fac79a634",
+      "corrected-demo.log": "243edfde777379651c01ca29bc9dc0426a595b331af63e4b909d3ea31bbd335b",
+      "corrected-exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "corrected-format.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "corrected-tests.log": "0ad6875ddca1223121b16dcbcbe80998e97fb21ac3a9ea122a005a0b29f1595d",
+      "fixture-complete": "284d1e8c4918248233df17642bbb940c001e1fa856c18aab86ba6dbe7813eb13",
+      "fixture-tests.log": "78f7c4e64c17a06dd4ebb5bde7308316f87cfeb858cd6848aec946c4169b3fdc",
+      "format.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests.log": "9a17be03caf601612553ce01b0428e455ca6c4d76ef9f88846fb41152b24a4a9"
+    },
+    "root": "serenity:/var/tmp/ipse-p27-review-repair-a9OCy4cT",
+    "setup_failure": "Two declaration CLI tests require Git metadata, absent from the initial source archive",
+    "toolchain": {
+      "elixir": "1.20.4",
+      "erts": "17.1",
+      "otp": "29"
+    }
+  },
+  "macos": {
+    "archive": "dist/ipse-0.1.0-darwin-arm64.tar.gz",
+    "archive_sha256": "5e31cf81d951157faaee12ccf914dd970cb407f4a817c0c7786f0b492162def5",
+    "commands": [
+      "./dev/build.sh",
+      "mix format --check-formatted",
+      "mix compile --warnings-as-errors",
+      "mix test",
+      "mix test test/ipse/workspace_skills_test.exs test/ipse/session_test.exs test/ipse/session/file_effect_test.exs test/ipse/mcp/session_test.exs:98",
+      "./bin/ipse demo",
+      "./dev/package.sh",
+      "elixir dev/build-artifact.exs mcp-actions --sdk _build/dev/lib/ipse/ebin --output /tmp/ipse-p27-review-repair-mcp-artifact",
+      "elixir dev/verify.exs source mcp --sdk _build/dev/lib/ipse/ebin --input /tmp/ipse-p27-review-repair-mcp-artifact",
+      "elixir dev/verify.exs installed package --archive dist/ipse-0.1.0-darwin-arm64.tar.gz --input examples/memory-corpus.json",
+      "elixir dev/verify.exs installed mcp --archive dist/ipse-0.1.0-darwin-arm64.tar.gz --input /tmp/ipse-p27-review-repair-mcp-artifact",
+      "elixir dev/check-docs.exs"
+    ],
+    "final_fixture_controls": {
+      "excluded_by_location": 12,
+      "passed": 32
+    },
+    "full_suite": {
+      "excluded": 36,
+      "passed": 1469,
+      "seconds": 1151.8,
+      "skipped": 1
+    },
+    "full_suite_scope": "Final runtime code; subsequent test-only fixture changes checked separately",
+    "installed_mcp": {
+      "checks": {
+        "complete_utf8_windows": true,
+        "denial_has_zero_dispatch": true,
+        "descriptor_drift_has_zero_dispatch": true,
+        "full_exact_approval": true,
+        "idle_resume_inert": true,
+        "independent_worker_artifact": true,
+        "mixed_reads_then_effect": true,
+        "seventeenth_effect_refused": true,
+        "source_corruption_refused": true,
+        "source_precedes_descriptor": true,
+        "stdio_and_http_dispatch": true,
+        "unselected_binding_has_zero_discovery": true
+      },
+      "live_model_calls": 0,
+      "source_bytes": 18900,
+      "verification": {
+        "inventories_unchanged": true,
+        "mode": "installed",
+        "precompiled_harness": true,
+        "private_home": true,
+        "scenario": "mcp",
+        "system_toolchain_on_runtime_path": false
+      }
+    },
+    "installed_package": {
+      "explicit_memory": true,
+      "passed": true,
+      "standalone_release_checks": true,
+      "verification": {
+        "inventories_unchanged": true,
+        "mode": "installed",
+        "precompiled_harness": true,
+        "private_home": true,
+        "scenario": "package",
+        "system_toolchain_on_runtime_path": false
+      }
+    },
+    "logs_sha256": {
+      "admission-final": "10654eb4a8dfb06c7f76eeb18bb4384f2bf2f9566eb1aafaf22c49039acb4190",
+      "admission-red": "2be016c4e6a6f06d2850f94587bda51ef45efce30d9809e1231aa7447f111550",
+      "build": "e6a89bc09e8ce0449a888bc6272e5e33dae52f67a78e3e193678e0fc9bd848ed",
+      "demo": "3cbc1ae98a21c3d21634c067ba3bc662d04c2c7e81d09078eb393868f3bd5096",
+      "fixtures": "c22caa81d962ecb013c9baee43ecf0683c8f535921f5f0f643451eeb44a18b23",
+      "full-macos": "494638354ff8edd2c961b5208e966254b188a3f16d630f1637ce94c9057a100e",
+      "installed": "f236fd7588f4e75d5f133e831c49adec80e8d02505e837779f4f8c1a16955cf2",
+      "installed-mcp": "612a8a89312920e23d7089eac0f04faf430d62b38b0d3de076fb7c57147fec22",
+      "mcp-build": "e75b8cd1ad319fc3c171f4df034b31e6c11a9d0da19c83a26f9e02a64772f028",
+      "mcp-cli": "7eef936d9b6b1d5d4f56738bc32bd2a2da0c2205d10202fd7cd08161789cd3b0",
+      "mcp-turn": "7456fe731f2aaba02b3b4f7dd633590fbe29d0d2434b4c960a68fdd527630301",
+      "package-final": "ec7886c1884dbd4104624650a4bd8f8a49be21dbee5a49f4a8ec545bdf838e86",
+      "red": "09cda80ac39e80c76d519ae7a61cdcf0f0f1757197cc55c85f87fd0988b586fa"
+    },
+    "ordinary_mcp_error_control": {
+      "excluded_by_location": 12,
+      "passed": 1
+    },
+    "source_mcp": {
+      "checks": {
+        "complete_utf8_windows": true,
+        "denial_has_zero_dispatch": true,
+        "descriptor_drift_has_zero_dispatch": true,
+        "full_exact_approval": true,
+        "idle_resume_inert": true,
+        "independent_worker_artifact": true,
+        "mixed_reads_then_effect": true,
+        "seventeenth_effect_refused": true,
+        "source_corruption_refused": true,
+        "source_precedes_descriptor": true,
+        "stdio_and_http_dispatch": true,
+        "unselected_binding_has_zero_discovery": true
+      },
+      "live_model_calls": 0,
+      "source_bytes": 18900,
+      "verification": {
+        "inventories_unchanged": true,
+        "mode": "source",
+        "precompiled_harness": true,
+        "private_home": true,
+        "scenario": "mcp",
+        "system_toolchain_on_runtime_path": false
+      }
+    },
+    "toolchain": {
+      "elixir": "1.20.3",
+      "erts": "17.0.5",
+      "otp": "29"
+    }
+  },
+  "not_repeated": [
+    "real-model inference or judging",
+    "350-answer comparison",
+    "charged-RAM comparison",
+    "Linux package/installed proofs",
+    "macOS sandbox proofs",
+    "hosted CI at new repair commit"
+  ],
+  "preserved_evidence_archive_sha256": "bb1d87e7115af9dbbcbd7c323e83243461f08390531f8c70f0558ff1420bf7f0",
+  "version": 1
+}

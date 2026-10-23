@@ -67,7 +67,7 @@ and its own license/dependency inventory.
 | MIME | Hex 2.0.7, locked | Req/Plug MIME utilities | Apache-2.0 |
 | NimbleOptions | Hex 1.1.1, locked | Finch option validation | Apache-2.0 |
 | NimblePool | Hex 1.1.0, locked | Finch process pooling | Apache-2.0 |
-| PlugCrypto | Hex 2.2.0, locked | Plug cryptographic helpers | Apache-2.0 |
+| PlugCrypto | Hex 2.2.1, locked | Plug cryptographic helpers; fixes CVE-2026-105963 | Apache-2.0 |
 | Telemetry | Hex 1.4.2, locked; developer approved on 2026-10-15 | Erlang/BEAM events used by Finch/Plug; adds no outside runtime service | Apache-2.0 with upstream NOTICE |
 | Rust toolchain and standard library | Rust 1.85+; `dev/build-native.sh` invokes `rustc --edition=2021` | Build the OS helper; no third-party Cargo packages | MIT OR Apache-2.0 |
 | Ipse native helper | `native/ipse-runner.rs`, `native/ipse-process-group.rs`, `native/ipse-stdio.rs`, `native/ipse-linux-sandbox.rs`, `native/ipse-macos-sandbox.rs`, `native/ipse-measure.rs`, `native/ipse-sequence.rs`, `native/ipse-bound.rs`, `native/ipse-listener.rs`, `native/ipse-file-copy.rs`, `native/ipse-environment.rs`, compiled as `priv/ipse-runner` | Runtime anchored process groups, advisory locks, bidirectional OS pipes, optional Linux user/mount/network/PID namespaces, private descriptor procfs, Landlock/seccomp and macOS signed App Sandbox worker policies; optional owned cgroup measurement, execution-bound serial stages, direct-child loopback-listener observations, retained-descriptor regular-file copies and selected child-environment forwarding; used by tests | Apache-2.0 (project source) |
@@ -77,6 +77,14 @@ authentication also uses crypto/public-key facilities. Req/Plug satisfy the SDK'
 compile-time references; Finch/Mint also serve bounded provider/authentication
 transport. Optional Bandit, Decimal and IDNA dependencies are not enabled. No MCP
 listener starts automatically. Ipse requires no Node, JavaScript or Python runtime.
+
+The 2026-10-23 [PlugCrypto advisory](https://github.com/elixir-plug/plug/security/advisories/GHSA-ffw9-w85g-f2vh)
+affects versions before 2.2.1: wrong-typed cryptographic arguments can expose a
+secret key base in stack traces. Ipse has no direct Plug cryptography calls or
+enabled Plug server; the dependency arrives through the SDK's compile-time
+requirements. The locked patch release removes the vulnerable version from new
+builds rather than relying on that current lack of reachability. Recheck this
+boundary before adding a Plug server or cryptographic caller.
 
 ## Host and build inventory
 

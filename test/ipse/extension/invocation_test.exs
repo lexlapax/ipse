@@ -823,6 +823,74 @@ defmodule Ipse.Extension.InvocationTest do
     assert snapshot["request_count"] == 0
   end
 
+  test "expiry while syncing inference admission closes accounting before refusing dispatch",
+       ctx do
+    {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}])
+    on_exit(fn -> :gen_tcp.close(listener) end)
+    {:ok, {_, port}} = :inet.sockname(listener)
+    base = "http://127.0.0.1:#{port}"
+    pid = start(%{ctx | config: model_config(ctx.config, base)})
+    :ok = host_command(pid, model_request())
+    assert_receive {:ipse, ^pid, {:approval, ref, "extension:model.complete", _}}, 3000
+    owner = self()
+    started = System.monotonic_time(:millisecond) - 118_000
+    timer = Process.send_after(pid, :unused_fixture_deadline, 60_000)
+
+    state =
+      :sys.replace_state(pid, fn s ->
+        %{s | extension_output_clock: %{started_ms: started, timer: timer}}
+      end)
+
+    :ok =
+      :sys.install(state.journal_writer, {
+        fn
+          :waiting, {:in, {_, _, {:append, _, %{"type" => "request_admitted"}}}}, _ ->
+            send(owner, {:admission_waiting, self()})
+
+            receive do
+              :release_admission -> :released
+            after
+              3500 -> :released
+            end
+
+          status, _, _ ->
+            status
+        end,
+        :waiting
+      })
+
+    :erlang.trace_pattern(
+      {Ipse.Session.Invocation, :begin_inference, 3},
+      [{:_, [], [{:return_trace}]}],
+      []
+    )
+
+    :erlang.trace(pid, true, [:call, {:tracer, self()}])
+
+    try do
+      :ok = Session.approve(pid, ref, true)
+      assert_receive {:admission_waiting, writer}, 3000
+      Process.sleep(max(started + 120_001 - System.monotonic_time(:millisecond), 0))
+      send(writer, :release_admission)
+
+      assert_receive {:trace, ^pid, :return_from, {Ipse.Session.Invocation, :begin_inference, 3},
+                      {:reply, {:failed, %{"code" => "model_request_failed"}}, refused}},
+                     3000
+
+      assert refused.extension_model == nil
+      assert [entry] = Map.values(refused.accounting.requests)
+      assert entry.completion["outcome"] == "failed"
+      assert {:error, :timeout} = :gen_tcp.accept(listener, 0)
+      assert_receive {:ipse, ^pid, {:done, _}}, 3000
+      assert {:ok, events} = Journal.load(ctx.dir, Session.info(pid).id)
+      assert {:ok, _} = Ipse.Usage.restore(events, Session.info(pid).id)
+    after
+      Process.cancel_timer(timer)
+      if Process.alive?(pid), do: :erlang.trace(pid, false, [:call])
+      :erlang.trace_pattern({Ipse.Session.Invocation, :begin_inference, 3}, false, [])
+    end
+  end
+
   test "interactive refusal records no model dispatch or shared reservation", ctx do
     {base, _} = model_fixture(self())
 

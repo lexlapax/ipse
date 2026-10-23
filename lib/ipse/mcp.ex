@@ -344,7 +344,7 @@ defmodule Ipse.MCP do
 
       cond do
         not String.valid?(text) or byte_size(text) > 65_536 -> unknown()
-        result["isError"] == true -> {:error, text}
+        result["isError"] == true -> {:tool_error, text}
         true -> {:ok, text}
       end
     end

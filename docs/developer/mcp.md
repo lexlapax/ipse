@@ -38,6 +38,14 @@ may have happened, timeout, connection loss, malformed reply, or RPC error yield
 unknown and stops the batch; later calls are not started. Resume never replays.
 Remote effects are not undone by closing local IO.
 
+`MCP.call/4` distinguishes `{:error, text}` before dispatch from
+`{:tool_error, text}` after a server returns `isError: true`. The latter retains
+redacted diagnostics and says nothing about rollback. The turn records an error
+and warns about possible effects. Extensions retain a bounded `mcp_tool_error`
+action outcome. Exercise both transports in
+`test/ipse/extension/mcp_call_session_test.exs`; its error fixture writes a marker
+before returning the error, then verifies that idle resume does not repeat it.
+
 Extensions use the separate [MCP host-call contract](extension-effects.md#bind-and-call-an-external-mcp-item).
 Their action intent replaces the model tool's `tool_started` record; routing,
 descriptor rediscovery, transport ownership and unknown-outcome rules are shared.
@@ -48,9 +56,17 @@ Resource text and prompt messages remain data, with returned roles preserved;
 they never become system instructions. Non-text resource/prompt results refuse.
 Ordinary tool results can report omitted unsupported blocks.
 
+Persisted MCP fingerprints use deterministic Erlang term encoding, unlike the
+canonical JSON digests used elsewhere. That encoding is not a cross-OTP storage
+contract: a major OTP upgrade can fail closed on unchanged configuration. See
+the [OTP encoding guarantee](https://www.erlang.org/doc/apps/erts/erlang.html#term_to_binary/2).
+Replacing it
+requires a versioned journal/configuration migration and old-record tests.
+Do not silently recompute existing identities with a different digest scheme.
+
 ## Schema subset
 
-`MCP.Schema` bounds schemas to 32 KiB, depth 8, and 256 nodes. The root may omit
+`Ipse.JSON` bounds schemas to 32 KiB, depth 8, and 256 nodes. The root may omit
 `$schema`, use exactly `https://json-schema.org/draft/2020-12/schema`, or use
 `http://json-schema.org/draft-07/schema#` only for the explicitly equivalent
 admitted keyword subset. This is not full Draft-07 support.

@@ -69,6 +69,15 @@ or resource rechecks path/digest. Drift refuses until explicit refresh. Older
 journals acquire their first catalog at a model boundary, never idle inspection.
 `/context` and `/skills` show saved values; standalone `ipse skills` discovers current files.
 
+Discovery and loading accept bounded regular `SKILL.md` files; FIFOs, devices,
+directories and leaf symlinks are omitted or refused. Prompt-time `$skill`
+expansion runs in an owned task before Session commits a user message. The
+owner remains available for cancellation, which settles the pending prompt
+caller and stops the task without adopting partial text. Verify both the FIFO
+and regular-file paths with `test/ipse/workspace_skills_test.exs` and
+`test/ipse/session_test.exs`. As with instruction discovery, these path checks
+do not defeat hostile concurrent replacement.
+
 Core rules remain system text. Workspace references, skill metadata, and extension
 contributions use a labelled user-role reference message. Explicitly requested
 skill bodies stay in their requesting turn. Placement does not promote reference

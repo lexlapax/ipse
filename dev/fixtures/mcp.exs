@@ -33,7 +33,7 @@ defmodule IpseMCPExample.Fixture do
           end
 
           changed = File.exists?(Path.join(root, "change-descriptor"))
-          result = result(rpc, changed, text())
+          result = response(rpc, changed, root, mode)
 
           IO.binwrite(
             :stdio,
@@ -170,6 +170,21 @@ defmodule IpseMCPExample.Fixture do
     do: %{"messages" => [%{"role" => "user", "content" => %{"type" => "text", "text" => text}}]}
 
   def result(_, _, _), do: %{}
+
+  defp response(%{"method" => "tools/call"}, _, root, mode)
+       when mode in [:tool_error, "tool_error"] do
+    File.write!(Path.join(root, "partial-effect"), "written before error")
+
+    text =
+      case File.read(Path.join(root, "error-text")) do
+        {:ok, text} -> text
+        _ -> "fixture rejected"
+      end
+
+    %{"isError" => true, "content" => [%{"type" => "text", "text" => text}]}
+  end
+
+  defp response(rpc, changed, _, _), do: result(rpc, changed, text())
 
   def http(root, owner, mode \\ :normal) do
     {:ok, supervisor} = Task.Supervisor.start_link()
@@ -331,7 +346,7 @@ defmodule IpseMCPExample.Fixture do
                 :json.encode(%{
                   "jsonrpc" => "2.0",
                   "id" => rpc["id"],
-                  "result" => result(rpc, changed, text())
+                  "result" => response(rpc, changed, root, mode)
                 })
                 |> IO.iodata_to_binary()
 

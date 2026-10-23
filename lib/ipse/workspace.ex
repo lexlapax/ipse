@@ -753,20 +753,13 @@ defmodule Ipse.Workspace do
   end
 
   defp read_limited(path) do
-    case File.open(path, [:read, :binary]) do
-      {:ok, file} ->
-        result = IO.binread(file, @max_skill_bytes + 1)
-        File.close(file)
-
-        case result do
-          data when is_binary(data) and byte_size(data) <= @max_skill_bytes -> {:ok, data}
-          data when is_binary(data) -> {:error, :too_large}
-          :eof -> {:ok, ""}
-          {:error, reason} -> {:error, reason}
-        end
-
-      {:error, reason} ->
-        {:error, reason}
+    with {:ok, %{type: :regular, size: size}} <- File.lstat(path),
+         true <- size <= @max_skill_bytes do
+      read_bounded(path, @max_skill_bytes)
+    else
+      {:ok, _} -> {:error, :nonregular_source}
+      false -> {:error, :too_large}
+      {:error, reason} -> {:error, reason}
     end
   end
 

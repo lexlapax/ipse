@@ -104,6 +104,12 @@ Graph retrieval also excludes facts outside their validity interval, reporting
 `excluded_fact`. A fact with missing or replaced source provenance remains a
 `stale_fact` failure and leaves the query partial.
 
+`as_of_ms` filters current retained versions. It does not restore earlier versions
+that have been replaced. If the current version has `observed_at_ms: 200` and you
+query with `as_of_ms: 150`, that version is excluded and the previous one is
+unavailable to the query. The
+query can therefore abstain with complete coverage of eligible retained sources.
+
 An unpublished source, missing vectors under an explicit fallback policy, or a
 cut-off graph traversal leaves `coverage.complete: false` and `status: "partial"`.
 That also applies when no passage is returned: an incomplete search cannot claim

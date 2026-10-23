@@ -73,8 +73,12 @@ unsafe timestamps before typed results.
 For BM25, Store supplies validated sources/heads/revision tokens/coverage. Evidence
 ranks at selected time; Corpus revalidates captured roots immediately before return.
 A mismatch conflicts instead of publishing stale success. It cannot revoke output
-already returned. Completeness applies to eligible sources at that time. Suppressed,
-expired/future-source, and time-excluded-fact diagnostics remain explicit exclusions.
+already returned. `as_of_ms` filters the currently retained generations; it does
+not reconstruct a past snapshot. For example, after generation two replaces
+generation one with `observed_at_ms: 200`, a query with `as_of_ms: 150` excludes it
+without recovering generation one. Completeness covers eligible retained generations,
+so this can be a complete abstention. Suppressed, expired/future-source, and
+time-excluded-fact diagnostics remain explicit exclusions.
 Unpublished source work or failed required components stay coverage gaps: an empty
 ranking with a draft is partial, not complete abstention.
 
@@ -188,7 +192,7 @@ Store first claims a source-bound projection draft with token and capacity plan.
 Entrypoints check remaining read/effect allowance before calls, then return validated
 results through that token. Store owns packing and final publication. Explicit
 fact batches pack actual JSON before claim, up to 32 facts; count is not reservation
-for32 worst-case records. Model extraction derives affordable allowance before
+for 32 worst-case records. Model extraction derives affordable allowance before
 egress. Output exceeding it leaves a draft for inspection/exact abort. Eight heads
 per source allow updates to an existing kind/profile at capacity, while a ninth
 refuses before draft/model work.
@@ -196,7 +200,7 @@ refuses before draft/model work.
 Extraction/rerank profiles can select `output_contract: "json_schema_v2"`; omission
 retains v1 text. Recipe version and output contract differ. Structured helpers
 use task-specific schema, native Ollama, 12-KiB request within unchanged SDK bounds;
-v1 retains8 KiB. Encoded task input separately permits 4096 bytes. No source/input
+v1 retains 8 KiB. Encoded task input separately permits 4096 bytes. No source/input
 is shortened to fit or rerouted to another provider. See
 [accounted effects](extension-effects.md#request-bounded-text-inference).
 
@@ -209,7 +213,7 @@ invalid proposal refuses the whole response. Derive absolute byte spans and vali
 them. Store revalidates chunks/live draft at commit. Do not apply query-time expiry
 during publication and silently discard future/past validity intervals.
 
-For a chunk at byte2048 containing `Éclair does not require β.`, this proposal
+For a chunk at byte 2048 containing `Éclair does not require β.`, this proposal
 preserves both multibyte characters and derives the absolute range:
 
 ```json
@@ -239,8 +243,8 @@ Bind result indices to approved inputs and stable opaque host hashes across page
 Raw local hashes alone authenticate no returned vector. Check descriptor identity,
 offsets/dimensions, canonical Base64, float32 encoding, and full vector digest.
 All finite float32 values including signed maxima are valid; NaN/infinity refuse.
-Do not shorten vectors. Two 4096-wide vectors require12 coordinate pages, manifest,
-final CAS, claim, and embedding call:16 effects. State admits one/two selected chunks;
+Do not shorten vectors. Two 4096-wide vectors require 12 coordinate pages, manifest,
+final CAS, claim, and embedding call: 16 effects. State admits one/two selected chunks;
 MCP admits exactly one and counts reads as effects. Check complete capacity before
 dispatch; metadata-heavy facts can need smaller batches.
 
@@ -295,9 +299,9 @@ Its ledger lists bounded recent references without repeating retrieval.
 
 Native claims bind unique source IDs. Supported/inference/conflict need a source;
 open may have none. Shape/reference validation proves no entailment. Exact repeated
-capture is idempotent. Bounds are16 sources/32 claims/64-KiB ledger, excerpts4000 bytes,
-statements1000 bytes/eight references, URL2048 bytes, call ID256 characters, arguments
-16 KiB, and body/header/recovery result66048 bytes. Bound refusal truncates no evidence.
+capture is idempotent. Bounds are 16 sources/32 claims/64-KiB ledger, excerpts 4000 bytes,
+statements 1000 bytes/eight references, URL 2048 bytes, call ID 256 characters, arguments
+16 KiB, and body/header/recovery result 66048 bytes. Bound refusal truncates no evidence.
 Children cannot use these tools.
 
 Owned work reads original events outside Session; durable research source/claim
