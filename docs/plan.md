@@ -611,6 +611,11 @@ who did not build it, without weakening approvals, explicit provider selection o
 fail-closed behavior. It adds no provider, model service or dependency by default.
 The [P28 implementation brief](archive/2026-10-23-p28-p29-design/p28.md) breaks
 this scope into ordered work packages with files, tests and decisions.
+The developer accepted its recommended decisions on 2026-10-23. A missing
+configuration keeps the built-in `chatgpt` default, and interactive starts print
+a notice that names it and points to `ipse setup`. The first tag is `v0.1.0`. The
+release workflow drafts releases with the runner-provided `gh` CLI and the default
+token, recorded in the dependency inventory when it is added.
 
 Scope:
 
@@ -650,6 +655,12 @@ embeddings limited to OpenAI and Ollama in
 one branch at a time would spread credential, billing and continuation rules.
 The [P29 implementation brief](archive/2026-10-23-p28-p29-design/p29.md) breaks
 this scope into ordered work packages with files, tests and decisions.
+The developer accepted its recommended decisions on 2026-10-23. Gemini, then
+OpenRouter, follow the existing four providers in the documented priority order;
+[AGENTS.md](../AGENTS.md#product-and-scope) changes when those providers land.
+An `openai_compatible` provider serves loopback servers only, with local billing.
+OpenRouter profiles send `data_collection: "deny"` unless they explicitly allow
+collection.
 
 1. **Registry, no behavior change.** Each provider declares its adapter, default
    endpoint, credential source, billing mode, reasoning/profile validation, usage

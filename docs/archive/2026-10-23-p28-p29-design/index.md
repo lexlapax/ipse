@@ -32,6 +32,9 @@ Decisions marked **Decision** need the developer's answer before the package tha
 depends on them. Each brief recommends an answer. Record the answer in the plan or
 in the package commit message.
 
+The developer accepted every recommended answer in both briefs on 2026-10-23.
+The plan records them under each milestone.
+
 ## Shared baseline checks
 
 Run these from the repository root at the end of every package that changes code:
