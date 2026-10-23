@@ -96,6 +96,26 @@ credit from matching substrings elsewhere. A retrieval-only row has no supported
 answer measurement; actual failed answer attempts need independent unsupported
 verdicts rather than disappearing.
 
+Choose the verdict from the saved `response_kind`, then assess its content:
+
+| Saved response kind | Permitted answer verdicts |
+| --- | --- |
+| `answer` | `supported`, `unsupported`, `unmeasured` |
+| `abstention` | `correct_abstention`, `incorrect_abstention`, `unmeasured` |
+| `retrieval_only` | `unmeasured` |
+
+For example, an `answer` can say that the supplied records contain no founding
+date. Assess whether that statement follows from the evidence and use an answer
+verdict. Its cautious wording does not change the saved kind to `abstention`.
+Conversely, assess a declared abstention with the abstention verdicts. The scorer
+refuses an incompatible kind/verdict pair with `invalid_reviews`.
+
+Validate this contract before freezing a review pair. If a submitted assessment
+needs correction, retain its original bytes and reasons. Have each affected
+reviewer reassess the cases independently, preserving every unaffected judgment,
+and freeze the revised pair before comparing it. Record the correction and its
+scope; never silently translate verdicts or edit predictions to satisfy the schema.
+
 ## Recompute literal integrity from original corpus bytes
 
 `source-bytes-v1` checks full project/source/generation/typed-version/hash identity

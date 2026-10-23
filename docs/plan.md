@@ -68,9 +68,10 @@ RAG, including the operator's Zero-Mem inspiration. P26's explicit-note baseline
 is complete at `25f1d8e` after external and whole-milestone internal review,
 reproduced repairs and passing local and exact-source hosted checks. The
 [remediation record](archive/2026-10-19-p26-remediation/index.md) preserves the
-findings, failures and scoped acceptance. P27 research, graph and RAG development
-is active. External whole-milestone review repairs have scoped passing checks;
-quality evaluation, final integrated review and candidate verification remain open;
+findings, failures and scoped acceptance. P27 research, graph and RAG is complete
+within its optional-package scope. Whole-milestone review repairs, consolidation,
+final-code platform/installed checks, held-out review, publication and acceptance
+audit pass. Hybrid is selected as the qualifying reference configuration;
 media remains deferred to P28. External services remain configurable; no third-party
 engine, database or mandatory backend is selected.
 
@@ -80,12 +81,12 @@ engine, database or mandatory backend is selected.
 | [P24: architecture/security readiness](#p24-independent-architecture-validation-and-baseline-security) | Complete for supervised P25 at `375e607`; accepted limits recorded | Refresh affected validation after trial changes |
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Complete within declared supervision/assistance at `3307563`; security findings triaged and corrected scopes verified | Preserve frozen evidence; select a later production increment separately |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Complete within explicit-note scope at `25f1d8e`; review repairs and local/hosted gates pass | Preserve lifecycle, authority and documented retention limits |
-| [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Active; corrected private comparison running | Complete frozen outcomes and audit, independent semantic review, strategy selection and final manuals |
+| [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Complete within optional-package scope; hybrid qualified and selected | Preserve versioned evidence and explicit configuration; evaluate new workloads independently |
 | [P28: voice and media](#p28-voice-and-realtime-media) | Deferred; unimplemented | Explicit media contracts and later device/service validation |
 | [Apache-2.0 transition](#license-transition) | Complete; local and hosted `7bb642b` checks pass | Preserve bundled identity/recovery and third-party license boundaries |
 
 The requested P22–P25 campaign and separate Apache-2.0 transition are complete
-within their documented scopes. P26 remediation is complete; P27 is active and
+within their documented scopes. P26 remediation and P27 are complete, and
 P28 remains deferred. Preserve P25's frozen
 inputs, runners, source/review/scan identities, scores and failed attempts; newer
 documentation does not rescan code or expand an earlier verdict. P27 follows the
@@ -342,16 +343,27 @@ the [extension contract](developer/extension-state.md) owns suppression and meas
 
 ## P27: optional research, graph and RAG
 
-**Active; corrected private comparison running, final acceptance open.**
+**Complete within the optional Research, Graph and Corpus scope.**
 The first private GPU comparison at `7bffee0` retained 350 first outcomes but
 failed measurement and audit. Its context and streaming corrections passed
 verification and hosted CI at `1d40eee`. A fresh comparison at that source then
 exhausted its first cell's 100-minute service allowance. It retained 22 outcomes
 before the remaining owned work was stopped. Neither attempt qualifies a strategy.
 The duration correction at `817ab84` passed local verification and exact-source
-hosted CI. A fresh comparison has started with the approved inference policy
-and a 24-hour service allowance per cell. The user authorized the full comparison
-to finish. No engine has been selected, and reference answers remain sealed. The
+hosted CI. Its fresh comparison completed all 350 first outcomes, including six
+failures, and passed the joined execution/resource audit before reference release.
+Two independent model assessments, separate adjudication and one explicit human
+resolution supply complete review of all 350 outcomes and 635 citations. The
+original scorer passes the frozen per-strategy qualification policy. Hybrid is
+the sole eligible strategy, with 92% answer support and 95.18% citation support,
+and is selected as the reference configuration. The
+[complete comparison record](archive/2026-10-23-p27-heldout-comparison/index.md)
+publishes all outcomes, all seven strategies, original judgments and matched
+resources. All four final-code source/installed CPU/GPU synthetic measurement
+controls pass, along with platform/package checks and the whole-manual review.
+The [requirement-by-requirement audit](archive/2026-10-23-p27-heldout-comparison/acceptance-audit.md)
+records the complete acceptance and its limits.
+The
 [first terminal record](archive/2026-10-22-p27-private-comparison/index.md) and
 [duration-repair record](archive/2026-10-22-p27-duration-repair/index.md) preserve
 the separate failures and their corrections. The
@@ -410,14 +422,14 @@ The complete milestone requires all of the following:
 | P27H2 | Approved configured MCP actions, pinned descriptors, child denial, owned cancellation and unknown-outcome recovery | Protocol checks complete |
 | P27H3 | Selected-profile native embeddings, exact egress and operation-aware accounting and budgets | Protocol checks complete |
 | P27H4 | Opt-in complete results, historical receipt reads and strict source closure within ordinary SDK bounds | Protocol checks complete |
-| P27H5 | Explicit schema-bound inference and independently selected extraction and rerank contracts | Compatibility and protocol checks complete; semantic acceptance open |
-| P27A | Independent Research and lexical Corpus packages with cited evidence, explicit limits, partial failures and suppression | Implementation and review repairs verified; held-out acceptance open |
-| P27B | Independent Graph, optional extraction, dense/hybrid retrieval and reranking | Implementation and review repairs verified; matched comparison and selection open |
-| Structural readiness | Whole-codebase/manual consolidation reviewed at c9a2d80; its sole Daybreak P2 inventory finding repaired with causal regression, CLI and full local baseline checks | Open; corrected-source hosted/installed and final Linux native-inclusive checks remain |
+| P27H5 | Explicit schema-bound inference and independently selected extraction and rerank contracts | Compatibility and protocol checks complete; held-out judgments complete |
+| P27A | Independent Research and lexical Corpus packages with cited evidence, explicit limits, partial failures and suppression | Implementation/review checks and held-out comparison complete; both strategies rejected for the reference choice |
+| P27B | Independent Graph, optional extraction, dense/hybrid retrieval and reranking | Implementation/review checks and matched comparison complete; hybrid selected, weaker strategies rejected |
+| Structural readiness | Whole-codebase/manual consolidation reviewed at c9a2d80; its sole Daybreak P2 inventory finding repaired at b81f68f | Complete; local/hosted/native-inclusive suites, package checks and all four source/installed CPU/GPU measured controls pass |
 | Comparison audit repair | Stream merged execution against closed cell inventories without materializing the raw aggregate | Reviewed; platform suites and all four source/installed CPU/GPU measured proofs pass |
 | Explicit context repair | Bind portable and local context; verify loaded completion context while allowing separate embedding windows | Reviewed; platform/floor checks, 31-case service proofs, all four measured proofs and eight exposed GPU requests pass |
 | Duration composition repair | Compose fourteen legal service lifetimes within one finite measured-root ceiling; preserve existing request and service limits | Reviews, platform and supported-toolchain checks, native controls, package checks, all four source/installed CPU/GPU measured proofs and exact-source hosted CI pass at `817ab84` |
-| Final acceptance | Frozen private outcomes, independent judgments, all-strategy publication, exact resources and engine choice | Open; fresh corrected comparison running, both earlier private GPU attempts remain failed, references sealed |
+| Final acceptance | Frozen outcomes, complete independent judgments, all-strategy publication, exact resources and hybrid reference choice | Complete; whole-manual/requirements audit passes; earlier failed attempts retain their verdicts |
 
 The [external whole-P27 review and dispositions](archive/2026-10-20-p27-external-review-r1/index.md)
 retain all twelve code and five documentation findings, their repairs and
@@ -428,14 +440,13 @@ and [whole-manual editorial review](archive/2026-10-21-p27-manual-consolidation/
 record the earlier changes. Those records do not establish acceptance of the
 whole-codebase consolidation.
 
-Structural acceptance remains open. Use the standard Elixir layout with matching
-feature folders under `lib/ipse/` and `test/ipse/`. Consolidate generic extension
-host and SDK code under `lib/ipse/extension/`, and place bundled and optional
-feature implementations under one `extensions/` source tree. Merge small, tightly
-coupled modules and one-caller wrappers while preserving justified process and
-public-contract ownership. Keep separate developer commands, with their shared
-implementation grouped into fewer directories. Retain individual historical files
-and simplify current material only.
+Structural acceptance is complete. Host runtime follows the standard Elixir layout
+with matching feature folders under `lib/ipse/` and `test/ipse/`. Generic extension
+host and SDK code is under `lib/ipse/extension/`; bundled and optional feature
+implementations share one `extensions/` tree. Small, tightly coupled modules and
+one-caller wrappers were merged while justified process/public-contract ownership
+remains separate. Developer commands retain separate entry points with shared
+implementation grouped under `dev/`. Individual historical files remain intact.
 
 Session retains the conversation process. Its turn and extension-invocation
 implementations run synchronously in that process, with caller/reference/phase
@@ -444,11 +455,14 @@ introduce another conversation owner.
 
 The [current consolidation review](archive/2026-10-22-p27-structural-review/index.md)
 records the independent findings and their causal checks. Current manuals now have
-14 operator and 22 developer chapters. Remaining structural tasks are the final
-Linux native-inclusive checks and corrected-source hosted/installed checks.
+14 operator and 22 developer chapters. Corrected-source hosted Ubuntu/macOS,
+native-inclusive Linux, package and installed-package checks pass at `b81f68f`.
+All four source/installed CPU/GPU measured controls pass. Their
+[final receipts](archive/2026-10-23-p27-heldout-comparison/final-platforms.json)
+retain exact source/archive identities, commands, audit results and exclusions.
 File-count reductions alone do not establish
 deletion of unnecessary interfaces or lower implementation complexity. The earlier
-broad default suite now passes with 1,459 passed, one skipped and 36 excluded.
+broad default checkpoint passed with 1,459 passed, one skipped and 36 excluded.
 The supported-toolchain loading correction passes 161 integrated caller tests and
 77 focused floor tests. The clean floor snapshot also passes packaging, installed
 package/model-service checks, all fifteen Knowledge builds and ten source plus ten
@@ -466,10 +480,10 @@ records exact source and exclusions. The subsequent verification-record update
 changes documentation only; actual-model quality and final Linux native-inclusive
 checks remain separate gates.
 
-The implementation proposal must cover runtime code, extension packages, tests,
-developer tooling, examples, shipped resources and both current manuals. Identify
-specific deletions and merges separately from file moves, then verify callers,
-packaging and documented usage against the resulting structure. The running
+The consolidation covers runtime code, extension packages, tests, developer
+tooling, examples, shipped resources and both current manuals. The structural
+record distinguishes deletions/merges from moves and records caller, packaging
+and documented-usage checks against the resulting structure. The completed
 comparison retains its original frozen source and provenance throughout this work.
 The developer accepted that comparison at
 `817ab84944c347f76e297efaad313b1ec841ee91` as explicitly versioned evidence,
@@ -494,24 +508,25 @@ duration-composition repair has separate completed verification in its
 [record](archive/2026-10-22-p27-duration-repair/index.md#verification-and-remaining-acceptance).
 Exact hosted run `39764314254` is green on Ubuntu and macOS for `817ab84`.
 All four measured fixture proofs complete 350 outcomes and the joined audits.
-These checks verify execution behavior and leave held-out semantic quality open.
+These checks verified execution behavior at that increment; the separately
+versioned [held-out result](archive/2026-10-23-p27-heldout-comparison/index.md)
+now supplies semantic qualification and the reference choice.
 
-### Next tasks
+### Completion and subsequent work
 
-1. Observe the single fresh comparison at `817ab84` through all 350 first outcomes
-   and the joined frozen execution/resource audit. Retain an independent native
-   receipt prefix during execution. The approved 24-hour service allowance per
-   cell composes to a root allowance of 14 days, 15 minutes and 18 seconds.
-   These are finite operational limits, not a completion-time forecast.
-2. Preserve both failed comparisons and their consumed seals. Never replay them,
-   replace captured evaluators, rewrite evidence or release labels through failed
-   authority. Product repairs cannot upgrade historical verdicts.
-3. After all first outcomes and the full audit pass, release reference answers
-   through the current experiment's guard. Obtain independent semantic judgments,
-   recompute literal citation integrity, publish all strategy quality/resource
-   results and qualify strategies individually.
-4. Justify the selected engine, integrate results throughout both manuals, finish
-   final review and verification, then commit and push the completed milestone.
+All P27 acceptance tasks are complete. The selected reference uses existing
+State Corpus hybrid retrieval with BM25, native 768-dimensional embeddings,
+reciprocal rank fusion at 60, no graph or reranker, and explicit missing-embedding
+refusal. This is an operator-selected configuration, not a mandatory service or
+automatic provider switch. The answer-quality result applies to the frozen 9B
+answer policy and workload; the other strategies remain available but are rejected
+for this reference choice.
+
+Preserve the published outcomes, raw assessments, human resolution, final scores,
+matched resources and all earlier failures. The released workload is now exposed;
+future quality acceptance requires independently authored data. Later engine,
+corpus, provider or model changes need their own scoped evaluation rather than
+upgrading this historical result or replaying consumed seals. P28 remains deferred.
 
 ### Final comparison policy
 

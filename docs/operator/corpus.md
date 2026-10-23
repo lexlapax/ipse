@@ -186,6 +186,16 @@ or aborting it. Resume never completes it automatically.
 
 ## Add explicit embeddings and reranking
 
+Use hybrid `blend` with `rerank: null` as the reference configuration when adding
+embeddings. It combines BM25 and dense retrieval with reciprocal rank fusion at
+`rrf_k: 60`, requires the selected embedding profile, and refuses missing vectors
+instead of silently using another route. The
+[dated comparison](../archive/2026-10-23-p27-heldout-comparison/index.md)
+records the quality and resource tradeoffs for this choice. Its generated-answer
+results used a fixed final-answer model; Corpus query itself only returns evidence.
+Keep lexical `words` when you want source search without model calls. Treat the
+reranker below as an explicit alternative to evaluate on your own workload.
+
 This example needs an already running local Ollama service with
 `embeddinggemma:latest` and `qwen3.5:9b` already available. It installs or downloads
 nothing. Select your actual models and native embedding dimensions explicitly if
