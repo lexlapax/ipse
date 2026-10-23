@@ -72,14 +72,15 @@ findings, failures and scoped acceptance. P27 research, graph and RAG is complet
 within its optional-package scope. Whole-milestone review repairs, consolidation,
 final-code platform/installed checks, held-out review, publication and acceptance
 audit pass. Hybrid is selected as the qualifying reference configuration;
-media remains deferred to P32. External services remain configurable; no third-party
+media remains deferred to P31. External services remain configurable; no third-party
 engine, database or mandatory backend is selected.
 
 The next sequence turns the verified harness into an operator-facing product:
-P29 operator usability and release readiness, P30 a provider registry with
-OpenRouter and Gemini, and P31 an advisory decision-engine contract. Voice and
-media, formerly P28, is renumbered P32 and remains deferred. These are proposed
-scopes; each starts only when selected and keeps its own acceptance evidence.
+P28 operator usability and release readiness, P29 a provider registry with
+OpenRouter and Gemini, and P30 an advisory decision-engine contract. Voice and
+media is renumbered P31 and remains deferred; archived records call it P28.
+These are proposed scopes; each starts only when selected and keeps its own
+acceptance evidence.
 
 | Milestone or gate | Current state | Next result |
 | --- | --- | --- |
@@ -88,18 +89,18 @@ scopes; each starts only when selected and keeps its own acceptance evidence.
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Complete within declared supervision/assistance at `3307563`; security findings triaged and corrected scopes verified | Preserve frozen evidence; select a later production increment separately |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Complete within explicit-note scope at `25f1d8e`; review repairs and local/hosted gates pass | Preserve lifecycle, authority and documented retention limits |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Complete; all acceptance tasks closed within optional-package scope; hybrid qualified and selected | Preserve versioned evidence and explicit configuration; evaluate new workloads independently |
-| [P29: operator usability and release](#p29-operator-usability-and-release-readiness) | Proposed; next | First-run setup, environment diagnosis, actionable errors and a tagged, installable release |
-| [P30: provider registry, OpenRouter and Gemini](#p30-provider-registry-openrouter-and-gemini) | Proposed | Registry refactor without behavior change, then fixture-verified adapters and separate live account checks |
-| [P31: decision engines](#p31-advisory-decision-engines) | Proposed | Typed closed-answer contract, fixture engines, then OpenAI Decisions and SystemOne-compatible adapters |
-| [P32: voice and media](#p32-voice-and-realtime-media) | Deferred; unimplemented; formerly P28 | Explicit media contracts and later device/service validation |
+| [P28: operator usability and release](#p28-operator-usability-and-release-readiness) | Proposed; next | First-run setup, environment diagnosis, actionable errors and a tagged, installable release |
+| [P29: provider registry, OpenRouter and Gemini](#p29-provider-registry-openrouter-and-gemini) | Proposed | Registry refactor without behavior change, then fixture-verified adapters and separate live account checks |
+| [P30: decision engines](#p30-advisory-decision-engines) | Proposed | Typed closed-answer contract, fixture engines, then OpenAI Decisions and SystemOne-compatible adapters |
+| [P31: voice and media](#p31-voice-and-realtime-media) | Deferred; unimplemented; P28 in archived records | Explicit media contracts and later device/service validation |
 | [Apache-2.0 transition](#license-transition) | Complete; local and hosted `7bb642b` checks pass | Preserve bundled identity/recovery and third-party license boundaries |
 
 The requested P22–P25 campaign and separate Apache-2.0 transition are complete
 within their documented scopes. P26 remediation and P27 are complete, and
-P32 remains deferred. Preserve P25's frozen
+P31 remains deferred. Preserve P25's frozen
 inputs, runners, source/review/scan identities, scores and failed attempts; newer
 documentation does not rescan code or expand an earlier verdict. P27 follows the
-researched proposal; further memory automation remains separately scoped. Keep P32
+researched proposal; further memory automation remains separately scoped. Keep P31
 deferred. No further broad architecture-review loop or Cloud scan is scheduled.
 
 The [register](archive/2026-10-18-before-manual-rewrite/docs/developer/architecture-review-dispositions.md) owns dispositions,
@@ -239,7 +240,7 @@ installation or production implementation is not required by this milestone.
 Execution readiness requires a passing frozen runner, reviewed task/resource
 limits, usable explicit research access for both tracks and P24's architecture
 dispositions and triaged baseline audit. Brief preparation and service-access
-checks can proceed earlier. Live audio (now P32) is not a prerequisite. Scope the trial
+checks can proceed earlier. Live audio (now P31) is not a prerequisite. Scope the trial
 as several reviewable work packages with retained intermediate artifacts, so
 research, long-task recovery and actual self-development have separate evidence.
 
@@ -540,7 +541,7 @@ Preserve the published outcomes, raw assessments, human resolution, final scores
 matched resources and all earlier failures. The released workload is now exposed;
 future quality acceptance requires independently authored data. Later engine,
 corpus, provider or model changes need their own scoped evaluation rather than
-upgrading this historical result or replaying consumed seals. P32 remains deferred.
+upgrading this historical result or replaying consumed seals. P31 remains deferred.
 
 The [independent review of `a7f4982`](archive/2026-10-23-p27-independent-review/index.md)
 confirms acceptance within this scope. The later
@@ -602,7 +603,7 @@ procedures. Final acceptance still requires the complete frozen audit, independe
 semantic judgments, all-strategy publication, an individual qualifying strategy,
 the engine decision and whole-document editorial integration.
 
-## P29: operator usability and release readiness
+## P28: operator usability and release readiness
 
 **Proposed; next.** P0–P27 established correctness, recovery and evidence for a
 supervised developer. This milestone makes the same harness usable by an operator
@@ -637,7 +638,7 @@ unassisted walkthrough by a fresh operator account. Signing, notarization and
 distribution channels such as package managers need separate approval as release
 dependencies.
 
-## P30: provider registry, OpenRouter and Gemini
+## P29: provider registry, OpenRouter and Gemini
 
 **Proposed.** Provider identity is currently a closed list repeated in
 [`Ipse.Provider`](../lib/ipse/provider.ex), [profiles](../lib/ipse/config/profiles.ex),
@@ -672,7 +673,7 @@ recorded opt-in live account checks. Whether OpenRouter and Gemini join the
 provider priority order in [AGENTS.md](../AGENTS.md) is a developer decision
 recorded before release.
 
-## P31: advisory decision engines
+## P30: advisory decision engines
 
 **Proposed.** Decision engines answer typed questions from closed answer sets
 instead of generating text. Candidates are OpenAI's Decisions API, a beta
@@ -708,11 +709,11 @@ checks. Zev or another local engine is an operator-run external service, not a
 bundled or required dependency; calling it adds nothing to the dependency
 inventory, but the operator manual documents it as an optional endpoint.
 
-## P32: voice and realtime media
+## P31: voice and realtime media
 
-**Deferred; unimplemented. Formerly P28, and before that P24.** Keep the requested
-scope for a future delivery; it is no longer ahead of architecture/security review
-or self-development.
+**Deferred; unimplemented. Archived records call it P28, and earlier P24.**
+Keep the requested scope for a future delivery; it is no longer ahead of
+architecture/security review or self-development.
 Build on the owned text/provider and P23 accounting foundation. Start with a
 chained STT → admitted text agent → TTS extension/client; then add a versioned
 realtime provider/session capability for bidirectional transport, interruption,
@@ -735,7 +736,7 @@ See [media boundaries](archive/2026-10-18-before-manual-rewrite/docs/developer/r
 ## License transition
 
 The operator-requested MIT → Apache-2.0 transition follows the completed P22–P25
-campaign, before the separately deferred P26–P27 features and voice (now P32).
+campaign, before the separately deferred P26–P27 features and voice (now P31).
 Root and bundled extension licenses now carry Apache-2.0 with the original copyright. Current contributor,
 dependency, operator and developer guidance uses that license; upstream dependency
 licenses, prior artifacts and historical evidence retain their own provenance.
