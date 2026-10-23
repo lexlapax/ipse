@@ -609,6 +609,8 @@ the engine decision and whole-document editorial integration.
 supervised developer. This milestone makes the same harness usable by an operator
 who did not build it, without weakening approvals, explicit provider selection or
 fail-closed behavior. It adds no provider, model service or dependency by default.
+The [P28 implementation brief](archive/2026-10-23-p28-p29-design/p28.md) breaks
+this scope into ordered work packages with files, tests and decisions.
 
 Scope:
 
@@ -646,6 +648,8 @@ dependencies.
 embeddings limited to OpenAI and Ollama in
 [`Ipse.Provider.Embedding`](../lib/ipse/provider/embedding.ex). Adding providers
 one branch at a time would spread credential, billing and continuation rules.
+The [P29 implementation brief](archive/2026-10-23-p28-p29-design/p29.md) breaks
+this scope into ordered work packages with files, tests and decisions.
 
 1. **Registry, no behavior change.** Each provider declares its adapter, default
    endpoint, credential source, billing mode, reasoning/profile validation, usage
