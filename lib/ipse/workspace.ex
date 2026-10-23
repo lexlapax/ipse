@@ -190,7 +190,7 @@ defmodule Ipse.Workspace do
               source["kind"] in ["global", "project", "nested", "readme", "resource"] and
               is_binary(source["sha256"]) and byte_size(source["sha256"]) == 64 and
               is_binary(content) and String.valid?(content) and size <= @file_limit and
-              source["sha256"] == digest(content) and
+              source["sha256"] == Ipse.JSON.sha256(content) and
               valid_source_path?(source, cwd, boundary)
 
           if good and total + size <= @total_limit, do: {:cont, total + size}, else: {:halt, -1}
@@ -315,7 +315,7 @@ defmodule Ipse.Workspace do
          "path" => path,
          "scope" => scope,
          "kind" => kind,
-         "sha256" => digest(content),
+         "sha256" => Ipse.JSON.sha256(content),
          "content" => content
        }}
     else
@@ -525,8 +525,6 @@ defmodule Ipse.Workspace do
     end
   end
 
-  defp digest(content), do: :crypto.hash(:sha256, content) |> Base.encode16(case: :lower)
-
   @max_skill_bytes 64 * 1024
 
   @doc "Bounded metadata checkpoint; skill bodies remain explicitly loaded resources."
@@ -670,7 +668,7 @@ defmodule Ipse.Workspace do
           {:ok, raw} ->
             case extract_frontmatter(raw) do
               {:ok, _metadata, body} ->
-                current_sha256 = :crypto.hash(:sha256, raw) |> Base.encode16(case: :lower)
+                current_sha256 = Ipse.JSON.sha256(raw)
 
                 {:ok,
                  "Skill: #{skill["name"]}\nSource: #{skill["path"]}\nSHA-256: #{current_sha256}\n\n#{body}"}
@@ -722,7 +720,7 @@ defmodule Ipse.Workspace do
     with {:ok, canonical} <- canonical_path(skill["path"]),
          true <- canonical == skill["canonical_path"],
          {:ok, raw} <- read_limited(skill["path"]),
-         true <- Base.encode16(:crypto.hash(:sha256, raw), case: :lower) == skill["sha256"] do
+         true <- Ipse.JSON.sha256(raw) == skill["sha256"] do
       {:ok, raw}
     else
       _ -> {:error, :skill_catalog_changed}
@@ -743,7 +741,7 @@ defmodule Ipse.Workspace do
             "description" => metadata["description"],
             "path" => Path.expand(path),
             "canonical_path" => canonical_path,
-            "sha256" => :crypto.hash(:sha256, raw) |> Base.encode16(case: :lower)
+            "sha256" => Ipse.JSON.sha256(raw)
           }
         ]
       else

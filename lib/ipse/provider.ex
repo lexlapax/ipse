@@ -55,7 +55,7 @@ defmodule Ipse.Provider do
          origin = URI.to_string(%URI{scheme: uri.scheme, host: uri.host, port: uri.port}),
          facts = %{
            "origin" => origin,
-           "target_sha256" => :crypto.hash(:sha256, target) |> Base.encode16(case: :lower)
+           "target_sha256" => Ipse.JSON.sha256(target)
          },
          true <- valid_destination?(facts) do
       {:ok, facts}

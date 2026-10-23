@@ -77,14 +77,16 @@ defmodule IpseKnowledge.Adapters do
   def resume(%{phase: :embedding} = state, %{"status" => "ok", "value" => value}) do
     descriptor = value["result"]
 
-    with true <- value["version"] === 2 and hash?(value["selection_sha256"]),
+    with true <- value["version"] === 2 and Evidence.sha256?(value["selection_sha256"]),
          true <-
            is_map(descriptor) and descriptor["version"] == 2 and
              descriptor["kind"] == "embedding.f32le",
          true <- descriptor["encoding"] == "float32le.base64",
          true <- descriptor["vector_count"] == length(state.inputs),
          true <- is_integer(descriptor["dimensions"]) and descriptor["dimensions"] in 1..4096,
-         true <- hash?(descriptor["source_sha256"]) and operation_id?(descriptor["operation_id"]),
+         true <-
+           Evidence.sha256?(descriptor["source_sha256"]) and
+             operation_id?(descriptor["operation_id"]),
          true <- value["profile"] == state.host_profile,
          true <-
            is_binary(value["reported_model"]) and byte_size(value["reported_model"]) in 1..128 do
@@ -268,7 +270,7 @@ defmodule IpseKnowledge.Adapters do
     with true <- exact?(args, ~w(profile query top_k as_of_ms)),
          true <- text?(args["query"], 1024),
          true <- is_integer(args["top_k"]) and args["top_k"] in 1..10,
-         true <- safe_uint?(args["as_of_ms"]),
+         true <- Evidence.safe_uint?(args["as_of_ms"]),
          true <- ascii_name?(profile["partition"]) do
       request_id = :crypto.strong_rand_bytes(16) |> Base.encode16(case: :lower)
 
@@ -302,7 +304,8 @@ defmodule IpseKnowledge.Adapters do
          true <-
            Enum.all?(
              inputs,
-             &(exact?(&1, ~w(chunk_id text)) and hash?(&1["chunk_id"]) and text?(&1["text"], 4096))
+             &(exact?(&1, ~w(chunk_id text)) and Evidence.sha256?(&1["chunk_id"]) and
+                 text?(&1["text"], 4096))
            ),
          true <- Enum.sum(Enum.map(inputs, &byte_size(&1["text"]))) <= 12_288,
          true <- id?(host) do
@@ -544,7 +547,7 @@ defmodule IpseKnowledge.Adapters do
   defp text_descriptor?(d),
     do:
       is_map(d) and d["version"] == 1 and d["kind"] == "mcp.text" and
-        operation_id?(d["operation_id"]) and hash?(d["source_sha256"]) and
+        operation_id?(d["operation_id"]) and Evidence.sha256?(d["source_sha256"]) and
         is_integer(d["byte_count"]) and
         d["byte_count"] in 1..@max_mcp_bytes
 
@@ -564,8 +567,8 @@ defmodule IpseKnowledge.Adapters do
       p["operation_id"] == s.descriptor["operation_id"] and
       p["source_sha256"] == s.descriptor["source_sha256"] and
       p["vector_index"] == s.vector_index and p["offset"] == s.offset and
-      p["dimensions"] == s.descriptor["dimensions"] and hash?(p["input_sha256"]) and
-      hash?(p["vector_sha256"]) and is_binary(p["values"]) and
+      p["dimensions"] == s.descriptor["dimensions"] and Evidence.sha256?(p["input_sha256"]) and
+      Evidence.sha256?(p["vector_sha256"]) and is_binary(p["values"]) and
       ((p["complete"] == true and p["next"] == nil) or
          (p["complete"] == false and is_integer(p["next"]) and p["next"] > s.offset))
   end
@@ -617,10 +620,11 @@ defmodule IpseKnowledge.Adapters do
          true <- data["partition"] == args["checked_partition"],
          true <- data["request_id"] == args["request_id"],
          true <- data["status"] in ~w(ok refused),
-         true <- safe_uint?(data["generation"]),
-         true <- ascii_name?(data["algorithm"]) and safe_positive?(data["algorithm_version"]),
-         true <- safe_uint?(data["scanned_sources"]) and data["scanned_sources"] <= 32,
-         true <- safe_uint?(data["scanned_chunks"]) and data["scanned_chunks"] <= 1024,
+         true <- Evidence.safe_uint?(data["generation"]),
+         true <-
+           ascii_name?(data["algorithm"]) and Evidence.safe_positive?(data["algorithm_version"]),
+         true <- Evidence.safe_uint?(data["scanned_sources"]) and data["scanned_sources"] <= 32,
+         true <- Evidence.safe_uint?(data["scanned_chunks"]) and data["scanned_chunks"] <= 1024,
          true <- is_boolean(data["complete"]),
          true <- is_list(data["refs"]) and length(data["refs"]) <= args["top_k"],
          true <- Enum.all?(data["refs"], &valid_remote_ref?/1),
@@ -655,15 +659,12 @@ defmodule IpseKnowledge.Adapters do
       text?(ref["source_id"], 256) and
       not Regex.match?(~r/[\x00-\x1f\x7f]/u, ref["source_id"]) and
       ref["source_key"] == Evidence.sha256(ref["source_id"]) and
-      safe_positive?(ref["generation"]) and hash?(ref["content_sha256"]) and
-      hash?(ref["chunk_id"]) and finite_score?(ref["score"])
+      Evidence.safe_positive?(ref["generation"]) and Evidence.sha256?(ref["content_sha256"]) and
+      Evidence.sha256?(ref["chunk_id"]) and finite_score?(ref["score"])
   end
 
   defp finite_score?(score),
     do: is_number(score) and score == score and abs(score) <= 1.7976931348623157e308
-
-  defp safe_uint?(value), do: Evidence.safe_uint?(value)
-  defp safe_positive?(value), do: Evidence.safe_positive?(value)
 
   defp ascii_name?(value),
     do: is_binary(value) and Regex.match?(~r/\A[A-Za-z0-9_.-]{1,64}\z/, value)
@@ -835,9 +836,9 @@ defmodule IpseKnowledge.Adapters do
       is_list(xs) and length(xs) <= 16 and
         Enum.all?(
           xs,
-          &(is_map(&1) and is_map(&1["citation"]) and hash?(&1["citation"]["chunk_id"]) and
-              safe_uint?(&1["citation"]["start_byte"]) and
-              safe_uint?(&1["citation"]["end_byte"]) and
+          &(is_map(&1) and is_map(&1["citation"]) and Evidence.sha256?(&1["citation"]["chunk_id"]) and
+              Evidence.safe_uint?(&1["citation"]["start_byte"]) and
+              Evidence.safe_uint?(&1["citation"]["end_byte"]) and
               &1["citation"]["end_byte"] > &1["citation"]["start_byte"] and
               &1["citation"]["end_byte"] - &1["citation"]["start_byte"] <= 1024 and
               text?(&1["citation"]["quote"], 1024))
@@ -859,8 +860,6 @@ defmodule IpseKnowledge.Adapters do
 
   defp text?(value, max),
     do: is_binary(value) and String.valid?(value) and byte_size(value) in 1..max
-
-  defp hash?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{64}\z/, value)
 
   defp id?(value),
     do: is_binary(value) and Regex.match?(~r/\A[A-Za-z][A-Za-z0-9_-]{0,63}\z/, value)

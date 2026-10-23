@@ -276,6 +276,42 @@ defmodule Ipse.Extension.MCPCallSessionTest do
       assert Fixture.calls(ctx.root) == 1
     end
 
+    test "#{transport}: legacy journals retain their binding scheme and resume without replay",
+         ctx do
+      selected = server(ctx, unquote(transport), :normal)
+      cfg = config(ctx, selected)
+      fresh = start(ctx, cfg)
+      metadata = hd(events(ctx, fresh))["metadata"]
+      assert :ok = Session.close_confirmed(fresh)
+      legacy = Ipse.MCP.fingerprint_version(cfg, 1)
+
+      metadata =
+        metadata
+        |> Map.delete("mcp_fingerprint_version")
+        |> Map.put("mcp_servers", Ipse.MCP.fingerprints(legacy))
+
+      assert {:ok, id} = Ipse.Journal.create(ctx.dir, metadata)
+      pid = start(ctx, cfg, id)
+      invoke(pid)
+      done(pid)
+      ev = events(ctx, pid)
+
+      intent =
+        Enum.find(
+          ev,
+          &(&1["type"] == "extension_action_intent" and &1["request"]["op"] == "mcp.call")
+        )
+
+      refute Map.has_key?(intent["effect_binding"]["server"], "fingerprint_version")
+      assert {:ok, _} = Actions.restore(ev)
+      assert :ok = Session.close_confirmed(pid)
+      assert Fixture.calls(ctx.root) == 1
+      resumed = start(ctx, cfg, id)
+      assert Session.info(resumed).phase == :idle
+      assert Fixture.calls(ctx.root) == 1
+      assert hd(events(ctx, resumed))["metadata"] === metadata
+    end
+
     test "#{transport}: exact approval, durable source before descriptor and complete UTF8 windows without inference",
          ctx do
       selected = server(ctx, unquote(transport), :normal)

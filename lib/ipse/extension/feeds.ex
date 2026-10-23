@@ -345,19 +345,21 @@ defmodule Ipse.Extension.Feeds do
   def valid_record?(%{"type" => "extension_feed_ready"} = e),
     do:
       keys?(e, ~w(type version resource_id intent_sha256)) and common?(e) and
-        hash?(e["intent_sha256"])
+        Ipse.JSON.sha256?(e["intent_sha256"])
 
   def valid_record?(%{"type" => "extension_feed_delivery_intent"} = e),
     do:
       keys?(e, ~w(type version resource_id sequence source after_source payload_sha256)) and
         common?(e) and
-        uint?(e["sequence"]) and e["sequence"] in 1..@limit and Journal.valid_source?(e["source"]) and
-        Journal.valid_source?(e["after_source"]) and hash?(e["payload_sha256"])
+        Ipse.JSON.safe_uint?(e["sequence"]) and e["sequence"] in 1..@limit and
+        Journal.valid_source?(e["source"]) and
+        Journal.valid_source?(e["after_source"]) and Ipse.JSON.sha256?(e["payload_sha256"])
 
   def valid_record?(%{"type" => "extension_feed_delivery_result"} = e),
     do:
       keys?(e, ~w(type version resource_id sequence intent_sha256 outcome)) and common?(e) and
-        uint?(e["sequence"]) and e["sequence"] in 1..@limit and hash?(e["intent_sha256"]) and
+        Ipse.JSON.safe_uint?(e["sequence"]) and e["sequence"] in 1..@limit and
+        Ipse.JSON.sha256?(e["intent_sha256"]) and
         e["outcome"] == "acknowledged"
 
   def valid_record?(%{"type" => "extension_feed_closed"} = e),
@@ -366,9 +368,10 @@ defmodule Ipse.Extension.Feeds do
         e,
         ~w(type version resource_id intent_sha256 reason admitted acknowledged gap_source cleanup_confirmed)
       ) and common?(e) and
-        hash?(e["intent_sha256"]) and e["reason"] in @reasons and
+        Ipse.JSON.sha256?(e["intent_sha256"]) and e["reason"] in @reasons and
         is_boolean(e["cleanup_confirmed"]) and
-        uint?(e["admitted"]) and e["admitted"] <= @limit and uint?(e["acknowledged"]) and
+        Ipse.JSON.safe_uint?(e["admitted"]) and e["admitted"] <= @limit and
+        Ipse.JSON.safe_uint?(e["acknowledged"]) and
         e["acknowledged"] <= e["admitted"] and
         (e["gap_source"] == nil or Journal.valid_source?(e["gap_source"])) and
         (e["reason"] not in ~w(capacity payload_limit session_limit view_unavailable) or
@@ -548,8 +551,6 @@ defmodule Ipse.Extension.Feeds do
   defp common?(e), do: e["version"] === 1 and id?(e["resource_id"])
   defp keys?(e, keys), do: is_map(e) and Enum.sort(Map.keys(e)) == Enum.sort(keys)
   defp id?(v), do: is_binary(v) and Regex.match?(~r/\A[0-9a-f]{32}\z/, v)
-  defp hash?(v), do: is_binary(v) and Regex.match?(~r/\A[0-9a-f]{64}\z/, v)
-  defp uint?(v), do: is_integer(v) and v in 0..9_007_199_254_740_991
 end
 
 defmodule Ipse.Extension.FeedChannel do

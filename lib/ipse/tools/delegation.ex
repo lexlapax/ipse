@@ -1,5 +1,40 @@
 defmodule Ipse.Tools.Delegation do
-  @moduledoc "Pure policy and bounds for one local delegated child session."
+  @moduledoc "Policy, bounded execution and saved completion validation for local delegated child sessions."
+
+  @doc "Admit a single delegation against current host policy and the turn's used child budget."
+  def admit(config, used, call, args) do
+    cond do
+      not enabled?(config) ->
+        {:error, "Delegation is disabled by the host."}
+
+      used >= max_calls() ->
+        {:error, "Delegation limit reached for this turn."}
+
+      not is_binary(call["id"]) or byte_size(call["id"]) > 256 ->
+        {:error, "Invalid delegation call identity."}
+
+      true ->
+        with :ok <- validate(args),
+             do: Ipse.Config.Profiles.validate_route(config, args)
+    end
+  end
+
+  @doc "Admit both configured routes before reserving a parallel pair's child budget."
+  def admit_parallel(config, used, args) do
+    if parallel?(config) and
+         used + 2 <= max_calls() do
+      with :ok <- validate_parallel(args) do
+        Enum.reduce_while(args["tasks"], :ok, fn task, :ok ->
+          case Ipse.Config.Profiles.validate_route(config, task) do
+            :ok -> {:cont, :ok}
+            error -> {:halt, error}
+          end
+        end)
+      end
+    else
+      {:error, "Parallel delegation is disabled or its child budget is exhausted."}
+    end
+  end
 
   def run("delegate", host, args), do: run_serial(host, args)
   def run("delegate_parallel", host, args), do: run_parallel(host, args)

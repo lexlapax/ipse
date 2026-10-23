@@ -19,6 +19,8 @@ defmodule IpseKnowledge.Evidence do
   def sha256(bytes) when is_binary(bytes),
     do: Base.encode16(:crypto.hash(:sha256, bytes), case: :lower)
 
+  def sha256?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{64}\z/, value)
+
   def id(tag, parts) when is_binary(tag) and is_list(parts),
     do: sha256(IO.iodata_to_binary(JSON.encode!(["ipse-knowledge", 1, tag, parts])))
 
@@ -201,8 +203,9 @@ defmodule IpseKnowledge.Evidence do
     with true <-
            ((exact?(v, @vector) and v["version"] === 1) or
               (exact?(v, ["selection_sha256" | @vector]) and v["version"] === 2 and
-                 hash?(v["selection_sha256"]))) and v["encoding"] == "float32le" and
-             hash?(v["chunk_id"]) and hash?(v["input_sha256"]) and identifier?(v["profile"], 128) and
+                 sha256?(v["selection_sha256"]))) and v["encoding"] == "float32le" and
+             sha256?(v["chunk_id"]) and sha256?(v["input_sha256"]) and
+             identifier?(v["profile"], 128) and
              identifier?(v["model"], 128) and is_integer(v["dimensions"]) and
              v["dimensions"] in 1..4096 and is_list(v["values"]) and
              length(v["values"]) == v["dimensions"] and Enum.all?(v["values"], &is_float/1),
@@ -321,7 +324,7 @@ defmodule IpseKnowledge.Evidence do
   defp remote_ref?(ref) do
     exact?(ref, ~w(source_id source_key generation content_sha256 chunk_id score)) and
       identifier?(ref["source_id"], 256) and ref["source_key"] == sha256(ref["source_id"]) and
-      positive?(ref["generation"]) and hash?(ref["content_sha256"]) and hash?(ref["chunk_id"]) and
+      positive?(ref["generation"]) and sha256?(ref["content_sha256"]) and sha256?(ref["chunk_id"]) and
       finite?(ref["score"])
   end
 
@@ -1026,8 +1029,8 @@ defmodule IpseKnowledge.Evidence do
   defp citation_shape?(c),
     do:
       exact?(c, @citation) and c["version"] == 1 and identifier?(c["source_id"], 256) and
-        hash?(c["source_key"]) and positive?(c["generation"]) and hash?(c["content_sha256"]) and
-        hash?(c["chunk_id"]) and is_integer(c["start_byte"]) and c["start_byte"] >= 0 and
+        sha256?(c["source_key"]) and positive?(c["generation"]) and sha256?(c["content_sha256"]) and
+        sha256?(c["chunk_id"]) and is_integer(c["start_byte"]) and c["start_byte"] >= 0 and
         is_integer(c["end_byte"]) and c["end_byte"] > c["start_byte"] and text?(c["quote"], 1024) and
         byte_size(c["quote"]) == c["end_byte"] - c["start_byte"] and
         sha256(c["quote"]) == c["quote_sha256"] and text?(c["uri"], 512) and
@@ -1058,7 +1061,6 @@ defmodule IpseKnowledge.Evidence do
   defp text?(s, max), do: is_binary(s) and byte_size(s) <= max and String.valid?(s)
   defp nullable_text?(nil, _), do: true
   defp nullable_text?(s, max), do: text?(s, max)
-  defp hash?(s), do: is_binary(s) and Regex.match?(~r/\A[0-9a-f]{64}\z/, s)
   defp positive?(n), do: safe_positive?(n)
   defp timestamp?(n), do: safe_uint?(n)
   defp optional_time?(nil), do: true

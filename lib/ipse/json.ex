@@ -13,6 +13,10 @@ defmodule Ipse.JSON do
 
   def sha256(bytes), do: Base.encode16(:crypto.hash(:sha256, bytes), case: :lower)
 
+  def sha256?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{64}\z/, value)
+
+  def safe_uint?(value), do: is_integer(value) and value in 0..9_007_199_254_740_991
+
   def digest(values) when is_list(values), do: sha256(canonical_json(values))
 
   # Callers bound the encoded input before invoking the maintained JSON parser.

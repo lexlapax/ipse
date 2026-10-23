@@ -537,7 +537,6 @@ defmodule Ipse.Session.TextStream do
     "end" => "text.finished",
     "closed" => "text.subscription_closed"
   }
-  @max 9_007_199_254_740_991
 
   def frame_source(epoch, frame, offset) do
     base = %{
@@ -603,7 +602,10 @@ defmodule Ipse.Session.TextStream do
   defp fields?(%{"kind" => "closed"} = f) do
     keys?(f, @closed) and f["complete"] === false and f["reason"] in @reasons and
       f["source"]["subscription_id"] == f["subscription_id"] and
-      Enum.all?(~w(unsent_bytes unsent_frames pending_bytes unacknowledged_bytes), &uint?(f[&1]))
+      Enum.all?(
+        ~w(unsent_bytes unsent_frames pending_bytes unacknowledged_bytes),
+        &Ipse.JSON.safe_uint?(f[&1])
+      )
   end
 
   defp fields?(f) do
@@ -616,7 +618,7 @@ defmodule Ipse.Session.TextStream do
       end
 
     keys?(f, @normal ++ extra) and f["generation"] === 1 and id?(f["request_id"]) and
-      id?(f["stream_id"]) and uint?(f["sequence"]) and f["sequence"] > 0 and
+      id?(f["stream_id"]) and Ipse.JSON.safe_uint?(f["sequence"]) and f["sequence"] > 0 and
       f["stream_id"] == f["source"]["stream_id"] and f["request_id"] == f["source"]["request_id"] and
       position?(f)
   end
@@ -653,8 +655,8 @@ defmodule Ipse.Session.TextStream do
       ~w(version kind session_id epoch_id scope stream_id request_id start_byte end_byte event_id)
     ) and
       s["scope"] == "stream" and id?(s["stream_id"]) and id?(s["request_id"]) and
-      uint?(s["start_byte"]) and
-      uint?(s["end_byte"]) and s["end_byte"] >= s["start_byte"]
+      Ipse.JSON.safe_uint?(s["start_byte"]) and
+      Ipse.JSON.safe_uint?(s["end_byte"]) and s["end_byte"] >= s["start_byte"]
   end
 
   defp source_fields?(_, _), do: false
@@ -685,5 +687,4 @@ defmodule Ipse.Session.TextStream do
       |> binary_part(0, 32)
 
   defp keys?(map, keys), do: is_map(map) and Enum.sort(Map.keys(map)) == Enum.sort(keys)
-  defp uint?(v), do: is_integer(v) and v in 0..@max
 end

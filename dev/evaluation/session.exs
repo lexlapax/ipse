@@ -19,7 +19,6 @@ defmodule Ipse.Development.Evaluation.Session do
     "collect" => "source"
   }
   @source_keys ~w(source_id generation title text uri observed_at_ms event_at_ms expires_at_ms)
-  @safe 9_007_199_254_740_991
 
   def open(spec) do
     with {:ok, prepared} <- prepare(spec),
@@ -185,7 +184,7 @@ defmodule Ipse.Development.Evaluation.Session do
         %{"source" => source, "store" => store, "expected_revision" => revision} = params
       ) do
     with true <- exact?(params, ~w(source store expected_revision)),
-         true <- source?(source) and profile_name?(store) and uint?(revision),
+         true <- source?(source) and profile_name?(store) and Ipse.JSON.safe_uint?(revision),
          true <- byte_size(source["text"]) <= 65_536 do
       put = source(store, "put", Map.put(source, "expected_revision", revision))
 
@@ -250,7 +249,7 @@ defmodule Ipse.Development.Evaluation.Session do
          Map.delete(params, "as_of_ms"),
          ~w(search fetch retrieval rerank query limits sources)
        ) and
-         (not Map.has_key?(params, "as_of_ms") or uint?(params["as_of_ms"])) and
+         (not Map.has_key?(params, "as_of_ms") or Ipse.JSON.safe_uint?(params["as_of_ms"])) and
          Enum.all?(~w(search fetch retrieval), &profile_name?(params[&1])) and
          (is_nil(params["rerank"]) or profile_name?(params["rerank"])) and
          text?(params["query"], 1024) and is_map(params["limits"]) and
@@ -286,7 +285,7 @@ defmodule Ipse.Development.Evaluation.Session do
     if exact?(params, ~w(store source_id draft_id expected_revision)) and
          profile_name?(params["store"]) and text?(params["source_id"], 256) and
          is_binary(params["draft_id"]) and Regex.match?(~r/\A[0-9a-f]{32}\z/, params["draft_id"]) and
-         uint?(params["expected_revision"]),
+         Ipse.JSON.safe_uint?(params["expected_revision"]),
        do:
          one(
            run,
@@ -302,7 +301,7 @@ defmodule Ipse.Development.Evaluation.Session do
 
   def invoke(run, "forget", params) do
     if exact?(params, ~w(store source_id expected_revision)) and profile_name?(params["store"]) and
-         text?(params["source_id"], 256) and uint?(params["expected_revision"]),
+         text?(params["source_id"], 256) and Ipse.JSON.safe_uint?(params["expected_revision"]),
        do:
          one(
            run,
@@ -315,7 +314,7 @@ defmodule Ipse.Development.Evaluation.Session do
   def invoke(run, "export", params) do
     if exact?(params, ~w(store source_id cursor limit)) and profile_name?(params["store"]) and
          text?(params["source_id"], 256) and
-         (is_nil(params["cursor"]) or uint?(params["cursor"])) and
+         (is_nil(params["cursor"]) or Ipse.JSON.safe_uint?(params["cursor"])) and
          is_integer(params["limit"]) and params["limit"] in 1..12,
        do:
          one(
@@ -328,7 +327,7 @@ defmodule Ipse.Development.Evaluation.Session do
 
   def invoke(run, "import", params) do
     if exact?(params, ~w(store expected_revision export)) and profile_name?(params["store"]) and
-         uint?(params["expected_revision"]) and is_map(params["export"]),
+         Ipse.JSON.safe_uint?(params["expected_revision"]) and is_map(params["export"]),
        do:
          one(
            run,
@@ -591,7 +590,7 @@ defmodule Ipse.Development.Evaluation.Session do
         {:ok, value,
          %{
            "byte_count" => byte_size(bytes),
-           "sha256" => sha(bytes),
+           "sha256" => Ipse.JSON.sha256(bytes),
            "bytes_base64" => Base.encode64(bytes),
            "provenance" => "historical_receipt"
          }}
@@ -729,7 +728,7 @@ defmodule Ipse.Development.Evaluation.Session do
       |> Map.merge(%{
         "expected_revision" => revision,
         "byte_count" => byte_size(text),
-        "content_sha256" => sha(text)
+        "content_sha256" => Ipse.JSON.sha256(text)
       })
 
     case one(run, "ingest", source(store, "open", open_args)) do
@@ -805,8 +804,8 @@ defmodule Ipse.Development.Evaluation.Session do
   defp continuation?(value),
     do:
       exact?(value, ~w(draft_id expected_revision offset)) and
-        text?(value["draft_id"], 64) and uint?(value["expected_revision"]) and
-        uint?(value["offset"])
+        text?(value["draft_id"], 64) and Ipse.JSON.safe_uint?(value["expected_revision"]) and
+        Ipse.JSON.safe_uint?(value["offset"])
 
   defp next_append(text, store, source_id, continuation, limit) when limit >= 4 do
     {part, rest} = take_utf8(text, min(limit, byte_size(text)))
@@ -931,7 +930,7 @@ defmodule Ipse.Development.Evaluation.Session do
     do:
       is_map(a) and Enum.sort(Map.keys(a)) == ~w(digest instance options order path trust)a and
         name?(a.instance) and is_binary(a.path) and File.dir?(a.path) and
-        hash?(a.digest) and is_map(a.options) and is_map(a.trust) and
+        Ipse.JSON.sha256?(a.digest) and is_map(a.options) and is_map(a.trust) and
         is_integer(a.order) and a.order in 0..1000
 
   defp source(store, action, args), do: %{"store" => store, "action" => action, "args" => args}
@@ -941,19 +940,19 @@ defmodule Ipse.Development.Evaluation.Session do
       exact?(value, @source_keys) and
         text?(value["source_id"], 256) and positive?(value["generation"]) and
         text?(value["title"], 128) and text?(value["text"], 65_536) and
-        text?(value["uri"], 512) and uint?(value["observed_at_ms"]) and
-        (is_nil(value["event_at_ms"]) or uint?(value["event_at_ms"])) and
-        (is_nil(value["expires_at_ms"]) or uint?(value["expires_at_ms"]))
+        text?(value["uri"], 512) and Ipse.JSON.safe_uint?(value["observed_at_ms"]) and
+        (is_nil(value["event_at_ms"]) or Ipse.JSON.safe_uint?(value["event_at_ms"])) and
+        (is_nil(value["expires_at_ms"]) or Ipse.JSON.safe_uint?(value["expires_at_ms"]))
 
   defp chunk_ids?(value),
     do:
       is_list(value) and length(value) in 1..2 and
-        Enum.all?(value, &hash?/1)
+        Enum.all?(value, &Ipse.JSON.sha256?/1)
 
   defp query_tail?(params),
     do:
       is_integer(params["top_k"]) and
-        params["top_k"] in 1..10 and uint?(params["as_of_ms"])
+        params["top_k"] in 1..10 and Ipse.JSON.safe_uint?(params["as_of_ms"])
 
   defp exact?(value, keys), do: is_map(value) and Enum.sort(Map.keys(value)) == Enum.sort(keys)
   defp name?(value), do: is_binary(value) and Regex.match?(~r/\A[a-z][a-z0-9_-]{0,63}\z/, value)
@@ -966,10 +965,7 @@ defmodule Ipse.Development.Evaluation.Session do
       is_binary(value) and String.valid?(value) and
         byte_size(value) in 1..max
 
-  defp hash?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{64}\z/, value)
-  defp uint?(value), do: is_integer(value) and value in 0..@safe
-  defp positive?(value), do: uint?(value) and value > 0
-  defp sha(text), do: Base.encode16(:crypto.hash(:sha256, text), case: :lower)
+  defp positive?(value), do: Ipse.JSON.safe_uint?(value) and value > 0
 
   defp domain_unloaded? do
     Enum.all?(

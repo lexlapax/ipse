@@ -213,7 +213,7 @@ defmodule Ipse.Extension.Actions do
            ),
          true <-
            if(tool?(request),
-             do: hash?(event["context_sha256"]),
+             do: Ipse.JSON.sha256?(event["context_sha256"]),
              else: is_nil(event["context_sha256"])
            ),
          true <-
@@ -643,7 +643,6 @@ defmodule Ipse.Extension.Actions do
   defp intent_keys(_), do: @keys
 
   defp id?(id), do: is_binary(id) and Regex.match?(~r/\A[a-f0-9]{32}\z/, id)
-  defp hash?(hash), do: is_binary(hash) and Regex.match?(~r/\A[a-f0-9]{64}\z/, hash)
   defp bounded?(event), do: byte_size(Jason.encode!(event)) <= 65_536
   alias Ipse.Extension.State
 

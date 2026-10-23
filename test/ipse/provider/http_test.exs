@@ -976,7 +976,7 @@ defmodule Ipse.Provider.HTTPTest do
 
     %{
       "role" => "system",
-      "content" => Ipse.Session.Context.system(System.tmp_dir!(), [], runtime)
+      "content" => Ipse.Session.Context.system(System.tmp_dir!(), runtime)
     }
   end
 end

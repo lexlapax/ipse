@@ -36,7 +36,7 @@ defmodule Ipse.SandboxVisibilityTest do
     facts = Sandbox.info(:native).visibility
     assert facts == Sandbox.visibility(:native)
     runtime = Ipse.Session.Context.runtime_snapshot(%{provider: :demo, model: "scripted"})
-    context = Ipse.Session.Context.system("/synthetic/workspace", [], runtime, nil, :native)
+    context = Ipse.Session.Context.system("/synthetic/workspace", runtime, :native)
     assert Enum.all?(facts, &String.contains?(context, &1))
     refute inspect(facts) =~ "OPENAI_API_KEY="
   end

@@ -253,8 +253,30 @@ defmodule Ipse.Extension.EffectResultTest do
     request = intent["request"]
     identity = identity(intent)
     binding = intent["effect_binding"]
-    metadata = %{"mcp_servers" => [server.fingerprint]}
+    metadata = %{"mcp_servers" => [server.fingerprint], "mcp_fingerprint_version" => 2}
     assert MCPCall.valid_binding?(binding, request, identity, metadata)
+
+    refute MCPCall.valid_binding?(
+             binding,
+             request,
+             identity,
+             Map.delete(metadata, "mcp_fingerprint_version")
+           )
+
+    refute MCPCall.valid_binding?(
+             binding,
+             request,
+             identity,
+             Map.put(metadata, "mcp_fingerprint_version", 3)
+           )
+
+    refute MCPCall.valid_binding?(
+             put_in(binding, ["server", "fingerprint_version"], 3),
+             request,
+             identity,
+             metadata
+           )
+
     refute MCPCall.valid_binding?(binding, request, identity, %{"mcp_servers" => []})
 
     refute MCPCall.valid_binding?(
@@ -302,7 +324,8 @@ defmodule Ipse.Extension.EffectResultTest do
     }
 
     assert MCPCall.valid_binding?(binding, request, identity, %{
-             "mcp_servers" => [server.fingerprint]
+             "mcp_servers" => [server.fingerprint],
+             "mcp_fingerprint_version" => 2
            })
 
     refute MCPCall.valid_binding?(
@@ -310,7 +333,8 @@ defmodule Ipse.Extension.EffectResultTest do
              request,
              identity,
              %{
-               "mcp_servers" => [server.fingerprint]
+               "mcp_servers" => [server.fingerprint],
+               "mcp_fingerprint_version" => 2
              }
            )
   end
@@ -337,7 +361,7 @@ defmodule Ipse.Extension.EffectResultTest do
       "mcp_bindings" => [%{"alias" => "fetch", "tool" => descriptor.tool_id}]
     }
 
-    metadata = %{"mcp_servers" => [server.fingerprint]}
+    metadata = %{"mcp_servers" => [server.fingerprint], "mcp_fingerprint_version" => 2}
     assert MCPCall.valid_binding?(binding, request(), identity, metadata)
     changed = put_in(binding, ["server", "endpoint"], "http://127.0.0.1:9877/mcp")
     refute MCPCall.valid_binding?(changed, request(), identity, metadata)
@@ -386,7 +410,8 @@ defmodule Ipse.Extension.EffectResultTest do
                MCPCall.target(%{mcp_servers: [server]}, identity, request)
 
       assert MCPCall.valid_binding?(binding, request, identity, %{
-               "mcp_servers" => [server.fingerprint]
+               "mcp_servers" => [server.fingerprint],
+               "mcp_fingerprint_version" => 2
              })
 
       refute MCPCall.valid_binding?(

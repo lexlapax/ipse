@@ -184,10 +184,24 @@ defmodule Ipse.KnowledgeStoreContractTest do
   """
 
   test "remote contract receipts preserve atomic admission and explicit compatibility" do
-    paths = Enum.flat_map(:code.get_path(), &["-pa", List.to_string(&1)])
+    paths =
+      :code.get_path()
+      |> Enum.map(&List.to_string/1)
+      |> Enum.filter(&(Path.type(&1) == :absolute))
+      |> Enum.reverse()
+      |> Enum.flat_map(&["-pa", &1])
+
+    cwd =
+      Path.join(
+        System.tmp_dir!(),
+        "ipse-cas-contract-" <> Base.encode16(:crypto.strong_rand_bytes(8), case: :lower)
+      )
+
+    File.mkdir!(cwd)
+    on_exit(fn -> File.rm_rf!(cwd) end)
 
     sources =
-      ~w(extensions/knowledge/src/profiles.ex extensions/knowledge/src/store/mcp_cas.ex dev/verification/scenarios.exs dev/verification/runtime.exs)
+      ~w(extensions/knowledge/src/profiles.ex extensions/knowledge/src/evidence.ex extensions/knowledge/src/store/mcp_cas.ex dev/verification/scenarios.exs dev/verification/runtime.exs)
 
     loads =
       Enum.flat_map(sources, &["-r", Path.join(@root, &1)]) ++
@@ -195,13 +209,15 @@ defmodule Ipse.KnowledgeStoreContractTest do
 
     {output, status} =
       System.cmd(System.find_executable("elixir"), paths ++ loads ++ ["-e", @suite],
-        stderr_to_stdout: true
+        stderr_to_stdout: true,
+        cd: cwd
       )
 
     assert status == 0, output
 
     for module <- [
           IpseKnowledge.Profiles,
+          IpseKnowledge.Evidence,
           IpseKnowledge.Store.MCPCAS
         ] do
       refute Code.ensure_loaded?(module)

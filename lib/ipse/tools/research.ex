@@ -156,9 +156,9 @@ defmodule Ipse.Tools.Research do
         "url" => args["url"],
         "tool_call_id" => args["tool_call_id"],
         "tool_name" => intent["name"],
-        "tool_result_sha256" => digest(text),
+        "tool_result_sha256" => Ipse.JSON.sha256(text),
         "excerpt" => args["excerpt"],
-        "excerpt_sha256" => digest(args["excerpt"]),
+        "excerpt_sha256" => Ipse.JSON.sha256(args["excerpt"]),
         "title" => args["title"],
         "author" => args["author"],
         "published_at" => args["published_at"],
@@ -212,7 +212,7 @@ defmodule Ipse.Tools.Research do
         "tool_call_id" => m["tool_call_id"],
         "tool_name" => intents[m["tool_call_id"]]["name"],
         "arguments" => intents[m["tool_call_id"]]["arguments"],
-        "result_sha256" => digest(m["content"]),
+        "result_sha256" => Ipse.JSON.sha256(m["content"]),
         "untrusted_preview" => String.slice(m["content"], 0, 160)
       }
 
@@ -302,7 +302,6 @@ defmodule Ipse.Tools.Research do
 
   defp string(max), do: %{"type" => "string", "minLength" => 1, "maxLength" => max}
   defp nullable_string(max), do: %{"type" => ["string", "null"], "maxLength" => max}
-  defp digest(text), do: :crypto.hash(:sha256, text) |> Base.encode16(case: :lower)
 
   defp identity(prefix, entry),
     do: prefix <> "_" <> String.slice(Ipse.JSON.digest([entry]), 0, 24)

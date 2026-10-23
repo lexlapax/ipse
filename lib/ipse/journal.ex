@@ -615,7 +615,7 @@ defmodule Ipse.Journal do
   def source_record_bytes, do: @limit
 
   def source(session, offset, record) when is_map(record) do
-    with true <- id?(session) and offset?(offset),
+    with true <- id?(session) and Ipse.JSON.safe_uint?(offset),
          {:ok, encoded} <- Jason.encode(record),
          {:ok, decoded} <- Ipse.JSON.decode_bounded(encoded, @limit),
          true <- decoded == record do
@@ -638,8 +638,8 @@ defmodule Ipse.Journal do
 
   def valid_source?(source) when is_map(source) do
     Enum.sort(Map.keys(source)) == @keys and source["version"] === 1 and
-      id?(source["session_id"]) and offset?(source["byte_offset"]) and
-      hash?(source["record_sha256"]) and
+      id?(source["session_id"]) and Ipse.JSON.safe_uint?(source["byte_offset"]) and
+      Ipse.JSON.sha256?(source["record_sha256"]) and
       source["event_id"] == event_id(source["session_id"], source["byte_offset"])
   rescue
     _ -> false
@@ -650,7 +650,8 @@ defmodule Ipse.Journal do
   @doc "Validate a content-free source reference. This is identity, not data-access authority."
   def valid_source_metadata?(source) when is_map(source) do
     Enum.sort(Map.keys(source)) == ~w(byte_offset event_id session_id version) and
-      source["version"] === 1 and id?(source["session_id"]) and offset?(source["byte_offset"]) and
+      source["version"] === 1 and id?(source["session_id"]) and
+      Ipse.JSON.safe_uint?(source["byte_offset"]) and
       source["event_id"] == event_id(source["session_id"], source["byte_offset"])
   rescue
     _ -> false
@@ -679,7 +680,5 @@ defmodule Ipse.Journal do
     |> binary_part(0, 32)
   end
 
-  defp offset?(value), do: is_integer(value) and value in 0..9_007_199_254_740_991
   defp id?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{32}\z/, value)
-  defp hash?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{64}\z/, value)
 end

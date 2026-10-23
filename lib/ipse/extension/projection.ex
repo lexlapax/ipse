@@ -262,7 +262,10 @@ defmodule Ipse.Extension.Projection do
       event["type"] == "extension_transform_intent" and event["version"] === 1 and
       is_binary(event["request_id"]) and Regex.match?(~r/\A[0-9a-f]{32}\z/, event["request_id"]) and
       identity_valid?(event["identity"]) and event["stage"] in @stages and
-      Enum.all?(~w(input_sha256 context_sha256 source_message_sha256), &hash?(event[&1]))
+      Enum.all?(
+        ~w(input_sha256 context_sha256 source_message_sha256),
+        &Ipse.JSON.sha256?(event[&1])
+      )
   end
 
   defp valid_result?(event) do
@@ -310,6 +313,4 @@ defmodule Ipse.Extension.Projection do
 
   defp render(%{"stage" => "transform.presentation"}, input, result),
     do: result["prefix"] <> input <> result["suffix"]
-
-  defp hash?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{64}\z/, value)
 end

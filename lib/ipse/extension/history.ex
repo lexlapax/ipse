@@ -26,7 +26,8 @@ defmodule Ipse.Extension.History do
     with true <- keys?(request, ~w(op view cursor snapshot limit)),
          true <- operation?(request) and is_map_key(@views, request["view"]),
          true <-
-           uint?(request["cursor"]) and is_integer(request["limit"]) and request["limit"] in 1..8,
+           Ipse.JSON.safe_uint?(request["cursor"]) and is_integer(request["limit"]) and
+             request["limit"] in 1..8,
          true <-
            is_nil(request["snapshot"]) or
              (snapshot?(request["snapshot"]) and request["snapshot"]["view"] == request["view"]),
@@ -194,7 +195,7 @@ defmodule Ipse.Extension.History do
          (request["snapshot"] == nil and snapshot["operation_id"] == operation)) and
       value["cursor"] === request["cursor"] and value["cursor"] <= snapshot["byte_offset"] and
       (value["next"] == nil or
-         (uint?(value["next"]) and value["next"] > value["cursor"] and
+         (Ipse.JSON.safe_uint?(value["next"]) and value["next"] > value["cursor"] and
             value["next"] < snapshot["byte_offset"])) and
       is_list(rows) and length(rows) <= request["limit"] and value["scanned"] === length(rows) and
       (rows != [] or (value["next"] == nil and value["cursor"] == snapshot["byte_offset"])) and
@@ -383,6 +384,5 @@ defmodule Ipse.Extension.History do
 
   defp failed(code), do: {:failed, %{"code" => code}}
   defp keys?(value, keys), do: is_map(value) and Enum.sort(Map.keys(value)) == Enum.sort(keys)
-  defp uint?(value), do: is_integer(value) and value in 0..9_007_199_254_740_991
   defp id?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{32}\z/, value)
 end

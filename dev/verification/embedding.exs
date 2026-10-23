@@ -340,7 +340,7 @@ defmodule IpseEmbeddingExample.Proof do
 
     for {summary, index} <- Enum.with_index(value["vectors"]) do
       true = summary["index"] == index and summary["bytes"] == dimensions * 4
-      true = summary["sha256"] == sha256(vector_bytes(dimensions, index))
+      true = summary["sha256"] == Ipse.JSON.sha256(vector_bytes(dimensions, index))
       true = summary["input_sha256"] == Ipse.JSON.digest([Enum.at(inputs, index)])
       true = summary["pages"] == div(dimensions + 767, 768)
     end
@@ -391,8 +391,6 @@ defmodule IpseEmbeddingExample.Proof do
 
   defp vector_bytes(dimensions, index),
     do: for(value <- vector(dimensions, index), into: <<>>, do: <<value::little-float-size(32)>>)
-
-  defp sha256(bytes), do: Base.encode16(:crypto.hash(:sha256, bytes), case: :lower)
 
   defp budget_bytes(root) do
     path = Path.join([root["state_dir"], "budgets", root["session_id"] <> ".jsonl"])

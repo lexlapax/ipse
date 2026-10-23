@@ -54,7 +54,7 @@ defmodule IpseKnowledgeExample.ResearchProof do
       [candidate] = value["evidence"]
       citation = candidate["citation"]
       "manual:release" = citation["source_id"]
-      true = citation["content_sha256"] == sha(text)
+      true = citation["content_sha256"] == Ipse.JSON.sha256(text)
 
       true =
         binary_part(text, citation["start_byte"], citation["end_byte"] - citation["start_byte"]) ==
@@ -64,7 +64,7 @@ defmodule IpseKnowledgeExample.ResearchProof do
       receipt = citation["origin"]["receipt"]
       @uri = receipt["requested_uri"]
       "fixture:captured-release" = receipt["observed_uri"]
-      true = receipt["body_sha256"] == sha(text)
+      true = receipt["body_sha256"] == Ipse.JSON.sha256(text)
       true = receipt["descriptor"]["operation_id"] =~ ~r/\A[0-9a-f]{32}\z/
       [search, fetch] = web_calls(backend)
       true = search["tool"] == "search" and fetch["tool"] == "fetch"
@@ -332,7 +332,6 @@ defmodule IpseKnowledgeExample.ResearchProof do
     }
 
   defp web_calls(backend), do: Fixture.backend_state(backend).web_calls
-  defp sha(text), do: Base.encode16(:crypto.hash(:sha256, text), case: :lower)
   defp action_count(events), do: Enum.count(events, &(&1["type"] == "extension_action_intent"))
 
   defp action_count(events, op),

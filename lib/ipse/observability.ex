@@ -353,8 +353,8 @@ defmodule Ipse.Observability do
   def valid_event?(value) do
     is_map(value) and
       Enum.sort(Map.keys(value)) == ~w(elapsed_ms event group level sequence version) and
-      value["version"] === 1 and uint?(value["sequence"]) and value["sequence"] > 0 and
-      uint?(value["elapsed_ms"]) and value["group"] in groups() and
+      value["version"] === 1 and Ipse.JSON.safe_uint?(value["sequence"]) and value["sequence"] > 0 and
+      Ipse.JSON.safe_uint?(value["elapsed_ms"]) and value["group"] in groups() and
       value["level"] in ~w(info error debug) and
       Ipse.Session.Lifecycle.valid_metadata?(value["event"]) and
       Ipse.Extension.validate(value) == :ok
@@ -376,6 +376,4 @@ defmodule Ipse.Observability do
         "info"
     end
   end
-
-  defp uint?(v), do: is_integer(v) and v in 0..9_007_199_254_740_991
 end

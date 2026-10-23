@@ -2,9 +2,14 @@
 
 Historical repair record. This follows the
 [independent review of a7f4982](../2026-10-23-p27-independent-review/index.md),
-published at `a912db1`. The enclosing repair commit identifies the implementation.
+published at `a912db1`. The first repair implementation is
+`4171fb4083195b2053fb7324fb03da68db016fad`.
 Current procedures belong to the [operator manual](../../operator/index.md) and
 [developer training](../../developer/index.md).
+
+The subsequent [maintenance and fingerprint compatibility record](../2026-10-23-p27-maintenance/index.md)
+addresses N7 after this first repair increment. Its source and verification remain
+separate from the checks below.
 
 The independent review confirms P27 acceptance within its optional-package scope.
 These repairs change neither the selected retrieval implementation nor the

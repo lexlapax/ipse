@@ -1,6 +1,6 @@
 defmodule IpseKnowledge.Store.MCPCAS do
   @moduledoc false
-  @safe 9_007_199_254_740_991
+  alias IpseKnowledge.Evidence
 
   def start(profile, :snapshot, _args),
     do:
@@ -60,7 +60,7 @@ defmodule IpseKnowledge.Store.MCPCAS do
   def resume(%{phase: :call} = state, %{"status" => "ok", "value" => descriptor}) do
     if keys?(descriptor, ~w(version operation_id kind source_sha256 byte_count)) and
          descriptor["version"] === 1 and descriptor["kind"] == "mcp.text" and
-         id?(descriptor["operation_id"]) and hash?(descriptor["source_sha256"]) and
+         id?(descriptor["operation_id"]) and Evidence.sha256?(descriptor["source_sha256"]) and
          is_integer(descriptor["byte_count"]) and descriptor["byte_count"] in 1..60_000,
        do:
          read(
@@ -114,7 +114,7 @@ defmodule IpseKnowledge.Store.MCPCAS do
         legacy = Map.delete(args, "expected_generation")
 
         if args["expected_generation"] == nil and keys?(legacy, fields) and
-             uint?(args["expected_revision"]) and
+             Evidence.safe_uint?(args["expected_revision"]) and
              args["expected_revision"] > 0,
            do: {:ok, legacy},
            else: {:error, :atomic_admission_unavailable}
@@ -123,8 +123,8 @@ defmodule IpseKnowledge.Store.MCPCAS do
         args = Map.put_new(args, "expected_generation", nil)
 
         if keys?(args, ["expected_generation" | fields]) and
-             uint?(args["expected_revision"]) and
-             (uint?(args["expected_generation"]) or
+             Evidence.safe_uint?(args["expected_revision"]) and
+             (Evidence.safe_uint?(args["expected_generation"]) or
                 (args["expected_generation"] == nil and args["expected_revision"] > 0)),
            do: {:ok, args},
            else: {:error, :atomic_admission_unavailable}
@@ -182,7 +182,8 @@ defmodule IpseKnowledge.Store.MCPCAS do
          Enum.all?(~w(version contract partition request_id action), fn field ->
            envelope[field] === state.envelope[field]
          end) and
-         envelope["status"] in ~w(ok conflict refused) and uint?(envelope["generation"]) and
+         envelope["status"] in ~w(ok conflict refused) and
+         Evidence.safe_uint?(envelope["generation"]) and
          is_map(envelope["value"]) do
       case envelope["status"] do
         "ok" -> accept(state, envelope["value"], envelope["generation"])
@@ -219,15 +220,15 @@ defmodule IpseKnowledge.Store.MCPCAS do
 
   defp conflict_record?(record, generation) do
     keys?(record, ~w(key revision deleted source_generation content_sha256 draft_id)) and
-      hash?(record["key"]) and uint?(record["revision"]) and
+      Evidence.sha256?(record["key"]) and Evidence.safe_uint?(record["revision"]) and
       record["revision"] <= generation and is_boolean(record["deleted"]) and
       if record["deleted"] do
         Enum.all?(~w(source_generation content_sha256 draft_id), &(record[&1] == nil))
       else
-        record["revision"] > 0 and uint?(record["source_generation"]) and
+        record["revision"] > 0 and Evidence.safe_uint?(record["source_generation"]) and
           record["source_generation"] > 0 and
           ((record["content_sha256"] == nil and record["draft_id"] == nil) or
-             (hash?(record["content_sha256"]) and
+             (Evidence.sha256?(record["content_sha256"]) and
                 (record["draft_id"] == nil or id?(record["draft_id"]))))
       end
   end
@@ -237,7 +238,7 @@ defmodule IpseKnowledge.Store.MCPCAS do
 
     if keys?(value, ~w(records count bytes complete)) and value["complete"] === true and
          is_list(rows) and length(rows) <= 256 and value["count"] === length(rows) and
-         uint?(value["bytes"]) and value["bytes"] <= 1_048_576 and
+         Evidence.safe_uint?(value["bytes"]) and value["bytes"] <= 1_048_576 and
          Enum.all?(rows, &(metadata?(&1) and valid_record_generation?(state, &1, generation))) and
          length(Enum.uniq_by(rows, & &1["key"])) == length(rows) do
       groups = rows |> Enum.map(& &1["key"]) |> Enum.chunk_every(8)
@@ -421,14 +422,15 @@ defmodule IpseKnowledge.Store.MCPCAS do
 
   def record?(record),
     do:
-      keys?(record, ~w(key revision deleted value)) and hash?(record["key"]) and
-        uint?(record["revision"]) and is_boolean(record["deleted"]) and
+      keys?(record, ~w(key revision deleted value)) and Evidence.sha256?(record["key"]) and
+        Evidence.safe_uint?(record["revision"]) and is_boolean(record["deleted"]) and
         if(record["deleted"], do: record["value"] == nil, else: is_map(record["value"]))
 
   defp metadata?(record),
     do:
-      keys?(record, ~w(key revision deleted kind)) and hash?(record["key"]) and
-        uint?(record["revision"]) and record["revision"] > 0 and is_boolean(record["deleted"]) and
+      keys?(record, ~w(key revision deleted kind)) and Evidence.sha256?(record["key"]) and
+        Evidence.safe_uint?(record["revision"]) and record["revision"] > 0 and
+        is_boolean(record["deleted"]) and
         record["kind"] in ~w(root page tombstone)
 
   defp bounded_request?(request),
@@ -452,8 +454,6 @@ defmodule IpseKnowledge.Store.MCPCAS do
 
   defp pretty_bound(value, _), do: byte_size(IO.iodata_to_binary(JSON.encode!(value)))
   defp keys?(value, fields), do: is_map(value) and Enum.sort(Map.keys(value)) == Enum.sort(fields)
-  defp uint?(value), do: is_integer(value) and value in 0..@safe
   defp id?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{32}\z/, value)
-  defp hash?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{64}\z/, value)
   defp error(code), do: {:done, {:error, code, %{}}}
 end

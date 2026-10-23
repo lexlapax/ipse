@@ -462,7 +462,7 @@ defmodule Ipse.Usage do
       (is_nil(e["endpoint_sha256"]) or
          (is_binary(e["endpoint_sha256"]) and
             Regex.match?(~r/\A[0-9a-f]{64}\z/, e["endpoint_sha256"]))) and
-      model?(e["model"]) and integer?(e["admitted_at_ms"]) and
+      model?(e["model"]) and Ipse.JSON.safe_uint?(e["admitted_at_ms"]) and
       (operation_tag(e) == "text" or
          (e["kind"] == "extension" and e["provider"] in ~w(openai ollama) and
             model?(e["selected_profile"])))
@@ -501,7 +501,8 @@ defmodule Ipse.Usage do
       )
     ) and
       operation_tag(e) != nil and e["outcome"] in ~w(completed failed cancelled) and
-      integer?(e["duration_ms"]) and (is_nil(e["reported_model"]) or model?(e["reported_model"])) and
+      Ipse.JSON.safe_uint?(e["duration_ms"]) and
+      (is_nil(e["reported_model"]) or model?(e["reported_model"])) and
       e["finality"] == if(e["outcome"] == "completed", do: "final", else: "partial") and
       valid_usage?(e["usage"], operation_tag(e))
   end
@@ -534,8 +535,6 @@ defmodule Ipse.Usage do
 
   defp closed?(e, fields),
     do: Enum.sort(Map.keys(e)) == Enum.sort(fields) and Ipse.JSON.validate_object(e) == :ok
-
-  defp integer?(n), do: is_integer(n) and n >= 0 and n <= 9_007_199_254_740_991
 
   defp profile(execution) when is_map(execution),
     do: Ipse.Provider.model_name(execution[:id] || execution["id"])

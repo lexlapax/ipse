@@ -288,88 +288,78 @@ defmodule Ipse.HTTPProfileTest do
     assert HTTP.with_finch(fn name -> is_pid(Process.whereis(name)) end)
   end
 
-  test "normal return closes the profile before releasing its slot" do
-    {profile, monitor} =
-      HTTP.with_profile(fn profile ->
-        assert Process.alive?(profile)
-        {profile, Process.monitor(profile)}
-      end)
-
-    assert_receive {:DOWN, ^monitor, :process, ^profile, _}
-    refute Process.alive?(profile)
-    assert HTTP.with_profile(fn next -> Process.alive?(next) end)
-  end
-
-  test "borrower death closes its profile and permits an immediate new request" do
-    parent = self()
-
-    borrower =
-      spawn(fn ->
-        HTTP.with_profile(fn profile ->
-          send(parent, {:profile, profile})
-          Process.sleep(:infinity)
-        end)
-      end)
-
-    assert_receive {:profile, profile}, 2_000
-    monitor = Process.monitor(profile)
-    Process.exit(borrower, :kill)
-    assert HTTP.with_profile(fn next -> Process.alive?(next) end)
-    assert_receive {:DOWN, ^monitor, :process, ^profile, _}, 2_000
-  end
-
-  test "overlapping borrowers have isolated options and cancellation does not stop peers" do
+  test "overlapping Finch requests are isolated and cancellation does not stop peers" do
+    {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}])
+    {:ok, {_, port}} = :inet.sockname(listener)
     parent = self()
 
     borrowers =
       for index <- 1..8 do
         spawn(fn ->
-          HTTP.with_profile(fn profile ->
-            :ok = :httpc.set_options([keep_alive_timeout: index * 1_000], profile)
-            send(parent, {:ready, self(), profile})
+          result =
+            HTTP.with_finch(fn name ->
+              send(parent, {:ready, index, Process.whereis(name), HTTP.finch_guardian(self())})
 
-            receive do
-              :check ->
-                send(
-                  parent,
-                  {:options, self(), :httpc.get_options([:keep_alive_timeout], profile)}
-                )
-            end
+              Finch.build(:get, "http://127.0.0.1:#{port}/#{index}")
+              |> Finch.request(name, receive_timeout: 10_000)
+            end)
 
-            receive do
-              :finish -> :ok
-            end
-          end)
-
-          send(parent, {:finished, self()})
+          send(parent, {:response, index, result})
         end)
       end
 
-    on_exit(fn -> Enum.each(borrowers, &Process.exit(&1, :kill)) end)
+    on_exit(fn ->
+      Enum.each(borrowers, &Process.exit(&1, :kill))
+      :gen_tcp.close(listener)
+    end)
 
-    profiles =
-      for _ <- borrowers do
-        assert_receive {:ready, borrower, profile}, 2_000
-        {borrower, profile}
+    pools =
+      Map.new(borrowers, fn _ ->
+        assert_receive {:ready, index, pool, guardian}, 2_000
+        {index, {pool, guardian}}
+      end)
+
+    assert pools |> Map.values() |> Enum.map(&elem(&1, 0)) |> Enum.uniq() |> length() == 8
+
+    sockets =
+      Map.new(borrowers, fn _ ->
+        {:ok, socket} = :gen_tcp.accept(listener, 2_000)
+        assert {:ok, request} = :gen_tcp.recv(socket, 0, 2_000)
+        assert [_, index] = Regex.run(~r"GET /(\d+) HTTP/1.1", request)
+        {String.to_integer(index), socket}
+      end)
+
+    try do
+      {pool, guardian} = Map.fetch!(pools, 1)
+      monitors = Enum.map([pool, guardian], &{&1, Process.monitor(&1)})
+      Process.exit(hd(borrowers), :kill)
+
+      for {pid, monitor} <- monitors do
+        assert_receive {:DOWN, ^monitor, :process, ^pid, _}, 2_000
       end
 
-    assert profiles |> Enum.map(&elem(&1, 1)) |> Enum.uniq() |> length() == 8
-    [cancelled | peers] = borrowers
-    cancelled_profile = profiles |> List.keyfind(cancelled, 0) |> elem(1)
-    monitor = Process.monitor(cancelled_profile)
-    Process.exit(cancelled, :kill)
-    assert_receive {:DOWN, ^monitor, :process, ^cancelled_profile, _}, 2_000
+      assert {:error, :closed} = :gen_tcp.recv(Map.fetch!(sockets, 1), 0, 2_000)
 
-    for {borrower, index} <- Enum.with_index(peers, 2) do
-      send(borrower, :check)
-      expected = index * 1_000
-      assert_receive {:options, ^borrower, {:ok, [keep_alive_timeout: ^expected]}}, 2_000
-      send(borrower, :finish)
-      assert_receive {:finished, ^borrower}, 2_000
+      for index <- 2..8 do
+        body = Integer.to_string(index)
+        socket = Map.fetch!(sockets, index)
+
+        :ok =
+          :gen_tcp.send(socket, ["HTTP/1.1 200 OK\r\ncontent-length: 1\r\n\r\n", body])
+
+        assert_receive {:response, ^index, {:ok, %Finch.Response{status: 200, body: ^body}}},
+                       2_000
+
+        {peer_pool, peer_guardian} = Map.fetch!(pools, index)
+        refute Process.alive?(peer_pool)
+        refute Process.alive?(peer_guardian)
+      end
+    after
+      Enum.each(Map.values(sockets), &:gen_tcp.close/1)
     end
   end
 
-  test "cancelling an active request closes its handler and socket before profile reuse" do
+  test "cancelling an active Finch request closes its children and socket before reuse" do
     {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}])
     {:ok, {_ip, port}} = :inet.sockname(listener)
     parent = self()
@@ -378,39 +368,32 @@ defmodule Ipse.HTTPProfileTest do
       for _ <- 1..5 do
         borrower =
           spawn(fn ->
-            HTTP.with_profile(fn profile ->
-              {:ok, _id} =
-                :httpc.request(
-                  :get,
-                  {~c"http://127.0.0.1:#{port}/", []},
-                  [timeout: 5_000],
-                  [sync: false],
-                  profile
-                )
+            HTTP.with_finch(fn name ->
+              send(parent, {:active, Process.whereis(name), HTTP.finch_guardian(self())})
 
-              send(parent, {:active, profile})
-              Process.sleep(:infinity)
+              Finch.build(:get, "http://127.0.0.1:#{port}/")
+              |> Finch.request(name, receive_timeout: 5_000)
             end)
           end)
 
+        on_exit(fn -> Process.exit(borrower, :kill) end)
         {:ok, socket} = :gen_tcp.accept(listener, 2_000)
         assert {:ok, _request} = :gen_tcp.recv(socket, 0, 2_000)
-        assert_receive {:active, profile}, 2_000
-        monitor = Process.monitor(profile)
-        {:links, links} = Process.info(profile, :links)
+        assert_receive {:active, pool, guardian}, 2_000
 
-        linked_processes = Enum.filter(links, &is_pid/1)
-        monitors = Enum.map(linked_processes, &{&1, Process.monitor(&1)})
+        children =
+          for {_, pid, _, _} <- Supervisor.which_children(pool), is_pid(pid), do: pid
+
+        monitors = Enum.map([pool, guardian | children], &{&1, Process.monitor(&1)})
         Process.exit(borrower, :kill)
-        assert_receive {:DOWN, ^monitor, :process, ^profile, _}, 2_000
-        assert {:error, :closed} = :gen_tcp.recv(socket, 0, 2_000)
 
         for {pid, reference} <- monitors do
           assert_receive {:DOWN, ^reference, :process, ^pid, _}, 2_000
         end
 
+        assert {:error, :closed} = :gen_tcp.recv(socket, 0, 2_000)
         :gen_tcp.close(socket)
-        assert HTTP.with_profile(fn next -> Process.alive?(next) end)
+        assert HTTP.with_finch(fn name -> is_pid(Process.whereis(name)) end)
       end
     after
       :gen_tcp.close(listener)

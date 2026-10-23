@@ -56,13 +56,35 @@ Resource text and prompt messages remain data, with returned roles preserved;
 they never become system instructions. Non-text resource/prompt results refuse.
 Ordinary tool results can report omitted unsupported blocks.
 
-Persisted MCP fingerprints use deterministic Erlang term encoding, unlike the
-canonical JSON digests used elsewhere. That encoding is not a cross-OTP storage
-contract: a major OTP upgrade can fail closed on unchanged configuration. See
-the [OTP encoding guarantee](https://www.erlang.org/doc/apps/erts/erlang.html#term_to_binary/2).
-Replacing it
-requires a versioned journal/configuration migration and old-record tests.
-Do not silently recompute existing identities with a different digest scheme.
+New sessions record `mcp_fingerprint_version: 2` in metadata. Config's public
+manifest carries `fingerprint_version: 2`; its endpoint fingerprint hashes
+`["ipse.mcp.endpoint", 2, public_fields]` with `Ipse.JSON.digest/1`, excluding the
+fingerprint and version fields themselves. This sorts object keys and preserves
+array order. Tool and catalog descriptors use the same canonical encoder with
+separate `ipse.mcp.tool` and `ipse.mcp.catalog` tags. The public-field validator
+and loader share Config's fingerprint implementation.
+
+An absent metadata version means legacy version one. Resume selects that scheme
+before comparing configuration, discovering descriptors or writing more records.
+Legacy public manifests omit the version field. Their exact deterministic Erlang
+term encoding remains unchanged, including its
+[within-major-OTP guarantee](https://www.erlang.org/doc/apps/erts/erlang.html#term_to_binary/2).
+No journal is migrated or silently rehashed. Unknown versions and metadata/binding
+version mismatches refuse; a torn tail is not repaired before that refusal.
+
+Run these controls when changing either format:
+
+```sh
+mix test test/ipse/mcp/config_test.exs test/ipse/mcp/session_test.exs \
+  test/ipse/extension/effect_result_test.exs \
+  test/ipse/extension/mcp_call_session_test.exs
+```
+
+The config tests pin both the historical fingerprint and the new canonical bytes.
+The Session tests exercise ordinary and extension calls through legacy journals,
+both extension transports, idle resume without replay, and refusal of unknown or
+mismatched versions. Changing the canonical fields requires another explicit
+format version, even if a new hash looks equivalent.
 
 ## Schema subset
 

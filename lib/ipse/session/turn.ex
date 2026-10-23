@@ -205,7 +205,7 @@ defmodule Ipse.Session.Turn do
         start_extension_text(s)
 
       true ->
-        system = Session.context_header(s)
+        system = Ipse.Session.Context.header(s)
 
         case Ipse.Session.Context.prepare_compaction(s.messages, s.config, system) do
           :skip ->
@@ -241,7 +241,7 @@ defmodule Ipse.Session.Turn do
       s,
       s.config,
       messages,
-      Session.definitions(s.config, s.extension_result_sources) ++
+      definitions(s.config, s.extension_result_sources) ++
         Ipse.MCP.definitions(s.mcp_tools),
       :model
     )
@@ -474,7 +474,7 @@ defmodule Ipse.Session.Turn do
     case Ipse.Session.Context.finish_compaction(
            s.compaction,
            assistant,
-           Session.context_header(s),
+           Ipse.Session.Context.header(s),
            s.config
          ) do
       {:ok, messages, checkpoint, stats} ->
@@ -512,7 +512,7 @@ defmodule Ipse.Session.Turn do
       "stage" => stage,
       "reason" => reason,
       "diagnostics" =>
-        Ipse.Session.Context.measure(s.messages, s.config, Session.context_header(s))
+        Ipse.Session.Context.measure(s.messages, s.config, Ipse.Session.Context.header(s))
     })
 
     fail(
@@ -619,10 +619,10 @@ defmodule Ipse.Session.Turn do
             else: Ipse.Tools.Research.validate(name, args)
 
         name == "delegate" ->
-          Session.validate_delegation(s, call, args)
+          Ipse.Tools.Delegation.admit(s.config, s.delegations, call, args)
 
         name == "delegate_parallel" ->
-          Session.validate_parallel_delegation(s, args)
+          Ipse.Tools.Delegation.admit_parallel(s.config, s.delegations, args)
 
         true ->
           :ok
@@ -1038,7 +1038,7 @@ defmodule Ipse.Session.Turn do
   defp start_question(s, call, arguments) do
     case Questions.validate(arguments) do
       {:ok, arguments} ->
-        if Session.questions_enabled?(s.config) do
+        if Questions.enabled?(s.config) do
           # Other proposed calls are settled without execution so the answer can change the plan.
           next =
             settle_calls(
@@ -1171,7 +1171,10 @@ defmodule Ipse.Session.Turn do
   def context_refreshed(s, snapshot, drift, skills) do
     s = Session.persist_context(%{s | context_drift: drift, skill_drift: []}, snapshot)
     s = Session.persist_skills(s, skills)
-    manifest = Session.context_manifest(s)
+
+    manifest =
+      Ipse.Session.Context.manifest(s.context_snapshot, s.context_drift, s.skill_drift, s.skills)
+
     Session.notify(s, {:context_refreshed, manifest})
     Session.notify(s, {:done, :ok})
     {:noreply, %{s | phase: :idle, job_ref: nil}}
@@ -1262,4 +1265,51 @@ defmodule Ipse.Session.Turn do
     outcome = if status == :error, do: "error", else: "result_recorded"
     {:noreply, tool_result(s, hd(s.calls), text, outcome, s.tool_decision)}
   end
+
+  defp definitions(config, result_sources) do
+    Tools.definitions(Map.get(config, :sandbox, :off)) ++
+      if(model_saved_results?(result_sources),
+        do: [ResultSource.reader_definition()],
+        else: []
+      ) ++
+      Catalog.definitions(config) ++
+      Ipse.Tools.Delegation.definitions(config) ++
+      if(config[:delegation_origin], do: [], else: Ipse.Tools.Research.definitions()) ++
+      [
+        Questions.definition(),
+        %{
+          "type" => "function",
+          "function" => %{
+            "name" => "load_skill",
+            "description" =>
+              "Load a skill's full instructions by name. This grants no permissions.",
+            "parameters" => %{
+              "type" => "object",
+              "properties" => %{"name" => %{"type" => "string"}},
+              "required" => ["name"]
+            }
+          }
+        },
+        %{
+          "type" => "function",
+          "function" => %{
+            "name" => "load_skill_resource",
+            "description" =>
+              "Read one explicit UTF-8 file relative to a discovered skill directory (32 KiB maximum). Does not execute scripts or follow resource links; grants no permissions.",
+            "parameters" => %{
+              "type" => "object",
+              "properties" => %{"name" => %{"type" => "string"}, "path" => %{"type" => "string"}},
+              "required" => ["name", "path"],
+              "additionalProperties" => false
+            }
+          }
+        }
+      ]
+  end
+
+  defp model_saved_results?(%ResultSource.Index{committed: sources}),
+    do:
+      Enum.any?(sources, fn {_, source} ->
+        source.intent["descriptor"]["stage"] == "invoke.tool"
+      end)
 end

@@ -5,12 +5,17 @@ defmodule Ipse.HTTP do
   # the profile has exited, including when its borrower is killed.
   @profiles for index <- 1..64, do: :"ipse_http_#{index}"
 
-  def with_profile(fun) when is_function(fun, 1) do
-    with_client(fun, :httpc)
-  end
+  def with_finch(fun, conn_opts \\ []) when is_function(fun, 1) do
+    Application.ensure_all_started(:ipse)
+    owner = self()
+    reference = make_ref()
+    scope = Ipse.Session.Resources.current()
 
-  def with_finch(fun, conn_opts \\ []) when is_function(fun, 1),
-    do: with_client(fun, {:finch, conn_opts})
+    {guardian, monitor} =
+      spawn_monitor(fn -> own_profile(owner, reference, conn_opts, nil, scope) end)
+
+    borrow(fun, guardian, monitor, reference)
+  end
 
   @doc false
   def bounded_request(request, limit, timeout \\ 15_000)
@@ -93,7 +98,7 @@ defmodule Ipse.HTTP do
 
         receive do
           {^reference, :borrow, borrower, options, scope} ->
-            own_profile(borrower, reference, {:finch, options}, monitor, scope)
+            own_profile(borrower, reference, options, monitor, scope)
 
           {^reference, :cancel} ->
             :ok
@@ -142,18 +147,6 @@ defmodule Ipse.HTTP do
     end
   end
 
-  defp with_client(fun, backend) do
-    Application.ensure_all_started(:ipse)
-    owner = self()
-    reference = make_ref()
-    scope = Ipse.Session.Resources.current()
-
-    {guardian, monitor} =
-      spawn_monitor(fn -> own_profile(owner, reference, backend, nil, scope) end)
-
-    borrow(fun, guardian, monitor, reference)
-  end
-
   defp borrow(fun, guardian, monitor, reference) do
     receive do
       {^reference, {:ok, profile}} ->
@@ -173,7 +166,7 @@ defmodule Ipse.HTTP do
     end
   end
 
-  defp own_profile(owner, reference, backend, lease_owner_monitor, scope) do
+  defp own_profile(owner, reference, conn_opts, lease_owner_monitor, scope) do
     Process.flag(:trap_exit, true)
     owner_monitor = Process.monitor(owner)
 
@@ -181,7 +174,7 @@ defmodule Ipse.HTTP do
       {:ok, ticket} ->
         result =
           try do
-            run_profile(owner, reference, backend, lease_owner_monitor, owner_monitor, ticket)
+            run_profile(owner, reference, conn_opts, lease_owner_monitor, owner_monitor, ticket)
           rescue
             _ -> {:error, :cleanup_unconfirmed}
           catch
@@ -195,22 +188,18 @@ defmodule Ipse.HTTP do
     end
   end
 
-  defp run_profile(owner, reference, backend, lease_owner_monitor, owner_monitor, ticket) do
-    if match?({:finch, _}, backend),
-      do: Registry.register(Ipse.Registry, {__MODULE__, :finch_borrower, owner}, nil)
+  defp run_profile(owner, reference, conn_opts, lease_owner_monitor, owner_monitor, ticket) do
+    Registry.register(Ipse.Registry, {__MODULE__, :finch_borrower, owner}, nil)
 
     case reserve() do
       {:ok, name} ->
         try do
-          case start_client(backend, name) do
+          case start_client(conn_opts, name) do
             {:ok, profile} ->
               profile_monitor = Process.monitor(profile)
-              children = monitor_children(profile, backend)
+              children = monitor_children(profile)
 
-              send(
-                owner,
-                {reference, {:ok, if(match?({:finch, _}, backend), do: name, else: profile)}}
-              )
+              send(owner, {reference, {:ok, name}})
 
               borrower_stopped =
                 receive do
@@ -237,7 +226,7 @@ defmodule Ipse.HTTP do
                 end
 
               Process.demonitor(profile_monitor, [:flush])
-              stop_profile(profile, backend)
+              stop_profile(profile)
               Enum.each(children, fn {pid, ref} -> await_exit(pid, ref) end)
               if borrower_stopped, do: :ok, else: {:error, :cleanup_unconfirmed}
 
@@ -278,9 +267,7 @@ defmodule Ipse.HTTP do
     end)
   end
 
-  defp start_client(:httpc, name), do: :inets.start(:httpc, [profile: name], :stand_alone)
-
-  defp start_client({:finch, conn_opts}, name) do
+  defp start_client(conn_opts, name) do
     Finch.start_link(
       name: name,
       pools: %{
@@ -293,17 +280,13 @@ defmodule Ipse.HTTP do
     )
   end
 
-  defp stop_profile(profile, backend) do
+  defp stop_profile(profile) do
     monitor = Process.monitor(profile)
 
-    if backend == :httpc do
-      :inets.stop(:stand_alone, profile)
-    else
-      try do
-        Supervisor.stop(profile, :normal, 1000)
-      catch
-        :exit, _ -> Process.exit(profile, :kill)
-      end
+    try do
+      Supervisor.stop(profile, :normal, 1000)
+    catch
+      :exit, _ -> Process.exit(profile, :kill)
     end
 
     receive do
@@ -315,40 +298,15 @@ defmodule Ipse.HTTP do
     end
   end
 
-  defp monitor_children(profile, {:finch, _}) do
+  defp monitor_children(profile) do
     for {_, pid, _, _} <- Supervisor.which_children(profile),
         is_pid(pid),
         do: {pid, Process.monitor(pid)}
   end
 
-  defp monitor_children(_, _), do: []
-
   defp await_exit(pid, monitor) do
     receive do
       {:DOWN, ^monitor, :process, ^pid, _} -> :ok
-    end
-  end
-
-  def httpc_options(profile, uri) do
-    case selected(uri) do
-      nil ->
-        []
-
-      proxy ->
-        option = if uri.scheme == "https", do: :https_proxy, else: :proxy
-
-        :ok =
-          :httpc.set_options(
-            [{option, {{String.to_charlist(proxy.host), proxy.port}, []}}],
-            profile
-          )
-
-        if proxy.userinfo do
-          {user, password} = credentials(proxy.userinfo)
-          [proxy_auth: {String.to_charlist(user), String.to_charlist(password)}]
-        else
-          []
-        end
     end
   end
 

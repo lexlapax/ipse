@@ -2,6 +2,14 @@ defmodule Ipse.QuestionValidationTest do
   use ExUnit.Case, async: true
   alias Ipse.Tools.Questions
 
+  test "operator questions require explicit availability and a root session" do
+    assert Questions.enabled?(%{})
+    assert Questions.enabled?(%{operator_questions: true})
+    refute Questions.enabled?(%{operator_questions: false})
+    refute Questions.enabled?(%{operator_questions: "true"})
+    refute Questions.enabled?(%{operator_questions: true, delegation_origin: "parent"})
+  end
+
   defp choice(kind \\ "single"),
     do: %{
       "id" => "stack",

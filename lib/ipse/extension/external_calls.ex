@@ -123,7 +123,7 @@ defmodule Ipse.Extension.MCPCall do
          :ok <- Schema.validate_arguments(binding["schema"], request["arguments"]),
          true <- binding["schema"]["type"] == "object",
          true <- byte_size(Jason.encode!(request["arguments"], pretty: true)) <= 32_768,
-         true <- metadata?(metadata, server["fingerprint"]) do
+         true <- metadata?(metadata, server) do
       true
     else
       _ -> false
@@ -248,7 +248,7 @@ defmodule Ipse.Extension.MCPCall do
     keys = if kind == "tool", do: base, else: base ++ ~w(kind source)
 
     keys?(manifest, keys) and manifest["schema_version"] === 1 and
-      manifest["server_id"] == server["id"] and hash?(manifest["descriptor_sha256"]) and
+      manifest["server_id"] == server["id"] and Ipse.JSON.sha256?(manifest["descriptor_sha256"]) and
       manifest["risk"] == "external_requires_approval" and
       keys?(manifest["origin"], ~w(transport configured_endpoint_fingerprint sandbox_requested)) and
       manifest["origin"]["transport"] == Map.get(server, "transport", "stdio") and
@@ -276,6 +276,12 @@ defmodule Ipse.Extension.MCPCall do
 
   defp public_server?(server) do
     base = ~w(id tools resources prompts sandbox env_names timeout_ms fingerprint)
+
+    base =
+      if is_map(server) and server["fingerprint_version"] === 2,
+        do: ["fingerprint_version" | base],
+        else: base
+
     http = is_map(server) and server["transport"] == "streamable_http"
 
     keys =
@@ -283,7 +289,7 @@ defmodule Ipse.Extension.MCPCall do
         do: base ++ ~w(transport endpoint allow_insecure_loopback),
         else: base ++ ~w(command args)
 
-    keys?(server, keys) and server_id?(server["id"]) and hash?(server["fingerprint"]) and
+    keys?(server, keys) and server_id?(server["id"]) and Ipse.JSON.sha256?(server["fingerprint"]) and
       is_integer(server["timeout_ms"]) and server["timeout_ms"] in 1..120_000 and
       names?(server["tools"], 16, &tool_name?/1) and
       names?(server["prompts"], 16, &tool_name?/1) and
@@ -291,7 +297,8 @@ defmodule Ipse.Extension.MCPCall do
       (length(server["tools"]) + length(server["prompts"]) + length(server["resources"])) in 1..16 and
       names?(server["env_names"], 16, &env_name?/1) and
       server["env_names"] == Enum.sort(server["env_names"]) and
-      server_transport?(server, http) and fingerprint_matches?(server, http)
+      server_transport?(server, http) and
+      server["fingerprint"] == Config.public_fingerprint(server)
   end
 
   defp server_transport?(server, true) do
@@ -307,32 +314,6 @@ defmodule Ipse.Extension.MCPCall do
       is_list(server["args"]) and length(server["args"]) <= 16 and
       Enum.all?(server["args"], &(text?(&1, 4096) and not String.contains?(&1, <<0>>))) and
       Enum.reduce(server["args"], 0, &(byte_size(&1) + &2)) <= 16_384
-  end
-
-  defp fingerprint_matches?(server, http),
-    do: server["fingerprint"] == server_fingerprint(server, http)
-
-  defp server_fingerprint(server, true) do
-    term_digest(
-      {:http,
-       {server["id"], server["endpoint"], server["tools"], server["resources"], server["prompts"],
-        List.first(server["env_names"]), server["allow_insecure_loopback"], server["timeout_ms"]}}
-    )
-  end
-
-  defp server_fingerprint(server, false) do
-    base =
-      {server["id"], server["command"], server["args"], server["tools"], server["env_names"],
-       server["timeout_ms"]}
-
-    sandbox = if server["sandbox"] == "native", do: :native, else: :off
-
-    value =
-      if sandbox == :off and server["resources"] == [] and server["prompts"] == [],
-        do: base,
-        else: {base, sandbox, server["resources"], server["prompts"]}
-
-    term_digest(value)
   end
 
   defp endpoint?(value, insecure) do
@@ -351,10 +332,12 @@ defmodule Ipse.Extension.MCPCall do
 
   defp metadata?(nil, _), do: true
 
-  defp metadata?(metadata, fingerprint),
+  defp metadata?(metadata, server),
     do:
       is_map(metadata) and is_list(metadata["mcp_servers"]) and
-        fingerprint in metadata["mcp_servers"]
+        Map.get(metadata, "mcp_fingerprint_version", 1) ===
+          Map.get(server, "fingerprint_version", 1) and
+        server["fingerprint"] in metadata["mcp_servers"]
 
   defp resource?(value),
     do: is_map(value) and is_pid(value[:owner]) and is_reference(value[:job_ref])
@@ -398,19 +381,10 @@ defmodule Ipse.Extension.MCPCall do
         Regex.match?(~r/\A[a-z][a-z0-9+.-]*\z/i, URI.parse(value).scheme) and
         is_nil(URI.parse(value).userinfo)
 
-  defp hash?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{64}\z/, value)
-
   defp text?(value, limit),
     do: is_binary(value) and String.valid?(value) and byte_size(value) <= limit
 
   defp json(value), do: value |> Jason.encode!() |> Jason.decode!()
-
-  defp term_digest(value),
-    do:
-      value
-      |> :erlang.term_to_binary([:deterministic])
-      |> then(&:crypto.hash(:sha256, &1))
-      |> Base.encode16(case: :lower)
 end
 
 defmodule Ipse.Extension.ToolAction do

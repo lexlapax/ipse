@@ -19,7 +19,7 @@ defmodule IpseKnowledgeExample.RecoveryProof do
     origin = "http://127.0.0.1:#{port}"
     bytes = File.read!(Path.join(artifact, "extension.json"))
     manifest = JSON.decode!(bytes)
-    digest = sha(bytes)
+    digest = Ipse.JSON.sha256(bytes)
 
     options = %{
       "version" => 1,
@@ -226,7 +226,6 @@ defmodule IpseKnowledgeExample.RecoveryProof do
     do: Evaluation.invoke(run, "inspect", %{"store" => "notes", "source_id" => @source_id})
 
   defp keep(run), do: Process.put(:graph_recovery_run, run)
-  defp sha(bytes), do: Base.encode16(:crypto.hash(:sha256, bytes), case: :lower)
 
   defp state_writes(run) do
     {:ok, events} = Ipse.Journal.load(run.state_dir, run.session_id)
@@ -250,7 +249,7 @@ defmodule IpseKnowledgeExample.RecoveryProof do
         true =
           proposed["destination"] == %{
             "origin" => origin,
-            "target_sha256" => sha(origin <> "/api/chat")
+            "target_sha256" => Ipse.JSON.sha256(origin <> "/api/chat")
           }
 
         %{"max_facts" => 1, "chunks" => [%{"text" => @text}]} = JSON.decode!(request["input"])
@@ -262,16 +261,23 @@ defmodule IpseKnowledgeExample.RecoveryProof do
         "notes" = review.arguments["store"]
         value = request["value"]
         "recovery" = value["partition"]
-        true = value["source_key"] == sha(@source_id)
+        true = value["source_key"] == Ipse.JSON.sha256(@source_id)
 
         if review.verb in ~w(extract abort) do
           true = request["expected_revision"] == Process.get(:graph_recovery_revision)
 
           true =
             request["key"] ==
-              sha(JSON.encode!(["ipse-knowledge", 1, "root", ["recovery", sha(@source_id)]]))
+              Ipse.JSON.sha256(
+                JSON.encode!([
+                  "ipse-knowledge",
+                  1,
+                  "root",
+                  ["recovery", Ipse.JSON.sha256(@source_id)]
+                ])
+              )
 
-          true = value["content_sha256"] == sha(@text)
+          true = value["content_sha256"] == Ipse.JSON.sha256(@text)
 
           if review.verb == "abort",
             do: nil = value["draft"],

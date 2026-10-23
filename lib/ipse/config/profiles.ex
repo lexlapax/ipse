@@ -427,7 +427,7 @@ defmodule Ipse.Config.Profiles do
       Ipse.Provider.model_name(profile["model"]) == profile["model"] and
       profile["billing_mode"] ==
         Ipse.Usage.billing_mode(@embedding_providers[profile["provider"]]) and
-      (is_nil(profile["endpoint_sha256"]) or hash?(profile["endpoint_sha256"])) and
+      (is_nil(profile["endpoint_sha256"]) or Ipse.JSON.sha256?(profile["endpoint_sha256"])) and
       dimensions?(profile["dimensions"]) and profile["dimension_mode"] in ~w(native request) and
       is_integer(profile["timeout_ms"]) and profile["timeout_ms"] in 1..120_000 and
       Ipse.Provider.valid_destination?(profile["destination"]) and default_destination?(profile)
@@ -479,6 +479,5 @@ defmodule Ipse.Config.Profiles do
 
   defp dimensions?(value), do: is_integer(value) and value in 1..4096
 
-  defp hash?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{64}\z/, value)
   defp keys?(map, keys), do: is_map(map) and Enum.sort(Map.keys(map)) == Enum.sort(keys)
 end

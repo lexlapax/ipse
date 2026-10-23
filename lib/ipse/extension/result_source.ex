@@ -51,9 +51,9 @@ defmodule Ipse.Extension.ResultSource do
 
   def valid_descriptor?(delivery) do
     keys?(delivery, @delivery_keys) and delivery["version"] === 1 and
-      delivery["kind"] == "saved.result" and hash?(delivery["output_id"]) and
+      delivery["kind"] == "saved.result" and Ipse.JSON.sha256?(delivery["output_id"]) and
       is_integer(delivery["byte_count"]) and delivery["byte_count"] in 1..@byte_limit and
-      hash?(delivery["sha256"]) and delivery["historical_receipt"] === true
+      Ipse.JSON.sha256?(delivery["sha256"]) and delivery["historical_receipt"] === true
   end
 
   def published?(%Index{} = index, event) when is_map(event),
@@ -176,7 +176,7 @@ defmodule Ipse.Extension.ResultSource do
          true <- keys?(output, ~w(version byte_count sha256)),
          true <- output["version"] === 1,
          true <- is_integer(output["byte_count"]) and output["byte_count"] in 1..@byte_limit,
-         true <- hash?(output["sha256"]),
+         true <- Ipse.JSON.sha256?(output["sha256"]),
          true <- Ipse.Extension.validate(offer) == :ok do
       intent_hash = Ipse.JSON.digest([intent])
 
@@ -340,7 +340,7 @@ defmodule Ipse.Extension.ResultSource do
          true <-
            is_integer(event["action_count"]) and
              event["action_count"] in 0..Ipse.Extension.Actions.limit(source.intent["identity"]),
-         true <- hash?(event["actions_sha256"]),
+         true <- Ipse.JSON.sha256?(event["actions_sha256"]),
          true <- byte_size(Jason.encode!(event)) <= @record_limit do
       {:ok, %{source | phase: :committed}}
     else
@@ -695,7 +695,6 @@ defmodule Ipse.Extension.ResultSource do
 
   defp record_bytes(record), do: byte_size(Jason.encode!(record)) + 1
   defp elapsed?(value), do: is_integer(value) and value in 0..@elapsed_limit
-  defp hash?(value), do: is_binary(value) and Regex.match?(~r/\A[a-f0-9]{64}\z/, value)
   defp hex(value), do: Base.encode16(value, case: :lower)
   defp keys?(value, keys), do: is_map(value) and Enum.sort(Map.keys(value)) == Enum.sort(keys)
   alias Ipse.Extension.ResultView

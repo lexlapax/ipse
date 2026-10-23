@@ -81,7 +81,7 @@ defmodule Ipse.Extension.State do
   end
 
   defp execute_locked(root, namespace, request, operation_id) do
-    with true <- is_binary(root) and hash?(namespace) and id?(operation_id),
+    with true <- is_binary(root) and Ipse.JSON.sha256?(namespace) and id?(operation_id),
          :ok <- validate(request),
          :ok <- directory(root),
          path = Path.join(root, namespace),
@@ -360,7 +360,6 @@ defmodule Ipse.Extension.State do
   defp key?(key),
     do: is_binary(key) and Regex.match?(~r/\A[a-zA-Z0-9][a-zA-Z0-9_.-]{0,63}\z/, key)
 
-  defp hash?(hash), do: is_binary(hash) and Regex.match?(~r/\A[a-f0-9]{64}\z/, hash)
   defp id?(id), do: is_binary(id) and Regex.match?(~r/\A[a-f0-9]{32}\z/, id)
   defp revision?(revision), do: is_integer(revision) and revision in 0..@max_revision
 

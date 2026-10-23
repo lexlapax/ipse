@@ -355,7 +355,7 @@ defmodule Ipse.Config do
            path: source.path,
            canonical_path: canonical,
            scope: source.scope,
-           sha256: Base.encode16(:crypto.hash(:sha256, raw), case: :lower),
+           sha256: Ipse.JSON.sha256(raw),
            data: data
          }}
       else

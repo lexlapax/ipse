@@ -54,6 +54,19 @@ modules in that same process; IO runs in explicitly owned tasks. A folder split
 does not create another conversation owner. See [AGENTS](../../AGENTS.md) for the
 source map and [CONTRIBUTING](../../CONTRIBUTING.md) for submissions.
 
+A file can contain several modules when they share one contract owner, such as
+`extension/inference.ex` for model and embedding admission or
+`extension/registry.ex` for feature configuration and registration. Find these
+through the ownership table and module declarations; do not add wrapper files
+solely to match every module name. `Session.Invocation` implements active
+conversation work, while `Extension.Invocation` defines the generic invocation
+contract.
+
+Use `Ipse.JSON.sha256/1`, `sha256?/1` and `safe_uint?/1` for host SHA256 and
+JSON-safe unsigned values. Preserve a domain's narrower bounds and exact digest
+input. Independently compiled Knowledge packages use their own Evidence helpers;
+they must not acquire a host dependency merely to share a small predicate.
+
 ## Change host behavior
 
 | Learning task | Chapter |

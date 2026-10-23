@@ -281,12 +281,12 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
 
                  require!(
                    final["freeze_sha256"] == context.sha and
-                     final["prediction_sha256"] == sha(bytes),
+                     final["prediction_sha256"] == Ipse.JSON.sha256(bytes),
                    :prediction_identity
                  )
 
                  %{
-                   "prediction_sha256" => sha(bytes),
+                   "prediction_sha256" => Ipse.JSON.sha256(bytes),
                    "rows" => length(jsonl(bytes)),
                    "execution_complete" => false,
                    "resource_complete" => false
@@ -331,7 +331,7 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
           require!(ticket["prepared_sha256"] == nil, :prepared_identity)
           nil
         else
-          require!(hash?(ticket["prepared_sha256"]), :prepared_identity)
+          require!(Ipse.JSON.sha256?(ticket["prepared_sha256"]), :prepared_identity)
           %{sha: ticket["prepared_sha256"]}
         end
 
@@ -353,7 +353,7 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
         "stage" => stage.name,
         "token" => stage.token,
         "index" => stage.index,
-        "ticket_sha256" => sha(read!(ticket_path)),
+        "ticket_sha256" => Ipse.JSON.sha256(read!(ticket_path)),
         "prepared_sha256" => if(bound, do: bound.sha),
         "scope" => directory_identity(fd_path(7)),
         "whole_scope" => directory_identity(fd_path(6))
@@ -433,7 +433,7 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
         {directory, names}
       end
 
-    membership_sha256 = sha(:erlang.term_to_binary(membership))
+    membership_sha256 = Ipse.JSON.sha256(:erlang.term_to_binary(membership))
 
     bootstrap = """
     membership = for directory <- :code.get_path() do
@@ -515,7 +515,7 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
 
     if :code.is_loaded(Environment) == false do
       bytes = File.read!(file)
-      require!(sha(bytes) == digest, :precompiled_module)
+      require!(Ipse.JSON.sha256(bytes) == digest, :precompiled_module)
       {:ok, {Environment, ^md5}} = :beam_lib.md5(bytes)
       {:module, Environment} = :code.load_binary(Environment, String.to_charlist(file), bytes)
     end
@@ -538,7 +538,7 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
     require!(size <= @limit, :precompiled_module)
     bytes = File.read!(file)
     require!(byte_size(bytes) == size, :precompiled_module)
-    identity = %{"path" => file, "bytes" => size, "sha256" => sha(bytes)}
+    identity = %{"path" => file, "bytes" => size, "sha256" => Ipse.JSON.sha256(bytes)}
 
     require!(
       Enum.filter(runtime["files"], &(&1["path"] == file)) == [identity],
@@ -601,7 +601,7 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
   end
 
   defp context!(path, expected) do
-    require!(absolute?(path) and hash?(expected), :freeze_identity)
+    require!(absolute?(path) and Ipse.JSON.sha256?(expected), :freeze_identity)
     {:ok, verified} = Freeze.verify(path, expected)
     require!(verified["manifest"]["version"] == 2, :measured_plan_required)
     :ok = Contract.validate(verified["plan"])
@@ -615,7 +615,8 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
         Enum.any?(
           manifest["source"]["files"],
           &(&1["path"] == relative and
-              &1["sha256"] == sha(File.read!(Path.join(manifest["source"]["root"], relative))))
+              &1["sha256"] ==
+                Ipse.JSON.sha256(File.read!(Path.join(manifest["source"]["root"], relative))))
         ),
         :evaluator_source
       )
@@ -679,7 +680,7 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
         "finalize" -> 15
       end
 
-    token = sha(context.id <> ":" <> name) |> binary_part(0, 32)
+    token = Ipse.JSON.sha256(context.id <> ":" <> name) |> binary_part(0, 32)
 
     ticket_path =
       if kind == "prepare",
@@ -862,7 +863,7 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
 
     bytes = encode(prepared)
     save!(Path.join(root, "population.json"), bytes)
-    digest = sha(bytes)
+    digest = Ipse.JSON.sha256(bytes)
     save!(Path.join(root, "population.sha256"), digest <> "\n")
 
     stages =
@@ -894,11 +895,11 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
   end
 
   defp prepared!(context, expected) do
-    require!(hash?(expected), :prepared_identity)
+    require!(Ipse.JSON.sha256?(expected), :prepared_identity)
     bytes = read!(Path.join(context.native, "prepared/population.json"))
 
     require!(
-      sha(bytes) == expected and
+      Ipse.JSON.sha256(bytes) == expected and
         read!(Path.join(context.native, "prepared/population.sha256"), 65) == expected <> "\n",
       :prepared_changed
     )
@@ -957,7 +958,7 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
 
     complete = result.receipt["status"] == "ok" and domain != nil and domain["complete"] == true
     service_path = Path.join(output, "model-service/receipt.json")
-    service_sha = if File.regular?(service_path), do: sha(read!(service_path))
+    service_sha = if File.regular?(service_path), do: Ipse.JSON.sha256(read!(service_path))
 
     report = %{
       "version" => 1,
@@ -1098,7 +1099,8 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
     require!(
       final["freeze_sha256"] == context.sha and
         final["data_manifest_sha256"] == context.plan["data"]["manifest_sha256"] and
-        final["prediction_sha256"] == sha(predictions) and final["rows"] == length(rows),
+        final["prediction_sha256"] == Ipse.JSON.sha256(predictions) and
+        final["rows"] == length(rows),
       :prediction_identity
     )
 
@@ -1118,7 +1120,7 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
 
     require!(
       finalized_outcome["finalized"] == final and
-        finalized_outcome["prediction_sha256"] == sha(predictions),
+        finalized_outcome["prediction_sha256"] == Ipse.JSON.sha256(predictions),
       :finalization_changed
     )
 
@@ -1133,7 +1135,7 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
       "execution_id" => context.id,
       "freeze_sha256" => context.sha,
       "prepared_sha256" => prepared_sha,
-      "prediction_sha256" => sha(predictions),
+      "prediction_sha256" => Ipse.JSON.sha256(predictions),
       "merged_files" => merged_files,
       "rows" => length(rows),
       "metric" => @metric,
@@ -1144,7 +1146,7 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
       "quality_complete" => false
     }
 
-    digest = sha(encode(report))
+    digest = Ipse.JSON.sha256(encode(report))
 
     %{
       "sha256" => digest,
@@ -1216,7 +1218,7 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
         "stage" => stage.name,
         "token" => stage.token,
         "index" => stage.index,
-        "ticket_sha256" => sha(read!(stage.ticket)),
+        "ticket_sha256" => Ipse.JSON.sha256(read!(stage.ticket)),
         "prepared_sha256" => stage.prepared_sha,
         "scope" => %{"device" => started["scope_device"], "inode" => started["scope_inode"]},
         "whole_scope" => %{
@@ -1236,7 +1238,7 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
         service_bytes = read!(Path.join(output, "model-service/receipt.json"))
 
         require!(
-          sha(service_bytes) == result["service_receipt_sha256"] and
+          Ipse.JSON.sha256(service_bytes) == result["service_receipt_sha256"] and
             decode!(service_bytes, @limit) == result["service"],
           :service_receipt_changed
         )
@@ -1264,7 +1266,7 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
         require!(
           domain == result["domain"] and
             domain["prediction_sha256"] ==
-              sha(read!(Path.join(output, "domain/predictions.jsonl"))),
+              Ipse.JSON.sha256(read!(Path.join(output, "domain/predictions.jsonl"))),
           :domain_changed
         )
 
@@ -1285,9 +1287,9 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
     {%{
        "name" => stage.name,
        "token" => stage.token,
-       "receipt_sha256" => sha(bytes),
-       "domain_sha256" => sha(encode(outcome)),
-       "claim_sha256" => sha(encode(claim)),
+       "receipt_sha256" => Ipse.JSON.sha256(bytes),
+       "domain_sha256" => Ipse.JSON.sha256(encode(outcome)),
+       "claim_sha256" => Ipse.JSON.sha256(encode(claim)),
        "scope" => Map.take(started, ~w(scope_device scope_inode)),
        "fresh_lifetime_peak_bytes" => receipt["peak_bytes"],
        "whole_population_interval_peak_bytes" => receipt["parent_interval_peak_bytes"]
@@ -1419,9 +1421,7 @@ defmodule Ipse.Development.Evaluation.MeasuredExecution do
   defp absolute?(path),
     do: is_binary(path) and Path.type(path) == :absolute and Path.expand(path) == path
 
-  defp hash?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{64}\z/, value)
   defp positive?(value), do: is_integer(value) and value > 0
-  defp sha(bytes), do: Ipse.JSON.sha256(bytes)
   defp started_ok({:ok, _}), do: :ok
   defp now, do: System.monotonic_time(:millisecond)
   defp require!(true, _), do: :ok

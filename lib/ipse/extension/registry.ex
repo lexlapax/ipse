@@ -661,7 +661,7 @@ defmodule Ipse.Extension.Registry do
       ) and
       Enum.all?(
         ~w(artifact_sha256 options_sha256 exports_sha256 requires_sha256 subscriptions_sha256 source_sha256 host_sha256),
-        &hash?(identity[&1])
+        &Ipse.JSON.sha256?(identity[&1])
       ) and
       Ipse.Extension.Services.public_bindings?(identity["services"]) and
       identity["scope"] in ~w(operator project) and
@@ -682,7 +682,6 @@ defmodule Ipse.Extension.Registry do
   end
 
   def valid_identity?(_), do: false
-  defp hash?(value), do: is_binary(value) and Regex.match?(~r/\A[a-f0-9]{64}\z/, value)
 
   defp runtime?(runtime) when is_map(runtime) do
     Enum.sort(Map.keys(runtime)) == ~w(architecture elixir erts otp) and

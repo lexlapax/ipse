@@ -72,8 +72,9 @@ and its own license/dependency inventory.
 | Rust toolchain and standard library | Rust 1.85+; `dev/build-native.sh` invokes `rustc --edition=2021` | Build the OS helper; no third-party Cargo packages | MIT OR Apache-2.0 |
 | Ipse native helper | `native/ipse-runner.rs`, `native/ipse-process-group.rs`, `native/ipse-stdio.rs`, `native/ipse-linux-sandbox.rs`, `native/ipse-macos-sandbox.rs`, `native/ipse-measure.rs`, `native/ipse-sequence.rs`, `native/ipse-bound.rs`, `native/ipse-listener.rs`, `native/ipse-file-copy.rs`, `native/ipse-environment.rs`, compiled as `priv/ipse-runner` | Runtime anchored process groups, advisory locks, bidirectional OS pipes, optional Linux user/mount/network/PID namespaces, private descriptor procfs, Landlock/seccomp and macOS signed App Sandbox worker policies; optional owned cgroup measurement, execution-bound serial stages, direct-child loopback-listener observations, retained-descriptor regular-file copies and selected child-environment forwarding; used by tests | Apache-2.0 (project source) |
 
-OTP libraries ship with OTP. The application starts `logger`, `inets` and `ssl`;
-authentication also uses crypto/public-key facilities. Req/Plug satisfy the SDK's
+OTP libraries ship with OTP. The application starts `logger` and `ssl`;
+authentication also uses crypto/public-key facilities. HTTP uses owned Finch
+pools without starting OTP's `inets` application. Req/Plug satisfy the SDK's
 compile-time references; Finch/Mint also serve bounded provider/authentication
 transport. Optional Bandit, Decimal and IDNA dependencies are not enabled. No MCP
 listener starts automatically. Ipse requires no Node, JavaScript or Python runtime.
@@ -118,11 +119,12 @@ The optional aggregate-memory verification uses an existing systemd user manager
 to start a fresh process inside a delegated hierarchy. A writable target directory
 alone does not grant cross-delegation migration. The approved user-service launcher
 supplies entry without moving existing processes or changing ancestor controllers.
-The native counter requires Linux capabilities, not a particular hostname or
-distribution package version. Kernel accounting stays in Ipse's Rust helper;
-Elixir owns evaluation semantics. The
+The native counter requires the documented cgroup v2 facilities. It is independent
+of hostname and distribution package version. Kernel accounting stays in Ipse's
+Rust helper; Elixir owns evaluation semantics. The
 [design record](../archive/2026-10-19-p27-knowledge-packages/aggregate-memory-design.md)
-defines the selected process populations and the remaining implementation gates.
+preserves the design rationale. [Measurement](measurement.md) defines the current
+populations, accounting contract and verification.
 
 ## CI inventory
 

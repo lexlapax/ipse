@@ -63,20 +63,67 @@ defmodule Ipse.MCP.Config do
       sandbox: Map.get(server, :sandbox, :off),
       env_names: server.env |> Map.keys() |> Enum.sort(),
       timeout_ms: server.timeout_ms,
-      fingerprint: server.fingerprint
+      fingerprint: Map.get(server, :fingerprint)
     }
 
-    if Map.get(server, :transport) == :http,
-      do:
-        base
-        |> Map.drop([:command, :args])
-        |> Map.merge(%{
-          transport: "streamable_http",
-          endpoint: server.url,
-          allow_insecure_loopback: server.allow_insecure_loopback
-        }),
-      else: base
+    public =
+      if Map.get(server, :transport) == :http,
+        do:
+          base
+          |> Map.drop([:command, :args])
+          |> Map.merge(%{
+            transport: "streamable_http",
+            endpoint: server.url,
+            allow_insecure_loopback: server.allow_insecure_loopback
+          }),
+        else: base
+
+    if Map.get(server, :fingerprint_version, 1) == 2,
+      do: Map.put(public, :fingerprint_version, 2),
+      else: public
   end
+
+  @doc "Select the stored fingerprint contract without rewriting journal records."
+  def fingerprint_version(server, version) when version in [1, 2] do
+    server = Map.put(server, :fingerprint_version, version)
+    public = server |> manifest() |> Jason.encode!() |> Jason.decode!()
+    Map.put(server, :fingerprint, public_fingerprint(public))
+  end
+
+  @doc "Hash an already validated, redacted public server manifest."
+  def public_fingerprint(%{"fingerprint_version" => 2} = public),
+    do:
+      Ipse.JSON.digest([
+        "ipse.mcp.endpoint",
+        2,
+        Map.drop(public, ~w(fingerprint fingerprint_version))
+      ])
+
+  def public_fingerprint(%{"transport" => "streamable_http"} = public) do
+    legacy_digest(
+      {:http,
+       {public["id"], public["endpoint"], public["tools"], public["resources"], public["prompts"],
+        List.first(public["env_names"]), public["allow_insecure_loopback"], public["timeout_ms"]}}
+    )
+  end
+
+  def public_fingerprint(public) do
+    base =
+      {public["id"], public["command"], public["args"], public["tools"], public["env_names"],
+       public["timeout_ms"]}
+
+    sandbox = if public["sandbox"] == "native", do: :native, else: :off
+
+    value =
+      if sandbox == :off and public["resources"] == [] and public["prompts"] == [],
+        do: base,
+        else: {base, sandbox, public["resources"], public["prompts"]}
+
+    legacy_digest(value)
+  end
+
+  defp legacy_digest(value),
+    do: value |> :erlang.term_to_binary([:deterministic]) |> Ipse.JSON.sha256()
 
   def redact(text, server) when is_binary(text) and is_map(server) do
     Map.get(server, :redactions, Map.values(server.env))
@@ -164,23 +211,22 @@ defmodule Ipse.MCP.Config do
          true <- public_fields_clear?(id, command, tools, resources, prompts, env),
          timeout when is_integer(timeout) and timeout in 1..120_000 <-
            Map.get(entry, "timeout_ms", 30_000) do
-      fingerprint =
-        fingerprint(id, command, args, tools, env, timeout, sandbox, resources, prompts)
-
       {:ok,
-       %{
-         id: id,
-         command: command,
-         args: args,
-         tools: tools,
-         resources: resources,
-         prompts: prompts,
-         sandbox: sandbox,
-         env: env,
-         timeout_ms: timeout,
-         fingerprint: fingerprint,
-         transport: :stdio
-       }}
+       fingerprint_version(
+         %{
+           id: id,
+           command: command,
+           args: args,
+           tools: tools,
+           resources: resources,
+           prompts: prompts,
+           sandbox: sandbox,
+           env: env,
+           timeout_ms: timeout,
+           transport: :stdio
+         },
+         2
+       )}
     else
       _ -> {:error, :invalid_server}
     end
@@ -206,25 +252,24 @@ defmodule Ipse.MCP.Config do
          true <- public_fields_clear?(id, url, tools, resources, prompts, env),
          timeout when is_integer(timeout) and timeout in 1..120_000 <-
            Map.get(entry, "timeout_ms", 30_000) do
-      fingerprint =
-        digest_http({id, url, tools, resources, prompts, entry["bearer_env"], insecure, timeout})
-
       {:ok,
-       %{
-         id: id,
-         transport: :http,
-         url: url,
-         command: url,
-         args: [],
-         tools: tools,
-         resources: resources,
-         prompts: prompts,
-         env: env,
-         sandbox: :remote,
-         allow_insecure_loopback: insecure,
-         timeout_ms: timeout,
-         fingerprint: fingerprint
-       }}
+       fingerprint_version(
+         %{
+           id: id,
+           transport: :http,
+           url: url,
+           command: url,
+           args: [],
+           tools: tools,
+           resources: resources,
+           prompts: prompts,
+           env: env,
+           sandbox: :remote,
+           allow_insecure_loopback: insecure,
+           timeout_ms: timeout
+         },
+         2
+       )}
     else
       _ -> {:error, :invalid_http_server}
     end
@@ -253,11 +298,6 @@ defmodule Ipse.MCP.Config do
   end
 
   defp bearer_environment(_), do: {:error, :invalid_bearer_environment}
-
-  defp digest_http(value),
-    do:
-      :crypto.hash(:sha256, :erlang.term_to_binary({:http, value}, [:deterministic]))
-      |> Base.encode16(case: :lower)
 
   defp executable(path) do
     if Path.type(path) == :absolute and String.valid?(path) and
@@ -348,22 +388,6 @@ defmodule Ipse.MCP.Config do
   defp public_fields_clear?(id, command, tools, resources, prompts, env) do
     values = [id, command] ++ tools ++ resources ++ prompts ++ Map.keys(env)
     not Enum.any?(values, &contains_private?(&1, %{env: env}))
-  end
-
-  defp fingerprint(id, command, args, tools, env, timeout, sandbox, resources, prompts) do
-    public_args = Enum.map(args, &redact(&1, %{env: env}))
-
-    base = {id, command, public_args, tools, Enum.sort(Map.keys(env)), timeout}
-
-    value =
-      if sandbox == :off and resources == [] and prompts == [],
-        do: base,
-        else: {base, sandbox, resources, prompts}
-
-    value
-    |> :erlang.term_to_binary([:deterministic])
-    |> then(&:crypto.hash(:sha256, &1))
-    |> Base.encode16(case: :lower)
   end
 
   defp unique?(values), do: length(values) == length(Enum.uniq(values))

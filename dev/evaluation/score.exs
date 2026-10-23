@@ -123,7 +123,8 @@ defmodule Ipse.Development.Evaluation.Score do
          (f["version"] === 3 and
             Ipse.Development.Evaluation.Contract.valid_contracts?(f["contracts"]) and
             f["variants"] == @variants and
-            is_list(f["queries"]) and length(f["queries"]) == 50)) and hash?(f["context_sha256"]) and
+            is_list(f["queries"]) and length(f["queries"]) == 50)) and
+      Ipse.JSON.sha256?(f["context_sha256"]) and
       f["metric_version"] === Metrics.version() and
       bounded_list?(f["variants"], 1, 16) and Enum.all?(f["variants"], &id?/1) and
       unique_values?(f["variants"]) and f["baseline"] in f["variants"] and
@@ -133,7 +134,7 @@ defmodule Ipse.Development.Evaluation.Score do
       end) and
       bounded_list?(f["files"], 1, 32) and unique?(f["files"], "id") and
       Enum.all?(f["files"], fn x ->
-        exact?(x, ~w(id sha256)) and id?(x["id"]) and hash?(x["sha256"])
+        exact?(x, ~w(id sha256)) and id?(x["id"]) and Ipse.JSON.sha256?(x["sha256"])
       end) and
       is_map(f["classification_map"]) and map_size(f["classification_map"]) in 1..32 and
       Enum.all?(f["classification_map"], fn {key, value} ->
@@ -149,7 +150,7 @@ defmodule Ipse.Development.Evaluation.Score do
   defp review_binding(freeze, files) do
     identities = files |> Enum.sort_by(& &1["id"]) |> Enum.map(&[&1["id"], &1["sha256"]])
 
-    sha256(
+    Ipse.JSON.sha256(
       JSON.encode!([
         "ipse-knowledge-review-binding",
         2,
@@ -181,7 +182,7 @@ defmodule Ipse.Development.Evaluation.Score do
     require!(Enum.sum(sizes) <= 64 * 1024 * 1024, :prediction_size_limit)
 
     Enum.map(files, fn file ->
-      require!(sha256(blobs[file["id"]]) == file["sha256"], :prediction_hash_mismatch)
+      require!(Ipse.JSON.sha256(blobs[file["id"]]) == file["sha256"], :prediction_hash_mismatch)
       file
     end)
   end
@@ -314,7 +315,7 @@ defmodule Ipse.Development.Evaluation.Score do
 
   defp reviews?(reviews, saved) do
     if exact?(reviews, ~w(version review_binding_sha256 semantic integrity)) and
-         reviews["version"] === 2 and hash?(reviews["review_binding_sha256"]) and
+         reviews["version"] === 2 and Ipse.JSON.sha256?(reviews["review_binding_sha256"]) and
          bounded_list?(reviews["semantic"], 0, 16_384) and
          bounded_list?(reviews["integrity"], 0, 131_072) do
       predictions = Map.new(saved, &{&1["prediction_id"], &1})
@@ -771,7 +772,8 @@ defmodule Ipse.Development.Evaluation.Score do
 
   defp all_spans(prediction), do: prediction["evidence"] ++ prediction["context_evidence"]
 
-  defp missing_id(p), do: "missing:" <> sha256(JSON.encode!([p["variant"], p["query_id"]]))
+  defp missing_id(p),
+    do: "missing:" <> Ipse.JSON.sha256(JSON.encode!([p["variant"], p["query_id"]]))
 
   defp gate(value, threshold, complete),
     do: %{
@@ -806,7 +808,8 @@ defmodule Ipse.Development.Evaluation.Score do
     do:
       exact?(s, @source_keys) and id?(s["project"]) and id?(s["source_id"]) and
         integer?(s["generation"], 1, @safe_integer) and
-        (integer?(s["version"], 1, @safe_integer) or id?(s["version"])) and hash?(s["sha256"])
+        (integer?(s["version"], 1, @safe_integer) or id?(s["version"])) and
+        Ipse.JSON.sha256?(s["sha256"])
 
   defp load!(loader, code) do
     try do
@@ -826,8 +829,6 @@ defmodule Ipse.Development.Evaluation.Score do
   defp require!(true, _), do: :ok
   defp require!(_, code), do: fail!(code)
   defp fail!(code), do: throw({:evaluation_score, code})
-  defp sha256(bytes), do: Base.encode16(:crypto.hash(:sha256, bytes), case: :lower)
-  defp hash?(s), do: is_binary(s) and Regex.match?(~r/\A[0-9a-f]{64}\z/, s)
 
   defp exact?(m, keys),
     do: is_map(m) and map_size(m) == length(keys) and Enum.all?(keys, &Map.has_key?(m, &1))

@@ -61,7 +61,7 @@ defmodule Ipse.Extension.Context do
 
   def valid_outcome?(request, "ok", value, operation_id) do
     validate(request) == :ok and keys?(value, ~w(items snapshot_sha256)) and
-      hash?(value["snapshot_sha256"]) and is_list(value["items"]) and
+      Ipse.JSON.sha256?(value["snapshot_sha256"]) and is_list(value["items"]) and
       length(value["items"]) == length(request["items"]) and
       Enum.all?(Enum.zip(request["items"], value["items"]), fn {input, admitted} ->
         keys?(admitted, ~w(id version text priority source provenance)) and
@@ -71,10 +71,10 @@ defmodule Ipse.Extension.Context do
             ~w(instance identity_sha256 operation_id source_action_sha256)
           ) and
           is_binary(admitted["provenance"]["instance"]) and
-          hash?(admitted["provenance"]["identity_sha256"]) and
+          Ipse.JSON.sha256?(admitted["provenance"]["identity_sha256"]) and
           admitted["provenance"]["operation_id"] == operation_id and
           if(input["source"]["kind"] == "receipt",
-            do: hash?(admitted["provenance"]["source_action_sha256"]),
+            do: Ipse.JSON.sha256?(admitted["provenance"]["source_action_sha256"]),
             else: is_nil(admitted["provenance"]["source_action_sha256"])
           )
       end)
@@ -207,5 +207,4 @@ defmodule Ipse.Extension.Context do
 
   defp keys?(map, keys), do: is_map(map) and Enum.sort(Map.keys(map)) == Enum.sort(keys)
   defp id?(value), do: is_binary(value) and Regex.match?(~r/\A[a-f0-9]{32}\z/, value)
-  defp hash?(value), do: is_binary(value) and Regex.match?(~r/\A[a-f0-9]{64}\z/, value)
 end

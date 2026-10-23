@@ -144,7 +144,7 @@ defmodule Ipse.Session.Lifecycle do
       Enum.all?(event["data"], fn
         {key, number}
         when key in ~w(input_bytes output_bytes original_bytes presented_bytes source_count tool_count sequence duration_ms action_count) ->
-          uint?(number)
+          Ipse.JSON.safe_uint?(number)
 
         {"kind", kind} ->
           kind in ~w(model compaction extension approval question)
@@ -187,8 +187,6 @@ defmodule Ipse.Session.Lifecycle do
   rescue
     _ -> false
   end
-
-  defp uint?(value), do: is_integer(value) and value in 0..9_007_199_254_740_991
 
   def metadata_types,
     do:
@@ -418,7 +416,7 @@ defmodule Ipse.Session.Lifecycle do
   end
 
   defp numeric_data(record, keys) do
-    if Enum.all?(keys, &uint?(record[&1])),
+    if Enum.all?(keys, &Ipse.JSON.safe_uint?(record[&1])),
       do: {:ok, Map.take(record, keys)},
       else: @error
   end
@@ -459,7 +457,8 @@ defmodule Ipse.Session.Lifecycle do
     is_map(record) and Enum.sort(Map.keys(record)) == Enum.sort(@keys) and
       record["type"] == "lifecycle_answer_committed" and record["version"] === 1 and
       id?(record["turn_id"]) and id?(record["request_id"]) and
-      Journal.valid_source?(record["effective_source"]) and hash?(record["assistant_sha256"]) and
+      Journal.valid_source?(record["effective_source"]) and
+      Ipse.JSON.sha256?(record["assistant_sha256"]) and
       Enum.all?(
         ~w(original presented),
         &view?(record[&1], record[&1 <> "_bytes"], record[&1 <> "_sha256"])
@@ -471,7 +470,7 @@ defmodule Ipse.Session.Lifecycle do
   defp bounded(text), do: if(byte_size(text) <= 8192, do: text)
 
   defp view?(nil, bytes, hash),
-    do: is_integer(bytes) and bytes in 8193..9_007_199_254_740_991 and hash?(hash)
+    do: is_integer(bytes) and bytes in 8193..9_007_199_254_740_991 and Ipse.JSON.sha256?(hash)
 
   defp view?(text, bytes, hash) when is_binary(text),
     do:
@@ -479,5 +478,4 @@ defmodule Ipse.Session.Lifecycle do
         Ipse.JSON.sha256(text) == hash
 
   defp view?(_, _, _), do: false
-  defp hash?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{64}\z/, value)
 end

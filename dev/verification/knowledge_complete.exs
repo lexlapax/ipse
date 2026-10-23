@@ -81,7 +81,7 @@ defmodule IpseKnowledgeExample.CompleteResultProof do
 
       research_id = Session.info(research).id
       research_path = journal_path(root, "research", research_id)
-      research_sha = sha(File.read!(research_path))
+      research_sha = Ipse.JSON.sha256(File.read!(research_path))
       :ok = Session.close_confirmed(research)
       resumed = start(configs["research"], root, "research", research_id)
       {:ok, historical} = Session.materialize_result(resumed, full.delivery)
@@ -96,7 +96,7 @@ defmodule IpseKnowledgeExample.CompleteResultProof do
 
       true = offline.bytes == escaped.bytes and offline.value == escaped.value
       :ok = Session.close_confirmed(resumed)
-      ^research_sha = sha(File.read!(research_path))
+      ^research_sha = Ipse.JSON.sha256(File.read!(research_path))
 
       corpus = start(configs["corpus"], root, "corpus")
 
@@ -421,7 +421,7 @@ defmodule IpseKnowledgeExample.CompleteResultProof do
 
           true =
             byte_size(value.bytes) == delivery["byte_count"] and
-              sha(value.bytes) == delivery["sha256"]
+              Ipse.JSON.sha256(value.bytes) == delivery["sha256"]
 
           Map.put(value, :delivery, delivery)
 
@@ -485,7 +485,6 @@ defmodule IpseKnowledgeExample.CompleteResultProof do
 
   defp state_dir(root, package), do: Path.join(root, "sessions-" <> package)
   defp journal_path(root, package, id), do: Path.join(state_dir(root, package), id <> ".jsonl")
-  defp sha(bytes), do: Base.encode16(:crypto.hash(:sha256, bytes), case: :lower)
 
   defp citation!(citation, sources) do
     source = Map.fetch!(sources, citation["source_id"])
@@ -498,8 +497,9 @@ defmodule IpseKnowledgeExample.CompleteResultProof do
       )
 
     true =
-      quote == citation["quote"] and sha(quote) == citation["quote_sha256"] and
-        sha(source["text"]) == citation["content_sha256"] and citation["generation"] == 1
+      quote == citation["quote"] and Ipse.JSON.sha256(quote) == citation["quote_sha256"] and
+        Ipse.JSON.sha256(source["text"]) == citation["content_sha256"] and
+        citation["generation"] == 1
 
     true = citation["origin"]["kind"] == "provided" and not citation["origin"]["historical"]
   end
@@ -514,13 +514,13 @@ defmodule IpseKnowledgeExample.CompleteResultProof do
       Map.take(raw, ~w(source_id generation uri observed_at_ms event_at_ms))
       |> Map.merge(%{
         "version" => 1,
-        "source_key" => sha(raw["source_id"]),
-        "content_sha256" => sha(raw["text"]),
+        "source_key" => Ipse.JSON.sha256(raw["source_id"]),
+        "content_sha256" => Ipse.JSON.sha256(raw["text"]),
         "chunk_id" => chunk_id,
         "start_byte" => first,
         "end_byte" => first + length,
         "quote" => quote,
-        "quote_sha256" => sha(quote),
+        "quote_sha256" => Ipse.JSON.sha256(quote),
         "origin" => %{
           "kind" => "provided",
           "store_profile" => "notes",
@@ -537,7 +537,7 @@ defmodule IpseKnowledgeExample.CompleteResultProof do
       )
 
     id =
-      sha(
+      Ipse.JSON.sha256(
         JSON.encode!([
           "ipse-knowledge",
           1,

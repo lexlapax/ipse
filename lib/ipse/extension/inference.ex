@@ -525,7 +525,7 @@ defmodule Ipse.Extension.EmbeddingCall do
       proposed,
       ~w(extension artifact_sha256 namespace request execution destination effect_binding)
     ) and
-      profile_id?(proposed["extension"]) and hash?(proposed["artifact_sha256"]) and
+      profile_id?(proposed["extension"]) and Ipse.JSON.sha256?(proposed["artifact_sha256"]) and
       id?(proposed["namespace"]) and
       valid_binding?(proposed["effect_binding"], proposed["request"]) and
       proposed["execution"] === proposed["effect_binding"]["execution"] and
@@ -763,7 +763,7 @@ defmodule Ipse.Extension.EmbeddingCall do
 
     validate(request) == :ok and
       keys?(value, fields) and value["version"] === request["version"] and
-      (request["version"] === 1 or hash?(value["selection_sha256"])) and
+      (request["version"] === 1 or Ipse.JSON.sha256?(value["selection_sha256"])) and
       value["request_id"] == operation and id?(value["attempt_id"]) and
       value["profile"] == request["profile"] and is_binary(value["reported_model"]) and
       Ipse.Provider.model_name(value["reported_model"]) == value["reported_model"] and
@@ -790,7 +790,6 @@ defmodule Ipse.Extension.EmbeddingCall do
     do: is_binary(value) and Regex.match?(~r/\A[A-Za-z][A-Za-z0-9_-]{0,63}\z/, value)
 
   defp id?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{32}\z/, value)
-  defp hash?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{64}\z/, value)
   defp keys?(value, keys), do: is_map(value) and Enum.sort(Map.keys(value)) == Enum.sort(keys)
 end
 

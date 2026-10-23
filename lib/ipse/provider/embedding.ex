@@ -18,7 +18,7 @@ defmodule Ipse.Provider.Embedding do
          {:ok, uri} <- URI.new(target),
          facts = %{
            "origin" => URI.to_string(%URI{scheme: uri.scheme, host: uri.host, port: uri.port}),
-           "target_sha256" => sha256(target)
+           "target_sha256" => Ipse.JSON.sha256(target)
          },
          true <- Ipse.Provider.valid_destination?(facts) do
       {:ok, facts}
@@ -90,7 +90,7 @@ defmodule Ipse.Provider.Embedding do
            "reported_model" => model,
            "dimensions" => config.dimensions,
            "vectors" => vectors,
-           "provider_response_sha256" => sha256(body)
+           "provider_response_sha256" => Ipse.JSON.sha256(body)
          } do
       {:ok, result, native_usage(provider, native)}
     else
@@ -109,7 +109,8 @@ defmodule Ipse.Provider.Embedding do
       execution?(execution) and
       result["kind"] == "embedding" and result["version"] === 1 and
       Ipse.Provider.model_name(result["reported_model"]) == result["reported_model"] and
-      is_binary(result["reported_model"]) and hash?(result["provider_response_sha256"]) and
+      is_binary(result["reported_model"]) and
+      Ipse.JSON.sha256?(result["provider_response_sha256"]) and
       valid_data?(
         Map.take(result, ~w(encoding dimensions vectors)),
         inputs,
@@ -130,7 +131,7 @@ defmodule Ipse.Provider.Embedding do
   def valid_data?(data) do
     hashes = Enum.map(data["vectors"], & &1["input_sha256"])
 
-    length(hashes) in 1..8 and Enum.all?(hashes, &hash?/1) and
+    length(hashes) in 1..8 and Enum.all?(hashes, &Ipse.JSON.sha256?/1) and
       valid_data_hashes?(data, hashes, data["dimensions"])
   rescue
     _ -> false
@@ -144,12 +145,12 @@ defmodule Ipse.Provider.Embedding do
       |> Enum.all?(fn {vector, {input_hash, index}} ->
         keys?(vector, ~w(index input_sha256 vector_sha256 values)) and
           vector["index"] === index and vector["input_sha256"] == input_hash and
-          hash?(vector["vector_sha256"]) and is_binary(vector["values"]) and
+          Ipse.JSON.sha256?(vector["vector_sha256"]) and is_binary(vector["values"]) and
           byte_size(vector["values"]) == 4 * div(dimensions * 4 + 2, 3) and
           case Base.decode64(vector["values"]) do
             {:ok, bytes} ->
               byte_size(bytes) == dimensions * 4 and Base.encode64(bytes) == vector["values"] and
-                sha256(bytes) == vector["vector_sha256"] and valid_coordinates?(bytes)
+                Ipse.JSON.sha256(bytes) == vector["vector_sha256"] and valid_coordinates?(bytes)
 
             _ ->
               false
@@ -193,7 +194,7 @@ defmodule Ipse.Provider.Embedding do
           entry = %{
             "index" => index,
             "input_sha256" => Ipse.JSON.digest([input]),
-            "vector_sha256" => sha256(bytes),
+            "vector_sha256" => Ipse.JSON.sha256(bytes),
             "values" => Base.encode64(bytes)
           }
 
@@ -245,7 +246,7 @@ defmodule Ipse.Provider.Embedding do
       is_binary(execution["model"]) and
       Ipse.Provider.model_name(execution["model"]) == execution["model"] and
       execution["billing_mode"] == if(execution["provider"] == "openai", do: "api", else: "local") and
-      (is_nil(execution["endpoint_sha256"]) or hash?(execution["endpoint_sha256"])) and
+      (is_nil(execution["endpoint_sha256"]) or Ipse.JSON.sha256?(execution["endpoint_sha256"])) and
       dimensions?(execution["dimensions"]) and execution["dimension_mode"] in ~w(native request) and
       is_integer(execution["timeout_ms"]) and execution["timeout_ms"] in 1..120_000 and
       (not Map.has_key?(execution, "destination") or
@@ -283,7 +284,5 @@ defmodule Ipse.Provider.Embedding do
     ]
 
   defp dimensions?(value), do: is_integer(value) and value in 1..4096
-  defp hash?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{64}\z/, value)
   defp keys?(map, keys), do: is_map(map) and Enum.sort(Map.keys(map)) == Enum.sort(keys)
-  defp sha256(bytes), do: :crypto.hash(:sha256, bytes) |> Base.encode16(case: :lower)
 end

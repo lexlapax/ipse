@@ -1,6 +1,6 @@
 defmodule IpseKnowledge.Store.State do
   @moduledoc false
-  @safe 9_007_199_254_740_991
+  alias IpseKnowledge.Evidence
 
   def start(profile, :snapshot, _args) do
     next(%{
@@ -59,7 +59,7 @@ defmodule IpseKnowledge.Store.State do
     generation = value["generation"]
     cursor = value["next"]
 
-    if keys?(value, ~w(generation records next)) and uint?(generation) and
+    if keys?(value, ~w(generation records next)) and Evidence.safe_uint?(generation) and
          (state.generation == nil or state.generation == generation) and is_list(rows) and
          length(rows) in 0..16 and Enum.all?(rows, &record?/1) and
          Enum.all?(
@@ -108,7 +108,7 @@ defmodule IpseKnowledge.Store.State do
     [key | rest] = state.keys
     record = value["record"]
 
-    if keys?(value, ~w(generation record)) and uint?(value["generation"]) and
+    if keys?(value, ~w(generation record)) and Evidence.safe_uint?(value["generation"]) and
          (state.generation == nil or state.generation == value["generation"]) and record?(record) and
          record["key"] == key do
       next(%{
@@ -131,7 +131,8 @@ defmodule IpseKnowledge.Store.State do
     request = state.request
     expected_value = if operation == :collect, do: nil, else: request["value"]
 
-    if keys?(value, ~w(generation record)) and uint?(value["generation"]) and record?(record) and
+    if keys?(value, ~w(generation record)) and Evidence.safe_uint?(value["generation"]) and
+         record?(record) and
          (not Map.has_key?(request, "expected_generation") or
             value["generation"] == request["expected_generation"] + 1) and
          record["key"] == request["key"] and
@@ -208,7 +209,7 @@ defmodule IpseKnowledge.Store.State do
 
   def record?(record) do
     keys?(record, ~w(key revision deleted value operation_id)) and is_binary(record["key"]) and
-      byte_size(record["key"]) in 1..64 and uint?(record["revision"]) and
+      byte_size(record["key"]) in 1..64 and Evidence.safe_uint?(record["revision"]) and
       is_boolean(record["deleted"]) and
       if(record["revision"] == 0,
         do: record["deleted"] and record["value"] == nil and record["operation_id"] == nil,
@@ -234,7 +235,6 @@ defmodule IpseKnowledge.Store.State do
       )
 
   defp keys?(value, fields), do: is_map(value) and Enum.sort(Map.keys(value)) == Enum.sort(fields)
-  defp uint?(value), do: is_integer(value) and value in 0..@safe
   defp id?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{32}\z/, value)
   defp error(code), do: {:done, {:error, code, %{}}}
 end

@@ -113,7 +113,9 @@ defmodule IpseKnowledge.Store do
 
   @doc "Read-only counts and hashes for a validated adapter snapshot; returns no source text."
   def inventory(cache, partition) do
-    with true <- name?(partition) and is_map(cache["records"]) and uint?(cache["generation"]),
+    with true <-
+           name?(partition) and is_map(cache["records"]) and
+             Evidence.safe_uint?(cache["generation"]),
          true <- map_size(cache["records"]) <= 256,
          :ok <- valid_partition(cache, partition) do
       records = Map.values(cache["records"])
@@ -263,7 +265,8 @@ defmodule IpseKnowledge.Store do
   defp advance(%{stage: :loaded} = state, cache) do
     with true <- is_map(cache["records"]) and map_size(cache["records"]) <= 256,
          true <-
-           uint?(cache["generation"]) and uint?(cache["bytes"]) and cache["bytes"] <= 1_048_576,
+           Evidence.safe_uint?(cache["generation"]) and Evidence.safe_uint?(cache["bytes"]) and
+             cache["bytes"] <= 1_048_576,
          :ok <- valid_partition(cache, state.profile["partition"]) do
       perform(%{state | cache: cache})
     else
@@ -499,7 +502,7 @@ defmodule IpseKnowledge.Store do
     root = row["value"]
     refs = Enum.filter(state.args["refs"], &(&1["source_key"] == root["source_key"]))
 
-    row["deleted"] == false and positive?(row["revision"]) and
+    row["deleted"] == false and Evidence.safe_positive?(row["revision"]) and
       valid_root?(root, state.profile["partition"]) and
       root["state"] == "active" and row["key"] == root_key(root["partition"], root["source_key"]) and
       refs != [] and
@@ -581,8 +584,9 @@ defmodule IpseKnowledge.Store do
 
   defp selected_children(refs, %{"page_kind" => "progress", "body" => body} = page) do
     with true <-
-           keys?(body, ~w(previous offset next_offset pieces)) and uint?(body["offset"]) and
-             uint?(body["next_offset"]) and body["offset"] <= body["next_offset"] and
+           keys?(body, ~w(previous offset next_offset pieces)) and
+             Evidence.safe_uint?(body["offset"]) and
+             Evidence.safe_uint?(body["next_offset"]) and body["offset"] <= body["next_offset"] and
              body["next_offset"] <= 65_536 and
              is_list(body["pieces"]) and length(body["pieces"]) <= 16,
          {:ok, refs} <-
@@ -818,8 +822,8 @@ defmodule IpseKnowledge.Store do
            ),
          true <-
            operation != :open or
-             (uint?(args["byte_count"]) and args["byte_count"] <= 65_536 and
-                hash?(args["content_sha256"])),
+             (Evidence.safe_uint?(args["byte_count"]) and args["byte_count"] <= 65_536 and
+                Evidence.sha256?(args["content_sha256"])),
          target =
            source
            |> Map.drop(~w(text version source_key))
@@ -1572,8 +1576,9 @@ defmodule IpseKnowledge.Store do
          {:ok, progress} <- load_page(state, ref, source, generation, "progress"),
          body = progress["body"],
          true <-
-           keys?(body, ~w(previous offset next_offset pieces)) and uint?(body["offset"]) and
-             uint?(body["next_offset"]) and
+           keys?(body, ~w(previous offset next_offset pieces)) and
+             Evidence.safe_uint?(body["offset"]) and
+             Evidence.safe_uint?(body["next_offset"]) and
              is_list(body["pieces"]) and length(body["pieces"]) <= 16,
          {:ok, before, prior_offset} <-
            load_progress(
@@ -1732,7 +1737,7 @@ defmodule IpseKnowledge.Store do
 
     ((record["version"] === 1 and keys?(record, fields)) or
        (record["version"] === 2 and keys?(record, ["selection_sha256" | fields]) and
-          hash?(record["selection_sha256"]))) and record["encoding"] == "float32le" and
+          Evidence.sha256?(record["selection_sha256"]))) and record["encoding"] == "float32le" and
       is_integer(record["dimensions"]) and record["dimensions"] in 1..4096
   end
 
@@ -2248,8 +2253,8 @@ defmodule IpseKnowledge.Store do
   defp valid_root?(%{"state" => "suppressed"} = root, partition) do
     keys?(root, ~w(format kind partition source_key generation state suppressed_at_ms)) and
       root["format"] === 1 and root["kind"] == "root" and root["partition"] == partition and
-      hash?(root["source_key"]) and positive?(root["generation"]) and
-      uint?(root["suppressed_at_ms"]) and fits?(root)
+      Evidence.sha256?(root["source_key"]) and Evidence.safe_positive?(root["generation"]) and
+      Evidence.safe_uint?(root["suppressed_at_ms"]) and fits?(root)
   end
 
   defp valid_root?(root, partition) do
@@ -2259,13 +2264,13 @@ defmodule IpseKnowledge.Store do
       root["partition"] == partition and root["state"] in ~w(active staging) and
       match?({:ok, _}, Evidence.source(attrs)) and
       root["source_key"] == Evidence.sha256(root["source_id"]) and
-      hash?(root["content_sha256"]) and is_list(root["chunks_ref"]) and
+      Evidence.sha256?(root["content_sha256"]) and is_list(root["chunks_ref"]) and
       length(root["chunks_ref"]) <= 32 and
       Enum.all?(root["chunks_ref"], &ref?/1) and is_map(root["projections"]) and
       map_size(root["projections"]) <= @projection_limit and
       Enum.all?(root["projections"], fn {key, head} ->
-        hash?(key) and keys?(head, ~w(kind profile_sha256 ref)) and
-          head["kind"] in ~w(vectors facts) and hash?(head["profile_sha256"]) and
+        Evidence.sha256?(key) and keys?(head, ~w(kind profile_sha256 ref)) and
+          head["kind"] in ~w(vectors facts) and Evidence.sha256?(head["profile_sha256"]) and
           ref?(head["ref"])
       end) and
       (root["draft"] == nil or valid_draft?(root["draft"], root)) and
@@ -2289,13 +2294,14 @@ defmodule IpseKnowledge.Store do
     keys?(draft, fields) and
       (not Map.has_key?(draft, "vector_version") or draft["vector_version"] === 2) and
       id?(draft["id"]) and draft["kind"] in ~w(source vectors facts) and
-      (draft["source_generation"] == nil or positive?(draft["source_generation"])) and
-      (draft["content_sha256"] == nil or hash?(draft["content_sha256"])) and
-      hash?(draft["plan_sha256"]) and
-      (draft["progress"] == nil or ref?(draft["progress"])) and uint?(draft["next_offset"]) and
+      (draft["source_generation"] == nil or Evidence.safe_positive?(draft["source_generation"])) and
+      (draft["content_sha256"] == nil or Evidence.sha256?(draft["content_sha256"])) and
+      Evidence.sha256?(draft["plan_sha256"]) and
+      (draft["progress"] == nil or ref?(draft["progress"])) and
+      Evidence.safe_uint?(draft["next_offset"]) and
       draft["next_offset"] <= 65_536 and
-      is_list(draft["chunk_ids"]) and Enum.all?(draft["chunk_ids"], &hash?/1) and
-      uint?(draft["expires_at_ms"]) and
+      is_list(draft["chunk_ids"]) and Enum.all?(draft["chunk_ids"], &Evidence.sha256?/1) and
+      Evidence.safe_uint?(draft["expires_at_ms"]) and
       if(draft["kind"] == "source",
         do: valid_source_target?(draft, root),
         else:
@@ -2323,7 +2329,7 @@ defmodule IpseKnowledge.Store do
     keys?(target, (@source_fields -- ["text"]) ++ ~w(content_sha256 byte_count)) and
       match?({:ok, _}, Evidence.source(target |> Map.take(@source_fields) |> Map.put("text", ""))) and
       target["source_id"] == root["source_id"] and target["partition"] == root["partition"] and
-      hash?(target["content_sha256"]) and uint?(target["byte_count"]) and
+      Evidence.sha256?(target["content_sha256"]) and Evidence.safe_uint?(target["byte_count"]) and
       target["byte_count"] <= 65_536 and
       draft["next_offset"] <= target["byte_count"] and draft["profile"] == nil and
       draft["chunk_ids"] == [] and
@@ -2345,9 +2351,10 @@ defmodule IpseKnowledge.Store do
       ~w(format kind partition source_key generation draft_id page_kind ordinal body body_sha256)
     ) and
       value["format"] === 1 and value["kind"] == "page" and value["partition"] == partition and
-      hash?(value["source_key"]) and positive?(value["generation"]) and id?(value["draft_id"]) and
+      Evidence.sha256?(value["source_key"]) and Evidence.safe_positive?(value["generation"]) and
+      id?(value["draft_id"]) and
       value["page_kind"] in ~w(content progress chunks vector facts projection) and
-      uint?(value["ordinal"]) and
+      Evidence.safe_uint?(value["ordinal"]) and
       is_map(value["body"]) and
       value["body_sha256"] ==
         Evidence.id("page-body", [value["page_kind"], ordered(value["body"])]) and fits?(value)
@@ -2394,10 +2401,11 @@ defmodule IpseKnowledge.Store do
   defp token?(token),
     do:
       keys?(token, ~w(partition key revision source_key generation content_sha256 state)) and
-        name?(token["partition"]) and hash?(token["key"]) and positive?(token["revision"]) and
-        hash?(token["source_key"]) and positive?(token["generation"]) and
+        name?(token["partition"]) and Evidence.sha256?(token["key"]) and
+        Evidence.safe_positive?(token["revision"]) and
+        Evidence.sha256?(token["source_key"]) and Evidence.safe_positive?(token["generation"]) and
         token["state"] in ~w(active staging suppressed) and
-        (token["content_sha256"] == nil or hash?(token["content_sha256"]))
+        (token["content_sha256"] == nil or Evidence.sha256?(token["content_sha256"]))
 
   defp matches_token?(record, token),
     do:
@@ -2408,10 +2416,10 @@ defmodule IpseKnowledge.Store do
   defp draft_token?(token, name, profile),
     do:
       is_map(token) and token["version"] === 1 and token["store"] == name and
-        token["partition"] == profile["partition"] and hash?(token["root_key"]) and
-        positive?(token["revision"]) and
-        id?(token["draft_id"]) and positive?(token["generation"]) and
-        hash?(token["content_sha256"]) and
+        token["partition"] == profile["partition"] and Evidence.sha256?(token["root_key"]) and
+        Evidence.safe_positive?(token["revision"]) and
+        id?(token["draft_id"]) and Evidence.safe_positive?(token["generation"]) and
+        Evidence.sha256?(token["content_sha256"]) and
         token["projection_kind"] in ~w(vectors facts) and is_map(token["profile"]) and
         (not Map.has_key?(token, "vector_version") or
            (token["projection_kind"] == "vectors" and token["vector_version"] === 2)) and
@@ -2520,17 +2528,18 @@ defmodule IpseKnowledge.Store do
         name?(p["partition"]) and p["contract"] in ~w(ipse-cas-v1 ipse-cas-v2 ipse-cas-v3)
 
   defp profile?(_), do: false
-  defp ref?(ref), do: keys?(ref, ~w(key sha256)) and hash?(ref["key"]) and hash?(ref["sha256"])
+
+  defp ref?(ref),
+    do:
+      keys?(ref, ~w(key sha256)) and Evidence.sha256?(ref["key"]) and
+        Evidence.sha256?(ref["sha256"])
 
   defp fits?(value),
     do: is_map(value) and byte_size(json(value)) <= 6000 and Ipse.Extension.validate(value) == :ok
 
   defp keys?(value, fields), do: is_map(value) and Enum.sort(Map.keys(value)) == Enum.sort(fields)
-  defp hash?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{64}\z/, value)
   defp id?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{32}\z/, value)
   defp name?(value), do: is_binary(value) and Regex.match?(~r/\A[A-Za-z0-9_.-]{1,64}\z/, value)
-  defp uint?(value), do: Evidence.safe_uint?(value)
-  defp positive?(value), do: Evidence.safe_positive?(value)
   defp random_id, do: Base.encode16(:crypto.strong_rand_bytes(16), case: :lower)
   defp json(value), do: JSON.encode!(value) |> IO.iodata_to_binary()
 
@@ -2611,26 +2620,28 @@ defmodule IpseKnowledge.Store do
         (not Map.has_key?(args, "source_id") or
            (is_binary(args["source_id"]) and byte_size(args["source_id"]) in 1..256 and
               not Regex.match?(~r/[\x00-\x1f\x7f]/, args["source_id"]))) and
-        (not Map.has_key?(args, "expected_revision") or uint?(args["expected_revision"])) and
-        (not Map.has_key?(args, "generation") or positive?(args["generation"])) and
+        (not Map.has_key?(args, "expected_revision") or
+           Evidence.safe_uint?(args["expected_revision"])) and
+        (not Map.has_key?(args, "generation") or Evidence.safe_positive?(args["generation"])) and
         (operation not in [:put, :open] or
-           (uint?(args["observed_at_ms"]) and
+           (Evidence.safe_uint?(args["observed_at_ms"]) and
               Enum.all?(~w(event_at_ms expires_at_ms), fn field ->
-                args[field] == nil or uint?(args[field])
+                args[field] == nil or Evidence.safe_uint?(args[field])
               end))) and
-        (not Map.has_key?(args, "suppressed_at_ms") or uint?(args["suppressed_at_ms"])) and
+        (not Map.has_key?(args, "suppressed_at_ms") or
+           Evidence.safe_uint?(args["suppressed_at_ms"])) and
         (not Map.has_key?(args, "draft_id") or id?(args["draft_id"])) and
         (not Map.has_key?(args, "text") or
            (is_binary(args["text"]) and String.valid?(args["text"]) and
               byte_size(args["text"]) <= if(operation == :put, do: 8192, else: 4096))) and
-        (not Map.has_key?(args, "offset") or uint?(args["offset"])) and
+        (not Map.has_key?(args, "offset") or Evidence.safe_uint?(args["offset"])) and
         (not Map.has_key?(args, "historical_import") or
            (is_map(args["historical_import"]) and
               byte_size(json(args["historical_import"])) <= 2048)) and
         (operation != :projection_open or
            (args["projection_kind"] in ~w(vectors facts) and is_map(args["profile"]) and
               is_list(args["chunks"]) and length(args["chunks"]) in 1..2 and
-              Enum.all?(args["chunks"], &hash?/1) and
+              Enum.all?(args["chunks"], &Evidence.sha256?/1) and
               Map.get(args, "max_items", 1) in 1..32)) and
         (operation != :projection_open or not Map.has_key?(args, "facts") or
            (args["projection_kind"] == "facts" and is_list(args["facts"]))) and
@@ -2638,11 +2649,14 @@ defmodule IpseKnowledge.Store do
            Map.has_key?(args, "vectors") != Map.has_key?(args, "facts")) and
         (operation != :revalidate or (is_list(args["tokens"]) and length(args["tokens"]) <= 32)) and
         (operation not in [:snapshot_selected, :revalidate] or
-           (uint?(Map.get(args, "effects_used", 0)) and Map.get(args, "effects_used", 0) <= 16 and
-              uint?(Map.get(args, "reads_used", 0)) and Map.get(args, "reads_used", 0) <= 512 and
+           (Evidence.safe_uint?(Map.get(args, "effects_used", 0)) and
+              Map.get(args, "effects_used", 0) <= 16 and
+              Evidence.safe_uint?(Map.get(args, "reads_used", 0)) and
+              Map.get(args, "reads_used", 0) <= 512 and
               Map.get(args, "effects_used", 0) + Map.get(args, "reads_used", 0) <= 528)) and
         (operation != :snapshot_selected or
-           (uint?(args["store_generation"]) and uint?(args["as_of_ms"]) and is_list(args["refs"]) and
+           (Evidence.safe_uint?(args["store_generation"]) and
+              Evidence.safe_uint?(args["as_of_ms"]) and is_list(args["refs"]) and
               length(args["refs"]) <= 10 and
               Enum.all?(args["refs"], &selected_ref?/1) and
               length(Enum.uniq_by(args["refs"], &{&1["source_key"], &1["chunk_id"]})) ==
@@ -2658,7 +2672,7 @@ defmodule IpseKnowledge.Store do
         (operation not in [:collect, :export] or
            (is_integer(args["limit"]) and
               args["limit"] in 1..if(operation == :collect, do: 12, else: 4))) and
-        (operation != :export or args["cursor"] == nil or uint?(args["cursor"]))
+        (operation != :export or args["cursor"] == nil or Evidence.safe_uint?(args["cursor"]))
 
     if valid, do: :ok, else: {:error, :invalid_store_arguments}
   end
@@ -2668,8 +2682,10 @@ defmodule IpseKnowledge.Store do
       is_binary(ref["source_id"]) and String.valid?(ref["source_id"]) and
       byte_size(ref["source_id"]) in 1..256 and
       not Regex.match?(~r/[\x00-\x1f\x7f]/, ref["source_id"]) and
-      hash?(ref["source_key"]) and ref["source_key"] == Evidence.sha256(ref["source_id"]) and
-      positive?(ref["generation"]) and hash?(ref["content_sha256"]) and hash?(ref["chunk_id"]) and
+      Evidence.sha256?(ref["source_key"]) and
+      ref["source_key"] == Evidence.sha256(ref["source_id"]) and
+      Evidence.safe_positive?(ref["generation"]) and Evidence.sha256?(ref["content_sha256"]) and
+      Evidence.sha256?(ref["chunk_id"]) and
       is_number(ref["score"]) and abs(ref["score"]) <= 1.7976931348623157e308
   rescue
     _ -> false

@@ -41,8 +41,8 @@ defmodule Ipse.Tools.MacOSSandbox do
   defp prepare_locked(helper, cwd, root, uid) do
     with :ok <- inspect_entries(root, uid),
          {:ok, source} <- read_bounded(helper, @source_limit),
-         digest = sha256(source),
-         key = sha256(:erlang.term_to_binary({@profile, digest, cwd, root})),
+         digest = Ipse.JSON.sha256(source),
+         key = Ipse.JSON.sha256(:erlang.term_to_binary({@profile, digest, cwd, root})),
          data = Path.join([root, "data", key]),
          generation = Path.join(root, key),
          :ok <- generation_capacity(root, generation),
@@ -287,7 +287,7 @@ defmodule Ipse.Tools.MacOSSandbox do
            ),
          :ok <- secure_signature(stage, uid),
          {:ok, signed} <- read_bounded(worker, @source_limit),
-         manifest = Map.put(expected, "worker_sha256", sha256(signed)),
+         manifest = Map.put(expected, "worker_sha256", Ipse.JSON.sha256(signed)),
          :ok <- write_private(Path.join(stage, "manifest.json"), Jason.encode!(manifest)),
          {:ok, _} <- validate_generation(helper, stage, expected, xml, uid),
          :ok <- File.rename(stage, generation) do
@@ -319,7 +319,7 @@ defmodule Ipse.Tools.MacOSSandbox do
          true <- is_map(manifest),
          true <- Map.delete(manifest, "worker_sha256") == expected,
          {:ok, worker} <- read_bounded(worker_path(generation), @source_limit),
-         true <- manifest["worker_sha256"] == sha256(worker),
+         true <- manifest["worker_sha256"] == Ipse.JSON.sha256(worker),
          {:ok, ^xml} <- read_bounded(entitlements_path, @metadata_limit),
          {:ok, info} <-
            read_bounded(
@@ -585,7 +585,6 @@ defmodule Ipse.Tools.MacOSSandbox do
   defp worker_path(generation),
     do: Path.join([app_path(generation), "Contents", "MacOS", "ipse-runner"])
 
-  defp sha256(bytes), do: :crypto.hash(:sha256, bytes) |> Base.encode16(case: :lower)
   defp physical!(path), do: elem(Ipse.Workspace.canonical_path(path), 1)
 
   defp within?(path, root),

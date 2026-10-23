@@ -395,7 +395,7 @@ defmodule Ipse.Session.Saved do
          "type" => "handoff_imported",
          "version" => 1,
          "artifact" => bytes,
-         "artifact_sha256" => sha256(bytes),
+         "artifact_sha256" => Ipse.JSON.sha256(bytes),
          "message" => handoff_projection(artifact)
        }}
     else
@@ -454,8 +454,6 @@ defmodule Ipse.Session.Saved do
   defp valid_identifier?(id),
     do: Ipse.Tools.valid_call_id?(id) and Regex.match?(~r/\A[A-Za-z0-9_.:-]+\z/, id)
 
-  defp sha256(bytes), do: Base.encode16(:crypto.hash(:sha256, bytes), case: :lower)
-
   def export_handoff(dir, id, note) when is_binary(note) do
     with true <-
            String.valid?(note) and byte_size(note) <= @note_bytes and String.trim(note) != "",
@@ -492,7 +490,7 @@ defmodule Ipse.Session.Saved do
   defp safe_id(id) when is_binary(id) do
     if valid_identifier?(id),
       do: id,
-      else: "sha256:" <> Base.encode16(:crypto.hash(:sha256, id), case: :lower)
+      else: "sha256:" <> Ipse.JSON.sha256(id)
   end
 
   defp safe_id(_), do: "unavailable"

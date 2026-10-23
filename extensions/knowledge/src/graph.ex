@@ -86,7 +86,7 @@ defmodule IpseKnowledge.Graph do
          true <- is_integer(args["max_edges"]) and args["max_edges"] in 1..32,
          true <-
            is_list(args["chunks"]) and length(args["chunks"]) in 1..2 and
-             Enum.all?(args["chunks"], &hash?/1),
+             Enum.all?(args["chunks"], &Evidence.sha256?/1),
          true <- is_list(args["facts"]) and length(args["facts"]) <= args["max_edges"],
          true <-
            extraction["kind"] != "explicit" or Enum.all?(args["facts"], &Evidence.valid_fact?/1),
@@ -430,7 +430,6 @@ defmodule IpseKnowledge.Graph do
   defp text?(value, max),
     do: is_binary(value) and String.valid?(value) and byte_size(value) in 1..max
 
-  defp hash?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{64}\z/, value)
   defp num?(value, min, max), do: is_integer(value) and value in min..max
 
   defp plan?(coverage) do

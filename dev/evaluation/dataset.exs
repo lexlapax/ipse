@@ -16,7 +16,6 @@ defmodule Ipse.Development.Evaluation.Dataset do
   @contract "sealed_answers_v1"
   @answer_fields ~w(query_id project expected_class expected_refusal expected_answer relevance)
   @source_fields ~w(project source_id generation version sha256)
-  @safe 9_007_199_254_740_991
 
   @doc "Resolve authored source versions at the comparison's fixed observation time."
   def population(documents, at) do
@@ -106,11 +105,20 @@ defmodule Ipse.Development.Evaluation.Dataset do
           require!(is_map(row), :invalid_document)
           require!(text?(row["document_id"], 128) and name?(row["project"]), :document_identity)
           require!(text?(row["source_id"], 256), :document_identity)
-          require!(uint?(row["generation"]) and row["generation"] > 0, :document_generation)
+
+          require!(
+            Ipse.JSON.safe_uint?(row["generation"]) and row["generation"] > 0,
+            :document_generation
+          )
+
           require!(version?(row["version"]), :document_version)
           require!(text?(row["title"], 128) and text?(row["text"], 65_536), :document_text)
           require!(row["byte_length"] === byte_size(row["text"]), :document_length)
-          require!(hash?(row["sha256"]) and sha(row["text"]) == row["sha256"], :document_hash)
+
+          require!(
+            Ipse.JSON.sha256?(row["sha256"]) and Ipse.JSON.sha256(row["text"]) == row["sha256"],
+            :document_hash
+          )
 
           require!(
             timestamp?(row["created_at"]) and timestamp?(row["observed_at"]),
@@ -250,7 +258,7 @@ defmodule Ipse.Development.Evaluation.Dataset do
 
     require!(
       exact?(data, ~w(contract split commitment_nonce answers)) and
-        hash?(data["commitment_nonce"]),
+        Ipse.JSON.sha256?(data["commitment_nonce"]),
       :answer_shape
     )
 
@@ -336,15 +344,25 @@ defmodule Ipse.Development.Evaluation.Dataset do
     }
 
     require!(text?(source["source_id"], 256), :relevance_source)
-    require!(uint?(source["generation"]) and source["generation"] > 0, :relevance_source)
-    require!(version?(source["version"]) and hash?(source["sha256"]), :relevance_source)
+
+    require!(
+      Ipse.JSON.safe_uint?(source["generation"]) and source["generation"] > 0,
+      :relevance_source
+    )
+
+    require!(
+      version?(source["version"]) and Ipse.JSON.sha256?(source["sha256"]),
+      :relevance_source
+    )
+
     require!(is_integer(row["grade"]) and row["grade"] in 0..30, :relevance_grade)
     first = row["start_byte"]
     last = row["end_byte"]
     quote = row["quote"]
 
     require!(
-      uint?(first) and uint?(last) and last > first and text?(quote, 8192) and
+      Ipse.JSON.safe_uint?(first) and Ipse.JSON.safe_uint?(last) and last > first and
+        text?(quote, 8192) and
         last - first == byte_size(quote),
       :relevance_span
     )
@@ -371,13 +389,12 @@ defmodule Ipse.Development.Evaluation.Dataset do
 
   defp timestamp?(value) when is_binary(value) do
     case DateTime.from_iso8601(value) do
-      {:ok, time, _offset} -> uint?(DateTime.to_unix(time, :millisecond))
+      {:ok, time, _offset} -> Ipse.JSON.safe_uint?(DateTime.to_unix(time, :millisecond))
       _ -> false
     end
   end
 
   defp timestamp?(_), do: false
-  defp sha(bytes), do: Ipse.JSON.sha256(bytes)
   defp require!(true, _), do: :ok
   defp require!(_, code), do: throw({:evaluation_input, code})
   defp name?(value), do: is_binary(value) and Regex.match?(~r/\A[a-z][a-z0-9_-]{0,63}\z/, value)
@@ -385,9 +402,7 @@ defmodule Ipse.Development.Evaluation.Dataset do
   defp text?(value, max),
     do: is_binary(value) and String.valid?(value) and byte_size(value) in 1..max
 
-  defp hash?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{64}\z/, value)
-  defp uint?(value), do: is_integer(value) and value in 0..@safe
-  defp version?(value), do: (uint?(value) and value > 0) or text?(value, 64)
+  defp version?(value), do: (Ipse.JSON.safe_uint?(value) and value > 0) or text?(value, 64)
 
   defp list?(value, min, max),
     do: is_list(value) and length(value) >= min and length(value) <= max

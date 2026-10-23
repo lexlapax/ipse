@@ -250,7 +250,7 @@ defmodule Ipse.Development.Evaluation.Freeze do
 
   def verify(path, expected_sha256) do
     protect(fn ->
-      require!(hash?(expected_sha256), :invalid_manifest_hash)
+      require!(Ipse.JSON.sha256?(expected_sha256), :invalid_manifest_hash)
       bytes = read_bounded!(path, 1_048_576)
       require!(Ipse.JSON.sha256(bytes) == expected_sha256, :manifest_changed)
       {:ok, manifest} = Ipse.JSON.decode_bounded(bytes, 1_048_576)
@@ -282,7 +282,7 @@ defmodule Ipse.Development.Evaluation.Freeze do
 
     paths =
       Map.new(manifest["artifacts"], fn {name, digest} ->
-        require!(name?(name) and hash?(digest), :invalid_artifacts)
+        require!(name?(name) and Ipse.JSON.sha256?(digest), :invalid_artifacts)
 
         case Artifact.lookup(store, digest) do
           {:ok, artifact} -> {name, artifact.path}
@@ -455,7 +455,8 @@ defmodule Ipse.Development.Evaluation.Freeze do
     require!(
       Enum.all?(source["files"], fn file ->
         exact?(file, ~w(path bytes sha256)) and source_relative?(file["path"]) and
-          is_integer(file["bytes"]) and file["bytes"] in 0..67_108_864 and hash?(file["sha256"])
+          is_integer(file["bytes"]) and file["bytes"] in 0..67_108_864 and
+          Ipse.JSON.sha256?(file["sha256"])
       end),
       :invalid_experiment
     )
@@ -469,7 +470,7 @@ defmodule Ipse.Development.Evaluation.Freeze do
 
     require!(
       is_map(artifacts) and map_size(artifacts) in 1..16 and
-        Enum.all?(artifacts, fn {id, digest} -> name?(id) and hash?(digest) end),
+        Enum.all?(artifacts, fn {id, digest} -> name?(id) and Ipse.JSON.sha256?(digest) end),
       :invalid_experiment
     )
 
@@ -806,7 +807,6 @@ defmodule Ipse.Development.Evaluation.Freeze do
 
   defp exact?(map, keys), do: is_map(map) and Enum.sort(Map.keys(map)) == Enum.sort(keys)
   defp name?(value), do: is_binary(value) and Regex.match?(~r/\A[a-z][a-z0-9_-]{0,63}\z/, value)
-  defp hash?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{64}\z/, value)
   defp require!(true, _), do: :ok
   defp require!(_, code), do: fail!(code)
   defp fail!(code), do: throw({:evaluation_freeze, code})

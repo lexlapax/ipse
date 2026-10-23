@@ -36,7 +36,12 @@ defmodule Ipse.Development.Evaluation.ModelService do
       demand(absolute?(config["cache_source"]), :cache_source)
       models = config["models"]
       demand(is_map(models) and map_size(models) in 1..8, :models)
-      demand(Enum.all?(models, fn {name, digest} -> model?(name) and hash?(digest) end), :models)
+
+      demand(
+        Enum.all?(models, fn {name, digest} -> model?(name) and Ipse.JSON.sha256?(digest) end),
+        :models
+      )
+
       manifests = config["manifests"]
 
       demand(
@@ -69,7 +74,7 @@ defmodule Ipse.Development.Evaluation.ModelService do
             relative?(file["path"]) and
             (String.starts_with?(file["path"], "bin/") or
                String.starts_with?(file["path"], "lib/ollama/")) and
-            uint?(file["bytes"], @gib) and hash?(file["sha256"]) and
+            uint?(file["bytes"], @gib) and Ipse.JSON.sha256?(file["sha256"]) and
             is_boolean(file["executable"]) and
             (not file["executable"] or file["path"] == "bin/ollama" or
                String.starts_with?(file["path"], "lib/ollama/"))
@@ -127,7 +132,7 @@ defmodule Ipse.Development.Evaluation.ModelService do
         demand(
           read_json(Path.join(output, "started.json")) == %{
             "version" => 1,
-            "configuration_sha256" => sha(JSON.encode!(config))
+            "configuration_sha256" => Ipse.JSON.sha256(JSON.encode!(config))
           },
           :service_evidence
         )
@@ -672,7 +677,10 @@ defmodule Ipse.Development.Evaluation.ModelService do
 
     write_private(
       Path.join(output, "started.json"),
-      JSON.encode!(%{"version" => 1, "configuration_sha256" => sha(JSON.encode!(config))}) <> "\n"
+      JSON.encode!(%{
+        "version" => 1,
+        "configuration_sha256" => Ipse.JSON.sha256(JSON.encode!(config))
+      }) <> "\n"
     )
 
     {:ok, helper} = Runner.native_helper(output)
@@ -794,7 +802,7 @@ defmodule Ipse.Development.Evaluation.ModelService do
     mkdir_private(Path.join(context.output, "copies"))
 
     write_private(
-      Path.join([context.output, "copies", sha(target) <> ".json"]),
+      Path.join([context.output, "copies", Ipse.JSON.sha256(target) <> ".json"]),
       JSON.encode!(%{"destination" => target, "expected_sha256" => digest, "receipt" => receipt}) <>
         "\n"
     )
@@ -1421,8 +1429,6 @@ defmodule Ipse.Development.Evaluation.ModelService do
       text?(value, 257) and
         Regex.match?(~r/\A[a-z0-9][a-z0-9._-]{0,127}:[a-z0-9][a-z0-9._-]{0,127}\z/, value)
 
-  defp hash?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{64}\z/, value)
-
   defp decimal?(value, signed),
     do:
       is_binary(value) and byte_size(value) in 1..24 and
@@ -1450,7 +1456,6 @@ defmodule Ipse.Development.Evaluation.ModelService do
   end
 
   defp now, do: System.monotonic_time(:millisecond)
-  defp sha(bytes), do: Ipse.JSON.sha256(bytes)
   defp demand(true, _), do: :ok
   defp demand(_, code), do: fail(code)
   defp fail(code), do: throw({:model_service, code})

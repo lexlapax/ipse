@@ -204,7 +204,8 @@ defmodule Ipse.Session.ToolLifecycle do
         id?(e["epoch_id"]) and id?(e["tool_id"]) and id?(e["turn_id"]) and id?(e["request_id"]) and
         refs?(e, ~w(proposal_source intent_source)) and
         e["proposal_source"]["byte_offset"] < e["intent_source"]["byte_offset"] and
-        uint?(e["call_index"]) and e["approval"] in ~w(approved session_allow not_required) and
+        Ipse.JSON.safe_uint?(e["call_index"]) and
+        e["approval"] in ~w(approved session_allow not_required) and
         view?(e, "input")
 
   defp valid_record?(%{"type" => "lifecycle_tool_outcome"} = e),
@@ -215,7 +216,7 @@ defmodule Ipse.Session.ToolLifecycle do
         e["tool_source"]["byte_offset"] < e["result_source"]["byte_offset"] and
         e["status"] in ~w(result_recorded error unknown) and
         e["approval"] in ~w(approved session_allow not_required) and
-        (e["duration_ms"] == nil or uint?(e["duration_ms"])) and view?(e, "result")
+        (e["duration_ms"] == nil or Ipse.JSON.safe_uint?(e["duration_ms"])) and view?(e, "result")
 
   defp valid_record?(%{"type" => "lifecycle_tool_recording_stopped"} = e),
     do:
@@ -436,7 +437,7 @@ defmodule Ipse.Session.ToolLifecycle do
 
   defp view?(e, key),
     do:
-      uint?(e[key <> "_bytes"]) and hash?(e[key <> "_sha256"]) and
+      Ipse.JSON.safe_uint?(e[key <> "_bytes"]) and Ipse.JSON.sha256?(e[key <> "_sha256"]) and
         if(e[key] == nil,
           do: e[key <> "_bytes"] > 8192,
           else:
@@ -458,6 +459,4 @@ defmodule Ipse.Session.ToolLifecycle do
   defp keys?(e, keys), do: is_map(e) and Enum.sort(Map.keys(e)) == Enum.sort(keys)
   defp common?(e), do: e["version"] === 1 and id?(e["session_id"])
   defp id?(v), do: is_binary(v) and Regex.match?(~r/\A[0-9a-f]{32}\z/, v)
-  defp hash?(v), do: is_binary(v) and Regex.match?(~r/\A[0-9a-f]{64}\z/, v)
-  defp uint?(v), do: is_integer(v) and v in 0..9_007_199_254_740_991
 end

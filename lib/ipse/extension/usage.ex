@@ -11,7 +11,7 @@ defmodule Ipse.Extension.UsageRead do
 
   def validate(request) do
     if keys?(request, ~w(op cursor limit snapshot)) and operation?(request) and
-         uint?(request["cursor"]) and request["cursor"] <= @limit and
+         Ipse.JSON.safe_uint?(request["cursor"]) and request["cursor"] <= @limit and
          is_integer(request["limit"]) and request["limit"] in 1..4 and
          (is_nil(request["snapshot"]) or snapshot?(request["snapshot"])) and
          Ipse.Extension.validate(request) == :ok do
@@ -26,7 +26,8 @@ defmodule Ipse.Extension.UsageRead do
   def snapshot?(s) do
     keys?(s, @snapshot_keys) and is_integer(s["version"]) and s["version"] in [1, 2] and
       Journal.valid_source_metadata?(s["source"]) and id?(s["operation_id"]) and
-      hash?(s["identity_sha256"]) and uint?(s["request_count"]) and s["request_count"] <= @limit and
+      Ipse.JSON.sha256?(s["identity_sha256"]) and Ipse.JSON.safe_uint?(s["request_count"]) and
+      s["request_count"] <= @limit and
       is_boolean(s["legacy_unmetered"])
   rescue
     _ -> false
@@ -249,9 +250,7 @@ defmodule Ipse.Extension.UsageRead do
 
   defp failed(code), do: {:failed, %{"code" => code}}
   defp keys?(v, keys), do: is_map(v) and Enum.sort(Map.keys(v)) == Enum.sort(keys)
-  defp uint?(v), do: is_integer(v) and v in 0..9_007_199_254_740_991
   defp id?(v), do: is_binary(v) and Regex.match?(~r/\A[0-9a-f]{32}\z/, v)
-  defp hash?(v), do: is_binary(v) and Regex.match?(~r/\A[0-9a-f]{64}\z/, v)
 end
 
 defmodule Ipse.Extension.ChildUsage do
@@ -329,12 +328,12 @@ defmodule Ipse.Extension.ChildUsage do
 
     keys?(s, @snapshot ++ extra) and is_integer(s["version"]) and s["version"] in [2, 3, 4] and
       Journal.valid_source_metadata?(s["source"]) and id?(s["operation_id"]) and
-      hash?(s["identity_sha256"]) and
+      Ipse.JSON.sha256?(s["identity_sha256"]) and
       if(s["version"] == 2,
         do: count?(s["child_count"]),
         else:
           id?(s["child_id"]) and count?(s["request_count"]) and is_boolean(s["legacy_unmetered"]) and
-            is_integer(s["bytes"]) and s["bytes"] in 1..@bytes and hash?(s["sha256"])
+            is_integer(s["bytes"]) and s["bytes"] in 1..@bytes and Ipse.JSON.sha256?(s["sha256"])
       )
   rescue
     _ -> false
@@ -767,5 +766,4 @@ defmodule Ipse.Extension.ChildUsage do
   defp count?(v), do: is_integer(v) and v in 0..@limit
   defp keys?(v, fields), do: is_map(v) and Enum.sort(Map.keys(v)) == Enum.sort(fields)
   defp id?(v), do: is_binary(v) and Regex.match?(~r/\A[0-9a-f]{32}\z/, v)
-  defp hash?(v), do: is_binary(v) and Regex.match?(~r/\A[0-9a-f]{64}\z/, v)
 end

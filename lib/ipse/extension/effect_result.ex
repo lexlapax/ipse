@@ -15,7 +15,7 @@ defmodule Ipse.Extension.EffectResult do
   def validate(%{"version" => 2} = request) do
     if keys?(request, ~w(op version operation_id source_sha256 vector_index offset limit)) and
          operation?(request) and request["version"] === 2 and id?(request["operation_id"]) and
-         hash?(request["source_sha256"]) and uint?(request["vector_index"], 7) and
+         Ipse.JSON.sha256?(request["source_sha256"]) and uint?(request["vector_index"], 7) and
          uint?(request["offset"], 4096) and is_integer(request["limit"]) and
          request["limit"] in 1..768 and Ipse.Extension.validate(request) == :ok,
        do: :ok,
@@ -27,7 +27,7 @@ defmodule Ipse.Extension.EffectResult do
   def validate(request) do
     if keys?(request, ~w(op version operation_id source_sha256 offset limit)) and
          operation?(request) and request["version"] === 1 and id?(request["operation_id"]) and
-         hash?(request["source_sha256"]) and uint?(request["offset"], 65_536) and
+         Ipse.JSON.sha256?(request["source_sha256"]) and uint?(request["offset"], 65_536) and
          is_integer(request["limit"]) and request["limit"] in 1..4096 and
          Ipse.Extension.validate(request) == :ok,
        do: :ok,
@@ -137,7 +137,7 @@ defmodule Ipse.Extension.EffectResult do
   def descriptor?(%{"version" => 2} = value, operation_id) do
     keys?(value, ~w(version operation_id kind source_sha256 encoding vector_count dimensions)) and
       value["version"] === 2 and id?(operation_id) and value["operation_id"] == operation_id and
-      value["kind"] == "embedding.f32le" and hash?(value["source_sha256"]) and
+      value["kind"] == "embedding.f32le" and Ipse.JSON.sha256?(value["source_sha256"]) and
       value["encoding"] == "float32le.base64" and is_integer(value["vector_count"]) and
       value["vector_count"] in 1..8 and is_integer(value["dimensions"]) and
       value["dimensions"] in 1..4096
@@ -146,7 +146,7 @@ defmodule Ipse.Extension.EffectResult do
   def descriptor?(value, operation_id) do
     keys?(value, @descriptor_keys) and value["version"] === 1 and
       id?(operation_id) and value["operation_id"] == operation_id and
-      value["kind"] == "mcp.text" and hash?(value["source_sha256"]) and
+      value["kind"] == "mcp.text" and Ipse.JSON.sha256?(value["source_sha256"]) and
       uint?(value["byte_count"], 65_536)
   rescue
     _ -> false
@@ -255,7 +255,8 @@ defmodule Ipse.Extension.EffectResult do
              ~w(operation_id source_sha256 vector_index offset),
              &(value[&1] === request[&1])
            ),
-         true <- hash?(value["input_sha256"]) and hash?(value["vector_sha256"]),
+         true <-
+           Ipse.JSON.sha256?(value["input_sha256"]) and Ipse.JSON.sha256?(value["vector_sha256"]),
          true <- is_integer(value["dimensions"]) and value["dimensions"] in 1..4096,
          true <- is_binary(value["values"]) and byte_size(value["values"]) <= 4096,
          {:ok, bytes} <- Base.decode64(value["values"]),
@@ -315,7 +316,7 @@ defmodule Ipse.Extension.EffectResult do
       id?(event["parent_invocation_id"]) and id?(event["operation_id"]) and
       Enum.all?(
         ~w(identity_sha256 request_sha256 binding_sha256 data_sha256 source_sha256),
-        &hash?(event[&1])
+        &Ipse.JSON.sha256?(event[&1])
       ) and
       keys?(
         inference,
@@ -324,7 +325,7 @@ defmodule Ipse.Extension.EffectResult do
       inference["request_id"] == event["operation_id"] and id?(inference["attempt_id"]) and
       is_binary(inference["profile"]) and is_binary(inference["reported_model"]) and
       Ipse.Provider.model_name(inference["reported_model"]) == inference["reported_model"] and
-      hash?(inference["provider_response_sha256"]) and
+      Ipse.JSON.sha256?(inference["provider_response_sha256"]) and
       Ipse.Usage.valid_usage?(inference["usage"], "embedding") and
       Ipse.Provider.Embedding.valid_data?(event["data"]) and
       event["data_sha256"] == Ipse.JSON.digest([event["data"]]) and
@@ -340,7 +341,7 @@ defmodule Ipse.Extension.EffectResult do
       id?(event["operation_id"]) and
       Enum.all?(
         ~w(identity_sha256 request_sha256 binding_sha256 data_sha256 source_sha256),
-        &hash?(event[&1])
+        &Ipse.JSON.sha256?(event[&1])
       ) and event["kind"] == "mcp.text" and keys?(event["data"], ["text"]) and
       text?(event["data"]["text"], 65_536) and
       event["data_sha256"] == Ipse.JSON.digest([event["data"]]) and
@@ -372,7 +373,6 @@ defmodule Ipse.Extension.EffectResult do
 
   defp keys?(map, keys), do: is_map(map) and Enum.sort(Map.keys(map)) == Enum.sort(keys)
   defp id?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{32}\z/, value)
-  defp hash?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{64}\z/, value)
   defp uint?(value, max), do: is_integer(value) and value >= 0 and value <= max
 
   defp text?(value, max),

@@ -739,7 +739,7 @@ defmodule IpseKnowledgeExample.LifecycleProof do
 
         true =
           request["value"]["partition"] == "lifecycle" and
-            request["value"]["source_key"] == sha(@source)
+            request["value"]["source_key"] == Ipse.JSON.sha256(@source)
 
       "extension:model.complete" ->
         "extract" = command
@@ -977,6 +977,4 @@ defmodule IpseKnowledgeExample.LifecycleProof do
       5000 -> {:error, :fixture_cleanup_unconfirmed}
     end
   end
-
-  defp sha(bytes), do: Base.encode16(:crypto.hash(:sha256, bytes), case: :lower)
 end

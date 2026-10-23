@@ -1,6 +1,63 @@
 defmodule Ipse.RuntimeInfoTest do
   use ExUnit.Case, async: true
 
+  test "context header separates untrusted guidance from runtime and delegation facts" do
+    snapshot = %{
+      "version" => 1,
+      "cwd" => "/synthetic/workspace",
+      "boundary" => "/synthetic/workspace",
+      "sources" => [
+        %{
+          "kind" => "project",
+          "scope" => ".",
+          "path" => "AGENTS.md",
+          "sha256" => String.duplicate("a", 64),
+          "content" => "untrusted-workspace-sentinel"
+        }
+      ],
+      "diagnostics" => []
+    }
+
+    state = %{
+      cwd: "/synthetic/workspace",
+      skills: [],
+      config: %{provider: :demo, model: "scripted", api_key: "private-runtime-sentinel"},
+      reported_model: "reported-scripted",
+      historical_model: "older-scripted",
+      context_snapshot: snapshot,
+      extension_contributions: %{}
+    }
+
+    for config <- [
+          state.config,
+          Map.put(state.config, :subagents, true),
+          Map.put(state.config, :delegation_origin, "parent")
+        ] do
+      assert [
+               %{"role" => "system", "content" => system},
+               %{"role" => "user", "content" => reference}
+             ] =
+               Ipse.Session.Context.header(%{state | config: config})
+
+      assert system =~ "reported-scripted"
+      assert system =~ "older-scripted"
+      refute system =~ "untrusted-workspace-sentinel"
+      refute system <> reference =~ "private-runtime-sentinel"
+      assert reference =~ "untrusted-workspace-sentinel"
+
+      cond do
+        config[:delegation_origin] -> assert system =~ "This is a local delegated child session."
+        config[:subagents] -> assert system =~ "The delegate tool starts one bounded local child"
+        true -> refute system =~ "The delegate tool starts one bounded local child"
+      end
+    end
+
+    manifest = Ipse.Session.Context.manifest(snapshot, ["changed", "missing"], ["changed"], [])
+    assert manifest["diagnostics"] == ["changed", "missing"]
+    assert manifest["skills"] == []
+    refute inspect(manifest) =~ "untrusted-workspace-sentinel"
+  end
+
   test "runtime facts are allowlisted and distinguish requested and reported identities" do
     config = %{
       provider: :chatgpt,

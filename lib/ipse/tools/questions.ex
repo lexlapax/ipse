@@ -2,6 +2,10 @@ defmodule Ipse.Tools.Questions do
   @moduledoc "Bounded operator clarification schemas, answer validation and tool-result messages."
   alias Ipse.JSON, as: Schema
 
+  @doc "Whether this host can wait for explicit operator answers."
+  def enabled?(config),
+    do: Map.get(config, :operator_questions, true) == true and is_nil(config[:delegation_origin])
+
   def tool_result(call, content, status),
     do: %{
       "role" => "tool",

@@ -3,6 +3,53 @@ defmodule Ipse.DelegationTest do
 
   alias Ipse.Tools.Delegation
 
+  test "admission checks host enablement and remaining children before identity and routing" do
+    args = %{"task" => "Inspect a module", "context" => "Selected context"}
+    call = %{"id" => "delegation-call"}
+    config = %{subagents: true}
+
+    assert {:error, "Delegation is disabled by the host."} =
+             Delegation.admit(%{}, 2, %{}, %{})
+
+    assert {:error, "Delegation is disabled by the host."} =
+             Delegation.admit(Map.put(config, :delegation_origin, "parent"), 0, call, args)
+
+    assert {:error, "Delegation limit reached for this turn."} =
+             Delegation.admit(config, 2, %{}, %{})
+
+    for id <- [nil, 42, String.duplicate("x", 257)] do
+      assert {:error, "Invalid delegation call identity."} =
+               Delegation.admit(config, 0, %{"id" => id}, args)
+    end
+
+    assert :ok = Delegation.admit(config, 1, call, args)
+    assert :ok = Delegation.admit(config, 0, %{"id" => String.duplicate("x", 256)}, args)
+
+    assert {:error, "Delegation role is not configured; no provider fallback was attempted."} =
+             Delegation.admit(config, 0, call, Map.put(args, "role", "review"))
+  end
+
+  test "parallel admission reserves two children and validates every requested route" do
+    task = %{"task" => "Inspect a module", "context" => "Selected context"}
+    args = %{"tasks" => [task, task]}
+    config = %{subagents: true, subagent_concurrency: 2}
+    refused = {:error, "Parallel delegation is disabled or its child budget is exhausted."}
+
+    assert :ok = Delegation.admit_parallel(config, 0, args)
+    assert ^refused = Delegation.admit_parallel(config, 1, args)
+    assert ^refused = Delegation.admit_parallel(%{subagents: true}, 0, args)
+
+    assert ^refused =
+             Delegation.admit_parallel(Map.put(config, :delegation_origin, "parent"), 0, args)
+
+    assert {:error, _} = Delegation.admit_parallel(config, 0, %{"tasks" => [task]})
+
+    assert {:error, "Delegation role is not configured; no provider fallback was attempted."} =
+             Delegation.admit_parallel(config, 0, %{
+               "tasks" => [task, Map.put(task, "role", "review")]
+             })
+  end
+
   test "delegation requires explicit host enablement and is disabled for children" do
     refute Delegation.enabled?(%{})
     refute Delegation.enabled?(%{subagents: false})

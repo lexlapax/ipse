@@ -307,7 +307,7 @@ defmodule Ipse.Extension.Services do
       Enum.all?(bindings, fn binding ->
         keys?(binding, ~w(alias instance name contract target_sha256)) and
           local?(binding["alias"]) and instance?(binding["instance"]) and
-          binding["contract"] === 1 and hash?(binding["target_sha256"]) and
+          binding["contract"] === 1 and Ipse.JSON.sha256?(binding["target_sha256"]) and
           is_binary(binding["name"]) and byte_size(binding["name"]) <= 64 and
           String.starts_with?(binding["name"], "ext__")
       end) and bindings == Enum.sort_by(bindings, & &1["alias"]) and
@@ -560,5 +560,4 @@ defmodule Ipse.Extension.Services do
   defp unique?(values), do: length(values) == length(Enum.uniq(values))
   defp instance?(id), do: is_binary(id) and Regex.match?(~r/\A[a-z][a-z0-9_-]{0,63}\z/, id)
   defp local?(id), do: is_binary(id) and Regex.match?(~r/\A[a-z][a-z0-9_-]{0,31}\z/, id)
-  defp hash?(hash), do: is_binary(hash) and Regex.match?(~r/\A[a-f0-9]{64}\z/, hash)
 end

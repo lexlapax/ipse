@@ -260,7 +260,8 @@ defmodule Ipse.Session.RuntimeLifecycle do
       (e["subject_source"] == nil or
          (Journal.valid_source?(e["subject_source"]) and
             e["subject_source"]["session_id"] == e["session_id"] and e["kind"] == "question")) and
-      (type != "lifecycle_wait_finished" or (outcome?(e) and uint?(e["duration_ms"])))
+      (type != "lifecycle_wait_finished" or
+         (outcome?(e) and Ipse.JSON.safe_uint?(e["duration_ms"])))
   rescue
     _ -> false
   end
@@ -428,5 +429,4 @@ defmodule Ipse.Session.RuntimeLifecycle do
   defp keys?(e, keys), do: Enum.sort(Map.keys(e)) == Enum.sort(keys)
   defp id?(v), do: is_binary(v) and Regex.match?(~r/\A[0-9a-f]{32}\z/, v)
   defp optional_id?(v), do: v == nil or id?(v)
-  defp uint?(v), do: is_integer(v) and v in 0..9_007_199_254_740_991
 end

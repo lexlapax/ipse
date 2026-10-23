@@ -33,15 +33,27 @@ defmodule Ipse.MCP.ConfigTest do
     assert Config.manifest(secret_arg).args == ["--token=[redacted]"]
   end
 
-  test "omitted and explicit default options preserve the P5 fingerprint", ctx do
+  test "new fingerprints use canonical JSON while legacy defaults preserve the P5 fingerprint",
+       ctx do
     write(ctx.path, document())
     assert {:ok, [omitted]} = Config.load(ctx.path)
     assert omitted.sandbox == :off
     assert omitted.resources == []
     assert omitted.prompts == []
 
-    assert omitted.fingerprint ==
+    legacy = Config.fingerprint_version(omitted, 1)
+
+    assert legacy.fingerprint ==
              "d592c37a457a6ba4d79479a434840892a61dd079915713da16994d7d544aff62"
+
+    refute Map.has_key?(Config.manifest(legacy), :fingerprint_version)
+
+    canonical =
+      ~s(["ipse.mcp.endpoint",2,{"args":["--serve"],"command":"/bin/echo","env_names":["NOTES_TOKEN"],"id":"notes","prompts":[],"resources":[],"sandbox":"off","timeout_ms":12000,"tools":["lookup","search.v2"]}])
+
+    assert omitted.fingerprint == Ipse.JSON.sha256(canonical)
+    assert Config.manifest(omitted).fingerprint_version === 2
+    refute omitted.fingerprint == legacy.fingerprint
 
     explicit_server =
       server()
@@ -55,6 +67,28 @@ defmodule Ipse.MCP.ConfigTest do
     assert {:ok, [explicit]} = Config.load(ctx.path)
     assert explicit.fingerprint == omitted.fingerprint
     assert Config.manifest(explicit).sandbox == :off
+    assert Config.fingerprint_version(explicit, 1).fingerprint == legacy.fingerprint
+  end
+
+  test "portable public fingerprints bind every public field and ignore map insertion order",
+       ctx do
+    write(ctx.path, document())
+    {:ok, [selected]} = Config.load(ctx.path)
+    public = Config.manifest(selected) |> Jason.encode!() |> Jason.decode!()
+
+    assert Config.public_fingerprint(Map.new(Enum.reverse(Map.to_list(public)))) ==
+             selected.fingerprint
+
+    for field <- ~w(id command args tools resources prompts sandbox env_names timeout_ms) do
+      changed =
+        Map.update!(public, field, fn
+          value when is_list(value) -> value ++ ["different"]
+          value when is_integer(value) -> value + 1
+          value -> value <> "different"
+        end)
+
+      refute Config.public_fingerprint(changed) == selected.fingerprint
+    end
   end
 
   test "resources-only and prompts-only servers get stable bounded model IDs", ctx do

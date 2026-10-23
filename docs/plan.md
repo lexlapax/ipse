@@ -535,8 +535,10 @@ P2 findings: dispatched MCP errors now retain a distinct diagnostic outcome,
 and non-regular skill files refuse while explicit prompt expansion runs outside
 the owner. It also closes deadline-edge accounting and patches PlugCrypto.
 The comparison discloses adjudication sensitivity and the owner-resolution method
-extension; frozen predictions and scores remain unchanged. Broader maintenance
-work stays recorded separately, including versioned MCP fingerprint portability.
+extension; frozen predictions and scores remain unchanged. Subsequent
+[maintenance and fingerprint compatibility](archive/2026-10-23-p27-maintenance/index.md)
+consolidates equivalent primitives and pure feature policy, removes the unused
+HTTP backend, and versions new MCP sessions while preserving old journal rules.
 
 ### Final comparison policy
 

@@ -109,6 +109,17 @@ or raw ERTS launch, using isolated build roots. Raw launch explicitly selects
 Unicode output; locale defaults must not corrupt protocols. Broaden/repeat tests
 when a new change/failure warrants it, rather than rerunning unrelated suites.
 
+Run subprocess controls in isolation as well as in the full suite. Declare every
+module they load and use absolute source/code paths with a private working
+directory. A plain Elixir VM can otherwise resolve an application from the
+checkout's basename, and a previously loaded fixture can hide a missing dependency.
+When transferring code paths with `-pa`, exclude the implicit current-directory
+entry and reverse the argument sequence so successive prepends retain the original
+search order.
+The [MCP-store contract control](../../test/extensions/knowledge/store_contract_test.exs)
+loads Profiles, Evidence and MCPCAS explicitly, runs in a temporary directory,
+and checks that those modules remain unloaded in the parent.
+
 ## Prove an independent artifact without rebuilding the host
 
 The finite `dev/verify.exs` command uses an existing source SDK or compatible

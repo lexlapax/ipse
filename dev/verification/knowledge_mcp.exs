@@ -53,7 +53,7 @@ defmodule IpseKnowledgeExample.MCPProof do
       true = reads != [] and Enum.all?(reads, &(&1["arguments"]["action"] == "get_many"))
       true = length(calls) == answer["coverage"]["final_validation"]["effects_used"]
       true = length(calls) <= 16
-      other_hash = sha("manual:other")
+      other_hash = Ipse.JSON.sha256("manual:other")
 
       foreign_keys =
         for {key, row} <- Fixture.backend_state(backend).records,
@@ -318,7 +318,6 @@ defmodule IpseKnowledgeExample.MCPProof do
       "as_of_ms" => 10
     }
 
-  defp sha(text), do: Base.encode16(:crypto.hash(:sha256, text), case: :lower)
   defp seen(backend), do: MapSet.size(Fixture.backend_state(backend).seen)
   defp action_count(events), do: Enum.count(events, &(&1["type"] == "extension_action_intent"))
 

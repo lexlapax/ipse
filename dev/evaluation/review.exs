@@ -69,7 +69,10 @@ defmodule Ipse.Development.Evaluation.Review do
       require!(is_binary(seed) and Regex.match?(~r/\A[0-9a-f]{64}\z/, seed), :invalid_blind_seed)
 
       rows =
-        Enum.sort_by(rows, &sha(JSON.encode!(["review-order", 1, seed, &1["prediction_id"]])))
+        Enum.sort_by(
+          rows,
+          &Ipse.JSON.sha256(JSON.encode!(["review-order", 1, seed, &1["prediction_id"]]))
+        )
 
       require!(is_function(context_loader, 0), :invalid_context_loader)
       {:ok, context} = context_loader.()
@@ -178,21 +181,21 @@ defmodule Ipse.Development.Evaluation.Review do
         "queries" => length(freeze["queries"]),
         "variant_count" => length(freeze["variants"]),
         "prediction_files" => Enum.map(verified["files"], &Map.take(&1, ["sha256"])),
-        "corpus_sha256" => sha(context["corpus"]),
+        "corpus_sha256" => Ipse.JSON.sha256(context["corpus"]),
         "semantic_support" => "unmeasured",
         "literal_invalid" => Enum.count(integrity, &(&1["verdict"] == "invalid")),
         "reference_integrity_complete" => Enum.all?(references, & &1["valid"]),
-        "files" => Map.new(files, fn {name, bytes} -> {name, sha(bytes)} end)
+        "files" => Map.new(files, fn {name, bytes} -> {name, Ipse.JSON.sha256(bytes)} end)
       }
 
       summary =
         if sealed do
           Map.merge(summary, %{
-            "queries_sha256" => sha(context["queries"]),
-            "answers_sha256" => sha(context["answers"])
+            "queries_sha256" => Ipse.JSON.sha256(context["queries"]),
+            "answers_sha256" => Ipse.JSON.sha256(context["answers"])
           })
         else
-          Map.put(summary, "query_labels_sha256", sha(context["queries"]))
+          Map.put(summary, "query_labels_sha256", Ipse.JSON.sha256(context["queries"]))
         end
 
       {:ok,
@@ -207,7 +210,6 @@ defmodule Ipse.Development.Evaluation.Review do
     end
   end
 
-  defp sha(bytes), do: Base.encode16(:crypto.hash(:sha256, bytes), case: :lower)
   defp require!(true, _), do: :ok
   defp require!(_, code), do: throw({:review_packet, code})
   defp checked({:ok, _} = result), do: result

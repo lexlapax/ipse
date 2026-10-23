@@ -258,10 +258,15 @@ Changed public configuration refuses resume. Private environment values are
 reloaded and excluded from the public fingerprint. In-flight approvals keep
 their immutable snapshot. Follow [Recovery](recovery.md) when uncertainty remains.
 
-Public fingerprints currently use OTP's deterministic term encoding. A major OTP
-upgrade can therefore refuse an unchanged MCP configuration. Keep the previous
-runtime available for inspection or resume; start a new session with reviewed
-configuration if the new runtime refuses it. Do not bypass the fingerprint check.
+New sessions use version-two public fingerprints with a portable canonical JSON
+encoding. Existing journals keep their saved scheme; upgrading Ipse does not
+rewrite them. Continue using the same public configuration when resuming.
+
+Legacy journals without a fingerprint version retain OTP's deterministic term
+encoding. A major OTP upgrade can refuse their unchanged configuration. Keep the
+previous runtime available for inspection or resume; start a new session with
+reviewed configuration if the new runtime refuses it. Do not bypass the fingerprint
+check. Unknown fingerprint versions also refuse before any saved work can resume.
 
 ## Try the bundled credential-free example
 

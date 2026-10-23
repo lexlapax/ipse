@@ -267,7 +267,17 @@ defmodule Ipse.Session.Invocation do
             snapshot
           )
 
-        Session.notify(s, {:context_refreshed, Session.context_manifest(s)})
+        Session.notify(
+          s,
+          {:context_refreshed,
+           Ipse.Session.Context.manifest(
+             s.context_snapshot,
+             s.context_drift,
+             s.skill_drift,
+             s.skills
+           )}
+        )
+
         {:reply, {:error, :review_new_workspace_instructions}, s}
       end
     else
@@ -328,7 +338,7 @@ defmodule Ipse.Session.Invocation do
          true <-
            Actions.readable?(request, s.invocation.effect_sources, s.invocation.results),
          true <-
-           not Ipse.Extension.Actions.question?(request) or Session.questions_enabled?(s.config),
+           not Ipse.Extension.Actions.question?(request) or Questions.enabled?(s.config),
          {:ok, context_hash} <- extension_action_context(s, request),
          {:ok, service} <- extension_service_context(s, request),
          {:ok, effect_binding} <- extension_effect_binding(s, request),
@@ -910,13 +920,6 @@ defmodule Ipse.Session.Invocation do
   end
 
   @doc false
-  def model_saved_results?(%ResultSource.Index{committed: sources}),
-    do:
-      Enum.any?(sources, fn {_, source} ->
-        source.intent["descriptor"]["stage"] == "invoke.tool"
-      end)
-
-  @doc false
   def invocation_phase(parent) do
     case parent["descriptor"]["stage"] do
       "invoke.tool" -> :tool
@@ -1093,10 +1096,6 @@ defmodule Ipse.Session.Invocation do
     end
   end
 
-  @doc false
-  def inference_approval?(name, args),
-    do: ModelCall.delegated_approval?(name, args) or EmbeddingCall.delegated_approval?(name, args)
-
   defp inference_begin?(:extension_model_begin, request), do: ModelCall.operation?(request)
 
   defp inference_begin?(:extension_embedding_begin, request),
@@ -1219,7 +1218,7 @@ defmodule Ipse.Session.Invocation do
   def suspend_for_question(s, invocation_phase, action) do
     with %{intent: ^action} <- s.invocation.action,
          true <- output_timely?(s),
-         true <- Session.questions_enabled?(s.config),
+         true <- Questions.enabled?(s.config),
          true <- Ipse.Extension.Registry.live?(s.invocation.parent["identity"]) do
       s = release_output(s)
       parent = s.invocation.parent

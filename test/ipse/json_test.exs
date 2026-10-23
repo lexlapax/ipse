@@ -50,6 +50,37 @@ defmodule Ipse.JSONTest do
     assert Ipse.JSON.sha256(<<0, 255>>) != Ipse.JSON.sha256(<<0>>)
   end
 
+  test "SHA-256 identities require exactly 64 lowercase hexadecimal bytes" do
+    assert Ipse.JSON.sha256?(Ipse.JSON.sha256("abc"))
+    assert Ipse.JSON.sha256?(String.duplicate("0", 64))
+
+    for value <- [
+          nil,
+          true,
+          0,
+          [],
+          %{},
+          String.duplicate("A", 64),
+          String.duplicate("f", 63),
+          String.duplicate("f", 65),
+          String.duplicate("f", 63) <> "g",
+          String.duplicate("f", 64) <> "\n",
+          String.duplicate("f", 63) <> <<0>>,
+          String.duplicate("f", 63) <> <<255>>
+        ] do
+      refute Ipse.JSON.sha256?(value)
+    end
+  end
+
+  test "JSON-safe unsigned integers exclude coercions and values outside the exact range" do
+    assert Ipse.JSON.safe_uint?(0)
+    assert Ipse.JSON.safe_uint?(9_007_199_254_740_991)
+
+    for value <- [-1, 9_007_199_254_740_992, 0.0, 1.0, "0", true, nil, [], %{}] do
+      refute Ipse.JSON.safe_uint?(value)
+    end
+  end
+
   test "persisted list digests sort nested keys and preserve JSON scalar encoding" do
     values = [%{"z" => 1, "a" => [%{two: 2, one: 1}]}, [true, nil, -0.0], "é 🐚"]
     canonical = ~s([{"a":[{"one":1,"two":2}],"z":1},[true,null,-0.0],"é 🐚"])

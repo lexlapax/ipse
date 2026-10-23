@@ -65,7 +65,7 @@ defmodule Ipse.Extension.ResultPublication do
   @doc false
   def offer(%Output{bytes: bytes, byte_count: count, sha256: sha})
       when is_binary(bytes) and byte_size(bytes) == count and count in 2..@bytes do
-    if hash?(sha) and Ipse.JSON.sha256(bytes) == sha do
+    if Ipse.JSON.sha256?(sha) and Ipse.JSON.sha256(bytes) == sha do
       {:ok,
        %{
          "api_version" => 1,
@@ -87,7 +87,7 @@ defmodule Ipse.Extension.ResultPublication do
          true <- keys?(output, ~w(byte_count sha256 version)),
          true <- output["version"] === 1,
          true <- is_integer(output["byte_count"]) and output["byte_count"] in 2..@bytes,
-         true <- hash?(output["sha256"]) and id?(invocation_id),
+         true <- Ipse.JSON.sha256?(output["sha256"]) and id?(invocation_id),
          true <- bounded?(offer) do
       {:ok,
        %{
@@ -110,7 +110,7 @@ defmodule Ipse.Extension.ResultPublication do
          true <- keys?(payload, ~w(api_version invocation_id limit offset output_id)),
          true <- payload["api_version"] === 1 and payload["limit"] === @stride,
          true <- payload["invocation_id"] === state.invocation_id,
-         true <- hash?(payload["output_id"]),
+         true <- Ipse.JSON.sha256?(payload["output_id"]),
          true <- is_nil(state.output_id) or state.output_id === payload["output_id"],
          true <- is_integer(payload["offset"]) and payload["offset"] === state.offset,
          true <- state.offset < state.byte_count,
@@ -185,7 +185,6 @@ defmodule Ipse.Extension.ResultPublication do
     do: Ipse.Extension.validate(value) == :ok and byte_size(Jason.encode!(value)) <= @wrapper
 
   defp keys?(value, keys), do: is_map(value) and Enum.sort(Map.keys(value)) == keys
-  defp hash?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{64}\z/, value)
   defp id?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{32}\z/, value)
 end
 

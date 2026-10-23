@@ -135,7 +135,7 @@ defmodule IpseKnowledge.Corpus do
          true <-
            text?(args["source_id"], 256) and Evidence.safe_positive?(args["generation"]),
          true <- args["action"] in ~w(next inspect abort) and is_list(args["chunks"]),
-         true <- length(args["chunks"]) in 1..2 and Enum.all?(args["chunks"], &hash?/1),
+         true <- length(args["chunks"]) in 1..2 and Enum.all?(args["chunks"], &Evidence.sha256?/1),
          true <- args["action"] != "next" or budgeted_index?(profile, embedding, args["chunks"]) do
       case args["action"] do
         "next" ->
@@ -831,6 +831,4 @@ defmodule IpseKnowledge.Corpus do
 
   defp text?(value, max),
     do: is_binary(value) and String.valid?(value) and byte_size(value) in 1..max
-
-  defp hash?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{64}\z/, value)
 end

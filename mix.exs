@@ -22,6 +22,6 @@ defmodule Ipse.MixProject do
   end
 
   def application do
-    [extra_applications: [:logger, :inets, :ssl], mod: {Ipse.Application, []}]
+    [extra_applications: [:logger, :ssl], mod: {Ipse.Application, []}]
   end
 end

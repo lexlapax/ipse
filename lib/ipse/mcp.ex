@@ -8,6 +8,13 @@ defmodule Ipse.MCP do
     config |> Map.get(:mcp_servers, []) |> Enum.map(& &1.fingerprint)
   end
 
+  @doc false
+  def fingerprint_version(config, version) when version in [1, 2],
+    do:
+      Map.update(config, :mcp_servers, [], fn servers ->
+        Enum.map(servers, &Config.fingerprint_version(&1, version))
+      end)
+
   def discover(servers, cwd, resource \\ nil) do
     Enum.reduce_while(servers, {:ok, []}, fn server, {:ok, acc} ->
       case discover_server(server, cwd, resource) do
@@ -318,8 +325,7 @@ defmodule Ipse.MCP do
         }
 
         digest =
-          :crypto.hash(:sha256, :erlang.term_to_binary({schema, description}, [:deterministic]))
-          |> Base.encode16(case: :lower)
+          descriptor_digest(server, "tool", [schema, description], {schema, description})
 
         Map.put(descriptor, :digest, digest)
       else
@@ -618,11 +624,12 @@ defmodule Ipse.MCP do
         Config.redact(description, server)
 
     digest =
-      :erlang.term_to_binary({server.fingerprint, kind, source, schema, metadata}, [
-        :deterministic
-      ])
-      |> then(&:crypto.hash(:sha256, &1))
-      |> Base.encode16(case: :lower)
+      descriptor_digest(
+        server,
+        "catalog",
+        [server.fingerprint, to_string(kind), source, schema, metadata],
+        {server.fingerprint, kind, source, schema, metadata}
+      )
 
     {:ok,
      %{
@@ -637,6 +644,12 @@ defmodule Ipse.MCP do
        source: source,
        display_name: name
      }}
+  end
+
+  defp descriptor_digest(server, kind, values, legacy) do
+    if Map.get(server, :fingerprint_version, 1) == 2,
+      do: Ipse.JSON.digest(["ipse.mcp.#{kind}", 2 | values]),
+      else: legacy |> :erlang.term_to_binary([:deterministic]) |> Ipse.JSON.sha256()
   end
 
   defp read(client, descriptor) do

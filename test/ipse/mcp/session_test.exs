@@ -255,6 +255,68 @@ defmodule Ipse.MCP.SessionTest do
     refute File.exists?(Path.join(ctx.root, "calls.log"))
   end
 
+  test "new sessions version fingerprints and old journals retain legacy bindings on resume",
+       ctx do
+    fresh = session(ctx, approval: :allow)
+    config = :sys.get_state(fresh).config
+    fresh_id = Ipse.Session.info(fresh).id
+    assert {:ok, [%{"metadata" => metadata} | _]} = Ipse.Journal.load(ctx.dir, fresh_id)
+    assert metadata["mcp_fingerprint_version"] === 2
+    assert Enum.all?(config.mcp_servers, &(&1.fingerprint_version === 2))
+    assert :ok = Ipse.Session.close_confirmed(fresh)
+
+    legacy = Ipse.MCP.fingerprint_version(config, 1)
+
+    legacy_metadata =
+      metadata
+      |> Map.delete("mcp_fingerprint_version")
+      |> Map.put("mcp_servers", Ipse.MCP.fingerprints(legacy))
+
+    assert {:ok, old_id} = Ipse.Journal.create(ctx.dir, legacy_metadata)
+    old = session(ctx, [approval: :allow], old_id)
+    assert Enum.all?(:sys.get_state(old).config.mcp_servers, &(&1.fingerprint_version === 1))
+    assert :ok = Ipse.Session.prompt(old, "write")
+    assert_receive {:ipse, ^old, {:done, :ok}}, 5000
+    assert :ok = Ipse.Session.close_confirmed(old)
+    assert {:ok, old_events} = Ipse.Journal.load(ctx.dir, old_id)
+    assert hd(old_events)["metadata"] === legacy_metadata
+    assert File.read!(Path.join(ctx.root, "calls.log")) == "write_note\n"
+    resumed = session(ctx, [approval: :allow], old_id)
+    assert Ipse.Session.info(resumed).phase == :idle
+    assert File.read!(Path.join(ctx.root, "calls.log")) == "write_note\n"
+
+    path = Path.join(ctx.dir, fresh_id <> ".jsonl")
+    {:ok, fresh_events} = Ipse.Journal.load(ctx.dir, fresh_id)
+
+    for version <- [3, 2.0, 1, :absent] do
+      corrupted =
+        if version == :absent,
+          do:
+            update_in(hd(fresh_events), ["metadata"], &Map.delete(&1, "mcp_fingerprint_version")),
+          else: put_in(hd(fresh_events), ["metadata", "mcp_fingerprint_version"], version)
+
+      bytes =
+        Enum.map_join([corrupted | tl(fresh_events)], "", &(Jason.encode!(&1) <> "\n")) <>
+          "{partial"
+
+      File.write!(path, bytes)
+
+      assert {:error, :resume_configuration_mismatch} =
+               DynamicSupervisor.start_child(
+                 Ipse.Sessions,
+                 {Ipse.Session,
+                  config: config,
+                  cwd: ctx.root,
+                  state_dir: ctx.dir,
+                  id: fresh_id,
+                  subscriber: self()}
+               )
+
+      assert File.read!(path) === bytes
+      assert File.read!(Path.join(ctx.root, "calls.log")) == "write_note\n"
+    end
+  end
+
   test "server readiness starts at tool dispatch after a delayed model decision", ctx do
     gate =
       Task.async(fn ->

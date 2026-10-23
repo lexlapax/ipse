@@ -26,8 +26,8 @@ defmodule Ipse.Extension.ResultView do
   defp descriptor?(descriptor) do
     is_map(descriptor) and closed?(descriptor, @descriptor_keys) and
       descriptor["version"] == 1 and descriptor["kind"] == "saved.result" and
-      descriptor["historical_receipt"] == true and digest?(descriptor["output_id"]) and
-      digest?(descriptor["sha256"]) and is_integer(descriptor["byte_count"]) and
+      descriptor["historical_receipt"] == true and Ipse.JSON.sha256?(descriptor["output_id"]) and
+      Ipse.JSON.sha256?(descriptor["sha256"]) and is_integer(descriptor["byte_count"]) and
       descriptor["byte_count"] in 1..4_194_304
   end
 
@@ -262,5 +262,4 @@ defmodule Ipse.Extension.ResultView do
 
   defp closed?(value, keys), do: Enum.sort(Map.keys(value)) == Enum.sort(keys)
   defp nonnegative?(value), do: is_integer(value) and value >= 0
-  defp digest?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{64}\z/, value)
 end

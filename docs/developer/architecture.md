@@ -52,9 +52,9 @@ runs outside its GenServer. The implementation is divided by responsibility:
 | Read | Responsibility |
 | --- | --- |
 | [`Session`](../../lib/ipse/session.ex) | Public calls, caller/reference/phase admission, resources, accounting, cancellation, and authoritative state |
-| [`Session.Turn`](../../lib/ipse/session/turn.ex) | Prompt preparation, model requests, native tools, questions, and turn transitions |
+| [`Session.Turn`](../../lib/ipse/session/turn.ex) | Prompt preparation, request tool catalogs, model requests, native tools, questions, and turn transitions |
 | [`Session.Invocation`](../../lib/ipse/session/invocation.ex) | Extension continuations, host calls, inference, and validated publication |
-| [`Session.Context`](../../lib/ipse/session/context.ex) | Effective messages, compaction, runtime facts, and context measurement |
+| [`Session.Context`](../../lib/ipse/session/context.ex) | System/header rendering, workspace/skill manifests, effective messages, compaction, runtime facts, and context measurement |
 | [`Session.Saved`](../../lib/ipse/session/saved.ex) | Pure reconstruction plus validated inspection/handoff procedures |
 
 Turn and Invocation are synchronous implementation modules in the same Session
@@ -62,6 +62,13 @@ process. They have no independent mailbox or conversation state. For worker
 results, Session first matches the active task/ref/phase, closes its resource
 scope, and records the applicable accounting. Only then does the matching
 transition advance work. A stale result cannot revive a cancelled job.
+
+Keep pure construction with its feature owner. Context renders model context;
+Questions decides question availability; Delegation admits child routes and
+budgets. Turn and Invocation call these modules directly. They call Session for
+durable appends, accounting, approvals and resource registration because those
+effects must change the conversation owner's authoritative state. Removing every
+callback would hide that authority rather than simplify it.
 
 The writer owns the append descriptor. The lock guardian waits for registered
 writers, workers, scopes, and file effects before releasing the OS advisory lock.
@@ -82,8 +89,9 @@ end
 ```
 
 The return `:ok` means admission. The subscriber event means turn completion.
-Follow Session's prompt handler into `Turn.prompt/2`. It bounds input, expands
-selected skills, retains the accepted prompt, and starts registered owned work.
+Follow Session's prompt handler into `Turn.prompt/3`. It bounds input and prepares
+selected skills in registered owned work before retaining the accepted prompt.
+Cancellation settles a pending prompt caller without admitting a partial message.
 [`Workspace`](../../lib/ipse/workspace.ex) supplies saved instructions/skills.
 Those documents are untrusted reference text, never authority for actions.
 
@@ -105,7 +113,8 @@ continuation when changing visible text, and never render hidden reasoning.
 [`Provider.Transport`](../../lib/ipse/provider/transport.ex) bounds response bytes,
 deadlines, and sanitized errors; [`Provider.Stream`](../../lib/ipse/provider/stream.ex)
 owns bounded line/SSE/fragment assembly. [`HTTP`](../../lib/ipse/http.ex) owns
-isolated clients/proxy policy across inference, auth, and MCP.
+private Finch clients and proxy policy across inference, auth, and MCP. A monitored
+guardian keeps each bounded pool name until its client and descendants close.
 [`Auth`](../../lib/ipse/auth.ex) owns public login, identity validation, protected
 storage, and refresh locking. No failure silently changes billing or endpoint.
 
@@ -180,8 +189,8 @@ well as Session: a valid Session answer can still originate from a broken UI.
 
 ## Own child conversations
 
-[`Tools.Delegation`](../../lib/ipse/tools/delegation.ex) owns definitions, route
-policy, serial/pair execution, and child completion validation. It runs real tasks
+[`Tools.Delegation`](../../lib/ipse/tools/delegation.ex) owns definitions, call
+admission, route policy, serial/pair execution, and child completion validation. It runs real tasks
 and real child Sessions. Session admits child registrations and forwarded approvals
 against the active parent job and exact origin call. Register before prompting a
 child; stale/unrelated workers cannot attach work.

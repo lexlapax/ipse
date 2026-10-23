@@ -148,7 +148,7 @@ defmodule Ipse.Extension.Subscriptions do
         record["type"] == "lifecycle_prompt_committed" and record["version"] === 1 and
         id?(record["turn_id"]) and text?(record["text"]) and
         record["text_sha256"] == Ipse.JSON.sha256(record["text"]) and
-        hash?(record["message_sha256"]) and
+        Ipse.JSON.sha256?(record["message_sha256"]) and
         Journal.valid_source?(record["received_source"])
 
   def intent(identity, declaration, source, record, turn) do
@@ -748,5 +748,4 @@ defmodule Ipse.Extension.Subscriptions do
   defp keys?(record, keys), do: is_map(record) and Enum.sort(Map.keys(record)) == Enum.sort(keys)
   defp text?(value), do: is_binary(value) and String.valid?(value)
   defp id?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{32}\z/, value)
-  defp hash?(value), do: is_binary(value) and Regex.match?(~r/\A[0-9a-f]{64}\z/, value)
 end

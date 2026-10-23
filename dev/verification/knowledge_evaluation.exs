@@ -132,7 +132,7 @@ defmodule IpseKnowledgeExample.EvaluationProof do
 
       true =
         candidate["citation"]["content_sha256"] ==
-          Base.encode16(:crypto.hash(:sha256, text), case: :lower)
+          Ipse.JSON.sha256(text)
 
       {:ok, snapshot} = Evaluation.snapshot(run)
       true = length(snapshot["receipts"]) == length(stored["steps"]) + 2

@@ -140,7 +140,10 @@ defmodule IpseKnowledgeExample.Proof do
       missing =
         source_args("manual:pending")
         |> Map.delete("text")
-        |> Map.merge(%{"content_sha256" => sha(@text), "byte_count" => byte_size(@text)})
+        |> Map.merge(%{
+          "content_sha256" => Ipse.JSON.sha256(@text),
+          "byte_count" => byte_size(@text)
+        })
 
       "draft" = invoke(cp, "corpus", "source", source("open", missing))["status"]
       partial = invoke(cp, "corpus", "query", query)
@@ -324,7 +327,10 @@ defmodule IpseKnowledgeExample.Proof do
       graph_pending =
         source_args("manual:graph-pending")
         |> Map.delete("text")
-        |> Map.merge(%{"content_sha256" => sha(@text), "byte_count" => byte_size(@text)})
+        |> Map.merge(%{
+          "content_sha256" => Ipse.JSON.sha256(@text),
+          "byte_count" => byte_size(@text)
+        })
 
       "draft" = invoke(bp, "corpus", "source", source("open", graph_pending))["status"]
 
@@ -654,7 +660,7 @@ defmodule IpseKnowledgeExample.Proof do
   defp state_files(home) do
     Path.wildcard(Path.join(home, "extension-state-v1/*/state.json"), match_dot: true)
     |> Enum.filter(&File.regular?/1)
-    |> Map.new(&{Path.relative_to(&1, home), sha(File.read!(&1))})
+    |> Map.new(&{Path.relative_to(&1, home), Ipse.JSON.sha256(File.read!(&1))})
   end
 
   defp memory_entries(home, kind, scope, enabled) do
@@ -921,10 +927,8 @@ defmodule IpseKnowledgeExample.Proof do
       "expires_at_ms" => nil
     }
 
-  defp sha(bytes), do: Base.encode16(:crypto.hash(:sha256, bytes), case: :lower)
-
   defp domain_id(tag, parts),
-    do: sha(IO.iodata_to_binary(JSON.encode!(["ipse-knowledge", 1, tag, parts])))
+    do: Ipse.JSON.sha256(IO.iodata_to_binary(JSON.encode!(["ipse-knowledge", 1, tag, parts])))
 
   defp explicit_fact(
          raw,
@@ -941,13 +945,13 @@ defmodule IpseKnowledgeExample.Proof do
       Map.take(raw, ~w(source_id generation uri observed_at_ms event_at_ms))
       |> Map.merge(%{
         "version" => 1,
-        "source_key" => sha(raw["source_id"]),
-        "content_sha256" => sha(raw["text"]),
+        "source_key" => Ipse.JSON.sha256(raw["source_id"]),
+        "content_sha256" => Ipse.JSON.sha256(raw["text"]),
         "chunk_id" => chunk_id,
         "start_byte" => first,
         "end_byte" => last,
         "quote" => quote,
-        "quote_sha256" => sha(quote),
+        "quote_sha256" => Ipse.JSON.sha256(quote),
         "origin" => %{
           "kind" => "provided",
           "store_profile" => "notes",
@@ -993,13 +997,13 @@ defmodule IpseKnowledgeExample.Proof do
 
   defp citation!(citation, source_id, text) do
     ^source_id = citation["source_id"]
-    true = citation["generation"] == 1 and citation["content_sha256"] == sha(text)
+    true = citation["generation"] == 1 and citation["content_sha256"] == Ipse.JSON.sha256(text)
 
     quote =
       binary_part(text, citation["start_byte"], citation["end_byte"] - citation["start_byte"])
 
     ^quote = citation["quote"]
-    true = String.valid?(quote) and citation["quote_sha256"] == sha(quote)
+    true = String.valid?(quote) and citation["quote_sha256"] == Ipse.JSON.sha256(quote)
     :ok
   end
 
