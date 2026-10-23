@@ -454,6 +454,11 @@ The supported-toolchain loading correction passes 161 integrated caller tests an
 package/model-service checks, all fifteen Knowledge builds and ten source plus ten
 installed Knowledge routes. These use synthetic services, not actual model quality
 or Linux native enforcement evidence.
+Hosted run `39895104182` passed Ubuntu. macOS passed those source/native/package
+and Knowledge steps, then failed compilation of the final experimental App Sandbox
+verifier. Its stale helper capture is repaired with a causal compile regression,
+supported-toolchain compile check and passing real local App Sandbox probe. The
+original run remains failed; the corrected candidate still needs its hosted gate.
 
 The implementation proposal must cover runtime code, extension packages, tests,
 developer tooling, examples, shipped resources and both current manuals. Identify

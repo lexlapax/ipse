@@ -6,6 +6,27 @@ defmodule Ipse.Development.VerificationTest do
   alias Ipse.Development.Verification.Scenarios
   alias Ipse.Development.Verification.Runtime
 
+  test "the complete macOS verifier compiles without launching its platform probes" do
+    expression = ~S"""
+    [path] = System.argv()
+    {:__block__, _, forms} = path |> File.read!() |> Code.string_to_quoted!(file: path)
+    [definition] = for {:defmodule, _, _} = form <- forms, do: form
+    [{Ipse.Development.Platform.MacSandboxProbe, _}] = Code.compile_quoted(definition, path)
+    IO.puts("compiled complete sandbox verifier")
+    """
+
+    {output, status} =
+      System.cmd(
+        System.find_executable("elixir"),
+        ["-e", expression, "--", Path.expand("../../dev/verify-macos-sandbox.exs", __DIR__)],
+        env: [{"ERL_FLAGS", "+S 2:2 +A 1"}],
+        stderr_to_stdout: true
+      )
+
+    assert status == 0, output
+    assert output == "compiled complete sandbox verifier\n"
+  end
+
   test "the finite CLI rejects ambiguous and unsupported choices before setup" do
     invalid = [
       [],

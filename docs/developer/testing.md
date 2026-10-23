@@ -244,7 +244,10 @@ A local build is not publication. Distribution needs matching runtime notices vi
 
 ## Exercise actual OS policy and native protocols
 
-Default tests exclude host enforcement. On supported Linux:
+Default tests exclude host enforcement. They compile the complete experimental
+macOS verifier in a separate Elixir VM without launching its platform probes.
+That catches broken function links on either platform; actual policy enforcement
+still requires the separate native checks. On supported Linux:
 
 ```sh
 mix test --include native_sandbox

@@ -495,7 +495,7 @@ defmodule Ipse.Development.Platform.MacSandboxProbe do
       Enum.map_join(
         [probe, "parent", mode, role, ready, release, effect, secret],
         " ",
-        &quote_shell/1
+        &shell_quote/1
       )
 
     owner = self()

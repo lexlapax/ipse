@@ -114,6 +114,31 @@ additional nonblank lines. No line-count or measured-complexity reduction is cla
 The [provenance](review-provenance.json) retains the census and raw receipt hashes;
 the full logs and source inventory remain in the ignored continuation capsule.
 
+## Final macOS verifier repair
+
+[Hosted run 39895104182](https://github.com/lexlapax/ipse/actions/runs/39895104182)
+tested exact consolidation commit 6960ee2f7e1389c64ae0fe8a82d679c676ee0d76. Ubuntu
+passed its whole job. macOS passed its full suite, native checks, packaging and all
+source/installed Knowledge routes, then failed the final experimental App Sandbox
+verifier at compilation. The merged process-boundary function still captured the
+removed quote_shell name instead of the existing shell_quote function. This run
+remains failed; successful earlier steps do not upgrade its verdict.
+
+The repair changes that function capture to the retained helper. A default-suite
+regression compiles the complete verifier module in an isolated Elixir child
+without invoking its platform entrypoint. It first reproduced the exact undefined
+function failure, then passed after the repair. The same complete module compiles
+on Elixir 1.18.5 / OTP 27.3.4. The real default verifier also passed locally with
+workspace spaces and an apostrophe: signed policy denied outside reads, symlink
+reads, writes, chmod and loopback networking while permitting workspace/private
+temporary writes and nested-shell inheritance. Strict signing/entitlement checks
+passed. The optional detached-process boundary was not tested by this command;
+its documented containment limits remain.
+
+The [testing manual](../../developer/testing.md#exercise-actual-os-policy-and-native-protocols)
+now distinguishes cross-platform verifier compilation from actual OS enforcement.
+Final exact-source hosted verification remains required for the correction.
+
 ## Remaining acceptance
 
 The final exact-SHA hosted matrix, final-source Linux native-inclusive checks,
