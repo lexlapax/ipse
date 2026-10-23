@@ -137,14 +137,20 @@ its documented containment limits remain.
 
 The [testing manual](../../developer/testing.md#exercise-actual-os-policy-and-native-protocols)
 now distinguishes cross-platform verifier compilation from actual OS enforcement.
-Final exact-source hosted verification remains required for the correction.
+The correction at c9a2d80740a937bb41f5a58b6809c55dbb3fe2f6 passed
+[hosted run 39899526393](https://github.com/lexlapax/ipse/actions/runs/39899526393)
+on Ubuntu and macOS, including the final experimental verifier and all installed
+proofs. [Metadata and log hashes](hosted-c9a2d80.json) preserve the exact candidate,
+job/step results and exclusions. macOS reported 1,497 tests with zero failures,
+36 excluded and one skipped; Ubuntu reported 1,532 tests with zero failures and
+36 excluded. These totals include the reported exclusions, not additional passes.
+The following verification-record update changes documentation only.
 
 ## Remaining acceptance
 
-The final exact-SHA hosted matrix, final-source Linux native-inclusive checks,
-independent candidate review and commit/push remain. None is supplied by the
-read-only reports or AST comparisons. Heavy Serenity verification waits for the
-measured comparison to close.
+Final-source Linux native-inclusive checks and independent candidate review remain.
+Neither is supplied by the hosted default suites, read-only reports or AST
+comparisons. Heavy Serenity verification waits for the measured comparison to close.
 
 P27 remains open for the complete private comparison/audit, independent semantic
 review/adjudication, individual strategy qualification, all-results publication,
