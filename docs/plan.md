@@ -413,7 +413,7 @@ The complete milestone requires all of the following:
 | P27H5 | Explicit schema-bound inference and independently selected extraction and rerank contracts | Compatibility and protocol checks complete; semantic acceptance open |
 | P27A | Independent Research and lexical Corpus packages with cited evidence, explicit limits, partial failures and suppression | Implementation and review repairs verified; held-out acceptance open |
 | P27B | Independent Graph, optional extraction, dense/hybrid retrieval and reranking | Implementation and review repairs verified; matched comparison and selection open |
-| Structural readiness | Whole-codebase and manual consolidation implemented; review/loading/verifier repairs pass local and exact-source hosted checks at c9a2d80, including all installed proofs | Open; independent candidate review and final Linux native-inclusive checks remain |
+| Structural readiness | Whole-codebase/manual consolidation reviewed at c9a2d80; its sole Daybreak P2 inventory finding repaired with causal regression, CLI and full local baseline checks | Open; corrected-source hosted/installed and final Linux native-inclusive checks remain |
 | Comparison audit repair | Stream merged execution against closed cell inventories without materializing the raw aggregate | Reviewed; platform suites and all four source/installed CPU/GPU measured proofs pass |
 | Explicit context repair | Bind portable and local context; verify loaded completion context while allowing separate embedding windows | Reviewed; platform/floor checks, 31-case service proofs, all four measured proofs and eight exposed GPU requests pass |
 | Duration composition repair | Compose fourteen legal service lifetimes within one finite measured-root ceiling; preserve existing request and service limits | Reviews, platform and supported-toolchain checks, native controls, package checks, all four source/installed CPU/GPU measured proofs and exact-source hosted CI pass at `817ab84` |
@@ -445,7 +445,7 @@ introduce another conversation owner.
 The [current consolidation review](archive/2026-10-22-p27-structural-review/index.md)
 records the independent findings and their causal checks. Current manuals now have
 14 operator and 22 developer chapters. Remaining structural tasks are the final
-Linux native-inclusive checks and independent candidate review.
+Linux native-inclusive checks and corrected-source hosted/installed checks.
 File-count reductions alone do not establish
 deletion of unnecessary interfaces or lower implementation complexity. The earlier
 broad default suite now passes with 1,459 passed, one skipped and 36 excluded.

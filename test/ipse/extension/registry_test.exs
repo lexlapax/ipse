@@ -56,6 +56,14 @@ defmodule Ipse.Extension.RegistryTest do
     assert length(Registry.builtins()) == 8
   end
 
+  test "each built-in binds every packaged file exactly once" do
+    for %{"artifact" => reference} <- Registry.builtins() do
+      assert {:ok, artifact} = Registry.lookup(nil, reference)
+      paths = Enum.map(artifact.manifest["files"], & &1["path"])
+      assert length(paths) == length(Enum.uniq(paths)), "duplicate file in #{reference}"
+    end
+  end
+
   test "exact built-in code, runtime and options are bound into immutable identities" do
     assert {:ok, [entry]} = Registry.prepare(catalog(), "/fixture/home")
     assert {:ok, [unchanged]} = Registry.prepare(catalog(), "/fixture/home")

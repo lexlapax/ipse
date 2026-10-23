@@ -248,11 +248,7 @@ defmodule Ipse.Extension.Registry do
     },
     "builtin:cost-tree:1" => %{
       module: Ipse.Builtins.CostTree,
-      modules: [
-        Ipse.Builtins.CostTree,
-        Ipse.Usage.Costs,
-        Ipse.Usage.Costs
-      ],
+      modules: [Ipse.Builtins.CostTree, Ipse.Usage.Costs],
       capabilities:
         ~w(invoke.command host.actions host.usage host.usage.scan host.usage.children),
       exports: Ipse.Builtins.CostTree.exports(),
@@ -265,11 +261,7 @@ defmodule Ipse.Extension.Registry do
     },
     "builtin:cost-summary:1" => %{
       module: Ipse.Builtins.CostSummary,
-      modules: [
-        Ipse.Builtins.CostSummary,
-        Ipse.Usage.Costs,
-        Ipse.Usage.Costs
-      ],
+      modules: [Ipse.Builtins.CostSummary, Ipse.Usage.Costs],
       capabilities: ~w(invoke.command host.actions host.usage host.usage.scan),
       exports: Ipse.Builtins.CostSummary.exports(),
       schema: %{

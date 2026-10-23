@@ -146,11 +146,43 @@ job/step results and exclusions. macOS reported 1,497 tests with zero failures,
 36 excluded. These totals include the reported exclusions, not additional passes.
 The following verification-record update changes documentation only.
 
+## Whole-milestone followup, 2026-10-23 UTC
+
+The [Daybreak report](review-daybreak-c9a2d80.md) reviews the whole P27 milestone
+at exact c9a2d80740a937bb41f5a58b6809c55dbb3fe2f6. It confirms the earlier
+as-of, safe-integer and saved-question repairs and finds one P2 defect: cost-tree
+and cost-summary each list the merged Costs BEAM twice in their file inventories.
+The parent accepted the finding and independently reproduced the duplicate
+manifest paths. Removing both duplicate declarations makes each digest bind one
+entry per physical file. Exact-build admission and resume validation still apply.
+
+The regression obtains all eight real built-in manifests and checks unique paths.
+It failed on cost-summary before the repair. Corrected-source validation passed:
+
+- 28 focused registry/accounting tests and 12 bundled report/child-usage tests.
+- Both actual CLI inspections, with three files each and declared byte totals
+  equal to unique physical-file totals, using an isolated empty home.
+- Build, formatting, strict compile, default suite and credential-free demo.
+  The suite passed 1,461 tests, with one skipped and 36 excluded, in 1,195.6 seconds.
+
+The [provenance record](review-provenance.json) retains original/bannered report
+hashes and repair-log hashes. Daybreak's own valid default suite passed 1,460 tests,
+with one skipped and 36 excluded. Its invalid temporary build-layout attempts and
+out-of-scope dependency-fetch check remain explicitly excluded. It ran no native,
+installed-package, hosted, actual-model or private-evaluation checks.
+
+Whole accounting, resource-control and extension manuals were reviewed. Their
+commands, ownership and exact-build guidance remain accurate. The report's pending
+CI statements are historical; the c9a2d80 matrix above and documentation-only
+1ba8278 matrix later passed. Those matrices precede this inventory repair and
+do not supply its corrected-source platform checks.
+
 ## Remaining acceptance
 
-Final-source Linux native-inclusive checks and independent candidate review remain.
-Neither is supplied by the hosted default suites, read-only reports or AST
-comparisons. Heavy Serenity verification waits for the measured comparison to close.
+Corrected-source hosted/installed checks and final-source Linux native-inclusive
+checks remain. The independent whole-milestone review is complete at c9a2d80;
+its accepted inventory finding has the local repair checks above. Heavy Serenity
+verification waits for the measured comparison to close.
 
 P27 remains open for the complete private comparison/audit, independent semantic
 review/adjudication, individual strategy qualification, all-results publication,
