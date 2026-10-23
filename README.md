@@ -11,8 +11,9 @@ choose a provider explicitly when you are ready to use a model.
 
 P27 is complete within its optional Corpus, Graph and Research scope. The
 [plan](docs/plan.md#p27-optional-research-graph-and-rag) records acceptance, the
-selected hybrid reference configuration and its limits. Voice and media (P28)
-remain deferred.
+selected hybrid reference configuration and its limits. The plan proposes operator
+usability and release readiness (P29), OpenRouter and Gemini providers (P30) and
+advisory decision engines (P31) next; voice and media (P32) remain deferred.
 
 ## Build and try the demo
 

@@ -72,8 +72,14 @@ findings, failures and scoped acceptance. P27 research, graph and RAG is complet
 within its optional-package scope. Whole-milestone review repairs, consolidation,
 final-code platform/installed checks, held-out review, publication and acceptance
 audit pass. Hybrid is selected as the qualifying reference configuration;
-media remains deferred to P28. External services remain configurable; no third-party
+media remains deferred to P32. External services remain configurable; no third-party
 engine, database or mandatory backend is selected.
+
+The next sequence turns the verified harness into an operator-facing product:
+P29 operator usability and release readiness, P30 a provider registry with
+OpenRouter and Gemini, and P31 an advisory decision-engine contract. Voice and
+media, formerly P28, is renumbered P32 and remains deferred. These are proposed
+scopes; each starts only when selected and keeps its own acceptance evidence.
 
 | Milestone or gate | Current state | Next result |
 | --- | --- | --- |
@@ -82,15 +88,18 @@ engine, database or mandatory backend is selected.
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Complete within declared supervision/assistance at `3307563`; security findings triaged and corrected scopes verified | Preserve frozen evidence; select a later production increment separately |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Complete within explicit-note scope at `25f1d8e`; review repairs and local/hosted gates pass | Preserve lifecycle, authority and documented retention limits |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Complete; all acceptance tasks closed within optional-package scope; hybrid qualified and selected | Preserve versioned evidence and explicit configuration; evaluate new workloads independently |
-| [P28: voice and media](#p28-voice-and-realtime-media) | Deferred; unimplemented | Explicit media contracts and later device/service validation |
+| [P29: operator usability and release](#p29-operator-usability-and-release-readiness) | Proposed; next | First-run setup, environment diagnosis, actionable errors and a tagged, installable release |
+| [P30: provider registry, OpenRouter and Gemini](#p30-provider-registry-openrouter-and-gemini) | Proposed | Registry refactor without behavior change, then fixture-verified adapters and separate live account checks |
+| [P31: decision engines](#p31-advisory-decision-engines) | Proposed | Typed closed-answer contract, fixture engines, then OpenAI Decisions and SystemOne-compatible adapters |
+| [P32: voice and media](#p32-voice-and-realtime-media) | Deferred; unimplemented; formerly P28 | Explicit media contracts and later device/service validation |
 | [Apache-2.0 transition](#license-transition) | Complete; local and hosted `7bb642b` checks pass | Preserve bundled identity/recovery and third-party license boundaries |
 
 The requested P22–P25 campaign and separate Apache-2.0 transition are complete
 within their documented scopes. P26 remediation and P27 are complete, and
-P28 remains deferred. Preserve P25's frozen
+P32 remains deferred. Preserve P25's frozen
 inputs, runners, source/review/scan identities, scores and failed attempts; newer
 documentation does not rescan code or expand an earlier verdict. P27 follows the
-researched proposal; further memory automation remains separately scoped. Keep P28
+researched proposal; further memory automation remains separately scoped. Keep P32
 deferred. No further broad architecture-review loop or Cloud scan is scheduled.
 
 The [register](archive/2026-10-18-before-manual-rewrite/docs/developer/architecture-review-dispositions.md) owns dispositions,
@@ -230,7 +239,7 @@ installation or production implementation is not required by this milestone.
 Execution readiness requires a passing frozen runner, reviewed task/resource
 limits, usable explicit research access for both tracks and P24's architecture
 dispositions and triaged baseline audit. Brief preparation and service-access
-checks can proceed earlier. P28 live audio is not a prerequisite. Scope the trial
+checks can proceed earlier. Live audio (now P32) is not a prerequisite. Scope the trial
 as several reviewable work packages with retained intermediate artifacts, so
 research, long-task recovery and actual self-development have separate evidence.
 
@@ -531,7 +540,7 @@ Preserve the published outcomes, raw assessments, human resolution, final scores
 matched resources and all earlier failures. The released workload is now exposed;
 future quality acceptance requires independently authored data. Later engine,
 corpus, provider or model changes need their own scoped evaluation rather than
-upgrading this historical result or replaying consumed seals. P28 remains deferred.
+upgrading this historical result or replaying consumed seals. P32 remains deferred.
 
 The [independent review of `a7f4982`](archive/2026-10-23-p27-independent-review/index.md)
 confirms acceptance within this scope. The later
@@ -593,10 +602,117 @@ procedures. Final acceptance still requires the complete frozen audit, independe
 semantic judgments, all-strategy publication, an individual qualifying strategy,
 the engine decision and whole-document editorial integration.
 
-## P28: voice and realtime media
+## P29: operator usability and release readiness
 
-**Deferred; unimplemented. Formerly P24.** Keep the requested scope for a future
-delivery; it is no longer ahead of architecture/security review or self-development.
+**Proposed; next.** P0–P27 established correctness, recovery and evidence for a
+supervised developer. This milestone makes the same harness usable by an operator
+who did not build it, without weakening approvals, explicit provider selection or
+fail-closed behavior. It adds no provider, model service or dependency by default.
+
+Scope:
+
+1. A guided first-run path that writes an owner-only operator configuration after
+   showing it: provider and billing choice, credential source, workspace defaults
+   and optional extensions. It never selects a provider or paid mode implicitly and
+   never prints or copies credentials.
+2. An `ipse doctor` diagnosis of toolchain, runtime identity, configuration
+   resolution, credential presence (not values), provider reachability on explicit
+   request, native policy availability, MCP and extension selection, session store
+   and lock health. Every finding names the documented recovery step.
+3. An audit of operator-visible refusals and errors from `ipse chat`, `run`,
+   `config`, resume and extension/MCP paths. Each states the cause, what did or
+   might have happened and the next command, matching
+   [recovery](operator/recovery.md).
+4. A versioned release: tagged source, Linux and macOS archives from the existing
+   [packaging](developer/testing.md) path, checksums, release notes and
+   install/upgrade/uninstall instructions. Upgrades preserve saved sessions or
+   refuse them with a documented handoff, as the license transition did.
+5. A whole-document review of the operator manual as a new user's path from
+   install to a first real task, including accepted limits stated where they apply.
+
+Acceptance: fixture tests for setup output, configuration resolution and each
+doctor finding; no network traffic without an explicit request; installed-archive
+first-run and upgrade checks on Linux; hosted macOS package checks; and a recorded
+unassisted walkthrough by a fresh operator account. Signing, notarization and
+distribution channels such as package managers need separate approval as release
+dependencies.
+
+## P30: provider registry, OpenRouter and Gemini
+
+**Proposed.** Provider identity is currently a closed list repeated in
+[`Ipse.Provider`](../lib/ipse/provider.ex), [profiles](../lib/ipse/config/profiles.ex),
+[usage](../lib/ipse/usage.ex) and [authentication](../lib/ipse/auth.ex), with
+embeddings limited to OpenAI and Ollama in
+[`Ipse.Provider.Embedding`](../lib/ipse/provider/embedding.ex). Adding providers
+one branch at a time would spread credential, billing and continuation rules.
+
+1. **Registry, no behavior change.** Each provider declares its adapter, default
+   endpoint, credential source, billing mode, reasoning/profile validation, usage
+   normalization, pricing source and destination facts in one place. Existing
+   journals, profiles, cost reports and destination digests stay identical; old
+   sessions resume unchanged.
+2. **OpenAI-compatible Chat Completions adapter.** The current OpenAI adapter uses
+   the Responses API only. A separate Chat Completions adapter serves OpenRouter as
+   a named provider and, with explicit base URLs, local servers that implement the
+   same interface. OpenRouter can route to different upstream hosts or fall back to
+   other models. Ipse must pin the requested model and upstream order, disable
+   fallbacks, record the upstream that actually served each response and refuse a
+   mismatch, so no provider or model changes silently.
+3. **Native Gemini adapter.** Use the Gemini API rather than its OpenAI-compatible
+   endpoint, so thought signatures and function-call state are preserved as
+   provider continuation data. AI Studio API keys and Vertex credentials are
+   distinct explicit choices, as are free and paid billing. Gemini embeddings may
+   follow under the existing versioned embedding contract with its own evaluation.
+
+Acceptance: registry equivalence tests over existing fixtures and saved sessions;
+loopback fixture servers for streaming, tool calls, truncation, errors, usage and
+continuation round trips for each new adapter; budget and cost reporting with
+unknown prices kept unpriced; destination and egress facts; and separately
+recorded opt-in live account checks. Whether OpenRouter and Gemini join the
+provider priority order in [AGENTS.md](../AGENTS.md) is a developer decision
+recorded before release.
+
+## P31: advisory decision engines
+
+**Proposed.** Decision engines answer typed questions from closed answer sets
+instead of generating text. Candidates are OpenAI's Decisions API, a beta
+`POST /v1/decisions` endpoint, and the SystemOne wire format used by TypeSafe's
+hosted Jev service and by Zev, an independent MIT-licensed local engine that serves
+both formats on loopback. Public details are recent and partly secondary; verify
+current official documentation before adapter work.
+
+This is a separate operation, not a chat provider, following the pattern of the
+P27 embedding contract:
+
+1. A versioned request of bounded context plus questions (choice, score and
+   yes/no predicate), each with a closed answer set, and a validated response of
+   one in-set answer per question, an explicit uncertain/insufficient outcome or
+   a refusal. Out-of-set or partial responses refuse the whole decision.
+2. Adapters for OpenAI Decisions, hosted SystemOne and loopback SystemOne,
+   each with operator-configured endpoint, credential, destination facts,
+   usage/cost accounting and budgets. There is no fallback between engines or to
+   a language model.
+3. Exposure through a new `host.decision` extension grant beside `host.embedding`
+   and an optional model tool. Results are advisory data. They never approve an
+   effect, grant a capability, choose a provider or profile without operator
+   confirmation, or bypass journaling.
+4. One measured first use, such as suggesting a profile or route for a task, with a
+   small independently labeled workload and published agreement before the
+   suggestion appears to operators. Later uses, including memory capture gating,
+   skill selection and Research/Graph classification, need their own evaluations.
+
+Acceptance: fixture engines for valid, out-of-set, uncertain, slow, oversized and
+disconnected responses; owner death and cancellation; accounting and budget
+refusal with zero dispatch; no-fallback checks; and separately recorded opt-in live
+checks. Zev or another local engine is an operator-run external service, not a
+bundled or required dependency; calling it adds nothing to the dependency
+inventory, but the operator manual documents it as an optional endpoint.
+
+## P32: voice and realtime media
+
+**Deferred; unimplemented. Formerly P28, and before that P24.** Keep the requested
+scope for a future delivery; it is no longer ahead of architecture/security review
+or self-development.
 Build on the owned text/provider and P23 accounting foundation. Start with a
 chained STT → admitted text agent → TTS extension/client; then add a versioned
 realtime provider/session capability for bidirectional transport, interruption,
@@ -619,8 +735,8 @@ See [media boundaries](archive/2026-10-18-before-manual-rewrite/docs/developer/r
 ## License transition
 
 The operator-requested MIT → Apache-2.0 transition follows the completed P22–P25
-campaign, before separately deferred P26–P28 features. Root and bundled extension
-licenses now carry Apache-2.0 with the original copyright. Current contributor,
+campaign, before the separately deferred P26–P27 features and voice (now P32).
+Root and bundled extension licenses now carry Apache-2.0 with the original copyright. Current contributor,
 dependency, operator and developer guidance uses that license; upstream dependency
 licenses, prior artifacts and historical evidence retain their own provenance.
 
