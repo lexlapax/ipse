@@ -44,6 +44,42 @@ defmodule Ipse.ConfigSessionTest do
     refute output =~ "auth_dir"
   end
 
+  test "config validates an explicit MCP file without launching servers or requiring credentials",
+       c do
+    put(c, %{provider: "anthropic", model: "local-inspection"})
+    path = Path.join(c.root, "mcp.json")
+    File.write!(path, Jason.encode!(%{servers: [%{transport: "http", url: "invalid"}]}))
+
+    output =
+      capture_io(:stderr, fn ->
+        assert Ipse.CLI.run(["config", "--cwd", c.cwd, "--mcp-config", path]) == 1
+      end)
+
+    assert output =~ "MCP configuration is invalid"
+
+    File.write!(
+      path,
+      Jason.encode!(%{
+        servers: [
+          %{
+            id: "remote",
+            transport: "http",
+            url: "https://example.invalid/mcp",
+            tools: ["lookup"]
+          }
+        ]
+      })
+    )
+
+    output =
+      capture_io(fn ->
+        assert Ipse.CLI.run(["config", "--cwd", c.cwd, "--mcp-config", path]) == 0
+      end)
+
+    assert Jason.decode!(output)["settings"]["provider"] == "anthropic"
+    refute File.exists?(Path.join(c.home, "sessions"))
+  end
+
   test "trusted project endpoint is rejected before credential-bearing HTTP dispatch", c do
     {:ok, listener} =
       :gen_tcp.listen(0, [:binary, active: false, reuseaddr: true, ip: {127, 0, 0, 1}])

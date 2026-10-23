@@ -41,6 +41,9 @@ Expect non-secret effective settings, each setting's provenance, source paths
 and digests, and a configuration fingerprint. No inference occurs. Keep tokens
 out of this file: subscription access uses `ipse login`, and API providers use
 their supported credential environment variables.
+An explicit `--mcp-config PATH` is also validated by `ipse config`, including
+endpoint and allowlist rules. It does not launch servers or discover remote
+tools. Use the [MCP manual](mcp.md) to review those capabilities before a session.
 
 The default file is `IPSE_HOME/config.json`; `IPSE_HOME` defaults to `~/.ipse`.
 `--config PATH` overrides `IPSE_CONFIG`. An explicitly selected file must exist;

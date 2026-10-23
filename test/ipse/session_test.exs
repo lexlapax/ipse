@@ -210,7 +210,7 @@ defmodule Ipse.SessionTest do
       %{s | phase: :prompt_preflight, task: task, prompt_from: {caller, ref}}
     end)
 
-    assert_receive {^ref, {:error, :skill_catalog_changed}}, 2000
+    assert_receive {^ref, {:error, :skill_preflight_failed}}, 2000
     assert_receive {:ipse, ^pid, {:done, :error}}, 2000
     assert Ipse.Session.info(pid).phase == :idle
     assert :ok = Ipse.Session.prompt(pid, "another turn")

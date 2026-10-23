@@ -91,6 +91,26 @@ defmodule Ipse.MCP.ConfigTest do
     end
   end
 
+  test "overlapping secrets preserve legacy own-server hashing and consistent portable hashing",
+       ctx do
+    first = server() |> Map.put("args", ["--k=xabc"]) |> Map.put("env", %{"TOKEN" => "abc"})
+    second = server() |> Map.put("id", "other") |> Map.put("env", %{"TOKEN" => "xabc"})
+    write(ctx.path, %{"servers" => [first, second]})
+    assert {:ok, [selected, _]} = Config.load(ctx.path)
+
+    expected =
+      {selected.id, selected.command, ["--k=x[redacted]"], selected.tools, ["TOKEN"],
+       selected.timeout_ms}
+      |> :erlang.term_to_binary([:deterministic])
+      |> Ipse.JSON.sha256()
+
+    assert Config.fingerprint_version(selected, 1).fingerprint == expected
+    assert Config.fingerprint_version(selected, 2).fingerprint == selected.fingerprint
+    assert Config.manifest(selected).args == ["--k=[redacted]"]
+    assert Config.manifest(Config.fingerprint_version(selected, 1)).args == ["--k=[redacted]"]
+    assert Config.redact("xabc", Config.fingerprint_version(selected, 1)) == "[redacted]"
+  end
+
   test "resources-only and prompts-only servers get stable bounded model IDs", ctx do
     uri = "file:///notes/current"
     write(ctx.path, %{"servers" => [with_options(%{"tools" => [], "resources" => [uri]})]})

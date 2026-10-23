@@ -113,7 +113,7 @@ All jobs used an isolated Git checkout on Linux; its primary checkout remained a
 `a912db1` and existing services were untouched. Full-run and corrected-case results
 are composed coverage, not a claim of a second clean full run. Hosted CI for the
 initial maintenance commit is a separate status. No fresh macOS sandbox-specific
-check or live-model measurement is claimed.
+check, toolchain-floor runtime check or live-model measurement is claimed.
 
 ## Formatter and standalone bootstrap follow-up
 

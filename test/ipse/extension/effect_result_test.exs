@@ -339,6 +339,21 @@ defmodule Ipse.Extension.EffectResultTest do
            )
   end
 
+  test "legacy MCP bindings require an absent version rather than explicit version one" do
+    {original, server} = intent()
+    descriptor = descriptor(Ipse.MCP.Config.fingerprint_version(server, 1))
+    binding = MCPCall.binding(descriptor, "fetch")
+    metadata = %{"mcp_servers" => [binding["server"]["fingerprint"]]}
+    assert MCPCall.valid_binding?(binding, original["request"], identity(original), metadata)
+
+    refute MCPCall.valid_binding?(
+             binding,
+             original["request"],
+             identity(original),
+             Map.put(metadata, "mcp_fingerprint_version", 1)
+           )
+  end
+
   test "HTTP public binding rejects endpoint drift without performing network IO" do
     server =
       load_servers([

@@ -135,6 +135,10 @@ Invoke a selected skill with `$name`. List available skills before a session wit
 support files. Skill documents must be regular files; FIFOs, devices, directories
 and leaf symlinks are skipped. A selected file that changes or becomes unavailable
 refuses the prompt; inspect it and use `/context refresh` before trying again.
+These regular-file and path checks do not prevent hostile concurrent replacement
+between validation and reading. Use reviewed workspaces; skill text grants no
+execution or installation permission. An internal preflight failure reports a
+failed operation separately from a changed skill catalog.
 Skill documents are limited to 64 KiB; explicit resource reads
 are limited to 32 KiB and eight path components, without recursive loading.
 

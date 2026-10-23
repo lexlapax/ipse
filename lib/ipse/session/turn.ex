@@ -39,7 +39,7 @@ defmodule Ipse.Session.Turn do
   end
 
   def prompt_prepared(s, {:error, error}) when is_binary(error) do
-    GenServer.reply(s.prompt_from, {:error, :skill_catalog_changed})
+    GenServer.reply(s.prompt_from, {:error, :skill_preflight_failed})
     {:noreply, fail(%{s | prompt_from: nil}, error)}
   end
 

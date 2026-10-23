@@ -155,6 +155,41 @@ defmodule Ipse.MCP.HTTPTest do
     assert text =~ "Synthetic prompt data: synthetic"
   end
 
+  test "ordinary HTTP tool errors retain diagnostics and possible effects without idle replay",
+       ctx do
+    {server, agent} = fixture(ctx, :tool_error)
+    {pid, opts} = session(ctx, server, :allow)
+    :ok = Ipse.Session.prompt(pid, "Synthetic network write")
+    assert_receive {:ipse, ^pid, {:done, :ok}}, 5000
+    assert Agent.get(agent, & &1.calls) == 2
+    id = Ipse.Session.info(pid).id
+    assert {:ok, events} = Ipse.Journal.load(opts[:state_dir], id)
+
+    messages =
+      for event <- events, get_in(event, ["message", "role"]) == "tool", do: event["message"]
+
+    assert length(messages) == 2
+
+    for message <- messages do
+      assert message["ipse_tool_outcome"]["status"] == "error"
+      assert message["content"] =~ "Effects may have happened"
+      assert message["content"] =~ "synthetic"
+      refute message["content"] =~ "synthetic-bearer-token"
+    end
+
+    assert :ok = Ipse.Session.close_confirmed(pid)
+
+    assert {:ok, resumed} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Ipse.Session, Keyword.put(opts, :id, id)}
+             )
+
+    assert Ipse.Session.info(resumed).phase == :idle
+    assert Agent.get(agent, & &1.calls) == 2
+    assert :ok = Ipse.Session.close_confirmed(resumed)
+  end
+
   test "post-dispatch disconnect is unknown, stops the batch and never replays on resume", ctx do
     {server, agent} = fixture(ctx, :disconnect)
     {pid, opts} = session(ctx, server, :allow)
@@ -432,6 +467,7 @@ defmodule Ipse.MCP.HTTPTest do
 
           "tools/call" ->
             %{
+              "isError" => mode == :tool_error,
               "content" => [
                 %{
                   "type" => "text",

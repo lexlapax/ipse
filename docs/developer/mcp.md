@@ -64,8 +64,15 @@ array order. Tool and catalog descriptors use the same canonical encoder with
 separate `ipse.mcp.tool` and `ipse.mcp.catalog` tags. The public-field validator
 and loader share Config's fingerprint implementation.
 
-An absent metadata version means legacy version one. Resume selects that scheme
-before comparing configuration, discovering descriptors or writing more records.
+Load-time and resumed version-two hashes use the same cross-server redaction
+set. Legacy hashes use only the original server's secrets, as their writer did;
+output redaction still covers every configured server's secrets. The overlapping
+secret controls pin this distinction without exposing environment values.
+
+An absent metadata version means legacy version one; an explicit one is refused
+because no writer produces it. Only an explicit integer two selects the new format.
+Resume selects that scheme before comparing configuration, discovering descriptors
+or writing more records.
 Legacy public manifests omit the version field. Their exact deterministic Erlang
 term encoding remains unchanged, including its
 [within-major-OTP guarantee](https://www.erlang.org/doc/apps/erts/erlang.html#term_to_binary/2).

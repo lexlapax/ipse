@@ -188,6 +188,11 @@ refuse unsupported OS before inputs/output. Follow [evaluation](knowledge-evalua
 for exact maps/seals/measurement setup rather than inventing launch arguments.
 `test/dev/verification_test.exs` checks grammar, compiler closure, changed inputs,
 source/installed launch, retained failure, and cleanup precedence.
+The Knowledge independence test keeps the nine real memory/package workflows and
+adds disabled, idle and resumed Sessions for every capability preset. Its call
+counters cover worker startup, State, MCP, embeddings and model requests. These
+extra inert controls exercise granted authority without invoking domain operations
+or contacting an inference service.
 
 ## Learn a complete workflow through the compatibility lab
 

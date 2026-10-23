@@ -249,6 +249,34 @@ defmodule Ipse.Extension.MCPCallSessionTest do
     assert :ok = Ipse.Extension.validate(Actions.resume(result))
   end
 
+  test "a diagnostic that becomes a configured secret after redaction remains unknown", ctx do
+    File.write!(Path.join(ctx.root, "error-text"), "qzz")
+    entry = Fixture.stdio_config(ctx.root, "tool_error")
+
+    env =
+      Map.merge(Map.get(entry, "env", %{}), %{
+        "FIRST_TOKEN" => "q[redacted]",
+        "SECOND_TOKEN" => "zz"
+      })
+
+    selected = parsed_server(ctx, Map.put(entry, "env", env))
+    assert Ipse.MCP.Config.redact("qzz", selected) == "q[redacted]"
+    cfg = config(ctx, selected)
+    pid = start(ctx, cfg)
+    invoke(pid)
+    done(pid, :error)
+    ev = events(ctx, pid)
+    assert [%{"outcome" => %{"status" => "unknown", "value" => %{}}}] = action_results(ev)
+    refute Jason.encode!(ev) =~ "q[redacted]"
+    assert Fixture.calls(ctx.root) == 1
+    assert File.read!(Path.join(ctx.root, "partial-effect")) == "written before error"
+    id = Session.info(pid).id
+    :ok = Session.close_confirmed(pid)
+    resumed = start(ctx, cfg, id)
+    assert Session.info(resumed).phase == :idle
+    assert Fixture.calls(ctx.root) == 1
+  end
+
   for transport <- [:stdio, :http] do
     test "#{transport}: a dispatched tool error retains its diagnostic and possible effect on resume",
          ctx do

@@ -2366,8 +2366,7 @@ defmodule Ipse.Session do
   defp open(dir, id, cwd, config) do
     with {:ok, [%{"metadata" => meta} | _] = events} <- Journal.load(dir, id, config[:journal]),
          :ok <- Ipse.Journal.writable_events(events),
-         version = Map.get(meta, "mcp_fingerprint_version", 1),
-         true <- version in [1, 2],
+         {:ok, version} <- Ipse.MCP.Config.journal_fingerprint_version(meta),
          config = Ipse.MCP.fingerprint_version(config, version),
          {:ok, old_cwd} <- Workspace.canonical_path(meta["cwd"]),
          true <-

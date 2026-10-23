@@ -180,6 +180,9 @@ Expect a graph passage quoting `Release requires quiescence.`, an attributed
 `as_of_ms: null` selects and records the current time. An explicit value is Unix
 milliseconds. Sources observed after that time, expired sources, historical
 imports, and facts outside their validity interval are not current evidence.
+As-of queries filter retained generations; they do not reconstruct replaced
+source generations or deleted graph history. A past timestamp cannot recover
+facts whose source generation has been replaced or forgotten.
 
 Traversal follows outgoing positive relationships, matching entity names without
 case. Two positive requirements such as `Release requires quiescence` and

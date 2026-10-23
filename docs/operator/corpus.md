@@ -194,8 +194,8 @@ or aborting it. Resume never completes it automatically.
 
 Use hybrid `blend` with `rerank: null` as the reference configuration when adding
 embeddings. It combines BM25 and dense retrieval with reciprocal rank fusion at
-`rrf_k: 60`, requires the selected embedding profile, and refuses missing vectors
-instead of silently using another route. The
+`rrf_k: 60` and `top_k: 10`, requires the selected embedding profile, and refuses
+missing vectors instead of silently using another route. The
 [dated comparison](../archive/2026-10-23-p27-heldout-comparison/index.md)
 records the quality and resource tradeoffs for this choice. Its generated-answer
 results used a fixed final-answer model; Corpus query itself only returns evidence.
@@ -203,7 +203,7 @@ Keep lexical `words` when you want source search without model calls. Treat the
 reranker below as an explicit alternative to evaluate on your own workload.
 
 This example needs an already running local Ollama service with
-`embeddinggemma:latest` and `qwen3.5:9b` already available. It installs or downloads
+`embeddinggemma:latest` already available. It installs or downloads
 nothing. Select your actual models and native embedding dimensions explicitly if
 they differ. The [embedding manual](extensions.md) explains host profile fields.
 Keep the lexical route when you do not want model calls.
@@ -212,8 +212,8 @@ Exit the earlier chat with `/exit`. Keep the artifact parent and application hom
 from the first example. Create a fresh workspace and these two files in your shell:
 
 ```sh
-IPSE_CORPUS_SEMANTIC_WORKSPACE=$(mktemp -d)
-cat > "$IPSE_CORPUS_ARTIFACTS/semantic-options.json" <<'JSON'
+IPSE_CORPUS_DENSE_WORKSPACE=$(mktemp -d)
+cat > "$IPSE_CORPUS_ARTIFACTS/dense-options.json" <<'JSON'
 {
   "version": 1,
   "stores": {"notes": {"kind": "state", "scope": "project", "partition": "manual"}},
@@ -227,11 +227,11 @@ cat > "$IPSE_CORPUS_ARTIFACTS/semantic-options.json" <<'JSON'
     }
   },
   "embedding": {"vectors": {"kind": "embedding", "profile": "encoder"}},
-  "rerank": {"ordered": {"kind": "model_complete", "profile": "ranker", "max_candidates": 16, "quote_bytes": 128, "output_contract": "json_schema_v2"}},
+  "rerank": {},
   "extraction": {}
 }
 JSON
-cat > "$IPSE_CORPUS_ARTIFACTS/semantic-inference.json" <<'JSON'
+cat > "$IPSE_CORPUS_ARTIFACTS/dense-inference.json" <<'JSON'
 {
   "embedding_profiles": {
     "encoder": {
@@ -240,48 +240,33 @@ cat > "$IPSE_CORPUS_ARTIFACTS/semantic-inference.json" <<'JSON'
       "dimensions": 768, "dimension_mode": "native", "timeout_ms": 120000
     }
   },
-  "profiles": {
-    "ranker": {
-      "provider": "ollama", "model": "qwen3.5:9b", "credential": "none",
-      "base_url": "http://127.0.0.1:11434", "max_output_tokens": 4096,
-      "reasoning_effort": "none", "timeout_ms": 120000
-    }
-  },
   "budget": {"version": 1, "max_requests": 6}
 }
 JSON
 elixir extensions/knowledge/build.exs \
   --sdk _build/dev/lib/ipse/ebin \
-  --output "$IPSE_CORPUS_ARTIFACTS/corpus-semantic" \
-  --package corpus --preset state-semantic
+  --output "$IPSE_CORPUS_ARTIFACTS/corpus-dense" \
+  --package corpus --preset state-dense
 elixir extensions/knowledge/config.exs \
-  --artifact "$IPSE_CORPUS_ARTIFACTS/corpus-semantic" \
-  --package corpus --preset state-semantic --instance corpus \
-  --options "$IPSE_CORPUS_ARTIFACTS/semantic-options.json" \
-  --inference-config "$IPSE_CORPUS_ARTIFACTS/semantic-inference.json" \
+  --artifact "$IPSE_CORPUS_ARTIFACTS/corpus-dense" \
+  --package corpus --preset state-dense --instance corpus \
+  --options "$IPSE_CORPUS_ARTIFACTS/dense-options.json" \
+  --inference-config "$IPSE_CORPUS_ARTIFACTS/dense-inference.json" \
   --state-binding knowledge \
-  --output "$IPSE_CORPUS_ARTIFACTS/operator-semantic.json"
-IPSE_HOME="$IPSE_CORPUS_HOME" ./bin/ipse extension import "$IPSE_CORPUS_ARTIFACTS/corpus-semantic"
+  --output "$IPSE_CORPUS_ARTIFACTS/operator-dense.json"
+IPSE_HOME="$IPSE_CORPUS_HOME" ./bin/ipse extension import "$IPSE_CORPUS_ARTIFACTS/corpus-dense"
 ```
 
-The reranker explicitly selects structured output through native Ollama.
-The host sends a schema for the supplied short candidate IDs and required count.
-Corpus still checks that every candidate appears exactly once. Malformed or
-schema-invalid output fails without a repair request and retains completed usage.
-Use a host supporting `model.complete` version 2 and a compatible native Ollama
-service. For another provider, omit `output_contract` to select the original text
-contract; the host never silently changes modes or providers.
-
-Inspect the actual printed digest as before. Review the generated trust, both
-inference routes and the six-request shared budget. Validate, then start a fresh chat:
+Inspect the actual printed digest as before. Review the generated trust, the embedding
+inference route and the six-request shared budget. Validate, then start a fresh chat:
 
 ```sh
 IPSE_HOME="$IPSE_CORPUS_HOME" ./bin/ipse config \
-  --config "$IPSE_CORPUS_ARTIFACTS/operator-semantic.json" --no-project-config \
+  --config "$IPSE_CORPUS_ARTIFACTS/operator-dense.json" --no-project-config \
   --extension corpus
 IPSE_HOME="$IPSE_CORPUS_HOME" ./bin/ipse chat --provider demo \
-  --config "$IPSE_CORPUS_ARTIFACTS/operator-semantic.json" --no-project-config \
-  --extension corpus --cwd "$IPSE_CORPUS_SEMANTIC_WORKSPACE"
+  --config "$IPSE_CORPUS_ARTIFACTS/operator-dense.json" --no-project-config \
+  --extension corpus --cwd "$IPSE_CORPUS_DENSE_WORKSPACE"
 ```
 
 The main provider stays scripted. Explicit index and query commands below can
@@ -352,12 +337,11 @@ An older-format vector draft can be inspected and aborted with this same command
 It cannot be resumed into a new-format index. Abort it explicitly, then review
 a separate `next` command and its new embedding request.
 
-Compare the three retrieval choices on the same source:
+Compare dense and hybrid retrieval on the same source:
 
 ```text
-/ext ext__corpus__query {"store":"notes","retrieval":"similar","rerank":null,"query":"lock files inode","top_k":5,"as_of_ms":1700000020000}
-/ext ext__corpus__query {"store":"notes","retrieval":"blend","rerank":null,"query":"lock files inode","top_k":5,"as_of_ms":1700000020000}
-/ext ext__corpus__query {"store":"notes","retrieval":"blend","rerank":"ordered","query":"lock files inode","top_k":5,"as_of_ms":1700000020000}
+/ext ext__corpus__query {"store":"notes","retrieval":"similar","rerank":null,"query":"lock files inode","top_k":10,"as_of_ms":1700000020000}
+/ext ext__corpus__query {"store":"notes","retrieval":"blend","rerank":null,"query":"lock files inode","top_k":10,"as_of_ms":1700000020000}
 ```
 
 Dense retrieval uses cosine similarity. Hybrid retrieval combines lexical and
@@ -372,7 +356,58 @@ This changes displayed spans without changing stored chunks or vectors, so it
 requires no reindex by itself. A byte boundary can end inside a long visual
 combining cluster while retaining valid UTF-8 and exact source coordinates. It
 does not become a missing-vector diagnostic.
-The last command sends short candidate IDs, canonical source-span references and
+To evaluate reranking, exit this chat and build a separate `state-semantic`
+artifact. This alternative adds `host.model` authority and needs an already
+available `qwen3.5:9b` model. It is not the measured reference artifact. Generate
+its options and host profile from the reviewed dense files:
+
+```sh
+elixir -e '
+[source, inference, output, host] = System.argv()
+options = JSON.decode!(File.read!(source))
+options = put_in(options, ["rerank"], %{"ordered" => %{
+  "kind" => "model_complete", "profile" => "ranker", "max_candidates" => 16,
+  "quote_bytes" => 128, "output_contract" => "json_schema_v2"}})
+profiles = %{"ranker" => %{"provider" => "ollama", "model" => "qwen3.5:9b",
+  "credential" => "none", "base_url" => "http://127.0.0.1:11434",
+  "max_output_tokens" => 4096, "reasoning_effort" => "none", "timeout_ms" => 120000}}
+File.write!(output, JSON.encode!(options))
+File.write!(host, JSON.encode!(Map.put(JSON.decode!(File.read!(inference)), "profiles", profiles)))
+' "$IPSE_CORPUS_ARTIFACTS/dense-options.json" \
+  "$IPSE_CORPUS_ARTIFACTS/dense-inference.json" \
+  "$IPSE_CORPUS_ARTIFACTS/rerank-options.json" \
+  "$IPSE_CORPUS_ARTIFACTS/rerank-inference.json"
+elixir extensions/knowledge/build.exs --sdk _build/dev/lib/ipse/ebin \
+  --output "$IPSE_CORPUS_ARTIFACTS/corpus-rerank" --package corpus --preset state-semantic
+elixir extensions/knowledge/config.exs \
+  --artifact "$IPSE_CORPUS_ARTIFACTS/corpus-rerank" \
+  --package corpus --preset state-semantic --instance corpus \
+  --options "$IPSE_CORPUS_ARTIFACTS/rerank-options.json" \
+  --inference-config "$IPSE_CORPUS_ARTIFACTS/rerank-inference.json" \
+  --state-binding knowledge --output "$IPSE_CORPUS_ARTIFACTS/operator-rerank.json"
+IPSE_HOME="$IPSE_CORPUS_HOME" ./bin/ipse extension import "$IPSE_CORPUS_ARTIFACTS/corpus-rerank"
+```
+
+Inspect the printed digest and expanded trust before enabling this alternative.
+Then start a new chat:
+
+```sh
+IPSE_HOME="$IPSE_CORPUS_HOME" ./bin/ipse chat --provider demo \
+  --config "$IPSE_CORPUS_ARTIFACTS/operator-rerank.json" --no-project-config \
+  --extension corpus --cwd "$IPSE_CORPUS_DENSE_WORKSPACE"
+```
+
+The same home, workspace, State binding and embedding profile retain the indexed
+source. The reranker selects structured output through native Ollama. It needs
+`model.complete` version 2; another provider must omit `output_contract` to use
+the original text contract. The host never changes modes or providers silently.
+Run this explicit alternative query:
+
+```text
+/ext ext__corpus__query {"store":"notes","retrieval":"blend","rerank":"ordered","query":"lock files inode","top_k":10,"as_of_ms":1700000020000}
+```
+
+This reranked query sends short candidate IDs, canonical source-span references and
 at most 128 UTF8 bytes per excerpt to `ranker`. The model returns every short ID
 exactly once; Ipse maps the order back to the original citations. Missing,
 duplicate or foreign IDs refuse the response without an automatic repair request.

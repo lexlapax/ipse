@@ -163,8 +163,10 @@ changing either bound.
 ## Fuse chunks while retaining exact citations
 
 The reference configuration combines lexical and native dense retrieval, with
-`rrf_k: 60`, no graph component and no reranker. Build the existing `state-semantic`
-preset and select its hybrid route; the [operator example](../operator/corpus.md#add-explicit-embeddings-and-reranking)
+`rrf_k: 60`, `top_k: 10`, no graph component and no reranker. Build `state-dense`
+with an empty `rerank` registry and select its hybrid route. The optional
+`state-semantic` preset additionally grants `host.model` for reranking and was
+not the measured reference artifact. The [operator example](../operator/corpus.md#add-explicit-embeddings-and-reranking)
 names that route `blend`. The [comparison record](../archive/2026-10-23-p27-heldout-comparison/index.md)
 explains the selection and its limits. Keep this choice in package configuration;
 it requires no domain branch in Session or automatic provider selection.

@@ -354,6 +354,11 @@ hosted CI. Its fresh comparison completed all 350 first outcomes, including six
 failures, and passed the joined execution/resource audit before reference release.
 Two independent model assessments, separate adjudication and one explicit human
 resolution supply complete review of all 350 outcomes and 635 citations. The
+owner-resolved rerank case uses a frozen `independent: true` compatibility flag
+to close the scorer's global completeness gate. It is not an independent final
+judgment and changes neither hybrid nor any strategy's qualification; the
+[comparison disclosure](archive/2026-10-23-p27-heldout-comparison/index.md#result-and-remaining-acceptance)
+records that accepted method extension. The
 original scorer passes the frozen per-strategy qualification policy. Hybrid is
 the sole eligible strategy, with 92% answer support and 95.18% citation support,
 and is selected as the reference configuration. The
@@ -429,7 +434,7 @@ The complete milestone requires all of the following:
 | Comparison audit repair | Stream merged execution against closed cell inventories without materializing the raw aggregate | Reviewed; platform suites and all four source/installed CPU/GPU measured proofs pass |
 | Explicit context repair | Bind portable and local context; verify loaded completion context while allowing separate embedding windows | Reviewed; platform/floor checks, 31-case service proofs, all four measured proofs and eight exposed GPU requests pass |
 | Duration composition repair | Compose fourteen legal service lifetimes within one finite measured-root ceiling; preserve existing request and service limits | Reviews, platform and supported-toolchain checks, native controls, package checks, all four source/installed CPU/GPU measured proofs and exact-source hosted CI pass at `817ab84` |
-| Final acceptance | Frozen outcomes, complete independent judgments, all-strategy publication, exact resources and hybrid reference choice | Complete; whole-manual/requirements audit passes; earlier failed attempts retain their verdicts |
+| Final acceptance | Frozen outcomes, semantic judgments with the disclosed owner-resolution extension, all-strategy publication, exact resources and hybrid reference choice | Complete within that accepted extension; whole-manual/requirements audit passes; earlier failed attempts retain their verdicts |
 
 The [external whole-P27 review and dispositions](archive/2026-10-20-p27-external-review-r1/index.md)
 retain all twelve code and five documentation findings, their repairs and
@@ -539,6 +544,16 @@ extension; frozen predictions and scores remain unchanged. Subsequent
 [maintenance and fingerprint compatibility](archive/2026-10-23-p27-maintenance/index.md)
 consolidates equivalent primitives and pure feature policy, removes the unused
 HTTP backend, and versions new MCP sessions while preserving old journal rules.
+Verification remains versioned: `4171fb4` had a Linux setup failure followed by
+focused correction; `dd0a130` had one harness failure in each initial full suite
+and hosted formatting failures; `ca5838b` passed its bounded follow-up checks.
+The [final independent review](archive/2026-10-23-p27-final-review/index.md)
+then verified `ca5838b` with 1532 native-inclusive Linux tests, its exact package
+and installed proof, and green Ubuntu/macOS hosted run 40014715937. It confirms
+acceptance and independently recomputes all published evidence. Its remaining P3
+MCP corners and documentation/record gaps are addressed in the accompanying
+follow-up, with separate verification in that record. Frozen outcomes and scores
+are unchanged.
 
 ### Final comparison policy
 

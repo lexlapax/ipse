@@ -7,8 +7,15 @@ Use the [Corpus user manual](../../operator/corpus.md),
 [evaluation training](../../developer/knowledge-evaluation.md), and
 [scoring training](../../developer/knowledge-scoring.md) for current procedures.
 The [plan](../../plan.md#p27-optional-research-graph-and-rag) owns milestone status.
-The independent [whole-chapter editorial review](editorial-review.md) found no
-actionable issues and checked the published totals and source configuration.
+The [whole-chapter editorial review](editorial-review.md) reported no actionable
+issues at publication. Subsequent reviews identified the corrections noted below.
+
+Correction note, 2026-10-23: `4171fb4` corrected the `a7f4982` publication's claims
+about independent owner judgment and hybrid being the sole qualifying strategy.
+The current follow-up additionally identifies the raw owner-resolution flag,
+the measured artifact preset and placement policy. These are corrections to the
+narrative; the bundle, manifest, receipts, final platform and original editorial
+records retain their published bytes and original scope.
 
 ## Result and remaining acceptance
 
@@ -16,7 +23,13 @@ All 350 first outcomes and the joined execution/resource audit completed. Six
 first outcomes failed and remain in every strategy denominator. Hybrid is the
 only individually qualifying strategy in the final report: 46/50 supported
 answers and 79/83 supported citation pairs. All 350 outcomes and 635 citations
-have complete review, and the original scorer reports `quality_gates_passed: true`.
+have complete review as counted by the original scorer, which reports
+`quality_gates_passed: true`. Final support is independently resolved for 349
+outcomes and 634 citation pairs. One rerank case uses the owner's resolution,
+whose raw record has `independent: true` despite not being an independent judgment.
+The scorer requires that flag to count it, so `complete_review` and the global
+quality gate depend on this disclosed method extension. Hybrid's scores and every
+strategy's qualification are unchanged by the owner resolution.
 Select the Corpus State-store hybrid configuration described below as the P27
 reference path. Final platform controls, whole-manual review and the
 [requirement-by-requirement acceptance audit](acceptance-audit.md) pass.
@@ -150,9 +163,10 @@ retrieval, reciprocal rank fusion with `rrf_k: 60`, no graph contribution and no
 reranker. Use `embeddinggemma:latest`, native 768 dimensions, and
 `missing_embedding: "refuse"`. The measured query used `top_k: 10` and retrieval
 binding `combined`; the user manual's equivalent worked configuration names it
-`blend`. It can be built with the existing `state-semantic` preset and explicitly
-configured; this decision adds no database, default network call or automatic
-provider switch.
+`blend`. The measured artifact uses `state-dense` with an empty `rerank` registry.
+The `state-semantic` alternative adds unused `host.model` authority and was not
+the measured build. This decision adds no database, default network call or
+automatic provider switch.
 
 Hybrid is the only strategy meeting both targets under the final adjudicated
 scores. Lexical had higher answer
@@ -216,6 +230,9 @@ metadata. Journals and budget files remained separate, about 11.9 MB per project
 collection is not a claim of journal erasure. Research has no retained state
 store, recorded as not applicable rather than an invented zero-byte measurement.
 
+The placement policy is `nvidia_visible_mixed_v1`, with partial model residency on
+an 8 GiB GPU and remaining work on CPU. This mixed placement affects latency;
+the results are not an all-GPU or CPU-only comparison.
 This is one fixed-order, two-project comparison on one host. Fresh cell identities
 do not establish identical hardware/cache scheduling, repeated-trial confidence,
 exact process-resident memory, peak VRAM or a general engine ranking. The Linux

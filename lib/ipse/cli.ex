@@ -141,13 +141,12 @@ defmodule Ipse.CLI do
   end
 
   defp dispatch(["config"], opts) do
-    case Ipse.Config.resolve(opts[:cwd] || default_cwd(), home(), opts) do
-      {:ok, effective} ->
-        Terminal.puts(Jason.encode!(Ipse.Config.manifest(effective), pretty: true))
-        0
-
-      {:error, reason} ->
-        report({:error, reason})
+    with {:ok, effective} <- Ipse.Config.resolve(opts[:cwd] || default_cwd(), home(), opts),
+         {:ok, _servers} <- Ipse.MCP.Config.load(opts[:mcp_config]) do
+      Terminal.puts(Jason.encode!(Ipse.Config.manifest(effective), pretty: true))
+      0
+    else
+      {:error, reason} -> report({:error, reason})
     end
   end
 
@@ -541,7 +540,7 @@ defmodule Ipse.CLI do
 
   defp format_error(:resume_configuration_mismatch),
     do:
-      "Saved session configuration differs. Restore its provider, model, endpoint (--base-url), profiles and extensions, or start a fresh session."
+      "Saved session configuration differs. Restore its provider, model, endpoint (--base-url), profiles, extensions and MCP configuration. Legacy MCP fingerprints also require a compatible OTP runtime. Otherwise start a fresh session."
 
   defp format_error(:journal_limit_reached),
     do:

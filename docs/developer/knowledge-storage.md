@@ -177,7 +177,7 @@ Directory/groups must agree on revision/deletion and generation. Get-many includ
 missing records explicitly. Immutable writes need unused keys and exact revision-one
 values. Collection checks snapshot generation and all live/draft reachability under
 one atomic owner, tombstoning only unprotected pages and advancing revisions/store
-generation once. CAS JSON result permits 60000 bytes, read in4096-byte exact-bound
+generation once. CAS JSON result permits 60000 bytes, read in 4096-byte exact-bound
 MCP text windows. Requests fit SDK,15000 encoded bytes, and32768-byte approval bounds.
 Write batches test the real selected envelope before choosing one/two pages.
 

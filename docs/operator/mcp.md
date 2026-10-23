@@ -244,6 +244,8 @@ A tool can return an error after performing part of its work. Ipse displays the
 server's redacted diagnostic with a warning about possible effects; an extension
 records `mcp_tool_error`, rather than the pre-dispatch `mcp_refused` code. Extension
 diagnostics retain up to 2048 UTF-8 bytes and mark longer text as truncated.
+If redaction creates another configured private value, the extension withholds
+the diagnostic and records an unknown outcome, stopping continuation.
 Inspect the affected files or service before requesting a retry. The error does
 not undo changes, grant another approval, or cause idle resume to repeat the call.
 
@@ -262,6 +264,7 @@ New sessions use version-two public fingerprints with a portable canonical JSON
 encoding. Existing journals keep their saved scheme; upgrading Ipse does not
 rewrite them. Continue using the same public configuration when resuming.
 
+An explicit version one is refused; legacy writers omitted the field.
 Legacy journals without a fingerprint version retain OTP's deterministic term
 encoding. A major OTP upgrade can refuse their unchanged configuration. Keep the
 previous runtime available for inspection or resume; start a new session with

@@ -606,7 +606,7 @@ defmodule Ipse.CLI.Terminal do
       :ok ->
         :ok
 
-      {:error, :skill_catalog_changed} ->
+      {:error, reason} when reason in [:skill_catalog_changed, :skill_preflight_failed] ->
         :ok
 
       {:error, reason} ->

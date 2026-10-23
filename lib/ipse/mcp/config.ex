@@ -32,7 +32,7 @@ defmodule Ipse.MCP.Config do
          true <- unique?(model_names),
          secrets = all_secrets(parsed),
          true <- public_manifests_clear?(parsed, secrets) do
-      {:ok, Enum.map(parsed, &Map.put(&1, :redactions, secrets))}
+      {:ok, Enum.map(parsed, &(&1 |> Map.put(:redactions, secrets) |> fingerprint_version(2)))}
     else
       {:error, _} -> {:error, "MCP configuration is invalid or unreadable."}
       _ -> {:error, "MCP configuration is invalid or unreadable."}
@@ -86,8 +86,18 @@ defmodule Ipse.MCP.Config do
   @doc "Select the stored fingerprint contract without rewriting journal records."
   def fingerprint_version(server, version) when version in [1, 2] do
     server = Map.put(server, :fingerprint_version, version)
-    public = server |> manifest() |> Jason.encode!() |> Jason.decode!()
+    fingerprint_server = if version == 1, do: Map.delete(server, :redactions), else: server
+    public = fingerprint_server |> manifest() |> Jason.encode!() |> Jason.decode!()
     Map.put(server, :fingerprint, public_fingerprint(public))
+  end
+
+  @doc "Admit only written journal shapes: absent legacy version or explicit version two."
+  def journal_fingerprint_version(metadata) do
+    case Map.fetch(metadata, "mcp_fingerprint_version") do
+      :error -> {:ok, 1}
+      {:ok, 2} -> {:ok, 2}
+      _ -> {:error, :resume_configuration_mismatch}
+    end
   end
 
   @doc "Hash an already validated, redacted public server manifest."

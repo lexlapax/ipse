@@ -138,6 +138,8 @@ rediscovers and compares the descriptor immediately before dispatch.
 A pre-dispatch refusal returns `failed` with `code: "mcp_refused"`. A tool
 response with `isError: true` instead returns `failed` with
 `code: "mcp_tool_error"`, the redacted `message` and a `truncated` boolean.
+The host rechecks the redacted diagnostic for configured private values before
+retaining it. A hit returns unknown with no diagnostic, stopping continuation.
 The message retains at most 2048 UTF-8 bytes without splitting a codepoint, so
 even JSON escaping fits the SDK envelope. This response confirms dispatch, not
 rollback: a remote write may have partly completed. Inspect the service before

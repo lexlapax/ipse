@@ -317,6 +317,71 @@ defmodule Ipse.MCP.SessionTest do
     end
   end
 
+  test "overlapping cross-server secrets do not prevent inert legacy resume", ctx do
+    fresh = session(ctx)
+    config = :sys.get_state(fresh).config
+    {:ok, [header | initial]} = Ipse.Journal.load(ctx.dir, Ipse.Session.info(fresh).id)
+    :ok = Ipse.Session.close_confirmed(fresh)
+    [base] = config.mcp_servers
+    first = %{base | args: ["--k=xabc"], env: %{"TOKEN" => "abc"}, redactions: ["xabc", "abc"]}
+
+    second = %{
+      base
+      | id: "other",
+        args: [],
+        env: %{"TOKEN" => "xabc"},
+        redactions: ["xabc", "abc"]
+    }
+
+    servers = [first, second]
+
+    hashes =
+      Enum.map(servers, fn server ->
+        args = Enum.map(server.args, &Ipse.MCP.Config.redact(&1, Map.delete(server, :redactions)))
+
+        {server.id, server.command, args, server.tools, ["TOKEN"], server.timeout_ms}
+        |> :erlang.term_to_binary([:deterministic])
+        |> Ipse.JSON.sha256()
+      end)
+
+    metadata =
+      header["metadata"]
+      |> Map.delete("mcp_fingerprint_version")
+      |> Map.put("mcp_servers", hashes)
+
+    assert {:ok, id} = Ipse.Journal.create(ctx.dir, metadata)
+    for event <- initial, do: assert(:ok = Ipse.Journal.append(ctx.dir, id, event))
+    path = Path.join(ctx.dir, id <> ".jsonl")
+    before = File.read!(path)
+    resumed = session(ctx, [servers: servers], id)
+    assert Ipse.Session.info(resumed).phase == :idle
+    assert File.read!(path) == before
+    refute File.exists?(Path.join(ctx.root, "calls.log"))
+    :ok = Ipse.Session.close_confirmed(resumed)
+
+    File.write!(
+      path,
+      Jason.encode!(put_in(header, ["metadata"], Map.put(metadata, "mcp_fingerprint_version", 1))) <>
+        "\n{partial"
+    )
+
+    before = File.read!(path)
+
+    assert {:error, :resume_configuration_mismatch} =
+             DynamicSupervisor.start_child(
+               Ipse.Sessions,
+               {Ipse.Session,
+                config: %{config | mcp_servers: servers},
+                cwd: ctx.root,
+                state_dir: ctx.dir,
+                id: id,
+                subscriber: self()}
+             )
+
+    assert File.read!(path) == before
+    refute File.exists?(Path.join(ctx.root, "calls.log"))
+  end
+
   test "server readiness starts at tool dispatch after a delayed model decision", ctx do
     gate =
       Task.async(fn ->
@@ -429,7 +494,7 @@ defmodule Ipse.MCP.SessionTest do
         ),
       call_count: Keyword.get(opts, :call_count, 1),
       model_gate: Keyword.get(opts, :model_gate),
-      mcp_servers: servers
+      mcp_servers: Keyword.get(opts, :servers, servers)
     }
 
     {:ok, pid} =

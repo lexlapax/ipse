@@ -62,4 +62,173 @@ defmodule Ipse.KnowledgeIndependenceTest do
       assert row["operation_calls"]["state_operations"] > 0
     end
   end
+
+  for {package, presets} <- [
+        {"corpus",
+         ~w(state-dense state-rerank state-semantic mcp-lexical mcp-dense mcp-rerank mcp-semantic)},
+        {"graph", ~w(state-model mcp-explicit mcp-model)},
+        {"research", ~w(mcp mcp-model)}
+      ],
+      preset <- presets do
+    test "#{package}/#{preset} capability grants remain inert when disabled, idle and resumed",
+         ctx do
+      package = unquote(package)
+      preset = unquote(preset)
+      root = Path.join(ctx.artifacts, package <> "-" <> preset)
+      artifact = Path.join(root, "artifact")
+      File.mkdir_p!(root)
+
+      {output, status} =
+        System.cmd(
+          System.find_executable("elixir"),
+          [
+            "extensions/knowledge/build.exs",
+            "--sdk",
+            Application.app_dir(:ipse, "ebin"),
+            "--output",
+            artifact,
+            "--package",
+            package,
+            "--preset",
+            preset
+          ],
+          stderr_to_stdout: true
+        )
+
+      assert status == 0, output
+
+      {:ok, imported} =
+        Ipse.Extension.Artifact.import(artifact, Path.join(root, "home/extensions/artifacts"))
+
+      manifest = Jason.decode!(File.read!(Path.join(artifact, "extension.json")))
+
+      base = %{
+        "corpus" => "corpus-lexical",
+        "graph" => "graph-explicit",
+        "research" => "research-offline"
+      }
+
+      options =
+        Jason.decode!(File.read!("extensions/knowledge/options/" <> base[package] <> ".json"))
+
+      remote = String.starts_with?(preset, "mcp") and package != "research"
+
+      options =
+        if remote,
+          do:
+            put_in(options, ["stores", "notes"], %{
+              "kind" => "mcp_cas",
+              "binding" => "records",
+              "partition" => "manual",
+              "contract" => "ipse-cas-v3"
+            }),
+          else: options
+
+      trust = %{
+        "artifact" => imported.digest,
+        "capabilities" => manifest["capabilities"],
+        "allow_project" => false,
+        "allow_children" => false,
+        "state_bindings" =>
+          if(package != "research" and not remote,
+            do: [
+              %{
+                "version" => 1,
+                "instance" => package,
+                "id" => "knowledge-proof",
+                "scopes" => ["project"]
+              }
+            ],
+            else: []
+          ),
+        "mcp_bindings" =>
+          if(remote,
+            do: [%{"instance" => package, "alias" => "records", "tool" => "mcp__fixture__store"}],
+            else: []
+          )
+      }
+
+      points = [
+        {Ipse.Extension.Worker, :start, 1},
+        {Ipse.Extension.State, :execute, 4},
+        {Ipse.Extension.MCPCall, :execute, 2},
+        {Ipse.Extension.EmbeddingCall, :execute, 2},
+        {Ipse.Extension.ModelCall, :execute, 2}
+      ]
+
+      trace = :trace.session_create(:knowledge_preset_inert, self(), [])
+
+      try do
+        for point = {module, _, _} <- points do
+          Code.ensure_loaded!(module)
+          assert :trace.function(trace, point, true, [:call_count]) == 1
+        end
+
+        for enabled <- [false, true] do
+          source = %{
+            scope: "operator",
+            path: Path.join(root, "operator.json"),
+            data: %{
+              "extensions" => [
+                %{
+                  "instance" => package,
+                  "artifact" => imported.digest,
+                  "enabled" => enabled,
+                  "options" => options,
+                  "order" => 0,
+                  "lifetime" => "persistent"
+                }
+              ],
+              "extension_trust" => [trust]
+            }
+          }
+
+          assert {:ok, selected} = Ipse.Extension.Config.resolve([source], [])
+
+          assert {:ok, entries} =
+                   Ipse.Extension.Registry.prepare(selected, Path.join(root, "home"))
+
+          config = %{
+            provider: :demo,
+            model: "unused",
+            provider_module: IpseKnowledgeExample.Proof.NoModel,
+            home: Path.join(root, "home"),
+            approval: :deny,
+            extensions: entries
+          }
+
+          args = [
+            config: config,
+            cwd: root,
+            state_dir: Path.join(root, "sessions"),
+            subscriber: self(),
+            owner: self()
+          ]
+
+          assert {:ok, pid} = DynamicSupervisor.start_child(Ipse.Sessions, {Ipse.Session, args})
+          id = Ipse.Session.info(pid).id
+          assert Ipse.Session.exports(pid)["entries"] != [] == enabled
+          assert Ipse.Session.info(pid).accounting["request_count"] == 0
+          assert :ok = Ipse.Session.close_confirmed(pid)
+
+          assert {:ok, resumed} =
+                   DynamicSupervisor.start_child(
+                     Ipse.Sessions,
+                     {Ipse.Session, Keyword.put(args, :id, id)}
+                   )
+
+          assert Ipse.Session.info(resumed).phase == :idle
+          assert :ok = Ipse.Session.close_confirmed(resumed)
+        end
+
+        for point <- points,
+            do: assert(:trace.info(trace, point, :call_count) == {:call_count, 0})
+      after
+        :trace.session_destroy(trace)
+      end
+
+      for module <- [IpseKnowledge.Corpus, IpseKnowledge.Graph, IpseKnowledge.Research],
+          do: refute(:code.is_loaded(module))
+    end
+  end
 end

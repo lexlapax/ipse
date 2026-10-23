@@ -145,10 +145,19 @@ defmodule Ipse.Extension.MCPCall do
              fn -> MCP.call(descriptor, request["arguments"], context.cwd, resource) end,
              request["timeout_ms"]
            ) do
-        {:ok, text} when is_binary(text) -> persist_source(context, intent, text)
-        {:tool_error, text} when is_binary(text) -> tool_error(text)
-        {:error, _} -> @refused
-        _ -> @unknown
+        {:ok, text} when is_binary(text) ->
+          persist_source(context, intent, text)
+
+        {:tool_error, text} when is_binary(text) ->
+          if Config.contains_private?(text, descriptor.server),
+            do: @unknown,
+            else: tool_error(text)
+
+        {:error, _} ->
+          @refused
+
+        _ ->
+          @unknown
       end
     else
       _ -> @refused
@@ -335,8 +344,8 @@ defmodule Ipse.Extension.MCPCall do
   defp metadata?(metadata, server),
     do:
       is_map(metadata) and is_list(metadata["mcp_servers"]) and
-        Map.get(metadata, "mcp_fingerprint_version", 1) ===
-          Map.get(server, "fingerprint_version", 1) and
+        Config.journal_fingerprint_version(metadata) ===
+          {:ok, Map.get(server, "fingerprint_version", 1)} and
         server["fingerprint"] in metadata["mcp_servers"]
 
   defp resource?(value),

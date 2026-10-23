@@ -96,6 +96,12 @@ frozen selection policy; this comparison does not replace adjudicated verdicts.
 If an owner resolves residual uncertainty outside the recorded review method,
 label that decision as an owner resolution and method extension. Retain the
 uncertainty, exact affected judgments, and its effect on completeness and gates.
+The scorer counts a measured judgment only with `independent: true`; it cannot
+establish independence from that flag. If a retained owner-resolution record uses
+this compatibility flag, disclose the raw value and its effect on `complete_review`
+and the global quality gate. The flag does not make the owner independent. Keep
+new unresolved judgments unmeasured unless the recorded procedure resolves them
+or the owner explicitly approves and discloses a method extension.
 
 No fabricated template values or simple majority label replaces source inspection.
 Several claims citing the same span are several pairs. Correct bytes are a
