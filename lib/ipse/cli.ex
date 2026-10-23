@@ -47,6 +47,7 @@ defmodule Ipse.CLI do
           trace_events: :integer,
           json: :boolean,
           note: :string,
+          version: :boolean,
           help: :boolean,
           demo: :boolean
         ],
@@ -77,9 +78,21 @@ defmodule Ipse.CLI do
         Terminal.help()
         0
 
+      opts[:version] ->
+        Terminal.puts(Ipse.version())
+        0
+
       true ->
         dispatch(rest, opts)
     end
+  end
+
+  defp dispatch(["version"], opts) do
+    if opts[:json],
+      do: Terminal.puts(Jason.encode!(Ipse.build_info(), pretty: true)),
+      else: Terminal.puts("Ipse " <> Ipse.version())
+
+    0
   end
 
   defp dispatch(["login"], _opts), do: report(Ipse.Auth.login(auth_dir()))

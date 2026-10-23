@@ -204,5 +204,9 @@ Provide the command with secrets removed, application version, OS/architecture,
 provider/model, selected sandbox, sanitized error/request ID, and a minimal
 sequence using synthetic files. Distinguish executed, failed, denied, and skipped
 checks. For capture failures include readiness, drops, closure reason, and cleanup.
+Run `ipse version --json` for the version, compiled source commit (when available),
+OTP, Elixir, OS and architecture. `ipse --version` prints just the application
+version. Build metadata identifies the source base; it does not attest to a clean
+checkout or reproducible build.
 Never attach auth files, authorization URLs/codes, environment dumps, hidden
 reasoning, or complete private journals.

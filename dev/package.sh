@@ -1,8 +1,12 @@
 #!/bin/sh
 set -eu
 cd "$(dirname "$0")/.."
+IPSE_BUILD_COMMIT=${IPSE_BUILD_COMMIT:-$(git rev-parse HEAD 2>/dev/null || true)}
+export IPSE_BUILD_COMMIT
 sh dev/build-native.sh
 MIX_ENV=prod mix deps.get
+MIX_ENV=prod mix compile --force --warnings-as-errors
+IPSE_VERSION=$(MIX_ENV=prod mix run --no-start -e 'IO.write(Mix.Project.config()[:version])')
 IPSE_RELEASE=_build/prod/rel/ipse
 # Recreate generated staging so an upgraded toolchain or removed application
 # cannot leave obsolete runtime files in the next archive.
@@ -36,6 +40,6 @@ if [ "$IPSE_OS" = linux ]; then
   fi
 fi
 mkdir -p dist
-IPSE_ARCHIVE="dist/ipse-0.1.0-$IPSE_OS-$IPSE_ARCH$IPSE_ABI.tar.gz"
+IPSE_ARCHIVE="dist/ipse-$IPSE_VERSION-$IPSE_OS-$IPSE_ARCH$IPSE_ABI.tar.gz"
 tar -czf "$IPSE_ARCHIVE" -C "$IPSE_RELEASE" .
 printf 'Built %s\n' "$IPSE_ARCHIVE"

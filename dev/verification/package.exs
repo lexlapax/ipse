@@ -166,7 +166,7 @@ defmodule Ipse.Development.Verification.Package do
     IO.puts("PASS: installed large Unicode delta over the bounded v2 text channel.")
   end
 
-  def run(%{mode: :installed} = runtime, corpus) do
+  def run(%{mode: :installed} = runtime, corpus, archive) do
     release = runtime.release
     root = runtime.root
     home = runtime.home
@@ -195,6 +195,27 @@ defmodule Ipse.Development.Verification.Package do
     require_executable!(otp_launcher)
 
     run!(wrapper, ["--help"], release, env, "bundled CLI help")
+    [app] = Path.wildcard(Path.join([release, "lib", "ipse-*", "ebin", "ipse.app"]))
+    {:ok, [{:application, :ipse, properties}]} = :file.consult(String.to_charlist(app))
+    version = properties |> Keyword.fetch!(:vsn) |> to_string()
+
+    unless String.starts_with?(Path.basename(archive), "ipse-#{version}-"),
+      do: raise("archive name does not match its application version")
+
+    unless String.trim(run!(wrapper, ["--version"], release, env, "bundled version")) == version,
+      do: raise("bundled CLI version does not match its application")
+
+    info =
+      run!(wrapper, ["version", "--json"], release, env, "bundled build identity")
+      |> :json.decode()
+
+    true = info["version"] == version
+    true = Enum.sort(Map.keys(info)) == ~w(arch commit elixir os otp_release version)
+
+    IO.puts(
+      "PASS: archive name, application version and toolchain-free CLI build identity agree."
+    )
+
     verify_terminal!(wrapper, release, env, root)
     verify_recovery!(otp_launcher, release, env, root)
     verify_text!(otp_launcher, release, env)

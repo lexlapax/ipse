@@ -18,7 +18,7 @@ defmodule Ipse.Development.Verification.Runtime do
           Code.require_file("package.exs", __DIR__)
 
           run(scenario, options, fn runtime, selected ->
-            apply(Package, :run, [runtime, selected])
+            apply(Package, :run, [runtime, selected, Keyword.fetch!(options, :archive)])
           end)
 
         _ ->

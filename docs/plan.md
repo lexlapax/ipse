@@ -79,8 +79,8 @@ The next sequence turns the verified harness into an operator-facing product:
 P28 operator usability and release readiness, P29 a provider registry with
 OpenRouter and Gemini, and P30 an advisory decision-engine contract. Voice and
 media is renumbered P31 and remains deferred; archived records call it P28.
-These are proposed scopes; each starts only when selected and keeps its own
-acceptance evidence.
+P28 and P29 are selected for implementation and auditor handoff preparation.
+P30 remains proposed. Each milestone keeps its own acceptance evidence.
 
 | Milestone or gate | Current state | Next result |
 | --- | --- | --- |
@@ -89,8 +89,8 @@ acceptance evidence.
 | [P25: comparative self-development](#p25-comparative-research-and-supervised-self-development) | Complete within declared supervision/assistance at `3307563`; security findings triaged and corrected scopes verified | Preserve frozen evidence; select a later production increment separately |
 | [P26: memory baseline](#p26-optional-working-and-long-term-memory) | Complete within explicit-note scope at `25f1d8e`; review repairs and local/hosted gates pass | Preserve lifecycle, authority and documented retention limits |
 | [P27: research, graph and RAG](#p27-optional-research-graph-and-rag) | Complete; all acceptance tasks closed within optional-package scope; hybrid qualified and selected | Preserve versioned evidence and explicit configuration; evaluate new workloads independently |
-| [P28: operator usability and release](#p28-operator-usability-and-release-readiness) | Proposed; next | First-run setup, environment diagnosis, actionable errors and a tagged, installable release |
-| [P29: provider registry, OpenRouter and Gemini](#p29-provider-registry-openrouter-and-gemini) | Proposed | Registry refactor without behavior change, then fixture-verified adapters and separate live account checks |
+| [P28: operator usability and release](#p28-operator-usability-and-release-readiness) | Selected; implementation in progress | First-run setup, environment diagnosis, actionable errors and a tagged, installable release |
+| [P29: provider registry, OpenRouter and Gemini](#p29-provider-registry-openrouter-and-gemini) | Selected; follows operator foundations | Registry refactor without behavior change, then fixture-verified adapters and separate live account checks |
 | [P30: decision engines](#p30-advisory-decision-engines) | Proposed | Typed closed-answer contract, fixture engines, then OpenAI Decisions and SystemOne-compatible adapters |
 | [P31: voice and media](#p31-voice-and-realtime-media) | Deferred; unimplemented; P28 in archived records | Explicit media contracts and later device/service validation |
 | [Apache-2.0 transition](#license-transition) | Complete; local and hosted `7bb642b` checks pass | Preserve bundled identity/recovery and third-party license boundaries |
@@ -605,7 +605,7 @@ the engine decision and whole-document editorial integration.
 
 ## P28: operator usability and release readiness
 
-**Proposed; next.** P0–P27 established correctness, recovery and evidence for a
+**Selected; implementation in progress.** P0–P27 established correctness, recovery and evidence for a
 supervised developer. This milestone makes the same harness usable by an operator
 who did not build it, without weakening approvals, explicit provider selection or
 fail-closed behavior. It adds no provider, model service or dependency by default.
@@ -616,6 +616,8 @@ configuration keeps the built-in `chatgpt` default, and interactive starts print
 a notice that names it and points to `ipse setup`. The first tag is `v0.1.0`. The
 release workflow drafts releases with the runner-provided `gh` CLI and the default
 token, recorded in the dependency inventory when it is added.
+The [implementation record](archive/2026-10-23-p28-p29-implementation/index.md)
+tracks the ordered work packages, actual checks and auditor handoff requirements.
 
 Scope:
 
@@ -647,7 +649,7 @@ dependencies.
 
 ## P29: provider registry, OpenRouter and Gemini
 
-**Proposed.** Provider identity is currently a closed list repeated in
+**Selected; implementation follows P28's operator foundations.** Provider identity is currently a closed list repeated in
 [`Ipse.Provider`](../lib/ipse/provider.ex), [profiles](../lib/ipse/config/profiles.ex),
 [usage](../lib/ipse/usage.ex) and [authentication](../lib/ipse/auth.ex), with
 embeddings limited to OpenAI and Ollama in

@@ -57,8 +57,10 @@ defmodule Ipse.CLI.Terminal do
   @deferred_display ~w(status compacted context_refreshed subagent text presentation extension_result tool_output tool tool_result skill)a
 
   @help """
-  Ipse 0.1 — a general-purpose local AI agent
+  Ipse VERSION — a general-purpose local AI agent
 
+  ipse --version                  Show the application version
+  ipse version [--json]           Show version or non-secret runtime build identity
   ipse login                      Continue with ChatGPT
   ipse status                     Show subscription sign-in status
   ipse logout                     Sign out of ChatGPT
@@ -663,7 +665,7 @@ defmodule Ipse.CLI.Terminal do
   defp print_context(manifest), do: puts(Jason.encode!(manifest, pretty: true))
   defp preview(args), do: args |> Jason.encode!() |> String.slice(0, 600)
 
-  def help, do: puts(@help)
+  def help, do: puts(String.replace(@help, "Ipse VERSION", "Ipse " <> Ipse.version()))
 
   def interact(pid, ref, interactive, prompt, cwd) do
     client = self()

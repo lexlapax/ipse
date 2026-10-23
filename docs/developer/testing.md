@@ -262,6 +262,15 @@ Use extracted `./ipse` for CLI and `./bin/ipse eval` for trusted evaluation.
 A local build is not publication. Distribution needs matching runtime notices via
 `IPSE_NOTICES_DIR` and the [dependency inventory](dependencies.md).
 
+The application version comes from `mix.exs`. Build and package scripts force
+compilation with `IPSE_BUILD_COMMIT` set to the current Git revision, unless an
+explicit build value was supplied. A source archive without Git metadata reports
+a null commit. Direct Mix compilation can also report null; runtime never invokes
+Git. Check `./bin/ipse version --json` or the extracted `./ipse version --json`.
+The package verifier compares the archive name and both version commands with the
+packaged application specification without a development toolchain. This metadata
+does not prove that a checkout was clean; record its diff separately.
+
 ## Exercise actual OS policy and native protocols
 
 Default tests exclude host enforcement. They compile the complete experimental
