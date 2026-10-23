@@ -263,7 +263,10 @@ defmodule Ipse.Development.Verification.Runtime do
         File.chmod!(root, 0o700)
         harness = Path.join(root, "harness")
         File.mkdir!(harness)
-        paths = source_paths(Application.app_dir(:ipse, "ebin"))
+        sdk_file = Ipse.Extension |> :code.which() |> to_string()
+        %{type: :regular} = File.lstat!(sdk_file)
+        true = Path.extname(sdk_file) == ".beam"
+        paths = source_paths(Path.dirname(sdk_file))
         compile!(spec, paths, harness)
         Code.prepend_path(harness)
         System.at_exit(fn _ -> File.rm_rf!(root) end)

@@ -6,6 +6,36 @@ defmodule Ipse.Development.VerificationTest do
   alias Ipse.Development.Verification.Scenarios
   alias Ipse.Development.Verification.Runtime
 
+  test "standalone fixture bootstrap resolves the SDK despite a shadowing application directory" do
+    root =
+      Path.join(
+        System.tmp_dir!(),
+        "fixture-bootstrap-" <> Base.encode16(:crypto.strong_rand_bytes(8), case: :lower)
+      )
+
+    cwd = Path.join(root, "ipse-0.0.0")
+    File.mkdir_p!(cwd)
+    File.chmod!(root, 0o700)
+    on_exit(fn -> File.rm_rf!(root) end)
+    paths = Enum.flat_map(:code.get_path(), &["-pa", List.to_string(&1)])
+
+    expression = """
+    sdk = Ipse.Extension |> :code.which() |> to_string() |> Path.dirname()
+    if Application.app_dir(:ipse, "ebin") == sdk, do: raise("shadow control did not activate")
+    Code.require_file(#{inspect(Path.expand("../../dev/verification/scenarios.exs", __DIR__))})
+    Code.require_file(#{inspect(Path.expand("../../dev/verification/runtime.exs", __DIR__))})
+    :ok = Ipse.Development.Verification.Runtime.load_fixture!(:knowledge)
+    IO.puts("fixture loaded from actual SDK")
+    """
+
+    arguments = paths ++ ["-pa", cwd, "-e", expression]
+    options = [cd: cwd, stderr_to_stdout: true]
+    {output, status} = System.cmd(System.find_executable("elixir"), arguments, options)
+
+    assert status == 0, output
+    assert output =~ "fixture loaded from actual SDK"
+  end
+
   test "the complete macOS verifier compiles without launching its platform probes" do
     expression = ~S"""
     [path] = System.argv()

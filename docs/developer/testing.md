@@ -116,6 +116,10 @@ checkout's basename, and a previously loaded fixture can hide a missing dependen
 When transferring code paths with `-pa`, exclude the implicit current-directory
 entry and reverse the argument sequence so successive prepends retain the original
 search order.
+The verification fixture bootstrap locates the loaded `Ipse.Extension` BEAM and
+validates its SDK directory. It does not infer that directory from the checkout's
+application-like name. The shadow-directory regression exercises this distinction
+in a fresh VM.
 The [MCP-store contract control](../../test/extensions/knowledge/store_contract_test.exs)
 loads Profiles, Evidence and MCPCAS explicitly, runs in a temporary directory,
 and checks that those modules remain unloaded in the parent.

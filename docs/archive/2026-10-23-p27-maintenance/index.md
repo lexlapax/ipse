@@ -3,7 +3,9 @@
 Historical implementation and verification record following the
 [independent review](../2026-10-23-p27-independent-review/index.md) and
 [first repairs at 4171fb4](../2026-10-23-p27-review-remediation/index.md).
-The enclosing commit identifies this subsequent implementation. Current procedures
+The initial maintenance implementation is
+`dd0a130a398eafef078d048c09a24095c4081c80`. The compatibility follow-up below
+has its own source identities and checks in the receipt. Current procedures
 belong to the [operator MCP manual](../../operator/mcp.md),
 [architecture training](../../developer/architecture.md) and
 [developer source map](../../developer/index.md).
@@ -110,5 +112,33 @@ the consumed real-model comparison or establish new charged-memory figures.
 All jobs used an isolated Git checkout on Linux; its primary checkout remained at
 `a912db1` and existing services were untouched. Full-run and corrected-case results
 are composed coverage, not a claim of a second clean full run. Hosted CI for the
-enclosing commit is a separate status and is not asserted here. No fresh macOS
-sandbox-specific check, toolchain-floor check or live-model measurement is claimed.
+initial maintenance commit is a separate status. No fresh macOS sandbox-specific
+check or live-model measurement is claimed.
+
+## Formatter and standalone bootstrap follow-up
+
+Hosted run 40012980389 for dd0a130 failed formatting on Ubuntu and macOS before
+tests ran. Elixir 1.18 and 1.20 formatted one long Knowledge guard differently.
+Splitting its two sequential Boolean conditions preserves validation order and
+failure behavior and passes both formatters. Local Elixir 1.18.5 verification
+uses OTP 29; it is not an OTP 27 runtime claim. The earlier repair's hosted run
+40006711554 passed and is separate evidence.
+
+A focused standalone index-abort control then exposed application-directory
+guessing in the shared fixture bootstrap, beyond the previously corrected contract
+harness. The loader now locates the actual loaded SDK BEAM, requires a regular
+`.beam` file and applies the existing exact SDK-directory admission. No source
+inventory or trust boundary is broadened. A fresh-VM regression deliberately puts
+an application-like directory ahead of the SDK and verifies successful loading.
+
+The receipt preserves the initial platform runs and package identities unchanged,
+and separately records the three follow-up source/test/tooling files. The
+Knowledge validation cohort passed five tests on macOS. The new shadow-directory
+control and the existing precompiled-fixture and copied-source-removal controls
+passed three tests. The combined cohort passed eight tests on Linux. Strict
+compilation and the current platform formatter passed on both systems. The current
+development controller passed all twelve source and installed MCP checks on each
+platform against the existing artifacts and exactly identified initial packages;
+inventories stayed unchanged and there were no live-model calls. The docs checker
+again passed 394 files and 3615 links. These bounded checks do not constitute a
+new complete suite or a new measured comparison.
